@@ -1,34 +1,29 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
+import { Key, Membership, ServiceTokenData, Workspace } from "../../models";
 import {
-	Key,
-	Membership,
-	ServiceTokenData,
-	Workspace,
-} from "../../models";
-import {
-	pullSecrets as pull,
-	v2PushSecrets as push,
-	reformatPullSecrets,
+  pullSecrets as pull,
+  v2PushSecrets as push,
+  reformatPullSecrets
 } from "../../helpers/secret";
 import { pushKeys } from "../../helpers/key";
 import { EventService, TelemetryService } from "../../services";
 import { eventPushSecrets } from "../../events";
 
 interface V2PushSecret {
-	type: string; // personal or shared
-	secretKeyCiphertext: string;
-	secretKeyIV: string;
-	secretKeyTag: string;
-	secretKeyHash: string;
-	secretValueCiphertext: string;
-	secretValueIV: string;
-	secretValueTag: string;
-	secretValueHash: string;
-	secretCommentCiphertext?: string;
-	secretCommentIV?: string;
-	secretCommentTag?: string;
-	secretCommentHash?: string;
+  type: string; // personal or shared
+  secretKeyCiphertext: string;
+  secretKeyIV: string;
+  secretKeyTag: string;
+  secretKeyHash: string;
+  secretValueCiphertext: string;
+  secretValueIV: string;
+  secretValueTag: string;
+  secretValueHash: string;
+  secretCommentCiphertext?: string;
+  secretCommentIV?: string;
+  secretCommentTag?: string;
+  secretCommentHash?: string;
 }
 
 /**
@@ -39,7 +34,7 @@ interface V2PushSecret {
  * @returns
  */
 export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
-	// upload (encrypted) secrets to workspace with id [workspaceId]
+  // upload (encrypted) secrets to workspace with id [workspaceId]
   const postHogClient = await TelemetryService.getPostHogClient();
   let { secrets }: { secrets: V2PushSecret[] } = req.body;
   const { keys, environment, channel } = req.body;
@@ -62,13 +57,13 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
     environment,
     secrets,
     channel: channel ? channel : "cli",
-    ipAddress: req.realIP,
+    ipAddress: req.realIP
   });
 
   await pushKeys({
     userId: req.user._id,
     workspaceId,
-    keys,
+    keys
   });
 
   if (postHogClient) {
@@ -79,8 +74,8 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
         numberOfSecrets: secrets.length,
         environment,
         workspaceId,
-        channel: channel ? channel : "cli",
-      },
+        channel: channel ? channel : "cli"
+      }
     });
   }
 
@@ -89,12 +84,13 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
     event: eventPushSecrets({
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
-    }),
+      secretPath: "/"
+    })
   });
 
-	return res.status(200).send({
-		message: "Successfully uploaded workspace secrets",
-	});
+  return res.status(200).send({
+    message: "Successfully uploaded workspace secrets"
+  });
 };
 
 /**
@@ -105,7 +101,7 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
  * @returns
  */
 export const pullSecrets = async (req: Request, res: Response) => {
-	let secrets;
+  let secrets;
   const postHogClient = await TelemetryService.getPostHogClient();
   const environment: string = req.query.environment as string;
   const channel: string = req.query.channel as string;
@@ -128,7 +124,7 @@ export const pullSecrets = async (req: Request, res: Response) => {
     workspaceId,
     environment,
     channel: channel ? channel : "cli",
-    ipAddress: req.realIP,
+    ipAddress: req.realIP
   });
 
   if (channel !== "cli") {
@@ -144,18 +140,18 @@ export const pullSecrets = async (req: Request, res: Response) => {
         numberOfSecrets: secrets.length,
         environment,
         workspaceId,
-        channel: channel ? channel : "cli",
-      },
+        channel: channel ? channel : "cli"
+      }
     });
   }
 
-	return res.status(200).send({
-		secrets,
-	});
+  return res.status(200).send({
+    secrets
+  });
 };
 
 export const getWorkspaceKey = async (req: Request, res: Response) => {
-	/* 
+  /* 
     #swagger.summary = 'Return encrypted project key'
     #swagger.description = 'Return encrypted project key'
     
@@ -183,43 +179,38 @@ export const getWorkspaceKey = async (req: Request, res: Response) => {
         }
     }   
     */
-	let key;
+  let key;
   const { workspaceId } = req.params;
 
   key = await Key.findOne({
     workspace: workspaceId,
-    receiver: req.user._id,
+    receiver: req.user._id
   }).populate("sender", "+publicKey");
 
   if (!key) throw new Error("Failed to find workspace key");
 
-	return res.status(200).json(key);
-}
-export const getWorkspaceServiceTokenData = async (
-	req: Request,
-	res: Response
-) => {
+  return res.status(200).json(key);
+};
+export const getWorkspaceServiceTokenData = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
 
-  const serviceTokenData = await ServiceTokenData
-    .find({
-      workspace: workspaceId,
-    })
-    .select("+encryptedKey +iv +tag");
+  const serviceTokenData = await ServiceTokenData.find({
+    workspace: workspaceId
+  }).select("+encryptedKey +iv +tag");
 
-	return res.status(200).send({
-		serviceTokenData,
-	});
-}
+  return res.status(200).send({
+    serviceTokenData
+  });
+};
 
 /**
  * Return memberships for workspace with id [workspaceId]
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const getWorkspaceMemberships = async (req: Request, res: Response) => {
-	/* 
+  /* 
     #swagger.summary = 'Return project memberships'
     #swagger.description = 'Return project memberships'
     
@@ -255,22 +246,22 @@ export const getWorkspaceMemberships = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
 
   const memberships = await Membership.find({
-    workspace: workspaceId,
+    workspace: workspaceId
   }).populate("user", "+publicKey");
 
-	return res.status(200).send({
-		memberships,
-	});
-}
+  return res.status(200).send({
+    memberships
+  });
+};
 
 /**
  * Update role of membership with id [membershipId] to role [role]
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const updateWorkspaceMembership = async (req: Request, res: Response) => {
-	/* 
+  /* 
     #swagger.summary = 'Update project membership'
     #swagger.description = 'Update project membership'
     
@@ -323,33 +314,32 @@ export const updateWorkspaceMembership = async (req: Request, res: Response) => 
         }
     }   
     */
-  const {
-    membershipId,
-  } = req.params;
+  const { membershipId } = req.params;
   const { role } = req.body;
-  
+
   const membership = await Membership.findByIdAndUpdate(
     membershipId,
     {
-      role,
-    }, {
-      new: true,
+      role
+    },
+    {
+      new: true
     }
   );
 
-	return res.status(200).send({
-		membership,
-	}); 
-}
+  return res.status(200).send({
+    membership
+  });
+};
 
 /**
  * Delete workspace membership with id [membershipId]
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const deleteWorkspaceMembership = async (req: Request, res: Response) => {
-	/* 
+  /* 
     #swagger.summary = 'Delete project membership'
     #swagger.description = 'Delete project membership'
     
@@ -385,23 +375,21 @@ export const deleteWorkspaceMembership = async (req: Request, res: Response) => 
         }
     }   
     */
-  const { 
-    membershipId,
-  } = req.params;
-  
+  const { membershipId } = req.params;
+
   const membership = await Membership.findByIdAndDelete(membershipId);
-  
+
   if (!membership) throw new Error("Failed to delete workspace membership");
-  
+
   await Key.deleteMany({
     receiver: membership.user,
-    workspace: membership.workspace,
+    workspace: membership.workspace
   });
-	
-	return res.status(200).send({
-		membership,
-	});
-}
+
+  return res.status(200).send({
+    membership
+  });
+};
 
 /**
  * Change autoCapitilzation Rule of workspace
@@ -415,18 +403,18 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
 
   const workspace = await Workspace.findOneAndUpdate(
     {
-      _id: workspaceId,
+      _id: workspaceId
     },
     {
-      autoCapitalization,
+      autoCapitalization
     },
     {
-      new: true,
+      new: true
     }
   );
 
-	return res.status(200).send({
-		message: "Successfully changed autoCapitalization setting",
-		workspace,
-	});
+  return res.status(200).send({
+    message: "Successfully changed autoCapitalization setting",
+    workspace
+  });
 };

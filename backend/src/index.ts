@@ -20,7 +20,7 @@ import {
   organizations as eeOrganizationsRouter,
   secret as eeSecretRouter,
   secretSnapshot as eeSecretSnapshotRouter,
-  workspace as eeWorkspaceRouter,
+  workspace as eeWorkspaceRouter
 } from "./ee/routes/v1";
 import {
   auth as v1AuthRouter,
@@ -41,6 +41,7 @@ import {
   userAction as v1UserActionRouter,
   user as v1UserRouter,
   workspace as v1WorkspaceRouter,
+  webhooks as v1WebhooksRouter
 } from "./routes/v1";
 import {
   auth as v2AuthRouter,
@@ -53,13 +54,13 @@ import {
   serviceTokenData as v2ServiceTokenDataRouter,
   serviceAccounts as v2ServiceAccountsRouter,
   environment as v2EnvironmentRouter,
-  tags as v2TagsRouter,
+  tags as v2TagsRouter
 } from "./routes/v2";
 import {
   auth as v3AuthRouter,
   secrets as v3SecretsRouter,
   signup as v3SignupRouter,
-  workspaces as v3WorkspacesRouter,
+  workspaces as v3WorkspacesRouter
 } from "./routes/v3";
 import { healthCheck } from "./routes/status";
 import { getLogger } from "./utils/logger";
@@ -80,7 +81,7 @@ const main = async () => {
   app.use(
     cors({
       credentials: true,
-      origin: await getSiteURL(),
+      origin: await getSiteURL()
     })
   );
 
@@ -126,6 +127,7 @@ const main = async () => {
   app.use("/api/v1/integration-auth", v1IntegrationAuthRouter);
   app.use("/api/v1/folders", v1SecretsFolder);
   app.use("/api/v1/secret-scanning", v1SecretScanningRouter);
+  app.use("/api/v1/webhooks", v1WebhooksRouter);
 
   // v2 routes (improvements)
   app.use("/api/v2/signup", v2SignupRouter);
@@ -157,7 +159,7 @@ const main = async () => {
     if (res.headersSent) return next();
     next(
       RouteNotFoundError({
-        message: `The requested source '(${req.method})${req.url}' was not found`,
+        message: `The requested source '(${req.method})${req.url}' was not found`
       })
     );
   });
@@ -165,9 +167,7 @@ const main = async () => {
   app.use(requestErrorHandler);
 
   const server = app.listen(await getPort(), async () => {
-    (await getLogger("backend-main")).info(
-      `Server started listening at port ${await getPort()}`
-    );
+    (await getLogger("backend-main")).info(`Server started listening at port ${await getPort()}`);
   });
 
   // await createTestUserForDevelopment();
