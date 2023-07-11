@@ -289,7 +289,7 @@ export default function Organization() {
           </div>
         )}
       </div>
-      <div className="flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl mb-4">
+      {((new Date()).getTime() - (new Date(user?.createdAt)).getTime()) < 30 * 24 * 60 * 60 * 1000 && <div className="flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl mb-4">
         <p className="mr-4 font-semibold text-white mb-4">Onboarding Guide</p>
         {learningItem({
           text: "Watch a video about Infisical",
@@ -300,7 +300,7 @@ export default function Organization() {
           userAction: "intro_cta_clicked",
           link: "https://www.youtube.com/watch?v=PK23097-25I"
         })}
-        {learningItem({
+        {workspaces.length !== 0 && learningItem({
           text: "Add your secrets",
           subText: "Click to see example secrets, and add your own.",
           complete: hasUserPushedSecrets,
@@ -309,7 +309,7 @@ export default function Organization() {
           userAction: "first_time_secrets_pushed",
           link: `/project/${workspaces[0]?._id}/secrets`
         })}
-        <div className="group text-mineshaft-100 relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 pl-2 pr-2 pt-4 pb-2 shadow-xl duration-200">
+        {workspaces.length !== 0 && <div className="group text-mineshaft-100 relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 pl-2 pr-2 pt-4 pb-2 shadow-xl duration-200">
           <div className="mb-4 flex w-full flex-row items-center pr-4">
             <div className="mr-4 flex w-full flex-row items-center">
               <FontAwesomeIcon icon={faNetworkWired} className="mx-2 w-16 text-4xl" />
@@ -331,8 +331,8 @@ export default function Organization() {
           </div>
           <TabsObject />
           {false && <div className="absolute bottom-0 left-0 h-1 w-full bg-green" />}
-        </div>
-        {learningItem({
+        </div>}
+        {workspaces.length !== 0 && learningItem({
           text: "Integrate Infisical with your infrastructure",
           subText: "Connect Infisical to various 3rd party services and platforms.",
           complete: false,
@@ -346,7 +346,7 @@ export default function Organization() {
           complete: usersInOrg,
           icon: faUserPlus,
           time: "2 min",
-          link: `/settings/org/${router.query.id}?invite`
+          link: `/org/${router.query.id}/members?action=invite`
         })}
         {learningItem({
           text: "Join Infisical Slack",
@@ -357,15 +357,7 @@ export default function Organization() {
           userAction: "slack_cta_clicked",
           link: "https://join.slack.com/t/infisical-users/shared_invite/zt-1ye0tm8ab-899qZ6ZbpfESuo6TEikyOQ"
         })}
-        {/* <div className="mt-4 w-full grid grid-flow-dense gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(256px, 4fr))" }}>
-          {workspaces.map(workspace => <div key={workspace._id} className="h-40 w-72 rounded-md bg-mineshaft-800 border border-mineshaft-600 p-4 flex flex-col justify-between">
-            <div className="text-lg text-mineshaft-100 mt-0">{workspace.name}</div>
-            <Link href="/dashbaord">
-              <div className="group cursor-default hover:bg-primary-800/20 text-sm text-mineshaft-300 hover:text-mineshaft-200 bg-mineshaft-900 py-2 px-4 rounded-full w-max border border-mineshaft-600 hover:border-primary-500/80">Explore <FontAwesomeIcon icon={faArrowRight} className="pl-1.5 pr-0.5 group-hover:pl-2 group-hover:pr-0 duration-200" /></div>
-            </Link>
-          </div>)}
-        </div> */}
-      </div>
+      </div>}
       <div className="flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl mb-4 pb-6">
         <p className="mr-4 font-semibold text-white">Explore More</p>
         <div className="mt-4 w-full grid grid-flow-dense gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(256px, 4fr))" }}>

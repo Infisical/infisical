@@ -63,7 +63,7 @@ export const CompanyNameSection = () => {
     return (
         <form 
             onSubmit={handleSubmit(onFormSubmit)}
-            className="p-4 bg-mineshaft-900 mb-6 max-w-screen-lg rounded-lg border border-mineshaft-600"
+            className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
         >
             <h2 className="text-xl font-semibold flex-1 text-mineshaft-100 mb-8">
                 Business name

@@ -155,9 +155,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
       }
 
       if (currentOrg && (
-        (workspaces?.length === 0 && !router.asPath.includes("org") && !router.asPath.includes("personal") && !router.asPath.includes("integration")) 
+        (workspaces?.length === 0 && router.asPath.includes("project")) 
         || router.asPath.includes("/project/undefined")
-        || !orgs?.includes(router.query.id)
+        || (!orgs?.includes(router.query.id) && !router.asPath.includes("project") && !router.asPath.includes("integration"))
       )) {
         router.push(`/org/${currentOrg?._id}/overview`);
       } 
@@ -186,7 +186,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
     };
     putUserInOrg();
     onboardingCheck({});
-  }, [currentOrg]);
+  }, [router.query.id]);
 
   const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
     // type check

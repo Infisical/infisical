@@ -14,7 +14,7 @@ const tabs = [
 export const BillingTabGroup = () => {
     return (
         <Tab.Group>
-            <Tab.List className="mt-8 mb-6 border-b-2 border-mineshaft-800 max-w-screen-lg">
+            <Tab.List className="mt-8 mb-6 border-b-2 border-mineshaft-800">
                 {tabs.map((tab) => (
                     <Tab as={Fragment} key={tab.key}> 
                         {({ selected }) => (

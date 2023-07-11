@@ -14,7 +14,7 @@ export const TaxIDSection = () => {
     ] as const);
 
     return (
-        <div className="p-4 bg-mineshaft-900 mb-6 max-w-screen-lg rounded-lg border border-mineshaft-600">
+        <div className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600">
             <div className="flex items-center mb-8">
                 <h2 className="text-xl font-semibold flex-1 text-white">
                     Tax ID
