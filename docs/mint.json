@@ -21,6 +21,10 @@
       "to": "#F8B7BD"
     }
   },
+  "feedback": {
+    "suggestEdit": true,
+    "raiseIssue": true
+  },
   "api": {
     "baseUrl": ["https://app.infisical.com", "http://localhost:8080"],
     "auth": {
