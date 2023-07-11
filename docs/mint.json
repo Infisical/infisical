@@ -114,6 +114,7 @@
         "documentation/platform/project",
         "documentation/platform/folder",
         "documentation/platform/secret-reference",
+        "documentation/platform/webhooks",
         "documentation/platform/pit-recovery",
         "documentation/platform/secret-versioning",
         "documentation/platform/audit-logs",
