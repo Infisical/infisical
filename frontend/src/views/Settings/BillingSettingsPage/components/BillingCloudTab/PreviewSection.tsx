@@ -2,15 +2,18 @@ import { Button } from "@app/components/v2";
 import { useOrganization,useSubscription  } from "@app/context";
 import { 
     useCreateCustomerPortalSession,
-    useGetOrgPlanBillingInfo} from "@app/hooks/api";
+    useGetOrgPlanBillingInfo,
+    useGetOrgTrialUrl
+} from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { ManagePlansModal } from "./ManagePlansModal";
 
 export const PreviewSection = () => {
     const { currentOrg } = useOrganization();
-    const { subscription, isLoading: isSubscriptionLoading } = useSubscription();
+    const { subscription } = useSubscription();
     const { data, isLoading } = useGetOrgPlanBillingInfo(currentOrg?._id ?? "");
+    const getOrgTrialUrl = useGetOrgTrialUrl();
     const createCustomerPortalSession = useCreateCustomerPortalSession();
     
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -42,19 +45,41 @@ export const PreviewSection = () => {
             .replace(/-/g, " ");
     }
     
+    const handleUpgradeBtnClick = async () => {
+        try {
+            if (!subscription || !currentOrg) return;
+            
+            if (!subscription.has_used_trial) {
+                // direct user to start pro trial
+                const url = await getOrgTrialUrl.mutateAsync({
+                    orgId: currentOrg._id,
+                    success_url: window.location.href
+                });
+                
+                window.location.href = url;
+            } else {
+                // open compare plans modal
+                handlePopUpOpen("managePlan");
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+    
     return (
         <div>
-            {!isSubscriptionLoading && subscription?.slug !== "enterprise" && subscription?.slug !== "pro" && subscription?.slug !== "pro-annual" && (
+            {subscription && subscription?.slug !== "enterprise" && subscription?.slug !== "pro" && subscription?.slug !== "pro-annual" && (
                 <div className="p-4 bg-mineshaft-900 rounded-lg flex-1 border border-mineshaft-600 mb-6 flex items-center bg-mineshaft-600 max-w-screen-lg">
                     <div className="flex-1">
                         <h2 className="text-xl font-semibold text-mineshaft-50">Become Infisical</h2>
                         <p className="text-gray-400 mt-4">Unlimited members, projects, RBAC, smart alerts, and so much more</p>
                     </div>
                     <Button 
-                        onClick={() => handlePopUpOpen("managePlan")}
+                        // onClick={() => handlePopUpOpen("managePlan")}
+                        onClick={() => handleUpgradeBtnClick()}
                         color="mineshaft"
                     >
-                        Upgrade
+                        {!subscription.has_used_trial ? "Start Pro Free Trial" : "Upgrade Plan"}
                     </Button>
                 </div>
             )}

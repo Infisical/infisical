@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -12,6 +12,7 @@ import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import SendEmailOnPasswordReset from "./api/auth/SendEmailOnPasswordReset";
 
 export default function VerifyEmail() {
+  const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [step, setStep] = useState(1);
   const { data: serverDetails } = useFetchServerStatus();
@@ -24,6 +25,18 @@ export default function VerifyEmail() {
     if (email) {
       await SendEmailOnPasswordReset({ email });
       setStep(2);
+    }
+  };
+
+  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+
+    if (serverDetails?.emailConfigured) {
+      sendVerificationEmail();
+    } else {
+      handlePopUpOpen("setUpEmail");
+      setLoading(false);
     }
   };
 
@@ -45,7 +58,7 @@ export default function VerifyEmail() {
         </div>
       </Link>
       {step === 1 && (
-        <div className="h-7/12 mx-auto w-full max-w-md rounded-xl bg-bunker py-4 px-6 pt-8 drop-shadow-xl">
+        <form onSubmit={onSubmit} className="h-7/12 mx-auto w-full max-w-md rounded-xl bg-bunker px-6 py-4 pt-8 drop-shadow-xl">
           <p className="mx-auto mb-6 flex w-max justify-center text-2xl font-semibold text-bunker-100 md:text-3xl">
             Forgot your password?
           </p>
@@ -67,20 +80,10 @@ export default function VerifyEmail() {
           </div>
           <div className="mx-auto mt-4 flex max-h-20 w-full max-w-md flex-col items-center justify-center text-sm md:p-2">
             <div className="text-l m-8 mt-6 px-8 py-3 text-lg">
-              <Button
-                text="Continue"
-                onButtonPressed={() => {
-                  if (serverDetails?.emailConfigured) {
-                    sendVerificationEmail();
-                  } else {
-                    handlePopUpOpen("setUpEmail");
-                  }
-                }}
-                size="lg"
-              />
+              <Button type="submit" text="Continue" size="lg" onButtonPressed={() => {}} loading={loading} />
             </div>
           </div>
-        </div>
+        </form>
       )}
       {step === 2 && (
         <div className="h-7/12 mx-auto w-full max-w-md rounded-xl bg-bunker py-4 px-6 pt-8 drop-shadow-xl">
