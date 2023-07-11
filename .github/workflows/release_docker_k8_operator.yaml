@@ -34,4 +34,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             infisical/kubernetes-operator:latest
-            infisical/backend:${{ steps.extract_version.outputs.version }}
+            infisical/kubernetes-operator:${{ steps.extract_version.outputs.version }}
