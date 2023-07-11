@@ -45,7 +45,7 @@ export const PreviewSection = () => {
     return (
         <div>
             {!isSubscriptionLoading && subscription?.slug !== "enterprise" && subscription?.slug !== "pro" && subscription?.slug !== "pro-annual" && (
-                <div className="p-4 bg-mineshaft-900 rounded-lg flex-1 border border-mineshaft-600 mb-6 flex items-center bg-mineshaft-600">
+                <div className="p-4 bg-mineshaft-900 rounded-lg flex-1 border border-mineshaft-600 mb-6 flex items-center bg-mineshaft-600 max-w-screen-lg">
                     <div className="flex-1">
                         <h2 className="text-xl font-semibold text-mineshaft-50">Become Infisical</h2>
                         <p className="text-gray-400 mt-4">Unlimited members, projects, RBAC, smart alerts, and so much more</p>

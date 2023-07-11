@@ -94,6 +94,8 @@ export const MaskedInput = ({ isReadOnly, isSecretValueHidden, index, isOverridd
           ref={ref}
           className={`absolute top-1.5 left-3.5 z-10 w-full overflow-auto font-mono text-sm transition-all no-scrollbar ${
             isOverridden && "text-primary-300"
+          } ${
+            (value || "") === "" && "text-mineshaft-400"
           }`}
           style={{ height: `${maxMultilineHeight}px`, width: "calc(100% - 12px)" }}
         >

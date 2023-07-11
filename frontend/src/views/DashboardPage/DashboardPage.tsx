@@ -340,7 +340,10 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     }
   };
 
-  const onAppendSecret = () => append(DEFAULT_SECRET_VALUE);
+  const onAppendSecret = () => { 
+    setSearchFilter("");
+    append(DEFAULT_SECRET_VALUE)
+  };
 
   const onSaveSecret = async ({ secrets: userSec = [], isSnapshotMode }: FormData) => {
     if (isSnapshotMode) {
@@ -700,6 +703,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                           });
                         }
                         prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
+                        setSearchFilter("");
                       }}
                       isDisabled={isReadOnly || isRollbackMode}
                       variant="outline_bg"
