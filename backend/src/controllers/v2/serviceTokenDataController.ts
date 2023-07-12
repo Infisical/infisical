@@ -2,10 +2,7 @@ import { Request, Response } from "express";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { ServiceAccount, ServiceTokenData, User } from "../../models";
-import {
-  AUTH_MODE_JWT,
-  AUTH_MODE_SERVICE_ACCOUNT,
-} from "../../variables";
+import { AUTH_MODE_JWT, AUTH_MODE_SERVICE_ACCOUNT } from "../../variables";
 import { getSaltRounds } from "../../config";
 import { BadRequestError } from "../../utils/errors";
 import Folder from "../../models/folder";
@@ -46,14 +43,13 @@ export const getServiceTokenData = async (req: Request, res: Response) => {
 
   if (!(req.authData.authPayload instanceof ServiceTokenData))
     throw BadRequestError({
-      message: "Failed accepted client validation for service token data",
+      message: "Failed accepted client validation for service token data"
     });
 
-  const serviceTokenData = await ServiceTokenData.findById(
-    req.authData.authPayload._id
-  )
+  const serviceTokenData = await ServiceTokenData.findById(req.authData.authPayload._id)
     .select("+encryptedKey +iv +tag")
-    .populate("user");
+    .populate("user")
+    .lean();
 
   return res.status(200).json(serviceTokenData);
 };
@@ -68,29 +64,7 @@ export const getServiceTokenData = async (req: Request, res: Response) => {
 export const createServiceTokenData = async (req: Request, res: Response) => {
   let serviceTokenData;
 
-  const {
-    name,
-    workspaceId,
-    environment,
-    encryptedKey,
-    iv,
-    tag,
-    expiresIn,
-    secretPath,
-    permissions,
-  } = req.body;
-
-  const folders = await Folder.findOne({
-    workspace: workspaceId,
-    environment,
-  });
-
-  if (folders) {
-    const folder = getFolderByPath(folders.nodes, secretPath);
-    if (folder == undefined) {
-      throw BadRequestError({ message: "Path for service token does not exist" })
-    }
-  }
+  const { name, workspaceId, encryptedKey, iv, tag, expiresIn, permissions, scopes } = req.body;
 
   const secret = crypto.randomBytes(16).toString("hex");
   const secretHash = await bcrypt.hash(secret, await getSaltRounds());
@@ -103,10 +77,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
 
   let user, serviceAccount;
 
-  if (
-    req.authData.authMode === AUTH_MODE_JWT &&
-    req.authData.authPayload instanceof User
-  ) {
+  if (req.authData.authMode === AUTH_MODE_JWT && req.authData.authPayload instanceof User) {
     user = req.authData.authPayload._id;
   }
 
@@ -120,17 +91,16 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
   serviceTokenData = await new ServiceTokenData({
     name,
     workspace: workspaceId,
-    environment,
     user,
     serviceAccount,
+    scopes,
     lastUsed: new Date(),
     expiresAt,
     secretHash,
     encryptedKey,
     iv,
     tag,
-    secretPath,
-    permissions,
+    permissions
   }).save();
 
   // return service token data without sensitive data
@@ -142,7 +112,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
 
   return res.status(200).send({
     serviceToken,
-    serviceTokenData,
+    serviceTokenData
   });
 };
 
@@ -155,11 +125,9 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
 export const deleteServiceTokenData = async (req: Request, res: Response) => {
   const { serviceTokenDataId } = req.params;
 
-  const serviceTokenData = await ServiceTokenData.findByIdAndDelete(
-    serviceTokenDataId
-  );
+  const serviceTokenData = await ServiceTokenData.findByIdAndDelete(serviceTokenDataId);
 
   return res.status(200).send({
-    serviceTokenData,
+    serviceTokenData
   });
 };

@@ -165,7 +165,7 @@ jobs:
       - name: Download helm values to file and upgrade gamma deploy
         run: |
           wget https://raw.githubusercontent.com/Infisical/infisical/main/.github/values.yaml
-          helm upgrade infisical infisical-helm-charts/infisical  --values values.yaml --wait
+          helm upgrade infisical infisical-helm-charts/infisical  --values values.yaml --wait --install
           if [[ $(helm status infisical) == *"FAILED"* ]]; then
             echo "Helm upgrade failed"
             exit 1

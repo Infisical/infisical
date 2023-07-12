@@ -18,6 +18,8 @@ import {
   INTEGRATION_CHECKLY_API_URL,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CIRCLECI_API_URL,
+  INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUDFLARE_PAGES_API_URL,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
@@ -26,6 +28,8 @@ import {
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_HEROKU,
   INTEGRATION_HEROKU_API_URL,
+  INTEGRATION_LARAVELFORGE,
+  INTEGRATION_LARAVELFORGE_API_URL,
   INTEGRATION_NETLIFY,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RAILWAY,
@@ -34,8 +38,6 @@ import {
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_SUPABASE,
   INTEGRATION_SUPABASE_API_URL,
-  INTEGRATION_CLOUDFLARE_PAGES,
-  INTEGRATION_CLOUDFLARE_PAGES_API_URL,
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
@@ -154,6 +156,14 @@ const syncSecrets = async ({
         accessToken,
       });
       break;
+    case INTEGRATION_LARAVELFORGE:
+      await syncSecretsLaravelForge({
+        integration,
+        secrets,
+        accessId,
+        accessToken,
+      });
+      break;
     case INTEGRATION_TRAVISCI:
       await syncSecretsTravisCI({
         integration,
@@ -168,58 +178,30 @@ const syncSecrets = async ({
           accessToken,
         });
         break;
-      case INTEGRATION_FLYIO:
-        await syncSecretsFlyio({
+    case INTEGRATION_CHECKLY:
+      await syncSecretsCheckly({
+        integration,
+        secrets,
+        accessToken,
+      });
+      break;
+    case INTEGRATION_HASHICORP_VAULT:
+      await syncSecretsHashiCorpVault({
+        integration,
+        integrationAuth,
+        secrets,
+        accessId,
+        accessToken,
+      });
+      break;
+    case INTEGRATION_CLOUDFLARE_PAGES:
+      await syncSecretsCloudflarePages({
           integration,
-          secrets,
-          accessToken,
-        });
-        break;
-      case INTEGRATION_CIRCLECI:
-        await syncSecretsCircleCI({
-          integration,
-          secrets,
-          accessToken,
-        });
-        break;
-      case INTEGRATION_TRAVISCI:
-        await syncSecretsTravisCI({
-          integration,
-          secrets,
-          accessToken,
-        });
-        break;
-      case INTEGRATION_SUPABASE:
-        await syncSecretsSupabase({
-            integration,
-            secrets,
-            accessToken,
-        });
-        break;
-      case INTEGRATION_CHECKLY:
-        await syncSecretsCheckly({
-          integration,
-          secrets,
-          accessToken,
-        });
-        break;
-      case INTEGRATION_HASHICORP_VAULT:
-        await syncSecretsHashiCorpVault({
-          integration,
-          integrationAuth,
           secrets,
           accessId,
-          accessToken,
-        });
-        break;
-      case INTEGRATION_CLOUDFLARE_PAGES:
-        await syncSecretsCloudflarePages({
-            integration,
-            secrets,
-            accessId,
-            accessToken
-        });
-        break;
+          accessToken
+      });
+      break;
     }
 };
 
@@ -1168,6 +1150,48 @@ const syncSecretsRender = async ({
 };
 
 /**
+ * Sync/push [secrets] to Laravel Forge sites with id [integration.appId]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Laravel Forge integration
+ */
+const syncSecretsLaravelForge = async ({
+  integration,
+  secrets,
+  accessId,
+  accessToken,
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessId: string | null;
+  accessToken: string;
+}) => {
+
+  function transformObjectToString(obj: any) {
+    let result = "";
+    for (const key in obj) {
+      result += `${key}=${obj[key]}\n`;
+    }
+    return result;
+  }
+  
+  await standardRequest.put(
+    `${INTEGRATION_LARAVELFORGE_API_URL}/api/v1/servers/${accessId}/sites/${integration.appId}/env`,
+    {
+      content: transformObjectToString(secrets),
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    }
+  );
+};
+
+/**
  * Sync/push [secrets] to Railway project with id [integration.appId]
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
@@ -1874,7 +1898,7 @@ const syncSecretsCloudflarePages = async ({
           }
       )
   )
-  .data.result['deployment_configs'][integration.targetEnvironment]['env_vars'];
+  .data.result["deployment_configs"][integration.targetEnvironment]["env_vars"];
 
   // copy the secrets object, so we can set deleted keys to null
   const secretsObj: any = {...secrets};

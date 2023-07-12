@@ -73,7 +73,6 @@ var loginCmd = &cobra.Command{
 				return
 			}
 		}
-
 		//override domain
 		domainQuery := true
 		if config.INFISICAL_URL_MANUAL_OVERRIDE != "" && config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
@@ -322,6 +321,8 @@ func DomainOverridePrompt() (bool, error) {
 	)
 
 	options := []string{PRESET, OVERRIDE}
+	//trim the '/' from the end of the domain url
+	config.INFISICAL_URL_MANUAL_OVERRIDE = strings.TrimRight(config.INFISICAL_URL_MANUAL_OVERRIDE, "/")
 	optionsPrompt := promptui.Select{
 		Label: fmt.Sprintf("Current INFISICAL_API_URL Domain Override: %s", config.INFISICAL_URL_MANUAL_OVERRIDE),
 		Items: options,
@@ -380,7 +381,8 @@ func askForDomain() error {
 	if err != nil {
 		return err
 	}
-
+	//trimmed the '/' from the end of the self hosting url
+	domain = strings.TrimRight(domain, "/")
 	//set api and login url
 	config.INFISICAL_URL = fmt.Sprintf("%s/api", domain)
 	config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", domain)

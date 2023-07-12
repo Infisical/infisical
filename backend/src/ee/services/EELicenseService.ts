@@ -30,6 +30,9 @@ interface FeatureSet {
     customRateLimits: boolean;
     customAlerts: boolean;
     auditLogs: boolean;
+    status: 'incomplete' | 'incomplete_expired' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid' | null;
+    trial_end: number | null;
+    has_used_trial: boolean;
 }
 
 /**
@@ -55,11 +58,14 @@ class EELicenseService {
         environmentLimit: null,
         environmentsUsed: 0,
         secretVersioning: true,
-        pitRecovery: true,
+        pitRecovery: false,
         rbac: true,
         customRateLimits: true,
         customAlerts: true,
         auditLogs: false,
+        status: null,
+        trial_end: null,
+        has_used_trial: true
     }
 
     public localFeatureSet: NodeCache;
@@ -67,7 +73,7 @@ class EELicenseService {
     constructor() {
         this._isLicenseValid = true;
         this.localFeatureSet = new NodeCache({
-            stdTTL: 300,
+            stdTTL: 60,
         });
     }
     
@@ -106,6 +112,12 @@ class EELicenseService {
         if (this.instanceType === "cloud") {
             this.localFeatureSet.del(`${organizationId}-${workspaceId ?? ""}`);
             await this.getPlan(organizationId, workspaceId);
+        }
+    }
+    
+    public async delPlan(organizationId: string) {
+        if (this.instanceType === "cloud") {
+            this.localFeatureSet.del(`${organizationId}-`);
         }
     }
 

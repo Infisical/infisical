@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import NavHeader from "@app/components/navigation/NavHeader";
 import { Button, Input, TableContainer, Tooltip } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useOrganization, useWorkspace } from "@app/context";
 import {
   useGetProjectFoldersBatch,
   useGetProjectSecretsByKey,
@@ -22,6 +22,7 @@ export const DashboardEnvOverview = () => {
   const router = useRouter();
 
   const { currentWorkspace, isLoading } = useWorkspace();
+  const { currentOrg } = useOrganization();
   const workspaceId = currentWorkspace?._id as string;
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
   const [searchFilter, setSearchFilter] = useState("");
@@ -29,7 +30,7 @@ export const DashboardEnvOverview = () => {
 
   useEffect(() => {
     if (!isLoading && !workspaceId && router.isReady) {
-      router.push("/noprojects");
+      router.push(`/org/${currentOrg?._id}/overview`);
     }
   }, [isLoading, workspaceId, router.isReady]);
 
@@ -143,7 +144,7 @@ export const DashboardEnvOverview = () => {
 
   return (
     <div className="container mx-auto max-w-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
-      <div className="relative right-5">
+      <div className="relative right-5 ml-4">
         <NavHeader pageName={t("dashboard.title")} isProjectRelated />
       </div>
       <div className="mt-6">

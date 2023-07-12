@@ -57,11 +57,17 @@ export default function NavHeader({
   );
 
   return (
-    <div className="ml-6 flex flex-row items-center pt-6">
-      <div className="mr-2 flex h-6 w-6 items-center justify-center rounded-md bg-primary-900 text-mineshaft-100">
+    <div className="flex flex-row items-center pt-6">
+      <div className="mr-2 flex h-5 w-5 items-center justify-center rounded-md bg-primary text-black text-sm">
         {currentOrg?.name?.charAt(0)}
       </div>
-      <div className="text-sm font-semibold text-bunker-300">{currentOrg?.name}</div>
+      <Link
+        passHref
+        legacyBehavior
+        href={`/org/${currentOrg?._id}/overview`}
+      >
+        <a className="text-sm font-semibold text-primary/80 hover:text-primary pl-0.5">{currentOrg?.name}</a>
+      </Link>
       {isProjectRelated && (
         <>
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-xs text-gray-400" />
@@ -79,7 +85,7 @@ export default function NavHeader({
         <Link
           passHref
           legacyBehavior
-          href={{ pathname: "/dashboard/[id]", query: { id: router.query.id } }}
+          href={{ pathname: "/project/[id]/secrets", query: { id: router.query.id } }}
         >
           <a className="text-sm font-semibold text-primary/80 hover:text-primary">{pageName}</a>
         </Link>
@@ -120,7 +126,7 @@ export default function NavHeader({
               {index + 1 === folders?.length ? (
                 <span className="text-sm font-semibold text-bunker-300">{name}</span>
               ) : (
-                <Link passHref legacyBehavior href={{ pathname: "/dashboard/[id]", query }}>
+                <Link passHref legacyBehavior href={{ pathname: "/project/[id]/secrets", query }}>
                   <a className="text-sm font-semibold text-primary/80 hover:text-primary">
                     {name === "root" ? selectedEnv?.name : name}
                   </a>

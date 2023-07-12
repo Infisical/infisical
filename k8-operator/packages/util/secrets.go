@@ -3,6 +3,8 @@ package util
 import (
 	"encoding/base64"
 	"fmt"
+	"path"
+	"regexp"
 	"strings"
 
 	"github.com/Infisical/infisical/k8-operator/packages/api"
@@ -48,10 +50,10 @@ func GetServiceTokenDetails(infisicalToken string) (api.GetServiceTokenDetailsRe
 	return serviceTokenDetails, nil
 }
 
-func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string) ([]model.SingleEnvironmentVariable, api.GetEncryptedSecretsV2Response, error) {
+func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string, envSlug string, secretPath string) ([]model.SingleEnvironmentVariable, api.GetEncryptedSecretsV3Response, error) {
 	serviceTokenParts := strings.SplitN(fullServiceToken, ".", 4)
 	if len(serviceTokenParts) < 4 {
-		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
+		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
 	}
 
 	serviceToken := fmt.Sprintf("%v.%v.%v", serviceTokenParts[0], serviceTokenParts[1], serviceTokenParts[2])
@@ -63,53 +65,57 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string) ([
 
 	serviceTokenDetails, err := api.CallGetServiceTokenDetailsV2(httpClient)
 	if err != nil {
-		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("unable to get service token details. [err=%v]", err)
+		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("unable to get service token details. [err=%v]", err)
 	}
 
-	encryptedSecretsResponse, err := api.CallGetSecretsV2(httpClient, api.GetEncryptedSecretsV2Request{
+	encryptedSecretsResponse, err := api.CallGetSecretsV3(httpClient, api.GetEncryptedSecretsV3Request{
 		WorkspaceId: serviceTokenDetails.Workspace,
-		Environment: serviceTokenDetails.Environment,
+		Environment: envSlug,
 		ETag:        etag,
+		SecretPath:  secretPath,
 	})
 
 	if err != nil {
-		return nil, api.GetEncryptedSecretsV2Response{}, err
+		return nil, api.GetEncryptedSecretsV3Response{}, err
 	}
 
 	decodedSymmetricEncryptionDetails, err := GetBase64DecodedSymmetricEncryptionDetails(serviceTokenParts[3], serviceTokenDetails.EncryptedKey, serviceTokenDetails.Iv, serviceTokenDetails.Tag)
 	if err != nil {
-		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("unable to decode symmetric encryption details [err=%v]", err)
+		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("unable to decode symmetric encryption details [err=%v]", err)
 	}
 
 	plainTextWorkspaceKey, err := crypto.DecryptSymmetric([]byte(serviceTokenParts[3]), decodedSymmetricEncryptionDetails.Cipher, decodedSymmetricEncryptionDetails.Tag, decodedSymmetricEncryptionDetails.IV)
 	if err != nil {
-		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("unable to decrypt the required workspace key")
+		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("unable to decrypt the required workspace key")
 	}
 
 	plainTextSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, encryptedSecretsResponse)
 	if err != nil {
-		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("unable to decrypt your secrets [err=%v]", err)
+		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("unable to decrypt your secrets [err=%v]", err)
 	}
 
-	return plainTextSecrets, encryptedSecretsResponse, nil
+	// expand secrets that are referenced
+	expandedSecrets := ExpandSecrets(plainTextSecrets, fullServiceToken)
+
+	return expandedSecrets, encryptedSecretsResponse, nil
 }
 
 // Fetches plaintext secrets from an API endpoint using a service account.
 // The function fetches the service account details and keys, decrypts the workspace key, fetches the encrypted secrets for the specified project and environment, and decrypts the secrets using the decrypted workspace key.
 // Returns the plaintext secrets, encrypted secrets response, and any errors that occurred during the process.
-func GetPlainTextSecretsViaServiceAccount(serviceAccountCreds model.ServiceAccountDetails, projectId string, environmentName string, etag string) ([]model.SingleEnvironmentVariable, api.GetEncryptedSecretsV2Response, error) {
+func GetPlainTextSecretsViaServiceAccount(serviceAccountCreds model.ServiceAccountDetails, projectId string, environmentName string, etag string) ([]model.SingleEnvironmentVariable, api.GetEncryptedSecretsV3Response, error) {
 	httpClient := resty.New()
 	httpClient.SetAuthToken(serviceAccountCreds.AccessKey).
 		SetHeader("Accept", "application/json")
 
 	serviceAccountDetails, err := api.CallGetServiceTokenAccountDetailsV2(httpClient)
 	if err != nil {
-		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to get service account details. [err=%v]", err)
+		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to get service account details. [err=%v]", err)
 	}
 
 	serviceAccountKeys, err := api.CallGetServiceAccountKeysV2(httpClient, api.GetServiceAccountKeysRequest{ServiceAccountId: serviceAccountDetails.ServiceAccount.ID})
 	if err != nil {
-		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to get service account key details. [err=%v]", err)
+		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to get service account key details. [err=%v]", err)
 	}
 
 	// find key for requested project
@@ -121,45 +127,45 @@ func GetPlainTextSecretsViaServiceAccount(serviceAccountCreds model.ServiceAccou
 	}
 
 	if workspaceServiceAccountKey.ID == "" || workspaceServiceAccountKey.EncryptedKey == "" || workspaceServiceAccountKey.Nonce == "" || serviceAccountCreds.PublicKey == "" || serviceAccountCreds.PrivateKey == "" {
-		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("unable to find key for [projectId=%s] [err=%v]. Ensure that the given service account has access to given projectId", projectId, err)
+		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("unable to find key for [projectId=%s] [err=%v]. Ensure that the given service account has access to given projectId", projectId, err)
 	}
 
 	cipherText, err := base64.StdEncoding.DecodeString(workspaceServiceAccountKey.EncryptedKey)
 	if err != nil {
-		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to decode EncryptedKey secrets because [err=%v]", err)
+		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to decode EncryptedKey secrets because [err=%v]", err)
 	}
 
 	nonce, err := base64.StdEncoding.DecodeString(workspaceServiceAccountKey.Nonce)
 	if err != nil {
-		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to decode nonce secrets because [err=%v]", err)
+		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to decode nonce secrets because [err=%v]", err)
 	}
 
 	publickey, err := base64.StdEncoding.DecodeString(serviceAccountCreds.PublicKey)
 	if err != nil {
-		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to decode PublicKey secrets because [err=%v]", err)
+		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to decode PublicKey secrets because [err=%v]", err)
 	}
 
 	privateKey, err := base64.StdEncoding.DecodeString(serviceAccountCreds.PrivateKey)
 
 	if err != nil {
-		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to decode PrivateKey secrets because [err=%v]", err)
+		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to decode PrivateKey secrets because [err=%v]", err)
 	}
 
 	plainTextWorkspaceKey := crypto.DecryptAsymmetric(cipherText, nonce, publickey, privateKey)
 
-	encryptedSecretsResponse, err := api.CallGetSecretsV2(httpClient, api.GetEncryptedSecretsV2Request{
+	encryptedSecretsResponse, err := api.CallGetSecretsV3(httpClient, api.GetEncryptedSecretsV3Request{
 		WorkspaceId: projectId,
 		Environment: environmentName,
 		ETag:        etag,
 	})
 
 	if err != nil {
-		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("unable to fetch secrets because [err=%v]", err)
+		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("unable to fetch secrets because [err=%v]", err)
 	}
 
 	plainTextSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, encryptedSecretsResponse)
 	if err != nil {
-		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to get plain text secrets because [err=%v]", err)
+		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to get plain text secrets because [err=%v]", err)
 	}
 
 	return plainTextSecrets, encryptedSecretsResponse, nil
@@ -194,7 +200,7 @@ func GetBase64DecodedSymmetricEncryptionDetails(key string, cipher string, IV st
 	}, nil
 }
 
-func GetPlainTextSecrets(key []byte, encryptedSecretsResponse api.GetEncryptedSecretsV2Response) ([]model.SingleEnvironmentVariable, error) {
+func GetPlainTextSecrets(key []byte, encryptedSecretsResponse api.GetEncryptedSecretsV3Response) ([]model.SingleEnvironmentVariable, error) {
 	plainTextSecrets := []model.SingleEnvironmentVariable{}
 	for _, secret := range encryptedSecretsResponse.Secrets {
 		// Decrypt key
@@ -250,4 +256,105 @@ func GetPlainTextSecrets(key []byte, encryptedSecretsResponse api.GetEncryptedSe
 	}
 
 	return plainTextSecrets, nil
+}
+
+var secRefRegex = regexp.MustCompile(`\${([^\}]*)}`)
+
+func recursivelyExpandSecret(expandedSecs map[string]string, interpolatedSecs map[string]string, crossSecRefFetch func(env string, path []string, key string) string, key string) string {
+	if v, ok := expandedSecs[key]; ok {
+		return v
+	}
+
+	interpolatedVal, ok := interpolatedSecs[key]
+	if !ok {
+		return ""
+		// panic(fmt.Errorf("Could not find referred secret with key name  %s", key), "Please check it refers a")
+	}
+
+	refs := secRefRegex.FindAllStringSubmatch(interpolatedVal, -1)
+	for _, val := range refs {
+		// key: "${something}" val: [${something},something]
+		interpolatedExp, interpolationKey := val[0], val[1]
+		ref := strings.Split(interpolationKey, ".")
+
+		// ${KEY1} => [key1]
+		if len(ref) == 1 {
+			val := recursivelyExpandSecret(expandedSecs, interpolatedSecs, crossSecRefFetch, interpolationKey)
+			interpolatedVal = strings.ReplaceAll(interpolatedVal, interpolatedExp, val)
+			continue
+		}
+
+		// cross board reference ${env.folder.key1} => [env folder key1]
+		if len(ref) > 1 {
+			secEnv, tmpSecPath, secKey := ref[0], ref[1:len(ref)-1], ref[len(ref)-1]
+			interpolatedSecs[interpolationKey] = crossSecRefFetch(secEnv, tmpSecPath, secKey) // get the reference value
+			val := recursivelyExpandSecret(expandedSecs, interpolatedSecs, crossSecRefFetch, interpolationKey)
+			interpolatedVal = strings.ReplaceAll(interpolatedVal, interpolatedExp, val)
+		}
+
+	}
+	expandedSecs[key] = interpolatedVal
+	return interpolatedVal
+}
+
+func ExpandSecrets(secrets []model.SingleEnvironmentVariable, infisicalToken string) []model.SingleEnvironmentVariable {
+	expandedSecs := make(map[string]string)
+	interpolatedSecs := make(map[string]string)
+	// map[env.secret-path][keyname]Secret
+	crossEnvRefSecs := make(map[string]map[string]model.SingleEnvironmentVariable) // a cache to hold all cross board reference secrets
+
+	for _, sec := range secrets {
+		// get all references in a secret
+		refs := secRefRegex.FindAllStringSubmatch(sec.Value, -1)
+		// nil means its a secret without reference
+		if refs == nil {
+			expandedSecs[sec.Key] = sec.Value // atomic secrets without any interpolation
+		} else {
+			interpolatedSecs[sec.Key] = sec.Value
+		}
+	}
+
+	for i, sec := range secrets {
+		// already present pick that up
+		if expandedVal, ok := expandedSecs[sec.Key]; ok {
+			secrets[i].Value = expandedVal
+			continue
+		}
+
+		expandedVal := recursivelyExpandSecret(expandedSecs, interpolatedSecs, func(env string, secPaths []string, secKey string) string {
+			secPaths = append([]string{"/"}, secPaths...)
+			secPath := path.Join(secPaths...)
+
+			secPathDot := strings.Join(secPaths, ".")
+			uniqKey := fmt.Sprintf("%s.%s", env, secPathDot)
+
+			if crossRefSec, ok := crossEnvRefSecs[uniqKey]; !ok {
+				// if not in cross reference cache, fetch it from server
+				refSecs, _, err := GetPlainTextSecretsViaServiceToken(infisicalToken, "", env, secPath)
+				if err != nil {
+					fmt.Println("HELLO===>", "MOO", err)
+					// HandleError(err, fmt.Sprintf("Could not fetch secrets in environment: %s secret-path: %s", env, secPath), "If you are using a service token to fetch secrets, please ensure it is valid")
+				}
+				refSecsByKey := getSecretsByKeys(refSecs)
+				// save it to avoid calling api again for same environment and folder path
+				crossEnvRefSecs[uniqKey] = refSecsByKey
+				return refSecsByKey[secKey].Value
+			} else {
+				return crossRefSec[secKey].Value
+			}
+		}, sec.Key)
+
+		secrets[i].Value = expandedVal
+	}
+	return secrets
+}
+
+func getSecretsByKeys(secrets []model.SingleEnvironmentVariable) map[string]model.SingleEnvironmentVariable {
+	secretMapByName := make(map[string]model.SingleEnvironmentVariable, len(secrets))
+
+	for _, secret := range secrets {
+		secretMapByName[secret.Key] = secret
+	}
+
+	return secretMapByName
 }

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import axios from "axios"
 
 import attemptLogin from "@app/components/utilities/attemptLogin";
+import getOrganizations from "@app/pages/api/organization/getOrgs";
 
 import Error from "../basic/Error";
 import attemptCliLogin from "../utilities/attemptCliLogin";
@@ -31,7 +32,8 @@ export default function InitialLoginStep({
     const [isLoading, setIsLoading] = useState(false);
     const [loginError, setLoginError] = useState(false);
 
-    const handleLogin = async () => {
+    const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
         try {
             if (!email || !password) {
                 return;
@@ -84,9 +86,11 @@ export default function InitialLoginStep({
                         setIsLoading(false);
                         return;
                     }
+                    const userOrgs = await getOrganizations();
+                    const userOrg = userOrgs[0] && userOrgs[0]._id;
 
                     // case: login does not require MFA step
-                    router.push(`/dashboard/${localStorage.getItem("projectData.id")}`);
+                    router.push(`/org/${userOrg}/overview`);
                 }
             }
 
@@ -97,8 +101,8 @@ export default function InitialLoginStep({
 
         setIsLoading(false);
     }
-
-    return <div className='flex flex-col mx-auto w-full justify-center items-center'>
+    
+    return <form onSubmit={handleLogin} className='flex flex-col mx-auto w-full justify-center items-center'>
         <h1 className='text-xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 text-center mb-8' >Login to Infisical</h1>
         {/* <div className='lg:w-1/6 w-1/4 min-w-[20rem] rounded-md'>
             <Button
@@ -143,7 +147,7 @@ export default function InitialLoginStep({
         {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
         <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
             <Button
-                onClick={async () => handleLogin()}
+                type="submit"
                 size="sm"
                 isFullWidth
                 className='h-12'
@@ -180,5 +184,5 @@ export default function InitialLoginStep({
                 <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>Recover your account</span>
             </Link>
         </div>
-    </div>
+    </form>
 }

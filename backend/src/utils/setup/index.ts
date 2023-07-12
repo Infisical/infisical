@@ -14,17 +14,15 @@ import {
   backfillSecretFolders,
   backfillSecretVersions,
   backfillServiceToken,
+  backfillServiceTokenMultiScope
 } from "./backfillData";
-import {
-  reencryptBotPrivateKeys,
-  reencryptSecretBlindIndexDataSalts,
-} from "./reencryptData";
+import { reencryptBotPrivateKeys, reencryptSecretBlindIndexDataSalts } from "./reencryptData";
 import {
   getClientIdGoogle,
   getClientSecretGoogle,
   getMongoURL,
   getNodeEnv,
-  getSentryDSN,
+  getSentryDSN
 } from "../../config";
 import { initializePassport } from "../auth";
 
@@ -79,6 +77,7 @@ export const setup = async () => {
   await backfillSecretFolders();
   await backfillServiceToken();
   await backfillIntegration();
+  await backfillServiceTokenMultiScope();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY
@@ -90,7 +89,7 @@ export const setup = async () => {
     dsn: await getSentryDSN(),
     tracesSampleRate: 1.0,
     debug: (await getNodeEnv()) === "production" ? false : true,
-    environment: await getNodeEnv(),
+    environment: await getNodeEnv()
   });
 
   await createTestUserForDevelopment();

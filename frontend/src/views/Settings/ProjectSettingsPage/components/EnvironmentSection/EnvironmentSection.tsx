@@ -1,224 +1,100 @@
-import { Controller, useForm } from "react-hook-form";
-import { faPencil, faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
 
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
   Button,
   DeleteActionModal,
-  EmptyState,
-  FormControl,
-  IconButton,
-  Input,
-  Modal,
-  ModalContent,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr,
   UpgradePlanModal
 } from "@app/components/v2";
+import { useSubscription,useWorkspace } from "@app/context";
+import {
+  useDeleteWsEnvironment
+} from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-type Props = {
-  environments: Array<{ name: string; slug: string }>;
-  isLoading?: boolean;
-  isEnvServiceAllowed: boolean;
-  onCreate: (data: CreateUpdateEnvFormData) => Promise<void>;
-  onUpdate: (oldEnvSlug: string, data: CreateUpdateEnvFormData) => Promise<void>;
-  onDelete: (envSlug: string) => Promise<void>;
-};
+import { AddEnvironmentModal } from "./AddEnvironmentModal";
+import { EnvironmentTable } from "./EnvironmentTable";
+import { UpdateEnvironmentModal } from "./UpdateEnvironmentModal";
 
-const createUpdateEnvSchema = yup.object({
-  environmentName: yup.string().label("Environment Name").required(),
-  environmentSlug: yup.string().label("Environment Slug").required()
-});
+export const EnvironmentSection = () => {
+  const { createNotification } = useNotificationContext();
+  const { subscription } = useSubscription();
+  const { currentWorkspace } = useWorkspace();
 
-export type CreateUpdateEnvFormData = yup.InferType<typeof createUpdateEnvSchema>;
+  const deleteWsEnvironment = useDeleteWsEnvironment();
 
-export const EnvironmentSection = ({
-  environments,
-  isEnvServiceAllowed,
-  onCreate,
-  onDelete,
-  isLoading,
-  onUpdate
-}: Props): JSX.Element => {
+  const isMoreEnvironmentsAllowed = (subscription?.environmentLimit && currentWorkspace?.environments) ? (currentWorkspace.environments.length < subscription.environmentLimit) : true;
+  
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "createUpdateEnv",
+    "createEnv",
+    "updateEnv",
     "deleteEnv",
     "upgradePlan"
   ] as const);
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { isSubmitting }
-  } = useForm<CreateUpdateEnvFormData>({
-    resolver: yupResolver(createUpdateEnvSchema)
-  });
+  const onEnvDeleteSubmit = async (environmentSlug: string) => {
+    try {
+      if (!currentWorkspace?._id) return;
+      
+      await deleteWsEnvironment.mutateAsync({
+        workspaceID: currentWorkspace._id,
+        environmentSlug
+      });
 
-  const isEnvUpdate = Boolean(popUp?.createUpdateEnv?.data);
-  const oldEnvSlug = (popUp?.createUpdateEnv?.data as { slug: string })?.slug;
-
-  const onEnvModalSubmit = async (data: CreateUpdateEnvFormData) => {
-    if (isEnvUpdate) {
-      await onUpdate(oldEnvSlug, data);
-    } else {
-      await onCreate(data);
+      createNotification({
+        text: "Successfully deleted environment",
+        type: "success"
+      });
+      
+      handlePopUpClose("deleteEnv");
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to delete environment",
+        type: "error"
+      });
     }
-    handlePopUpClose("createUpdateEnv");
-  };
-
-  const onEnvDeleteSubmit = async (envSlug: string) => {
-    await onDelete(envSlug);
-    handlePopUpClose("deleteEnv");
   };
 
   return (
-    <div className="mt-4 mb-4 flex w-full flex-col items-start rounded-md bg-mineshaft-900 p-6">
-      <div className="mb-2 flex w-full flex-row justify-between">
-        <div className="flex w-full flex-col">
-          <p className="mb-3 text-xl font-semibold">Project Environments</p>
-          <p className="mb-4 text-base text-gray-400">
-            Choose which environments will show up in your dashboard like development, staging,
-            production
-          </p>
-          <p className="mr-1 self-start text-sm text-gray-500">
-            Note: the text in slugs shows how these environmant should be accessed in CLI.
-          </p>
-        </div>
+    <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
+      <div className="flex justify-between mb-8">
+        <p className="text-xl font-semibold text-mineshaft-100">
+          Environments
+        </p>
         <div>
           <Button
+            colorSchema="secondary"
+            leftIcon={<FontAwesomeIcon icon={faPlus} />}
             onClick={() => {
-              if (isEnvServiceAllowed) {
-                handlePopUpOpen("createUpdateEnv");
+              if (isMoreEnvironmentsAllowed) {
+                handlePopUpOpen("createEnv");
               } else {
                 handlePopUpOpen("upgradePlan");
               }
             }}
-            colorSchema="primary"
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
           >
-            Add New Environment
+            Create environment
           </Button>
         </div>
       </div>
-      <TableContainer>
-        <Table>
-          <THead>
-            <Tr>
-              <Th>Name</Th>
-              <Th>Slug</Th>
-              <Th aria-label="button" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isLoading && <TableSkeleton columns={3} key="project-envs" />}
-            {!isLoading &&
-              environments.map(({ name, slug }) => (
-                <Tr key={name}>
-                  <Td>{name}</Td>
-                  <Td>{slug}</Td>
-                  <Td className="flex items-center justify-end">
-                    <IconButton
-                      className="mr-3 py-2"
-                      onClick={() => {
-                        handlePopUpOpen("createUpdateEnv", { name, slug });
-                        reset({ environmentName: name, environmentSlug: slug });
-                      }}
-                      colorSchema="primary"
-                      variant="plain"
-                      ariaLabel="update"
-                    >
-                      <FontAwesomeIcon icon={faPencil} />
-                    </IconButton>
-                    <IconButton
-                      onClick={() => {
-                        handlePopUpOpen("deleteEnv", { name, slug });
-                      }}
-                      size="lg"
-                      colorSchema="danger"
-                      variant="plain"
-                      ariaLabel="update"
-                    >
-                      <FontAwesomeIcon icon={faXmark} />
-                    </IconButton>
-                  </Td>
-                </Tr>
-              ))}
-            {!isLoading && environments?.length === 0 && (
-              <Tr>
-                <Td colSpan={3}>
-                  <EmptyState title="No environments found" />
-                </Td>
-              </Tr>
-            )}
-          </TBody>
-        </Table>
-      </TableContainer>
-      <Modal
-        isOpen={popUp?.createUpdateEnv?.isOpen}
-        onOpenChange={(isOpen) => {
-          handlePopUpToggle("createUpdateEnv", isOpen);
-          reset();
-        }}
-      >
-        <ModalContent title={isEnvUpdate ? "Update environment" : "Create a new environment"}>
-          <form onSubmit={handleSubmit(onEnvModalSubmit)}>
-            <Controller
-              control={control}
-              defaultValue=""
-              name="environmentName"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Environment Name"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input {...field} />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              defaultValue=""
-              name="environmentSlug"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Environment Slug"
-                  helperText="Slugs are shorthands used in cli to access environment"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input {...field} />
-                </FormControl>
-              )}
-            />
-            <div className="mt-8 flex items-center">
-              <Button
-                className="mr-4"
-                size="sm"
-                type="submit"
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting}
-              >
-                {isEnvUpdate ? "Update" : "Create"}
-              </Button>
-
-              <Button colorSchema="secondary" variant="plain">
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </ModalContent>
-      </Modal>
+      <p className="text-gray-400 mb-8">
+        Choose which environments will show up in your dashboard like development, staging, production
+      </p>
+      <EnvironmentTable 
+        handlePopUpOpen={handlePopUpOpen}
+      />
+      <AddEnvironmentModal 
+        popUp={popUp}
+        handlePopUpClose={handlePopUpClose}
+        handlePopUpToggle={handlePopUpToggle}
+      />
+      <UpdateEnvironmentModal 
+        popUp={popUp}
+        handlePopUpClose={handlePopUpClose}
+        handlePopUpToggle={handlePopUpToggle}
+      />
       <DeleteActionModal
         isOpen={popUp.deleteEnv.isOpen}
         title={`Are you sure want to delete ${
