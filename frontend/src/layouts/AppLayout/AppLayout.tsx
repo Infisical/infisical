@@ -14,7 +14,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
-import { faAngleDown, faArrowLeft, faArrowUpRightFromSquare, faBook, faCheck, faEnvelope, faMobile, faPlus, faQuestion } from "@fortawesome/free-solid-svg-icons";
+import { faAngleDown, faArrowLeft, faArrowUpRightFromSquare, faBook, faCheck, faEnvelope, faInfinity, faMobile, faPlus, faQuestion } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
@@ -42,7 +42,7 @@ import {
 } from "@app/components/v2";
 import { useOrganization, useSubscription, useUser, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useLogoutUser, useUploadWsKey } from "@app/hooks/api";
+import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useGetOrgTrialUrl, useLogoutUser, useUploadWsKey } from "@app/hooks/api";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -81,6 +81,7 @@ type TAddProjectFormData = yup.InferType<typeof formSchema>;
 export const AppLayout = ({ children }: LayoutProps) => {
   const router = useRouter();
   const { createNotification } = useNotificationContext();
+  const { mutateTrialAsync } = useGetOrgTrialUrl();
 
   // eslint-disable-next-line prefer-const
   const { workspaces, currentWorkspace } = useWorkspace();
@@ -470,11 +471,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   </Menu>}
                 </div>
               </div>
-              <div className="relative mt-10 mb-4 w-full px-3 text-mineshaft-400 cursor-default text-sm flex flex-col items-center">
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[9.9rem] ${router.asPath.includes("org") ? "bottom-[5.4rem]" : "bottom-[3.4rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-30`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[10.7rem] ${router.asPath.includes("org") ? "bottom-[5.15rem]" : "bottom-[3.15rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-50`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[11.5rem] ${router.asPath.includes("org") ? "bottom-[4.9rem]" : "bottom-[2.9rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-70`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[12.3rem] ${router.asPath.includes("org") ? "bottom-[4.65rem]" : "bottom-[2.65rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-90`}/>
+              <div className={`relative mt-10 ${subscription && subscription.slug === "starter" && !subscription.has_used_trial ? "mb-2" : "mb-4"} w-full px-3 text-mineshaft-400 cursor-default text-sm flex flex-col items-center`}>
+                {/* <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[9.9rem] ${router.asPath.includes("org") ? "bottom-[8.4rem]" : "bottom-[5.4rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-30`}/>
+                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[10.7rem] ${router.asPath.includes("org") ? "bottom-[8.15rem]" : "bottom-[5.15rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-50`}/>
+                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[11.5rem] ${router.asPath.includes("org") ? "bottom-[7.9rem]" : "bottom-[4.9rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-70`}/>
+                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[12.3rem] ${router.asPath.includes("org") ? "bottom-[7.65rem]" : "bottom-[4.65rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-90`}/> */}
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} relative z-10 h-60 w-52 bg-mineshaft-900 border border-mineshaft-600 mb-6 rounded-md flex flex-col items-center justify-start px-3`}>
                   <div className="w-full mt-2 text-md text-mineshaft-100 font-semibold">Kubernetes Operator</div>
                   <div className="w-full mt-1 text-sm text-mineshaft-300 font-normal leading-[1.2rem] mb-1">Integrate Infisical into your Kubernetes infrastructure</div>
@@ -536,6 +537,28 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                {subscription && subscription.slug === "starter" && !subscription.has_used_trial && (
+                  <button 
+                    type="button"
+                    onClick={async () => {
+                      if (!subscription || !currentOrg) return;
+              
+                      // direct user to start pro trial
+                      const url = await mutateTrialAsync({
+                        orgId: currentOrg._id,
+                        success_url: window.location.href
+                      });
+                      
+                      window.location.href = url;
+                    }}
+                    className="w-full mt-1.5"
+                  >
+                    <div className="hover:text-primary-400 text-mineshaft-300 duration-200 flex justify-left items-center py-1 bg-mineshaft-600 rounded-md hover:bg-mineshaft-500 mb-1.5 mt-1.5 pl-4 w-full">
+                      <FontAwesomeIcon icon={faInfinity} className="mr-3 ml-0.5 py-2 text-primary"/>
+                      Start Free Pro Trial
+                    </div>
+                  </button>
+                )}
               </div>
             </nav>
           </aside>
