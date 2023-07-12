@@ -7,10 +7,9 @@
 // @ts-nocheck
 import crypto from "crypto";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
@@ -88,7 +87,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { orgs, currentOrg } = useOrganization();
   const { user } = useUser();
   const { subscription } = useSubscription();
-  const [ isLearningNoteOpen, setIsLearningNoteOpen ] = useState(true);
+  // const [ isLearningNoteOpen, setIsLearningNoteOpen ] = useState(true);
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit ? (subscription.workspacesUsed < subscription.workspaceLimit) : true;
 
@@ -489,10 +488,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
                 </div>
               </div>
               <div className={`relative mt-10 ${subscription && subscription.slug === "starter" && !subscription.has_used_trial ? "mb-2" : "mb-4"} w-full px-3 text-mineshaft-400 cursor-default text-sm flex flex-col items-center`}>
-                {/* <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[9.9rem] ${router.asPath.includes("org") ? "bottom-[8.4rem]" : "bottom-[5.4rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-30`}/>
+              {/*   <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[9.9rem] ${router.asPath.includes("org") ? "bottom-[8.4rem]" : "bottom-[5.4rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-30`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[10.7rem] ${router.asPath.includes("org") ? "bottom-[8.15rem]" : "bottom-[5.15rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-50`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[11.5rem] ${router.asPath.includes("org") ? "bottom-[7.9rem]" : "bottom-[4.9rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-70`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[12.3rem] ${router.asPath.includes("org") ? "bottom-[7.65rem]" : "bottom-[4.65rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-90`}/> */}
+                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[12.3rem] ${router.asPath.includes("org") ? "bottom-[7.65rem]" : "bottom-[4.65rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-90`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} relative z-10 h-60 w-52 bg-mineshaft-900 border border-mineshaft-600 mb-6 rounded-md flex flex-col items-center justify-start px-3`}>
                   <div className="w-full mt-2 text-md text-mineshaft-100 font-semibold">Kubernetes Operator</div>
                   <div className="w-full mt-1 text-sm text-mineshaft-300 font-normal leading-[1.2rem] mb-1">Integrate Infisical into your Kubernetes infrastructure</div>
@@ -516,7 +515,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       Learn More <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs pl-0.5"/>
                     </a>
                   </div>
-                </div>
+                </div> */}
                 {router.asPath.includes("org") && <div
                   onKeyDown={() => null}
                   role="button"
