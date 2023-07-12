@@ -80,7 +80,7 @@ type TAddProjectFormData = yup.InferType<typeof formSchema>;
 export const AppLayout = ({ children }: LayoutProps) => {
   const router = useRouter();
   const { createNotification } = useNotificationContext();
-  const { mutateTrialAsync } = useGetOrgTrialUrl();
+  const { mutateAsync } = useGetOrgTrialUrl();
 
   // eslint-disable-next-line prefer-const
   const { workspaces, currentWorkspace } = useWorkspace();
@@ -571,7 +571,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       if (!subscription || !currentOrg) return;
               
                       // direct user to start pro trial
-                      const url = await mutateTrialAsync({
+                      const url = await mutateAsync({
                         orgId: currentOrg._id,
                         success_url: window.location.href
                       });
