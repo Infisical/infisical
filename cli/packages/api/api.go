@@ -246,11 +246,7 @@ func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Req
 	}
 
 	if response.IsError() {
-		if response.StatusCode() == 401 {
-			return GetEncryptedSecretsV3Response{}, fmt.Errorf("CallGetSecretsV3: Request to access secrets with [environment=%v] [path=%v] [workspaceId=%v] is denied. Please check if your authentication method has access to requested scope", request.Environment, request.SecretPath, request.WorkspaceId)
-		} else {
-			return GetEncryptedSecretsV3Response{}, fmt.Errorf("CallGetSecretsV3: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%v]", response.RawResponse)
-		}
+		return GetEncryptedSecretsV3Response{}, fmt.Errorf("CallGetSecretsV3: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
 	}
 
 	return secretsResponse, nil

@@ -51,8 +51,8 @@ export const SecuritySection = () => {
   return (
     <>
     <form>
-      <div className="p-4 mb-6 bg-mineshaft-900 max-w-6xl rounded-lg border border-mineshaft-600">
-        <p className="text-xl font-semibold text-mineshaft-100 mb-8">
+      <div className="mb-6 mt-2 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pb-6 pt-2">
+        <p className="mb-4 mt-2 text-xl font-semibold">
           Two-factor Authentication
         </p>
         <Checkbox

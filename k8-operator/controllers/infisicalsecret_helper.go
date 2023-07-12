@@ -127,7 +127,7 @@ func (r *InfisicalSecretReconciler) GetInfisicalServiceAccountCredentialsFromKub
 	return model.ServiceAccountDetails{AccessKey: string(accessKeyFromSecret), PrivateKey: string(privateKeyFromSecret), PublicKey: string(publicKeyFromSecret)}, nil
 }
 
-func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, secretsFromAPI []model.SingleEnvironmentVariable, encryptedSecretsResponse api.GetEncryptedSecretsV3Response) error {
+func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, secretsFromAPI []model.SingleEnvironmentVariable, encryptedSecretsResponse api.GetEncryptedSecretsV2Response) error {
 	plainProcessedSecrets := make(map[string][]byte)
 	for _, secret := range secretsFromAPI {
 		plainProcessedSecrets[secret.Key] = []byte(secret.Value) // plain process
@@ -155,7 +155,7 @@ func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context
 	return nil
 }
 
-func (r *InfisicalSecretReconciler) UpdateInfisicalManagedKubeSecret(ctx context.Context, managedKubeSecret corev1.Secret, secretsFromAPI []model.SingleEnvironmentVariable, encryptedSecretsResponse api.GetEncryptedSecretsV3Response) error {
+func (r *InfisicalSecretReconciler) UpdateInfisicalManagedKubeSecret(ctx context.Context, managedKubeSecret corev1.Secret, secretsFromAPI []model.SingleEnvironmentVariable, encryptedSecretsResponse api.GetEncryptedSecretsV2Response) error {
 	plainProcessedSecrets := make(map[string][]byte)
 	for _, secret := range secretsFromAPI {
 		plainProcessedSecrets[secret.Key] = []byte(secret.Value)
@@ -208,7 +208,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	}
 
 	var plainTextSecretsFromApi []model.SingleEnvironmentVariable
-	var fullEncryptedSecretsResponse api.GetEncryptedSecretsV3Response
+	var fullEncryptedSecretsResponse api.GetEncryptedSecretsV2Response
 
 	if serviceAccountCreds.AccessKey != "" || serviceAccountCreds.PrivateKey != "" || serviceAccountCreds.PublicKey != "" {
 		plainTextSecretsFromApi, fullEncryptedSecretsResponse, err = util.GetPlainTextSecretsViaServiceAccount(serviceAccountCreds, infisicalSecret.Spec.Authentication.ServiceAccount.ProjectId, infisicalSecret.Spec.Authentication.ServiceAccount.EnvironmentName, secretVersionBasedOnETag)
@@ -219,10 +219,7 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		fmt.Println("ReconcileInfisicalSecret: Fetched secrets via service account")
 
 	} else if infisicalToken != "" {
-		envSlug := infisicalSecret.Spec.Authentication.ServiceToken.SecretsScope.EnvSlug
-		secretsPath := infisicalSecret.Spec.Authentication.ServiceToken.SecretsScope.SecretsPath
-
-		plainTextSecretsFromApi, fullEncryptedSecretsResponse, err = util.GetPlainTextSecretsViaServiceToken(infisicalToken, secretVersionBasedOnETag, envSlug, secretsPath)
+		plainTextSecretsFromApi, fullEncryptedSecretsResponse, err = util.GetPlainTextSecretsViaServiceToken(infisicalToken, secretVersionBasedOnETag)
 		if err != nil {
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}

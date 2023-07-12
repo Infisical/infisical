@@ -5,6 +5,7 @@ interface OnboardingCheckProps {
   setTotalOnboardingActionsDone?: (value: number) => void;
   setHasUserClickedSlack?: (value: boolean) => void;
   setHasUserClickedIntro?: (value: boolean) => void;
+  setHasUserStarred?: (value: boolean) => void;
   setHasUserPushedSecrets?: (value: boolean) => void;
   setUsersInOrg?: (value: boolean) => void;
 }
@@ -16,6 +17,7 @@ const onboardingCheck = async ({
   setTotalOnboardingActionsDone,
   setHasUserClickedSlack,
   setHasUserClickedIntro,
+  setHasUserStarred,
   setHasUserPushedSecrets,
   setUsersInOrg
 }: OnboardingCheckProps) => {
@@ -43,6 +45,14 @@ const onboardingCheck = async ({
     countActions += 1;
   }
   if (setHasUserClickedIntro) setHasUserClickedIntro(!!userActionIntro);
+
+  const userActionStar = await checkUserAction({
+    action: "star_cta_clicked"
+  });
+  if (userActionStar) {
+    countActions += 1;
+  }
+  if (setHasUserStarred) setHasUserStarred(!!userActionStar);
 
   const orgId = localStorage.getItem("orgData.id");
   const orgUsers = await getOrganizationUsers({

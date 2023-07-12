@@ -181,16 +181,14 @@ type GetServiceTokenDetailsResponse struct {
 	ID           string    `json:"_id"`
 	Name         string    `json:"name"`
 	Workspace    string    `json:"workspace"`
+	Environment  string    `json:"environment"`
 	ExpiresAt    time.Time `json:"expiresAt"`
 	EncryptedKey string    `json:"encryptedKey"`
 	Iv           string    `json:"iv"`
 	Tag          string    `json:"tag"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
-	Scopes       []struct {
-		Environment string `json:"environment"`
-		SecretPath  string `json:"secretPath"`
-	} `json:"scopes"`
+	V            int       `json:"__v"`
 }
 
 type GetAccessibleEnvironmentsRequest struct {

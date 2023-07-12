@@ -3,7 +3,9 @@ title: 'Install'
 description: "Infisical's CLI is one of the best way to manage environments and secrets. Install it here"
 ---
 
-The Infisical CLI can be used to access secrets across various environments, whether it's local development, CI/CD, staging, or production.
+Prerequisite: Set up an account with [Infisical Cloud](https://app.infisical.com) or via a [self-hosted installation](/self-hosting/overview).
+
+The Infisical CLI provides a way to inject environment variables from the platform into your apps and infrastructure.
 
 ## Installation
 
@@ -98,3 +100,49 @@ The Infisical CLI can be used to access secrets across various environments, whe
    </Tab>
 </Tabs>
 
+### Log in to the Infisical CLI
+
+```bash
+infisical login
+```
+
+<Accordion title="Optional: point CLI to self-hosted">
+The CLI is set to connect to Infisical Cloud by default, but if you're running your own instance of Infisical, you can direct the CLI to it using one of the methods provided below.
+
+#### Method 1: Use the updated CLI
+Beginning with CLI version V0.4.0, it is now possible to choose between logging in through the Infisical cloud or your own self-hosted instance. Simply execute the `infisical login` command and follow the on-screen instructions.
+
+#### Method 2: Export environment variable 
+You can point the CLI to the self hosted Infisical instance by exporting the environment variable `INFISICAL_API_URL` in your terminal.
+
+<Tabs>
+  <Tab title="Linux/MacOs">
+		```bash
+		# Set backend host 
+		export INFISICAL_API_URL="https://your-self-hosted-infisical.com/api"
+
+		# Remove backend host 
+		unset INFISICAL_API_URL
+		```
+  </Tab>
+  <Tab title="Windows Powershell">
+		```bash
+		# Set backend host 
+		setx INFISICAL_API_URL "https://your-self-hosted-infisical.com/api"
+
+		# Remove backend host 
+		setx INFISICAL_API_URL ""
+
+		# NOTE: Once set or removed, please restart powershell for the change to take effect
+		```
+  </Tab>
+</Tabs>
+
+#### Method 3: Set manually on every command
+Another option to point the CLI to your self hosted Infisical instance is to set it via a flag on every command you run.
+
+```bash 
+# Example
+infisical <any-command> --domain="https://your-self-hosted-infisical.com/api"
+```
+</Accordion>

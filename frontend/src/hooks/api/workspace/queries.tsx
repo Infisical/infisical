@@ -2,9 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { IntegrationAuth } from "../integrationAuth/types";
-import { TIntegration } from "../integrations/types";
-import { EncryptedSecret } from "../secrets/types";
+import {
+  EncryptedSecret
+} from "../secrets/types";
 import {
   CreateEnvironmentDTO,
   CreateWorkspaceDTO,
@@ -19,14 +19,11 @@ import {
   WorkspaceEnv
 } from "./types";
 
-export const workspaceKeys = {
+const workspaceKeys = {
   getWorkspaceById: (workspaceId: string) => [{ workspaceId }, "workspace"] as const,
   getWorkspaceSecrets: (workspaceId: string) => [{ workspaceId }, "workspace-secrets"] as const,
-  getWorkspaceIndexStatus: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-index-status"] as const,
+  getWorkspaceIndexStatus: (workspaceId: string) => [{ workspaceId}, "workspace-index-status"] as const,
   getWorkspaceMemberships: (orgId: string) => [{ orgId }, "workspace-memberships"],
-  getWorkspaceAuthorization: (workspaceId: string) => [{ workspaceId }, "workspace-authorizations"],
-  getWorkspaceIntegrations: (workspaceId: string) => [{ workspaceId }, "workspace-integrations"],
   getAllUserWorkspace: ["workspaces"] as const,
   getUserWsEnvironments: (workspaceId: string) => ["workspace-env", { workspaceId }] as const
 };
@@ -45,17 +42,15 @@ const fetchWorkspaceIndexStatus = async (workspaceId: string) => {
   );
 
   return data;
-};
+}
 
 const fetchWorkspaceSecrets = async (workspaceId: string) => {
-  const {
-    data: { secrets }
-  } = await apiRequest.get<{ secrets: EncryptedSecret[] }>(
+  const { data: { secrets } } = await apiRequest.get<{ secrets: EncryptedSecret[] }>(
     `/api/v3/workspaces/${workspaceId}/secrets`
   );
-
+  
   return secrets;
-};
+}
 
 const fetchUserWorkspaces = async () => {
   const { data } = await apiRequest.get<{ workspaces: Workspace[] }>("/api/v1/workspace");
@@ -68,15 +63,15 @@ export const useGetWorkspaceIndexStatus = (workspaceId: string) => {
     queryFn: () => fetchWorkspaceIndexStatus(workspaceId),
     enabled: true
   });
-};
+}
 
 export const useGetWorkspaceSecrets = (workspaceId: string) => {
   return useQuery({
     queryKey: workspaceKeys.getWorkspaceSecrets(workspaceId),
     queryFn: () => fetchWorkspaceSecrets(workspaceId),
     enabled: true
-  });
-};
+  })
+}
 
 export const useGetWorkspaceById = (workspaceId: string) => {
   return useQuery({
@@ -131,39 +126,7 @@ export const useNameWorkspaceSecrets = () => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceIndexStatus(variables.workspaceId));
     }
   });
-};
-
-const fetchWorkspaceAuthorization = async (workspaceId: string) => {
-  const { data } = await apiRequest.get<{ authorizations: IntegrationAuth[] }>(
-    `/api/v1/workspace/${workspaceId}/authorizations`
-  );
-  return data.authorizations;
-};
-
-export const useGetWorkspaceAuthorizations = <TData = IntegrationAuth[],>(
-  workspaceId: string,
-  select?: (data: IntegrationAuth[]) => TData
-) =>
-  useQuery({
-    queryKey: workspaceKeys.getWorkspaceAuthorization(workspaceId),
-    queryFn: () => fetchWorkspaceAuthorization(workspaceId),
-    enabled: Boolean(workspaceId),
-    select
-  });
-
-const fetchWorkspaceIntegrations = async (workspaceId: string) => {
-  const { data } = await apiRequest.get<{ integrations: TIntegration[] }>(
-    `/api/v1/workspace/${workspaceId}/integrations`
-  );
-  return data.integrations;
-};
-
-export const useGetWorkspaceIntegrations = (workspaceId: string) =>
-  useQuery({
-    queryKey: workspaceKeys.getWorkspaceIntegrations(workspaceId),
-    queryFn: () => fetchWorkspaceIntegrations(workspaceId),
-    enabled: Boolean(workspaceId)
-  });
+}
 
 // mutation
 export const useCreateWorkspace = () => {

@@ -12,20 +12,16 @@ import {
   AddUserToOrgDTO,
   AddUserToWsDTO,
   AddUserToWsRes,
-  APIKeyData,
-  CreateAPIKeyRes,
   DeletOrgMembershipDTO,
   OrgUser,
-  TokenVersion,
   UpdateOrgUserRoleDTO,
-  User} from "./types";
+  User
+} from "./types";
 
 const userKeys = {
   getUser: ["user"] as const,
   userAction: ["user-action"] as const,
-  getOrgUsers: (orgId: string) => [{ orgId }, "user"],
-  myAPIKeys: ["api-keys"] as const,
-  mySessions: ["sessions"] as const
+  getOrgUsers: (orgId: string) => [{ orgId }, "user"]
 };
 
 export const fetchUserDetails = async () => {
@@ -171,90 +167,3 @@ export const useLogoutUser = () =>
       localStorage.setItem("PRIVATE_KEY", "");
     }
   });
-
-export const useGetMyAPIKeys = () => {
-  return useQuery({
-    queryKey: userKeys.myAPIKeys,
-    queryFn: async () => {
-      const { data } = await apiRequest.get<APIKeyData[]>(
-        "/api/v2/users/me/api-keys"
-      );
-      return data;
-    },
-    enabled: true
-  });
-}
-
-export const useCreateAPIKey = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      name,
-      expiresIn
-    }: {
-      name: string;
-      expiresIn: number;
-    }) => {
-      const { data } = await apiRequest.post<CreateAPIKeyRes>(
-        "/api/v2/users/me/api-keys",
-        {
-          name,
-          expiresIn
-        }
-      );
-      
-      return data;
-    },
-    onSuccess() {
-      queryClient.invalidateQueries(userKeys.myAPIKeys);
-    }
-  });
-}
-
-export const useDeleteAPIKey = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (apiKeyDataId: string) => {
-      const { data } = await apiRequest.delete(
-        `/api/v2/users/me/api-keys/${apiKeyDataId}`
-      );
-
-      return data;
-    },
-    onSuccess() {
-      queryClient.invalidateQueries(userKeys.myAPIKeys);
-    }
-  });
-}
-
-export const useGetMySessions = () => {
-  return useQuery({
-    queryKey: userKeys.mySessions,
-    queryFn: async () => {
-      const { data } = await apiRequest.get<TokenVersion[]>(
-        "/api/v2/users/me/sessions"
-      );
-
-      return data;
-    },
-    enabled: true
-  });
-}
-
-export const useRevokeMySessions = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async () => {
-      console.log("useRevokeAllSessions 1");
-      const { data } = await apiRequest.delete(
-        "/api/v2/users/me/sessions"
-      );
-
-      console.log("useRevokeAllSessions 2: ", data);
-      return data;
-    },
-    onSuccess() {
-      queryClient.invalidateQueries(userKeys.mySessions);
-    }
-  });
-}

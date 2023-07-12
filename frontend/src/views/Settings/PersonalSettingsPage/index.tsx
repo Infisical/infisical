@@ -1,1 +1,0 @@
-export { PersonalSettingsPage } from "./PersonalSettingsPage";

@@ -19,13 +19,12 @@ export const INTEGRATION_GITLAB = "gitlab";
 export const INTEGRATION_RENDER = "render";
 export const INTEGRATION_RAILWAY = "railway";
 export const INTEGRATION_FLYIO = "flyio";
-export const INTEGRATION_LARAVELFORGE = "laravel-forge"
 export const INTEGRATION_CIRCLECI = "circleci";
 export const INTEGRATION_TRAVISCI = "travisci";
-export const INTEGRATION_SUPABASE = "supabase";
-export const INTEGRATION_CHECKLY = "checkly";
-export const INTEGRATION_HASHICORP_VAULT = "hashicorp-vault";
-export const INTEGRATION_CLOUDFLARE_PAGES = "cloudflare-pages";
+export const INTEGRATION_SUPABASE = 'supabase';
+export const INTEGRATION_CHECKLY = 'checkly';
+export const INTEGRATION_HASHICORP_VAULT = 'hashicorp-vault';
+export const INTEGRATION_CLOUDFLARE_PAGES = 'cloudflare-pages';
 export const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
@@ -36,7 +35,6 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
-  INTEGRATION_LARAVELFORGE,
   INTEGRATION_TRAVISCI,
   INTEGRATION_SUPABASE,
   INTEGRATION_CHECKLY,
@@ -67,10 +65,9 @@ export const INTEGRATION_RAILWAY_API_URL = "https://backboard.railway.app/graphq
 export const INTEGRATION_FLYIO_API_URL = "https://api.fly.io/graphql";
 export const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
 export const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
-export const INTEGRATION_SUPABASE_API_URL = "https://api.supabase.com";
-export const INTEGRATION_LARAVELFORGE_API_URL = "https://forge.laravel.com";
-export const INTEGRATION_CHECKLY_API_URL = "https://api.checklyhq.com";
-export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = "https://api.cloudflare.com";
+export const INTEGRATION_SUPABASE_API_URL = 'https://api.supabase.com';
+export const INTEGRATION_CHECKLY_API_URL = 'https://api.checklyhq.com';
+export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = 'https://api.cloudflare.com';
 
 export const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [
@@ -144,15 +141,6 @@ export const getIntegrationOptions = async () => {
             image: "Amazon Web Services.png",
             isAvailable: true,
             type: "custom",
-            clientId: "",
-            docsLink: "",
-        },
-        {
-            name: "Laravel Forge",
-            slug: "laravel-forge",
-            image: "Laravel Forge.png",
-            isAvailable: true,
-            type: "pat",
             clientId: "",
             docsLink: "",
         },
@@ -233,18 +221,18 @@ export const getIntegrationOptions = async () => {
             slug: "gcp",
             image: "Google Cloud Platform.png",
             isAvailable: false,
-            type: "",
-            clientId: "",
-            docsLink: ""
+            type: '',
+            clientId: '',
+            docsLink: ''
         },
         {
-            name: "Cloudflare Pages",
-            slug: "cloudflare-pages",
-            image: "Cloudflare.png",
+            name: 'Cloudflare Pages',
+            slug: 'cloudflare-pages',
+            image: 'Cloudflare.png',
             isAvailable: true,
-            type: "pat",
-            clientId: "",
-            docsLink: ""
+            type: 'pat',
+            clientId: '',
+            docsLink: ''
         }
     ]
     

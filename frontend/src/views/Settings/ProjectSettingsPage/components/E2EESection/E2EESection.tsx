@@ -4,27 +4,29 @@ import {
     decryptAssymmetric,
     encryptAssymmetric
 } from "@app/components/utilities/cryptography/crypto";
-import { Checkbox } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import {
+    Checkbox
+} from "@app/components/v2";
 
 import getBot from "../../../../../pages/api/bot/getBot";
 import setBotActiveStatus from "../../../../../pages/api/bot/setBotActiveStatus";
 import getLatestFileKey from "../../../../../pages/api/workspace/getLatestFileKey";
 
-export const E2EESection = () => {
-    const { currentWorkspace } = useWorkspace();
+type Props = {
+    workspaceId: string;
+}
+
+export const E2EESection = ({
+    workspaceId
+}: Props) => {
     const [bot, setBot] = useState<any>(null);
 
     useEffect(() => {
         (async () => {
-            if (currentWorkspace) {
-                // get project bot
-                setBot(await getBot({ 
-                    workspaceId: currentWorkspace._id
-                })); 
-            }
+            // get project bot
+            setBot(await getBot({ workspaceId })); 
         })();
-    }, [currentWorkspace]);
+    }, []);
 
     /**
    * Activate bot for project by performing the following steps:
@@ -36,16 +38,12 @@ export const E2EESection = () => {
     const toggleBotActivate = async () => {
         let botKey;
         try {
-            if (!currentWorkspace?._id) return;
-
             if (bot) {
                 // case: there is a bot
                 
                 if (!bot.isActive) {
                     // bot is not active -> activate bot
-                    const key = await getLatestFileKey({ 
-                        workspaceId: currentWorkspace._id
-                    });
+                    const key = await getLatestFileKey({ workspaceId });
                     const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
 
                     if (!PRIVATE_KEY) {
@@ -93,12 +91,12 @@ export const E2EESection = () => {
     };
 
     return bot ? (
-      <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
-        <p className="mb-3 text-xl font-semibold">End-to-End Encryption</p>
-        <p className="text-gray-400 mb-8">
+      <div className="mb-6 mt-4 flex w-full flex-col items-start rounded-md bg-mineshaft-900 px-6 pb-6 pt-2">
+        <p className="mb-4 mt-2 text-xl font-semibold">End-to-End Encryption</p>
+        <p className="text-md my-2 text-gray-400">
             Disabling, end-to-end encryption (E2EE) unlocks capabilities like native integrations to cloud providers as well as HTTP calls to get secrets back raw but enables the server to read/decrypt your secret values.
         </p>
-        <p className="text-gray-400 mb-8">
+        <p className="text-md my-2 mb-4 text-gray-400">
             Note that, even with E2EE disabled, your secrets are always encrypted at rest.
         </p>
         <Checkbox

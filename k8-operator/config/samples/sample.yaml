@@ -3,8 +3,7 @@ kind: InfisicalSecret
 metadata:
   name: infisicalsecret-sample
 spec:
-  hostAPI: http://localhost:8764/api
-  resyncInterval: 10
+  hostAPI: http://localhost:7070/api
   authentication:
     serviceAccount:
       serviceAccountSecretReference:
@@ -16,13 +15,10 @@ spec:
       serviceTokenSecretReference:
         secretName: service-token
         secretNamespace: default
-      secretsScope:
-        envSlug: dev
-        secretsPath: "/"
   managedSecretReference:
     secretName: managed-secret
     secretNamespace: default
-  # # To be depreciated soon
-  # tokenSecretReference:
-  #   secretName: service-token
-  #   secretNamespace: default
+  # To be depreciated soon
+  tokenSecretReference:
+    secretName: service-token
+    secretNamespace: default

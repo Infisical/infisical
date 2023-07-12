@@ -12,7 +12,6 @@ const integrationSlugNameMapping: Mapping = {
   'github': 'GitHub',
   'gitlab': 'GitLab',
   'render': 'Render',
-  'laravel-forge': "Laravel Forge",
   'railway': 'Railway',
   'flyio': 'Fly.io',
   'circleci': 'CircleCI',

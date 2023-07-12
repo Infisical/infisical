@@ -1,7 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { ErrorRequestHandler } from "express";
-import { TokenExpiredError } from "jsonwebtoken";
-import { InternalServerError, UnauthorizedRequestError } from "../utils/errors";
+import { InternalServerError } from "../utils/errors";
 import { getLogger } from "../utils/logger";
 import RequestError, { LogLevel } from "../utils/requestError";
 import { getNodeEnv } from "../config";
@@ -20,9 +19,7 @@ export const requestErrorHandler: ErrorRequestHandler = async (
   }
 
   //TODO: Find better way to type check for error. In current setting you need to cast type to get the functions and variables from RequestError
-  if (error instanceof TokenExpiredError) {
-    error = UnauthorizedRequestError({ stack: error.stack, message: "Token expired" });
-  } else if (!(error instanceof RequestError)) {
+  if (!(error instanceof RequestError)) {
     error = InternalServerError({
       context: { exception: error.message },
       stack: error.stack,

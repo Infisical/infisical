@@ -10,14 +10,14 @@ interface UsePopUpProps {
  * checks which type of inputProps were given and converts them into key-names
  * SIDENOTE: On inputting give it as const and not string with (as const)
  */
-export type UsePopUpState<T extends Readonly<string[]> | UsePopUpProps[]> = {
+type UsePopUpState<T extends Readonly<string[]> | UsePopUpProps[]> = {
   [P in T extends UsePopUpProps[] ? T[number]["name"] : T[number]]: {
     isOpen: boolean;
     data?: unknown;
   };
 };
 
-export interface UsePopUpReturn<T extends Readonly<string[]> | UsePopUpProps[]> {
+interface UsePopUpReturn<T extends Readonly<string[]> | UsePopUpProps[]> {
   popUp: UsePopUpState<T>;
   handlePopUpOpen: (popUpName: keyof UsePopUpState<T>, data?: unknown) => void;
   handlePopUpClose: (popUpName: keyof UsePopUpState<T>) => void;

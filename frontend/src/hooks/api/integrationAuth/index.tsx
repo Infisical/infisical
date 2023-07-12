@@ -1,9 +1,7 @@
 export {
-  useDeleteIntegrationAuth,
-  useGetIntegrationAuthApps,
-  useGetIntegrationAuthById,
-  useGetIntegrationAuthRailwayEnvironments,
-  useGetIntegrationAuthRailwayServices,
-  useGetIntegrationAuthTeams,
-  useGetIntegrationAuthVercelBranches
-} from "./queries";
+    useGetIntegrationAuthApps,
+    useGetIntegrationAuthById,
+    useGetIntegrationAuthRailwayEnvironments,
+    useGetIntegrationAuthRailwayServices,
+    useGetIntegrationAuthTeams,
+    useGetIntegrationAuthVercelBranches} from "./queries";

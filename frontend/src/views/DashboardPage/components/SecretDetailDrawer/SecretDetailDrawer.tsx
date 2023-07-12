@@ -193,8 +193,8 @@ export const SecretDetailDrawer = ({
                     </div>
                   </div>
                   <div className="ml-1.5 flex items-center space-x-2 border-l border-bunker-300 pl-4">
-                    <div className="self-start rounded-sm bg-primary-500/30 px-1">Value:</div>
-                    <div className="break-all font-mono">{value}</div>
+                    <div className="rounded-sm bg-primary-500/30 px-1">Value:</div>
+                    <div className="font-mono">{value}</div>
                   </div>
                 </div>
               ))}

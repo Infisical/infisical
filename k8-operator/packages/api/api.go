@@ -47,40 +47,36 @@ func CallGetServiceTokenDetailsV2(httpClient *resty.Client) (GetServiceTokenDeta
 	return tokenDetailsResponse, nil
 }
 
-func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Request) (GetEncryptedSecretsV3Response, error) {
-	var secretsResponse GetEncryptedSecretsV3Response
-
-	httpRequest := httpClient.
+func CallGetSecretsV2(httpClient *resty.Client, request GetEncryptedSecretsV2Request) (GetEncryptedSecretsV2Response, error) {
+	var encryptedSecretsResponse GetEncryptedSecretsV2Response
+	createHttpRequest := httpClient.
 		R().
-		SetResult(&secretsResponse).
-		SetHeader("User-Agent", USER_AGENT_NAME).
-		SetHeader("If-None-Match", request.ETag).
 		SetQueryParam("environment", request.Environment).
-		SetQueryParam("workspaceId", request.WorkspaceId)
+		SetQueryParam("workspaceId", request.WorkspaceId).
+		SetResult(&encryptedSecretsResponse).
+		SetHeader("User-Agent", USER_AGENT_NAME)
 
-	if request.SecretPath != "" {
-		httpRequest.SetQueryParam("secretPath", request.SecretPath)
-	}
+	createHttpRequest.SetHeader("If-None-Match", request.ETag)
 
-	response, err := httpRequest.Get(fmt.Sprintf("%v/v3/secrets", API_HOST_URL))
+	response, err := createHttpRequest.Get(fmt.Sprintf("%v/v2/secrets", API_HOST_URL))
 
 	if err != nil {
-		return GetEncryptedSecretsV3Response{}, fmt.Errorf("CallGetSecretsV3: Unable to complete api request [err=%s]", err)
+		return GetEncryptedSecretsV2Response{}, fmt.Errorf("CallGetSecretsV2: Unable to complete api request [err=%s]", err)
 	}
 
 	if response.IsError() {
-		return GetEncryptedSecretsV3Response{}, fmt.Errorf("CallGetSecretsV3: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
+		return GetEncryptedSecretsV2Response{}, fmt.Errorf("CallGetSecretsV2: Unsuccessful response: [response=%s]", response)
 	}
 
 	if response.StatusCode() == 304 {
-		secretsResponse.Modified = false
+		encryptedSecretsResponse.Modified = false
 	} else {
-		secretsResponse.Modified = true
+		encryptedSecretsResponse.Modified = true
 	}
 
-	secretsResponse.ETag = response.Header().Get("etag")
+	encryptedSecretsResponse.ETag = response.Header().Get("etag")
 
-	return secretsResponse, nil
+	return encryptedSecretsResponse, nil
 }
 
 func CallGetServiceTokenAccountDetailsV2(httpClient *resty.Client) (ServiceAccountDetailsResponse, error) {

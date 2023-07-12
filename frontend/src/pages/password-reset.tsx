@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import { faCheck, faX } from "@fortawesome/free-solid-svg-icons";
@@ -24,7 +24,6 @@ const client = new jsrp.client();
 export default function PasswordReset() {
   const [verificationToken, setVerificationToken] = useState("");
   const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
   const [backupKey, setBackupKey] = useState("");
   const [privateKey, setPrivateKey] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -39,8 +38,7 @@ export default function PasswordReset() {
   const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
 
   // Unencrypt the private key with a backup key
-  const getEncryptedKeyHandler = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const getEncryptedKeyHandler = async () => {
     try {
       const result = await getBackupEncryptedPrivateKey({ verificationToken });
 
@@ -59,8 +57,7 @@ export default function PasswordReset() {
   };
 
   // If everything is correct, reset the password
-  const resetPasswordHandler = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const resetPasswordHandler = async () => {
     const errorCheck = passwordCheck({
       password: newPassword,
       setPasswordErrorLength,
@@ -128,7 +125,6 @@ export default function PasswordReset() {
             if (response?.status === 200) {
               router.push("/login");
             }
-            setLoading(false)
           });
         }
       );
@@ -166,7 +162,7 @@ export default function PasswordReset() {
 
   // Input backup key
   const stepInputBackupKey = (
-    <form onSubmit={getEncryptedKeyHandler} className="my-32 mx-1 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker px-4 pt-6 pb-3 drop-shadow-xl md:max-w-lg md:px-6">
+    <div className="my-32 mx-1 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker px-4 pt-6 pb-3 drop-shadow-xl md:max-w-lg md:px-6">
       <p className="mx-auto mb-4 flex w-max justify-center text-2xl font-semibold text-bunker-100 md:text-3xl">
         Enter your backup key
       </p>
@@ -190,19 +186,18 @@ export default function PasswordReset() {
       <div className="mx-auto mt-4 flex max-h-20 w-full max-w-md flex-col items-center justify-center text-sm md:p-2">
         <div className="text-l m-8 mt-6 px-8 py-3 text-lg">
           <Button
-            type="submit"
             text="Submit Backup Key"
-            onButtonPressed={() => {}}
+            onButtonPressed={() => getEncryptedKeyHandler()}
             size="lg"
           />
         </div>
       </div>
-    </form>
+    </div>
   );
 
   // Enter new password
   const stepEnterNewPassword = (
-    <form onSubmit={resetPasswordHandler} className="my-32 mx-1 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker px-4 pt-6 pb-3 drop-shadow-xl md:max-w-lg md:px-6">
+    <div className="my-32 mx-1 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker px-4 pt-6 pb-3 drop-shadow-xl md:max-w-lg md:px-6">
       <p className="mx-auto flex w-max justify-center text-2xl font-semibold text-bunker-100 md:text-3xl">
         Enter new password
       </p>
@@ -274,15 +269,13 @@ export default function PasswordReset() {
       <div className="mx-auto mt-4 flex max-h-20 w-full max-w-md flex-col items-center justify-center text-sm md:p-2">
         <div className="text-l m-8 mt-6 px-8 py-3 text-lg">
           <Button
-            type="submit"
             text="Submit New Password"
-            onButtonPressed={() => setLoading(true)}
+            onButtonPressed={() => resetPasswordHandler()}
             size="lg"
-            loading={loading}
           />
         </div>
       </div>
-    </form>
+    </div>
   );
 
   return (

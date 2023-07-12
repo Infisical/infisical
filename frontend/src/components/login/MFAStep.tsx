@@ -8,7 +8,6 @@ import axios from "axios"
 import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa"
 import attemptLoginMfa from "@app/components/utilities/attemptLoginMfa";
 import { useSendMfaToken } from "@app/hooks/api/auth";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
 
 import Error from "../basic/Error";
 import { Button } from "../v2";
@@ -102,7 +101,7 @@ export default function MFAStep({
           // cli page
           router.push("/cli-redirect");
         }
-      } else {
+      }else{
         const isLoginSuccessful = await attemptLoginMfa({
           email,
           password,
@@ -112,11 +111,7 @@ export default function MFAStep({
   
         if (isLoginSuccessful) {
           setIsLoading(false);
-          const userOrgs = await getOrganizations();
-          const userOrg = userOrgs[0] && userOrgs[0]._id;
-
-          // case: login does not require MFA step
-          router.push(`/org/${userOrg}/overview`);
+          router.push(`/dashboard/${localStorage.getItem("projectData.id")}`);
         }
       }
       
@@ -185,7 +180,6 @@ export default function MFAStep({
             className='h-14'
             colorSchema="primary"
             variant="outline_bg"
-            isLoading={isLoading}
           > {String(t("mfa.verify"))} </Button>
         </div>
       </div>
@@ -193,7 +187,7 @@ export default function MFAStep({
         <div className="flex flex-row items-baseline gap-1 text-sm">
           <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
           <div className="mt-2 text-bunker-400 text-md flex flex-row">
-            <button disabled={isLoadingResend} onClick={handleResendMfaCode} type="button">
+            <button disabled={isLoading} onClick={handleResendMfaCode} type="button">
               <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>
                 {isLoadingResend
                   ? t("signup.step2-resend-progress")

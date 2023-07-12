@@ -77,8 +77,8 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <OrgProvider>
-            <WorkspaceProvider>
+          <WorkspaceProvider>
+            <OrgProvider>
               <SubscriptionProvider>
                 <UserProvider>
                   <NotificationProvider>
@@ -90,8 +90,8 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
                   </NotificationProvider>
                 </UserProvider>
               </SubscriptionProvider>
-            </WorkspaceProvider>
-          </OrgProvider>
+            </OrgProvider>
+          </WorkspaceProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>

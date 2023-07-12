@@ -1245,17 +1245,17 @@ module.exports = {
       colors: {
         // You can generate your own colors with this tool: https://javisperez.github.io/tailwindcolorshades/
         primary: {
-          50: '#fffff5',
-          100: '#fcfce8',
-          200: '#f8faca',
-          300: '#f4f7ab',
-          400: '#ecf26d',
-          500: '#e0ed34',
-          600: '#c2d62b',
-          700: '#97b31d',
-          800: '#708f13',
-          900: '#4d6b0b',
-          DEFAULT: '#e0ed34'
+          50: '#fcfdf7',
+          100: '#f8fcee',
+          200: '#eef6d5',
+          300: '#e3f1bc',
+          400: '#cfe78a',
+          500: '#badc58',
+          600: '#a7c64f',
+          700: '#8ca542',
+          800: '#708435',
+          900: '#5b6c2b',
+          DEFAULT: '#badc58'
         },
         grey: '#0d1117',
         mineshaft: {
@@ -1339,31 +1339,7 @@ module.exports = {
           800: '#1c7a44',
           900: '#176437',
           DEFAULT: '#2ecc71'
-        },
-        blue: {
-          50: '#f2f8ff', 
-          100: '#e6f1ff', 
-          200: '#bfdbff', 
-          300: '#99c5ff', 
-          400: '#4d9aff', 
-          500: '#006eff', 
-          600: '#0063e6', 
-          700: '#0053bf', 
-          800: '#004299', 
-          900: '#00367d'
-        },
-        darkblue: {
-          50: '#f2f4f7', 
-          100: '#e6e8f0', 
-          200: '#bfc6d9', 
-          300: '#99a3c3', 
-          400: '#4d5f95', 
-          500: '#001a68', 
-          600: '#00175e', 
-          700: '#00144e', 
-          800: '#00103e', 
-          900: '#000d33'
-        },
+        }
       },
       keyframes: {
         type: {

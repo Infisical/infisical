@@ -3,26 +3,28 @@ title: "Point-in-Time Recovery"
 description: "How to rollback secrets and configs to any commit with Infisical."
 ---
 
-Point-in-time recovery allows secrets to be rolled back to any point in time. 
-It's powered by snapshots that get created after every mutations to a secret within a given [folder](./folder) and environment.
+Point-in-time recovery allows environment variables to be rolled back to any point in time. It's powered by snapshots that get captured after mutations to environment variables.
 
 ## Commits
 
-Similar to Git, a commit in Infisical is a snapshot of your project's secrets at a specific point in time scoped to the environment and [folder](./folder) it is in. You can browse and view your project's snapshots via the "Point-in-Time Recovery" sidebar.
+Similar to Git, a commit in Infisical is a snapshot of your project's secrets at a specific point in time. You can browse and view your project's snapshots via the "Point-in-Time Recovery" sidebar.
 
 ![PIT commits](../../images/pit-commits.png)
 ![PIT snapshots](../../images/pit-snapshots.png)
 
 ## Rolling back
 
-Secrets can be rolled back to any point in time via the "Rollback to this snapshot" button. This will roll back the changes within the given [folder](./folder) and environment to the chosen time.
-
-It's important to note that this rollback action is localized and does not affect other folders within the same environment. This means each [folder](./folder) maintains its own independent history of changes, offering precise and isolated control over rollback actions.
-In essence, every [folder](./folder) possesses a distinct and separate timeline, providing granular control when managing your secrets. 
+Environment variables can be rolled back to any point in time via the "Rollback to this snapshot" button.
 
 ![PIT snapshot](../../images/pit-snapshot.png)
 
 <Note>
-  Rolling back secrets to a past snapshot creates a new commit,
-  creates a snapshot at the top of the stack and updates secret versions.
+  Rolling back environment variables to a past snapshot creates a new commit and
+  snapshot at the top of the stack and updates secret versions.
 </Note>
+
+## Folders
+
+Any folder operation, such as creating, updating, or deleting a folder, will create a new commit.
+
+When you roll back the contents of a folder, the folder will be restored to its latest snapshot. The nested folders will also be restored to their respective latest versions.

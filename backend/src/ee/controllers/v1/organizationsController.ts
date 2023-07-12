@@ -3,18 +3,8 @@ import { getLicenseServerUrl } from "../../../config";
 import { licenseServerKeyRequest } from "../../../config/request";
 import { EELicenseService } from "../../services";
 
-export const getOrganizationPlansTable = async (req: Request, res: Response) => {
-    const billingCycle = req.query.billingCycle as string;
-    
-    const { data } = await licenseServerKeyRequest.get(
-        `${await getLicenseServerUrl()}/api/license-server/v1/cloud-products?billing-cycle=${billingCycle}`
-    ); 
-
-    return res.status(200).send(data); 
-}
-
 /**
- * Return the organization current plan's feature set
+ * Return the organization's current plan and allowed feature set
  */
 export const getOrganizationPlan = async (req: Request, res: Response) => {
     const { organizationId } = req.params;
@@ -28,80 +18,24 @@ export const getOrganizationPlan = async (req: Request, res: Response) => {
 }
 
 /**
- * Return checkout url for pro trial
+ * Update the organization plan to product with id [productId]
  * @param req 
  * @param res 
  * @returns 
  */
-export const startOrganizationTrial = async (req: Request, res: Response) => {
-    const { organizationId } = req.params;
-    const { success_url } = req.body;
-
-    const { data: { url } } = await licenseServerKeyRequest.post(
-        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/session/trial`,
-        {
-            success_url
-        }
-    ); 
-    
-    EELicenseService.delPlan(organizationId);
-    
-    return res.status(200).send({
-        url
-    });
-}
-
-/**
- * Return the organization's current plan's billing info
- * @param req 
- * @param res 
- * @returns 
- */
-export const getOrganizationPlanBillingInfo = async (req: Request, res: Response) => {
-    const { data } = await licenseServerKeyRequest.get(
-        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/cloud-plan/billing`
-    ); 
-    
-    return res.status(200).send(data);
-}
-
-/**
- * Return the organization's current plan's feature table
- * @param req 
- * @param res 
- * @returns 
- */
-export const getOrganizationPlanTable = async (req: Request, res: Response) => {
-    const { data } = await licenseServerKeyRequest.get(
-        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/cloud-plan/table`
-    ); 
-
-    return res.status(200).send(data);
-}
-
-export const getOrganizationBillingDetails = async (req: Request, res: Response) => {
-    const { data  } = await licenseServerKeyRequest.get(
-        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details`
-    ); 
-
-    return res.status(200).send(data);
-}
-
-export const updateOrganizationBillingDetails = async (req: Request, res: Response) => {
+export const updateOrganizationPlan = async (req: Request, res: Response) => {
     const {
-        name,
-        email
+        productId,
     } = req.body;
 
-    const { data } = await licenseServerKeyRequest.patch(
-        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details`,
+    const { data  } = await licenseServerKeyRequest.patch(
+        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/cloud-plan`,
         {
-            ...(name ? { name } : {}),
-            ...(email ? { email } : {})
+            productId,
         }
     ); 
-
-    return res.status(200).send(data); 
+    
+    return res.status(200).send(data);
 }
 
 /**
@@ -112,7 +46,9 @@ export const getOrganizationPmtMethods = async (req: Request, res: Response) => 
         `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details/payment-methods`
     );
 
-    return res.status(200).send(pmtMethods); 
+    return res.status(200).send({
+        pmtMethods,
+    }); 
 }
 
 /**
@@ -145,53 +81,4 @@ export const deleteOrganizationPmtMethod = async (req: Request, res: Response) =
     );
         
     return res.status(200).send(data);
-}
-
-/**
- * Return the organization's tax ids on file
- */
-export const getOrganizationTaxIds = async (req: Request, res: Response) => {
-    const { data: { tax_ids } } = await licenseServerKeyRequest.get(
-        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details/tax-ids`
-    );
-
-    return res.status(200).send(tax_ids); 
-}
-
-/**
- * Add tax id to organization
- */
-export const addOrganizationTaxId = async (req: Request, res: Response) => {
-    const {
-        type,
-        value
-    } = req.body;
-
-    const { data } = await licenseServerKeyRequest.post(
-        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details/tax-ids`,
-        {
-            type,
-            value
-        }
-    );
-
-    return res.status(200).send(data); 
-}
-
-export const deleteOrganizationTaxId = async (req: Request, res: Response) => {
-    const { taxId } = req.params;
-
-    const { data } = await licenseServerKeyRequest.delete(
-        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details/tax-ids/${taxId}`,
-    );
-        
-    return res.status(200).send(data); 
-}
-
-export const getOrganizationInvoices = async (req: Request, res: Response) => {
-    const { data: { invoices } } = await licenseServerKeyRequest.get(
-        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/invoices`
-    );
-
-    return res.status(200).send(invoices); 
 }

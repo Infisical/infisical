@@ -45,7 +45,6 @@ export const createOrganization = async ({
       name,
       customerId
     }).save();
-    
   } else {
     organization = await new Organization({
       name,

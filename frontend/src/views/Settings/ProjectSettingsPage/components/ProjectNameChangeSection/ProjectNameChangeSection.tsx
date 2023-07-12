@@ -1,15 +1,17 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
-import { 
-  useRenameWorkspace
-} from "@app/hooks/api";
+
+type Props = {
+  workspaceName?: string;
+  onProjectNameChange: (name: string) => Promise<void>;
+};
 
 const formSchema = yup.object({
   name: yup.string().required().label("Project Name")
@@ -17,68 +19,36 @@ const formSchema = yup.object({
 
 type FormData = yup.InferType<typeof formSchema>;
 
-export const ProjectNameChangeSection = () => {
-  const { createNotification } = useNotificationContext();
-  const { currentWorkspace } = useWorkspace();
-  const { mutateAsync, isLoading } = useRenameWorkspace();
-
+export const ProjectNameChangeSection = ({
+  workspaceName,
+  onProjectNameChange
+}: Props): JSX.Element => {
   const {
     handleSubmit,
     control,
-    reset
+    reset,
+    formState: { isDirty, isSubmitting }
   } = useForm<FormData>({ resolver: yupResolver(formSchema) });
   const { t } = useTranslation();
 
   useEffect(() => {
-    if (currentWorkspace) {
-      reset({ 
-        name: currentWorkspace.name
-      });
-    }
-    
-  }, [currentWorkspace]);
+    reset({ name: workspaceName });
+  }, [workspaceName]);
 
   const onFormSubmit = async ({ name }: FormData) => {
-    try {
-      if (!currentWorkspace?._id) return;
-      
-      await mutateAsync({
-        workspaceID: currentWorkspace._id,
-        newWorkspaceName: name
-      });
-
-      createNotification({
-        text: "Successfully renamed workspace",
-        type: "success"
-      });
-      
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to rename workspace",
-        type: "error"
-      });
-    }
+    await onProjectNameChange(name);
   };
 
   return (
-    <form 
-      onSubmit={handleSubmit(onFormSubmit)}
-      className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
-    >
-      <h2 className="text-xl font-semibold flex-1 text-mineshaft-100 mb-8">
-        {t("common.display-name")}      
-      </h2>
-        <div className="max-w-md">
+    <form onSubmit={handleSubmit(onFormSubmit)}>
+      <div className="mb-6 flex w-full flex-col items-start rounded-md bg-mineshaft-900 px-6 pb-6 pt-3">
+        <p className="mb-4 mt-2 text-xl font-semibold">{t("common.display-name")}</p>
+        <div className="mb-2 w-full max-w-lg">
           <Controller
             defaultValue=""
             render={({ field, fieldState: { error } }) => (
               <FormControl isError={Boolean(error)} errorText={error?.message}>
-                <Input 
-                  placeholder="Project name" 
-                  {...field} 
-                  className="bg-mineshaft-800" 
-                />
+                <Input placeholder="Type your project name" {...field} className="bg-mineshaft-800" />
               </FormControl>
             )}
             control={control}
@@ -86,13 +56,17 @@ export const ProjectNameChangeSection = () => {
           />
         </div>
         <Button
-          colorSchema="secondary"
+          isLoading={isSubmitting}
+          color="primary"
+          variant="outline_bg"
+          size="sm"
           type="submit"
-          isLoading={isLoading}
-          isDisabled={isLoading}
+          isDisabled={!isDirty || isSubmitting}
+          leftIcon={<FontAwesomeIcon icon={faCheck} />}
         >
-          Save
+          {t("common.save-changes")}
         </Button>
+      </div>
     </form>
   );
 };

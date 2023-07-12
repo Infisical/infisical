@@ -5,7 +5,6 @@ import { useRouter } from "next/router";
 
 import Error from "@app/components/basic/Error";
 import attemptLogin from "@app/components/utilities/attemptLogin";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
 
 import SecurityClient from "../utilities/SecurityClient";
 import { Button, Input } from "../v2";
@@ -51,9 +50,7 @@ export default function PasswordInputStep({
         }
 
         // case: login does not require MFA step
-        const userOrgs = await getOrganizations();
-        const userOrg = userOrgs[0]._id;
-        router.push(`/org/${userOrg?._id}/overview`);
+        router.push(`/dashboard/${localStorage.getItem("projectData.id")}`);
       }
     } catch (err) {
       setLoginError(true);

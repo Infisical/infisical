@@ -157,7 +157,7 @@ export const SecretInputRow = memo(
     }
 
     return (
-      <tr className="group flex flex-row" key={index}>
+      <tr className="group flex flex-row items-center" key={index}>
         <td className="flex h-10 w-10 items-center justify-center border-none px-4">
           <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div>
         </td>
@@ -198,7 +198,7 @@ export const SecretInputRow = memo(
             </HoverCard>
           )}
         />
-        <td className="flex w-full flex-grow flex-row border-r border-none border-red">
+        <td className="flex h-10 w-full flex-grow flex-row items-center justify-center border-r border-none border-red">
           <MaskedInput
             isReadOnly={
               isReadOnly || isRollbackMode || (isOverridden ? isAddOnly : shouldBeBlockedInAddOnly)
@@ -208,8 +208,8 @@ export const SecretInputRow = memo(
             index={index}
           />
         </td>
-        <td className="min-w-sm flex">
-          <div className="flex h-8 items-center pl-2">
+        <td className="min-w-sm flex h-10 items-center">
+          <div className="flex items-center pl-2">
             {secretTags.map(({ id, slug }, i) => (
               <Tag
                 className={cx(
@@ -289,7 +289,7 @@ export const SecretInputRow = memo(
               </div>
             )}
           </div>
-          <div className="flex h-8 flex-row items-center pr-2">
+          <div className="flex h-full flex-row items-center pr-2">
             {!isAddOnly && (
               <div>
                 <Tooltip content="Override with a personal value">
@@ -346,37 +346,35 @@ export const SecretInputRow = memo(
               </div>
             </Tooltip>
           </div>
-          <div className="duration-0 flex w-16 justify-center overflow-hidden border-l border-mineshaft-600 pl-2 transition-all">
-            <div className="flex h-8 items-center space-x-2.5">
-              {!isAddOnly && (
-                <div className="opacity-0 group-hover:opacity-100">
-                  <Tooltip content="Settings">
-                    <IconButton
-                      size="lg"
-                      colorSchema="primary"
-                      variant="plain"
-                      onClick={onRowExpand}
-                      ariaLabel="expand"
-                    >
-                      <FontAwesomeIcon icon={faEllipsis} />
-                    </IconButton>
-                  </Tooltip>
-                </div>
-              )}
+          <div className="duration-0 flex h-10 w-16 items-center justify-end space-x-2.5 overflow-hidden border-l border-mineshaft-600 transition-all">
+            {!isAddOnly && (
               <div className="opacity-0 group-hover:opacity-100">
-                <Tooltip content="Delete">
+                <Tooltip content="Settings">
                   <IconButton
-                    size="md"
+                    size="lg"
+                    colorSchema="primary"
                     variant="plain"
-                    colorSchema="danger"
-                    ariaLabel="delete"
-                    isDisabled={isReadOnly || isRollbackMode}
-                    onClick={() => onSecretDelete(index, secId, idOverride)}
+                    onClick={onRowExpand}
+                    ariaLabel="expand"
                   >
-                    <FontAwesomeIcon icon={faXmark} />
+                    <FontAwesomeIcon icon={faEllipsis} />
                   </IconButton>
                 </Tooltip>
               </div>
+            )}
+            <div className="opacity-0 group-hover:opacity-100">
+              <Tooltip content="Delete">
+                <IconButton
+                  size="md"
+                  variant="plain"
+                  colorSchema="danger"
+                  ariaLabel="delete"
+                  isDisabled={isReadOnly || isRollbackMode}
+                  onClick={() => onSecretDelete(index, secId, idOverride)}
+                >
+                  <FontAwesomeIcon icon={faXmark} />
+                </IconButton>
+              </Tooltip>
             </div>
           </div>
         </td>

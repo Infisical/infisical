@@ -11,7 +11,7 @@ export type FormLabelProps = {
 };
 
 export const FormLabel = ({ id, label, isRequired }: FormLabelProps) => (
-  <Label.Root className="mb-0.5 ml-1 block text-sm font-normal text-mineshaft-400" htmlFor={id}>
+  <Label.Root className="mb-1 ml-0.5 block text-sm font-medium text-mineshaft-300" htmlFor={id}>
     {label}
     {isRequired && <span className="ml-1 text-red">*</span>}
   </Label.Root>

@@ -4,7 +4,7 @@ import {
     requireAuth,
     validateRequest,
 } from "../../middleware";
-import { body, param } from "express-validator";
+import { body } from "express-validator";
 import { usersController } from "../../controllers/v2";
 import {
     AUTH_MODE_API_KEY,
@@ -35,51 +35,6 @@ router.get(
         acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
     }),
     usersController.getMyOrganizations
-);
-
-router.get(
-    "/me/api-keys",
-    requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
-    }),
-    usersController.getMyAPIKeys
-);
-
-router.post(
-    "/me/api-keys",
-    requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
-    }),
-    body("name").exists().isString().trim(),
-    body("expiresIn").isNumeric(),
-    validateRequest,
-    usersController.createAPIKey
-);
-
-router.delete(
-    "/me/api-keys/:apiKeyDataId",
-    requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
-    }),
-    param("apiKeyDataId").exists().trim(),
-    validateRequest,
-    usersController.deleteAPIKey
-);
-
-router.get( // new
-    "/me/sessions",
-    requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
-    }), 
-    usersController.getMySessions
-);
-
-router.delete( // new
-    "/me/sessions",
-    requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
-    }), 
-    usersController.deleteMySessions
 );
 
 export default router;

@@ -12,24 +12,9 @@ import {
 } from "../../../variables";
 
 router.get(
-    "/:organizationId/plans/table",
-    requireAuth({
-		acceptedAuthModes: ["jwt"],
-	}),
-    requireOrganizationAuth({
-        acceptedRoles: [OWNER, ADMIN, MEMBER],
-        acceptedStatuses: [ACCEPTED],
-    }),
-    param("organizationId").exists().trim(),
-    query("billingCycle").exists().isString().isIn(["monthly", "yearly"]),
-    validateRequest,
-    organizationsController.getOrganizationPlansTable
-);
-
-router.get(
     "/:organizationId/plan",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: ["jwt", "apiKey"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -41,85 +26,25 @@ router.get(
     organizationsController.getOrganizationPlan
 );
 
-router.post(
-    "/:organizationId/session/trial",
-    requireAuth({
-		acceptedAuthModes: ["jwt"],
-	}),
-    requireOrganizationAuth({
-        acceptedRoles: [OWNER, ADMIN, MEMBER],
-        acceptedStatuses: [ACCEPTED],
-    }),
-    param("organizationId").exists().trim(),
-    body("success_url").exists().trim(),
-    validateRequest,
-    organizationsController.startOrganizationTrial
-);
-
-router.get(
-    "/:organizationId/plan/billing",
-    requireAuth({
-		acceptedAuthModes: ["jwt"],
-	}),
-    requireOrganizationAuth({
-        acceptedRoles: [OWNER, ADMIN, MEMBER],
-        acceptedStatuses: [ACCEPTED],
-    }),
-    param("organizationId").exists().trim(),
-    query("workspaceId").optional().isString(),
-    validateRequest,
-    organizationsController.getOrganizationPlanBillingInfo
-);
-
-router.get(
-    "/:organizationId/plan/table",
-    requireAuth({
-		acceptedAuthModes: ["jwt"],
-	}),
-    requireOrganizationAuth({
-        acceptedRoles: [OWNER, ADMIN, MEMBER],
-        acceptedStatuses: [ACCEPTED],
-    }),
-    param("organizationId").exists().trim(),
-    query("workspaceId").optional().isString(),
-    validateRequest,
-    organizationsController.getOrganizationPlanTable
-);
-
-router.get(
-    "/:organizationId/billing-details",
-    requireAuth({
-		acceptedAuthModes: ["jwt"],
-	}),
-    requireOrganizationAuth({
-        acceptedRoles: [OWNER, ADMIN, MEMBER],
-        acceptedStatuses: [ACCEPTED],
-    }),
-    param("organizationId").exists().trim(),
-    validateRequest,
-    organizationsController.getOrganizationBillingDetails
-);
-
 router.patch(
-    "/:organizationId/billing-details",
+    "/:organizationId/plan",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: ["jwt", "apiKey"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
         acceptedStatuses: [ACCEPTED],
     }),
     param("organizationId").exists().trim(),
-    body("email").optional().isString().trim(),
-    body("name").optional().isString().trim(),
+    body("productId").exists().isString(),
     validateRequest,
-    organizationsController.updateOrganizationBillingDetails
+    organizationsController.updateOrganizationPlan
 );
 
 router.get(
     "/:organizationId/billing-details/payment-methods",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: ["jwt", "apiKey"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -133,7 +58,7 @@ router.get(
 router.post(
     "/:organizationId/billing-details/payment-methods",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: ["jwt", "apiKey"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -149,75 +74,15 @@ router.post(
 router.delete(
     "/:organizationId/billing-details/payment-methods/:pmtMethodId",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: ["jwt", "apiKey"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
         acceptedStatuses: [ACCEPTED],
     }),
     param("organizationId").exists().trim(),
-    param("pmtMethodId").exists().trim(),
     validateRequest,
     organizationsController.deleteOrganizationPmtMethod
-);
-
-router.get(
-    "/:organizationId/billing-details/tax-ids",
-    requireAuth({
-		acceptedAuthModes: ["jwt"],
-	}),
-    requireOrganizationAuth({
-        acceptedRoles: [OWNER, ADMIN, MEMBER],
-        acceptedStatuses: [ACCEPTED],
-    }),
-    param("organizationId").exists().trim(),
-    validateRequest,
-    organizationsController.getOrganizationTaxIds
-);
-
-router.post(
-    "/:organizationId/billing-details/tax-ids",
-    requireAuth({
-		acceptedAuthModes: ["jwt"],
-	}),
-    requireOrganizationAuth({
-        acceptedRoles: [OWNER, ADMIN, MEMBER],
-        acceptedStatuses: [ACCEPTED],
-    }),
-    param("organizationId").exists().trim(),
-    body("type").exists().isString(),
-    body("value").exists().isString(),
-    validateRequest,
-    organizationsController.addOrganizationTaxId
-);
-
-router.delete(
-    "/:organizationId/billing-details/tax-ids/:taxId",
-    requireAuth({
-		acceptedAuthModes: ["jwt"],
-	}),
-    requireOrganizationAuth({
-        acceptedRoles: [OWNER, ADMIN, MEMBER],
-        acceptedStatuses: [ACCEPTED],
-    }),
-    param("organizationId").exists().trim(),
-    param("taxId").exists().trim(),
-    validateRequest,
-    organizationsController.deleteOrganizationTaxId
-);
-
-router.get(
-    "/:organizationId/invoices",
-    requireAuth({
-		acceptedAuthModes: ["jwt"],
-	}),
-    requireOrganizationAuth({
-        acceptedRoles: [OWNER, ADMIN, MEMBER],
-        acceptedStatuses: [ACCEPTED],
-    }),
-    param("organizationId").exists().trim(),
-    validateRequest,
-    organizationsController.getOrganizationInvoices
 );
 
 export default router;

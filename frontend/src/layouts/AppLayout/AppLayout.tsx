@@ -7,16 +7,15 @@
 // @ts-nocheck
 import crypto from "crypto";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
-import { faAngleDown, faArrowLeft, faArrowUpRightFromSquare, faBook, faCheck, faEnvelope, faInfinity, faMobile, faPlus, faQuestion } from "@fortawesome/free-solid-svg-icons";
+import { faBookOpen, faMobile, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
+import queryString from "query-string";
 import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -26,9 +25,6 @@ import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypt
 import {
   Button,
   Checkbox,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
   FormControl,
   Input,
   Menu,
@@ -41,34 +37,15 @@ import {
 } from "@app/components/v2";
 import { useOrganization, useSubscription, useUser, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useGetOrgTrialUrl, useLogoutUser, useUploadWsKey } from "@app/hooks/api";
+import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useUploadWsKey } from "@app/hooks/api";
+import getOrganizations from "@app/pages/api/organization/getOrgs";
+import getOrganizationUserProjects from "@app/pages/api/organization/GetOrgUserProjects";
+
+import { Navbar } from "./components/NavBar";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
-
-const supportOptions = [
-  [
-    <FontAwesomeIcon key={1} className="pr-4 text-sm" icon={faSlack} />,
-    "Support Forum",
-    "https://infisical.com/slack"
-  ],
-  [
-    <FontAwesomeIcon key={2} className="pr-4 text-sm" icon={faBook} />,
-    "Read Docs",
-    "https://infisical.com/docs/documentation/getting-started/introduction"
-  ],
-  [
-    <FontAwesomeIcon key={3} className="pr-4 text-sm" icon={faGithub} />,
-    "GitHub Issues",
-    "https://github.com/Infisical/infisical/issues"
-  ],
-  [
-    <FontAwesomeIcon key={4} className="pr-4 text-sm" icon={faEnvelope} />,
-    "Email Support",
-    "mailto:support@infisical.com"
-  ]
-];
 
 const formSchema = yup.object({
   name: yup.string().required().label("Project Name").trim(),
@@ -80,14 +57,12 @@ type TAddProjectFormData = yup.InferType<typeof formSchema>;
 export const AppLayout = ({ children }: LayoutProps) => {
   const router = useRouter();
   const { createNotification } = useNotificationContext();
-  const { mutateTrialAsync } = useGetOrgTrialUrl();
 
   // eslint-disable-next-line prefer-const
   const { workspaces, currentWorkspace } = useWorkspace();
-  const { orgs, currentOrg } = useOrganization();
+  const { currentOrg } = useOrganization();
   const { user } = useUser();
   const { subscription } = useSubscription();
-  // const [ isLearningNoteOpen, setIsLearningNoteOpen ] = useState(true);
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit ? (subscription.workspacesUsed < subscription.workspaceLimit) : true;
 
@@ -108,6 +83,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
     resolver: yupResolver(formSchema)
   });
 
+  const [workspaceMapping, setWorkspaceMapping] = useState<Map<string, string>[]>([]);
+  const [workspaceSelected, setWorkspaceSelected] = useState("∞");
+  const [totalOnboardingActionsDone, setTotalOnboardingActionsDone] = useState(0);
+
   const { t } = useTranslation();
 
 	useEffect(() => {
@@ -122,76 +101,111 @@ export const AppLayout = ({ children }: LayoutProps) => {
 		};
 	}, []);
 
-  const logout = useLogoutUser();
-  const logOutUser = async () => {
-    try {
-      console.log("Logging out...")
-      await logout.mutateAsync();
-      localStorage.removeItem("protectedKey");
-      localStorage.removeItem("protectedKeyIV");
-      localStorage.removeItem("protectedKeyTag");
-      localStorage.removeItem("publicKey");
-      localStorage.removeItem("encryptedPrivateKey");
-      localStorage.removeItem("iv");
-      localStorage.removeItem("tag");
-      localStorage.removeItem("PRIVATE_KEY");
-      localStorage.removeItem("orgData.id");
-      localStorage.removeItem("projectData.id");
-      router.push("/login");
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const changeOrg = async (orgId) => {
-    localStorage.setItem("orgData.id", orgId);
-    router.push(`/org/${orgId}/overview`)
-  }
-
   // TODO(akhilmhdh): This entire logic will be rechecked and will try to avoid
   // Placing the localstorage as much as possible
   // Wait till tony integrates the azure and its launched
   useEffect(() => {
+    // Put a user in a workspace if they're not in one yet
 
-    // Put a user in an org if they're not in one yet
-    const putUserInOrg = async () => {
+    const putUserInWorkSpace = async () => {
       if (tempLocalStorage("orgData.id") === "") {
-        localStorage.setItem("orgData.id", orgs[0]?._id);
+        const userOrgs = await getOrganizations();
+        localStorage.setItem("orgData.id", userOrgs[0]?._id);
       }
 
-      if (currentOrg && (
-        (workspaces?.length === 0 && router.asPath.includes("project")) 
-        || router.asPath.includes("/project/undefined")
-        || (!orgs?.map(org => org._id)?.includes(router.query.id) && !router.asPath.includes("project") && !router.asPath.includes("personal") && !router.asPath.includes("integration"))
-      )) {
-        router.push(`/org/${currentOrg?._id}/overview`);
-      } 
-      // else if (!router.asPath.includes("org") && !router.asPath.includes("project") && !router.asPath.includes("integrations") && !router.asPath.includes("personal-settings")) {
+      const orgUserProjects = await getOrganizationUserProjects({
+        orgId: tempLocalStorage("orgData.id")
+      });
+      const userWorkspaces = orgUserProjects;
+      if (
+        (userWorkspaces?.length === 0 &&
+          router.asPath !== "/noprojects" &&
+          !router.asPath.includes("home") &&
+          !router.asPath.includes("settings")) ||
+        router.asPath === "/dashboard/undefined"
+      ) {
+        router.push("/noprojects");
+      } else if (router.asPath !== "/noprojects") {
+        // const pathSegments = router.asPath.split('/').filter(segment => segment.length > 0);
 
-      //   const pathSegments = router.asPath.split("/").filter((segment) => segment.length > 0);
+        // let intendedWorkspaceId;
+        // if (pathSegments.length >= 2 && pathSegments[0] === 'dashboard') {
+        //   intendedWorkspaceId = pathSegments[1];
+        // } else if (pathSegments.length >= 3 && pathSegments[0] === 'settings') {
+        //   intendedWorkspaceId = pathSegments[2];
+        // } else {
+        //   intendedWorkspaceId = router.asPath
+        //     .split('/')
+        //     [router.asPath.split('/').length - 1].split('?')[0];
+        // }
 
-      //   let intendedWorkspaceId;
-      //   if (pathSegments.length >= 2 && pathSegments[0] === "dashboard") {
-      //     [, intendedWorkspaceId] = pathSegments;
-      //   } else if (pathSegments.length >= 3 && pathSegments[0] === "settings") {
-      //     [, , intendedWorkspaceId] = pathSegments;
-      //   } else {
-      //     const lastPathSegments = router.asPath.split("/").pop();
-      //     if (lastPathSegments !== undefined) {
-      //       [intendedWorkspaceId] = lastPathSegments.split("?");
-      //     }
-      //   }
+        const pathSegments = router.asPath.split("/").filter((segment) => segment.length > 0);
 
-      //   if (!intendedWorkspaceId) return;
+        let intendedWorkspaceId;
+        if (pathSegments.length >= 2 && pathSegments[0] === "dashboard") {
+          [, intendedWorkspaceId] = pathSegments;
+        } else if (pathSegments.length >= 3 && pathSegments[0] === "settings") {
+          [, , intendedWorkspaceId] = pathSegments;
+        } else {
+          const lastPathSegments = router.asPath.split("/").pop();
+          if (lastPathSegments !== undefined) {
+            [intendedWorkspaceId] = lastPathSegments.split("?");
+          }
 
-      //   if (!["callback", "create", "authorize"].includes(intendedWorkspaceId)) {
-      //     localStorage.setItem("projectData.id", intendedWorkspaceId);
-      //   }
-      // }
+          // const lastPathSegment = router.asPath.split('/').pop().split('?');
+          // [intendedWorkspaceId] = lastPathSegment;
+        }
+
+        if (!intendedWorkspaceId) return;
+
+        if (!["callback", "create", "authorize"].includes(intendedWorkspaceId)) {
+          localStorage.setItem("projectData.id", intendedWorkspaceId);
+        }
+
+        // If a user is not a member of a workspace they are trying to access, just push them to one of theirs
+        if (
+          !["callback", "create", "authorize"].includes(intendedWorkspaceId) &&
+          userWorkspaces[0]?._id !== undefined &&
+          !userWorkspaces
+            .map((workspace: { _id: string }) => workspace._id)
+            .includes(intendedWorkspaceId)
+        ) {
+          const { env } = queryString.parse(router.asPath.split("?")[1]);
+          if (!env) {
+            router.push(`/dashboard/${userWorkspaces[0]._id}`);
+          }
+        } else {
+          setWorkspaceMapping(
+            Object.fromEntries(
+              userWorkspaces.map((workspace: any) => [workspace.name, workspace._id])
+            ) as any
+          );
+          setWorkspaceSelected(
+            Object.fromEntries(
+              userWorkspaces.map((workspace: any) => [workspace._id, workspace.name])
+            )[router.asPath.split("/")[router.asPath.split("/").length - 1].split("?")[0]]
+          );
+        }
+      }
     };
-    putUserInOrg();
-    onboardingCheck({});
+    putUserInWorkSpace();
+    onboardingCheck({ setTotalOnboardingActionsDone });
   }, [router.query.id]);
+
+  useEffect(() => {
+    try {
+      if (
+        workspaceMapping[workspaceSelected as any] &&
+        `${workspaceMapping[workspaceSelected as any]}` !==
+          router.asPath.split("/")[router.asPath.split("/").length - 1].split("?")[0]
+      ) {
+        localStorage.setItem("projectData.id", `${workspaceMapping[workspaceSelected as any]}`);
+        router.push(`/dashboard/${workspaceMapping[workspaceSelected as any]}`);
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  }, [workspaceSelected]);
 
   const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
     // type check
@@ -233,7 +247,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       }
       createNotification({ text: "Workspace created", type: "success" });
       handlePopUpClose("addNewWs");
-      router.push(`/project/${newWorkspaceId}/secrets`);
+      router.push(`/dashboard/${newWorkspaceId}`);
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create workspace", type: "error" });
@@ -243,84 +257,13 @@ export const AppLayout = ({ children }: LayoutProps) => {
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
+        <Navbar />
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
-          <aside className="w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60 dark">
-            <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
+          <aside className="w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
+            <nav className="items-between flex h-full flex-col justify-between">
               <div>
-                {!router.asPath.includes("personal") && <div className="h-12 px-3 flex items-center pt-6 cursor-default">
-                  {(router.asPath.includes("project") || router.asPath.includes("integrations")) && <Link href={`/org/${currentOrg?._id}/overview`}><div className="pl-1 pr-2 text-mineshaft-400 hover:text-mineshaft-100 duration-200">
-                    <FontAwesomeIcon icon={faArrowLeft} />
-                  </div></Link>}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild className="data-[state=open]:bg-mineshaft-600">
-                      <div className="mr-auto flex items-center hover:bg-mineshaft-600 py-1.5 pl-1.5 pr-2 rounded-md">
-                        <div className="w-5 h-5 rounded-md bg-primary flex justify-center items-center text-sm">{currentOrg?.name.charAt(0)}</div>
-                        <div className="pl-3 text-mineshaft-100 text-sm">{currentOrg?.name} <FontAwesomeIcon icon={faAngleDown} className="text-xs pl-1 pt-1 text-mineshaft-300" /></div>
-                      </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="p-1">
-                      <div className="text-xs text-mineshaft-400 px-2 py-1">{user?.email}</div>
-                      {orgs?.map(org => <DropdownMenuItem key={org._id}>
-                          <Button
-                            onClick={() => changeOrg(org?._id)}
-                            variant="plain"
-                            colorSchema="secondary"
-                            size="xs"
-                            className="w-full flex items-center justify-start p-0 font-normal"
-                            leftIcon={currentOrg._id === org._id && <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary"/>}
-                          >
-                            <div className="w-full flex justify-between items-center">{org.name}</div>
-                          </Button>
-                        </DropdownMenuItem>
-                      )}
-                      <div className="h-1 mt-1 border-t border-mineshaft-600"/>
-                      <button
-                        type="button"
-                        onClick={logOutUser}
-                        className="w-full"
-                      >
-                        <DropdownMenuItem>Log Out</DropdownMenuItem>
-                      </button>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild className="hover:bg-primary-400 hover:text-black data-[state=open]:text-black data-[state=open]:bg-primary-400 p-1">
-                      <div className="child w-6 h-6 rounded-full bg-mineshaft hover:bg-mineshaft-500 pr-1 text-xs text-mineshaft-300 flex justify-center items-center">
-                        {user?.firstName?.charAt(0)}{user?.lastName && user?.lastName?.charAt(0)}
-                      </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="p-1">
-                      <div className="text-xs text-mineshaft-400 px-2 py-1">{user?.email}</div>
-                      <Link href="/personal-settings"><DropdownMenuItem>Personal Settings</DropdownMenuItem></Link>
-                      <a
-                        href="https://infisical.com/docs/documentation/getting-started/introduction"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full mt-3 text-sm text-mineshaft-300 font-normal leading-[1.2rem] hover:text-mineshaft-100"
-                      >
-                        <DropdownMenuItem>Documentation<FontAwesomeIcon icon={faArrowUpRightFromSquare} className="pl-1.5 text-xxs mb-[0.06rem]" /></DropdownMenuItem>
-                      </a>
-                      <a
-                        href="https://join.slack.com/t/infisical-users/shared_invite/zt-1ye0tm8ab-899qZ6ZbpfESuo6TEikyOQ"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full mt-3 text-sm text-mineshaft-300 font-normal leading-[1.2rem] hover:text-mineshaft-100"
-                      >
-                        <DropdownMenuItem>Join Slack Community<FontAwesomeIcon icon={faArrowUpRightFromSquare} className="pl-1.5 text-xxs mb-[0.06rem]" /></DropdownMenuItem>
-                      </a>
-                      <div className="h-1 mt-1 border-t border-mineshaft-600"/>
-                      <button
-                        type="button"
-                        onClick={logOutUser}
-                        className="w-full"
-                      >
-                        <DropdownMenuItem>Log Out</DropdownMenuItem>
-                      </button>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>}
-                {!router.asPath.includes("org") && (!router.asPath.includes("personal") && currentWorkspace ? (
-                  <div className="mt-5 mb-4 w-full p-3">
+                {currentWorkspace && router.asPath !== "/noprojects" ? (
+                  <div className="mt-3 mb-4 w-full p-4">
                     <p className="ml-1.5 mb-1 text-xs font-semibold uppercase text-gray-400">
                       Project
                     </p>
@@ -329,7 +272,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       value={currentWorkspace?._id}
                       className="w-full truncate bg-mineshaft-600 py-2.5 font-medium"
                       onValueChange={(value) => {
-                        router.push(`/project/${value}/secrets`);
+                        router.push(`/dashboard/${value}`);
                       }}
                       position="popper"
                       dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50 max-h-96 border-gray-700"
@@ -368,26 +311,43 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </div>
                     </Select>
                   </div>
-                ) : <Link href={`/org/${currentOrg?._id}/overview`}><div className="pr-2 my-6 flex justify-center items-center text-mineshaft-300 hover:text-mineshaft-100 cursor-default text-sm">
-                  <FontAwesomeIcon icon={faArrowLeft} className="pr-3"/>
-                  Back to organization
-                </div></Link>)}
-                <div className={`px-1 ${!router.asPath.includes("personal") ? "block" : "hidden"}`}>
-                  {((router.asPath.includes("project") || router.asPath.includes("integrations")) && currentWorkspace) ? <Menu>
-                    <Link href={`/project/${currentWorkspace?._id}/secrets`} passHref>
+                ) : (
+                  <div className="mt-3 mb-4 w-full p-4">
+                    <Button
+                      className="border-mineshaft-500"
+                      colorSchema="primary"
+                      variant="outline_bg"
+                      size="sm"
+                      isFullWidth
+                      onClick={() => {
+                        if (isAddingProjectsAllowed) {
+                          handlePopUpOpen("addNewWs")
+                        } else {
+                          handlePopUpOpen("upgradePlan");
+                        }
+                      }}
+                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                    >
+                      Add Project
+                    </Button>
+                  </div>
+                )}
+                <div className={`${currentWorkspace && router.asPath !== "/noprojects" ? "block" : "hidden"}`}>
+                  <Menu>
+                    <Link href={`/dashboard/${currentWorkspace?._id}`} passHref>
                       <a>
                         <MenuItem
-                          isSelected={router.asPath.includes(`/project/${currentWorkspace?._id}/secrets`)}
+                          isSelected={router.asPath.includes(`/dashboard/${currentWorkspace?._id}`)}
                           icon="system-outline-90-lock-closed"
                         >
                           {t("nav.menu.secrets")}
                         </MenuItem>
                       </a>
                     </Link>
-                    <Link href={`/project/${currentWorkspace?._id}/members`} passHref>
+                    <Link href={`/users/${currentWorkspace?._id}`} passHref>
                       <a>
                         <MenuItem
-                          isSelected={router.asPath === `/project/${currentWorkspace?._id}/members`}
+                          isSelected={router.asPath === `/users/${currentWorkspace?._id}`}
                           icon="system-outline-96-groups"
                         >
                           {t("nav.menu.members")}
@@ -404,33 +364,28 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         </MenuItem>
                       </a>
                     </Link>
-                    <Link href={`/project/${currentWorkspace?._id}/audit-logs`} passHref>
+                    <Link href="/secret-scanning" passHref>
                       <a>
                         <MenuItem
-                          isSelected={router.asPath === `/project/${currentWorkspace?._id}/audit-logs`}
-                          // icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
-                          icon="system-outline-168-view-headline"
-                        >
-                          Audit Logs
-                        </MenuItem>
-                      </a>
-                    </Link>
-                    <Link href={`/project/${currentWorkspace?._id}/secret-scanning`} passHref>
-                      <a>
-                        <MenuItem
-                          isSelected={router.asPath === `/project/${currentWorkspace?._id}/secret-scanning`}
-                          // icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
+                          isSelected={router.asPath === "/secret-scanning"}
                           icon="system-outline-82-extension"
-                        >
-                          Audit Logs
-                        </MenuItem>
+                        >Secret scanning </MenuItem>
                       </a>
                     </Link>
-                    <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>
+                    <Link href={`/activity/${currentWorkspace?._id}`} passHref>
+                      <MenuItem
+                        isSelected={router.asPath === `/activity/${currentWorkspace?._id}`}
+                        // icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
+                        icon="system-outline-168-view-headline"
+                      >
+                        Audit Logs
+                      </MenuItem>
+                    </Link>
+                    <Link href={`/settings/project/${currentWorkspace?._id}`} passHref>
                       <a>
                         <MenuItem
                           isSelected={
-                            router.asPath === `/project/${currentWorkspace?._id}/settings`
+                            router.asPath === `/settings/project/${currentWorkspace?._id}`
                           }
                           icon="system-outline-109-slider-toggle-settings"
                         >
@@ -439,152 +394,52 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </a>
                     </Link>
                   </Menu>
-                  : <Menu className="mt-4">
-                      <Link href={`/org/${currentOrg?._id}/overview`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath.includes("/overview")}
-                            icon="system-outline-165-view-carousel"
-                          >
-                            Overview
-                          </MenuItem>
-                        </a>
-                      </Link>
-                      {/* {workspaces.map(project => <Link key={project._id} href={`/project/${project?._id}/secrets`} passHref>
-                        <a>
-                          <SubMenuItem
-                            isSelected={false}
-                            icon="system-outline-44-folder"
-                          >
-                            {project.name}
-                          </SubMenuItem>
-                        </a>
-                        <div className="pl-8 text-mineshaft-300 text-sm py-1 cursor-default hover:text-mineshaft-100">
-                          <FontAwesomeIcon icon={faFolder} className="text-xxs pr-0.5"/> {project.name} <FontAwesomeIcon icon={faArrowRight} className="text-xs pl-0.5"/>
-                        </div>
-                      </Link>)} */}
-                      <Link href={`/org/${currentOrg?._id}/members`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath === `/org/${currentOrg?._id}/members`}
-                            icon="system-outline-96-groups"
-                          >
-                            Members
-                          </MenuItem>
-                        </a>
-                      </Link>
-                      <Link href={`/org/${currentOrg?._id}/billing`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={router.asPath === `/org/${currentOrg?._id}/billing`}
-                            icon="system-outline-103-coin-cash-monetization"
-                          >
-                            Usage & Billing
-                          </MenuItem>
-                        </a>
-                      </Link>
-                      <Link href={`/org/${currentOrg?._id}/settings`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/org/${currentOrg?._id}/settings`
-                            }
-                            icon="system-outline-109-slider-toggle-settings"
-                          >
-                            Organization Settings
-                          </MenuItem>
-                        </a>
-                      </Link>
-                  </Menu>}
                 </div>
               </div>
-              <div className={`relative mt-10 ${subscription && subscription.slug === "starter" && !subscription.has_used_trial ? "mb-2" : "mb-4"} w-full px-3 text-mineshaft-400 cursor-default text-sm flex flex-col items-center`}>
-              {/*   <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[9.9rem] ${router.asPath.includes("org") ? "bottom-[8.4rem]" : "bottom-[5.4rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-30`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[10.7rem] ${router.asPath.includes("org") ? "bottom-[8.15rem]" : "bottom-[5.15rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-50`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[11.5rem] ${router.asPath.includes("org") ? "bottom-[7.9rem]" : "bottom-[4.9rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-70`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[12.3rem] ${router.asPath.includes("org") ? "bottom-[7.65rem]" : "bottom-[4.65rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-90`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} relative z-10 h-60 w-52 bg-mineshaft-900 border border-mineshaft-600 mb-6 rounded-md flex flex-col items-center justify-start px-3`}>
-                  <div className="w-full mt-2 text-md text-mineshaft-100 font-semibold">Kubernetes Operator</div>
-                  <div className="w-full mt-1 text-sm text-mineshaft-300 font-normal leading-[1.2rem] mb-1">Integrate Infisical into your Kubernetes infrastructure</div>
-                  <div className="h-[6.8rem] w-full bg-mineshaft-200 rounded-md mt-2 rounded-md border border-mineshaft-700"> 
-                    <Image src="/images/kubernetes-asset.png" height={319} width={539} alt="kubernetes image" className="rounded-sm" />
+              <div className="mt-40 mb-4 w-full px-2">
+                {router.asPath.split("/")[1] === "home" ? (
+                  <div className="relative flex cursor-pointer rounded bg-primary-50/10 px-0.5 py-2.5 text-sm text-white">
+                    <div className="absolute inset-0 top-0 my-1 ml-1 mr-1 w-1 rounded-xl bg-primary" />
+                    <p className="ml-4 mr-2 flex w-6 items-center justify-center text-lg">
+                      <FontAwesomeIcon icon={faBookOpen} />
+                    </p>
+                    Infisical Guide
+                    <img
+                      src={`/images/progress-${totalOnboardingActionsDone === 0 ? "0" : ""}${
+                        totalOnboardingActionsDone === 1 ? "14" : ""
+                      }${totalOnboardingActionsDone === 2 ? "28" : ""}${
+                        totalOnboardingActionsDone === 3 ? "43" : ""
+                      }${totalOnboardingActionsDone === 4 ? "57" : ""}${
+                        totalOnboardingActionsDone === 5 ? "71" : ""
+                      }.svg`}
+                      height={58}
+                      width={58}
+                      alt="progress bar"
+                      className="absolute right-2 -top-2"
+                    />
                   </div>
-                  <div className="w-full flex justify-between items-center mt-3 px-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setIsLearningNoteOpen(false)}
-                      className="text-mineshaft-400 hover:text-mineshaft-100 duration-200"
-                    >
-                      Close
-                    </button>
-                    <a
-                      href="https://infisical.com/docs/documentation/getting-started/kubernetes"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-mineshaft-400 font-normal leading-[1.2rem] hover:text-mineshaft-100 duration-200"
-                    >
-                      Learn More <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs pl-0.5"/>
-                    </a>
-                  </div>
-                </div> */}
-                {router.asPath.includes("org") && <div
-                  onKeyDown={() => null}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => router.push(`/org/${router.query.id}/members?action=invite`)}
-                  className="w-full"
-                >
-                  <div className="hover:text-mineshaft-200 duration-200 mb-3 pl-5 w-full">
-                    <FontAwesomeIcon icon={faPlus} className="mr-3"/>
-                    Invite people
-                  </div>
-                </div>}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <div className="hover:text-mineshaft-200 duration-200 mb-2 pl-5 w-full">
-                      <FontAwesomeIcon icon={faQuestion} className="px-[0.1rem] mr-3"/>
-                      Help & Support
+                ) : (
+                  <Link href={`/home/${currentWorkspace?._id}`}>
+                    <div className="mt-max relative flex h-10 cursor-pointer overflow-visible rounded bg-white/10 p-2.5 text-sm text-white hover:bg-primary-50/[0.15]">
+                      <p className="flex w-10 items-center justify-center text-lg">
+                        <FontAwesomeIcon icon={faBookOpen} />
+                      </p>
+                      Infisical Guide
+                      <img
+                        src={`/images/progress-${totalOnboardingActionsDone === 0 ? "0" : ""}${
+                          totalOnboardingActionsDone === 1 ? "14" : ""
+                        }${totalOnboardingActionsDone === 2 ? "28" : ""}${
+                          totalOnboardingActionsDone === 3 ? "43" : ""
+                        }${totalOnboardingActionsDone === 4 ? "57" : ""}${
+                          totalOnboardingActionsDone === 5 ? "71" : ""
+                        }.svg`}
+                        height={58}
+                        width={58}
+                        alt="progress bar"
+                        className="absolute right-2 -top-2"
+                      />
                     </div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="p-1">
-                    {supportOptions.map(([icon, text, url]) => (
-                      <DropdownMenuItem key={url}>
-                        <a
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          href={String(url)}
-                          className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
-                        >
-                          <div className="relative flex w-full cursor-pointer select-none items-center justify-start rounded-md">
-                            {icon}
-                            <div className="text-sm">{text}</div>
-                          </div>
-                        </a>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                {subscription && subscription.slug === "starter" && !subscription.has_used_trial && (
-                  <button 
-                    type="button"
-                    onClick={async () => {
-                      if (!subscription || !currentOrg) return;
-              
-                      // direct user to start pro trial
-                      const url = await mutateTrialAsync({
-                        orgId: currentOrg._id,
-                        success_url: window.location.href
-                      });
-                      
-                      window.location.href = url;
-                    }}
-                    className="w-full mt-1.5"
-                  >
-                    <div className="hover:text-primary-400 text-mineshaft-300 duration-200 flex justify-left items-center py-1 bg-mineshaft-600 rounded-md hover:bg-mineshaft-500 mb-1.5 mt-1.5 pl-4 w-full">
-                      <FontAwesomeIcon icon={faInfinity} className="mr-3 ml-0.5 py-2 text-primary"/>
-                      Start Free Pro Trial
-                    </div>
-                  </button>
+                  </Link>
                 )}
               </div>
             </nav>

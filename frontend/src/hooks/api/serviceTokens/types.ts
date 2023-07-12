@@ -1,13 +1,9 @@
-export type ServiceTokenScope = {
-  environment: string;
-  secretPath: string;
-};
-
 export type ServiceToken = {
   _id: string;
   name: string;
   workspace: string;
-  scopes: ServiceTokenScope[];
+  environment: string;
+  secretPath: string;
   user: string;
   expiresAt: string;
   createdAt: string;
@@ -18,8 +14,9 @@ export type ServiceToken = {
 export type CreateServiceTokenDTO = {
   name: string;
   workspaceId: string;
-  scopes: ServiceTokenScope[];
+  environment: string;
   expiresIn: number;
+  secretPath: string;
   encryptedKey: string;
   iv: string;
   tag: string;

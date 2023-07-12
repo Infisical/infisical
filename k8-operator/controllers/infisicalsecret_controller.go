@@ -33,8 +33,8 @@ type InfisicalSecretReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.1/pkg/reconcile
 func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	requeueTime := time.Minute * 1
 	var infisicalSecretCR v1alpha1.InfisicalSecret
-	requeueTime := time.Minute // seconds
 
 	err := r.Get(ctx, req.NamespacedName, &infisicalSecretCR)
 	if err != nil {
@@ -50,13 +50,6 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			}, nil
 		}
 	}
-
-	if infisicalSecretCR.Spec.ResyncInterval != 0 {
-		requeueTime = time.Second * time.Duration(infisicalSecretCR.Spec.ResyncInterval)
-		fmt.Println("Manual re-sync interval set", "requeueAfter", requeueTime)
-	}
-
-	fmt.Println("Requeue duration set", "requeueAfter", requeueTime)
 
 	// Check if the resource is already marked for deletion
 	if infisicalSecretCR.GetDeletionTimestamp() != nil {

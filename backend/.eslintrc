@@ -10,7 +10,6 @@
     "plugin:@typescript-eslint/recommended"
   ],
   "rules": {
-    "@typescript-eslint/no-empty-function": "off",
     "no-console": 2,
     "quotes": [
       "error",
@@ -35,11 +34,6 @@
         "argsIgnorePattern": "^_"
       }
     ],
-    "sort-imports": [
-      "error",
-      {
-        "ignoreDeclarationSort": true
-      }
-    ]
+    "sort-imports": "off"
   }
 }

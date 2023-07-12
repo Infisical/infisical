@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { faEye, faEyeSlash, faPenToSquare, faPlus, faX } from "@fortawesome/free-solid-svg-icons";
+import { plans } from "public/data/frequentConstants";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Select, SelectItem } from "@app/components/v2";
-import { useSubscription } from "@app/context";
 import updateUserProjectPermission from "@app/ee/api/memberships/UpdateUserProjectPermission";
+import getOrganizationSubscriptions from "@app/pages/api/organization/GetOrgSubscription";
 import changeUserRoleInWorkspace from "@app/pages/api/workspace/changeUserRoleInWorkspace";
 import deleteUserFromWorkspace from "@app/pages/api/workspace/deleteUserFromWorkspace";
 import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
@@ -39,12 +40,13 @@ type EnvironmentProps = {
  * @returns
  */
 const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoading }: Props) => {
-  const { subscription } = useSubscription();
   const [roleSelected, setRoleSelected] = useState(
     Array(userData?.length).fill(userData.map((user) => user.role))
   );
+  const host = window.location.origin;
   const router = useRouter();
   const [myRole, setMyRole] = useState("member");
+  const [currentPlan, setCurrentPlan] = useState("");
   const [workspaceEnvs, setWorkspaceEnvs] = useState<EnvironmentProps[]>([]);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const { createNotification } = useNotificationContext();
@@ -126,7 +128,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
       denials = [];
     }
 
-    if (subscription?.rbac === false) {
+    if (currentPlan !== plans.professional && host === "https://app.infisical.com" && workspaceId !== "63ea8121b6e2b0543ba79616") {
       setIsUpgradeModalOpen(true);
     } else {
       const allDenials = userData[index].deniedPermissions
@@ -165,6 +167,14 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
     (async () => {
       const result = await getProjectInfo({ projectId: workspaceId });
       setWorkspaceEnvs(result.environments);
+
+      const orgId = localStorage.getItem("orgData.id") as string;
+      const subscriptions = await getOrganizationSubscriptions({
+        orgId
+      });
+      if (subscriptions) {
+        setCurrentPlan(subscriptions.data[0].plan.product);
+      }
     })();
   }, [userData, myUser]);
 
@@ -198,13 +208,11 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
   return (
     <div className="table-container relative mb-6 mt-1 min-w-max rounded-md border border-mineshaft-600 bg-bunker">
       <div className="absolute h-[3.1rem] w-full rounded-t-md bg-white/5" />
-      {subscription && (
-        <UpgradePlanModal
-          isOpen={isUpgradeModalOpen}
-          onClose={closeUpgradeModal}
-          text={subscription.slug === null ? "You can use RBAC under an Enterprise license" : "You can use RBAC if you switch to Infisical's Team Plan."}
-        />
-      )}
+      <UpgradePlanModal
+        isOpen={isUpgradeModalOpen}
+        onClose={closeUpgradeModal}
+        text="You can change user permissions if you switch to Infisical's Professional plan."
+      />
       <table className="my-0.5 w-full">
         <thead className="text-xs font-light text-gray-400 bg-mineshaft-800">
           <tr>
