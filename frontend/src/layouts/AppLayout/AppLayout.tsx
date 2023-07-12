@@ -144,6 +144,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
     }
   };
 
+  const changeOrg = async (orgId) => {
+    localStorage.setItem("orgData.id", orgId);
+    router.push(`/org/${orgId}/overview`)
+  }
+
   // TODO(akhilmhdh): This entire logic will be rechecked and will try to avoid
   // Placing the localstorage as much as possible
   // Wait till tony integrates the azure and its launched
@@ -158,7 +163,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       if (currentOrg && (
         (workspaces?.length === 0 && router.asPath.includes("project")) 
         || router.asPath.includes("/project/undefined")
-        || (!orgs?.includes(router.query.id) && !router.asPath.includes("project") && !router.asPath.includes("integration"))
+        || (!orgs?.map(org => org._id)?.includes(router.query.id) && !router.asPath.includes("project") && !router.asPath.includes("personal") && !router.asPath.includes("integration"))
       )) {
         router.push(`/org/${currentOrg?._id}/overview`);
       } 
@@ -257,8 +262,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     <DropdownMenuContent align="start" className="p-1">
                       <div className="text-xs text-mineshaft-400 px-2 py-1">{user?.email}</div>
                       {orgs?.map(org => <DropdownMenuItem key={org._id}>
-                        <Link href={`/org/${org._id}/overview`}><div className="w-full flex justify-between items-center">{org.name}{currentOrg._id === org._id && <FontAwesomeIcon icon={faCheck} className="ml-auto text-primary"/>}</div></Link>
-                      </DropdownMenuItem>)}
+                          <Button
+                            onClick={() => changeOrg(org?._id)}
+                            variant="plain"
+                            colorSchema="secondary"
+                            size="xs"
+                            className="w-full flex items-center justify-start p-0 font-normal"
+                            leftIcon={currentOrg._id === org._id && <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary"/>}
+                          >
+                            <div className="w-full flex justify-between items-center">{org.name}</div>
+                          </Button>
+                        </DropdownMenuItem>
+                      )}
                       <div className="h-1 mt-1 border-t border-mineshaft-600"/>
                       <button
                         type="button"
@@ -270,8 +285,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild className="data-[state=open]:bg-mineshaft-600 p-1">
-                      <div className="w-6 h-6 rounded-full bg-mineshaft hover:bg-mineshaft-400 pr-1 text-xs text-mineshaft-300 flex justify-center">
+                    <DropdownMenuTrigger asChild className="hover:bg-primary-400 hover:text-black data-[state=open]:text-black data-[state=open]:bg-primary-400 p-1">
+                      <div className="child w-6 h-6 rounded-full bg-mineshaft hover:bg-mineshaft-500 pr-1 text-xs text-mineshaft-300 flex justify-center items-center">
                         {user?.firstName?.charAt(0)}{user?.lastName && user?.lastName?.charAt(0)}
                       </div>
                     </DropdownMenuTrigger>
@@ -354,10 +369,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </div>
                     </Select>
                   </div>
-                ) : <div className="pr-2 my-6 flex justify-center items-center text-mineshaft-300 hover:text-mineshaft-100 cursor-default text-sm">
+                ) : <Link href={`/org/${currentOrg?._id}/overview`}><div className="pr-2 my-6 flex justify-center items-center text-mineshaft-300 hover:text-mineshaft-100 cursor-default text-sm">
                   <FontAwesomeIcon icon={faArrowLeft} className="pr-3"/>
-                  <Link href={`/org/${currentOrg?._id}/overview`}>Back to organization</Link>
-                </div>)}
+                  Back to organization
+                </div></Link>)}
                 <div className={`px-1 ${!router.asPath.includes("personal") ? "block" : "hidden"}`}>
                   {((router.asPath.includes("project") || router.asPath.includes("integrations")) && currentWorkspace) ? <Menu>
                     <Link href={`/project/${currentWorkspace?._id}/secrets`} passHref>
@@ -391,13 +406,15 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </a>
                     </Link>
                     <Link href={`/project/${currentWorkspace?._id}/audit-logs`} passHref>
-                      <MenuItem
-                        isSelected={router.asPath === `/project/${currentWorkspace?._id}/audit-logs`}
-                        // icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
-                        icon="system-outline-168-view-headline"
-                      >
-                        Audit Logs
-                      </MenuItem>
+                      <a>
+                        <MenuItem
+                          isSelected={router.asPath === `/project/${currentWorkspace?._id}/audit-logs`}
+                          // icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
+                          icon="system-outline-168-view-headline"
+                        >
+                          Audit Logs
+                        </MenuItem>
+                      </a>
                     </Link>
                     <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>
                       <a>
@@ -442,7 +459,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             isSelected={router.asPath === `/org/${currentOrg?._id}/members`}
                             icon="system-outline-96-groups"
                           >
-                            Organization Members
+                            Members
                           </MenuItem>
                         </a>
                       </Link>

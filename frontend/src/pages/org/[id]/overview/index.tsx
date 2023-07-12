@@ -133,6 +133,61 @@ const learningItem = ({
   );
 };
 
+const learningItemSquare = ({
+  text,
+  subText,
+  complete,
+  icon,
+  time,
+  userAction,
+  link
+}: ItemProps): JSX.Element => {
+  return (
+    <a
+      target={`${link?.includes("https") ? "_blank" : "_self"}`}
+      rel="noopener noreferrer"
+      className={`w-full ${complete && "opacity-30 duration-200 hover:opacity-100"}`}
+      href={link}
+    >
+      <div className={`${complete ? "bg-gradient-to-r from-primary-500/70 p-[0.07rem]" : ""} rounded-md w-full`}>
+        <div
+          onKeyDown={() => null}
+          role="button"
+          tabIndex={0}
+          onClick={async () => {
+            if (userAction && userAction !== "first_time_secrets_pushed") {
+              await registerUserAction({
+                action: userAction
+              });
+            }
+          }}
+          className={`group relative flex w-full items-center justify-between overflow-hidden rounded-md border ${complete? "bg-gradient-to-r from-[#0e1f01] to-mineshaft-700 border-mineshaft-900 cursor-default" : "bg-mineshaft-800 hover:bg-mineshaft-700 border-mineshaft-600 shadow-xl cursor-pointer"} duration-200 text-mineshaft-100`}
+        >
+          <div className="flex flex-col items-center w-full px-6 py-4">
+            <div className="flex flex-row items-start justify-between w-full">
+              <FontAwesomeIcon icon={icon} className="w-16 text-5xl text-mineshaft-200 group-hover:text-mineshaft-100 duration-100 pt-2" />
+              {complete && (
+                <div className="absolute left-14 top-12 flex h-7 w-7 items-center justify-center rounded-full bg-bunker-500 p-2 group-hover:bg-mineshaft-700">
+                  <FontAwesomeIcon icon={faCheckCircle} className="h-5 w-5 text-4xl text-primary" />
+                </div>
+              )}
+              <div
+                className={`text-right text-sm font-normal text-mineshaft-300 ${complete ? "text-primary font-semibold" : ""}`}
+              >
+                {complete ? "Complete!" : `About ${time}`}
+              </div>
+            </div>
+            <div className="flex flex-col items-start justify-start w-full pt-4">
+              <div className="mt-0.5 text-lg font-medium">{text}</div>
+              <div className="text-sm font-normal text-mineshaft-300">{subText}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </a>
+  );
+};
+
 const formSchema = yup.object({
   name: yup.string().required().label("Project Name").trim(),
   addMembers: yup.bool().required().label("Add Members")
@@ -147,9 +202,8 @@ export default function Organization() {
 
   const router = useRouter();
 
-  const { workspaces, 
-    // isLoading: isWorkspaceLoading 
-  } = useWorkspace();
+  const { workspaces } = useWorkspace();
+  const orgWorkspaces = workspaces?.filter(workspace => workspace.organization === localStorage.getItem("orgData.id")) || []
   const currentOrg = String(router.query.id);
   const { createNotification } = useNotificationContext();
   const addWsUser = useAddUserToWs();
@@ -267,16 +321,16 @@ export default function Organization() {
             Add New Project
           </Button>
         </div>
-        <div className="mt-4 w-full grid gap-4 grid-cols-3 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {workspaces.filter(ws => ws.name.toLowerCase().includes(searchFilter.toLowerCase())).map(workspace => <div key={workspace._id} className="h-32 lg:h-40 min-w-72 rounded-md bg-mineshaft-800 border border-mineshaft-600 p-4 flex flex-col justify-between">
+        <div className="mt-4 w-full grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {orgWorkspaces.filter(ws => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase())).map(workspace => <div key={workspace._id} className="h-40 min-w-72 rounded-md bg-mineshaft-800 border border-mineshaft-600 p-4 flex flex-col justify-between">
             <div className="text-lg text-mineshaft-100 mt-0">{workspace.name}</div>
-            <div className="text-sm text-mineshaft-300 mt-0 lg:pb-6">{(workspace.environments?.length || 0)} environments</div>
+            <div className="text-sm text-mineshaft-300 mt-0 pb-6">{(workspace.environments?.length || 0)} environments</div>
             <Link href={`/project/${workspace._id}/secrets`}>
               <div className="group cursor-default ml-auto hover:bg-primary-800/20 text-sm text-mineshaft-300 hover:text-mineshaft-200 bg-mineshaft-900 py-2 px-4 rounded-full w-max border border-mineshaft-600 hover:border-primary-500/80">Explore <FontAwesomeIcon icon={faArrowRight} className="pl-1.5 pr-0.5 group-hover:pl-2 group-hover:pr-0 duration-200" /></div>
             </Link>
           </div>)}
         </div>
-        {workspaces.length === 0 && ( 
+        {orgWorkspaces.length === 0 && ( 
           <div className="w-full rounded-md bg-mineshaft-800 border border-mineshaft-700 px-4 py-6 text-mineshaft-300 text-base">
             <FontAwesomeIcon icon={faFolderOpen} className="w-full text-center text-5xl mb-4 mt-2 text-mineshaft-400" />
             <div className="text-center font-light">
@@ -291,25 +345,44 @@ export default function Organization() {
       </div>
       {((new Date()).getTime() - (new Date(user?.createdAt)).getTime()) < 30 * 24 * 60 * 60 * 1000 && <div className="flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl mb-4">
         <p className="mr-4 font-semibold text-white mb-4">Onboarding Guide</p>
-        {learningItem({
-          text: "Watch a video about Infisical",
-          subText: "",
-          complete: hasUserClickedIntro,
-          icon: faHandPeace,
-          time: "3 min",
-          userAction: "intro_cta_clicked",
-          link: "https://www.youtube.com/watch?v=PK23097-25I"
-        })}
-        {workspaces.length !== 0 && learningItem({
-          text: "Add your secrets",
-          subText: "Click to see example secrets, and add your own.",
-          complete: hasUserPushedSecrets,
-          icon: faPlus,
-          time: "1 min",
-          userAction: "first_time_secrets_pushed",
-          link: `/project/${workspaces[0]?._id}/secrets`
-        })}
-        {workspaces.length !== 0 && <div className="group text-mineshaft-100 relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 pl-2 pr-2 pt-4 pb-2 shadow-xl duration-200">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 w-full mb-3">
+          {learningItemSquare({
+            text: "Watch Infisical demo",
+            subText: "Set up Infisical in 3 min.",
+            complete: hasUserClickedIntro,
+            icon: faHandPeace,
+            time: "3 min",
+            userAction: "intro_cta_clicked",
+            link: "https://www.youtube.com/watch?v=PK23097-25I"
+          })}
+          {orgWorkspaces.length !== 0 && learningItemSquare({
+            text: "Add your secrets",
+            subText: "Drop a .env file or type your secrets.",
+            complete: hasUserPushedSecrets,
+            icon: faPlus,
+            time: "1 min",
+            userAction: "first_time_secrets_pushed",
+            link: `/project/${orgWorkspaces[0]?._id}/secrets`
+          })}
+          {learningItemSquare({
+            text: "Invite your teammates",
+            subText: "Infisical is better used as a team.",
+            complete: usersInOrg,
+            icon: faUserPlus,
+            time: "2 min",
+            link: `/org/${router.query.id}/members?action=invite`
+          })}
+          <div className="block xl:hidden 2xl:block">{learningItemSquare({
+            text: "Join Infisical Slack",
+            subText: "Have any questions? Ask us!",
+            complete: hasUserClickedSlack,
+            icon: faSlack,
+            time: "1 min",
+            userAction: "slack_cta_clicked",
+            link: "https://join.slack.com/t/infisical-users/shared_invite/zt-1ye0tm8ab-899qZ6ZbpfESuo6TEikyOQ"
+          })}</div>
+        </div>
+        {orgWorkspaces.length !== 0 && <div className="group text-mineshaft-100 relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 pl-2 pr-2 pt-4 pb-2 shadow-xl duration-200">
           <div className="mb-4 flex w-full flex-row items-center pr-4">
             <div className="mr-4 flex w-full flex-row items-center">
               <FontAwesomeIcon icon={faNetworkWired} className="mx-2 w-16 text-4xl" />
@@ -332,30 +405,13 @@ export default function Organization() {
           <TabsObject />
           {false && <div className="absolute bottom-0 left-0 h-1 w-full bg-green" />}
         </div>}
-        {workspaces.length !== 0 && learningItem({
+        {orgWorkspaces.length !== 0 && learningItem({
           text: "Integrate Infisical with your infrastructure",
           subText: "Connect Infisical to various 3rd party services and platforms.",
           complete: false,
           icon: faPlug,
           time: "15 min",
           link: "https://infisical.com/docs/integrations/overview"
-        })}
-        {learningItem({
-          text: "Invite your teammates",
-          subText: "",
-          complete: usersInOrg,
-          icon: faUserPlus,
-          time: "2 min",
-          link: `/org/${router.query.id}/members?action=invite`
-        })}
-        {learningItem({
-          text: "Join Infisical Slack",
-          subText: "Have any questions? Ask us!",
-          complete: hasUserClickedSlack,
-          icon: faSlack,
-          time: "1 min",
-          userAction: "slack_cta_clicked",
-          link: "https://join.slack.com/t/infisical-users/shared_invite/zt-1ye0tm8ab-899qZ6ZbpfESuo6TEikyOQ"
         })}
       </div>}
       <div className="flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl mb-4 pb-6">

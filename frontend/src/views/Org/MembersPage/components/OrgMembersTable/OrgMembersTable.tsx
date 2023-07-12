@@ -27,6 +27,7 @@ import {
   THead,
   Tr,
   UpgradePlanModal} from "@app/components/v2";
+import { useWorkspace } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { OrgUser, Workspace } from "@app/hooks/api/types";
@@ -70,6 +71,7 @@ export const OrgMembersTable = ({
   const router = useRouter();
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
   const {data: serverDetails } = useFetchServerStatus()
+  const { workspaces } = useWorkspace();
   const [isInviteLinkCopied, setInviteLinkCopied] = useToggle(false);
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addMember",
@@ -230,7 +232,7 @@ export const OrgMembersTable = ({
                             : <Tag colorSchema="red">This user isn&apos;t part of any projects yet</Tag>}
                             {router.query.id !== "undefined" && !((status === "invited" || status === "verified") && serverDetails?.emailConfigured) && <button 
                               type="button"
-                              onClick={() => router.push(`/users/${router.query.id}`)}
+                              onClick={() => router.push(`/project/${workspaces[0]?._id}/members`)}
                               className='text-sm bg-mineshaft w-max px-1.5 py-0.5 hover:bg-primary duration-200 hover:text-black cursor-pointer rounded-sm'
                             >
                               <FontAwesomeIcon icon={faPlus} className="mr-1" />
