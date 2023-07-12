@@ -91,7 +91,6 @@
             "documentation/getting-started/introduction",
             "documentation/getting-started/platform",
             "documentation/getting-started/sdks",
-            "documentation/getting-started/cli",
             "documentation/getting-started/docker",
             "documentation/getting-started/kubernetes",
             "documentation/getting-started/api"
