@@ -69,7 +69,7 @@ services:
     volumes:
       - ./secret-engine/src:/app/src/ # mounted whole src to avoid missing reload on new files
     ports:
-      - "3000:3001"
+      - "3005:3005"
     build:
       context: ./secret-engine
       dockerfile: Dockerfile.dev
