@@ -147,9 +147,8 @@ export default function Organization() {
 
   const router = useRouter();
 
-  const { workspaces, 
-    // isLoading: isWorkspaceLoading 
-  } = useWorkspace();
+  const { workspaces } = useWorkspace();
+  const orgWorkspaces = workspaces?.filter(workspace => workspace.organization === localStorage.getItem("orgData.id")) || []
   const currentOrg = String(router.query.id);
   const { createNotification } = useNotificationContext();
   const addWsUser = useAddUserToWs();
@@ -243,7 +242,7 @@ export default function Organization() {
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <div className="flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl mb-4">
-        <p className="mr-4 font-semibold text-white">Projects</p>
+        <p className="mr-4 font-semibold text-white">Projects {orgWorkspaces.map(ws => ws?.name).join("")}</p>
         <div className="w-full flex flex-row mt-6">
           <Input
             className="h-[2.3rem] text-sm bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
@@ -268,7 +267,7 @@ export default function Organization() {
           </Button>
         </div>
         <div className="mt-4 w-full grid gap-4 grid-cols-3 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {workspaces.filter(ws => ws.name.toLowerCase().includes(searchFilter.toLowerCase())).map(workspace => <div key={workspace._id} className="h-32 lg:h-40 min-w-72 rounded-md bg-mineshaft-800 border border-mineshaft-600 p-4 flex flex-col justify-between">
+          {orgWorkspaces.filter(ws => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase())).map(workspace => <div key={workspace._id} className="h-32 lg:h-40 min-w-72 rounded-md bg-mineshaft-800 border border-mineshaft-600 p-4 flex flex-col justify-between">
             <div className="text-lg text-mineshaft-100 mt-0">{workspace.name}</div>
             <div className="text-sm text-mineshaft-300 mt-0 lg:pb-6">{(workspace.environments?.length || 0)} environments</div>
             <Link href={`/project/${workspace._id}/secrets`}>
@@ -276,7 +275,7 @@ export default function Organization() {
             </Link>
           </div>)}
         </div>
-        {workspaces.length === 0 && ( 
+        {orgWorkspaces.length === 0 && ( 
           <div className="w-full rounded-md bg-mineshaft-800 border border-mineshaft-700 px-4 py-6 text-mineshaft-300 text-base">
             <FontAwesomeIcon icon={faFolderOpen} className="w-full text-center text-5xl mb-4 mt-2 text-mineshaft-400" />
             <div className="text-center font-light">
@@ -300,16 +299,16 @@ export default function Organization() {
           userAction: "intro_cta_clicked",
           link: "https://www.youtube.com/watch?v=PK23097-25I"
         })}
-        {workspaces.length !== 0 && learningItem({
+        {orgWorkspaces.length !== 0 && learningItem({
           text: "Add your secrets",
           subText: "Click to see example secrets, and add your own.",
           complete: hasUserPushedSecrets,
           icon: faPlus,
           time: "1 min",
           userAction: "first_time_secrets_pushed",
-          link: `/project/${workspaces[0]?._id}/secrets`
+          link: `/project/${orgWorkspaces[0]?._id}/secrets`
         })}
-        {workspaces.length !== 0 && <div className="group text-mineshaft-100 relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 pl-2 pr-2 pt-4 pb-2 shadow-xl duration-200">
+        {orgWorkspaces.length !== 0 && <div className="group text-mineshaft-100 relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 pl-2 pr-2 pt-4 pb-2 shadow-xl duration-200">
           <div className="mb-4 flex w-full flex-row items-center pr-4">
             <div className="mr-4 flex w-full flex-row items-center">
               <FontAwesomeIcon icon={faNetworkWired} className="mx-2 w-16 text-4xl" />
@@ -332,7 +331,7 @@ export default function Organization() {
           <TabsObject />
           {false && <div className="absolute bottom-0 left-0 h-1 w-full bg-green" />}
         </div>}
-        {workspaces.length !== 0 && learningItem({
+        {orgWorkspaces.length !== 0 && learningItem({
           text: "Integrate Infisical with your infrastructure",
           subText: "Connect Infisical to various 3rd party services and platforms.",
           complete: false,

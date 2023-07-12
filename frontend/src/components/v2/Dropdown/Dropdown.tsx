@@ -66,7 +66,7 @@ export const DropdownMenuItem = <T extends ElementType = "button">({
       className
     )}
   >
-    <Item type="button" role="menuitem" class="flex w-full items-center" ref={inputRef}>
+    <Item type="button" role="menuitem" className="flex w-full items-center" ref={inputRef}>
       {icon && <span className="flex items-center mr-2">{icon}</span>}
       <span className="flex-grow text-left">{children}</span>
     </Item>
