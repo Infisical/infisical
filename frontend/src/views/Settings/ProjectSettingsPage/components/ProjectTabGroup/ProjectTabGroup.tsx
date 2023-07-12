@@ -18,7 +18,7 @@ export const ProjectTabGroup = () => {
                         {({ selected }) => (
                             <button 
                                 type="button"
-                                className={`w-30 p-4 font-semibold outline-none ${selected ? "border-b-2 border-white text-white" : "text-mineshaft-400"}`}
+                                className={`w-30 py-2 mx-2 mr-4 font-medium text-sm outline-none ${selected ? "border-b border-white text-white" : "text-mineshaft-400"}`}
                             >
                                 {tab.name}
                             </button>

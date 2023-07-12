@@ -5,14 +5,13 @@ import { useRouter } from "next/router";
 
 import Button from "@app/components/basic/buttons/Button";
 import EventFilter from "@app/components/basic/EventFilter";
-import NavHeader from "@app/components/navigation/NavHeader";
 import { UpgradePlanModal } from "@app/components/v2";
 import { useSubscription } from "@app/context";
 import ActivitySideBar from "@app/ee/components/ActivitySideBar";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import getProjectLogs from "../../ee/api/secrets/GetProjectLogs";
-import ActivityTable from "../../ee/components/ActivityTable";
+import getProjectLogs from "../../../../ee/api/secrets/GetProjectLogs";
+import ActivityTable from "../../../../ee/components/ActivityTable";
 
 interface LogData {
   _id: string;
@@ -152,20 +151,17 @@ export default function Activity() {
   };
 
   return (
-    <div className="mx-6 lg:mx-0 w-full h-full">
+    <div className="mx-auto w-full h-full max-w-7xl">
       <Head>
         <title>Audit Logs</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Head>
-      <div className="ml-6">
-        <NavHeader pageName="Audit Logs" isProjectRelated />
-      </div>
       {currentSidebarAction && (
         <ActivitySideBar toggleSidebar={toggleSidebar} currentAction={currentSidebarAction} />
       )}
-      <div className="flex flex-col justify-between items-start mx-4 mt-6 mb-4 text-xl max-w-5xl px-2">
-        <div className="flex flex-row justify-start items-center text-3xl">
+      <div className="flex flex-col justify-between items-start mx-4 mb-4 text-xl px-2">
+        <div className="flex flex-row justify-start items-center text-3xl mt-6">
           <p className="font-semibold mr-4 text-bunker-100">{t("activity.title")}</p>
         </div>
         <p className="mr-4 text-base text-gray-400">{t("activity.subtitle")}</p>

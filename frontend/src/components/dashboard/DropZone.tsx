@@ -182,7 +182,7 @@ const DropZone = ({
 
   return loading ? (
     <div className="mb-16 flex items-center justify-center pt-16">
-      <Image src="/images/loading/loading.gif" height={70} width={120} alt="google logo" />
+      <Image src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
     </div>
   ) : keysExist ? (
     <div

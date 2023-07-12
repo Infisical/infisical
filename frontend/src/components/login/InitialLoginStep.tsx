@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import axios from "axios"
 
 import attemptLogin from "@app/components/utilities/attemptLogin";
+import getOrganizations from "@app/pages/api/organization/getOrgs";
 
 import Error from "../basic/Error";
 import attemptCliLogin from "../utilities/attemptCliLogin";
@@ -85,9 +86,11 @@ export default function InitialLoginStep({
                         setIsLoading(false);
                         return;
                     }
+                    const userOrgs = await getOrganizations();
+                    const userOrg = userOrgs[0] && userOrgs[0]._id;
 
                     // case: login does not require MFA step
-                    router.push(`/dashboard/${localStorage.getItem("projectData.id")}`);
+                    router.push(`/org/${userOrg}/overview`);
                 }
             }
 

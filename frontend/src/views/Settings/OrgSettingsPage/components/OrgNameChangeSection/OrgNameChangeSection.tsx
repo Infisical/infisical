@@ -52,9 +52,9 @@ export const OrgNameChangeSection = (): JSX.Element => {
   return (
     <form 
       onSubmit={handleSubmit(onFormSubmit)}
-      className="p-4 bg-mineshaft-900 mb-6 max-w-screen-lg rounded-lg border border-mineshaft-600"
+      className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
     >
-        <p className="text-xl font-semibold text-mineshaft-100 mb-8">
+        <p className="text-xl font-semibold text-mineshaft-100 mb-4">
           Organization name
         </p>
         <div className="mb-2 max-w-md">
@@ -71,8 +71,8 @@ export const OrgNameChangeSection = (): JSX.Element => {
         </div>
         <Button
           isLoading={isLoading}
-          color="primary"
-          colorSchema="secondary"
+          colorSchema="primary"
+          variant="outline_bg"
           type="submit"
         >
           Save

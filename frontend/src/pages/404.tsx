@@ -21,11 +21,10 @@ export default function Custom404() {
           </a>{" "}
           and we`ll fix it!{" "}
         </p>
-        <Link
-          href='/dashboard'
-          className='bg-mineshaft-500 mt-8 py-2 px-4 rounded-md hover:bg-primary diration-200 hover:text-black cursor-pointer font-semibold'
-        >
-          Go to Dashboard
+        <Link href='/dashboard'>
+          <div className="mt-8 bg-mineshaft-500 py-2 px-4 rounded-md hover:bg-primary diration-200 hover:text-black font-semibold cursor-default">
+            Go to Dashboard
+          </div>
         </Link>
         <Image
           src='/images/dragon-404.svg'
