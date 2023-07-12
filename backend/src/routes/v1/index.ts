@@ -15,6 +15,7 @@ import password from "./password";
 import integration from "./integration";
 import integrationAuth from "./integrationAuth";
 import secretsFolder from "./secretsFolder";
+import secretScanning from "./secretScanning";
 
 export {
 	signup,
@@ -34,4 +35,5 @@ export {
 	integration,
 	integrationAuth,
 	secretsFolder,
+	secretScanning
 };

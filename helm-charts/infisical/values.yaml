@@ -169,6 +169,53 @@ backendEnvironmentVariables:
   ##
   MONGO_URL: ""
 
+secretScanningGitApp:
+  ## @param backend.enabled Enable git scanning app
+  ##
+  enabled: false
+  ## @param backend.name Backend name
+  ##
+  name: secret-scanning-git-app
+  ## @param backend.fullnameOverride Backend fullnameOverride
+  ##
+  fullnameOverride: ""
+  ## @param backend.podAnnotations Backend pod annotations
+  ##
+  podAnnotations: {}
+  ## @param backend.deploymentAnnotations Backend deployment annotations
+  ##
+  deploymentAnnotations: {}
+  ## @param backend.replicaCount Backend replica count
+  ##
+  replicaCount: 2
+  ## Backend image parameters
+  ##
+  image:
+    ## @param backend.image.repository Backend image repository
+    ##
+    repository: infisical/staging_deployment_secret-scanning-git-app
+    ## @param backend.image.tag Backend image tag
+    ##
+    tag: "latest"
+    ## @param backend.image.pullPolicy Backend image pullPolicy
+    ##
+    pullPolicy: IfNotPresent
+  ## @param backend.kubeSecretRef Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))
+  ##
+  kubeSecretRef: ""
+  ## Backend service
+  ##
+  service:
+    ## @param backend.service.annotations Backend service annotations
+    ##
+    annotations: {}
+    ## @param backend.service.type Backend service type
+    ##
+    type: ClusterIP
+    ## @param backend.service.nodePort Backend service nodePort (used if above type is `NodePort`)
+    ##
+    nodePort: ""
+
 ## @section MongoDB(&reg;) parameters
 ## Documentation : https://github.com/bitnami/charts/blob/main/bitnami/mongodb/values.yaml
 ##
@@ -326,6 +373,11 @@ ingress:
   ##
   backend:
     path: /api
+    pathType: Prefix
+  ## @skip ingress.backend
+  ##
+  secretScanningGitApp:
+    path: /git-app-api
     pathType: Prefix
   ## @param ingress.tls Ingress TLS hosts (matching above hostName)
   ## Replace with your own domain

@@ -34,6 +34,7 @@ import {
   organization as v1OrganizationRouter,
   password as v1PasswordRouter,
   secret as v1SecretRouter,
+  secretScanning as v1SecretScanningRouter,
   secretsFolder as v1SecretsFolder,
   serviceToken as v1ServiceTokenRouter,
   signup as v1SignupRouter,
@@ -42,8 +43,8 @@ import {
   workspace as v1WorkspaceRouter,
 } from "./routes/v1";
 import {
-  signup as v2SignupRouter,
   auth as v2AuthRouter,
+  signup as v2SignupRouter,
   users as v2UsersRouter,
   organizations as v2OrganizationsRouter,
   workspace as v2WorkspaceRouter,
@@ -124,6 +125,7 @@ const main = async () => {
   app.use("/api/v1/integration", v1IntegrationRouter);
   app.use("/api/v1/integration-auth", v1IntegrationAuthRouter);
   app.use("/api/v1/folders", v1SecretsFolder);
+  app.use("/api/v1/secret-scanning", v1SecretScanningRouter);
 
   // v2 routes (improvements)
   app.use("/api/v2/signup", v2SignupRouter);

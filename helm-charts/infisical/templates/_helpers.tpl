@@ -51,6 +51,16 @@ component: {{ .Values.frontend.name | quote }}
 {{ include "infisical.common.matchLabels" . }}
 {{- end -}}
 
+{{- define "infisical.secretScanningGitApp.labels" -}}
+{{ include "infisical.secretScanningGitApp.matchLabels" . }}
+{{ include "infisical.common.metaLabels" . }}
+{{- end -}}
+
+{{- define "infisical.secretScanningGitApp.matchLabels" -}}
+component: {{ .Values.secretScanningGitApp.name | quote }}
+{{ include "infisical.common.matchLabels" . }}
+{{- end -}}
+
 {{- define "infisical.mongodb.labels" -}}
 {{ include "infisical.mongodb.matchLabels" . }}
 {{ include "infisical.common.metaLabels" . }}
@@ -108,6 +118,24 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- printf "%s-%s" .Release.Name .Values.mongodb.name | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
 {{- printf "%s-%s-%s" .Release.Name $name .Values.mongodb.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+
+{{/*
+Create a fully qualified secretScanningGitApp name.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+*/}}
+{{- define "infisical.secretScanningGitApp.fullname" -}}
+{{- if .Values.secretScanningGitApp.fullnameOverride -}}
+{{- .Values.secretScanningGitApp.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Chart.Name .Values.nameOverride -}}
+{{- if contains $name .Release.Name -}}
+{{- printf "%s-%s" .Release.Name .Values.secretScanningGitApp.name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s-%s" .Release.Name $name .Values.secretScanningGitApp.name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
