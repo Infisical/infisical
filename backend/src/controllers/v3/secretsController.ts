@@ -21,22 +21,22 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
     secretPath,
-    authData: req.authData,
+    authData: req.authData
   });
 
   const key = await BotService.getWorkspaceKeyWithBot({
-    workspaceId: new Types.ObjectId(workspaceId),
+    workspaceId: new Types.ObjectId(workspaceId)
   });
 
   return res.status(200).send({
     secrets: secrets.map((secret) => {
       const rep = repackageSecretToRaw({
         secret,
-        key,
+        key
       });
 
       return rep;
-    }),
+    })
   });
 };
 
@@ -58,54 +58,47 @@ export const getSecretByNameRaw = async (req: Request, res: Response) => {
     environment,
     type,
     secretPath,
-    authData: req.authData,
+    authData: req.authData
   });
 
   const key = await BotService.getWorkspaceKeyWithBot({
-    workspaceId: new Types.ObjectId(workspaceId),
+    workspaceId: new Types.ObjectId(workspaceId)
   });
 
   return res.status(200).send({
     secret: repackageSecretToRaw({
       secret,
-      key,
-    }),
+      key
+    })
   });
 };
 
 /**
  * Create secret with name [secretName] in plaintext
  * @param req
- * @param res 
+ * @param res
  */
 export const createSecretRaw = async (req: Request, res: Response) => {
   const { secretName } = req.params;
-  const {
-    workspaceId,
-    environment,
-    type,
-    secretValue,
-    secretComment,
-    secretPath = "/",
-  } = req.body;
+  const { workspaceId, environment, type, secretValue, secretComment, secretPath = "/" } = req.body;
 
   const key = await BotService.getWorkspaceKeyWithBot({
-    workspaceId: new Types.ObjectId(workspaceId),
+    workspaceId: new Types.ObjectId(workspaceId)
   });
 
   const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8({
     plaintext: secretName,
-    key,
+    key
   });
 
   const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8({
     plaintext: secretValue,
-    key,
+    key
   });
 
   const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8({
     plaintext: secretComment,
-    key,
+    key
   });
 
   const secret = await SecretService.createSecret({
@@ -123,14 +116,15 @@ export const createSecretRaw = async (req: Request, res: Response) => {
     secretPath,
     secretCommentCiphertext: secretCommentEncrypted.ciphertext,
     secretCommentIV: secretCommentEncrypted.iv,
-    secretCommentTag: secretCommentEncrypted.tag,
+    secretCommentTag: secretCommentEncrypted.tag
   });
 
   await EventService.handleEvent({
     event: eventPushSecrets({
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
-    }),
+      secretPath
+    })
   });
 
   const secretWithoutBlindIndex = secret.toObject();
@@ -139,10 +133,10 @@ export const createSecretRaw = async (req: Request, res: Response) => {
   return res.status(200).send({
     secret: repackageSecretToRaw({
       secret: secretWithoutBlindIndex,
-      key,
-    }),
+      key
+    })
   });
-}
+};
 
 /**
  * Update secret with name [secretName]
@@ -151,21 +145,15 @@ export const createSecretRaw = async (req: Request, res: Response) => {
  */
 export const updateSecretByNameRaw = async (req: Request, res: Response) => {
   const { secretName } = req.params;
-  const {
-    workspaceId,
-    environment,
-    type,
-    secretValue,
-    secretPath = "/",
-  } = req.body;
+  const { workspaceId, environment, type, secretValue, secretPath = "/" } = req.body;
 
   const key = await BotService.getWorkspaceKeyWithBot({
-    workspaceId: new Types.ObjectId(workspaceId),
+    workspaceId: new Types.ObjectId(workspaceId)
   });
 
   const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8({
     plaintext: secretValue,
-    key,
+    key
   });
 
   const secret = await SecretService.updateSecret({
@@ -177,21 +165,22 @@ export const updateSecretByNameRaw = async (req: Request, res: Response) => {
     secretValueCiphertext: secretValueEncrypted.ciphertext,
     secretValueIV: secretValueEncrypted.iv,
     secretValueTag: secretValueEncrypted.tag,
-    secretPath,
+    secretPath
   });
 
   await EventService.handleEvent({
     event: eventPushSecrets({
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
-    }),
+      secretPath
+    })
   });
 
   return res.status(200).send({
     secret: repackageSecretToRaw({
       secret,
-      key,
-    }),
+      key
+    })
   });
 };
 
@@ -202,12 +191,7 @@ export const updateSecretByNameRaw = async (req: Request, res: Response) => {
  */
 export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
   const { secretName } = req.params;
-  const {
-    workspaceId,
-    environment,
-    type,
-    secretPath = "/",
-  } = req.body;
+  const { workspaceId, environment, type, secretPath = "/" } = req.body;
 
   const { secret } = await SecretService.deleteSecret({
     secretName,
@@ -215,25 +199,26 @@ export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
     environment,
     type,
     authData: req.authData,
-    secretPath,
+    secretPath
   });
 
   await EventService.handleEvent({
     event: eventPushSecrets({
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
-    }),
+      secretPath
+    })
   });
 
   const key = await BotService.getWorkspaceKeyWithBot({
-    workspaceId: new Types.ObjectId(workspaceId),
+    workspaceId: new Types.ObjectId(workspaceId)
   });
 
   return res.status(200).send({
     secret: repackageSecretToRaw({
       secret,
-      key,
-    }),
+      key
+    })
   });
 };
 
@@ -252,11 +237,11 @@ export const getSecrets = async (req: Request, res: Response) => {
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
     secretPath,
-    authData: req.authData,
+    authData: req.authData
   });
 
   return res.status(200).send({
-    secrets,
+    secrets
   });
 };
 
@@ -278,11 +263,11 @@ export const getSecretByName = async (req: Request, res: Response) => {
     environment,
     type,
     secretPath,
-    authData: req.authData,
+    authData: req.authData
   });
 
   return res.status(200).send({
-    secret,
+    secret
   });
 };
 
@@ -306,7 +291,7 @@ export const createSecret = async (req: Request, res: Response) => {
     secretCommentCiphertext,
     secretCommentIV,
     secretCommentTag,
-    secretPath = "/",
+    secretPath = "/"
   } = req.body;
 
   const secret = await SecretService.createSecret({
@@ -324,24 +309,24 @@ export const createSecret = async (req: Request, res: Response) => {
     secretPath,
     secretCommentCiphertext,
     secretCommentIV,
-    secretCommentTag,
+    secretCommentTag
   });
 
   await EventService.handleEvent({
     event: eventPushSecrets({
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
-    }),
+      secretPath
+    })
   });
 
   const secretWithoutBlindIndex = secret.toObject();
   delete secretWithoutBlindIndex.secretBlindIndex;
 
   return res.status(200).send({
-    secret: secretWithoutBlindIndex,
+    secret: secretWithoutBlindIndex
   });
 };
-
 
 /**
  * Update secret with name [secretName]
@@ -357,7 +342,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     secretValueCiphertext,
     secretValueIV,
     secretValueTag,
-    secretPath = "/",
+    secretPath = "/"
   } = req.body;
 
   const secret = await SecretService.updateSecret({
@@ -369,18 +354,19 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     secretValueCiphertext,
     secretValueIV,
     secretValueTag,
-    secretPath,
+    secretPath
   });
 
   await EventService.handleEvent({
     event: eventPushSecrets({
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
-    }),
+      secretPath
+    })
   });
 
   return res.status(200).send({
-    secret,
+    secret
   });
 };
 
@@ -391,12 +377,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
  */
 export const deleteSecretByName = async (req: Request, res: Response) => {
   const { secretName } = req.params;
-  const {
-    workspaceId,
-    environment,
-    type,
-    secretPath = "/",
-  } = req.body;
+  const { workspaceId, environment, type, secretPath = "/" } = req.body;
 
   const { secret } = await SecretService.deleteSecret({
     secretName,
@@ -404,17 +385,18 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
     environment,
     type,
     authData: req.authData,
-    secretPath,
+    secretPath
   });
 
   await EventService.handleEvent({
     event: eventPushSecrets({
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
-    }),
+      secretPath
+    })
   });
 
   return res.status(200).send({
-    secret,
+    secret
   });
 };

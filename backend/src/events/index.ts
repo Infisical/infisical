@@ -1,5 +1,4 @@
-import { eventPushSecrets } from "./secret"
+import { eventPushSecrets } from "./secret";
+import { eventStartIntegration } from "./integration";
 
-export {
-    eventPushSecrets,
-}
+export { eventPushSecrets, eventStartIntegration };
