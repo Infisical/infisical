@@ -83,7 +83,7 @@ const AddProjectMemberDialog = ({
                               <button
                                 type="button"
                                 className="inline-flex justify-center rounded-md py-1 text-sm text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                                onClick={() => router.push(`/settings/org/${router.query.id}`)}
+                                onClick={() => router.push(`/org/${router.query.id}/members`)}
                                 aria-label="add member"
                               />,
                               // eslint-disable-next-line react/jsx-key
@@ -91,7 +91,7 @@ const AddProjectMemberDialog = ({
                                 type="button"
                                 className="ml-1 inline-flex justify-center rounded-md py-1 text-sm text-gray-500 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                                 onClick={() =>
-                                  router.push(`/settings/org/${router.query.id}?invite`)
+                                  router.push(`/org/${router.query.id}/members?action=invite`)
                                 }
                                 aria-label="add member"
                               />
