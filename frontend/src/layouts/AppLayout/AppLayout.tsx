@@ -415,7 +415,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         </MenuItem>
                       </a>
                     </Link>
-                    <Link href={`/project/${currentWorkspace?._id}/secret-scanning`} passHref>
+                    {/* <Link href={`/project/${currentWorkspace?._id}/secret-scanning`} passHref>
                       <a>
                         <MenuItem
                           isSelected={router.asPath === `/project/${currentWorkspace?._id}/secret-scanning`}
@@ -425,7 +425,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           Audit Logs
                         </MenuItem>
                       </a>
-                    </Link>
+                    </Link> */}
                     <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>
                       <a>
                         <MenuItem
