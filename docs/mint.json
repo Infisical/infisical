@@ -235,18 +235,6 @@
       "pages": ["sdks/overview"]
     },
     {
-      "group": "SDKs",
-      "pages": [
-        "sdks/languages/node",
-        "sdks/languages/python",
-        "sdks/languages/java",
-        "sdks/languages/ruby",
-        "sdks/languages/go",
-        "sdks/languages/rust",
-        "sdks/languages/php"
-      ]
-    },
-    {
       "group": "Overview",
       "pages": [
         "api-reference/overview/introduction",
