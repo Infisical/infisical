@@ -61,6 +61,7 @@ export = async (app: Probot) => {
     const { commits, repository, installation, pusher } = payload;
     const [owner, repo] = repository.full_name.split('/');
 
+    console.log(payload)
     const installationLinkToOrgExists = await GitAppOrganizationInstallation.findOne({ installationId: installation.id }).lean()
     if (!installationLinkToOrgExists) {
       return

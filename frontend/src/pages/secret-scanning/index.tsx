@@ -10,7 +10,7 @@ import { RiskStatus } from "../api/secret-scanning/updateRiskStatus";
 
 export default function SecretScanning() {
   const router = useRouter()
-  const { state, installationId} = router.query
+  const queryParams = router.query
   const [integrationEnabled, setIntegrationStatus] = useState(false)
   const [gitRisks, setGitRisks] = useState<GitRisks[]>([]);
   const [selectedRiskStatus, setSelectedRiskStatus] = useState("");
@@ -28,9 +28,9 @@ export default function SecretScanning() {
     }
 
     const linkInstallation = async () => {
-      if (typeof state === "string" && typeof installationId === "string"){
+      if (typeof queryParams.state === "string" && typeof queryParams.installation_id === "string"){
         try {
-          await linkGitAppInstallationWithOrganization(installationId as string, state as string)
+          await linkGitAppInstallationWithOrganization(queryParams.installation_id as string, queryParams.state as string)
           console.log("installation verification complete")
         }catch (e){
           console.log("app installation is stale, start new session", e)
@@ -46,7 +46,7 @@ export default function SecretScanning() {
     fetchInstallationStatus()
     linkInstallation()
     fetchRisks()
-  },[state, installationId])
+  },[queryParams.state, queryParams.installation_id])
 
   const generateNewIntegrationSession = async () => {
     const session = await createNewIntegrationSession(String(localStorage.getItem("orgData.id")))
