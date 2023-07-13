@@ -3,8 +3,7 @@ import { createContext, ReactNode, useContext, useMemo } from "react";
 import { useGetOrgSubscription } from "@app/hooks/api";
 import { SubscriptionPlan } from "@app/hooks/api/types";
 
-import { useWorkspace } from "../WorkspaceContext";
-// import { Subscription } from '@app/hooks/api/workspace/types';
+import { useOrganization } from "../OrganizationContext";
 
 type TSubscriptionContext = {
   subscription?: SubscriptionPlan;
@@ -18,9 +17,10 @@ type Props = {
 };
 
 export const SubscriptionProvider = ({ children }: Props): JSX.Element => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentOrg } = useOrganization();
+
   const { data, isLoading } = useGetOrgSubscription({
-    orgID: currentWorkspace?.organization || ""
+    orgID: currentOrg?._id || ""
   });
 
   // memorize the workspace details for the context
