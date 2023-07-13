@@ -37,7 +37,6 @@ export const handleEventHelper = async ({ event }: { event: Event }) => {
           environment
         });
       }
-      console.log("-------", workspaceId, environment, secretPath);
       triggerWebhook(workspaceId.toString(), environment || "", secretPath || "");
       break;
     case EVENT_START_INTEGRATION:
