@@ -143,7 +143,7 @@ Not sure where to get started? You can:
 - [Slack](https://infisical.com/slack) for discussion with the community and Infisical team.
 - [GitHub](https://github.com/Infisical/infisical) for code, issues, and pull requests
 - [Twitter](https://twitter.com/infisical) for fast news
-- [YouTube](https://www.youtube.com/@infisical_od) for videos on secret management
+- [YouTube](https://www.youtube.com/@infisical_os) for videos on secret management
 - [Blog](https://infisical.com/blog) for secret management insights, articles, tutorials, and updates
 - [Roadmap](https://www.notion.so/infisical/be2d2585a6694e40889b03aef96ea36b?v=5b19a8127d1a4060b54769567a8785fa) for planned features
 
