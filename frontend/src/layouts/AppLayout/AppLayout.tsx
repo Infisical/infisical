@@ -301,7 +301,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         <DropdownMenuItem>Documentation<FontAwesomeIcon icon={faArrowUpRightFromSquare} className="pl-1.5 text-xxs mb-[0.06rem]" /></DropdownMenuItem>
                       </a>
                       <a
-                        href="https://join.slack.com/t/infisical-users/shared_invite/zt-1ye0tm8ab-899qZ6ZbpfESuo6TEikyOQ"
+                        href="https://infisical.com/slack"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="w-full mt-3 text-sm text-mineshaft-300 font-normal leading-[1.2rem] hover:text-mineshaft-100"
