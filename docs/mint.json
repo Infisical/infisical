@@ -178,6 +178,12 @@
     {
       "group": "Integrations",
       "pages": [
+        "integrations/overview"
+      ]
+    },
+    {
+      "group": "Infrastructure Integrations",
+      "pages": [
         "integrations/overview",
         {
           "group": "Docker",
@@ -187,7 +193,12 @@
           ]
         },
         "integrations/platforms/kubernetes",
-        "integrations/frameworks/terraform",
+        "integrations/frameworks/terraform"
+      ]
+    },
+    {
+      "group": "3rd-party Integrations",
+      "pages": [
         {
           "group": "AWS",
           "pages": [
@@ -210,7 +221,12 @@
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",
         "integrations/cicd/circleci",
-        "integrations/cicd/travisci",
+        "integrations/cicd/travisci"
+      ]
+    },
+    {
+      "group": "Framework Integrations",
+      "pages": [
         "integrations/frameworks/spring-boot-maven",
         "integrations/frameworks/react",
         "integrations/frameworks/vue",
