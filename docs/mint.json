@@ -184,7 +184,6 @@
     {
       "group": "Infrastructure Integrations",
       "pages": [
-        "integrations/overview",
         {
           "group": "Docker",
           "pages": [
