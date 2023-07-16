@@ -32,6 +32,7 @@ export default function TerraformCloudCreateIntegrationPage() {
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [targetApp, setTargetApp] = useState("");
   const [secretPath, setSecretPath] = useState("/");
+  const [variableType, setVariableType] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -66,7 +67,7 @@ export default function TerraformCloudCreateIntegrationPage() {
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: null,
         targetEnvironmentId: null,
-        targetService: null,
+        targetService: variableType,
         targetServiceId: null,
         owner: null,
         path: null,
@@ -81,6 +82,11 @@ export default function TerraformCloudCreateIntegrationPage() {
       console.error(err);
     }
   };
+
+  const variableTypes = [
+    { name: "env" },
+    { name: "terraform" }
+  ]
 
   return integrationAuth &&
     workspace &&
@@ -112,6 +118,24 @@ export default function TerraformCloudCreateIntegrationPage() {
             onChange={(evt) => setSecretPath(evt.target.value)}
             placeholder="Provide a path, default is /"
           />
+        </FormControl>
+        <FormControl label="Variable Type" className="mt-4">
+          <Select
+            value={variableType}
+            onValueChange={(val) => setVariableType(val)}
+            className="w-full border border-mineshaft-500"
+          >
+            {
+              variableTypes.map((variable) => (
+                <SelectItem
+                  value={variable.name}
+                  key={`target-app-${variable.name}`}
+                >
+                  {variable.name}
+                </SelectItem>
+              ))
+            }
+          </Select>
         </FormControl>
         <FormControl label="Terraform Cloud Project" className="mt-4">
           <Select
