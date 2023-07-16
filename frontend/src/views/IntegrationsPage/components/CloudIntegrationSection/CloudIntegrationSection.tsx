@@ -31,6 +31,8 @@ export const CloudIntegrationSection = ({
 
   const isEmpty = !isLoading && !cloudIntegrations?.length;
 
+  const sortedCloudIntegrations = cloudIntegrations.sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <div>
       <div className="m-4 mt-7 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">
@@ -43,7 +45,7 @@ export const CloudIntegrationSection = ({
             <Skeleton className="h-32" key={`cloud-integration-skeleton-${index + 1}`} />
           ))}
         {!isLoading &&
-          cloudIntegrations?.map((cloudIntegration) => (
+          sortedCloudIntegrations?.map((cloudIntegration) => (
             <div
               onKeyDown={() => null}
               role="button"
