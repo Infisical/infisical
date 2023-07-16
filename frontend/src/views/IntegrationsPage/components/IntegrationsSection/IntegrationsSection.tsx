@@ -106,7 +106,8 @@ export const IntegrationsSection = ({
                 {(integration.integration === "vercel" ||
                   integration.integration === "netlify" ||
                   integration.integration === "railway" ||
-                  integration.integration === "gitlab") && (
+                  integration.integration === "gitlab" ||
+                  integration.integration === "bitbucket") && (
                   <div className="ml-4 flex flex-col">
                     <FormLabel label="Target Environment" />
                     <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">

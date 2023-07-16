@@ -81,6 +81,7 @@ router.get(
 	}),
 	param("integrationAuthId"),
 	query("teamId"),
+	query("workspaceSlug"),
 	validateRequest,
 	integrationAuthController.getIntegrationAuthApps
 );
@@ -139,6 +140,19 @@ router.get(
 	query("appId").exists().isString(),
 	validateRequest,
 	integrationAuthController.getIntegrationAuthRailwayServices
+);
+
+router.get(
+	"/:integrationAuthId/bitbucket/workspaces",
+	requireAuth({
+        acceptedAuthModes: [AUTH_MODE_JWT],
+    }),
+	requireIntegrationAuthorizationAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+	}),
+	param("integrationAuthId"),
+	validateRequest,
+	integrationAuthController.getIntegrationAuthBitBucketWorkspaces
 );
 
 router.delete(

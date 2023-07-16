@@ -3,13 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace/queries";
-import { App, Environment, IntegrationAuth, Service, Team } from "./types";
+import { App, BitBucketWorkspace, Environment, IntegrationAuth, Service, Team } from "./types";
 
 const integrationAuthKeys = {
   getIntegrationAuthById: (integrationAuthId: string) =>
     [{ integrationAuthId }, "integrationAuth"] as const,
-  getIntegrationAuthApps: (integrationAuthId: string, teamId?: string) =>
-    [{ integrationAuthId, teamId }, "integrationAuthApps"] as const,
+  getIntegrationAuthApps: (integrationAuthId: string, teamId?: string, workspaceSlug?: string) =>
+    [{ integrationAuthId, teamId, workspaceSlug }, "integrationAuthApps"] as const,
   getIntegrationAuthTeams: (integrationAuthId: string) =>
     [{ integrationAuthId }, "integrationAuthTeams"] as const,
   getIntegrationAuthVercelBranches: ({
@@ -32,7 +32,9 @@ const integrationAuthKeys = {
   }: {
     integrationAuthId: string;
     appId: string;
-  }) => [{ integrationAuthId, appId }, "integrationAuthRailwayServices"] as const
+  }) => [{ integrationAuthId, appId }, "integrationAuthRailwayServices"] as const,
+  getIntegrationAuthBitBucketWorkspaces: (integrationAuthId: string) =>
+    [{ integrationAuthId }, "integrationAuthTeams"] as const,
 };
 
 const fetchIntegrationAuthById = async (integrationAuthId: string) => {
@@ -44,12 +46,22 @@ const fetchIntegrationAuthById = async (integrationAuthId: string) => {
 
 const fetchIntegrationAuthApps = async ({
   integrationAuthId,
-  teamId
+  teamId,
+  workspaceSlug
 }: {
   integrationAuthId: string;
   teamId?: string;
+  workspaceSlug?: string;
 }) => {
-  const searchParams = new URLSearchParams(teamId ? { teamId } : undefined);
+  const params: Record<string, string> = {}
+  if (teamId) {
+    params.teamId = teamId
+  }
+  if (workspaceSlug) {
+    params.workspaceSlug = workspaceSlug
+  }
+
+  const searchParams = new URLSearchParams(params);
   const { data } = await apiRequest.get<{ apps: App[] }>(
     `/api/v1/integration-auth/${integrationAuthId}/apps`,
     { params: searchParams }
@@ -127,6 +139,13 @@ const fetchIntegrationAuthRailwayServices = async ({
   return services;
 };
 
+const fetchIntegrationAuthBitBucketWorkspaces = async (integrationAuthId: string) => {
+  const { data: { workspaces } } = await apiRequest.get<{ workspaces: BitBucketWorkspace[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/bitbucket/workspaces`
+  );
+  return workspaces;
+};
+
 export const useGetIntegrationAuthById = (integrationAuthId: string) => {
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthById(integrationAuthId),
@@ -137,17 +156,20 @@ export const useGetIntegrationAuthById = (integrationAuthId: string) => {
 
 export const useGetIntegrationAuthApps = ({
   integrationAuthId,
-  teamId
+  teamId,
+  workspaceSlug,
 }: {
   integrationAuthId: string;
   teamId?: string;
+  workspaceSlug?: string;
 }) => {
   return useQuery({
-    queryKey: integrationAuthKeys.getIntegrationAuthApps(integrationAuthId, teamId),
+    queryKey: integrationAuthKeys.getIntegrationAuthApps(integrationAuthId, teamId, workspaceSlug),
     queryFn: () =>
       fetchIntegrationAuthApps({
         integrationAuthId,
-        teamId
+        teamId,
+        workspaceSlug
       }),
     enabled: true
   });
@@ -220,6 +242,14 @@ export const useGetIntegrationAuthRailwayServices = ({
         integrationAuthId,
         appId
       }),
+    enabled: true
+  });
+};
+
+export const useGetIntegrationAuthBitBucketWorkspaces = (integrationAuthId: string) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthBitBucketWorkspaces(integrationAuthId),
+    queryFn: () => fetchIntegrationAuthBitBucketWorkspaces(integrationAuthId),
     enabled: true
   });
 };

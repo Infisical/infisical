@@ -14,6 +14,8 @@ import {
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_BITBUCKET,
+  INTEGRATION_BITBUCKET_API_URL,
   INTEGRATION_CHECKLY,
   INTEGRATION_CHECKLY_API_URL,
   INTEGRATION_CIRCLECI,
@@ -202,7 +204,14 @@ const syncSecrets = async ({
           accessToken
       });
       break;
-    }
+    case INTEGRATION_BITBUCKET:
+      await syncSecretsBitBucket({
+        integration,
+        secrets,
+        accessToken,
+      });
+      break;
+  }
 };
 
 /**
@@ -1935,6 +1944,124 @@ const syncSecretsCloudflarePages = async ({
           },
       }
   );
+}
+
+/**
+ * Sync/push [secrets] to BitBucket repo with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for BitBucket integration
+ */
+const syncSecretsBitBucket = async ({
+  integration,
+  secrets,
+  accessToken,
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  interface VariablesResponse {
+    size: number;
+    page: number;
+    pageLen: number;
+    next: string;
+    previous: string;
+    values: Array<Variable>;
+  }
+
+  interface Variable {
+    type: string;
+    uuid: string;
+    key: string;
+    value: string;
+    secured: boolean;
+  }
+
+  const existingSecrets: Variable[] = [];
+  const workspaceSlug = integration.targetEnvironmentId
+  const repoSlug = integration.appId
+  let hasNextPage = true;
+  let variablesUrl = `${INTEGRATION_BITBUCKET_API_URL}/2.0/repositories/${workspaceSlug}/${repoSlug}/pipelines_config/variables`
+
+  // Fetch all repository variables
+  while (hasNextPage) {
+    const { data }: { data: VariablesResponse } = await standardRequest.get(
+        variablesUrl,
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept": "application/json",
+            },
+        }
+    );
+
+    if (data?.values.length > 0) {
+      data.values.forEach((variable) => {
+        existingSecrets.push(variable)
+      })
+    }
+
+    if (data.next) {
+      variablesUrl = data.next
+    } else {
+      hasNextPage = false
+    }
+  }
+
+  Object.keys(secrets).forEach(async (key) => {
+    const existingSecret = existingSecrets.find((secret) => secret.key.toUpperCase() === key.toUpperCase());
+    if (existingSecret) {
+      // Update existing secrets
+      await standardRequest.put(
+          `${variablesUrl}/${existingSecret.uuid}`,
+          {
+            key,
+            value: secrets[key],
+            secured: true
+          },
+          {
+              headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Accept": "application/json",
+              },
+          }
+      );
+    } else {
+      // Create new secrets
+      await standardRequest.post(
+          variablesUrl,
+          {
+            key,
+            value: secrets[key],
+            secured: true
+          },
+          {
+              headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Accept": "application/json",
+              },
+          }
+      );
+    }
+  })
+
+  // Delete secrets
+  existingSecrets.forEach(async (existingSecret) => {
+    if (!(existingSecret.key in secrets) && existingSecret.secured) {
+      await standardRequest.delete(
+        `${variablesUrl}/${existingSecret.uuid}`,
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept": "application/json",
+            },
+        }
+    );
+    }
+  })
 }
 
 export { syncSecrets };

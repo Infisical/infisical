@@ -6,6 +6,7 @@ import {
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_BITBUCKET,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_FLYIO,
@@ -25,7 +26,25 @@ import {
 export interface IIntegrationAuth extends Document {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: "heroku" | "vercel" | "netlify" | "github" | "gitlab" | "render" | "railway" | "flyio" | "azure-key-vault" | "laravel-forge" | "circleci" | "travisci" | "supabase" | "aws-parameter-store" | "aws-secret-manager" | "checkly" | "cloudflare-pages";
+  integration:
+    | "heroku"
+    | "vercel"
+    | "netlify"
+    | "github"
+    | "gitlab"
+    | "render"
+    | "railway"
+    | "flyio"
+    | "azure-key-vault"
+    | "laravel-forge"
+    | "circleci"
+    | "travisci"
+    | "supabase"
+    | "aws-parameter-store"
+    | "aws-secret-manager"
+    | "checkly"
+    | "cloudflare-pages"
+    | "bitbucket";
   teamId: string;
   accountId: string;
   url: string;
@@ -71,6 +90,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_SUPABASE,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
+        INTEGRATION_BITBUCKET
       ],
       required: true,
     },

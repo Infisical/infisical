@@ -5,6 +5,8 @@ import {
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_BITBUCKET,
+  INTEGRATION_BITBUCKET_API_URL,
   INTEGRATION_CHECKLY,
   INTEGRATION_CHECKLY_API_URL,
   INTEGRATION_CIRCLECI,
@@ -54,11 +56,13 @@ const getApps = async ({
   accessToken,
   accessId,
   teamId,
+  workspaceSlug,
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
   accessId?: string;
   teamId?: string;
+  workspaceSlug?: string;
 }) => {
   let apps: App[] = [];
   switch (integrationAuth.integration) {
@@ -145,6 +149,11 @@ const getApps = async ({
         accountId: accessId
       })
       break;
+    case INTEGRATION_BITBUCKET:
+      apps = await getAppsBitBucket({
+        accessToken,
+        workspaceSlug
+      })
   }
 
   return apps;
@@ -719,6 +728,80 @@ const getAppsCloudflarePages = async ({
         };
     });
     return apps;
+}
+
+/**
+ * Return list of repositories for the BitBucket integration based on provided BitBucket workspace
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for BitBucket API
+ * @param {String} obj.workspaceSlug - Workspace identifier for fetching BitBucket repositories
+ * @returns {Object[]} apps - BitBucket repositories
+ * @returns {String} apps.name - name of BitBucket repository
+ */
+const getAppsBitBucket = async ({ 
+  accessToken,
+  workspaceSlug,
+}: {
+  accessToken: string;
+  workspaceSlug?: string;
+}) => {
+  interface RepositoriesResponse {
+    size: number;
+    page: number;
+    pageLen: number;
+    next: string;
+    previous: string;
+    values: Array<Repository>;
+  }
+
+  interface Repository {
+    type: string;
+    uuid: string;
+    name: string;
+    is_private: boolean;
+    created_on: string;
+    updated_on: string;
+  }
+
+  if (!workspaceSlug) {
+    return []
+  }
+
+  const repositories: Repository[] = [];
+  let hasNextPage = true;
+  let repositoriesUrl = `${INTEGRATION_BITBUCKET_API_URL}/2.0/repositories/${workspaceSlug}`
+
+  while (hasNextPage) {
+    const { data }: { data: RepositoriesResponse } = await standardRequest.get(
+        repositoriesUrl,
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept": "application/json",
+            },
+        }
+    );
+
+    if (data?.values.length > 0) {
+      data.values.forEach((repository) => {
+        repositories.push(repository)
+      })
+    }
+
+    if (data.next) {
+      repositoriesUrl = data.next
+    } else {
+      hasNextPage = false
+    }
+  }
+
+  const apps = repositories.map((repository) => {
+      return {
+          name: repository.name,
+          appId: repository.uuid,
+      };
+  });
+  return apps;
 }
 
 export { getApps };
