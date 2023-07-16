@@ -72,7 +72,7 @@ export const getCurrentOrganizationInstallationStatus = async (req: Request, res
 
 export const getRisksForOrganization = async (req: Request, res: Response) => {
   const { organizationId } = req.params
-  const risks = await GitRisks.find({ organization: organizationId, status: STATUS_UNRESOLVED }).lean()
+  const risks = await GitRisks.find({ organization: organizationId, status: STATUS_UNRESOLVED }).sort({ createdAt: -1 }).lean()
   res.json({
     risks: risks
   })
