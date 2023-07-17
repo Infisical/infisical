@@ -18,7 +18,11 @@ export default function SecretScanning() {
     const linkInstallation = async () => {
       if (typeof queryParams.state === "string" && typeof queryParams.installation_id === "string"){
         try {
-          await linkGitAppInstallationWithOrganization(queryParams.installation_id as string, queryParams.state as string)
+          const isLinked = await linkGitAppInstallationWithOrganization(queryParams.installation_id as string, queryParams.state as string)
+          if (isLinked){
+            router.reload()
+          }
+          
           console.log("installation verification complete")
         }catch (e){
           console.log("app installation is stale, start new session", e)
