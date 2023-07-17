@@ -41,8 +41,8 @@ import {
   signup as v1SignupRouter,
   userAction as v1UserActionRouter,
   user as v1UserRouter,
-  workspace as v1WorkspaceRouter,
-  webhooks as v1WebhooksRouter
+  webhooks as v1WebhooksRouter,
+  workspace as v1WorkspaceRouter
 } from "./routes/v1";
 import {
   auth as v2AuthRouter,
@@ -105,7 +105,7 @@ const main = async () => {
       smee.start()
     }
 
-    app.use(createNodeMiddleware(GithubSecretScanningService, { probot, webhooksPath: "/ss-webhook" })); // secret scanning webhook
+    app.use(createNodeMiddleware(GithubSecretScanningService, { probot, webhooksPath: "api/ss-webhook" })); // secret scanning webhook
   }
 
   if ((await getNodeEnv()) === "production") {
