@@ -67,7 +67,7 @@ export const FolderSection = ({
                       ariaLabel="delete"
                       onClick={() => handleFolderDelete(id, name)}
                     >
-                      <FontAwesomeIcon icon={faXmark} />
+                      <FontAwesomeIcon icon={faXmark} size="lg" />
                     </IconButton>
                   </Tooltip>
                 </div>
