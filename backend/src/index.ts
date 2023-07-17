@@ -105,7 +105,7 @@ const main = async () => {
       smee.start()
     }
 
-    app.use(createNodeMiddleware(GithubSecretScanningService, { probot, webhooksPath: "api/ss-webhook" })); // secret scanning webhook
+    app.use(createNodeMiddleware(GithubSecretScanningService, { probot, webhooksPath: "/ss-webhook" })); // secret scanning webhook
   }
 
   if ((await getNodeEnv()) === "production") {
