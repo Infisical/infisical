@@ -92,6 +92,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "cloudflare-pages":
         link = `${window.location.origin}/integrations/cloudflare-pages/authorize`;
         break;
+      case "windmill":
+        link = `${window.location.origin}/integrations/windmill/authorize`;
+        break;
       default:
         break;
     }
