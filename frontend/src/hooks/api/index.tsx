@@ -13,4 +13,5 @@ export * from "./serviceTokens";
 export * from "./subscriptions";
 export * from "./tags";
 export * from "./users";
+export * from "./webhooks";
 export * from "./workspace";

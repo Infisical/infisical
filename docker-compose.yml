@@ -41,19 +41,19 @@ services:
     networks:
       - infisical
 
-  secret-scanning-git-app:
-    container_name: infisical-secret-scanning-git-app
-    restart: unless-stopped
-    depends_on:
-      - backend
-      - frontend
-      - mongo
-    ports:
-      - "3000:3001"
-    image: infisical/staging_deployment_secret-scanning-git-app
-    env_file: .env
-    networks:
-      - infisical
+  # secret-scanning-git-app:
+  #   container_name: infisical-secret-scanning-git-app
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - backend
+  #     - frontend
+  #     - mongo
+  #   ports:
+  #     - "3000:3001"
+  #   image: infisical/staging_deployment_secret-scanning-git-app
+  #   env_file: .env
+  #   networks:
+  #     - infisical
 
   mongo:
     container_name: infisical-mongo

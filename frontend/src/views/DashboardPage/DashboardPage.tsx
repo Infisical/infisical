@@ -36,7 +36,7 @@ import {
   UpgradePlanModal
 } from "@app/components/v2";
 import { leaveConfirmDefaultMessage } from "@app/const";
-import { useOrganization, useSubscription,useWorkspace } from "@app/context";
+import { useOrganization, useSubscription, useWorkspace } from "@app/context";
 import { useLeaveConfirm, usePopUp, useToggle } from "@app/hooks";
 import {
   useBatchSecretsOp,
@@ -340,9 +340,9 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     }
   };
 
-  const onAppendSecret = () => { 
+  const onAppendSecret = () => {
     setSearchFilter("");
-    append(DEFAULT_SECRET_VALUE)
+    append(DEFAULT_SECRET_VALUE);
   };
 
   const onSaveSecret = async ({ secrets: userSec = [], isSnapshotMode }: FormData) => {
@@ -364,6 +364,10 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     );
     // type check
     if (!selectedEnv?.slug) return;
+    if (batchedSecret.length === 0) {
+      reset();
+      return;
+    }
     try {
       await batchSecretOp({
         requests: batchedSecret,
@@ -636,7 +640,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                       handlePopUpOpen("secretSnapshots");
                       return;
                     }
-                    
+
                     handlePopUpOpen("upgradePlan");
                   }}
                   leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
@@ -905,7 +909,11 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text={subscription.slug === null ? "You can perform point-in-time recovery under an Enterprise license" : "You can perform point-in-time recovery if you switch to Infisical's Team plan"}
+          text={
+            subscription.slug === null
+              ? "You can perform point-in-time recovery under an Enterprise license"
+              : "You can perform point-in-time recovery if you switch to Infisical's Team plan"
+          }
         />
       )}
     </div>

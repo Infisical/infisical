@@ -5,7 +5,6 @@ import { useRouter } from "next/router";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
 import addUserToOrg from "@app/pages/api/organization/addUserToOrg";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
 
 import { Button, EmailServiceSetupModal } from "../v2";
 
@@ -21,9 +20,7 @@ export default function TeamInviteStep(): JSX.Element {
 
   // Redirect user to the getting started page
   const redirectToHome = async () => {
-    const userOrgs = await getOrganizations();
-    const userOrg = userOrgs[0]._id;
-    router.push(`/org/${userOrg?._id}/overview`);
+    router.push(`/org/${localStorage.getItem("orgData.id")}/overview`);
   };
 
   const inviteUsers = async ({ emails: inviteEmails }: { emails: string }) => {

@@ -48,7 +48,7 @@ var vaultSetCmd = &cobra.Command{
 				return
 			}
 
-			fmt.Printf("\nSuccessfully, switched vault backend from [%s] to [%s]. Please login in again to store your login details in the new vault with [infisical login]", currentVaultBackend, wantedVaultTypeName)
+			fmt.Printf("\nSuccessfully, switched vault backend from [%s] to [%s]. Please login in again to store your login details in the new vault with [infisical login]\n", currentVaultBackend, wantedVaultTypeName)
 
 			Telemetry.CaptureEvent("cli-command:vault set", posthog.NewProperties().Set("currentVault", currentVaultBackend).Set("wantedVault", wantedVaultTypeName).Set("version", util.CLI_VERSION))
 		} else {
@@ -81,7 +81,7 @@ func printAvailableVaultBackends() {
 
 	Telemetry.CaptureEvent("cli-command:vault", posthog.NewProperties().Set("currentVault", currentVaultBackend).Set("version", util.CLI_VERSION))
 
-	fmt.Printf("\n\nYou are currently using [%s] vault to store your login credentials", string(currentVaultBackend))
+	fmt.Printf("\n\nYou are currently using [%s] vault to store your login credentials\n", string(currentVaultBackend))
 }
 
 // Checks if the vault that the user wants to switch to is a valid available vault

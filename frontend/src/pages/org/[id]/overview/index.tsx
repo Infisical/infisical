@@ -379,7 +379,7 @@ export default function Organization() {
             icon: faSlack,
             time: "1 min",
             userAction: "slack_cta_clicked",
-            link: "https://join.slack.com/t/infisical-users/shared_invite/zt-1ye0tm8ab-899qZ6ZbpfESuo6TEikyOQ"
+            link: "https://infisical.com/slack"
           })}</div>
         </div>
         {orgWorkspaces.length !== 0 && <div className="group text-mineshaft-100 relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 pl-2 pr-2 pt-4 pb-2 shadow-xl duration-200">

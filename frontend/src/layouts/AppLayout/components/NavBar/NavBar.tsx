@@ -180,7 +180,7 @@ export const Navbar = () => {
                   onKeyDown={() => null}
                   role="button"
                   tabIndex={0}
-                  onClick={() => router.push(`/settings/personal/${router.query.id}`)}
+                  onClick={() => router.push("/personal-settings")}
                   className="mx-1 my-1 flex cursor-pointer flex-row items-center rounded-md px-1 hover:bg-white/5"
                 >
                   <div className="flex h-8 w-9 items-center justify-center rounded-full bg-white/10 text-gray-300">

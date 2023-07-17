@@ -80,7 +80,7 @@ type TAddProjectFormData = yup.InferType<typeof formSchema>;
 export const AppLayout = ({ children }: LayoutProps) => {
   const router = useRouter();
   const { createNotification } = useNotificationContext();
-  const { mutateTrialAsync } = useGetOrgTrialUrl();
+  const { mutateAsync } = useGetOrgTrialUrl();
 
   // eslint-disable-next-line prefer-const
   const { workspaces, currentWorkspace } = useWorkspace();
@@ -301,7 +301,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         <DropdownMenuItem>Documentation<FontAwesomeIcon icon={faArrowUpRightFromSquare} className="pl-1.5 text-xxs mb-[0.06rem]" /></DropdownMenuItem>
                       </a>
                       <a
-                        href="https://join.slack.com/t/infisical-users/shared_invite/zt-1ye0tm8ab-899qZ6ZbpfESuo6TEikyOQ"
+                        href="https://infisical.com/slack"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="w-full mt-3 text-sm text-mineshaft-300 font-normal leading-[1.2rem] hover:text-mineshaft-100"
@@ -414,6 +414,17 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         </MenuItem>
                       </a>
                     </Link>
+                    {/* <Link href={`/project/${currentWorkspace?._id}/secret-scanning`} passHref>
+                      <a>
+                        <MenuItem
+                          isSelected={router.asPath === `/project/${currentWorkspace?._id}/secret-scanning`}
+                          // icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
+                          icon="system-outline-82-extension"
+                        >
+                          Audit Logs
+                        </MenuItem>
+                      </a>
+                    </Link> */}
                     <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>
                       <a>
                         <MenuItem
@@ -569,7 +580,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       if (!subscription || !currentOrg) return;
               
                       // direct user to start pro trial
-                      const url = await mutateTrialAsync({
+                      const url = await mutateAsync({
                         orgId: currentOrg._id,
                         success_url: window.location.href
                       });
