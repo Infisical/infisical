@@ -408,7 +408,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <a>
                         <MenuItem
                           isSelected={router.asPath === `/project/${currentWorkspace?._id}/audit-logs`}
-                          // icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
                           icon="system-outline-168-view-headline"
                         >
                           Audit Logs
@@ -470,6 +469,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             icon="system-outline-96-groups"
                           >
                             Members
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      <Link href={`/org/${currentOrg?._id}/secret-scanning`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath === `/org/${currentOrg?._id}/secret-scanning`}
+                            icon="system-outline-69-document-scan"
+                          >
+                            Secret Scanning
                           </MenuItem>
                         </a>
                       </Link>

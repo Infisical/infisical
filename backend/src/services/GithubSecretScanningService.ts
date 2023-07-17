@@ -1,15 +1,14 @@
 import { Probot } from "probot";
 import { exec } from "child_process";
-import { writeFile, readFile, rm, mkdir, } from "fs";
+import { mkdir, readFile, rm, writeFile } from "fs";
 import { tmpdir } from "os";
 import { join } from "path"
-import mongoose from "mongoose";
-import GitRisks, { STATUS_RESOLVED_FALSE_POSITIVE } from "./models/gitRisks";
-import GitAppOrganizationInstallation from "./models/gitAppOrganizationInstallation";
-import { sendMail, setTransporter } from "./helper/nodemailer";
-import { initSmtp } from "./service/smtp";
-import MembershipOrg, { ADMIN, OWNER } from "./models/membershipOrg";
-import User from "./models/user";
+import GitRisks from "../models/gitRisks";
+import GitAppOrganizationInstallation from "../models/gitAppOrganizationInstallation";
+import MembershipOrg from "../models/membershipOrg";
+import { ADMIN, OWNER } from "../variables";
+import User from "../models/user";
+import { sendMail } from "../helpers";
 
 type SecretMatch = {
   Description: string;
@@ -30,19 +29,10 @@ type SecretMatch = {
   Tags: string[];
   RuleID: string;
   Fingerprint: string;
+  FingerPrintWithoutCommitId: string
 };
 
-export = async (app: Probot) => {
-  // connect to DB
-  initDatabase()
-
-  setTransporter(await initSmtp());
-
-  app.on("installation.created", async (context) => {
-    const { payload } = context;
-    // console.log("payload==>", payload.installation.repository_selection)
-  })
-
+export default async (app: Probot) => {
   app.on("installation.deleted", async (context) => {
     const { payload } = context;
     const { installation, repositories } = payload;
@@ -50,8 +40,10 @@ export = async (app: Probot) => {
       await GitRisks.deleteMany({ installationId: installation.id })
       await GitAppOrganizationInstallation.deleteOne({ installationId: installation.id })
     } else {
-      for (const repository of repositories) {
-        await GitRisks.deleteMany({ repositoryId: repository.id })
+      if (repositories) {
+        for (const repository of repositories) {
+          await GitRisks.deleteMany({ repositoryId: repository.id })
+        }
       }
     }
   })
@@ -59,9 +51,13 @@ export = async (app: Probot) => {
   app.on("push", async (context) => {
     const { payload } = context;
     const { commits, repository, installation, pusher } = payload;
-    const [owner, repo] = repository.full_name.split('/');
+    const [owner, repo] = repository.full_name.split("/");
 
-    const installationLinkToOrgExists = await GitAppOrganizationInstallation.findOne({ installationId: installation.id }).lean()
+    if (!commits || !repository || !installation || !pusher) {
+      return
+    }
+
+    const installationLinkToOrgExists = await GitAppOrganizationInstallation.findOne({ installationId: installation?.id }).lean()
     if (!installationLinkToOrgExists) {
       return
     }
@@ -78,31 +74,30 @@ export = async (app: Probot) => {
           });
 
           const data: any = fileContentsResponse.data;
-          const fileContent = Buffer.from(data.content, 'base64').toString();
+          const fileContent = Buffer.from(data.content, "base64").toString();
 
-          const findings = await scanContentAndGetFindings(`\n${fileContent}`) // to count lines correctly
+          const findings = await scanContentAndGetFindings(`\n${fileContent}`) // extra line to count lines correctly
 
           for (const finding of findings) {
-            const fingerPrint = `${commit.id}:${filepath}:${finding.RuleID}:${finding.StartLine}`
-            finding.Fingerprint = fingerPrint
+            const fingerPrintWithCommitId = `${commit.id}:${filepath}:${finding.RuleID}:${finding.StartLine}`
+            const fingerPrintWithoutCommitId = `${filepath}:${finding.RuleID}:${finding.StartLine}`
+            finding.Fingerprint = fingerPrintWithCommitId
+            finding.FingerPrintWithoutCommitId = fingerPrintWithoutCommitId
             finding.Commit = commit.id
             finding.File = filepath
             finding.Author = commit.author.name
-            finding.Email = commit.author.email
-            allFindingsByFingerprint[fingerPrint] = finding
+            finding.Email = commit?.author?.email ? commit?.author?.email : ""
+
+            allFindingsByFingerprint[fingerPrintWithCommitId] = finding
           }
 
         } catch (error) {
-          console.error(`Error fetching content for ${filepath}`, error);
+          console.error(`Error fetching content for ${filepath}`, error); // eslint-disable-line
         }
       }
     }
 
-
-
     // change to update
-    const noneFalsePositiveFindings = {}
-
     for (const key in allFindingsByFingerprint) {
       const risk = await GitRisks.findOneAndUpdate({ fingerprint: allFindingsByFingerprint[key].Fingerprint },
         {
@@ -114,11 +109,6 @@ export = async (app: Probot) => {
         }, {
         upsert: true
       }).lean()
-
-      if (risk.status != STATUS_RESOLVED_FALSE_POSITIVE) {
-        noneFalsePositiveFindings[key] = { ...convertKeysToLowercase(allFindingsByFingerprint[key]) }
-      }
-
     }
     // get emails of admins
     const adminsOfWork = await MembershipOrg.find({
@@ -141,36 +131,21 @@ export = async (app: Probot) => {
     // TODO
     // don't notify if the risk is marked as false positive
 
+    // loop through each finding and check if the finger print without commit has a status of false positive, if so don't add it to the list of risks that need to be notified 
+
+
+
+
     await sendMail({
       template: "secretLeakIncident.handlebars",
       subjectLine: `Incident alert: leaked secrets found in Github repository ${repository.full_name}`,
-      recipients: [pusher.email, ...adminOrOwnerEmails],
+      recipients: ["pusher.email", ...adminOrOwnerEmails],
       substitutions: {
         numberOfSecrets: Object.keys(allFindingsByFingerprint).length,
         pusher_email: pusher.email,
         pusher_name: pusher.name
       }
     });
-  });
-
-  app.on(['pull_request.opened', 'pull_request.synchronize'], async (context) => {
-    const { payload } = context;
-    const { pull_request } = payload
-    if (false) {
-      const check = {
-        owner: pull_request.head.repo.owner.login,
-        repo: pull_request.head.repo.name,
-        name: 'Secret Detection',
-        head_sha: pull_request.head.sha,
-        status: 'completed',
-        conclusion: 'failure',
-        output: {
-          title: `X Secrets detected`,
-          summary: 'We detected potential leaked secret(s) in your pull request.',
-        },
-      };
-      return context.octokit.checks.create(check);
-    }
   });
 };
 
@@ -254,28 +229,13 @@ function deleteTempFolder(folderPath: string): Promise<void> {
   });
 }
 
-const initDatabase = async () => {
-  try {
-    await mongoose.connect(process.env.MONGO_URL);
-    // allow empty strings to pass the required validator
-    mongoose.Schema.Types.String.checkRequired(v => typeof v === "string");
-
-    console.log("Database connection established");
-
-  } catch (err) {
-    console.log(`Unable to establish Database connection due to the error.\n${err}`);
-  }
-
-  return mongoose.connection;
-}
-
 function convertKeysToLowercase<T>(obj: T): T {
   const convertedObj = {} as T;
 
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const lowercaseKey = key.charAt(0).toLowerCase() + key.slice(1);
-      convertedObj[lowercaseKey] = obj[key];
+      convertedObj[lowercaseKey as keyof T] = obj[key];
     }
   }
 

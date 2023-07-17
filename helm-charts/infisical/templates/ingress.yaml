@@ -44,13 +44,6 @@ spec:
               name: {{ include "infisical.backend.fullname" . }}
               port:
                 number: 4000
-        - path: {{ $ingress.secretScanningGitApp.path }}
-          pathType: {{ $ingress.secretScanningGitApp.pathType }}
-          backend:
-            service:
-              name: {{ include "infisical.secretScanningGitApp.fullname" . }}
-              port:
-                number: 3001
       {{- if $ingress.hostName }}
       host: {{ $ingress.hostName }}
       {{- end }}

@@ -5,11 +5,12 @@ import express from "express";
 require("express-async-errors");
 import helmet from "helmet";
 import cors from "cors";
-import { DatabaseService } from "./services";
+import { DatabaseService, GithubSecretScanningService } from "./services";
 import { EELicenseService } from "./ee/services";
 import { setUpHealthEndpoint } from "./services/health";
 import cookieParser from "cookie-parser";
 import swaggerUi = require("swagger-ui-express");
+import { Probot, createNodeMiddleware } from "probot";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const swaggerFile = require("../spec.json");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -45,9 +46,9 @@ import {
 } from "./routes/v1";
 import {
   auth as v2AuthRouter,
+  organizations as v2OrganizationsRouter,
   signup as v2SignupRouter,
   users as v2UsersRouter,
-  organizations as v2OrganizationsRouter,
   workspace as v2WorkspaceRouter,
   secret as v2SecretRouter, // begin to phase out
   secrets as v2SecretsRouter,
@@ -66,10 +67,12 @@ import { healthCheck } from "./routes/status";
 import { getLogger } from "./utils/logger";
 import { RouteNotFoundError } from "./utils/errors";
 import { requestErrorHandler } from "./middleware/requestErrorHandler";
-import { getNodeEnv, getPort, getSiteURL } from "./config";
+import { getNodeEnv, getPort, getSecretScanningGitAppId, getSecretScanningPrivateKey, getSecretScanningWebhookProxy, getSecretScanningWebhookSecret, getSiteURL } from "./config";
 import { setup } from "./utils/setup";
+const SmeeClient = require('smee-client') // eslint-disable-line
 
 const main = async () => {
+
   await setup();
 
   await EELicenseService.initGlobalFeatureSet();
@@ -84,6 +87,26 @@ const main = async () => {
       origin: await getSiteURL()
     })
   );
+
+  if (await getSecretScanningGitAppId()) {
+    const probot = new Probot({
+      appId: await getSecretScanningGitAppId(),
+      privateKey: await getSecretScanningPrivateKey(),
+      secret: await getSecretScanningWebhookSecret(),
+    });
+
+    if ((await getNodeEnv()) != "production") {
+      const smee = new SmeeClient({
+        source: await getSecretScanningWebhookProxy(),
+        target: "http://backend:4000/ss-webhook",
+        logger: console
+      })
+
+      smee.start()
+    }
+
+    app.use(createNodeMiddleware(GithubSecretScanningService, { probot, webhooksPath: "/ss-webhook" })); // secret scanning webhook
+  }
 
   if ((await getNodeEnv()) === "production") {
     // enable app-wide rate-limiting + helmet security
