@@ -5,6 +5,10 @@ import { eventPushSecrets } from "../../events";
 import { BotService } from "../../services";
 import { repackageSecretToRaw } from "../../helpers/secrets";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
+import { getAllImportedSecrets } from "../../services/SecretImportService";
+import Folder from "../../models/folder";
+import { getFolderByPath } from "../../services/FolderService";
+import { BadRequestError } from "../../utils/errors";
 
 /**
  * Return secrets for workspace with id [workspaceId] and environment
@@ -16,6 +20,7 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
   const workspaceId = req.query.workspaceId as string;
   const environment = req.query.environment as string;
   const secretPath = req.query.secretPath as string;
+  const includeImports = req.query.include_imports as string;
 
   const secrets = await SecretService.getSecrets({
     workspaceId: new Types.ObjectId(workspaceId),
@@ -28,13 +33,38 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
     workspaceId: new Types.ObjectId(workspaceId)
   });
 
+  if (includeImports) {
+    const folders = await Folder.findOne({ workspace: workspaceId, environment });
+    let folderId = "root";
+    // if folder exist get it and replace folderid with new one
+    if (folders) {
+      const folder = getFolderByPath(folders.nodes, secretPath as string);
+      if (!folder) {
+        throw BadRequestError({ message: "Folder not found" });
+      }
+      folderId = folder.id;
+    }
+    const importedSecrets = await getAllImportedSecrets(workspaceId, environment, folderId);
+    return res.status(200).send({
+      secrets: secrets.map((secret) =>
+        repackageSecretToRaw({
+          secret,
+          key
+        })
+      ),
+      imports: importedSecrets.map((el) => ({
+        ...el,
+        secrets: el.secrets.map((secret) => repackageSecretToRaw({ secret, key }))
+      }))
+    });
+  }
+
   return res.status(200).send({
     secrets: secrets.map((secret) => {
       const rep = repackageSecretToRaw({
         secret,
         key
       });
-
       return rep;
     })
   });
@@ -232,6 +262,7 @@ export const getSecrets = async (req: Request, res: Response) => {
   const workspaceId = req.query.workspaceId as string;
   const environment = req.query.environment as string;
   const secretPath = req.query.secretPath as string;
+  const includeImports = req.query.include_imports as string;
 
   const secrets = await SecretService.getSecrets({
     workspaceId: new Types.ObjectId(workspaceId),
@@ -239,6 +270,24 @@ export const getSecrets = async (req: Request, res: Response) => {
     secretPath,
     authData: req.authData
   });
+
+  if (includeImports) {
+    const folders = await Folder.findOne({ workspace: workspaceId, environment });
+    let folderId = "root";
+    // if folder exist get it and replace folderid with new one
+    if (folders) {
+      const folder = getFolderByPath(folders.nodes, secretPath as string);
+      if (!folder) {
+        throw BadRequestError({ message: "Folder not found" });
+      }
+      folderId = folder.id;
+    }
+    const importedSecrets = await getAllImportedSecrets(workspaceId, environment, folderId);
+    return res.status(200).send({
+      secrets,
+      imports: importedSecrets
+    });
+  }
 
   return res.status(200).send({
     secrets

@@ -8,11 +8,11 @@ import TokenService from "./TokenService";
 import SecretService from "./SecretService";
 
 export {
-    TelemetryService,
-    DatabaseService,
-    BotService,
-    EventService,
-    IntegrationService,
-    TokenService,
-    SecretService,
-}
+  TelemetryService,
+  DatabaseService,
+  BotService,
+  EventService,
+  IntegrationService,
+  TokenService,
+  SecretService
+};
