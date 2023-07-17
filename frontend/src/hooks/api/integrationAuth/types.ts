@@ -13,6 +13,7 @@ export type App = {
   name: string;
   appId?: string;
   owner?: string;
+  secretGroups?: string[];
 };
 
 export type Team = {

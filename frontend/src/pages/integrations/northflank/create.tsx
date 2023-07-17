@@ -32,6 +32,8 @@ export default function NorthflankCreateIntegrationPage() {
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
   const [targetApp, setTargetApp] = useState("");
+  const [secretGroupList, setSecretGroupList] = useState<any>([]);
+  const [targetSecretGroup, setTargetSecretGroup] = useState<any>("");
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -50,6 +52,18 @@ export default function NorthflankCreateIntegrationPage() {
       }
     }
   }, [integrationAuthApps]);
+
+  useEffect(() => {
+    if (integrationAuthApps) {
+      if (integrationAuthApps.length > 0) {
+        const selectedApp = integrationAuthApps?.filter((integrationAuthApp) => integrationAuthApp.name === targetApp);
+        setSecretGroupList(selectedApp[0].secretGroups);
+        setTargetSecretGroup(selectedApp[0]?.secretGroups[0]);
+      } else {
+        setTargetSecretGroup("none");
+      }
+    }
+  }, [targetApp])
 
   const handleButtonClick = async () => {
     try {
@@ -133,6 +147,29 @@ export default function NorthflankCreateIntegrationPage() {
             ) : (
               <SelectItem value="none" key="target-app-none">
                 No projects found
+              </SelectItem>
+            )}
+          </Select>
+        </FormControl>
+        <FormControl label="Secret Group" className="mt-4">
+          <Select
+            value={targetSecretGroup}
+            onValueChange={(val) => setTargetSecretGroup(val)}
+            className="w-full border border-mineshaft-500"
+            isDisabled={secretGroupList.length === 0}
+          >
+            {secretGroupList.length > 0 ? (
+              secretGroupList.map((group: any) => (
+                <SelectItem
+                  value={group}
+                  key={`target-secret-group-${group}`}
+                >
+                  {group}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem value="none" key="target-secret-group-none">
+                No secret groups found
               </SelectItem>
             )}
           </Select>

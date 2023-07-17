@@ -754,8 +754,34 @@ const getAppsNorthflank = async ({ accessToken }: { accessToken: string }) => {
     return {
       name: a.name,
       appId: a.id,
+      secretGroups: []
     };
   });
+
+  for (let i = 0; i < apps.length; i++) {
+    const appName = apps[i].name;
+    const {
+      data: {
+        data: {
+          secrets
+        }
+      }
+    } = await standardRequest.get(
+      `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects/${appName}/secrets`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json",
+        },
+      }
+    );
+
+    const secretGroups = secrets.map((a: any) => {
+      return a.id
+    });
+
+    apps[i].secretGroups = secretGroups
+  }
 
   return apps;
 };
