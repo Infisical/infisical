@@ -29,7 +29,7 @@
     "jsrp": "^0.2.4",
     "libsodium-wrappers": "^0.7.10",
     "lodash": "^4.17.21",
-    "mongoose": "^6.10.5",
+    "mongoose": "^6.11.3",
     "nanoid": "^3.3.6",
     "node-cache": "^5.1.2",
     "nodemailer": "^6.8.0",
