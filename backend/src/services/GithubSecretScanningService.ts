@@ -3,7 +3,7 @@ import { exec } from "child_process";
 import { mkdir, readFile, rm, writeFile } from "fs";
 import { tmpdir } from "os";
 import { join } from "path"
-import GitRisks, { STATUS_RESOLVED_FALSE_POSITIVE } from "../models/gitRisks";
+import GitRisks from "../models/gitRisks";
 import GitAppOrganizationInstallation from "../models/gitAppOrganizationInstallation";
 import MembershipOrg from "../models/membershipOrg";
 import { ADMIN, OWNER } from "../variables";
@@ -98,8 +98,6 @@ export default async (app: Probot) => {
     }
 
     // change to update
-    const noneFalsePositiveFindings: { [key: string]: SecretMatch; } = {}
-
     for (const key in allFindingsByFingerprint) {
       const risk = await GitRisks.findOneAndUpdate({ fingerprint: allFindingsByFingerprint[key].Fingerprint },
         {
@@ -111,11 +109,6 @@ export default async (app: Probot) => {
         }, {
         upsert: true
       }).lean()
-
-      if (risk?.status == STATUS_RESOLVED_FALSE_POSITIVE) {
-        noneFalsePositiveFindings[key] = { ...convertKeysToLowercase(allFindingsByFingerprint[key]) }
-      }
-
     }
     // get emails of admins
     const adminsOfWork = await MembershipOrg.find({

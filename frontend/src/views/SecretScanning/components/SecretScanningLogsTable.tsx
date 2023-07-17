@@ -11,17 +11,14 @@ import {
   Th,
   THead,
   Tr} from "@app/components/v2";
+import timeSince from "@app/ee/utilities/timeSince";
 import getRisksByOrganization, { GitRisks } from "@app/pages/api/secret-scanning/getRisksByOrganization";
-import { RiskStatus } from "@app/pages/api/secret-scanning/updateRiskStatus";
+
+import { RiskStatusSelection } from "./RiskStatusSelection";
 
 export const SecretScanningLogsTable = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [gitRisks, setGitRisks] = useState<GitRisks[]>([]);
-    const [selectedRiskStatus, setSelectedRiskStatus] = useState("");
-
-    const handleSelectRiskStatusUpdate = (event: any) => {
-        setSelectedRiskStatus(event.target.value);
-    };
 
     useEffect(() => {
         const fetchRisks = async () => {
@@ -53,7 +50,7 @@ export const SecretScanningLogsTable = () => {
                 {!isLoading && gitRisks && gitRisks?.map((risk) => {
                     return (
                         <Tr key={risk.ruleID} className="h-10">
-                            <Td>{risk.createdAt}</Td>
+                            <Td>{timeSince(new Date(risk.createdAt))}</Td>
                             <Td>{risk.ruleID}</Td>
                             <Td>
                                 <a
@@ -79,16 +76,7 @@ export const SecretScanningLogsTable = () => {
                             </Td>
                             <Td>{risk.isResolved ? "Resolved" : "Needs Attention"}</Td>
                             <Td>
-                                <select
-                                    value={selectedRiskStatus}
-                                    onChange={handleSelectRiskStatusUpdate}
-                                    className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                >
-                                    <option>Unresolved</option>
-                                    <option value={RiskStatus.RESOLVED_FALSE_POSITIVE}>This is a false positive</option>
-                                    <option value={RiskStatus.RESOLVED_REVOKED}>I have rotated the secret, resolve risk</option>
-                                    <option value={RiskStatus.RESOLVED_NOT_REVOKED}>No rotate needed, resolve</option>
-                                </select>
+                                <RiskStatusSelection riskId={risk._id} currentSelection={risk.status}/>
                             </Td>
                         </Tr>
                     );
