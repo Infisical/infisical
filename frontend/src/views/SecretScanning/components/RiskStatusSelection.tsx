@@ -20,9 +20,9 @@ export const RiskStatusSelection = ({riskId, currentSelection}: {riskId: any, cu
         className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
     >
         <option>Unresolved</option>
-        <option value={RiskStatus.RESOLVED_FALSE_POSITIVE}>This is a false positive</option>
-        <option value={RiskStatus.RESOLVED_REVOKED}>I have rotated the secret, resolve risk</option>
-        <option value={RiskStatus.RESOLVED_NOT_REVOKED}>No rotate needed, resolve</option>
+        <option value={RiskStatus.RESOLVED_FALSE_POSITIVE}>This is a false positive, resolved</option>
+        <option value={RiskStatus.RESOLVED_REVOKED}>I have rotated the secret, resolved</option>
+        <option value={RiskStatus.RESOLVED_NOT_REVOKED}>No rotate needed, resolved</option>
     </select>         
     );
 }
