@@ -32,6 +32,8 @@ import {
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
   INTEGRATION_VERCEL_API_URL,
+  INTEGRATION_WINDMILL,
+  INTEGRATION_WINDMILL_API_URL,
 } from "../variables";
 
 interface App {
@@ -144,6 +146,11 @@ const getApps = async ({
         accessToken,
         accountId: accessId
       })
+      break;
+    case INTEGRATION_WINDMILL:
+      apps = await getAppsWindmill({
+        accessToken,
+      });
       break;
   }
 
@@ -720,5 +727,34 @@ const getAppsCloudflarePages = async ({
     });
     return apps;
 }
+
+/**
+ * Return list of projects for Windmill integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Windmill API
+ * @returns {Object[]} apps - names of Windmill workspaces
+ * @returns {String} apps.name - name of Windmill workspace
+ */
+const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
+  const { data } = await standardRequest.get(
+    `${INTEGRATION_WINDMILL_API_URL}/workspaces/list`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json",
+      },
+    }
+  );
+
+  const apps = data.map((a: any) => {
+    return {
+      name: a.name,
+      appId: a.id,
+    };
+  });
+
+  return apps;
+};
+
 
 export { getApps };
