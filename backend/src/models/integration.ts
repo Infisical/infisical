@@ -18,6 +18,7 @@ import {
   INTEGRATION_SUPABASE,
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL,
+  INTEGRATION_WINDMILL,
 } from "../variables";
 
 export interface IIntegration {
@@ -54,7 +55,8 @@ export interface IIntegration {
     | "supabase"
     | "checkly"
     | "hashicorp-vault"
-    | "cloudflare-pages";
+    | "cloudflare-pages"
+    | "windmill";
   integrationAuth: Types.ObjectId;
 }
 
@@ -144,6 +146,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_CHECKLY,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
+        INTEGRATION_WINDMILL,
       ],
       required: true,
     },

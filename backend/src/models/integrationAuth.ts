@@ -19,13 +19,14 @@ import {
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
   INTEGRATION_TRAVISCI,
-  INTEGRATION_VERCEL
+  INTEGRATION_VERCEL,
+  INTEGRATION_WINDMILL
 } from "../variables";
 
 export interface IIntegrationAuth extends Document {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: "heroku" | "vercel" | "netlify" | "github" | "gitlab" | "render" | "railway" | "flyio" | "azure-key-vault" | "laravel-forge" | "circleci" | "travisci" | "supabase" | "aws-parameter-store" | "aws-secret-manager" | "checkly" | "cloudflare-pages";
+  integration: "heroku" | "vercel" | "netlify" | "github" | "gitlab" | "render" | "railway" | "flyio" | "azure-key-vault" | "laravel-forge" | "circleci" | "travisci" | "supabase" | "aws-parameter-store" | "aws-secret-manager" | "checkly" | "cloudflare-pages" | "windmill";
   teamId: string;
   accountId: string;
   url: string;
@@ -71,6 +72,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_SUPABASE,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
+        INTEGRATION_WINDMILL,
       ],
       required: true,
     },
