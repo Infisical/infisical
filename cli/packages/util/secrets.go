@@ -17,7 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment string, secretPath string) ([]models.SingleEnvironmentVariable, api.GetServiceTokenDetailsResponse, error) {
+func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment string, secretPath string, includeImports bool) ([]models.SingleEnvironmentVariable, api.GetServiceTokenDetailsResponse, error) {
 	serviceTokenParts := strings.SplitN(fullServiceToken, ".", 4)
 	if len(serviceTokenParts) < 4 {
 		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
@@ -45,9 +45,10 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 	}
 
 	encryptedSecrets, err := api.CallGetSecretsV3(httpClient, api.GetEncryptedSecretsV3Request{
-		WorkspaceId: serviceTokenDetails.Workspace,
-		Environment: environment,
-		SecretPath:  secretPath,
+		WorkspaceId:   serviceTokenDetails.Workspace,
+		Environment:   environment,
+		SecretPath:    secretPath,
+		IncludeImport: includeImports,
 	})
 
 	if err != nil {
@@ -64,15 +65,22 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("unable to decrypt the required workspace key")
 	}
 
-	plainTextSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, encryptedSecrets)
+	plainTextSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, encryptedSecrets.Secrets)
 	if err != nil {
 		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("unable to decrypt your secrets [err=%v]", err)
+	}
+
+	if includeImports {
+		plainTextSecrets, err = InjectImportedSecret(plainTextWorkspaceKey, plainTextSecrets, encryptedSecrets.ImportedSecrets)
+		if err != nil {
+			return nil, api.GetServiceTokenDetailsResponse{}, err
+		}
 	}
 
 	return plainTextSecrets, serviceTokenDetails, nil
 }
 
-func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, workspaceId string, environmentName string, tagSlugs string, secretsPath string) ([]models.SingleEnvironmentVariable, error) {
+func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, workspaceId string, environmentName string, tagSlugs string, secretsPath string, includeImports bool) ([]models.SingleEnvironmentVariable, error) {
 	httpClient := resty.New()
 	httpClient.SetAuthToken(JTWToken).
 		SetHeader("Accept", "application/json")
@@ -114,8 +122,9 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 	plainTextWorkspaceKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
 	getSecretsRequest := api.GetEncryptedSecretsV3Request{
-		WorkspaceId: workspaceId,
-		Environment: environmentName,
+		WorkspaceId:   workspaceId,
+		Environment:   environmentName,
+		IncludeImport: includeImports,
 		// TagSlugs:    tagSlugs,
 	}
 
@@ -124,17 +133,51 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 	}
 
 	encryptedSecrets, err := api.CallGetSecretsV3(httpClient, getSecretsRequest)
-
 	if err != nil {
 		return nil, err
 	}
 
-	plainTextSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, encryptedSecrets)
+	plainTextSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, encryptedSecrets.Secrets)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decrypt your secrets [err=%v]", err)
 	}
 
+	if includeImports {
+		plainTextSecrets, err = InjectImportedSecret(plainTextWorkspaceKey, plainTextSecrets, encryptedSecrets.ImportedSecrets)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return plainTextSecrets, nil
+}
+
+func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []models.SingleEnvironmentVariable, importedSecrets []api.ImportedSecretV3) ([]models.SingleEnvironmentVariable, error) {
+	if importedSecrets == nil {
+		return secrets, nil
+	}
+
+	hasOverriden := make(map[string]bool)
+	for _, sec := range secrets {
+		hasOverriden[sec.Key] = true
+	}
+
+	for i := len(importedSecrets) - 1; i >= 0; i-- {
+		importSec := importedSecrets[i]
+		plainTextImportedSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, importSec.Secrets)
+		fmt.Println(plainTextImportedSecrets)
+		if err != nil {
+			return nil, fmt.Errorf("unable to decrypt your imported secrets [err=%v]", err)
+		}
+
+		for _, sec := range plainTextImportedSecrets {
+			if _, ok := hasOverriden[sec.Key]; !ok {
+				secrets = append(secrets, sec)
+				hasOverriden[sec.Key] = true
+			}
+		}
+	}
+	return secrets, nil
 }
 
 func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models.SingleEnvironmentVariable, error) {
@@ -179,7 +222,8 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 			return nil, fmt.Errorf("unable to validate environment name because [err=%s]", err)
 		}
 
-		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId, params.Environment, params.TagSlugs, params.SecretsPath)
+		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId,
+			params.Environment, params.TagSlugs, params.SecretsPath, params.IncludeImport)
 		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
 
 		backupSecretsEncryptionKey := []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
@@ -199,7 +243,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 
 	} else {
 		log.Debug().Msg("Trying to fetch secrets using service token")
-		secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(infisicalToken, params.Environment, params.SecretsPath)
+		secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(infisicalToken, params.Environment, params.SecretsPath, params.IncludeImport)
 	}
 
 	return secretsToReturn, errorToReturn
@@ -427,9 +471,9 @@ func OverrideSecrets(secrets []models.SingleEnvironmentVariable, secretType stri
 	return secretsToReturn
 }
 
-func GetPlainTextSecrets(key []byte, encryptedSecrets api.GetEncryptedSecretsV3Response) ([]models.SingleEnvironmentVariable, error) {
+func GetPlainTextSecrets(key []byte, encryptedSecrets []api.EncryptedSecretV3) ([]models.SingleEnvironmentVariable, error) {
 	plainTextSecrets := []models.SingleEnvironmentVariable{}
-	for _, secret := range encryptedSecrets.Secrets {
+	for _, secret := range encryptedSecrets {
 		// Decrypt key
 		key_iv, err := base64.StdEncoding.DecodeString(secret.SecretKeyIV)
 		if err != nil {
