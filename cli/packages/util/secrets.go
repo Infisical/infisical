@@ -165,7 +165,7 @@ func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []models.SingleE
 	for i := len(importedSecrets) - 1; i >= 0; i-- {
 		importSec := importedSecrets[i]
 		plainTextImportedSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, importSec.Secrets)
-		fmt.Println(plainTextImportedSecrets)
+
 		if err != nil {
 			return nil, fmt.Errorf("unable to decrypt your imported secrets [err=%v]", err)
 		}
