@@ -88,7 +88,7 @@ const main = async () => {
     })
   );
 
-  if (await getSecretScanningGitAppId()) {
+  if (await getSecretScanningGitAppId() && await getSecretScanningWebhookSecret() && await getSecretScanningPrivateKey()) {
     const probot = new Probot({
       appId: await getSecretScanningGitAppId(),
       privateKey: await getSecretScanningPrivateKey(),
