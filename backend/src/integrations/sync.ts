@@ -1832,60 +1832,28 @@ const syncSecretsTerraformCloud = async ({
   accessToken: string;
 }) => {
 
-  const payload = Object.entries(secrets).map(([key, value]) => {
-    const payloadObj = {
-      data: {
-        type: 'vars',
-        attributes: {
-          key,
-          value,
-          category: `${integration.targetService}`,
+  Object.entries(secrets).map( async ([key, value]) => 
+    await standardRequest.post(
+      `${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`, 
+      {
+        data: {
+          type: 'vars',
+          attributes: {
+            key,
+            value,
+            category: `${integration.targetService}`,
+          },
         },
       },
-    };
-  
-    return standardRequest.post(`${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`, payloadObj, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/vnd.api+json",
-        "Accept": "application/vnd.api+json"
-      },
-    });
-  });
-
-  Promise.all(payload);
-
-
-  // get secrets from Terraform Cloud
-  // const getSecretsRes = (
-  //   await standardRequest.get(
-  //     `${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.app}/vars`,
-  //     {
-  //       headers: {
-  //         Authorization: `Bearer ${accessToken}`,
-  //         "Content-Type": "application/vnd.api+json",
-  //         "Accept": "application/vnd.api+json"
-  //       },
-  //     }
-  //   )
-  // ).data;
-
-  // delete secrets from Terraform Cloud
-  // getSecretsRes.forEach(async (data: any) => {
-  //   if (!(data.attributes.name in secrets)) {
-  //     await standardRequest.delete(
-  //       `${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.app}/vars/${data.id}`,
-  //       {
-  //         headers: {
-  //           Authorization: `Bearer ${accessToken}`,
-  //           "Content-Type": "application/vnd.api+json",
-  //           "Accept": "application/vnd.api+json"
-  //         },
-  //       }
-  //     );
-  //   }
-  // });
-
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/vnd.api+json",
+          Accept: "application/vnd.api+json",
+        },
+      }
+    )
+  )
 };
 
 /**
