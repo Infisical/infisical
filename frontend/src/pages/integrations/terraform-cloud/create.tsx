@@ -33,6 +33,7 @@ export default function TerraformCloudCreateIntegrationPage() {
   const [targetApp, setTargetApp] = useState("");
   const [secretPath, setSecretPath] = useState("/");
   const [variableType, setVariableType] = useState("");
+  const [variableTypeErrorText, setVariableTypeErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -54,6 +55,12 @@ export default function TerraformCloudCreateIntegrationPage() {
   const handleButtonClick = async () => {
     try {
       if (!integrationAuth?._id) return;
+
+      setVariableTypeErrorText("");
+      if (variableType.length === 0 ) {
+      setVariableTypeErrorText("Variable Type cannot be blank!")
+      return;
+      }
 
       setIsLoading(true);
 
@@ -119,7 +126,8 @@ export default function TerraformCloudCreateIntegrationPage() {
             placeholder="Provide a path, default is /"
           />
         </FormControl>
-        <FormControl label="Variable Type" className="mt-4">
+        <FormControl label="Variable Type" className="mt-4" errorText={variableTypeErrorText}
+            isError={variableTypeErrorText !== "" ?? false}>
           <Select
             value={variableType}
             onValueChange={(val) => setVariableType(val)}

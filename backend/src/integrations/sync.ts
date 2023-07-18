@@ -1855,6 +1855,7 @@ const syncSecretsTerraformCloud = async ({
 
   Promise.all(payload);
 
+
   // get secrets from Terraform Cloud
   // const getSecretsRes = (
   //   await standardRequest.get(
@@ -1867,7 +1868,7 @@ const syncSecretsTerraformCloud = async ({
   //       },
   //     }
   //   )
-  // ).data?.data;
+  // ).data;
 
   // delete secrets from Terraform Cloud
   // getSecretsRes.forEach(async (data: any) => {

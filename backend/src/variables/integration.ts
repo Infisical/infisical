@@ -196,6 +196,15 @@ export const getIntegrationOptions = async () => {
             docsLink: "",
         },
         {
+            name: "Terraform Cloud",
+            slug: "terraform-cloud",
+            image: "Terraform Cloud.png",
+            isAvailable: true,
+            type: "pat",
+            cliendId: "",
+            docsLink: "",
+        },
+        {
             name: "Travis CI",
             slug: "travisci",
             image: "Travis CI.png",
@@ -220,15 +229,6 @@ export const getIntegrationOptions = async () => {
             isAvailable: true,
             type: "pat",
             clientId: "",
-            docsLink: "",
-        },
-        {
-            name: "Terraform Cloud",
-            slug: "terraform-cloud",
-            image: "Terraform Cloud.png",
-            isAvailable: true,
-            type: "pat",
-            cliendId: "",
             docsLink: "",
         },
         {

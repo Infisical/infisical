@@ -130,7 +130,6 @@
             "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/fly.io",
             "self-hosting/deployment-options/render",
-            "self-hosting/deployment-options/laravel-forge",
             "self-hosting/deployment-options/digital-ocean-marketplace"
           ]
         },
@@ -198,6 +197,7 @@
         "integrations/cloud/flyio",
         "integrations/cloud/laravel-forge",
         "integrations/cloud/supabase",
+        "integrations/cloud/terraform-cloud",
         "integrations/cloud/cloudflare-pages",
         "integrations/cloud/checkly",
         "integrations/cloud/hashicorp-vault",
