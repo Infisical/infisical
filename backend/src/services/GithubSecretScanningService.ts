@@ -128,10 +128,11 @@ export default async (app: Probot) => {
 
     const adminOrOwnerEmails = userEmails.map(userObject => userObject.email)
 
+    const usersToNotify = pusher?.email ? [pusher.email, ...adminOrOwnerEmails] : [...adminOrOwnerEmails]
     await sendMail({
       template: "secretLeakIncident.handlebars",
       subjectLine: `Incident alert: leaked secrets found in Github repository ${repository.full_name}`,
-      recipients: ["pusher.email", ...adminOrOwnerEmails],
+      recipients: usersToNotify,
       substitutions: {
         numberOfSecrets: Object.keys(allFindingsByFingerprint).length,
         pusher_email: pusher.email,
