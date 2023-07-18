@@ -105,36 +105,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
-
-  secret-scanning-git-app:
-    name: Build secret scanning git app
-    runs-on: ubuntu-latest
-    steps:
-      - name: ☁️ Checkout source
-        uses: actions/checkout@v3
-      - name: Save commit hashes for tag
-        id: commit
-        uses: pr-mpt/actions-commit-hash@v2
-      - name: 🔧 Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: 🐋 Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
-      - name: 🏗️ Build secret scanning git app and push
-        uses: depot/build-push-action@v1
-        with:
-          project: 64mmf0n610
-          push: true
-          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
-          context: secret-engine
-          tags: |
-            infisical/staging_deployment_secret-scanning-git-app:${{ steps.commit.outputs.short }}
-            infisical/staging_deployment_secret-scanning-git-app:latest
-          platforms: linux/amd64,linux/arm64
   gamma-deployment:
     name: Deploy to gamma
     runs-on: ubuntu-latest
