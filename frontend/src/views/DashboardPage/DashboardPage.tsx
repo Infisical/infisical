@@ -15,6 +15,7 @@ import {
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { arrayMove } from "@dnd-kit/sortable";
 import {
+  faAngleDown,
   faArrowLeft,
   faCheck,
   faClockRotateLeft,
@@ -29,6 +30,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -792,63 +794,11 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                 </Button>
               </div>
               {!isReadOnly && !isRollbackMode && (
-                <>
-                  <div className="block lg:hidden">
-                    <Tooltip content="Add Folder">
-                      <IconButton
-                        ariaLabel="recovery"
-                        variant="outline_bg"
-                        onClick={() => handlePopUpOpen("folderForm")}
-                      >
-                        <FontAwesomeIcon icon={faFolderPlus} />
-                      </IconButton>
-                    </Tooltip>
-                  </div>
-                  <div className="block lg:hidden">
-                    <Tooltip content="Point-in-time Recovery">
-                      <IconButton
-                        ariaLabel="recovery"
-                        variant="outline_bg"
-                        onClick={() => {
-                          if (secretContainer.current) {
-                            secretContainer.current.scroll({
-                              top: 0,
-                              behavior: "smooth"
-                            });
-                          }
-                          prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
-                        }}
-                      >
-                        <FontAwesomeIcon icon={faPlus} />
-                      </IconButton>
-                    </Tooltip>
-                  </div>
-                  <div className="hidden lg:block">
-                    <Button
-                      leftIcon={<FontAwesomeIcon icon={faFileImport} />}
-                      onClick={() => handlePopUpOpen("addSecretImport")}
-                      isDisabled={isReadOnly || isRollbackMode}
-                      variant="outline_bg"
-                      className="h-10"
-                    >
-                      Secret Link
-                    </Button>
-                  </div>
-                  <div className="hidden lg:block">
-                    <Button
-                      leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
-                      onClick={() => handlePopUpOpen("folderForm")}
-                      isDisabled={isReadOnly || isRollbackMode}
-                      variant="outline_bg"
-                      className="h-10"
-                    >
-                      Add Folder
-                    </Button>
-                  </div>
-                  <div className="hidden lg:block">
-                    <Button
-                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                      onClick={() => {
+                <div className="flex flex-row items-center justify-center">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (!(isReadOnly || isRollbackMode)) {
                         if (secretContainer.current) {
                           secretContainer.current.scroll({
                             top: 0,
@@ -857,15 +807,48 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                         }
                         prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
                         setSearchFilter("");
-                      }}
-                      isDisabled={isReadOnly || isRollbackMode}
-                      variant="outline_bg"
-                      className="h-10"
-                    >
-                      Add Secret
-                    </Button>
-                  </div>
-                </>
+                      }
+                    }}
+                    className="font-semibold bg-mineshaft-600 border border-mineshaft-500 p-2 rounded-l-md text-sm text-mineshaft-300 cursor-pointer hover:bg-primary/[0.1] hover:border-primary/40 pr-4 duration-200"
+                  >
+                    <FontAwesomeIcon icon={faPlus} className="px-2"/>Add Secret
+                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild className="data-[state=open]:bg-mineshaft-600">
+                      <div className="bg-mineshaft-600 border border-mineshaft-500 p-2 rounded-r-md text-sm text-mineshaft-300 cursor-pointer hover:bg-primary/[0.1] hover:border-primary/40 duration-200">
+                        <FontAwesomeIcon icon={faAngleDown} className="pr-2 pl-1.5"/>
+                      </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="mt-1 z-[60] left-20 w-[10.8rem]">
+                      <div className="bg-mineshaft-800 p-1 border border-mineshaft-600 rounded-md">
+                        <div className="w-full pb-1">
+                          <Button
+                            leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
+                            onClick={() => handlePopUpOpen("folderForm")}
+                            isDisabled={isReadOnly || isRollbackMode}
+                            variant="outline_bg"
+                            className="h-10"
+                            isFullWidth
+                          >
+                            Add Folder
+                          </Button>
+                        </div>
+                        <div className="w-full">
+                          <Button
+                            leftIcon={<FontAwesomeIcon icon={faFileImport} />}
+                            onClick={() => handlePopUpOpen("addSecretImport")}
+                            isDisabled={isReadOnly || isRollbackMode}
+                            variant="outline_bg"
+                            className="h-10"
+                            isFullWidth
+                          >
+                            Add Import
+                          </Button>
+                        </div>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               )}
               {isRollbackMode && (
                 <Button
