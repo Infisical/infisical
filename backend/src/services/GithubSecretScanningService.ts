@@ -9,6 +9,7 @@ import MembershipOrg from "../models/membershipOrg";
 import { ADMIN, OWNER } from "../variables";
 import User from "../models/user";
 import { sendMail } from "../helpers";
+import TelemetryService from "./TelemetryService";
 
 type SecretMatch = {
   Description: string;
@@ -146,6 +147,18 @@ export default async (app: Probot) => {
         pusher_name: pusher.name
       }
     });
+
+    const postHogClient = await TelemetryService.getPostHogClient();
+    if (postHogClient) {
+      postHogClient.capture({
+        event: "cloud secret scan",
+        distinctId: pusher.email,
+        properties: {
+          numberOfCommitsScanned: commits.length,
+          numberOfRisksFound: Object.keys(allFindingsByFingerprint).length,
+        }
+      });
+    }
   });
 };
 
