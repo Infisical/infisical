@@ -41,8 +41,9 @@ import {
   signup as v1SignupRouter,
   userAction as v1UserActionRouter,
   user as v1UserRouter,
+  workspace as v1WorkspaceRouter,
   webhooks as v1WebhooksRouter,
-  workspace as v1WorkspaceRouter
+  secretImport as v1SecretImportRouter
 } from "./routes/v1";
 import {
   auth as v2AuthRouter,
@@ -151,6 +152,7 @@ const main = async () => {
   app.use("/api/v1/folders", v1SecretsFolder);
   app.use("/api/v1/secret-scanning", v1SecretScanningRouter);
   app.use("/api/v1/webhooks", v1WebhooksRouter);
+  app.use("/api/v1/secret-imports", v1SecretImportRouter);
 
   // v2 routes (improvements)
   app.use("/api/v2/signup", v2SignupRouter);

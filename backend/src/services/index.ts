@@ -9,12 +9,12 @@ import SecretService from "./SecretService";
 import GithubSecretScanningService from "./GithubSecretScanningService"
 
 export {
-    TelemetryService,
-    DatabaseService,
-    BotService,
-    EventService,
-    IntegrationService,
-    TokenService,
-    SecretService,
-    GithubSecretScanningService
-}
+  TelemetryService,
+  DatabaseService,
+  BotService,
+  EventService,
+  IntegrationService,
+  TokenService,
+  SecretService,
+  GithubSecretScanningService
+};

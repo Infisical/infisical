@@ -24,6 +24,10 @@ export const secretKeys = {
     { workspaceId, env, folderId },
     "secrets"
   ],
+  getProjectSecretImports: (workspaceId: string, env: string | string[], folderId?: string) => [
+    { workspaceId, env, folderId },
+    "secrets-imports"
+  ],
   getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"]
 };
 
