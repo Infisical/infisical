@@ -128,15 +128,6 @@ export default async (app: Probot) => {
 
     const adminOrOwnerEmails = userEmails.map(userObject => userObject.email)
 
-
-    // TODO
-    // don't notify if the risk is marked as false positive
-
-    // loop through each finding and check if the finger print without commit has a status of false positive, if so don't add it to the list of risks that need to be notified 
-
-
-
-
     await sendMail({
       template: "secretLeakIncident.handlebars",
       subjectLine: `Incident alert: leaked secrets found in Github repository ${repository.full_name}`,
