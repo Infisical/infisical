@@ -54,6 +54,10 @@ router.get(
   requireAuth({
     acceptedAuthModes: [AUTH_MODE_JWT]
   }),
+  requireWorkspaceAuth({
+    acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: "query"
+  }),
   query("workspaceId").exists().isString().trim().notEmpty(),
   query("environment").exists().isString().trim().notEmpty(),
   query("folderId").default("root").isString().trim(),
@@ -65,6 +69,10 @@ router.get(
   "/secrets",
   requireAuth({
     acceptedAuthModes: [AUTH_MODE_JWT]
+  }),
+  requireWorkspaceAuth({
+    acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: "query"
   }),
   query("workspaceId").exists().isString().trim().notEmpty(),
   query("environment").exists().isString().trim().notEmpty(),
