@@ -23,8 +23,8 @@ export default function CodefreshCreateIntegrationPage() {
       const integrationAuth = await saveIntegrationAccessToken({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "codefresh",
-        accessToken: apiKey,
         accessId: null,
+        accessToken: apiKey,
         url: null,
         namespace: null
       });

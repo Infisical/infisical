@@ -32,8 +32,6 @@ export const IntegrationsSection = ({
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteConfirmation"
   ] as const);
-
-  console.log(integrationSlugNameMapping, integrations, '>>>chisom')
   return (
     <div className="mb-8">
       <div className="mx-4 mb-4 mt-6 flex flex-col items-start justify-between px-2 text-xl">

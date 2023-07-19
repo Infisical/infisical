@@ -225,7 +225,6 @@ const syncSecrets = async ({
     case INTEGRATION_CODEFRESH:
       await syncSecretsCodefresh({
         integration,
-        // integrationAuth,
         secrets,
         accessToken,
       });
@@ -1923,17 +1922,13 @@ const syncSecretsCloudflarePages = async ({
   );
 }
 
-
 /**
- * Sync/push [secrets] to codefresh with name [integration.app]
+ * Sync/push [secrets] to Codefresh with name [integration.app]
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
- * @param {String} obj.accessToken - access token for Supabase integration
+ * @param {String} obj.accessToken - access token for Codefresh integration
  */
-
-
-
 const syncSecretsCodefresh = async ({
   integration,
   secrets,
@@ -1943,89 +1938,21 @@ const syncSecretsCodefresh = async ({
   secrets: any;
   accessToken: string;
 }) => {
-  // get variables from codefresh.
-  
-  // there is no endpoint to get secrets from codefresh
-  // const getSecretsRes = (
-  //   await standardRequest.get(
-  //     `${INTEGRATION_CODEFRESH_API_URL}/api/pipelines/utils/extractVariables`,
-  //     {
-  //       headers: {
-  //         "Authorization": `Bearer ${accessToken}`,
-  //         "Accept-Encoding": "application/json",
-  //       },
-  //     }
-  //   )
-  // )
-  //   .data
-  //   .reduce((obj: any, secret: any) => ({
-  //     ...obj,
-  //     [secret.key]: secret.value,
-  //   }), {});
-
-  // add secrets
-  // for await (const key of Object.keys(secrets)) {
-  //   if (!(key in getSecretsRes)) {
-  //     // case: secret does not exist in codefresh
-  //     // -> add secret
-
-  //     await standardRequest.post(
-  //       `${INTEGRATION_CODEFRESH_API_URL}/api/pipelines`,
-  //       {
-  //         spec: {
-  //           variables: [
-  //             {
-  //               key,
-  //               value: secrets[key],
-  //             }
-  //           ]
-
-  //         },
-  //       },
-  //       {
-  //         headers: {
-  //           "Authorization": `Bearer ${accessToken}`,
-  //           "Accept": "application/json",
-  //           "Content-Type": "application/json",
-  //         },
-  //       }
-  //     );
-  //   } else {
-  //     // case: secret exists in checkly
-  //     // -> update/set secret
-
-  //     if (secrets[key] !== getSecretsRes[key]) {
-  //       await standardRequest.put(
-  //         `${INTEGRATION_CODEFRESH_API_URL}/v1/variables/${key}`,
-  //         {
-  //           value: secrets[key],
-  //         },
-  //         {
-  //           headers: {
-  //             "Authorization": `Bearer ${accessToken}`,
-  //             "Content-Type": "application/json",
-  //             "Accept": "application/json",
-  //           },
-  //         }
-  //       );
-  //     }
-  //   }
-  // }
-
-  // for await (const key of Object.keys(getSecretsRes)) {
-  //   if (!(key in secrets)) {
-  //     // delete secret
-  //     await standardRequest.delete(
-  //       `${INTEGRATION_CODEFRESH_API_URL}/v1/variables/${key}`,
-  //       {
-  //         headers: {
-  //           "Authorization": `Bearer ${accessToken}`,
-  //           "Accept": "application/json",
-  //         },
-  //       }
-  //     );
-  //   }
-  // }
+  await standardRequest.patch(
+    `${INTEGRATION_CODEFRESH_API_URL}/projects/${integration.appId}`,
+    {
+      variables: Object.keys(secrets).map((key) => ({
+        key,
+        value: secrets[key]
+      }))
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept": "application/json",
+      },
+    }
+  ); 
 };
 
 export { syncSecrets };

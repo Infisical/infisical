@@ -25,7 +25,6 @@ export const INTEGRATION_SUPABASE = 'supabase';
 export const INTEGRATION_CHECKLY = 'checkly';
 export const INTEGRATION_HASHICORP_VAULT = 'hashicorp-vault';
 export const INTEGRATION_CLOUDFLARE_PAGES = 'cloudflare-pages';
-// chisom
 export const INTEGRATION_CODEFRESH = 'codefresh';
 
 export const INTEGRATION_SET = new Set([
