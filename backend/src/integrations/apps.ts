@@ -746,10 +746,41 @@ const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
     }
   );
 
-  const apps = data.map((a: any) => {
+  // make calls for each app to check user is admin for that app or not
+  const authCheckForApps = async (data: any) => {
+    const allAppResponse = data.map(async (app: any) => {
+      return standardRequest.get(
+        `${INTEGRATION_WINDMILL_API_URL}/w/${app.name}/users/whoami`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      )
+      .then((response: any) => {
+        const modifiedData = { ...response.data };
+        modifiedData.appName = app.name;
+        return modifiedData;
+      })
+      .catch((error: any) => {
+        return undefined;
+      });
+    });
+
+    const appPromiseResponses = await Promise.all(allAppResponse)
+    const filteredAppResponses = appPromiseResponses.filter((authRes: any) => (authRes !== undefined) && (authRes.is_admin));
+    
+    return filteredAppResponses;
+  }
+
+  // get apps that user(auth token) is authorized for
+  const authorizedApps = await authCheckForApps(data);
+
+  const apps = authorizedApps.map((a: any) => {
     return {
-      name: a.name,
-      appId: a.id,
+      name: a.appName,
+      appId: a.workspace_id,
     };
   });
 
