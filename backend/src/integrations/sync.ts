@@ -42,6 +42,8 @@ import {
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
   INTEGRATION_VERCEL_API_URL,
+  INTEGRATION_WINDMILL,
+  INTEGRATION_WINDMILL_API_URL,
 } from "../variables";
 import { standardRequest} from "../config/request";
 
@@ -200,6 +202,13 @@ const syncSecrets = async ({
           secrets,
           accessId,
           accessToken
+      });
+      break;
+    case INTEGRATION_WINDMILL:
+      await syncSecretsWindmill({
+          integration,
+          secrets,
+          accessToken,
       });
       break;
     }
@@ -1936,5 +1945,111 @@ const syncSecretsCloudflarePages = async ({
       }
   );
 }
+
+/**
+ * Sync/push [secrets] to Windmil with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for windmill integration
+ */
+const syncSecretsWindmill = async ({
+  integration,
+  secrets,
+  accessToken,
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  const { data: getSecretsRes } = await standardRequest.get(
+    `${INTEGRATION_WINDMILL_API_URL}/w/${integration.app}/variables/list`,
+    {
+      headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json",
+      },
+    }
+  );
+
+  // convert secret results to [key] format
+  const secretsResList = getSecretsRes.map((secretObj: any) => (secretObj.path));
+    
+  // convert the secrets to [{}] format
+  const modifiedFormatForSecretInjection: any[] = [];
+  const modifiedFormatForCreateSecretInjection: any[] = [];
+  const modifiedFormatForUpdateSecretInjection: any[] = [];
+  Object.keys(secrets).forEach(
+    (key) => {
+        if(key.startsWith("u/") || key.startsWith("f/")) {
+          if(secretsResList.includes(key)) {
+            modifiedFormatForUpdateSecretInjection.push({
+              path: key,
+              value: secrets[key],
+              is_secret: true
+            });
+          } else {
+            modifiedFormatForCreateSecretInjection.push({
+              path: key,
+              value: secrets[key],
+              is_secret: true,
+              description: ""
+            });
+          }
+      };
+    }
+  );
+
+  // create new secrets in windmill workspace
+  modifiedFormatForCreateSecretInjection.forEach(async (secretObj: any) => {
+    await standardRequest.post(
+      `${INTEGRATION_WINDMILL_API_URL}/w/${integration.app}/variables/create`,
+      secretObj,
+      {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+        },
+      }
+    );
+  })
+
+  // update old secrets already present in windmill workspace
+  modifiedFormatForUpdateSecretInjection.forEach(async (secretObj: any) => {
+    await standardRequest.post(
+      `${INTEGRATION_WINDMILL_API_URL}/w/${integration.app}/variables/update/${secretObj.path}`,
+      secretObj,
+      {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+        },
+      }
+    )
+  })
+
+  // create list of secrets to delete
+  const secretsToDelete: any = [];
+  secretsResList.forEach((secret: string) => {
+    if(!(secret in secrets)) {
+      secretsToDelete.push(secret);
+    }
+  })
+
+  // delete all secrets from secretsToDelete List
+  secretsToDelete.forEach(async (secret: string) => {
+    await standardRequest.delete(
+      `${INTEGRATION_WINDMILL_API_URL}/w/${integration.app}/variables/delete/${secret}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          "Accept-Encoding": "application/json",
+        }
+      }
+    );
+  });
+};
 
 export { syncSecrets };
