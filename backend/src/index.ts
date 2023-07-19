@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
+import bodyParser from "body-parser";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("express-async-errors");
 import helmet from "helmet";
@@ -20,6 +21,7 @@ import {
   organizations as eeOrganizationsRouter,
   secret as eeSecretRouter,
   secretSnapshot as eeSecretSnapshotRouter,
+  sso as eeSSORouter,
   workspace as eeWorkspaceRouter
 } from "./ee/routes/v1";
 import {
@@ -40,21 +42,21 @@ import {
   signup as v1SignupRouter,
   userAction as v1UserActionRouter,
   user as v1UserRouter,
-  workspace as v1WorkspaceRouter,
-  webhooks as v1WebhooksRouter
+  webhooks as v1WebhooksRouter,
+  workspace as v1WorkspaceRouter
 } from "./routes/v1";
 import {
   auth as v2AuthRouter,
-  signup as v2SignupRouter,
-  users as v2UsersRouter,
+  environment as v2EnvironmentRouter,
   organizations as v2OrganizationsRouter,
-  workspace as v2WorkspaceRouter,
   secret as v2SecretRouter, // begin to phase out
   secrets as v2SecretsRouter,
-  serviceTokenData as v2ServiceTokenDataRouter,
   serviceAccounts as v2ServiceAccountsRouter,
-  environment as v2EnvironmentRouter,
-  tags as v2TagsRouter
+  serviceTokenData as v2ServiceTokenDataRouter,
+  signup as v2SignupRouter,
+  tags as v2TagsRouter,
+  users as v2UsersRouter,
+  workspace as v2WorkspaceRouter,
 } from "./routes/v2";
 import {
   auth as v3AuthRouter,
@@ -77,6 +79,7 @@ const main = async () => {
   const app = express();
   app.enable("trust proxy");
   app.use(express.json());
+  app.use(bodyParser.urlencoded({extended: true}));
   app.use(cookieParser());
   app.use(
     cors({
@@ -106,6 +109,7 @@ const main = async () => {
   app.use("/api/v1/workspace", eeWorkspaceRouter);
   app.use("/api/v1/action", eeActionRouter);
   app.use("/api/v1/organizations", eeOrganizationsRouter);
+  app.use("/api/v1/sso", eeSSORouter);
   app.use("/api/v1/cloud-products", eeCloudProductsRouter);
 
   // v1 routes (default)

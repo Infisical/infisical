@@ -1,17 +1,16 @@
-/* eslint-disable react/jsx-props-no-spreading */
 import React, { useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 import axios from "axios"
 
+import Error from "@app/components/basic/Error"; // which to notification
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa"
 import attemptLoginMfa from "@app/components/utilities/attemptLoginMfa";
+import { Button } from "@app/components/v2";    
 import { useSendMfaToken } from "@app/hooks/api/auth";
 import getOrganizations from "@app/pages/api/organization/getOrgs";
-
-import Error from "../basic/Error";
-import { Button } from "../v2";
 
 // The style for the verification code input
 const props = {
@@ -33,6 +32,12 @@ const props = {
   }
 } as const;
 
+type Props = {
+  email: string;
+  password: string;
+  providerAuthToken?: string;
+}
+
 interface VerifyMfaTokenError {
   response: {
     data: {
@@ -45,23 +50,12 @@ interface VerifyMfaTokenError {
   };
 }
 
-/**
- * 2nd step of login - users enter their MFA code
- * @param {Object} obj
- * @param {String} obj.email - email of user
- * @param {String} obj.password - password of user
- * @param {Function} obj.setStep - function to set the login flow step
- * @returns
- */
-export default function MFAStep({
+export const MFAStep = ({
   email,
   password,
-  providerAuthToken,
-}: {
-  email: string;
-  password: string;
-  providerAuthToken?: string;
-}): JSX.Element {
+  providerAuthToken
+}: Props) => {
+  const { createNotification } = useNotificationContext();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingResend, setIsLoadingResend] = useState(false);
@@ -75,6 +69,10 @@ export default function MFAStep({
   const handleLoginMfa = async () => {
     try {
       if (mfaCode.length !== 6) {
+        createNotification({
+          text: "Please enter a 6-digit MFA code and try again",
+          type: "error"
+        });
         return;
       }
 
@@ -116,12 +114,25 @@ export default function MFAStep({
           const userOrg = userOrgs[0] && userOrgs[0]._id;
 
           // case: login does not require MFA step
+          createNotification({
+              text: "Successfully logged in",
+              type: "success"
+          });
           router.push(`/org/${userOrg}/overview`);
+        } else {
+          createNotification({
+            text: "Failed to log in",
+            type: "error"
+          });
         }
       }
       
     } catch (err) {
       const error = err as VerifyMfaTokenError;
+      createNotification({
+        text: "Failed to log in",
+        type: "error"
+      });
 
       if (error?.response?.status === 500) {
         window.location.reload();
@@ -147,8 +158,8 @@ export default function MFAStep({
     }
   };
 
-  return (
-    <form className="mx-auto w-max md:px-8 pb-4 pt-4 md:mb-16">
+    return (
+       <form className="mx-auto w-max md:px-8 pb-4 pt-4 md:mb-16">
       <p className="text-l flex justify-center text-bunker-300">{t("mfa.step2-message")}</p>
       <p className="text-l my-1 flex justify-center font-semibold text-bunker-300">{email} </p>
       <div className="hidden md:block w-max min-w-[20rem] mx-auto">
@@ -204,6 +215,6 @@ export default function MFAStep({
         </div>
         <p className="text-sm text-bunker-400 pb-2">{t("signup.step2-spam-alert")}</p>
       </div>
-    </form>
-  );
+    </form> 
+    );
 }

@@ -18,7 +18,6 @@ const revokeAccess = async ({
   integrationAuth: IIntegrationAuth;
   accessToken: string;
 }) => {
-  let deletedIntegrationAuth;
   // add any integration-specific revocation logic
   switch (integrationAuth.integration) {
     case INTEGRATION_HEROKU:
@@ -33,7 +32,7 @@ const revokeAccess = async ({
       break;
   }
 
-  deletedIntegrationAuth = await IntegrationAuth.findOneAndDelete({
+  const deletedIntegrationAuth = await IntegrationAuth.findOneAndDelete({
     _id: integrationAuth._id,
   });
 

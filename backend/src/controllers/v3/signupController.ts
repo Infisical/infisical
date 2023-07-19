@@ -12,6 +12,7 @@ import { standardRequest } from "../../config/request";
 import { getHttpsEnabled, getJwtSignupSecret, getLoopsApiKey } from "../../config";
 import { BadRequestError } from "../../utils/errors";
 import { TelemetryService } from "../../services";
+import { AuthProvider } from "../../models";
 
 /**
  * Complete setting up user by adding their personal and auth information as part of the
@@ -116,11 +117,13 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 		if (!user)
 			throw new Error("Failed to complete account for non-existent user"); // ensure user is non-null
 
-		// initialize default organization and workspace
-		await initializeDefaultOrg({
-			organizationName,
-			user,
-		});
+		if (user.authProvider !== AuthProvider.OKTA_SAML) {
+			// initialize default organization and workspace
+			await initializeDefaultOrg({
+				organizationName,
+				user,
+			});
+		}
 
 		// update organization membership statuses that are
 		// invited to completed with user attached
@@ -174,7 +177,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 				distinctId: email,
 				properties: {
 					email,
-					attributionSource,
+					...(attributionSource ? { attributionSource } : {})
 				},
 			});
 		}

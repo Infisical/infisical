@@ -5,8 +5,6 @@ import { ServiceAccount, ServiceTokenData, User } from "../../models";
 import { AUTH_MODE_JWT, AUTH_MODE_SERVICE_ACCOUNT } from "../../variables";
 import { getSaltRounds } from "../../config";
 import { BadRequestError } from "../../utils/errors";
-import Folder from "../../models/folder";
-import { getFolderByPath } from "../../services/FolderService";
 
 /**
  * Return service token data associated with service token on request

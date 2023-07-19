@@ -70,7 +70,7 @@ const completeAccountInformationSignup = async ({
     verifier,
     organizationName,
     providerAuthToken,
-    attributionSource,
+    ...(attributionSource ? { attributionSource } : {})
   });
 
   return data;

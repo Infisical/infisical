@@ -1,7 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
 import { apiRequest } from "@app/config/request";
-
 import { 
   BillingDetails,
   Invoice,
@@ -22,7 +20,7 @@ const organizationKeys = {
   getOrgBillingDetails: (orgId: string) => [{ orgId }, "organization-billing-details"] as const,
   getOrgPmtMethods: (orgId: string) => [{ orgId }, "organization-pmt-methods"] as const,
   getOrgTaxIds: (orgId: string) => [{ orgId }, "organization-tax-ids"] as const,
-  getOrgInvoices: (orgId: string) => [{ orgId }, "organization-invoices"] as const
+  getOrgInvoices: (orgId: string) => [{ orgId }, "organization-invoices"] as const,
 };
 
 export const useGetOrganization = () => {

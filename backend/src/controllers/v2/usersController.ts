@@ -3,10 +3,10 @@ import { Types } from "mongoose";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import {
-    MembershipOrg,
-    User,
     APIKeyData,
-    TokenVersion
+    MembershipOrg,
+    TokenVersion,
+    User
 } from "../../models";
 import { getSaltRounds } from "../../config";
 

@@ -1,10 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-import {
-  OrgIncidentContactsSection,
-  OrgNameChangeSection,
-  OrgServiceAccountsTable
-} from "./components";
+import { OrgTabGroup } from "./components";
 
 export const OrgSettingsPage = () => {
   const { t } = useTranslation();
@@ -15,11 +11,7 @@ export const OrgSettingsPage = () => {
 			<div className="mb-4">
 				<p className="text-3xl font-semibold text-gray-200">{t("settings.org.title")}</p>
 			</div>
-			<OrgNameChangeSection />
-			<OrgIncidentContactsSection />
-			<div className="p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
-				<OrgServiceAccountsTable />
-			</div>
+			<OrgTabGroup />
 		</div>
     </div>
   );

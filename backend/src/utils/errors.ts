@@ -46,7 +46,7 @@ export const BadRequestError = (error?: Partial<RequestErrorContext>) => new Req
     stack: error?.stack,
 });
 
-export const ResourceNotFound = (error?: Partial<RequestErrorContext>) => new RequestError({
+export const ResourceNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.INFO,
     statusCode: error?.statusCode ?? 404,
     type: error?.type ?? "resource_not_found",

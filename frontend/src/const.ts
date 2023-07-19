@@ -4,6 +4,7 @@ export const publicPaths = [
   "/signupinvite",
   "/pricing",
   "/signup",
+  "/signup/sso",
   "/login",
   "/blog",
   "/docs",
@@ -18,8 +19,9 @@ export const publicPaths = [
   "/verify-email",
   "/password-reset",
   "/saml-sso",
-  "/login/provider/success",
-  "/login/provider/error"
+  "/login/provider/success", // TODO: change
+  "/login/provider/error", // TODO: change
+  "/login/sso"
 ];
 
 export const languageMap = {

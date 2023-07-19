@@ -5,6 +5,7 @@ export * from "./integrationAuth";
 export * from "./integrations";
 export * from "./keys";
 export * from "./organization";
+export * from "./ssoConfig";
 export * from "./secretFolders";
 export * from "./secrets";
 export * from "./secretSnapshots";
