@@ -1963,6 +1963,17 @@ const syncSecretsWindmill = async ({
   secrets: any;
   accessToken: string;
 }) => {
+  interface WindmilSecretUpdate {
+    path: string;
+    value: string;
+    is_secret: boolean;
+  }
+
+  interface WindmillSecretCreate extends WindmilSecretUpdate {
+    description: string;
+  }
+
+  // get secrets stored in windmill workspace
   const { data: getSecretsRes } = await standardRequest.get(
     `${INTEGRATION_WINDMILL_API_URL}/w/${integration.app}/variables/list`,
     {
@@ -1977,9 +1988,9 @@ const syncSecretsWindmill = async ({
   const secretsResList = getSecretsRes.map((secretObj: any) => (secretObj.path));
     
   // convert the secrets to [{}] format
-  const modifiedFormatForSecretInjection: any[] = [];
-  const modifiedFormatForCreateSecretInjection: any[] = [];
-  const modifiedFormatForUpdateSecretInjection: any[] = [];
+  const modifiedFormatForCreateSecretInjection: WindmillSecretCreate[] = [];
+  const modifiedFormatForUpdateSecretInjection: WindmilSecretUpdate[] = [];
+  
   Object.keys(secrets).forEach(
     (key) => {
         if(key.startsWith("u/") || key.startsWith("f/")) {
@@ -2030,7 +2041,7 @@ const syncSecretsWindmill = async ({
   })
 
   // create list of secrets to delete
-  const secretsToDelete: any = [];
+  const secretsToDelete: string[] = [];
   secretsResList.forEach((secret: string) => {
     if(!(secret in secrets)) {
       secretsToDelete.push(secret);
