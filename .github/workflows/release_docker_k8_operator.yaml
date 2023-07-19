@@ -1,10 +1,16 @@
-name: Release Docker image for K8 operator 
-on: [workflow_dispatch]
+name: Release Docker image for K8 operator
+on:
+  push:
+    tags:
+      - "infisical-k8-operator/v*.*.*"
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      - name: Extract version from tag
+        id: extract_version
+        run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical-k8-operator/}"
       - uses: actions/checkout@v2
 
       - name: 🔧 Set up QEMU
@@ -26,4 +32,6 @@ jobs:
           context: k8-operator
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: infisical/kubernetes-operator:latest
+          tags: |
+            infisical/kubernetes-operator:latest
+            infisical/kubernetes-operator:${{ steps.extract_version.outputs.version }}

@@ -31,22 +31,21 @@ export const CloudIntegrationSection = ({
 
   const isEmpty = !isLoading && !cloudIntegrations?.length;
 
+  const sortedCloudIntegrations = cloudIntegrations.sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <div>
       <div className="m-4 mt-7 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">
         <h1 className="text-3xl font-semibold">{t("integrations.cloud-integrations")}</h1>
         <p className="text-base text-gray-400">{t("integrations.click-to-start")}</p>
       </div>
-      <div
-        className="mx-6 grid grid-flow-dense gap-4"
-        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(256px, 1fr))" }}
-      >
+      <div className="mx-6 grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
         {isLoading &&
           Array.from({ length: 12 }).map((_, index) => (
             <Skeleton className="h-32" key={`cloud-integration-skeleton-${index + 1}`} />
           ))}
         {!isLoading &&
-          cloudIntegrations?.map((cloudIntegration) => (
+          sortedCloudIntegrations?.map((cloudIntegration) => (
             <div
               onKeyDown={() => null}
               role="button"

@@ -24,6 +24,10 @@ export const secretKeys = {
     { workspaceId, env, folderId },
     "secrets"
   ],
+  getProjectSecretImports: (workspaceId: string, env: string | string[], folderId?: string) => [
+    { workspaceId, env, folderId },
+    "secrets-imports"
+  ],
   getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"]
 };
 
@@ -81,76 +85,79 @@ export const useGetProjectSecrets = ({
     enabled: Boolean(decryptFileKey && workspaceId && env) && !isPaused,
     queryKey: secretKeys.getProjectSecret(workspaceId, env, folderId),
     queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, folderId),
-    select: useCallback((data: EncryptedSecret[]) => {
-      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-      const latestKey = decryptFileKey;
-      const key = decryptAssymmetric({
-        ciphertext: latestKey.encryptedKey,
-        nonce: latestKey.nonce,
-        publicKey: latestKey.sender.publicKey,
-        privateKey: PRIVATE_KEY
-      });
-
-      const sharedSecrets: DecryptedSecret[] = [];
-      const personalSecrets: Record<string, { id: string; value: string }> = {};
-      // this used for add-only mode in dashboard
-      // type won't be there thus only one key is shown
-      const duplicateSecretKey: Record<string, boolean> = {};
-      data.forEach((encSecret: EncryptedSecret) => {
-        const secretKey = decryptSymmetric({
-          ciphertext: encSecret.secretKeyCiphertext,
-          iv: encSecret.secretKeyIV,
-          tag: encSecret.secretKeyTag,
-          key
+    select: useCallback(
+      (data: EncryptedSecret[]) => {
+        const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
+        const latestKey = decryptFileKey;
+        const key = decryptAssymmetric({
+          ciphertext: latestKey.encryptedKey,
+          nonce: latestKey.nonce,
+          publicKey: latestKey.sender.publicKey,
+          privateKey: PRIVATE_KEY
         });
 
-        const secretValue = decryptSymmetric({
-          ciphertext: encSecret.secretValueCiphertext,
-          iv: encSecret.secretValueIV,
-          tag: encSecret.secretValueTag,
-          key
-        });
+        const sharedSecrets: DecryptedSecret[] = [];
+        const personalSecrets: Record<string, { id: string; value: string }> = {};
+        // this used for add-only mode in dashboard
+        // type won't be there thus only one key is shown
+        const duplicateSecretKey: Record<string, boolean> = {};
+        data.forEach((encSecret: EncryptedSecret) => {
+          const secretKey = decryptSymmetric({
+            ciphertext: encSecret.secretKeyCiphertext,
+            iv: encSecret.secretKeyIV,
+            tag: encSecret.secretKeyTag,
+            key
+          });
 
-        const secretComment = decryptSymmetric({
-          ciphertext: encSecret.secretCommentCiphertext,
-          iv: encSecret.secretCommentIV,
-          tag: encSecret.secretCommentTag,
-          key
-        });
+          const secretValue = decryptSymmetric({
+            ciphertext: encSecret.secretValueCiphertext,
+            iv: encSecret.secretValueIV,
+            tag: encSecret.secretValueTag,
+            key
+          });
 
-        const decryptedSecret = {
-          _id: encSecret._id,
-          env: encSecret.environment,
-          key: secretKey,
-          value: secretValue,
-          tags: encSecret.tags,
-          comment: secretComment,
-          createdAt: encSecret.createdAt,
-          updatedAt: encSecret.updatedAt
-        };
+          const secretComment = decryptSymmetric({
+            ciphertext: encSecret.secretCommentCiphertext,
+            iv: encSecret.secretCommentIV,
+            tag: encSecret.secretCommentTag,
+            key
+          });
 
-        if (encSecret.type === "personal") {
-          personalSecrets[`${decryptedSecret.key}-${decryptedSecret.env}`] = {
-            id: encSecret._id,
-            value: secretValue
+          const decryptedSecret = {
+            _id: encSecret._id,
+            env: encSecret.environment,
+            key: secretKey,
+            value: secretValue,
+            tags: encSecret.tags,
+            comment: secretComment,
+            createdAt: encSecret.createdAt,
+            updatedAt: encSecret.updatedAt
           };
-        } else {
-          if (!duplicateSecretKey?.[`${decryptedSecret.key}-${decryptedSecret.env}`]) {
-            sharedSecrets.push(decryptedSecret);
+
+          if (encSecret.type === "personal") {
+            personalSecrets[`${decryptedSecret.key}-${decryptedSecret.env}`] = {
+              id: encSecret._id,
+              value: secretValue
+            };
+          } else {
+            if (!duplicateSecretKey?.[`${decryptedSecret.key}-${decryptedSecret.env}`]) {
+              sharedSecrets.push(decryptedSecret);
+            }
+            duplicateSecretKey[`${decryptedSecret.key}-${decryptedSecret.env}`] = true;
           }
-          duplicateSecretKey[`${decryptedSecret.key}-${decryptedSecret.env}`] = true;
-        }
-      });
-      sharedSecrets.forEach((val) => {
-        const dupKey = `${val.key}-${val.env}`;
-        if (personalSecrets?.[dupKey]) {
-          val.idOverride = personalSecrets[dupKey].id;
-          val.valueOverride = personalSecrets[dupKey].value;
-          val.overrideAction = "modified";
-        }
-      });
-      return { secrets: sharedSecrets };
-    }, [decryptFileKey])
+        });
+        sharedSecrets.forEach((val) => {
+          const dupKey = `${val.key}-${val.env}`;
+          if (personalSecrets?.[dupKey]) {
+            val.idOverride = personalSecrets[dupKey].id;
+            val.valueOverride = personalSecrets[dupKey].value;
+            val.overrideAction = "modified";
+          }
+        });
+        return { secrets: sharedSecrets };
+      },
+      [decryptFileKey]
+    )
   });
 
 export const useGetProjectSecretsByKey = ({
@@ -167,82 +174,85 @@ export const useGetProjectSecretsByKey = ({
     // right now secretpath is passed as folderid as only this is used in overview
     queryKey: secretKeys.getProjectSecret(workspaceId, env, secretPath),
     queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, folderId, secretPath),
-    select: useCallback((data: EncryptedSecret[]) => {
-      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-      const latestKey = decryptFileKey;
-      const key = decryptAssymmetric({
-        ciphertext: latestKey.encryptedKey,
-        nonce: latestKey.nonce,
-        publicKey: latestKey.sender.publicKey,
-        privateKey: PRIVATE_KEY
-      });
-
-      const sharedSecrets: Record<string, DecryptedSecret[]> = {};
-      const personalSecrets: Record<string, { id: string; value: string }> = {};
-      // this used for add-only mode in dashboard
-      // type won't be there thus only one key is shown
-      const duplicateSecretKey: Record<string, boolean> = {};
-      const uniqSecKeys: Record<string, boolean> = {};
-      data.forEach((encSecret: EncryptedSecret) => {
-        const secretKey = decryptSymmetric({
-          ciphertext: encSecret.secretKeyCiphertext,
-          iv: encSecret.secretKeyIV,
-          tag: encSecret.secretKeyTag,
-          key
-        });
-        if (!uniqSecKeys?.[secretKey]) uniqSecKeys[secretKey] = true;
-
-        const secretValue = decryptSymmetric({
-          ciphertext: encSecret.secretValueCiphertext,
-          iv: encSecret.secretValueIV,
-          tag: encSecret.secretValueTag,
-          key
+    select: useCallback(
+      (data: EncryptedSecret[]) => {
+        const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
+        const latestKey = decryptFileKey;
+        const key = decryptAssymmetric({
+          ciphertext: latestKey.encryptedKey,
+          nonce: latestKey.nonce,
+          publicKey: latestKey.sender.publicKey,
+          privateKey: PRIVATE_KEY
         });
 
-        const secretComment = decryptSymmetric({
-          ciphertext: encSecret.secretCommentCiphertext,
-          iv: encSecret.secretCommentIV,
-          tag: encSecret.secretCommentTag,
-          key
-        });
+        const sharedSecrets: Record<string, DecryptedSecret[]> = {};
+        const personalSecrets: Record<string, { id: string; value: string }> = {};
+        // this used for add-only mode in dashboard
+        // type won't be there thus only one key is shown
+        const duplicateSecretKey: Record<string, boolean> = {};
+        const uniqSecKeys: Record<string, boolean> = {};
+        data.forEach((encSecret: EncryptedSecret) => {
+          const secretKey = decryptSymmetric({
+            ciphertext: encSecret.secretKeyCiphertext,
+            iv: encSecret.secretKeyIV,
+            tag: encSecret.secretKeyTag,
+            key
+          });
+          if (!uniqSecKeys?.[secretKey]) uniqSecKeys[secretKey] = true;
 
-        const decryptedSecret = {
-          _id: encSecret._id,
-          env: encSecret.environment,
-          key: secretKey,
-          value: secretValue,
-          tags: encSecret.tags,
-          comment: secretComment,
-          createdAt: encSecret.createdAt,
-          updatedAt: encSecret.updatedAt
-        };
+          const secretValue = decryptSymmetric({
+            ciphertext: encSecret.secretValueCiphertext,
+            iv: encSecret.secretValueIV,
+            tag: encSecret.secretValueTag,
+            key
+          });
 
-        if (encSecret.type === "personal") {
-          personalSecrets[`${decryptedSecret.key}-${decryptedSecret.env}`] = {
-            id: encSecret._id,
-            value: secretValue
+          const secretComment = decryptSymmetric({
+            ciphertext: encSecret.secretCommentCiphertext,
+            iv: encSecret.secretCommentIV,
+            tag: encSecret.secretCommentTag,
+            key
+          });
+
+          const decryptedSecret = {
+            _id: encSecret._id,
+            env: encSecret.environment,
+            key: secretKey,
+            value: secretValue,
+            tags: encSecret.tags,
+            comment: secretComment,
+            createdAt: encSecret.createdAt,
+            updatedAt: encSecret.updatedAt
           };
-        } else {
-          if (!duplicateSecretKey?.[`${decryptedSecret.key}-${decryptedSecret.env}`]) {
-            if (!sharedSecrets?.[secretKey]) sharedSecrets[secretKey] = [];
-            sharedSecrets[secretKey].push(decryptedSecret);
-          }
-          duplicateSecretKey[`${decryptedSecret.key}-${decryptedSecret.env}`] = true;
-        }
-      });
-      Object.keys(sharedSecrets).forEach((secName) => {
-        sharedSecrets[secName].forEach((val) => {
-          const dupKey = `${val.key}-${val.env}`;
-          if (personalSecrets?.[dupKey]) {
-            val.idOverride = personalSecrets[dupKey].id;
-            val.valueOverride = personalSecrets[dupKey].value;
-            val.overrideAction = "modified";
+
+          if (encSecret.type === "personal") {
+            personalSecrets[`${decryptedSecret.key}-${decryptedSecret.env}`] = {
+              id: encSecret._id,
+              value: secretValue
+            };
+          } else {
+            if (!duplicateSecretKey?.[`${decryptedSecret.key}-${decryptedSecret.env}`]) {
+              if (!sharedSecrets?.[secretKey]) sharedSecrets[secretKey] = [];
+              sharedSecrets[secretKey].push(decryptedSecret);
+            }
+            duplicateSecretKey[`${decryptedSecret.key}-${decryptedSecret.env}`] = true;
           }
         });
-      });
+        Object.keys(sharedSecrets).forEach((secName) => {
+          sharedSecrets[secName].forEach((val) => {
+            const dupKey = `${val.key}-${val.env}`;
+            if (personalSecrets?.[dupKey]) {
+              val.idOverride = personalSecrets[dupKey].id;
+              val.valueOverride = personalSecrets[dupKey].value;
+              val.overrideAction = "modified";
+            }
+          });
+        });
 
-      return { secrets: sharedSecrets, uniqueSecCount: Object.keys(uniqSecKeys).length };
-    }, [decryptFileKey])
+        return { secrets: sharedSecrets, uniqueSecCount: Object.keys(uniqSecKeys).length };
+      },
+      [decryptFileKey]
+    )
   });
 
 const fetchEncryptedSecretVersion = async (secretId: string, offset: number, limit: number) => {
@@ -263,29 +273,32 @@ export const useGetSecretVersion = (dto: GetSecretVersionsDTO) =>
     enabled: Boolean(dto.secretId && dto.decryptFileKey),
     queryKey: secretKeys.getSecretVersion(dto.secretId),
     queryFn: () => fetchEncryptedSecretVersion(dto.secretId, dto.offset, dto.limit),
-    select: useCallback((data: EncryptedSecretVersion[]) => {
-      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-      const latestKey = dto.decryptFileKey;
-      const key = decryptAssymmetric({
-        ciphertext: latestKey.encryptedKey,
-        nonce: latestKey.nonce,
-        publicKey: latestKey.sender.publicKey,
-        privateKey: PRIVATE_KEY
-      });
+    select: useCallback(
+      (data: EncryptedSecretVersion[]) => {
+        const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
+        const latestKey = dto.decryptFileKey;
+        const key = decryptAssymmetric({
+          ciphertext: latestKey.encryptedKey,
+          nonce: latestKey.nonce,
+          publicKey: latestKey.sender.publicKey,
+          privateKey: PRIVATE_KEY
+        });
 
-      return data
-        .map((el) => ({
-          createdAt: el.createdAt,
-          id: el._id,
-          value: decryptSymmetric({
-            ciphertext: el.secretValueCiphertext,
-            iv: el.secretValueIV,
-            tag: el.secretValueTag,
-            key
-          })
-        }))
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    }, [])
+        return data
+          .map((el) => ({
+            createdAt: el.createdAt,
+            id: el._id,
+            value: decryptSymmetric({
+              ciphertext: el.secretValueCiphertext,
+              iv: el.secretValueIV,
+              tag: el.secretValueTag,
+              key
+            })
+          }))
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      },
+      [dto.decryptFileKey]
+    )
   });
 
 export const useBatchSecretsOp = () => {

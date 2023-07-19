@@ -1,182 +1,77 @@
-import { Controller, useForm } from "react-hook-form";
-import { faPlus, faTags, faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
 
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
   Button,
-  DeleteActionModal,
-  EmptyState,
-  FormControl,
-  IconButton,
-  Input,
-  Modal,
-  ModalClose,
-  ModalContent,
-  ModalTrigger,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr} from "@app/components/v2";
+  DeleteActionModal
+} from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
-import { WorkspaceTag } from "@app/hooks/api/types";
+import { useDeleteWsTag } from "@app/hooks/api";
 
-const createTagSchema = yup.object({
-  name: yup.string().required().label("Tag Name")
-});
-
-export type CreateWsTag = yup.InferType<typeof createTagSchema>;
-
-type Props = {
-  tags: WorkspaceTag[];
-  isLoading?: boolean;
-  workspaceName: string;
-  onDeleteTag: (tagID: string) => Promise<void>;
-  onCreateTag: (data: CreateWsTag) => Promise<string>;
-};
+import { AddSecretTagModal } from "./AddSecretTagModal";
+import { SecretTagsTable } from "./SecretTagsTable";
 
 type DeleteModalData = { name: string; id: string };
 
-export const SecretTagsSection = ({
-  tags = [],
-  isLoading,
-  onDeleteTag,
-  workspaceName,
-  onCreateTag
-}: Props): JSX.Element => {
+export const SecretTagsSection = (): JSX.Element => {
+  const { createNotification } = useNotificationContext();
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
     "CreateSecretTag",
     "deleteTagConfirmation"
   ] as const);
 
-  const {
-    control,
-    reset,
-    handleSubmit,
-    formState: { isSubmitting }
-  } = useForm<CreateWsTag>({
-    resolver: yupResolver(createTagSchema)
-  });
-
-  const onFormSubmit = async (data: CreateWsTag) => {
-    await onCreateTag(data);
-    handlePopUpClose("CreateSecretTag");
-  };
+  const deleteWsTag = useDeleteWsTag();
 
   const onDeleteApproved = async () => {
-    await onDeleteTag((popUp?.deleteTagConfirmation?.data as DeleteModalData)?.id);
-    handlePopUpClose("deleteTagConfirmation");
+    try {
+      await deleteWsTag.mutateAsync({ 
+        tagID: (popUp?.deleteTagConfirmation?.data as DeleteModalData)?.id
+      });
+
+      createNotification({
+        text: "Successfully deleted tag",
+        type: "success"
+      });
+
+      handlePopUpClose("deleteTagConfirmation");
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to delete the tag",
+        type: "error"
+      });
+    }
   };
 
   return (
-    <div className="mt-4 mb-4 flex w-full flex-col items-start rounded-md bg-mineshaft-900 p-6">
-      <div className="flex w-full flex-row justify-between">
-        <div className="flex w-full flex-col">
-          <p className="mb-3 text-xl font-semibold">Secret Tags</p>
-          <p className="text-sm text-gray-400">
-            Every secret can be assigned to one or more tags. Here you can add and remove tags for
-            the current project.
-          </p>
-        </div>
-        <div>
-          <Modal
-            isOpen={popUp?.CreateSecretTag?.isOpen}
-            onOpenChange={(open) => {
-              handlePopUpToggle("CreateSecretTag", open);
-              reset();
-            }}
-          >
-            <ModalTrigger asChild>
-              <Button color="mineshaft" leftIcon={<FontAwesomeIcon icon={faPlus} />}>
-                Add New Tag
-              </Button>
-            </ModalTrigger>
-            <ModalContent
-              title={`Add a tag for ${workspaceName}`}
-              subTitle="Specify your tag name, and the slug will be created automatically."
-            >
-              <form onSubmit={handleSubmit(onFormSubmit)}>
-                <Controller
-                  control={control}
-                  name="name"
-                  defaultValue=""
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Tag Name"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input {...field} placeholder="Type your tag name" />
-                    </FormControl>
-                  )}
-                />
-                <div className="mt-8 flex items-center">
-                  <Button
-                    className="mr-4"
-                    type="submit"
-                    isDisabled={isSubmitting}
-                    isLoading={isSubmitting}
-                  >
-                    Create
-                  </Button>
-                  <ModalClose asChild>
-                    <Button variant="plain" colorSchema="secondary">
-                      Cancel
-                    </Button>
-                  </ModalClose>
-                </div>
-              </form>
-            </ModalContent>
-          </Modal>
-        </div>
+    <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
+      <div className="flex justify-between mb-8">
+        <p className="mb-3 text-xl font-semibold">Secret Tags</p>
+        <Button 
+          colorSchema="secondary" 
+          leftIcon={<FontAwesomeIcon icon={faPlus} />}
+          onClick={() => {
+            console.log("x");
+            handlePopUpOpen("CreateSecretTag");
+            console.log("x2");
+          }}
+        >
+          Create tag
+        </Button> 
       </div>
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th>Tag</Th>
-              <Th>Slug</Th>
-              <Th aria-label="button" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isLoading && <TableSkeleton columns={3} key="secret-tags" />}
-            {!isLoading &&
-              tags.map(({ _id, name, slug }) => (
-                <Tr key={name}>
-                  <Td>{name}</Td>
-                  <Td>{slug}</Td>
-                  <Td className="flex items-center justify-end">
-                    <IconButton
-                      onClick={() =>
-                        handlePopUpOpen("deleteTagConfirmation", {
-                          name,
-                          id: _id
-                        })
-                      }
-                      colorSchema="danger"
-                      ariaLabel="update"
-                    >
-                      <FontAwesomeIcon icon={faTrashCan} />
-                    </IconButton>
-                  </Td>
-                </Tr>
-              ))}
-            {!isLoading && tags?.length === 0 && (
-              <Tr>
-                <Td colSpan={3}>
-                  <EmptyState title="No secret tags found" icon={faTags} />
-                </Td>
-              </Tr>
-            )}
-          </TBody>
-        </Table>
-      </TableContainer>
+      <p className="text-gray-400 mb-8">
+        Every secret can be assigned to one or more tags. Here you can add and remove tags for
+        the current project.
+      </p>
+      <SecretTagsTable 
+        handlePopUpOpen={handlePopUpOpen}
+      />
+      <AddSecretTagModal 
+        popUp={popUp}
+        handlePopUpClose={handlePopUpClose}
+        handlePopUpToggle={handlePopUpToggle}
+      />
       <DeleteActionModal
         isOpen={popUp.deleteTagConfirmation.isOpen}
         title={`Delete ${

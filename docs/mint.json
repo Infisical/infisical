@@ -21,6 +21,10 @@
       "to": "#F8B7BD"
     }
   },
+  "feedback": {
+    "suggestEdit": true,
+    "raiseIssue": true
+  },
   "api": {
     "baseUrl": ["https://app.infisical.com", "http://localhost:8080"],
     "auth": {
@@ -69,7 +73,7 @@
     {
       "name": "Slack",
       "icon": "slack",
-      "url": "https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg"
+      "url": "https://infisical.com/slack"
     },
     {
       "name": "GitHub",
@@ -87,7 +91,6 @@
             "documentation/getting-started/introduction",
             "documentation/getting-started/platform",
             "documentation/getting-started/sdks",
-            "documentation/getting-started/cli",
             "documentation/getting-started/docker",
             "documentation/getting-started/kubernetes",
             "documentation/getting-started/api"
@@ -110,6 +113,8 @@
         "documentation/platform/organization",
         "documentation/platform/project",
         "documentation/platform/folder",
+        "documentation/platform/secret-reference",
+        "documentation/platform/webhooks",
         "documentation/platform/pit-recovery",
         "documentation/platform/secret-versioning",
         "documentation/platform/audit-logs",
@@ -130,6 +135,7 @@
             "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/fly.io",
             "self-hosting/deployment-options/render",
+            "self-hosting/deployment-options/laravel-forge",
             "self-hosting/deployment-options/digital-ocean-marketplace"
           ]
         },
@@ -172,7 +178,12 @@
     {
       "group": "Integrations",
       "pages": [
-        "integrations/overview",
+        "integrations/overview"
+      ]
+    },
+    {
+      "group": "Infrastructure Integrations",
+      "pages": [
         {
           "group": "Docker",
           "pages": [
@@ -181,7 +192,12 @@
           ]
         },
         "integrations/platforms/kubernetes",
-        "integrations/frameworks/terraform",
+        "integrations/frameworks/terraform"
+      ]
+    },
+    {
+      "group": "3rd-party Integrations",
+      "pages": [
         {
           "group": "AWS",
           "pages": [
@@ -195,6 +211,7 @@
         "integrations/cloud/render",
         "integrations/cloud/railway",
         "integrations/cloud/flyio",
+        "integrations/cloud/laravel-forge",
         "integrations/cloud/supabase",
         "integrations/cloud/cloudflare-pages",
         "integrations/cloud/checkly",
@@ -203,7 +220,12 @@
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",
         "integrations/cicd/circleci",
-        "integrations/cicd/travisci",
+        "integrations/cicd/travisci"
+      ]
+    },
+    {
+      "group": "Framework Integrations",
+      "pages": [
         "integrations/frameworks/spring-boot-maven",
         "integrations/frameworks/react",
         "integrations/frameworks/vue",
@@ -227,18 +249,6 @@
     {
       "group": "Overview",
       "pages": ["sdks/overview"]
-    },
-    {
-      "group": "SDKs",
-      "pages": [
-        "sdks/languages/node",
-        "sdks/languages/python",
-        "sdks/languages/java",
-        "sdks/languages/ruby",
-        "sdks/languages/go",
-        "sdks/languages/rust",
-        "sdks/languages/php"
-      ]
     },
     {
       "group": "Overview",

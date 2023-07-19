@@ -8,7 +8,7 @@ import { useRouter } from "next/router";
 import { Button, Input } from "@app/components/v2";
 import { isLoggedIn } from "@app/reactQuery";
 
-import getWorkspaces from "./api/workspace/getWorkspaces";
+import getOrganizations from "./api/organization/getOrgs";
 
 export default function Login() {
   const router = useRouter();
@@ -18,11 +18,11 @@ export default function Login() {
   useEffect(() => {
     // TODO(akhilmhdh): workspace will be controlled by a workspace context
     const redirectToDashboard = async () => {
-      let userWorkspace;
+      let userOrg;
       try {
-        const userWorkspaces = await getWorkspaces();
-        userWorkspace = userWorkspaces[0] && userWorkspaces[0]._id;
-        router.push(`/dashboard/${userWorkspace}`);
+        const userOrgs = await getOrganizations();
+        userOrg = userOrgs[0] && userOrgs[0]._id;
+        router.push(`/org/${userOrg}/overview`);
       } catch (error) {
         console.log("Error - Not logged in yet");
       }

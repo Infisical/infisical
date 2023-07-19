@@ -12,16 +12,21 @@ import {
   AddUserToOrgDTO,
   AddUserToWsDTO,
   AddUserToWsRes,
+  APIKeyData,
+  CreateAPIKeyRes,
   DeletOrgMembershipDTO,
   OrgUser,
+  RenameUserDTO,
+  TokenVersion,
   UpdateOrgUserRoleDTO,
-  User
-} from "./types";
+  User} from "./types";
 
 const userKeys = {
   getUser: ["user"] as const,
   userAction: ["user-action"] as const,
-  getOrgUsers: (orgId: string) => [{ orgId }, "user"]
+  getOrgUsers: (orgId: string) => [{ orgId }, "user"],
+  myAPIKeys: ["api-keys"] as const,
+  mySessions: ["sessions"] as const
 };
 
 export const fetchUserDetails = async () => {
@@ -39,6 +44,18 @@ const fetchUserAction = async (action: string) => {
     }
   });
   return data.userAction;
+};
+
+export const useRenameUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, RenameUserDTO>({
+    mutationFn: ({ newName }) =>
+      apiRequest.patch("/api/v2/users/me/name", { firstName: newName?.split(" ")[0], lastName: newName?.split(" ").slice(1).join(" ") }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(userKeys.getUser);
+    }
+  });
 };
 
 export const useGetUserAction = (action: string) =>
@@ -167,3 +184,90 @@ export const useLogoutUser = () =>
       localStorage.setItem("PRIVATE_KEY", "");
     }
   });
+
+export const useGetMyAPIKeys = () => {
+  return useQuery({
+    queryKey: userKeys.myAPIKeys,
+    queryFn: async () => {
+      const { data } = await apiRequest.get<APIKeyData[]>(
+        "/api/v2/users/me/api-keys"
+      );
+      return data;
+    },
+    enabled: true
+  });
+}
+
+export const useCreateAPIKey = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      name,
+      expiresIn
+    }: {
+      name: string;
+      expiresIn: number;
+    }) => {
+      const { data } = await apiRequest.post<CreateAPIKeyRes>(
+        "/api/v2/users/me/api-keys",
+        {
+          name,
+          expiresIn
+        }
+      );
+      
+      return data;
+    },
+    onSuccess() {
+      queryClient.invalidateQueries(userKeys.myAPIKeys);
+    }
+  });
+}
+
+export const useDeleteAPIKey = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (apiKeyDataId: string) => {
+      const { data } = await apiRequest.delete(
+        `/api/v2/users/me/api-keys/${apiKeyDataId}`
+      );
+
+      return data;
+    },
+    onSuccess() {
+      queryClient.invalidateQueries(userKeys.myAPIKeys);
+    }
+  });
+}
+
+export const useGetMySessions = () => {
+  return useQuery({
+    queryKey: userKeys.mySessions,
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TokenVersion[]>(
+        "/api/v2/users/me/sessions"
+      );
+
+      return data;
+    },
+    enabled: true
+  });
+}
+
+export const useRevokeMySessions = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      console.log("useRevokeAllSessions 1");
+      const { data } = await apiRequest.delete(
+        "/api/v2/users/me/sessions"
+      );
+
+      console.log("useRevokeAllSessions 2: ", data);
+      return data;
+    },
+    onSuccess() {
+      queryClient.invalidateQueries(userKeys.mySessions);
+    }
+  });
+}

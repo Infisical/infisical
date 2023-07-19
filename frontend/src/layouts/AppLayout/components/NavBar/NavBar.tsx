@@ -21,7 +21,9 @@ import {TFunction} from "i18next";
 
 import guidGenerator from "@app/components/utilities/randomId";
 import { useOrganization, useSubscription,useUser } from "@app/context";
-import { useLogoutUser } from "@app/hooks/api";
+import { 
+  useGetOrgTrialUrl,
+  useLogoutUser} from "@app/hooks/api";
 
 const supportOptions = (t: TFunction) => [
   [
@@ -64,8 +66,9 @@ export interface IUser {
 export const Navbar = () => {
   const router = useRouter();
   const { subscription } = useSubscription();
-  
+
   const { currentOrg, orgs } = useOrganization();
+  const { mutateAsync } = useGetOrgTrialUrl();
   const { user } = useUser();
 
   const logout = useLogoutUser();
@@ -96,16 +99,15 @@ export const Navbar = () => {
   };
 
   return (
-    <div className="z-[70] flex w-full flex-row justify-between border-b border-mineshaft-500 bg-mineshaft-900 text-white">
-      <div className="m-auto mx-4 flex items-center justify-start">
-        <div className="flex flex-row items-center">
-          <div className="flex justify-center py-4">
-            <Image src="/images/logotransparent.png" height={23} width={57} alt="logo" />
-          </div>
-          <a href="#" className="mx-2 text-2xl font-semibold text-white">
-            Infisical
-          </a>
+    <div className="z-[70] border-b border-mineshaft-500 bg-mineshaft-900 text-white">
+      <div className="flex w-full justify-between px-4">
+      <div className="flex flex-row items-center">
+        <div className="flex justify-center py-4">
+          <Image src="/images/logotransparent.png" height={23} width={57} alt="logo" />
         </div>
+        <a href="#" className="mx-2 text-2xl font-semibold text-white">
+          Infisical
+        </a>
       </div>
       <div className="relative z-40 mx-2 flex items-center justify-start">
         <a
@@ -178,7 +180,7 @@ export const Navbar = () => {
                   onKeyDown={() => null}
                   role="button"
                   tabIndex={0}
-                  onClick={() => router.push(`/settings/personal/${router.query.id}`)}
+                  onClick={() => router.push("/personal-settings")}
                   className="mx-1 my-1 flex cursor-pointer flex-row items-center rounded-md px-1 hover:bg-white/5"
                 >
                   <div className="flex h-8 w-9 items-center justify-center rounded-full bg-white/10 text-gray-300">
@@ -190,7 +192,7 @@ export const Navbar = () => {
                         {" "}
                         {user?.firstName} {user?.lastName}
                       </p>
-                      <p className="px-2 pb-1 text-xs text-gray-400"> {user?.email}</p>
+                      <p className="px-2 pb-1 text-xs text-gray-400">{user?.email}</p>
                     </div>
                     <FontAwesomeIcon
                       icon={faGear}
@@ -314,6 +316,28 @@ export const Navbar = () => {
           </Transition>
         </Menu>
       </div>
+      </div>
+      {subscription && subscription.slug === "starter" && !subscription.has_used_trial && (
+        <div className="w-full mx-auto border-t border-mineshaft-500 text-center">
+          <button 
+            type="button"
+            onClick={async () => {
+              if (!subscription || !currentOrg) return;
+      
+              // direct user to start pro trial
+              const url = await mutateAsync({
+                orgId: currentOrg._id,
+                success_url: window.location.href
+              });
+              
+              window.location.href = url;
+            }}
+            className="text-center py-4 text-sm mx-auto"
+          >
+              You are currently on the <span className="font-semibold">Starter</span> plan. Unlock the full power of Infisical on the <span className="font-semibold">Pro Free Trial &rarr;</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

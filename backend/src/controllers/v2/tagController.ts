@@ -3,7 +3,6 @@ import { Types } from "mongoose";
 import { Membership, Secret } from "../../models";
 import Tag from "../../models/tag";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import { MongoError } from "mongodb";
 
 export const createWorkspaceTag = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
@@ -16,7 +15,7 @@ export const createWorkspaceTag = async (req: Request, res: Response) => {
       user: new Types.ObjectId(req.user._id),
     };
   
-  const createdTag = await new Tag(tagToCreate);
+  const createdTag = await new Tag(tagToCreate).save();
   
   res.json(createdTag);
 };
@@ -49,7 +48,11 @@ export const deleteWorkspaceTag = async (req: Request, res: Response) => {
 
 export const getWorkspaceTags = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
-  const workspaceTags = await Tag.find({ workspace: workspaceId });
+  
+  const workspaceTags = await Tag.find({ 
+    workspace: new Types.ObjectId(workspaceId) 
+  });
+  
   return res.json({
     workspaceTags
   });

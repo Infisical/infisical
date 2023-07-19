@@ -15,23 +15,29 @@ import password from "./password";
 import integration from "./integration";
 import integrationAuth from "./integrationAuth";
 import secretsFolder from "./secretsFolder";
+import secretScanning from "./secretScanning";
+import webhooks from "./webhook";
+import secretImport from "./secretImport";
 
 export {
-	signup,
-	auth,
-	bot,
-	user,
-	userAction,
-	organization,
-	workspace,
-	membershipOrg,
-	membership,
-	key,
-	inviteOrg,
-	secret,
-	serviceToken,
-	password,
-	integration,
-	integrationAuth,
-	secretsFolder,
+  signup,
+  auth,
+  bot,
+  user,
+  userAction,
+  organization,
+  workspace,
+  membershipOrg,
+  membership,
+  key,
+  inviteOrg,
+  secret,
+  serviceToken,
+  password,
+  integration,
+  integrationAuth,
+  secretsFolder,
+  secretScanning,
+  webhooks,
+  secretImport
 };

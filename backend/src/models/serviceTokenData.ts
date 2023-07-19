@@ -4,7 +4,10 @@ export interface IServiceTokenData extends Document {
   _id: Types.ObjectId;
   name: string;
   workspace: Types.ObjectId;
-  environment: string;
+  scopes: Array<{
+    environment: string;
+    secretPath: string;
+  }>;
   user: Types.ObjectId;
   serviceAccount: Types.ObjectId;
   lastUsed: Date;
@@ -13,7 +16,6 @@ export interface IServiceTokenData extends Document {
   encryptedKey: string;
   iv: string;
   tag: string;
-  secretPath: string;
   permissions: string[];
 }
 
@@ -21,68 +23,72 @@ const serviceTokenDataSchema = new Schema<IServiceTokenData>(
   {
     name: {
       type: String,
-      required: true,
+      required: true
     },
     workspace: {
       type: Schema.Types.ObjectId,
       ref: "Workspace",
-      required: true,
+      required: true
     },
-    environment: {
-      type: String,
-      required: true,
+    scopes: {
+      type: [
+        {
+          environment: {
+            type: String,
+            required: true
+          },
+          secretPath: {
+            type: String,
+            default: "/",
+            required: true
+          }
+        }
+      ],
+      required: true
     },
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: true
     },
     serviceAccount: {
       type: Schema.Types.ObjectId,
-      ref: "ServiceAccount",
+      ref: "ServiceAccount"
     },
     lastUsed: {
-      type: Date,
+      type: Date
     },
     expiresAt: {
-      type: Date,
+      type: Date
     },
     secretHash: {
       type: String,
       required: true,
-      select: false,
+      select: false
     },
     encryptedKey: {
       type: String,
-      select: false,
+      select: false
     },
     iv: {
       type: String,
-      select: false,
+      select: false
     },
     tag: {
       type: String,
-      select: false,
+      select: false
     },
     permissions: {
       type: [String],
       enum: ["read", "write"],
-      default: ["read"],
-    },
-    secretPath: {
-      type: String,
-      default: "/",
-      required: true,
-    },
+      default: ["read"]
+    }
   },
   {
-    timestamps: true,
+    timestamps: true
   }
 );
 
-const ServiceTokenData = model<IServiceTokenData>(
-  "ServiceTokenData",
-  serviceTokenDataSchema
-);
+const ServiceTokenData = model<IServiceTokenData>("ServiceTokenData", serviceTokenDataSchema);
 
 export default ServiceTokenData;

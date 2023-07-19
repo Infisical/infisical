@@ -71,6 +71,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "circleci":
         link = `${window.location.origin}/integrations/circleci/authorize`;
         break;
+      case "laravel-forge":
+        link = `${window.location.origin}/integrations/laravel-forge/authorize`;
+        break;
       case "travisci":
         link = `${window.location.origin}/integrations/travisci/authorize`;
         break;

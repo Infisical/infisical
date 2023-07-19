@@ -10,12 +10,11 @@ import axios from "axios"
 import InitialLoginStep from "@app/components/login/InitialLoginStep";
 import MFAStep from "@app/components/login/MFAStep";
 import PasswordInputStep from "@app/components/login/PasswordInputStep";
+import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { useProviderAuth } from "@app/hooks/useProviderAuth";
 import { getAuthToken, isLoggedIn } from "@app/reactQuery";
 
-import { fetchUserDetails } from "~/hooks/api/users/queries";
-
-import getWorkspaces from "./api/workspace/getWorkspaces";
+import getOrganizations from "./api/organization/getOrgs";
 
 export default function Login() {
   const router = useRouter();
@@ -44,10 +43,10 @@ export default function Login() {
   useEffect(() => {
     // TODO(akhilmhdh): workspace will be controlled by a workspace context
     const redirectToDashboard = async () => {
-      let userWorkspace;
       try {
-        const userWorkspaces = await getWorkspaces();
-        userWorkspace = userWorkspaces[0] && userWorkspaces[0]._id;
+        const userOrgs = await getOrganizations();
+        // userWorkspace = userWorkspaces[0] && userWorkspaces[0]._id;
+        const userOrg = userOrgs[0] && userOrgs[0]._id;
 
         // user details
         const userDetails = await fetchUserDetails()
@@ -62,7 +61,7 @@ export default function Login() {
           const instance = axios.create()
           await instance.post(cliUrl, { email: userDetails.email, privateKey: localStorage.getItem("PRIVATE_KEY"), JTWToken: getAuthToken() })
         }
-        router.push(`/dashboard/${userWorkspace}`);
+        router.push(`/org/${userOrg}/overview`);
       } catch (error) {
         console.log("Error - Not logged in yet");
       }

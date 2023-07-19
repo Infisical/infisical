@@ -27,7 +27,7 @@ export const UnauthorizedRequestError = (error?: Partial<RequestErrorContext>) =
     context: error?.context,
     stack: error?.stack,
 });
-  
+
 export const ForbiddenRequestError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.INFO,
     statusCode: error?.statusCode ?? 403,
@@ -42,6 +42,15 @@ export const BadRequestError = (error?: Partial<RequestErrorContext>) => new Req
     statusCode: error?.statusCode ?? 400,
     type: error?.type ?? "bad_request",
     message: error?.message ?? "The request is invalid or cannot be served",
+    context: error?.context,
+    stack: error?.stack,
+});
+
+export const ResourceNotFound = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.INFO,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? "resource_not_found",
+    message: error?.message ?? "The requested resource is not found",
     context: error?.context,
     stack: error?.stack,
 });
@@ -229,6 +238,6 @@ export const BotNotFoundError = (error?: Partial<RequestErrorContext>) => new Re
     message: error?.message ?? "The requested bot was not found",
     context: error?.context,
     stack: error?.stack,
-})    
+})
 
 //* ----->[MISC ERRORS]<-----

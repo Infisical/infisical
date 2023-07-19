@@ -44,10 +44,17 @@ provider "infisical" {
 
 ### 3. Fetch Infisical Secrets
 
-Use the `infisical_secrets` data source to fetch your secrets. This is defined with an empty block `{}` as the provider automatically fetches all secrets associated with your service token.
+Use the `infisical_secrets` data source to fetch your secrets. In this block, you must set the `env_slug` and `folder_path` to scope the secrets you want. 
+
+`env_slug` is the slug of the environment name. This slug name can be found under the project settings page on the Infisical dashboard. 
+
+`folder_path` is the path to the folder in a given environment. The path `/` for root of the environment where as `/folder1` is the folder at the root of the environment.
 
 ```hcl main.tf
-data "infisical_secrets" "my-secrets" {}
+data "infisical_secrets" "my-secrets" {
+  env_slug    = "dev"
+  folder_path = "/some-folder/another-folder"
+}
 ```
 
 ### 4. Define Outputs

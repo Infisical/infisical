@@ -1,3 +1,10 @@
+# secretScanningGitApp:
+#   enabled: false
+#   deploymentAnnotations:
+#     secrets.infisical.com/auto-reload: "true"
+#   image:
+#     repository: infisical/staging_deployment_secret-scanning-git-app
+    
 frontend:
   enabled: true
   name: frontend
@@ -51,8 +58,8 @@ mongodbConnection:
 
 ingress:
   enabled: true
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
+  # annotations:
+  #   kubernetes.io/ingress.class: "nginx"
     # cert-manager.io/issuer: letsencrypt-nginx
   hostName: gamma.infisical.com ## <- Replace with your own domain
   frontend:

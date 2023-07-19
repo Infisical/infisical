@@ -44,6 +44,13 @@ spec:
               name: {{ include "infisical.backend.fullname" . }}
               port:
                 number: 4000
+        - path: /ss-webhook
+          pathType: Exact
+          backend:
+            service:
+              name: {{ include "infisical.backend.fullname" . }}
+              port:
+                number: 4000
       {{- if $ingress.hostName }}
       host: {{ $ingress.hostName }}
       {{- end }}

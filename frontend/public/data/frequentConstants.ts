@@ -12,6 +12,7 @@ const integrationSlugNameMapping: Mapping = {
   'github': 'GitHub',
   'gitlab': 'GitLab',
   'render': 'Render',
+  'laravel-forge': "Laravel Forge",
   'railway': 'Railway',
   'flyio': 'Fly.io',
   'circleci': 'CircleCI',
@@ -19,7 +20,8 @@ const integrationSlugNameMapping: Mapping = {
   'supabase': 'Supabase',
   'checkly': 'Checkly',
   'hashicorp-vault': 'Vault',
-  'cloudflare-pages': 'Cloudflare Pages'
+  'cloudflare-pages': 'Cloudflare Pages',
+  'codefresh': 'Codefresh'
 }
 
 const envMapping: Mapping = {

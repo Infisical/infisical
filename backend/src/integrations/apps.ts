@@ -9,15 +9,17 @@ import {
   INTEGRATION_CHECKLY_API_URL,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CIRCLECI_API_URL,
+  INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUDFLARE_PAGES_API_URL,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
-  INTEGRATION_CLOUDFLARE_PAGES,
-  INTEGRATION_CLOUDFLARE_PAGES_API_URL,
   INTEGRATION_GITLAB_API_URL,
   INTEGRATION_HEROKU,
   INTEGRATION_HEROKU_API_URL,
+  INTEGRATION_LARAVELFORGE,
+  INTEGRATION_LARAVELFORGE_API_URL,
   INTEGRATION_NETLIFY,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RAILWAY,
@@ -117,6 +119,12 @@ const getApps = async ({
     case INTEGRATION_CIRCLECI:
       apps = await getAppsCircleCI({
         accessToken,
+      });
+      break;
+    case INTEGRATION_LARAVELFORGE:
+      apps = await getAppsLaravelForge({
+        accessToken,
+        serverId: accessId
       });
       break;
     case INTEGRATION_TRAVISCI:
@@ -401,6 +409,40 @@ const getAppsRailway = async ({ accessToken }: { accessToken: string }) => {
   const apps = edges.map((e: any) => ({
     name: e.node.name,
     appId: e.node.id,
+  }));
+
+  return apps;
+};
+
+/**
+ * Return list of sites for Laravel Forge integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Laravel Forge API
+ * @param {String} obj.serverId - server id of Laravel Forge
+ * @returns {Object[]} apps - names and ids of Laravel Forge sites
+ * @returns {String} apps.name - name of Laravel Forge sites
+ * @returns {String} apps.appId - id of Laravel Forge sites
+ */
+const getAppsLaravelForge = async ({ 
+  accessToken,
+  serverId
+}: {
+  accessToken: string;
+  serverId?: string;
+}) => {
+  const res = (
+    await standardRequest.get(`${INTEGRATION_LARAVELFORGE_API_URL}/api/v1/servers/${serverId}/sites`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+  ).data.sites;
+
+  const apps = res.map((a: any) => ({
+    name: a.name,
+    appId: a.id,
   }));
 
   return apps;

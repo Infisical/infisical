@@ -46,6 +46,7 @@ type Errors = {
 
 export default function SignupInvite() {
   const { data: commonPasswords } = useGetCommonPasswords();
+
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -212,7 +213,7 @@ export default function SignupInvite() {
               } else {
                 // user will be redirected to dashboard
                 // if not logged in gets kicked out to login
-                router.push("/dashboard");
+                router.push(`/org/${organizationId}/overview`);
               }
             } else {
               console.log("ERROR", response);
@@ -338,22 +339,10 @@ export default function SignupInvite() {
               setBackupKeyError,
               setBackupKeyIssued
             });
-            router.push("/noprojects/");
+            router.push(`/org/${organizationId}/overview`);
           }}
           size="lg"
         />
-        {/* <div
-					className="text-l mt-4 text-lg text-gray-400 hover:text-gray-300 duration-200 bg-white/5 px-8 hover:bg-white/10 py-3 rounded-md cursor-pointer"
-					onClick={() => {
-						if (localStorage.getItem("projectData.id")) {
-							router.push("/dashboard/" + localStorage.getItem("projectData.id"));
-						} else {
-							router.push("/noprojects")
-						}
-					}}
-				>
-					Later
-				</div> */}
       </div>
     </div>
   );

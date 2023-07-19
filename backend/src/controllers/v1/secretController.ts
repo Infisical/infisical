@@ -80,7 +80,8 @@ export const pushSecrets = async (req: Request, res: Response) => {
   EventService.handleEvent({
     event: eventPushSecrets({
       workspaceId: new Types.ObjectId(workspaceId),
-      environment
+      environment,
+      secretPath: "/"
     })
   });
 

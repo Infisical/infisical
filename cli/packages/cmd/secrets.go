@@ -54,18 +54,23 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		includeImports, err := cmd.Flags().GetBool("include-imports")
+		if err != nil {
+			util.HandleError(err)
+		}
+
 		tagSlugs, err := cmd.Flags().GetString("tags")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath})
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports})
 		if err != nil {
 			util.HandleError(err)
 		}
 
 		if shouldExpandSecrets {
-			secrets = util.SubstituteSecrets(secrets)
+			secrets = util.ExpandSecrets(secrets, infisicalToken)
 		}
 
 		visualize.PrintAllSecretDetails(secrets)
@@ -647,6 +652,7 @@ func init() {
 	secretsCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
 	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
+	secretsCmd.Flags().Bool("include-imports", true, "Imported linked secrets ")
 	secretsCmd.PersistentFlags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	secretsCmd.Flags().String("path", "/", "get secrets within a folder path")
 	rootCmd.AddCommand(secretsCmd)

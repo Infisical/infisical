@@ -61,7 +61,8 @@ const buttonVariants = cva(
       {
         colorSchema: "primary",
         variant: "star",
-        className: "bg-mineshaft-700 border border-mineshaft-600 hover:bg-primary hover:text-black hover:border-primary-400 duration-100"
+        className:
+          "bg-mineshaft-700 border border-mineshaft-600 hover:bg-primary hover:text-black hover:border-primary-400 duration-100"
       },
       {
         colorSchema: "primary",
@@ -76,12 +77,14 @@ const buttonVariants = cva(
       {
         colorSchema: "primary",
         variant: "outline_bg",
-        className: "bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/[0.1] hover:border-primary/40 text-bunker-200"
+        className:
+          "bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/[0.1] hover:border-primary/40 text-bunker-200"
       },
       {
         colorSchema: "secondary",
         variant: "star",
-        className: "bg-mineshaft-700 border border-mineshaft-600 hover:bg-mineshaft hover:text-white"
+        className:
+          "bg-mineshaft-700 border border-mineshaft-600 hover:bg-mineshaft hover:text-white"
       },
       {
         colorSchema: "danger",
@@ -163,13 +166,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         type="button"
         className={twMerge(
           buttonVariants({
-            className,
             colorSchema,
             size,
             variant,
             isRounded,
             isDisabled,
-            isFullWidth
+            isFullWidth,
+            className
           })
         )}
         disabled={isDisabled}
@@ -193,7 +196,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         >
           {leftIcon}
         </div>
-        <span className={twMerge("transition-all", isFullWidth ? "w-full" : "w-min", loadingToggleClass)}>{children}</span>
+        <span
+          className={twMerge(
+            "transition-all",
+            isFullWidth ? "w-full" : "w-min",
+            loadingToggleClass
+          )}
+        >
+          {children}
+        </span>
         <div
           className={twMerge(
             "inline-flex shrink-0 cursor-pointer items-center justify-center transition-all",

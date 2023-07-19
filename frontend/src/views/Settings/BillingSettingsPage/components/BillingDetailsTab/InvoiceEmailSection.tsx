@@ -3,9 +3,9 @@ import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import Button from "@app/components/basic/buttons/Button";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
+  Button,
   FormControl,
   Input} from "@app/components/v2";
 import { useOrganization } from "@app/context";
@@ -28,7 +28,7 @@ export const InvoiceEmailSection = () => {
         resolver: yupResolver(schema)
     });
     const { data } = useGetOrgBillingDetails(currentOrg?._id ?? "");
-    const updateOrgBillingDetails = useUpdateOrgBillingDetails();
+    const { mutateAsync, isLoading } = useUpdateOrgBillingDetails();
 
     useEffect(() => {
         if (data) {
@@ -43,7 +43,7 @@ export const InvoiceEmailSection = () => {
             if (!currentOrg?._id) return;
             if (email === "") return;
 
-            await updateOrgBillingDetails.mutateAsync({
+            await mutateAsync({
                 email,
                 organizationId: currentOrg._id
             });
@@ -64,7 +64,7 @@ export const InvoiceEmailSection = () => {
     return (
         <form 
             onSubmit={handleSubmit(onFormSubmit)}
-            className="p-4 bg-mineshaft-900 mt-8 max-w-screen-lg rounded-lg border border-mineshaft-600"
+            className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
         >
             <h2 className="text-xl font-semibold flex-1 text-white mb-8">
                 Invoice email recipient
@@ -85,15 +85,13 @@ export const InvoiceEmailSection = () => {
                     name="email"
                 />
             </div>
-            <div className="inline-block">
-                <Button
-                    text="Save"
-                    type="submit"
-                    color="mineshaft"
-                    size="md"
-                    onButtonPressed={() => console.log("Saved email address")}
-                />
-            </div>
+            <Button
+                type="submit"
+                colorSchema="secondary"
+                isLoading={isLoading}
+            >
+                Save
+            </Button>
         </form>
     );
 }

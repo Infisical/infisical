@@ -44,10 +44,12 @@ export const IntegrationsSection = ({
         </div>
       )}
       {!isLoading && !integrations.length && (
-        <EmptyState
-          className="mx-6 rounded-md border border-mineshaft-700 pt-8 pb-4"
-          title="No integrations found. Click on one of the below providers to sync secrets."
-        />
+        <div className="mx-6">
+          <EmptyState
+            className="rounded-md border border-mineshaft-700 pt-8 pb-4"
+            title="No integrations found. Click on one of the below providers to sync secrets."
+          />
+        </div>
       )}
       {!isLoading && (
         <div className="flex flex-col space-y-4 p-6 pt-0">

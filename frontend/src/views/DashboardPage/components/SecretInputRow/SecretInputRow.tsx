@@ -1,9 +1,11 @@
 /* eslint-disable react/jsx-no-useless-fragment */
-import { memo, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import {
+  faCheck,
   faCodeBranch,
   faComment,
+  faCopy,
   faEllipsis,
   faInfoCircle,
   faPlus,
@@ -30,6 +32,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { useToggle } from "@app/hooks";
 import { WsTag } from "@app/hooks/api/types";
 
 import { FormData, SecretActionType } from "../../DashboardPage.utils";
@@ -95,6 +98,16 @@ export const SecretInputRow = memo(
       name: `secrets.${index}.key`,
       disabled: isKeySubDisabled.current
     });
+    const secValue = useWatch({
+      control,
+      name: `secrets.${index}.value`,
+      disabled: isKeySubDisabled.current
+    });
+    const secValueOverride = useWatch({
+      control,
+      name: `secrets.${index}.valueOverride`,
+      disabled: isKeySubDisabled.current
+    })
     const secId = useWatch({ control, name: `secrets.${index}._id` });
 
     const tags = useWatch({ control, name: `secrets.${index}.tags`, defaultValue: [] }) || [];
@@ -102,6 +115,21 @@ export const SecretInputRow = memo(
       (prev, curr) => ({ ...prev, [curr.slug]: true }),
       {}
     );
+
+    const [isInviteLinkCopied, setInviteLinkCopied] = useToggle(false);
+
+    useEffect(() => {
+      let timer: NodeJS.Timeout;
+      if (isInviteLinkCopied) {
+        timer = setTimeout(() => setInviteLinkCopied.off(), 2000);
+      }
+      return () => clearTimeout(timer);
+    }, [isInviteLinkCopied]);
+
+    const copyTokenToClipboard = () => {
+      navigator.clipboard.writeText((secValueOverride || secValue) as string);
+      setInviteLinkCopied.on();
+    };
 
     // when secret is override by personal values
     const isOverridden =
@@ -157,7 +185,7 @@ export const SecretInputRow = memo(
     }
 
     return (
-      <tr className="group flex flex-row items-center" key={index}>
+      <tr className="group flex flex-row" key={index}>
         <td className="flex h-10 w-10 items-center justify-center border-none px-4">
           <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div>
         </td>
@@ -198,7 +226,7 @@ export const SecretInputRow = memo(
             </HoverCard>
           )}
         />
-        <td className="flex h-10 w-full flex-grow flex-row items-center justify-center border-r border-none border-red">
+        <td className="flex w-full flex-grow flex-row border-r border-none border-red">
           <MaskedInput
             isReadOnly={
               isReadOnly || isRollbackMode || (isOverridden ? isAddOnly : shouldBeBlockedInAddOnly)
@@ -208,8 +236,8 @@ export const SecretInputRow = memo(
             index={index}
           />
         </td>
-        <td className="min-w-sm flex h-10 items-center">
-          <div className="flex items-center pl-2">
+        <td className="min-w-sm flex">
+          <div className="flex h-8 items-center pl-2">
             {secretTags.map(({ id, slug }, i) => (
               <Tag
                 className={cx(
@@ -223,6 +251,19 @@ export const SecretInputRow = memo(
                 {slug}
               </Tag>
             ))}
+            <div className="w-0 group-hover:w-6 overflow-hidden">
+              <Tooltip content="Copy value">
+                <IconButton
+                  variant="plain"
+                  size="md"
+                  ariaLabel="add-tag"
+                  className="py-[0.42rem]"
+                  onClick={copyTokenToClipboard}
+                >
+                  <FontAwesomeIcon icon={isInviteLinkCopied ? faCheck : faCopy} />
+                </IconButton>
+              </Tooltip>
+            </div>
             {!(isReadOnly || isAddOnly || isRollbackMode) && (
               <div className="duration-0 ml-1 overflow-hidden">
                 <Popover>
@@ -289,7 +330,7 @@ export const SecretInputRow = memo(
               </div>
             )}
           </div>
-          <div className="flex h-full flex-row items-center pr-2">
+          <div className="flex h-8 flex-row items-center pr-2">
             {!isAddOnly && (
               <div>
                 <Tooltip content="Override with a personal value">
@@ -346,35 +387,37 @@ export const SecretInputRow = memo(
               </div>
             </Tooltip>
           </div>
-          <div className="duration-0 flex h-10 w-16 items-center justify-end space-x-2.5 overflow-hidden border-l border-mineshaft-600 transition-all">
-            {!isAddOnly && (
+          <div className="duration-0 flex w-16 justify-center overflow-hidden border-l border-mineshaft-600 pl-2 transition-all">
+            <div className="flex h-8 items-center space-x-2.5">
+              {!isAddOnly && (
+                <div className="opacity-0 group-hover:opacity-100">
+                  <Tooltip content="Settings">
+                    <IconButton
+                      size="lg"
+                      colorSchema="primary"
+                      variant="plain"
+                      onClick={onRowExpand}
+                      ariaLabel="expand"
+                    >
+                      <FontAwesomeIcon icon={faEllipsis} />
+                    </IconButton>
+                  </Tooltip>
+                </div>
+              )}
               <div className="opacity-0 group-hover:opacity-100">
-                <Tooltip content="Settings">
+                <Tooltip content="Delete">
                   <IconButton
                     size="lg"
-                    colorSchema="primary"
                     variant="plain"
-                    onClick={onRowExpand}
-                    ariaLabel="expand"
+                    colorSchema="danger"
+                    ariaLabel="delete"
+                    isDisabled={isReadOnly || isRollbackMode}
+                    onClick={() => onSecretDelete(index, secId, idOverride)}
                   >
-                    <FontAwesomeIcon icon={faEllipsis} />
+                    <FontAwesomeIcon icon={faXmark} />
                   </IconButton>
                 </Tooltip>
               </div>
-            )}
-            <div className="opacity-0 group-hover:opacity-100">
-              <Tooltip content="Delete">
-                <IconButton
-                  size="md"
-                  variant="plain"
-                  colorSchema="danger"
-                  ariaLabel="delete"
-                  isDisabled={isReadOnly || isRollbackMode}
-                  onClick={() => onSecretDelete(index, secId, idOverride)}
-                >
-                  <FontAwesomeIcon icon={faXmark} />
-                </IconButton>
-              </Tooltip>
             </div>
           </div>
         </td>
