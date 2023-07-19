@@ -1,9 +1,15 @@
 import { useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
-import { faFileImport, faFolder, faUpDown, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faFileImport,
+  faFolder,
+  faKey,
+  faUpDown,
+  faXmark
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { IconButton, TableContainer, Tooltip } from "@app/components/v2";
+import { EmptyState, IconButton, TableContainer, Tooltip } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks/useToggle";
 
@@ -119,6 +125,13 @@ export const SecretImportItem = ({
                     </tr>
                   </thead>
                   <tbody>
+                    {importedSecrets?.length === 0 && (
+                      <tr>
+                        <td colSpan={3}>
+                          <EmptyState title="No secrets found" icon={faKey} />
+                        </td>
+                      </tr>
+                    )}
                     {importedSecrets.map(({ key, value, overriden }, index) => (
                       <tr key={`${importedEnv}-${importedSecPath}-${key}-${index + 1}`}>
                         <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
