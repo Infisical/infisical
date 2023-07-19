@@ -5,55 +5,45 @@ import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
-import { 
-  useRenameWorkspace
-} from "@app/hooks/api";
+import { useUser } from "@app/context";
+import { useRenameUser } from "@app/hooks/api/users/queries";
 
 const formSchema = yup.object({
-  name: yup.string().required().label("Project Name")
+  name: yup.string().required().label("User Name"),
 });
 
 type FormData = yup.InferType<typeof formSchema>;
 
-export const ProjectNameChangeSection = () => {
+export const UserNameSection = (): JSX.Element => {
+  const { user } = useUser();
   const { createNotification } = useNotificationContext();
-  const { currentWorkspace } = useWorkspace();
-  const { mutateAsync, isLoading } = useRenameWorkspace();
-
   const {
     handleSubmit,
     control,
     reset
   } = useForm<FormData>({ resolver: yupResolver(formSchema) });
+  const { mutateAsync, isLoading } = useRenameUser();
 
   useEffect(() => {
-    if (currentWorkspace) {
-      reset({ 
-        name: currentWorkspace.name
-      });
+    if (user) {
+      reset({ name: `${user?.firstName}${user?.lastName && " "}${user?.lastName}` });
     }
-    
-  }, [currentWorkspace]);
+  }, [user]);
 
   const onFormSubmit = async ({ name }: FormData) => {
     try {
-      if (!currentWorkspace?._id) return;
-      
-      await mutateAsync({
-        workspaceID: currentWorkspace._id,
-        newWorkspaceName: name
-      });
+      if (!user?._id) return;
+      if (name === "") return;
 
+      await mutateAsync({ newName: name});
       createNotification({
-        text: "Successfully renamed workspace",
+        text: "Successfully renamed user",
         type: "success"
       });
-      
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
       createNotification({
-        text: "Failed to rename workspace",
+        text: "Failed to rename user",
         type: "error"
       });
     }
@@ -64,19 +54,15 @@ export const ProjectNameChangeSection = () => {
       onSubmit={handleSubmit(onFormSubmit)}
       className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
     >
-      <h2 className="text-xl font-semibold flex-1 text-mineshaft-100 mb-8">
-        Project Name    
-      </h2>
-        <div className="max-w-md">
+        <p className="text-xl font-semibold text-mineshaft-100 mb-4">
+          User name
+        </p>
+        <div className="mb-2 max-w-md">
           <Controller
             defaultValue=""
             render={({ field, fieldState: { error } }) => (
               <FormControl isError={Boolean(error)} errorText={error?.message}>
-                <Input 
-                  placeholder="Project name" 
-                  {...field} 
-                  className="bg-mineshaft-800" 
-                />
+                <Input placeholder={`${user?.firstName} ${user?.lastName}`} {...field} />
               </FormControl>
             )}
             control={control}
@@ -84,10 +70,10 @@ export const ProjectNameChangeSection = () => {
           />
         </div>
         <Button
-          colorSchema="secondary"
-          type="submit"
           isLoading={isLoading}
-          isDisabled={isLoading}
+          colorSchema="primary"
+          variant="outline_bg"
+          type="submit"
         >
           Save
         </Button>

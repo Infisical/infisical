@@ -3,10 +3,10 @@ import { Types } from "mongoose";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import {
-    MembershipOrg,
-    User,
     APIKeyData,
-    TokenVersion
+    MembershipOrg,
+    TokenVersion,
+    User
 } from "../../models";
 import { getSaltRounds } from "../../config";
 
@@ -71,6 +71,26 @@ export const updateMyMfaEnabled = async (req: Request, res: Response) => {
         req.user.mfaMethods = [];
     }
 
+    await req.user.save();
+    
+    const user = req.user;
+    
+    return res.status(200).send({
+        user,
+    });
+}
+
+/**
+ * Update the current user's name [firstName, lastName].
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const updateName = async (req: Request, res: Response) => {
+    const { firstName, lastName }: { firstName: string; lastName: string; } = req.body;
+    req.user.firstName = firstName;
+    req.user.lastName = lastName || "";
+    
     await req.user.save();
     
     const user = req.user;
