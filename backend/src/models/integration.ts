@@ -17,6 +17,7 @@ import {
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL,
+  INTEGRATION_CODEFRESH
 } from "../variables";
 
 export interface IIntegration {
@@ -52,7 +53,8 @@ export interface IIntegration {
     | "supabase"
     | "checkly"
     | "hashicorp-vault"
-    | "cloudflare-pages";
+    | "cloudflare-pages"
+    | "codefresh";
   integrationAuth: Types.ObjectId;
 }
 
@@ -141,6 +143,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_CHECKLY,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
+        INTEGRATION_CODEFRESH
       ],
       required: true,
     },

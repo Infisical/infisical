@@ -49,6 +49,7 @@ export const IntegrationsPage = ({ frameworkIntegrations }: Props) => {
 
   const { data: cloudIntegrations, isLoading: isCloudIntegrationsLoading } =
     useGetCloudIntegrations();
+
   const { data: integrationAuths, isLoading: isIntegrationAuthLoading } =
     useGetWorkspaceAuthorizations(
       workspaceId,

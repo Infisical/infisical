@@ -25,6 +25,9 @@ export const INTEGRATION_SUPABASE = 'supabase';
 export const INTEGRATION_CHECKLY = 'checkly';
 export const INTEGRATION_HASHICORP_VAULT = 'hashicorp-vault';
 export const INTEGRATION_CLOUDFLARE_PAGES = 'cloudflare-pages';
+// chisom
+export const INTEGRATION_CODEFRESH = 'codefresh';
+
 export const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
@@ -39,7 +42,8 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_SUPABASE,
   INTEGRATION_CHECKLY,
   INTEGRATION_HASHICORP_VAULT,
-  INTEGRATION_CLOUDFLARE_PAGES
+  INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CODEFRESH
 ]);
 
 // integration types
@@ -68,6 +72,7 @@ export const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
 export const INTEGRATION_SUPABASE_API_URL = 'https://api.supabase.com';
 export const INTEGRATION_CHECKLY_API_URL = 'https://api.checklyhq.com';
 export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = 'https://api.cloudflare.com';
+export const INTEGRATION_CODEFRESH_API_URL = 'https://g.codefresh.io/api';
 
 export const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [
@@ -233,7 +238,16 @@ export const getIntegrationOptions = async () => {
             type: 'pat',
             clientId: '',
             docsLink: ''
-        }
+        },
+        {
+            name: "Codefresh",
+            slug: "codefresh",
+            image: "Codefresh.png",
+            isAvailable: true,
+            type: "pat",
+            clientId: "",
+            docsLink: "",
+        },
     ]
     
     return INTEGRATION_OPTIONS;

@@ -19,12 +19,13 @@ import {
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL,
+  INTEGRATION_CODEFRESH
 } from "../variables";
 
 export interface IIntegrationAuth extends Document {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'railway' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'supabase' | 'aws-parameter-store' | 'aws-secret-manager' | 'checkly' | 'cloudflare-pages';
+  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'railway' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'supabase' | 'aws-parameter-store' | 'aws-secret-manager' | 'checkly' | 'cloudflare-pages' | 'codefresh';
   teamId: string;
   accountId: string;
   url: string;
@@ -69,6 +70,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_SUPABASE,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
+        INTEGRATION_CODEFRESH
       ],
       required: true,
     },
