@@ -35,6 +35,7 @@ import {
 } from "../../services/FolderService";
 import { isValidScope } from "../../helpers/secrets";
 import path from "path";
+import { getAllImportedSecrets } from "../../services/SecretImportService";
 
 /**
  * Peform a batch of any specified CUD secret operations
@@ -690,7 +691,7 @@ export const getSecrets = async (req: Request, res: Response) => {
     }   
     */
 
-  const { tagSlugs, secretPath } = req.query;
+  const { tagSlugs, secretPath, include_imports } = req.query;
   let { folderId } = req.query;
   const workspaceId = req.query.workspaceId as string;
   const environment = req.query.environment as string;
@@ -827,6 +828,12 @@ export const getSecrets = async (req: Request, res: Response) => {
     secrets = await Secret.find(secretQuery).populate("tags");
   }
 
+  // TODO(akhilmhdh) - secret-imp change this to org type
+  let importedSecrets: any[] = [];
+  if (include_imports) {
+    importedSecrets = await getAllImportedSecrets(workspaceId, environment, folderId as string);
+  }
+
   const channel = getChannelFromUserAgent(req.headers["user-agent"]);
 
   const readAction = await EELogService.createAction({
@@ -868,7 +875,8 @@ export const getSecrets = async (req: Request, res: Response) => {
   }
 
   return res.status(200).send({
-    secrets
+    secrets,
+    ...(include_imports && { imports: importedSecrets })
   });
 };
 

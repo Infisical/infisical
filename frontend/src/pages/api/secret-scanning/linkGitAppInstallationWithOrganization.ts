@@ -16,7 +16,7 @@ const linkGitAppInstallationWithOrganization = (installationId: string, sessionI
     })
   }).then(async (res) => {
     if (res && res.status === 200) {
-      return res.json();
+      return true
     }
     console.log("Failed to link installation to organization");
     return undefined;

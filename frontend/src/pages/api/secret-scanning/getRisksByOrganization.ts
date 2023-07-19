@@ -1,7 +1,7 @@
 import SecurityClient from "@app/components/utilities/SecurityClient";
 
 export type GitRisks = {
-  id: string;
+  _id: string;
   description: string;
   startLine: string;
   endLine: string;
@@ -20,6 +20,7 @@ export type GitRisks = {
   tags: string[];
   ruleID: string;
   fingerprint: string;
+  status: string;
 
   isFalsePositive: boolean; // New field for marking risks as false positives
   isResolved: boolean; // New field for marking risks as resolved

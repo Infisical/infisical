@@ -272,40 +272,51 @@ type GetNewAccessTokenWithRefreshTokenResponse struct {
 }
 
 type GetEncryptedSecretsV3Request struct {
-	Environment string `json:"environment"`
-	WorkspaceId string `json:"workspaceId"`
-	SecretPath  string `json:"secretPath"`
+	Environment   string `json:"environment"`
+	WorkspaceId   string `json:"workspaceId"`
+	SecretPath    string `json:"secretPath"`
+	IncludeImport bool   `json:"include_imports"`
+}
+
+type EncryptedSecretV3 struct {
+	ID        string `json:"_id"`
+	Version   int    `json:"version"`
+	Workspace string `json:"workspace"`
+	Type      string `json:"type"`
+	Tags      []struct {
+		ID        string `json:"_id"`
+		Name      string `json:"name"`
+		Slug      string `json:"slug"`
+		Workspace string `json:"workspace"`
+	} `json:"tags"`
+	Environment             string    `json:"environment"`
+	SecretKeyCiphertext     string    `json:"secretKeyCiphertext"`
+	SecretKeyIV             string    `json:"secretKeyIV"`
+	SecretKeyTag            string    `json:"secretKeyTag"`
+	SecretValueCiphertext   string    `json:"secretValueCiphertext"`
+	SecretValueIV           string    `json:"secretValueIV"`
+	SecretValueTag          string    `json:"secretValueTag"`
+	SecretCommentCiphertext string    `json:"secretCommentCiphertext"`
+	SecretCommentIV         string    `json:"secretCommentIV"`
+	SecretCommentTag        string    `json:"secretCommentTag"`
+	Algorithm               string    `json:"algorithm"`
+	KeyEncoding             string    `json:"keyEncoding"`
+	Folder                  string    `json:"folder"`
+	V                       int       `json:"__v"`
+	CreatedAt               time.Time `json:"createdAt"`
+	UpdatedAt               time.Time `json:"updatedAt"`
+}
+
+type ImportedSecretV3 struct {
+	Environment string              `json:"environment"`
+	FolderId    string              `json:"folderId"`
+	SecretPath  string              `json:"secretPath"`
+	Secrets     []EncryptedSecretV3 `json:"secrets"`
 }
 
 type GetEncryptedSecretsV3Response struct {
-	Secrets []struct {
-		ID        string `json:"_id"`
-		Version   int    `json:"version"`
-		Workspace string `json:"workspace"`
-		Type      string `json:"type"`
-		Tags      []struct {
-			ID        string `json:"_id"`
-			Name      string `json:"name"`
-			Slug      string `json:"slug"`
-			Workspace string `json:"workspace"`
-		} `json:"tags"`
-		Environment             string    `json:"environment"`
-		SecretKeyCiphertext     string    `json:"secretKeyCiphertext"`
-		SecretKeyIV             string    `json:"secretKeyIV"`
-		SecretKeyTag            string    `json:"secretKeyTag"`
-		SecretValueCiphertext   string    `json:"secretValueCiphertext"`
-		SecretValueIV           string    `json:"secretValueIV"`
-		SecretValueTag          string    `json:"secretValueTag"`
-		SecretCommentCiphertext string    `json:"secretCommentCiphertext"`
-		SecretCommentIV         string    `json:"secretCommentIV"`
-		SecretCommentTag        string    `json:"secretCommentTag"`
-		Algorithm               string    `json:"algorithm"`
-		KeyEncoding             string    `json:"keyEncoding"`
-		Folder                  string    `json:"folder"`
-		V                       int       `json:"__v"`
-		CreatedAt               time.Time `json:"createdAt"`
-		UpdatedAt               time.Time `json:"updatedAt"`
-	} `json:"secrets"`
+	Secrets         []EncryptedSecretV3 `json:"secrets"`
+	ImportedSecrets []ImportedSecretV3  `json:"imports,omitempty"`
 }
 
 type CreateSecretV3Request struct {

@@ -407,7 +407,7 @@ export const SecretInputRow = memo(
               <div className="opacity-0 group-hover:opacity-100">
                 <Tooltip content="Delete">
                   <IconButton
-                    size="md"
+                    size="lg"
                     variant="plain"
                     colorSchema="danger"
                     ariaLabel="delete"

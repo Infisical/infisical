@@ -11,6 +11,7 @@ export default function SettingsBilling() {
       <Head>
         <title>{t("common.head-title", { title: t("billing.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
+        <meta property="og:image" content="/images/message.png" />
       </Head>
       <BillingSettingsPage />
     </div>

@@ -56,6 +56,7 @@ func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Req
 		SetHeader("User-Agent", USER_AGENT_NAME).
 		SetHeader("If-None-Match", request.ETag).
 		SetQueryParam("environment", request.Environment).
+		SetQueryParam("include_imports", "true"). // TODO needs to be set as a option
 		SetQueryParam("workspaceId", request.WorkspaceId)
 
 	if request.SecretPath != "" {
