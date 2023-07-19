@@ -129,16 +129,18 @@ export default async (app: Probot) => {
     const adminOrOwnerEmails = userEmails.map(userObject => userObject.email)
 
     const usersToNotify = pusher?.email ? [pusher.email, ...adminOrOwnerEmails] : [...adminOrOwnerEmails]
-    await sendMail({
-      template: "secretLeakIncident.handlebars",
-      subjectLine: `Incident alert: leaked secrets found in Github repository ${repository.full_name}`,
-      recipients: usersToNotify,
-      substitutions: {
-        numberOfSecrets: Object.keys(allFindingsByFingerprint).length,
-        pusher_email: pusher.email,
-        pusher_name: pusher.name
-      }
-    });
+    if (Object.keys(allFindingsByFingerprint).length) {
+      await sendMail({
+        template: "secretLeakIncident.handlebars",
+        subjectLine: `Incident alert: leaked secrets found in Github repository ${repository.full_name}`,
+        recipients: usersToNotify,
+        substitutions: {
+          numberOfSecrets: Object.keys(allFindingsByFingerprint).length,
+          pusher_email: pusher.email,
+          pusher_name: pusher.name
+        }
+      });
+    }
 
     const postHogClient = await TelemetryService.getPostHogClient();
     if (postHogClient) {
