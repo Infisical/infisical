@@ -32,6 +32,9 @@ import {
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
   INTEGRATION_VERCEL_API_URL,
+  INTEGRATION_CODEFRESH,
+  INTEGRATION_CODEFRESH_API_URL
+
 } from "../variables";
 
 interface App {
@@ -145,6 +148,11 @@ const getApps = async ({
         accountId: accessId
       })
       break;
+    case INTEGRATION_CODEFRESH:
+      apps = await getAppsCodefresh({
+        accessToken,
+      });
+      break;
   }
 
   return apps;
@@ -196,10 +204,10 @@ const getAppsVercel = async ({
       },
       ...(integrationAuth?.teamId
         ? {
-            params: {
-              teamId: integrationAuth.teamId,
-            },
-          }
+          params: {
+            teamId: integrationAuth.teamId,
+          },
+        }
         : {}),
     })
   ).data;
@@ -695,30 +703,61 @@ const getAppsCheckly = async ({ accessToken }: { accessToken: string }) => {
  * @returns {Object[]} apps - Cloudflare Pages projects
  * @returns {String} apps.name - name of Cloudflare Pages project
  */
-const getAppsCloudflarePages = async ({ 
-    accessToken,
-    accountId
+const getAppsCloudflarePages = async ({
+  accessToken,
+  accountId
 }: {
-    accessToken: string;
-    accountId?: string;
+  accessToken: string;
+  accountId?: string;
 }) => {
-    const { data } = await standardRequest.get(
-        `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accountId}/pages/projects`,
-        {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Accept": "application/json",
-            },
-        }
-    );
+  const { data } = await standardRequest.get(
+    `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accountId}/pages/projects`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept": "application/json",
+      },
+    }
+  );
 
-    const apps = data.result.map((a: any) => {
-        return {
-            name: a.name,
-            appId: a.id,
-        };
-    });
-    return apps;
+  const apps = data.result.map((a: any) => {
+    return {
+      name: a.name,
+      appId: a.id,
+    };
+  });
+  return apps;
 }
 
+
+/**
+ * Return list of projects for Supabase integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Supabase API
+ * @returns {Object[]} apps - names of Supabase apps
+ * @returns {String} apps.name - name of Supabase app
+ */
+
+const getAppsCodefresh = async ({
+  accessToken,
+}: {
+  accessToken: string;
+}) => {
+  const res = (
+    await standardRequest.get(`${INTEGRATION_CODEFRESH_API_URL}/projects`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json",
+      },
+    })
+  ).data;
+
+  const apps = res.projects.map((a: any) => ({
+    name: a.projectName,
+    appId: a.id,
+  }));
+
+  return apps;
+
+};
 export { getApps };
