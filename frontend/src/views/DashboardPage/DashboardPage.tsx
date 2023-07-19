@@ -676,7 +676,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const isSnapshotSecretEmtpy =
     isRollbackMode && !isSnapshotSecretsLoading && !snapshotSecret?.secrets?.length;
   const isSecretEmpty = (!isRollbackMode && isDashboardSecretEmpty) || isSnapshotSecretEmtpy;
-  const isSecretImportEmpty = !importedSecrets?.length;
+  const isSecretImportEmpty = !secretImportCfg?.imports?.length;
   const isEmptyPage = isFoldersEmpty && isSecretEmpty && isSecretImportEmpty;
 
   if (isSecretsLoading || isEnvListLoading) {
