@@ -252,7 +252,7 @@ export const getIntegrationOptions = async () => {
         {
             name: "Windmill",
             slug: "windmill",
-            image: "Cloudflare.png",
+            image: "Windmill.png",
             isAvailable: true,
             type: "pat",
             clientId: "",
