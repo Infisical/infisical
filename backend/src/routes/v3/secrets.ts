@@ -21,7 +21,7 @@ router.get(
   query("workspaceId").exists().isString().trim(),
   query("environment").exists().isString().trim(),
   query("secretPath").default("/").isString().trim(),
-  query("include_imports").isBoolean().default(false),
+  query("include_imports").optional().isBoolean().default(false),
   validateRequest,
   requireAuth({
     acceptedAuthModes: [
