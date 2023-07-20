@@ -3,7 +3,8 @@ title: 'Install'
 description: "Infisical's CLI is one of the best way to manage environments and secrets. Install it here"
 ---
 
-The Infisical CLI can be used to access secrets across various environments, whether it's local development, CI/CD, staging, or production.
+The Infisical CLI is powerful command line tool that can be used to retrieve, modify, export and inject secrets into any process or application as environment variables. 
+You can use it across various environments, whether it's local development, CI/CD, staging, or production.
 
 ## Installation
 
@@ -57,7 +58,10 @@ The Infisical CLI can be used to access secrets across various environments, whe
     	```bash
     	apk update && sudo apk add infisical
     	```
-
+		###
+		<Tip>
+			If you are installing the CLI in for production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+		</Tip>
    </Tab>
 	 <Tab title="RedHat/CentOs/Amazon">
 	 Add Infisical repository
@@ -71,7 +75,10 @@ The Infisical CLI can be used to access secrets across various environments, whe
     	```bash
     	sudo yum install infisical
     	```
-
+		###
+		<Tip>
+			If you are installing the CLI in for production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+		</Tip>
    </Tab>
 	 <Tab title="Debian/Ubuntu">
 	 	Add Infisical repository 
@@ -86,7 +93,10 @@ The Infisical CLI can be used to access secrets across various environments, whe
     	```bash
     	sudo apt-get update && sudo apt-get install -y infisical
     	```
-
+	###
+	<Tip>
+		If you are installing the CLI in for production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+	</Tip>
    </Tab>
 	<Tab title="Arch Linux">
 		Use the `yay` package manager to install from the [Arch User Repository](https://aur.archlinux.org/packages/infisical-bin)
@@ -95,6 +105,9 @@ The Infisical CLI can be used to access secrets across various environments, whe
 		yay -S infisical-bin
 		```
 
+	###
+	<Tip>
+		If you are installing the CLI in for production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+	</Tip>
    </Tab>
 </Tabs>
-
