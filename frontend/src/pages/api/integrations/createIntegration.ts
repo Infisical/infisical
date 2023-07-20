@@ -4,6 +4,7 @@ interface Props {
   integrationAuthId: string;
   isActive: boolean;
   secretPath: string;
+  secretGroup: string;
   app: string | null;
   appId: string | null;
   sourceEnvironment: string;
@@ -34,7 +35,8 @@ const createIntegration = ({
   owner,
   path,
   region,
-  secretPath
+  secretPath,
+  secretGroup
 }: Props) =>
   SecurityClient.fetchCall("/api/v1/integration", {
     method: "POST",
@@ -54,7 +56,8 @@ const createIntegration = ({
       owner,
       path,
       region,
-      secretPath
+      secretPath,
+      secretGroup
     })
   }).then(async (res) => {
     if (res && res.status === 200) {

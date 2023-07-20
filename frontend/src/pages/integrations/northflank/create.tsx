@@ -86,7 +86,8 @@ export default function NorthflankCreateIntegrationPage() {
         owner: null,
         path: null,
         region: null,
-        secretPath
+        secretPath,
+        secretGroup: targetSecretGroup
       });
 
       setIsLoading(false);

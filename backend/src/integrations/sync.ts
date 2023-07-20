@@ -61,15 +61,13 @@ const syncSecrets = async ({
   integrationAuth,
   secrets,
   accessId,
-  accessToken,
-  secretGroupID
+  accessToken
 }: {
   integration: IIntegration;
   integrationAuth: IIntegrationAuth;
   secrets: any;
   accessId: string | null;
   accessToken: string;
-  secretGroupID?: string;
 }) => {
   switch (integration.integration) {
     case INTEGRATION_AZURE_KEY_VAULT:
@@ -210,8 +208,7 @@ const syncSecrets = async ({
       await syncSecretsNorthflank({
         integration,
         secrets,
-        accessToken,
-        secretGroupID
+        accessToken
       });
       break;
     }
@@ -1957,13 +1954,11 @@ const syncSecretsCloudflarePages = async ({
 const syncSecretsNorthflank = async ({
   integration,
   secrets,
-  accessToken,
-  secretGroupID
+  accessToken
 }: {
   integration: IIntegration;
   secrets: any;
   accessToken: string;
-  secretGroupID?: string;
 }) => {
 
   const modifiedFormatForSecretInjection = {
@@ -1973,7 +1968,7 @@ const syncSecretsNorthflank = async ({
   }
 
   await standardRequest.post(
-    `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects/${integration.appId}/secrets/${secretGroupID}`,
+    `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects/${integration.appId}/secrets/${integration.secretGroup}`,
     modifiedFormatForSecretInjection,
     {
       headers: {
