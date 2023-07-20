@@ -16,6 +16,7 @@ import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
 import { InternalServerError } from "../utils/errors";
 import Folder from "../models/folder";
 import { getFolderByPath } from "../services/FolderService";
+import { environment } from "../routes/v2";
 
 /**
  * Create an inactive bot with name [name] for workspace with id [workspaceId]
@@ -275,3 +276,70 @@ export const decryptSymmetricHelper = async ({
 
   return plaintext;
 };
+
+/**
+ * Return decrypted comments for workspace secrets with id [workspaceId]
+ * and [envionment] using bot
+ * @param {Object} obj
+ * @param {String} obj.workspaceId - id of workspace
+ * @param {String} obj.environment - environment 
+ */
+export const getSecretsCommentBotHelper = async ({
+  workspaceId,
+  environment,
+  secretPath
+} : {
+  workspaceId: Types.ObjectId;
+  environment: string;
+  secretPath: string;
+}) => {
+  const content = {} as any;
+  const key = await getKey({ workspaceId: workspaceId });
+  
+  let folderId = "root";
+  const folders = await Folder.findOne({
+    workspace: workspaceId,
+    environment,
+  });
+
+  if (!folders && secretPath !== "/") {
+    throw InternalServerError({ message: "Folder not found" });
+  }
+
+  if (folders) {
+    const folder = getFolderByPath(folders.nodes, secretPath);
+    if (!folder) {
+      throw InternalServerError({ message: "Folder not found" });
+    }
+    folderId = folder.id;
+  }
+
+  const secrets = await Secret.find({
+    workspace: workspaceId,
+    environment,
+    type: SECRET_SHARED,
+    folder: folderId,
+  });
+
+  secrets.forEach((secret: ISecret) => {
+    if(secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
+      const secretKey = decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretKeyCiphertext,
+        iv: secret.secretKeyIV,
+        tag: secret.secretKeyTag,
+        key,
+      });
+  
+      const commentValue = decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretCommentCiphertext,
+        iv: secret.secretCommentIV,
+        tag: secret.secretCommentTag,
+        key,
+      });
+
+      content[secretKey] = commentValue;
+    }
+  });
+
+  return content;
+}

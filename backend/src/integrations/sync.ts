@@ -55,6 +55,7 @@ import { standardRequest} from "../config/request";
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
  * @param {String} obj.accessId - access id for integration
  * @param {String} obj.accessToken - access token for integration
+ * @param {Object} obj.secretComments - secret comments to push to integration (object where keys are secret keys and values are comment values)
  */
 const syncSecrets = async ({
   integration,
@@ -62,12 +63,14 @@ const syncSecrets = async ({
   secrets,
   accessId,
   accessToken,
+  secretComments
 }: {
   integration: IIntegration;
   integrationAuth: IIntegrationAuth;
   secrets: any;
   accessId: string | null;
   accessToken: string;
+  secretComments: any;
 }) => {
   switch (integration.integration) {
     case INTEGRATION_AZURE_KEY_VAULT:
@@ -209,6 +212,7 @@ const syncSecrets = async ({
           integration,
           secrets,
           accessToken,
+          secretComments
       });
       break;
     }
@@ -1953,24 +1957,24 @@ const syncSecretsCloudflarePages = async ({
  * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
  * @param {String} obj.accessToken - access token for windmill integration
+ * @param {Object} obj.secretComments - secret comments to push to integration (object where keys are secret keys and values are comment values)
  */
 const syncSecretsWindmill = async ({
   integration,
   secrets,
   accessToken,
+  secretComments
 }: {
   integration: IIntegration;
   secrets: any;
   accessToken: string;
+  secretComments: any;
 }) => {
-  interface WindmilSecretUpdate {
+  interface WindmillSecret {
     path: string;
     value: string;
     is_secret: boolean;
-  }
-
-  interface WindmillSecretCreate extends WindmilSecretUpdate {
-    description: string;
+    description?: string;
   }
 
   // get secrets stored in windmill workspace
@@ -1988,8 +1992,8 @@ const syncSecretsWindmill = async ({
   const secretsResList = getSecretsRes.map((secretObj: any) => (secretObj.path));
     
   // convert the secrets to [{}] format
-  const modifiedFormatForCreateSecretInjection: WindmillSecretCreate[] = [];
-  const modifiedFormatForUpdateSecretInjection: WindmilSecretUpdate[] = [];
+  const modifiedFormatForCreateSecretInjection: WindmillSecret[] = [];
+  const modifiedFormatForUpdateSecretInjection: WindmillSecret[] = [];
   
   Object.keys(secrets).forEach(
     (key) => {
@@ -1999,14 +2003,15 @@ const syncSecretsWindmill = async ({
             modifiedFormatForUpdateSecretInjection.push({
               path: key,
               value: secrets[key],
-              is_secret: true
+              is_secret: true,
+              description: secretComments[key] || ""
             });
           } else {
             modifiedFormatForCreateSecretInjection.push({
               path: key,
               value: secrets[key],
               is_secret: true,
-              description: ""
+              description: secretComments[key] || ""
             });
           }
       };

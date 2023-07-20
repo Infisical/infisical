@@ -137,6 +137,14 @@ export const syncIntegrationsHelper = async ({
       secretPath: integration.secretPath,
     });
 
+   // get workspace, environment (shared) secrets comments
+   const secretComments = await BotService.getSecretComments({
+      workspaceId: integration.workspace,
+      environment: integration.environment,
+      secretPath: integration.secretPath,
+   })
+
+
     const integrationAuth = await IntegrationAuth.findById(
       integration.integrationAuth
     );
@@ -154,6 +162,7 @@ export const syncIntegrationsHelper = async ({
       secrets,
       accessId: access.accessId === undefined ? null : access.accessId,
       accessToken: access.accessToken,
+      secretComments
     });
   }
 };
