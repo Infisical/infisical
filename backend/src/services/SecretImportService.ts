@@ -38,6 +38,11 @@ export const getAllImportedSecrets = async (
           folderId: secPathFolder.id,
           secretPath: el.secretPath
         });
+    } else {
+      if (el.secretPath === "/") {
+        // this happens when importing with a fresh env without any folders
+        importedSecByFid.push({ environment: el.environment, folderId: "root", secretPath: "/" });
+      }
     }
   });
   if (importedSecByFid.length === 0) return [];
