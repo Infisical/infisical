@@ -22,6 +22,8 @@ import {
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_CLOUDFLARE_PAGES_API_URL,
+  INTEGRATION_CODEFRESH,
+  INTEGRATION_CODEFRESH_API_URL,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
@@ -43,9 +45,7 @@ import {
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
-  INTEGRATION_VERCEL_API_URL,
-  INTEGRATION_CODEFRESH,
-  INTEGRATION_CODEFRESH_API_URL
+  INTEGRATION_VERCEL_API_URL
 } from "../variables";
 import { standardRequest } from "../config/request";
 
@@ -165,34 +165,6 @@ const syncSecrets = async ({
         integration,
         secrets,
         accessId,
-        accessToken,
-      });
-      break;
-    case INTEGRATION_TRAVISCI:
-      await syncSecretsTravisCI({
-        integration,
-        secrets,
-        accessToken,
-      });
-      break;
-    case INTEGRATION_SUPABASE:
-      await syncSecretsSupabase({
-        integration,
-        secrets,
-        accessToken,
-      });
-      break;
-    case INTEGRATION_FLYIO:
-      await syncSecretsFlyio({
-        integration,
-        secrets,
-        accessToken,
-      });
-      break;
-    case INTEGRATION_CIRCLECI:
-      await syncSecretsCircleCI({
-        integration,
-        secrets,
         accessToken,
       });
       break;
@@ -1942,7 +1914,7 @@ const syncSecretsCloudflarePages = async ({
       }
     )
   )
-  .data.result['deployment_configs'][integration.targetEnvironment]['env_vars'];
+  .data.result["deployment_configs"][integration.targetEnvironment]["env_vars"];
 
   // copy the secrets object, so we can set deleted keys to null
   const secretsObj: any = { ...secrets };
