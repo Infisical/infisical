@@ -1,7 +1,8 @@
-import { useRouter } from "next/router"
 import { useTranslation } from "react-i18next";
+import { useRouter } from "next/router"
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import issueBackupKey from "@app/components/utilities/cryptography/issueBackupKey";
 import { Button } from "@app/components/v2";
 

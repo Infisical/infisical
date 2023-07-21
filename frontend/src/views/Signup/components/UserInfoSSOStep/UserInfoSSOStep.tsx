@@ -1,16 +1,14 @@
 
-import React, { useState } from "react";
 import crypto from "crypto";
+
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import jsrp from "jsrp";
 import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
-import { useGetCommonPasswords } from "@app/hooks/api";
-import completeAccountInformationSignup from "@app/pages/api/auth/CompleteAccountInformationSignup";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
-import ProjectService from "@app/services/ProjectService";
+
 import InputField from "@app/components/basic/InputField";
 import checkPassword from "@app/components/utilities/checks/checkPassword";
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
@@ -18,7 +16,10 @@ import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input } from "@app/components/v2";
-import { setSignupTempToken } from "@app/reactQuery";
+import { useGetCommonPasswords } from "@app/hooks/api";
+import completeAccountInformationSignup from "@app/pages/api/auth/CompleteAccountInformationSignup";
+import getOrganizations from "@app/pages/api/organization/getOrgs";
+import ProjectService from "@app/services/ProjectService";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -212,7 +213,7 @@ export const UserInfoSSOStep = ({
           <Input
             placeholder="Jane Doe"
             value={name}
-            disabled={true}
+            disabled
             isRequired
             autoComplete="given-name"
             className="h-12"
@@ -226,7 +227,7 @@ export const UserInfoSSOStep = ({
             value={organizationName}
             isRequired
             className="h-12"
-            disabled={true}
+            disabled
           />
           {organizationNameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your organization name</p>}
         </div>

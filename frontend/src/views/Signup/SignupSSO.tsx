@@ -1,9 +1,9 @@
 import { useState } from "react";
-import {
-    UserInfoSSOStep,
-    BackupPDFStep
-} from "./components";
 import jwt_decode from "jwt-decode";
+
+import {
+    BackupPDFStep,
+    UserInfoSSOStep} from "./components";
 
 type Props = { 
     providerAuthToken: string;
@@ -45,7 +45,7 @@ export const SignupSSO = ({
                     />
                 );
             default:
-                return <div></div>
+                return <div />
         }
     }
     

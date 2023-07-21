@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
+
 import { Login } from "@app/views/Login";
 
 export default function LoginPage() {

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import axios from "axios"
+
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
-import getOrganizations from "@app/pages/api/organization/GetOrgs";
+import getOrganizations from "@app/pages/api/organization/getOrgs";
 import { getAuthToken, isLoggedIn } from "@app/reactQuery";
 
 import { 

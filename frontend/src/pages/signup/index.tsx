@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import Head from "next/head";
 import Image from "next/image";
 import { useRouter } from "next/router";
+
 import CodeInputStep from "@app/components/signup/CodeInputStep";
 import DownloadBackupPDF from "@app/components/signup/DonwloadBackupPDFStep";
 import EnterEmailStep from "@app/components/signup/EnterEmailStep";

@@ -1,5 +1,5 @@
 export {
-    useGetSSOConfig,
     useCreateSSOConfig,
+    useGetSSOConfig,
     useUpdateSSOConfig
 } from "./queries";

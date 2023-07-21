@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { apiRequest } from "@app/config/request";
 
 const ssoConfigKeys = {
@@ -40,7 +41,7 @@ export const useCreateSSOConfig = () => {
       audience: string;
     }) => {
       const { data } = await apiRequest.post(
-        `/api/v1/sso/config`,
+        "/api/v1/sso/config",
         {
           organizationId,
           authProvider,
@@ -81,7 +82,7 @@ export const useUpdateSSOConfig = () => {
       audience?: string;
     }) => {
       const { data } = await apiRequest.patch(
-        `/api/v1/sso/config`,
+        "/api/v1/sso/config",
         {
           organizationId,
           ...(authProvider !== undefined ? { authProvider } : {}),

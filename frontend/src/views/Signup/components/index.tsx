@@ -1,2 +1,2 @@
-export { UserInfoSSOStep } from "./UserInfoSSOStep";
 export { BackupPDFStep } from "./BackupPDFStep";
+export { UserInfoSSOStep } from "./UserInfoSSOStep";
