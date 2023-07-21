@@ -25,6 +25,7 @@ export type GitRisks = {
   tags: string[];
   ruleID: string;
   fingerprint: string;
+  fingerPrintWithoutCommitId: string
 
   isFalsePositive: boolean; // New field for marking risks as false positives
   isResolved: boolean; // New field for marking risks as resolved
@@ -93,6 +94,9 @@ const gitRisks = new Schema<GitRisks>({
   fingerprint: {
     type: String,
     unique: true
+  },
+  fingerPrintWithoutCommitId: {
+    type: String,
   },
   isFalsePositive: {
     type: Boolean,

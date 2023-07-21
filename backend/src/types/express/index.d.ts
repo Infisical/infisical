@@ -20,6 +20,7 @@ declare global {
 			workspace: any;
 			membership: any;
 			targetMembership: any;
+			isUserCompleted: boolean;
 			providerAuthToken: any;
 			organization: any;
 			membershipOrg: any;

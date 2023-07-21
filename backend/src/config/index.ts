@@ -10,7 +10,7 @@ export const getEncryptionKey = async () => {
   return secretValue === "" ? undefined : secretValue;
 }
 export const getRootEncryptionKey = async () => {
-  const secretValue = (await client.getSecret("ROOT_ENCRYPTION_KEY")).secretValue; 
+  const secretValue = (await client.getSecret("ROOT_ENCRYPTION_KEY")).secretValue;
   return secretValue === "" ? undefined : secretValue;
 }
 export const getInviteOnlySignup = async () => (await client.getSecret("INVITE_ONLY_SIGNUP")).secretValue === "true"
@@ -58,6 +58,11 @@ export const getSmtpUsername = async () => (await client.getSecret("SMTP_USERNAM
 export const getSmtpPassword = async () => (await client.getSecret("SMTP_PASSWORD")).secretValue;
 export const getSmtpFromAddress = async () => (await client.getSecret("SMTP_FROM_ADDRESS")).secretValue;
 export const getSmtpFromName = async () => (await client.getSecret("SMTP_FROM_NAME")).secretValue || "Infisical";
+
+export const getSecretScanningWebhookProxy = async () => (await client.getSecret("SECRET_SCANNING_WEBHOOK_PROXY")).secretValue;
+export const getSecretScanningWebhookSecret = async () => (await client.getSecret("SECRET_SCANNING_WEBHOOK_SECRET")).secretValue;
+export const getSecretScanningGitAppId = async () => (await client.getSecret("SECRET_SCANNING_GIT_APP_ID")).secretValue;
+export const getSecretScanningPrivateKey = async () => (await client.getSecret("SECRET_SCANNING_PRIVATE_KEY")).secretValue;
 
 export const getLicenseKey = async () => {
   const secretValue = (await client.getSecret("LICENSE_KEY")).secretValue;

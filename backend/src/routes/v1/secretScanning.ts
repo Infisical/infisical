@@ -69,6 +69,7 @@ router.post(
   }),
   param("organizationId").exists().trim(),
   param("riskId").exists().trim(),
+  body("status").exists(),
   requireOrganizationAuth({
     acceptedRoles: [OWNER, ADMIN, MEMBER],
     acceptedStatuses: [ACCEPTED],

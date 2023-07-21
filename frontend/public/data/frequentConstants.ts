@@ -21,6 +21,7 @@ const integrationSlugNameMapping: Mapping = {
   checkly: "Checkly",
   "hashicorp-vault": "Vault",
   "cloudflare-pages": "Cloudflare Pages",
+  "codefresh": "Codefresh",
   bitbucket: "BitBucket"
 };
 

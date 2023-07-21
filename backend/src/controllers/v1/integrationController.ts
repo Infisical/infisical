@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { Integration } from "../../models";
 import { EventService } from "../../services";
-import { eventPushSecrets, eventStartIntegration } from "../../events";
+import { eventStartIntegration } from "../../events";
 import Folder from "../../models/folder";
 import { getFolderByPath } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";

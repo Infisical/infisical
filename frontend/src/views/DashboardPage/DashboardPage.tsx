@@ -3,6 +3,19 @@ import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors
+} from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { arrayMove } from "@dnd-kit/sortable";
+import {
+  faAngleDown,
   faArrowLeft,
   faCheck,
   faClockRotateLeft,
@@ -10,12 +23,14 @@ import {
   faDownload,
   faEye,
   faEyeSlash,
+  faFileImport,
   faFolderPlus,
   faMagnifyingGlass,
   faPlus
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -41,10 +56,14 @@ import { useLeaveConfirm, usePopUp, useToggle } from "@app/hooks";
 import {
   useBatchSecretsOp,
   useCreateFolder,
+  useCreateSecretImport,
   useCreateWsTag,
   useDeleteFolder,
+  useDeleteSecretImport,
+  useGetImportedSecrets,
   useGetProjectFolders,
   useGetProjectSecrets,
+  useGetSecretImports,
   useGetSecretVersion,
   useGetSnapshotSecrets,
   useGetUserAction,
@@ -55,7 +74,8 @@ import {
   useGetWsTags,
   usePerformSecretRollback,
   useRegisterUserAction,
-  useUpdateFolder
+  useUpdateFolder,
+  useUpdateSecretImport
 } from "@app/hooks/api";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { WorkspaceEnv } from "@app/hooks/api/types";
@@ -71,6 +91,8 @@ import {
 import { PitDrawer } from "./components/PitDrawer";
 import { SecretDetailDrawer } from "./components/SecretDetailDrawer";
 import { SecretDropzone } from "./components/SecretDropzone";
+import { SecretImportForm } from "./components/SecretImportForm";
+import { SecretImportSection } from "./components/SecretImportSection";
 import { SecretInputRow } from "./components/SecretInputRow";
 import { SecretTableHeader } from "./components/SecretTableHeader";
 import {
@@ -84,7 +106,7 @@ import {
 } from "./DashboardPage.utils";
 
 const USER_ACTION_PUSH = "first_time_secrets_pushed";
-
+type TDeleteSecretImport = { environment: string; secretPath: string };
 /*
  * Some imp aspects to consider. Here there are multiple stats changing
  * Thus ideally we need to use a context. But instead we rely on react hook form
@@ -113,7 +135,9 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     "compareSecrets",
     "folderForm",
     "deleteFolder",
-    "upgradePlan"
+    "upgradePlan",
+    "addSecretImport",
+    "deleteSecretImport"
   ] as const);
   const [isSecretValueHidden, setIsSecretValueHidden] = useToggle(true);
   const [searchFilter, setSearchFilter] = useState("");
@@ -129,6 +153,8 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const { currentWorkspace, isLoading } = useWorkspace();
   const { currentOrg } = useOrganization();
   const workspaceId = currentWorkspace?._id as string;
+  const selectedEnvSlug = selectedEnv?.slug || "";
+
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
 
   useEffect(() => {
@@ -161,7 +187,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
 
   const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
     workspaceId,
-    env: selectedEnv?.slug || "",
+    env: selectedEnvSlug,
     decryptFileKey: latestFileKey!,
     isPaused: Boolean(snapshotId),
     folderId
@@ -169,7 +195,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
 
   const { data: folderData, isLoading: isFoldersLoading } = useGetProjectFolders({
     workspaceId: workspaceId || "",
-    environment: selectedEnv?.slug || "",
+    environment: selectedEnvSlug,
     parentFolderId: folderId,
     isPaused: isRollbackMode,
     sortDir
@@ -182,7 +208,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     isFetchingNextPage
   } = useGetWorkspaceSecretSnapshots({
     workspaceId,
-    environment: selectedEnv?.slug || "",
+    environment: selectedEnvSlug,
     folder: folderId,
     limit: 10
   });
@@ -193,17 +219,18 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     isFetching: isSnapshotChanging
   } = useGetSnapshotSecrets({
     snapshotId: snapshotId || "",
-    env: selectedEnv?.slug || "",
+    env: selectedEnvSlug,
     decryptFileKey: latestFileKey!
   });
 
   const { data: snapshotCount, isLoading: isLoadingSnapshotCount } = useGetWsSnapshotCount(
     workspaceId,
-    selectedEnv?.slug || "",
+    selectedEnvSlug,
     folderId
   );
 
   const { data: wsTags } = useGetWsTags(workspaceId);
+
   // mutation calls
   const { mutateAsync: batchSecretOp } = useBatchSecretsOp();
   const { mutateAsync: performSecretRollback } = usePerformSecretRollback();
@@ -212,6 +239,50 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: updateFolder } = useUpdateFolder(folderId);
   const { mutateAsync: deleteFolder } = useDeleteFolder(folderId);
+
+  const { data: secretImportCfg, isFetching: isSecretImportCfgFetching } = useGetSecretImports(
+    workspaceId,
+    selectedEnvSlug,
+    folderId
+  );
+
+  const { data: importedSecrets } = useGetImportedSecrets({
+    workspaceId,
+    decryptFileKey: latestFileKey!,
+    environment: selectedEnvSlug,
+    folderId
+  });
+
+  // This is for dnd-kit. As react-query state mutation async
+  // This will act as a placeholder to avoid a glitching animation on dropping items
+  const [items, setItems] = useState<
+    Array<{ environment: string; secretPath: string; id: string }>
+  >([]);
+
+  useEffect(() => {
+    if (
+      !isSecretImportCfgFetching ||
+      // case in which u go to a folder and come back to fill in with cache data
+      (items.length === 0 && secretImportCfg?.imports?.length !== 0 && isSecretImportCfgFetching)
+    ) {
+      setItems(
+        secretImportCfg?.imports?.map((el) => ({
+          ...el,
+          id: `${el.environment}-${el.secretPath}`
+        })) || []
+      );
+    }
+  }, [isSecretImportCfgFetching]);
+
+  const { mutateAsync: createSecretImport } = useCreateSecretImport();
+  const { mutate: updateSecretImportSync } = useUpdateSecretImport();
+  const { mutateAsync: deleteSecretImport } = useDeleteSecretImport();
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, {}),
+    useSensor(TouchSensor, {}),
+    useSensor(KeyboardSensor, {})
+  );
 
   const method = useForm<FormData>({
     // why any: well yup inferred ts expects other keys to defined as undefined
@@ -319,14 +390,12 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
       await performSecretRollback({
         workspaceId,
         version: snapshotSecret.version,
-        environment: selectedEnv?.slug || "",
+        environment: selectedEnvSlug,
         folderId
       });
       setValue("isSnapshotMode", false);
       setSnaphotId(null);
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret(workspaceId, selectedEnv?.slug || "")
-      );
+      queryClient.invalidateQueries(secretKeys.getProjectSecret(workspaceId, selectedEnvSlug));
       createNotification({
         text: "Successfully rollback secrets",
         type: "success"
@@ -522,6 +591,79 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     }
   };
 
+  const handleSecretImportCreate = async (env: string, secretPath: string) => {
+    try {
+      await createSecretImport({
+        workspaceId,
+        environment: selectedEnv?.slug || "",
+        folderId,
+        secretImport: {
+          environment: env,
+          secretPath
+        }
+      });
+      createNotification({
+        type: "success",
+        text: "Successfully create secret link"
+      });
+      handlePopUpClose("addSecretImport");
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to create secret link",
+        type: "error"
+      });
+    }
+  };
+
+  const handleSecretImportDelete = async () => {
+    const { environment: importEnv, secretPath: impSecPath } = popUp.deleteSecretImport
+      ?.data as TDeleteSecretImport;
+    try {
+      if (secretImportCfg?._id) {
+        await deleteSecretImport({
+          workspaceId,
+          environment: selectedEnvSlug,
+          folderId,
+          id: secretImportCfg?._id,
+          secretImportEnv: importEnv,
+          secretImportPath: impSecPath
+        });
+        handlePopUpClose("deleteSecretImport");
+        createNotification({
+          type: "success",
+          text: "Successfully removed secret link"
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to remove secret link",
+        type: "error"
+      });
+    }
+  };
+
+  const handleDragEnd = (evt: DragEndEvent) => {
+    const { active, over } = evt;
+    if (over?.id && active.id !== over.id) {
+      const oldIndex = items.findIndex(({ id }) => id === active.id);
+      const newIndex = items.findIndex(({ id }) => id === over.id);
+      const newImportOrder = arrayMove(items, oldIndex, newIndex);
+      setItems(newImportOrder);
+      updateSecretImportSync({
+        workspaceId,
+        environment: selectedEnvSlug,
+        folderId,
+        id: secretImportCfg?._id || "",
+        secretImports: newImportOrder.map((el) => ({
+          environment: el.environment,
+          secretPath: el.secretPath
+        }))
+      });
+    }
+  };
+
   // when secrets is not loading and secrets list is empty
   const isDashboardSecretEmpty = !isSecretsLoading && !fields?.length;
 
@@ -534,7 +676,8 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const isSnapshotSecretEmtpy =
     isRollbackMode && !isSnapshotSecretsLoading && !snapshotSecret?.secrets?.length;
   const isSecretEmpty = (!isRollbackMode && isDashboardSecretEmpty) || isSnapshotSecretEmtpy;
-  const isEmptyPage = isFoldersEmpty && isSecretEmpty;
+  const isSecretImportEmpty = !secretImportCfg?.imports?.length;
+  const isEmptyPage = isFoldersEmpty && isSecretEmpty && isSecretImportEmpty;
 
   if (isSecretsLoading || isEnvListLoading) {
     return (
@@ -652,54 +795,11 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                 </Button>
               </div>
               {!isReadOnly && !isRollbackMode && (
-                <>
-                  <div className="block lg:hidden">
-                    <Tooltip content="Add Folder">
-                      <IconButton
-                        ariaLabel="recovery"
-                        variant="outline_bg"
-                        onClick={() => handlePopUpOpen("folderForm")}
-                      >
-                        <FontAwesomeIcon icon={faFolderPlus} />
-                      </IconButton>
-                    </Tooltip>
-                  </div>
-
-                  <div className="block lg:hidden">
-                    <Tooltip content="Point-in-time Recovery">
-                      <IconButton
-                        ariaLabel="recovery"
-                        variant="outline_bg"
-                        onClick={() => {
-                          if (secretContainer.current) {
-                            secretContainer.current.scroll({
-                              top: 0,
-                              behavior: "smooth"
-                            });
-                          }
-                          prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
-                        }}
-                      >
-                        <FontAwesomeIcon icon={faPlus} />
-                      </IconButton>
-                    </Tooltip>
-                  </div>
-                  <div className="hidden lg:block">
-                    <Button
-                      leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
-                      onClick={() => handlePopUpOpen("folderForm")}
-                      isDisabled={isReadOnly || isRollbackMode}
-                      variant="outline_bg"
-                      className="h-10"
-                    >
-                      Add Folder
-                    </Button>
-                  </div>
-
-                  <div className="hidden lg:block">
-                    <Button
-                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                      onClick={() => {
+                <div className="flex flex-row items-center justify-center">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (!(isReadOnly || isRollbackMode)) {
                         if (secretContainer.current) {
                           secretContainer.current.scroll({
                             top: 0,
@@ -708,15 +808,48 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                         }
                         prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
                         setSearchFilter("");
-                      }}
-                      isDisabled={isReadOnly || isRollbackMode}
-                      variant="outline_bg"
-                      className="h-10"
-                    >
-                      Add Secret
-                    </Button>
-                  </div>
-                </>
+                      }
+                    }}
+                    className="font-semibold bg-mineshaft-600 border border-mineshaft-500 p-2 rounded-l-md text-sm text-mineshaft-300 cursor-pointer hover:bg-primary/[0.1] hover:border-primary/40 pr-4 duration-200"
+                  >
+                    <FontAwesomeIcon icon={faPlus} className="px-2"/>Add Secret
+                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild className="data-[state=open]:bg-mineshaft-600">
+                      <div className="bg-mineshaft-600 border border-mineshaft-500 p-2 rounded-r-md text-sm text-mineshaft-300 cursor-pointer hover:bg-primary/[0.1] hover:border-primary/40 duration-200">
+                        <FontAwesomeIcon icon={faAngleDown} className="pr-2 pl-1.5"/>
+                      </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="mt-1 z-[60] left-20 w-[10.8rem]">
+                      <div className="bg-mineshaft-800 p-1 border border-mineshaft-600 rounded-md">
+                        <div className="w-full pb-1">
+                          <Button
+                            leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
+                            onClick={() => handlePopUpOpen("folderForm")}
+                            isDisabled={isReadOnly || isRollbackMode}
+                            variant="outline_bg"
+                            className="h-10"
+                            isFullWidth
+                          >
+                            Add Folder
+                          </Button>
+                        </div>
+                        <div className="w-full">
+                          <Button
+                            leftIcon={<FontAwesomeIcon icon={faFileImport} />}
+                            onClick={() => handlePopUpOpen("addSecretImport")}
+                            isDisabled={isReadOnly || isRollbackMode}
+                            variant="outline_bg"
+                            className="h-10"
+                            isFullWidth
+                          >
+                            Add Import
+                          </Button>
+                        </div>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               )}
               {isRollbackMode && (
                 <Button
@@ -751,49 +884,67 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
             ref={secretContainer}
           >
             {!isEmptyPage && (
-              <TableContainer className="no-scrollbar::-webkit-scrollbar max-h-[calc(100%-120px)] no-scrollbar">
-                <table className="secret-table relative">
-                  <SecretTableHeader sortDir={sortDir} onSort={onSortSecrets} />
-                  <tbody className="max-h-96 overflow-y-auto">
-                    <FolderSection
-                      onFolderOpen={handleFolderOpen}
-                      onFolderUpdate={(id, name) => handlePopUpOpen("folderForm", { id, name })}
-                      onFolderDelete={(id, name) => handlePopUpOpen("deleteFolder", { id, name })}
-                      folders={folderList}
-                      search={searchFilter}
-                    />
-                    {fields.map(({ id, _id }, index) => (
-                      <SecretInputRow
-                        key={id}
-                        isReadOnly={isReadOnly}
-                        isRollbackMode={isRollbackMode}
-                        isAddOnly={isAddOnly}
-                        index={index}
-                        searchTerm={searchFilter}
-                        onSecretDelete={onSecretDelete}
-                        onRowExpand={() => onDrawerOpen({ id: _id as string, index })}
-                        isSecretValueHidden={isSecretValueHidden}
-                        wsTags={wsTags}
-                        onCreateTagOpen={() => handlePopUpOpen("addTag")}
+              <DndContext
+                onDragEnd={handleDragEnd}
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                modifiers={[restrictToVerticalAxis]}
+              >
+                <TableContainer className="no-scrollbar::-webkit-scrollbar max-h-[calc(100%-120px)] no-scrollbar">
+                  <table className="secret-table relative">
+                    <SecretTableHeader sortDir={sortDir} onSort={onSortSecrets} />
+                    <tbody className="max-h-96 overflow-y-auto">
+                      <SecretImportSection
+                        onSecretImportDelete={(impSecEnv, impSecPath) =>
+                          handlePopUpOpen("deleteSecretImport", {
+                            environment: impSecEnv,
+                            secretPath: impSecPath
+                          })
+                        }
+                        secrets={secrets?.secrets}
+                        importedSecrets={importedSecrets}
+                        items={items}
                       />
-                    ))}
-                    {!isReadOnly && !isRollbackMode && (
-                      <tr>
-                        <td colSpan={3} className="hover:bg-mineshaft-700">
-                          <button
-                            type="button"
-                            className="flex h-8 w-full cursor-default items-center justify-start pl-12 font-normal text-bunker-300"
-                            onClick={onAppendSecret}
-                          >
-                            <FontAwesomeIcon icon={faPlus} />
-                            <span className="ml-2 w-20">Add Secret</span>
-                          </button>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </TableContainer>
+                      <FolderSection
+                        onFolderOpen={handleFolderOpen}
+                        onFolderUpdate={(id, name) => handlePopUpOpen("folderForm", { id, name })}
+                        onFolderDelete={(id, name) => handlePopUpOpen("deleteFolder", { id, name })}
+                        folders={folderList}
+                        search={searchFilter}
+                      />
+                      {fields.map(({ id, _id }, index) => (
+                        <SecretInputRow
+                          key={id}
+                          isReadOnly={isReadOnly}
+                          isRollbackMode={isRollbackMode}
+                          isAddOnly={isAddOnly}
+                          index={index}
+                          searchTerm={searchFilter}
+                          onSecretDelete={onSecretDelete}
+                          onRowExpand={() => onDrawerOpen({ id: _id as string, index })}
+                          isSecretValueHidden={isSecretValueHidden}
+                          wsTags={wsTags}
+                          onCreateTagOpen={() => handlePopUpOpen("addTag")}
+                        />
+                      ))}
+                      {!isReadOnly && !isRollbackMode && (
+                        <tr>
+                          <td colSpan={3} className="hover:bg-mineshaft-700">
+                            <button
+                              type="button"
+                              className="flex h-8 w-full cursor-default items-center justify-start pl-12 font-normal text-bunker-300"
+                              onClick={onAppendSecret}
+                            >
+                              <FontAwesomeIcon icon={faPlus} />
+                              <span className="ml-2 w-20">Add Secret</span>
+                            </button>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </TableContainer>
+              </DndContext>
             )}
             <PitDrawer
               isDrawerOpen={popUp?.secretSnapshots?.isOpen}
@@ -881,12 +1032,36 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
             />
           </ModalContent>
         </Modal>
+        <Modal
+          isOpen={popUp?.addSecretImport?.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("addSecretImport", isOpen)}
+        >
+          <ModalContent
+            title="Add Secret Link"
+            subTitle="To inherit secrets from another environment or folder"
+          >
+            <SecretImportForm
+              environments={currentWorkspace?.environments}
+              onCreate={handleSecretImportCreate}
+            />
+          </ModalContent>
+        </Modal>
         <DeleteActionModal
           isOpen={popUp.deleteFolder.isOpen}
           deleteKey={(popUp.deleteFolder?.data as TDeleteFolderForm)?.name}
           title="Do you want to delete this folder?"
           onChange={(isOpen) => handlePopUpToggle("deleteFolder", isOpen)}
           onDeleteApproved={handleFolderDelete}
+        />
+        <DeleteActionModal
+          isOpen={popUp.deleteSecretImport.isOpen}
+          deleteKey="unlink"
+          title="Do you want to remove this secret import?"
+          subTitle={`This will unlink secrets from environment ${
+            (popUp.deleteSecretImport?.data as TDeleteSecretImport)?.environment
+          } of path ${(popUp.deleteSecretImport?.data as TDeleteSecretImport)?.secretPath}?`}
+          onChange={(isOpen) => handlePopUpToggle("deleteSecretImport", isOpen)}
+          onDeleteApproved={handleSecretImportDelete}
         />
         <Modal
           isOpen={popUp?.compareSecrets?.isOpen}

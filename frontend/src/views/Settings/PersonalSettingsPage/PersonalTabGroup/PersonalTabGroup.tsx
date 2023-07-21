@@ -12,7 +12,7 @@ const tabs = [
 export const PersonalTabGroup = () => {
     return (
         <Tab.Group>
-            <Tab.List className="mb-6 border-b-2 border-mineshaft-800 w-full">
+            <Tab.List className="mb-4 border-b-2 border-mineshaft-800 w-full">
                 {tabs.map((tab) => (
                     <Tab as={Fragment} key={tab.key}> 
                         {({ selected }) => (

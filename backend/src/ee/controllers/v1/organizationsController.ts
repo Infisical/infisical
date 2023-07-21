@@ -178,6 +178,12 @@ export const addOrganizationTaxId = async (req: Request, res: Response) => {
     return res.status(200).send(data); 
 }
 
+/**
+ * Delete tax id with id [taxId] from organization tax ids on file
+ * @param req 
+ * @param res 
+ * @returns 
+ */
 export const deleteOrganizationTaxId = async (req: Request, res: Response) => {
     const { taxId } = req.params;
 
@@ -188,6 +194,12 @@ export const deleteOrganizationTaxId = async (req: Request, res: Response) => {
     return res.status(200).send(data); 
 }
 
+/**
+ * Return organization's invoices on file
+ * @param req 
+ * @param res 
+ * @returns 
+ */
 export const getOrganizationInvoices = async (req: Request, res: Response) => {
     const { data: { invoices } } = await licenseServerKeyRequest.get(
         `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/invoices`

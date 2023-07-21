@@ -146,7 +146,8 @@ const exchangeCode = async ({
     case INTEGRATION_BITBUCKET:
       obj = await exchangeCodeBitBucket({
         code,
-      })
+      });
+      break;
   }
 
   return obj;

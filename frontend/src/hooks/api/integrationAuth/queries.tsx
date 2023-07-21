@@ -19,6 +19,7 @@ const integrationAuthKeys = {
     integrationAuthId: string;
     appId: string;
   }) => [{ integrationAuthId, appId }, "integrationAuthVercelBranches"] as const,
+
   getIntegrationAuthRailwayEnvironments: ({
     integrationAuthId,
     appId
@@ -75,6 +76,7 @@ const fetchIntegrationAuthTeams = async (integrationAuthId: string) => {
   );
   return data.teams;
 };
+
 
 const fetchIntegrationAuthVercelBranches = async ({
   integrationAuthId,
@@ -265,3 +267,4 @@ export const useDeleteIntegrationAuth = () => {
     }
   });
 };
+

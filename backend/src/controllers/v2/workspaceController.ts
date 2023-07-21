@@ -179,10 +179,9 @@ export const getWorkspaceKey = async (req: Request, res: Response) => {
         }
     }   
     */
-  let key;
   const { workspaceId } = req.params;
 
-  key = await Key.findOne({
+  const key = await Key.findOne({
     workspace: workspaceId,
     receiver: req.user._id
   }).populate("sender", "+publicKey");

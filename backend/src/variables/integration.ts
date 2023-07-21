@@ -28,6 +28,7 @@ export const INTEGRATION_CHECKLY = "checkly";
 export const INTEGRATION_HASHICORP_VAULT = "hashicorp-vault";
 export const INTEGRATION_CLOUDFLARE_PAGES = "cloudflare-pages";
 export const INTEGRATION_BITBUCKET = "bitbucket";
+export const INTEGRATION_CODEFRESH = "codefresh";
 export const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
@@ -44,7 +45,8 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_CHECKLY,
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_CLOUDFLARE_PAGES,
-  INTEGRATION_BITBUCKET
+  INTEGRATION_BITBUCKET,
+  INTEGRATION_CODEFRESH
 ]);
 
 // integration types
@@ -76,6 +78,7 @@ export const INTEGRATION_LARAVELFORGE_API_URL = "https://forge.laravel.com";
 export const INTEGRATION_CHECKLY_API_URL = "https://api.checklyhq.com";
 export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = "https://api.cloudflare.com";
 export const INTEGRATION_BITBUCKET_API_URL = "https://api.bitbucket.org";
+export const INTEGRATION_CODEFRESH_API_URL = "https://g.codefresh.io/api";
 
 export const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [
@@ -259,6 +262,15 @@ export const getIntegrationOptions = async () => {
           type: "oauth",
           clientId: await getClientIdBitBucket(),
           docsLink: ""
+        },
+        {
+            name: "Codefresh",
+            slug: "codefresh",
+            image: "Codefresh.png",
+            isAvailable: true,
+            type: "pat",
+            clientId: "",
+            docsLink: "",
         }
     ]
     

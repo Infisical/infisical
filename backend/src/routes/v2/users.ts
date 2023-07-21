@@ -29,6 +29,16 @@ router.patch(
     usersController.updateMyMfaEnabled
 );
 
+router.patch(
+    "/me/name",
+    requireAuth({
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+    }),
+    body("firstName").exists(),
+    validateRequest,
+    usersController.updateName
+);
+
 router.get(
     "/me/organizations",
     requireAuth({

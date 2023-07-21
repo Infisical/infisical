@@ -67,6 +67,10 @@ export type CreateAPIKeyRes = {
   apiKeyData: APIKeyData;
 }
 
+export type RenameUserDTO = {
+  newName: string;
+};
+
 export type APIKeyData = {
   _id: string;
   name: string;

@@ -1,5 +1,6 @@
 import BackupPrivateKey, { IBackupPrivateKey } from "./backupPrivateKey";
 import Bot, { IBot } from "./bot";
+import BotOrg, { IBotOrg } from "./botOrg";
 import BotKey, { IBotKey } from "./botKey";
 import IncidentContactOrg, { IIncidentContactOrg } from "./incidentContactOrg";
 import Integration, { IIntegration } from "./integration";
@@ -16,13 +17,14 @@ import ServiceAccountKey, { IServiceAccountKey } from "./serviceAccountKey"; // 
 import ServiceAccountOrganizationPermission, { IServiceAccountOrganizationPermission } from "./serviceAccountOrganizationPermission"; // new
 import ServiceAccountWorkspacePermission, { IServiceAccountWorkspacePermission } from "./serviceAccountWorkspacePermission"; // new
 import TokenData, { ITokenData } from "./tokenData";
-import User,{ AuthProvider, IUser } from "./user";
+import User, { AuthProvider, IUser } from "./user";
 import UserAction, { IUserAction } from "./userAction";
 import Workspace, { IWorkspace } from "./workspace";
 import ServiceTokenData, { IServiceTokenData } from "./serviceTokenData";
 import APIKeyData, { IAPIKeyData } from "./apiKeyData";
 import LoginSRPDetail, { ILoginSRPDetail } from "./loginSRPDetail";
 import TokenVersion, { ITokenVersion } from "./tokenVersion";
+import GitRisks, { STATUS_RESOLVED_FALSE_POSITIVE } from "./gitRisks";
 
 export {
 	AuthProvider,
@@ -30,6 +32,8 @@ export {
 	IBackupPrivateKey,
 	Bot,
 	IBot,
+	BotOrg,
+	IBotOrg,
 	BotKey,
 	IBotKey,
 	IncidentContactOrg,
@@ -76,4 +80,6 @@ export {
 	ILoginSRPDetail,
 	TokenVersion,
 	ITokenVersion,
+	GitRisks,
+	STATUS_RESOLVED_FALSE_POSITIVE
 };

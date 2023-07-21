@@ -30,7 +30,8 @@ interface FeatureSet {
     customRateLimits: boolean;
     customAlerts: boolean;
     auditLogs: boolean;
-    status: 'incomplete' | 'incomplete_expired' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid' | null;
+    samlSSO: boolean;
+    status: "incomplete" | "incomplete_expired" | "trialing" | "active" | "past_due" | "canceled" | "unpaid" | null;
     trial_end: number | null;
     has_used_trial: boolean;
 }
@@ -63,6 +64,7 @@ class EELicenseService {
         customRateLimits: true,
         customAlerts: true,
         auditLogs: false,
+        samlSSO: false,
         status: null,
         trial_end: null,
         has_used_trial: true

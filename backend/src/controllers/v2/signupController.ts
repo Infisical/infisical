@@ -18,7 +18,7 @@ import { updateSubscriptionOrgQuantity } from "../../helpers/organization";
  * @returns
  */
 export const completeAccountSignup = async (req: Request, res: Response) => {
-	let user, token, refreshToken;
+	let user;
   const {
     email,
     firstName,
@@ -119,7 +119,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
     userAgent: req.headers["user-agent"] ?? "",
   });
 
-  token = tokens.token;
+  const token = tokens.token;
 
   // sending a welcome email to new users
   if (await getLoopsApiKey()) {
@@ -159,7 +159,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
  * @returns
  */
 export const completeAccountInvite = async (req: Request, res: Response) => {
-	let user, token, refreshToken;
+	let user;
   const {
     email,
     firstName,
@@ -244,7 +244,7 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
     userAgent: req.headers["user-agent"] ?? "",
   });
 
-  token = tokens.token;
+  const token = tokens.token;
 
   // store (refresh) token in httpOnly cookie
   res.cookie("jid", tokens.refreshToken, {
