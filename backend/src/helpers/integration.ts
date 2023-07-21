@@ -115,46 +115,51 @@ export const syncIntegrationsHelper = async ({
   workspaceId: Types.ObjectId;
   environment?: string;
 }) => {
-  const integrations = await Integration.find({
-    workspace: workspaceId,
-    ...(environment
-      ? {
+  try {
+    const integrations = await Integration.find({
+      workspace: workspaceId,
+      ...(environment
+        ? {
           environment,
         }
-      : {}),
-    isActive: true,
-    app: { $ne: null },
-  });
-
-  // for each workspace integration, sync/push secrets
-  // to that integration
-  for await (const integration of integrations) {
-    // get workspace, environment (shared) secrets
-    const secrets = await BotService.getSecrets({
-      // issue here?
-      workspaceId: integration.workspace,
-      environment: integration.environment,
-      secretPath: integration.secretPath,
+        : {}),
+      isActive: true,
+      app: { $ne: null },
     });
 
-    const integrationAuth = await IntegrationAuth.findById(
-      integration.integrationAuth
-    );
-    if (!integrationAuth) throw new Error("Failed to find integration auth");
+    // for each workspace integration, sync/push secrets
+    // to that integration
+    for await (const integration of integrations) {
+      // get workspace, environment (shared) secrets
+      const secrets = await BotService.getSecrets({
+        // issue here?
+        workspaceId: integration.workspace,
+        environment: integration.environment,
+        secretPath: integration.secretPath,
+      });
 
-    // get integration auth access token
-    const access = await getIntegrationAuthAccessHelper({
-      integrationAuthId: integration.integrationAuth,
-    });
+      const integrationAuth = await IntegrationAuth.findById(
+        integration.integrationAuth
+      );
+      if (!integrationAuth) throw new Error("Failed to find integration auth");
 
-    // sync secrets to integration
-    await syncSecrets({
-      integration,
-      integrationAuth,
-      secrets,
-      accessId: access.accessId === undefined ? null : access.accessId,
-      accessToken: access.accessToken,
-    });
+      // get integration auth access token
+      const access = await getIntegrationAuthAccessHelper({
+        integrationAuthId: integration.integrationAuth,
+      });
+
+      // sync secrets to integration
+      await syncSecrets({
+        integration,
+        integrationAuth,
+        secrets,
+        accessId: access.accessId === undefined ? null : access.accessId,
+        accessToken: access.accessToken,
+      });
+    }
+  } catch (err) {
+    console.log(`syncIntegrationsHelper: failed with [workspaceId=${workspaceId}] [environment=${environment}]`, err) // eslint-disable-line no-use-before-define
+    throw err
   }
 };
 
