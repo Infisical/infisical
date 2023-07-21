@@ -11,6 +11,13 @@ import { client } from "../../../config";
 import { ResourceNotFoundError } from "../../../utils/errors";
 import { getSiteURL } from "../../../config";
 
+/**
+ * Redirect user to appropriate SSO endpoint after successful authentication
+ * to finish inputting their master key for logging in or signing up
+ * @param req 
+ * @param res 
+ * @returns 
+ */
 export const redirectSSO = async (req: Request, res: Response) => {
     if (req.isUserCompleted) {
       return res.redirect(`${await getSiteURL()}/login/sso?token=${encodeURIComponent(req.providerAuthToken)}`);
@@ -19,6 +26,12 @@ export const redirectSSO = async (req: Request, res: Response) => {
     return res.redirect(`${await getSiteURL()}/signup/sso?token=${encodeURIComponent(req.providerAuthToken)}`);
 }
 
+/**
+ * Return organization SAML SSO configuration
+ * @param req 
+ * @param res 
+ * @returns 
+ */
 export const getSSOConfig = async (req: Request, res: Response) => {
     const organizationId = req.query.organizationId as string;
     
@@ -29,6 +42,12 @@ export const getSSOConfig = async (req: Request, res: Response) => {
     return res.status(200).send(data);
 }
 
+/**
+ * Update organization SAML SSO configuration
+ * @param req 
+ * @param res 
+ * @returns 
+ */
 export const updateSSOConfig = async (req: Request, res: Response) => {
     const {
         organizationId,
@@ -168,6 +187,12 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
     return res.status(200).send(ssoConfig);
 }
 
+/**
+ * Create organization SAML SSO configuration
+ * @param req 
+ * @param res 
+ * @returns 
+ */
 export const createSSOConfig = async (req: Request, res: Response) => {
     const {
         organizationId,
