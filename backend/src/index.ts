@@ -1,7 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
-import bodyParser from "body-parser";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("express-async-errors");
 import helmet from "helmet";
@@ -19,9 +18,9 @@ import {
   action as eeActionRouter,
   cloudProducts as eeCloudProductsRouter,
   organizations as eeOrganizationsRouter,
+  sso as eeSSORouter,
   secret as eeSecretRouter,
   secretSnapshot as eeSecretSnapshotRouter,
-  sso as eeSSORouter,
   workspace as eeWorkspaceRouter
 } from "./ee/routes/v1";
 import {
@@ -79,7 +78,7 @@ const main = async () => {
   const app = express();
   app.enable("trust proxy");
   app.use(express.json());
-  app.use(bodyParser.urlencoded({extended: true}));
+  app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
   app.use(
     cors({
