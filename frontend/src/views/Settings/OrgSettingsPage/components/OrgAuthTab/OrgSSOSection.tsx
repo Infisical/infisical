@@ -1,15 +1,13 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import { Button , Switch } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { Button, Switch, UpgradePlanModal } from "@app/components/v2";
+import { useOrganization, useSubscription } from "@app/context";
 import { 
     useGetSSOConfig,
     useUpdateSSOConfig
 } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
-
 import { SSOModal } from "./SSOModal";
 
 const ssoAuthProviderMap: { [key: string]: string } = {
@@ -18,10 +16,12 @@ const ssoAuthProviderMap: { [key: string]: string } = {
 
 export const OrgSSOSection = (): JSX.Element => {
     const { currentOrg } = useOrganization();
+    const { subscription } = useSubscription();
     const { createNotification } = useNotificationContext();
     const { data, isLoading } = useGetSSOConfig(currentOrg?._id ?? "");
     const { mutateAsync } = useUpdateSSOConfig();
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+        "upgradePlan",
         "addSSO"
     ] as const);
 
@@ -55,7 +55,13 @@ export const OrgSSOSection = (): JSX.Element => {
                 </h2>
                 {!isLoading && (
                     <Button
-                        onClick={() => handlePopUpOpen("addSSO")}
+                        onClick={() => {
+                            if (subscription?.samlSSO) {
+                                handlePopUpOpen("addSSO");
+                            } else {
+                                handlePopUpOpen("upgradePlan");
+                            }
+                        }}
                         colorSchema="secondary"
                         leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     >
@@ -100,6 +106,11 @@ export const OrgSSOSection = (): JSX.Element => {
                 popUp={popUp}
                 handlePopUpClose={handlePopUpClose}
                 handlePopUpToggle={handlePopUpToggle}
+            />
+            <UpgradePlanModal
+                isOpen={popUp.upgradePlan.isOpen}
+                onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+                text="You can use SAML SSO if you switch to Infisical's Pro plan."
             />
         </div>
     );

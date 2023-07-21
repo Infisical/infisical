@@ -19,6 +19,30 @@ import {
 } from "../../../config";
 
 router.get(
+  "/redirect/google",
+  authLimiter,
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    session: false,
+  })
+);
+
+router.get(
+  "/google",
+  passport.authenticate("google", { 
+    failureRedirect: "/login/provider/error", 
+    session: false 
+  }),
+  async (req, res) => {
+    if (req.isUserCompleted) {
+      res.redirect(`${await getSiteURL()}/login/sso?token=${encodeURIComponent(req.providerAuthToken)}`);
+    } else {
+      res.redirect(`${await getSiteURL()}/signup/sso?token=${encodeURIComponent(req.providerAuthToken)}`);
+    }
+  }
+);
+
+router.get(
   "/redirect/saml2/:ssoIdentifier",
   authLimiter,
   passport.authenticate("saml", {
@@ -32,7 +56,7 @@ router.post("/saml2/:ssoIdentifier",
     failureFlash: true, 
     session: false 
   }),
-  async (req, res) => {
+  async (req, res) => { // TODO: move this into controller
     if (req.isUserCompleted) {
       return res.redirect(`${await getSiteURL()}/login/sso?token=${encodeURIComponent(req.providerAuthToken)}`);
     }

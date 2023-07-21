@@ -29,7 +29,7 @@ export const SignupSSO = ({
                     <UserInfoSSOStep 
                         email={email}
                         name={`${firstName} ${lastName}`}
-                        organizationName={organizationName}
+                        providerOrganizationName={organizationName}
                         password={password}
                         setPassword={setPassword}
                         setStep={setStep}

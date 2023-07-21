@@ -1,15 +1,31 @@
 import { Fragment } from "react"
 import { Tab } from "@headlessui/react"
-
 import { OrgAuthTab } from "../OrgAuthTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
-
-const tabs = [
-    { name: "General", key: "tab-org-general" },
-    { name: "SAML SSO", key: "tab-org-saml" }
-];
+import { useUser, useOrganization } from "@app/context";
+import {
+    useGetOrgUsers
+} from "@app/hooks/api";
 
 export const OrgTabGroup = () => {
+    const { currentOrg } = useOrganization();
+    const { user } = useUser();
+    const { data } = useGetOrgUsers(currentOrg?._id ?? "");
+
+    const isRoleSufficient = data?.some((orgUser) => {
+        return orgUser.role !== 'member' && orgUser.user._id === user._id;
+    });
+
+    const tabs = [
+        { name: "General", key: "tab-org-general" },
+    ];
+        
+    if (isRoleSufficient) {
+        tabs.push(
+            { name: "SAML SSO", key: "tab-org-saml" }
+        );
+    }
+
     return (
         <Tab.Group>
             <Tab.List className="mb-6 border-b-2 border-mineshaft-800 w-full">
@@ -30,9 +46,11 @@ export const OrgTabGroup = () => {
                 <Tab.Panel>
                     <OrgGeneralTab />
                 </Tab.Panel>
-                <Tab.Panel>
-                    <OrgAuthTab />
-                </Tab.Panel>
+                {isRoleSufficient && (
+                    <Tab.Panel>
+                        <OrgAuthTab />
+                    </Tab.Panel>
+                )}
             </Tab.Panels>
         </Tab.Group>
     );

@@ -18,15 +18,14 @@ import {
   getJwtProviderAuthSecret,
 } from "../config";
 import { getSSOConfigHelper } from "../ee/helpers/organizations";
-import { OrganizationNotFoundError } from "./errors";
+import { OrganizationNotFoundError, InternalServerError } from "./errors";
 import { MEMBER, INVITED } from "../variables";
+import { getSiteURL } from "../config";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { MultiSamlStrategy } = require("@node-saml/passport-saml");
-
-// TODO: find a more optimal folder structure to store these types of functions
 
 /**
  * Returns an object containing the id of the authentication data payload
@@ -75,45 +74,57 @@ const initializePassport = async () => {
     passReqToCallback: true,
     clientID: googleClientId,
     clientSecret: googleClientSecret,
-    callbackURL: "/api/v1/auth/callback/google",
+    callbackURL: "/api/v1/sso/google",
     scope: ["profile", " email"],
   }, async (
     req: express.Request,
     accessToken: string,
     refreshToken: string,
     profile: any,
-    cb: any
+    done: any
   ) => {
     try {
       const email = profile.emails[0].value;
+      const firstName = profile.name.givenName;
+      const lastName = profile.name.familyName;
+      
       let user = await User.findOne({
-        authProvider: AuthProvider.GOOGLE,
-        authId: profile.id,
-      }).select("+publicKey")
+        email
+      }).select("+publicKey");
+      
+      if (user && user.authProvider !== AuthProvider.GOOGLE) {
+        done(InternalServerError());
+      }
 
       if (!user) {
         user = await new User({
           email,
           authProvider: AuthProvider.GOOGLE,
           authId: profile.id,
+          firstName,
+          lastName
         }).save();
       }
 
+      const isUserCompleted = !!user.publicKey;
       const providerAuthToken = createToken({
         payload: {
           userId: user._id.toString(),
           email: user.email,
+          firstName,
+          lastName,
           authProvider: user.authProvider,
-          isUserCompleted: !!user.publicKey,
+          isUserCompleted
         },
         expiresIn: await getJwtProviderAuthLifetime(),
         secret: await getJwtProviderAuthSecret(),
       });
 
+      req.isUserCompleted = isUserCompleted;
       req.providerAuthToken = providerAuthToken;
-      cb(null, profile);
+      done(null, profile);
     } catch (err) {
-      cb(null, false);
+      done(null, false);
     }
   }));
   
@@ -129,7 +140,7 @@ const initializePassport = async () => {
           
           const samlConfig = ({
             path: "/api/v1/auth/callback/saml",
-            callbackURL: "http://localhost:8080/api/v1/auth/callback/saml", // TODO: get rid of localhost:8080 here 
+            callbackURL: `${await getSiteURL()}/api/v1/auth/callback/saml`,
             entryPoint: ssoConfig.entryPoint,
             issuer: ssoConfig.issuer,
             cert: ssoConfig.cert,
@@ -142,24 +153,30 @@ const initializePassport = async () => {
       },
     },
     async (req: any, profile: any, done: any) => {
+      
+      if (!req.ssoConfig.isActive) return done(InternalServerError());
 
       const organization = await Organization.findById(req.ssoConfig.organization);
       
-      if (!organization) done(OrganizationNotFoundError());
+      if (!organization) return done(OrganizationNotFoundError());
       
       const email = profile.email;
       const firstName = profile.firstName;
       const lastName = profile.lastName;
-      
+
       let user = await User.findOne({
-        authProvider: AuthProvider.OKTA_SAML,
         email
       }).select("+publicKey");
+      
+      if (user && user.authProvider !== AuthProvider.OKTA_SAML) {
+        done(InternalServerError());
+      }
 
       if (!user) {
         user = await new User({
           email,
           authProvider: AuthProvider.OKTA_SAML,
+          authId: profile.id,
           firstName,
           lastName
         }).save();
@@ -178,8 +195,8 @@ const initializePassport = async () => {
         payload: {
           userId: user._id.toString(),
           email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
+          firstName,
+          lastName,
           organizationName: organization?.name,
           authProvider: user.authProvider,
           isUserCompleted

@@ -1,7 +1,7 @@
 
 import crypto from "crypto";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -30,7 +30,7 @@ type Props = {
     password: string;
     setPassword: (value: string) => void;
     name: string;
-    organizationName: string;
+    providerOrganizationName: string;
     providerAuthToken?: string;
 }
 
@@ -59,7 +59,7 @@ type Errors = {
 export const UserInfoSSOStep = ({
   email,
   name,
-  organizationName,
+  providerOrganizationName,
   password,
   setPassword,
   setStep,
@@ -67,10 +67,18 @@ export const UserInfoSSOStep = ({
 }: Props) => {
   const { data: commonPasswords } = useGetCommonPasswords();
   const [nameError, setNameError] = useState(false);
+  const [organizationName, setOrganizationName] = useState("");
   const [organizationNameError, setOrganizationNameError] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    console.log("providerOrganizationName: ", providerOrganizationName);
+    if (providerOrganizationName) {
+      setOrganizationName(providerOrganizationName);
+    }
+  }, []);
 
   // Verifies if the information that the users entered (name, workspace)
   // is there, and if the password matches the criteria.
@@ -104,6 +112,10 @@ export const UserInfoSSOStep = ({
       const privateKey = encodeBase64(secretKeyUint8Array);
       const publicKey = encodeBase64(publicKeyUint8Array);
       localStorage.setItem("PRIVATE_KEY", privateKey);
+      
+      console.log("make");
+      console.log("email: ", email);
+      console.log("password: ", password);
 
       client.init(
         {
@@ -225,6 +237,7 @@ export const UserInfoSSOStep = ({
           <Input
             placeholder="Infisical"
             value={organizationName}
+            onChange={(e) => setOrganizationName(e.target.value)}
             isRequired
             className="h-12"
             disabled

@@ -2,8 +2,8 @@ import { FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-// import { faGoogle } from "@fortawesome/free-brands-svg-icons";
-// import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faGoogle } from "@fortawesome/free-brands-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import axios from "axios"
 
 import Error from "@app/components/basic/Error";
@@ -115,20 +115,6 @@ export const InitialStep = ({
     return (
         <form onSubmit={handleLogin} className='flex flex-col mx-auto w-full justify-center items-center'>
             <h1 className='text-xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 text-center mb-8' >Login to Infisical</h1>
-            <div className='lg:w-1/6 w-1/4 min-w-[20rem] rounded-md'>
-                {/* <Button
-                    colorSchema="primary" 
-                    variant="solid"
-                    onClick={() => {
-                        // window.open('/api/v1/auth/redirect/google')
-                        window.open('/api/v1/auth/redirect/okta/64b4b9166e76604655b5373e');
-                    }} 
-                    leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-1" />}
-                    className="h-14 w-full mx-0"
-                > 
-                    {t('login.continue-with-google')}
-                </Button> */}
-            </div>
             <div className="relative md:px-1.5 flex items-center justify-center lg:w-1/6 w-1/4 min-w-[21.3rem] md:min-w-[22rem] mx-auto rounded-lg max-h-24 md:max-h-28">
                 <div className="flex items-center justify-center w-full md:px-2 md:py-1 rounded-lg max-h-24 md:max-h-28">
                     <Input
@@ -168,10 +154,24 @@ export const InitialStep = ({
                     isLoading={isLoading}
                 > Login </Button>
             </div>
-            <div className='lg:w-1/6 w-1/4 min-w-[20rem] flex flex-row items-center mt-4 py-2'>
+            <div className='lg:w-1/6 w-1/4 min-w-[20rem] flex flex-row items-center my-4 py-2'>
                 <div className='w-1/2 border-t border-mineshaft-500' />
                 <span className='px-4 text-sm text-bunker-400'>or</span>
                 <div className='w-1/2 border-t border-mineshaft-500' />
+            </div>
+            <div className='lg:w-1/6 w-1/4 min-w-[20rem] rounded-md'>
+                <Button
+                    colorSchema="primary" 
+                    variant="solid"
+                    onClick={() => {
+                        window.open('/api/v1/sso/redirect/google');
+                        window.close();
+                    }} 
+                    leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-1" />}
+                    className="h-14 w-full mx-0"
+                > 
+                    {t('login.continue-with-google')}
+                </Button>
             </div>
             <div className='lg:w-1/6 w-1/4 min-w-[20rem] text-center rounded-md mt-4'>
                 <Button
