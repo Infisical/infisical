@@ -26,15 +26,13 @@ export const ProjectSettingsPage = () => {
           <p className="text-3xl font-semibold text-gray-200">{t("settings.project.title")}</p>
         </div>
         <Tab.Group>
-          <Tab.List className="mb-6 w-full border-b-2 border-mineshaft-800">
+          <Tab.List className="mb-4 w-full border-b-2 border-mineshaft-800">
             {tabs.map((tab) => (
               <Tab as={Fragment} key={tab.key}>
                 {({ selected }) => (
                   <button
                     type="button"
-                    className={`w-30 p-4 font-semibold outline-none ${
-                      selected ? "border-b-2 border-white text-white" : "text-mineshaft-400"
-                    }`}
+                    className={`w-30 py-2 mx-2 mr-4 font-medium text-sm outline-none ${selected ? "border-b border-white text-white" : "text-mineshaft-400"}`}
                   >
                     {tab.name}
                   </button>

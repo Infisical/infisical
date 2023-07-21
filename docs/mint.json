@@ -91,8 +91,8 @@
             "documentation/getting-started/introduction",
             "documentation/getting-started/platform",
             "documentation/getting-started/sdks",
-            "documentation/getting-started/docker",
-            "documentation/getting-started/kubernetes",
+            "integrations/platforms/kubernetes",
+            "integrations/platforms/docker-intro",
             "documentation/getting-started/api"
           ]
         },
@@ -187,7 +187,9 @@
         {
           "group": "Docker",
           "pages": [
+            "integrations/platforms/docker-intro",
             "integrations/platforms/docker",
+            "integrations/platforms/docker-pass-envs",
             "integrations/platforms/docker-compose"
           ]
         },

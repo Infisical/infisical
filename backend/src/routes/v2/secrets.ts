@@ -127,6 +127,7 @@ router.get(
   query("tagSlugs"),
   query("folderId").default("root").isString().trim(),
   query("secretPath").optional().isString().trim(),
+  query("include_imports").optional().default(false).isBoolean(),
   validateRequest,
   requireAuth({
     acceptedAuthModes: [

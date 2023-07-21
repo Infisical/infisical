@@ -81,6 +81,26 @@ export const updateMyMfaEnabled = async (req: Request, res: Response) => {
 }
 
 /**
+ * Update the current user's name [firstName, lastName].
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const updateName = async (req: Request, res: Response) => {
+    const { firstName, lastName }: { firstName: string; lastName: string; } = req.body;
+    req.user.firstName = firstName;
+    req.user.lastName = lastName || "";
+    
+    await req.user.save();
+    
+    const user = req.user;
+    
+    return res.status(200).send({
+        user,
+    });
+}
+
+/**
  * Return organizations that the current user is part of.
  * @param req 
  * @param res 

@@ -7,14 +7,16 @@ import EventService from "./EventService";
 import IntegrationService from "./IntegrationService";
 import TokenService from "./TokenService";
 import SecretService from "./SecretService";
+import GithubSecretScanningService from "./GithubSecretScanningService"
 
 export {
-    TelemetryService,
-    DatabaseService,
-    BotService,
-    BotOrgService,
-    EventService,
-    IntegrationService,
-    TokenService,
-    SecretService,
+  TelemetryService,
+  DatabaseService,
+  BotService,
+  BotOrgService,
+  EventService,
+  IntegrationService,
+  TokenService,
+  SecretService,
+  GithubSecretScanningService
 }

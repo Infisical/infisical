@@ -11,11 +11,11 @@ Prerequisites:
 
 Follow this [guide](./docker) to configure the Infisical CLI for each service that you wish to inject environment variables into; you'll have to update the Dockerfile of each service.
 
-## Generate Infisical Tokens
+## Generate service token 
 
 Generate a unique [Infisical Token](/documentation/platform/token) for each service.
 
-## Add Infisical Tokens to your Docker Compose file
+## Feed service token to your Docker Compose file
 
 For each service you want to inject secrets into, set an environment variable called `INFISICAL_TOKEN` equal to a unique identifier variable.
 

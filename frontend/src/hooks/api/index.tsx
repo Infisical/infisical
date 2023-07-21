@@ -7,6 +7,7 @@ export * from "./keys";
 export * from "./organization";
 export * from "./ssoConfig";
 export * from "./secretFolders";
+export * from "./secretImports";
 export * from "./secrets";
 export * from "./secretSnapshots";
 export * from "./serviceAccounts";

@@ -58,31 +58,6 @@ services:
     networks:
       - infisical-dev
 
-  # git-app:
-  #   container_name: infisical-dev-git-app
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - mongo
-  #     - smtp-server
-  #     - backend
-  #     - frontend
-  #   volumes:
-  #     - ./secret-engine/src:/app/src/ # mounted whole src to avoid missing reload on new files
-  #   ports:
-  #     - "3000:3001"
-  #   build:
-  #     context: ./secret-engine
-  #     dockerfile: Dockerfile.dev
-  #   command: npm run start
-  #   env_file: ./secret-engine/.env
-  #   environment:
-  #     - NODE_ENV=development
-  #     - MONGO_URL=mongodb://root:example@mongo:27017/?authSource=admin
-  #   networks:
-  #     - infisical-dev
-  #   extra_hosts:
-  #     - "host.docker.internal:host-gateway"
-
   mongo:
     image: mongo
     container_name: infisical-dev-mongo

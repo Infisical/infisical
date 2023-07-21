@@ -1,0 +1,1 @@
+export { SecretScanningLogsTable } from "./SecretScanningLogsTable";

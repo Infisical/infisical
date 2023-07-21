@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { useTranslation } from "react-i18next";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
@@ -27,7 +26,6 @@ export const ProjectNameChangeSection = () => {
     control,
     reset
   } = useForm<FormData>({ resolver: yupResolver(formSchema) });
-  const { t } = useTranslation();
 
   useEffect(() => {
     if (currentWorkspace) {
@@ -67,7 +65,7 @@ export const ProjectNameChangeSection = () => {
       className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
     >
       <h2 className="text-xl font-semibold flex-1 text-mineshaft-100 mb-8">
-        {t("common.display-name")}      
+        Project Name    
       </h2>
         <div className="max-w-md">
           <Controller
