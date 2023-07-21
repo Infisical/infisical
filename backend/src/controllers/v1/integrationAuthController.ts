@@ -386,7 +386,7 @@ export const getIntegrationAuthRailwayServices = async (req: Request, res: Respo
 };
 
 /**
- * Return list of workspaces allowed for integration with integration authorization id [integrationAuthId]
+ * Return list of workspaces allowed for Bitbucket integration
  * @param req
  * @param res
  * @returns

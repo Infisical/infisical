@@ -34,7 +34,7 @@ const integrationAuthKeys = {
     appId: string;
   }) => [{ integrationAuthId, appId }, "integrationAuthRailwayServices"] as const,
   getIntegrationAuthBitBucketWorkspaces: (integrationAuthId: string) =>
-    [{ integrationAuthId }, "integrationAuthTeams"] as const,
+    [{ integrationAuthId }, "integrationAuthBitbucketWorkspaces"] as const,
 };
 
 const fetchIntegrationAuthById = async (integrationAuthId: string) => {

@@ -150,7 +150,7 @@ router.get(
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 	}),
-	param("integrationAuthId"),
+	param("integrationAuthId").exists().isString(),
 	validateRequest,
 	integrationAuthController.getIntegrationAuthBitBucketWorkspaces
 );

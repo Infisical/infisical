@@ -678,8 +678,6 @@ const syncSecretsVercel = async ({
     return true;
   });
 
-  // return secret.target.includes(integration.targetEnvironment);
-
   const res: { [key: string]: VercelSecret } = {};
 
   for await (const vercelSecret of vercelSecrets) {
@@ -1963,16 +1961,17 @@ const syncSecretsBitBucket = async ({
   secrets: any;
   accessToken: string;
 }) => {
+  
   interface VariablesResponse {
     size: number;
     page: number;
     pageLen: number;
     next: string;
     previous: string;
-    values: Array<Variable>;
+    values: Array<BitbucketVariable>;
   }
 
-  interface Variable {
+  interface BitbucketVariable {
     type: string;
     uuid: string;
     key: string;
@@ -1980,13 +1979,11 @@ const syncSecretsBitBucket = async ({
     secured: boolean;
   }
 
-  const existingSecrets: Variable[] = [];
-  const workspaceSlug = integration.targetEnvironmentId
-  const repoSlug = integration.appId
-  let hasNextPage = true;
-  let variablesUrl = `${INTEGRATION_BITBUCKET_API_URL}/2.0/repositories/${workspaceSlug}/${repoSlug}/pipelines_config/variables`
+  const res: { [key: string]: BitbucketVariable } = {};
 
-  // Fetch all repository variables
+  let hasNextPage = true;
+  let variablesUrl = `${INTEGRATION_BITBUCKET_API_URL}/2.0/repositories/${integration.targetEnvironmentId}/${integration.appId}/pipelines_config/variables`
+
   while (hasNextPage) {
     const { data }: { data: VariablesResponse } = await standardRequest.get(
         variablesUrl,
@@ -2000,8 +1997,8 @@ const syncSecretsBitBucket = async ({
 
     if (data?.values.length > 0) {
       data.values.forEach((variable) => {
-        existingSecrets.push(variable)
-      })
+        res[variable.key] = variable;
+      });
     }
 
     if (data.next) {
@@ -2011,12 +2008,11 @@ const syncSecretsBitBucket = async ({
     }
   }
 
-  Object.keys(secrets).forEach(async (key) => {
-    const existingSecret = existingSecrets.find((secret) => secret.key.toUpperCase() === key.toUpperCase());
-    if (existingSecret) {
-      // Update existing secrets
+  for await (const key of Object.keys(secrets)) {
+    if (key in res) {
+      // update existing secret
       await standardRequest.put(
-          `${variablesUrl}/${existingSecret.uuid}`,
+          `${variablesUrl}/${res[key].uuid}`,
           {
             key,
             value: secrets[key],
@@ -2030,7 +2026,7 @@ const syncSecretsBitBucket = async ({
           }
       );
     } else {
-      // Create new secrets
+      // create new secret
       await standardRequest.post(
           variablesUrl,
           {
@@ -2046,22 +2042,22 @@ const syncSecretsBitBucket = async ({
           }
       );
     }
-  })
+  }
 
-  // Delete secrets
-  existingSecrets.forEach(async (existingSecret) => {
-    if (!(existingSecret.key in secrets) && existingSecret.secured) {
+  for await (const key of Object.keys(res)) {
+    if (!(key in secrets)) {
+      // delete secret
       await standardRequest.delete(
-        `${variablesUrl}/${existingSecret.uuid}`,
+        `${variablesUrl}/${res[key].uuid}`,
         {
             headers: {
                 Authorization: `Bearer ${accessToken}`,
                 "Accept": "application/json",
-            },
+            }
         }
-    );
+      );
     }
-  })
+  }
 }
 
 export { syncSecrets };
