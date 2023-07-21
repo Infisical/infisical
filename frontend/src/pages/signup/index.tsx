@@ -13,10 +13,8 @@ import TeamInviteStep from "@app/components/signup/TeamInviteStep";
 import UserInfoStep from "@app/components/signup/UserInfoStep";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
-import { useProviderAuth } from "@app/hooks/useProviderAuth";
-
-import checkEmailVerificationCode from "./api/auth/CheckEmailVerificationCode";
-import getOrganizations from "./api/organization/getOrgs";
+import checkEmailVerificationCode from "@app/pages/api/auth/CheckEmailVerificationCode";
+import getOrganizations from "@app/pages/api/organization/getOrgs";
 
 /**
  * @returns the signup page
@@ -35,15 +33,6 @@ export default function SignUp() {
   const [isSignupWithEmail, setIsSignupWithEmail] = useState(false);
   const [isCodeInputCheckLoading, setIsCodeInputCheckLoading] = useState(false);
   const { t } = useTranslation();
-  const { email: providerEmail, providerAuthToken, isProviderUserCompleted } = useProviderAuth();
-
-  if (providerAuthToken && isProviderUserCompleted) {
-    router.push(`/login?providerAuthToken=${encodeURIComponent(providerAuthToken)}`);
-  }
-
-  if (providerAuthToken && step < 3) {
-    setStep(3);
-  }
 
   useEffect(() => {
     const tryAuth = async () => {
@@ -121,7 +110,7 @@ export default function SignUp() {
       return (
         <UserInfoStep
           incrementStep={incrementStep}
-          email={email || providerEmail}
+          email={email}
           password={password}
           setPassword={setPassword}
           name={name}
@@ -130,7 +119,7 @@ export default function SignUp() {
           setOrganizationName={setOrganizationName}
           attributionSource={attributionSource}
           setAttributionSource={setAttributionSource}
-          providerAuthToken={providerAuthToken}
+          providerAuthToken={undefined}
         />
       );
     }
@@ -139,7 +128,7 @@ export default function SignUp() {
       return (
         <DownloadBackupPDF
           incrementStep={incrementStep}
-          email={email || providerEmail}
+          email={email}
           password={password}
           name={name}
         />

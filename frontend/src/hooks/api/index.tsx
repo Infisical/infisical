@@ -11,6 +11,7 @@ export * from "./secrets";
 export * from "./secretSnapshots";
 export * from "./serviceAccounts";
 export * from "./serviceTokens";
+export * from "./ssoConfig";
 export * from "./subscriptions";
 export * from "./tags";
 export * from "./users";

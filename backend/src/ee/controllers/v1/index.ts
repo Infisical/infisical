@@ -1,6 +1,7 @@
 import * as secretController from "./secretController";
 import * as secretSnapshotController from "./secretSnapshotController";
 import * as organizationsController from "./organizationsController";
+import * as ssoController from "./ssoController";
 import * as workspaceController from "./workspaceController";
 import * as actionController from "./actionController";
 import * as membershipController from "./membershipController";
@@ -10,6 +11,7 @@ export {
     secretController,
     secretSnapshotController,
     organizationsController,
+    ssoController,
     workspaceController,
     actionController,
     membershipController,

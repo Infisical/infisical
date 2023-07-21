@@ -7,7 +7,8 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import { 
     Button,
     FormControl,
-    Input} from "@app/components/v2";
+    Input
+} from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { 
     useGetOrgBillingDetails,

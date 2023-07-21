@@ -9,7 +9,7 @@ import {
 import { createOrganization as create } from "../../helpers/organization";
 import { addMembershipsOrg } from "../../helpers/membershipOrg";
 import { ACCEPTED, OWNER } from "../../variables";
-import { getSiteURL, getLicenseServerUrl } from "../../config";
+import { getLicenseServerUrl, getSiteURL } from "../../config";
 import { licenseServerKeyRequest } from "../../config/request";
 
 export const getOrganizations = async (req: Request, res: Response) => {
