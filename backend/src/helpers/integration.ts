@@ -9,6 +9,7 @@ import {
   INTEGRATION_VERCEL,
 } from "../variables";
 import { UnauthorizedRequestError } from "../utils/errors";
+import * as Sentry from "@sentry/node";
 
 interface Update {
   workspace: string;
@@ -158,6 +159,7 @@ export const syncIntegrationsHelper = async ({
       });
     }
   } catch (err) {
+    Sentry.captureException(err);
     console.log(`syncIntegrationsHelper: failed with [workspaceId=${workspaceId}] [environment=${environment}]`, err) // eslint-disable-line no-use-before-define
     throw err
   }
