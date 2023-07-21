@@ -11,8 +11,8 @@ import { ssoController } from "../../controllers/v1";
 import { authLimiter } from "../../../helpers/rateLimiter";
 import {
     ACCEPTED,
-    OWNER,
-    ADMIN
+    ADMIN,
+    OWNER
 } from "../../../variables";
 
 router.get(

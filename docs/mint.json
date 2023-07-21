@@ -222,7 +222,8 @@
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",
         "integrations/cicd/circleci",
-        "integrations/cicd/travisci"
+        "integrations/cicd/travisci",
+        "integrations/cicd/bitbucket"
       ]
     },
     {

@@ -14,12 +14,16 @@ import {
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_BITBUCKET,
+  INTEGRATION_BITBUCKET_API_URL,
   INTEGRATION_CHECKLY,
   INTEGRATION_CHECKLY_API_URL,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_CLOUDFLARE_PAGES_API_URL,
+  INTEGRATION_CODEFRESH,
+  INTEGRATION_CODEFRESH_API_URL,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
@@ -41,9 +45,7 @@ import {
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
-  INTEGRATION_VERCEL_API_URL,
-  INTEGRATION_CODEFRESH,
-  INTEGRATION_CODEFRESH_API_URL
+  INTEGRATION_VERCEL_API_URL
 } from "../variables";
 import { standardRequest } from "../config/request";
 
@@ -180,34 +182,6 @@ const syncSecrets = async ({
         accessToken,
       });
       break;
-    case INTEGRATION_FLYIO:
-      await syncSecretsFlyio({
-        integration,
-        secrets,
-        accessToken,
-      });
-      break;
-    case INTEGRATION_CIRCLECI:
-      await syncSecretsCircleCI({
-        integration,
-        secrets,
-        accessToken,
-      });
-      break;
-    case INTEGRATION_TRAVISCI:
-      await syncSecretsTravisCI({
-        integration,
-        secrets,
-        accessToken,
-      });
-      break;
-    case INTEGRATION_SUPABASE:
-      await syncSecretsSupabase({
-        integration,
-        secrets,
-        accessToken,
-      });
-      break;
     case INTEGRATION_CHECKLY:
       await syncSecretsCheckly({
         integration,
@@ -239,7 +213,14 @@ const syncSecrets = async ({
         accessToken,
       });
       break;
-    }
+    case INTEGRATION_BITBUCKET:
+      await syncSecretsBitBucket({
+        integration,
+        secrets,
+        accessToken,
+      });
+      break;
+  }
 };
 
 /**
@@ -705,8 +686,6 @@ const syncSecretsVercel = async ({
 
       return true;
     });
-
-  // return secret.target.includes(integration.targetEnvironment);
 
   const res: { [key: string]: VercelSecret } = {};
 
@@ -1935,7 +1914,7 @@ const syncSecretsCloudflarePages = async ({
       }
     )
   )
-  .data.result['deployment_configs'][integration.targetEnvironment]['env_vars'];
+  .data.result["deployment_configs"][integration.targetEnvironment]["env_vars"];
 
   // copy the secrets object, so we can set deleted keys to null
   const secretsObj: any = { ...secrets };
@@ -1975,6 +1954,121 @@ const syncSecretsCloudflarePages = async ({
 }
 
 /**
+ * Sync/push [secrets] to BitBucket repo with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for BitBucket integration
+ */
+const syncSecretsBitBucket = async ({
+  integration,
+  secrets,
+  accessToken,
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  interface VariablesResponse {
+    size: number;
+    page: number;
+    pageLen: number;
+    next: string;
+    previous: string;
+    values: Array<BitbucketVariable>;
+  }
+
+  interface BitbucketVariable {
+    type: string;
+    uuid: string;
+    key: string;
+    value: string;
+    secured: boolean;
+  }
+
+  const res: { [key: string]: BitbucketVariable } = {};
+
+  let hasNextPage = true;
+  let variablesUrl = `${INTEGRATION_BITBUCKET_API_URL}/2.0/repositories/${integration.targetEnvironmentId}/${integration.appId}/pipelines_config/variables`
+
+  while (hasNextPage) {
+    const { data }: { data: VariablesResponse } = await standardRequest.get(
+        variablesUrl,
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept": "application/json",
+            },
+        }
+    );
+
+    if (data?.values.length > 0) {
+      data.values.forEach((variable) => {
+        res[variable.key] = variable;
+      });
+    }
+
+    if (data.next) {
+      variablesUrl = data.next
+    } else {
+      hasNextPage = false
+    }
+  }
+
+  for await (const key of Object.keys(secrets)) {
+    if (key in res) {
+      // update existing secret
+      await standardRequest.put(
+          `${variablesUrl}/${res[key].uuid}`,
+          {
+            key,
+            value: secrets[key],
+            secured: true
+          },
+          {
+              headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Accept": "application/json",
+              },
+          }
+      );
+    } else {
+      // create new secret
+      await standardRequest.post(
+          variablesUrl,
+          {
+            key,
+            value: secrets[key],
+            secured: true
+          },
+          {
+              headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Accept": "application/json",
+              },
+          }
+      );
+    }
+  }
+
+  for await (const key of Object.keys(res)) {
+    if (!(key in secrets)) {
+      // delete secret
+      await standardRequest.delete(
+        `${variablesUrl}/${res[key].uuid}`,
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept": "application/json",
+            }
+        }
+      );
+    }
+  }
+}
+
+/*
  * Sync/push [secrets] to Codefresh with name [integration.app]
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details

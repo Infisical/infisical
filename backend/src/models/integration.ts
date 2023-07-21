@@ -3,9 +3,11 @@ import {
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_BITBUCKET,
   INTEGRATION_CHECKLY,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CODEFRESH,
   INTEGRATION_FLYIO,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
@@ -17,8 +19,7 @@ import {
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
   INTEGRATION_TRAVISCI,
-  INTEGRATION_VERCEL,
-  INTEGRATION_CODEFRESH
+  INTEGRATION_VERCEL
 } from "../variables";
 
 export interface IIntegration {
@@ -56,7 +57,8 @@ export interface IIntegration {
     | "checkly"
     | "hashicorp-vault"
     | "cloudflare-pages"
-    | "codefresh";
+    | "bitbucket"
+    | "codefresh"
   integrationAuth: Types.ObjectId;
 }
 
@@ -146,6 +148,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_CHECKLY,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
+        INTEGRATION_BITBUCKET,
         INTEGRATION_CODEFRESH
       ],
       required: true,

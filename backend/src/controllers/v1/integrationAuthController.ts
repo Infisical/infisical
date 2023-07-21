@@ -7,6 +7,7 @@ import { IntegrationService } from "../../services";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
+  INTEGRATION_BITBUCKET_API_URL,
   INTEGRATION_RAILWAY_API_URL,
   INTEGRATION_SET,
   INTEGRATION_VERCEL_API_URL,
@@ -141,12 +142,14 @@ export const saveIntegrationAccessToken = async (req: Request, res: Response) =>
  */
 export const getIntegrationAuthApps = async (req: Request, res: Response) => {
   const teamId = req.query.teamId as string;
+  const workspaceSlug = req.query.workspaceSlug as string;
 
   const apps = await getApps({
     integrationAuth: req.integrationAuth,
     accessToken: req.accessToken,
     accessId: req.accessId,
-    ...(teamId && { teamId })
+    ...(teamId && { teamId }),
+    ...(workspaceSlug && { workspaceSlug })
   });
 
   return res.status(200).send({
@@ -379,6 +382,66 @@ export const getIntegrationAuthRailwayServices = async (req: Request, res: Respo
 
   return res.status(200).send({
     services
+  });
+};
+
+/**
+ * Return list of workspaces allowed for Bitbucket integration
+ * @param req
+ * @param res
+ * @returns
+ */
+export const getIntegrationAuthBitBucketWorkspaces = async (req: Request, res: Response) => {
+  
+  interface WorkspaceResponse {
+    size: number;
+    page: number;
+    pageLen: number;
+    next: string;
+    previous: string;
+    values: Array<Workspace>;
+  }
+
+  interface Workspace {
+    type: string;
+    uuid: string;
+    name: string;
+    slug: string;
+    is_private: boolean;
+    created_on: string;
+    updated_on: string;
+  }
+
+  const workspaces: Workspace[] = [];
+  let hasNextPage = true;
+  let workspaceUrl = `${INTEGRATION_BITBUCKET_API_URL}/2.0/workspaces`
+
+  while (hasNextPage) {
+    const { data }: { data: WorkspaceResponse } = await standardRequest.get(
+      workspaceUrl,
+      {
+        headers: {
+          Authorization: `Bearer ${req.accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      }
+    );
+    
+    if (data?.values.length > 0) {
+      data.values.forEach((workspace) => {
+        workspaces.push(workspace)
+      })
+    }
+
+    if (data.next) {
+      workspaceUrl = data.next
+    } else {
+      hasNextPage = false
+    }
+  }
+
+  return res.status(200).send({
+    workspaces
   });
 };
 

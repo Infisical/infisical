@@ -35,6 +35,7 @@ import {
   membership as v1MembershipRouter,
   organization as v1OrganizationRouter,
   password as v1PasswordRouter,
+  secretImport as v1SecretImportRouter,
   secret as v1SecretRouter,
   secretScanning as v1SecretScanningRouter,
   secretsFolder as v1SecretsFolder,
@@ -43,8 +44,7 @@ import {
   userAction as v1UserActionRouter,
   user as v1UserRouter,
   webhooks as v1WebhooksRouter,
-  workspace as v1WorkspaceRouter,
-  secretImport as v1SecretImportRouter
+  workspace as v1WorkspaceRouter
 } from "./routes/v1";
 import {
   auth as v2AuthRouter,

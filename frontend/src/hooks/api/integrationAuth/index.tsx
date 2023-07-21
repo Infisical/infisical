@@ -1,6 +1,7 @@
 export {
   useDeleteIntegrationAuth,
   useGetIntegrationAuthApps,
+  useGetIntegrationAuthBitBucketWorkspaces,
   useGetIntegrationAuthById,
   useGetIntegrationAuthRailwayEnvironments,
   useGetIntegrationAuthRailwayServices,

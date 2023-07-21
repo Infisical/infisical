@@ -4,11 +4,11 @@ import { Types } from "mongoose";
 import { AuthData } from "../interfaces/middleware";
 import {
   AuthProvider,
+  MembershipOrg,
+  Organization,
   ServiceAccount,
   ServiceTokenData,
-  User,
-  Organization,
-  MembershipOrg
+  User
 } from "../models";
 import { createToken } from "../helpers/auth";
 import {
@@ -18,8 +18,8 @@ import {
   getJwtProviderAuthSecret,
 } from "../config";
 import { getSSOConfigHelper } from "../ee/helpers/organizations";
-import { OrganizationNotFoundError, InternalServerError } from "./errors";
-import { MEMBER, INVITED } from "../variables";
+import { InternalServerError, OrganizationNotFoundError } from "./errors";
+import { INVITED, MEMBER } from "../variables";
 import { getSiteURL } from "../config";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
