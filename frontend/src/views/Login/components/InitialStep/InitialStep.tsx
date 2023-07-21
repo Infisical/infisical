@@ -164,13 +164,13 @@ export const InitialStep = ({
                     colorSchema="primary" 
                     variant="solid"
                     onClick={() => {
-                        window.open('/api/v1/sso/redirect/google');
+                        window.open("/api/v1/sso/redirect/google");
                         window.close();
                     }} 
                     leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-1" />}
                     className="h-14 w-full mx-0"
                 > 
-                    {t('login.continue-with-google')}
+                    {t("login.continue-with-google")}
                 </Button>
             </div>
             <div className='lg:w-1/6 w-1/4 min-w-[20rem] text-center rounded-md mt-4'>

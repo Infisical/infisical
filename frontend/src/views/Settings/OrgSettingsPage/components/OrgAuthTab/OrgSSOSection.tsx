@@ -1,5 +1,6 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, Switch, UpgradePlanModal } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
@@ -8,6 +9,7 @@ import {
     useUpdateSSOConfig
 } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
+
 import { SSOModal } from "./SSOModal";
 
 const ssoAuthProviderMap: { [key: string]: string } = {

@@ -9,6 +9,15 @@ import {
 import { getSSOConfigHelper } from "../../helpers/organizations";
 import { client } from "../../../config";
 import { ResourceNotFoundError } from "../../../utils/errors";
+import { getSiteURL } from "../../../config";
+
+export const redirectSSO = async (req: Request, res: Response) => {
+    if (req.isUserCompleted) {
+      return res.redirect(`${await getSiteURL()}/login/sso?token=${encodeURIComponent(req.providerAuthToken)}`);
+    }
+    
+    return res.redirect(`${await getSiteURL()}/signup/sso?token=${encodeURIComponent(req.providerAuthToken)}`);
+}
 
 export const getSSOConfig = async (req: Request, res: Response) => {
     const organizationId = req.query.organizationId as string;

@@ -1,11 +1,13 @@
 import { Fragment } from "react"
 import { Tab } from "@headlessui/react"
-import { OrgAuthTab } from "../OrgAuthTab";
-import { OrgGeneralTab } from "../OrgGeneralTab";
-import { useUser, useOrganization } from "@app/context";
+
+import { useOrganization,useUser } from "@app/context";
 import {
     useGetOrgUsers
 } from "@app/hooks/api";
+
+import { OrgAuthTab } from "../OrgAuthTab";
+import { OrgGeneralTab } from "../OrgGeneralTab";
 
 export const OrgTabGroup = () => {
     const { currentOrg } = useOrganization();
@@ -13,7 +15,7 @@ export const OrgTabGroup = () => {
     const { data } = useGetOrgUsers(currentOrg?._id ?? "");
 
     const isRoleSufficient = data?.some((orgUser) => {
-        return orgUser.role !== 'member' && orgUser.user._id === user._id;
+        return orgUser.role !== "member" && orgUser.user._id === user._id;
     });
 
     const tabs = [

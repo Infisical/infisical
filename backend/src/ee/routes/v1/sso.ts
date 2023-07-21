@@ -14,9 +14,6 @@ import {
     OWNER,
     ADMIN
 } from "../../../variables";
-import {
-  getSiteURL
-} from "../../../config";
 
 router.get(
   "/redirect/google",
@@ -33,13 +30,7 @@ router.get(
     failureRedirect: "/login/provider/error", 
     session: false 
   }),
-  async (req, res) => {
-    if (req.isUserCompleted) {
-      res.redirect(`${await getSiteURL()}/login/sso?token=${encodeURIComponent(req.providerAuthToken)}`);
-    } else {
-      res.redirect(`${await getSiteURL()}/signup/sso?token=${encodeURIComponent(req.providerAuthToken)}`);
-    }
-  }
+  ssoController.redirectSSO
 );
 
 router.get(
@@ -56,13 +47,7 @@ router.post("/saml2/:ssoIdentifier",
     failureFlash: true, 
     session: false 
   }),
-  async (req, res) => { // TODO: move this into controller
-    if (req.isUserCompleted) {
-      return res.redirect(`${await getSiteURL()}/login/sso?token=${encodeURIComponent(req.providerAuthToken)}`);
-    }
-    
-    return res.redirect(`${await getSiteURL()}/signup/sso?token=${encodeURIComponent(req.providerAuthToken)}`);
-  }
+  ssoController.redirectSSO
 );
 
 router.get(
