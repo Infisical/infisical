@@ -6,8 +6,10 @@ import {
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_BITBUCKET,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CODEFRESH,
   INTEGRATION_FLYIO,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
@@ -26,7 +28,27 @@ import {
 export interface IIntegrationAuth extends Document {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: "heroku" | "vercel" | "netlify" | "github" | "gitlab" | "render" | "railway" | "flyio" | "azure-key-vault" | "laravel-forge" | "circleci" | "travisci" | "supabase" | "aws-parameter-store" | "aws-secret-manager" | "checkly" | "cloudflare-pages" | "northflank";
+  integration:
+    | "heroku"
+    | "vercel"
+    | "netlify"
+    | "github"
+    | "gitlab"
+    | "render"
+    | "railway"
+    | "flyio"
+    | "azure-key-vault"
+    | "laravel-forge"
+    | "circleci"
+    | "travisci"
+    | "supabase"
+    | "aws-parameter-store"
+    | "aws-secret-manager"
+    | "checkly"
+    | "cloudflare-pages"
+    | "codefresh"
+    | "bitbucket"
+    | "northflank";
   teamId: string;
   accountId: string;
   url: string;
@@ -72,6 +94,8 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_SUPABASE,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
+        INTEGRATION_BITBUCKET,
+        INTEGRATION_CODEFRESH,
         INTEGRATION_NORTHFLANK
       ],
       required: true,

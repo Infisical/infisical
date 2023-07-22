@@ -7,7 +7,7 @@
 </p>
 
 <h4 align="center">
-  <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1ye0tm8ab-899qZ6ZbpfESuo6TEikyOQ">Slack</a> |
+  <a href="https://infisical.com/slack">Slack</a> |
   <a href="https://infisical.com/">Infisical Cloud</a> |
   <a href="https://infisical.com/docs/self-hosting/overview">Self-Hosting</a> |
   <a href="https://infisical.com/docs/documentation/getting-started/introduction">Docs</a> |
@@ -36,7 +36,7 @@
   <a href="https://cloudsmith.io/~infisical/repos/">
     <img src="https://img.shields.io/badge/Downloads-395.8k-orange" alt="Cloudsmith downloads" />
   </a>
-  <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg">
+  <a href="https://infisical.com/slack">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
   </a>
   <a href="https://twitter.com/infisical">
@@ -135,15 +135,15 @@ Whether it's big or small, we love contributions. Check out our guide to see how
 Not sure where to get started? You can:
 
 -   [Book a free, non-pressure pairing session / code walkthrough with one of our teammates](https://cal.com/tony-infisical/30-min-meeting-contributing)!
--   Join our <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg">Slack</a>, and ask us any questions there.
+-   Join our <a href="https://infisical.com/slack">Slack</a>, and ask us any questions there.
 
 ## Resources
 
 - [Docs](https://infisical.com/docs/documentation/getting-started/introduction) for comprehensive documentation and guides
-- [Slack](https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg) for discussion with the community and Infisical team.
+- [Slack](https://infisical.com/slack) for discussion with the community and Infisical team.
 - [GitHub](https://github.com/Infisical/infisical) for code, issues, and pull requests
 - [Twitter](https://twitter.com/infisical) for fast news
-- [YouTube](https://www.youtube.com/@infisical_od) for videos on secret management
+- [YouTube](https://www.youtube.com/@infisical_os) for videos on secret management
 - [Blog](https://infisical.com/blog) for secret management insights, articles, tutorials, and updates
 - [Roadmap](https://www.notion.so/infisical/be2d2585a6694e40889b03aef96ea36b?v=5b19a8127d1a4060b54769567a8785fa) for planned features
 

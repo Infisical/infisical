@@ -5,12 +5,16 @@ import {
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_BITBUCKET,
+  INTEGRATION_BITBUCKET_API_URL,
   INTEGRATION_CHECKLY,
   INTEGRATION_CHECKLY_API_URL,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_CLOUDFLARE_PAGES_API_URL,
+  INTEGRATION_CODEFRESH,
+  INTEGRATION_CODEFRESH_API_URL,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
@@ -56,11 +60,13 @@ const getApps = async ({
   accessToken,
   accessId,
   teamId,
+  workspaceSlug,
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
   accessId?: string;
   teamId?: string;
+  workspaceSlug?: string;
 }) => {
   let apps: App[] = [];
   switch (integrationAuth.integration) {
@@ -152,6 +158,17 @@ const getApps = async ({
         accessToken,
       });
       break;
+    case INTEGRATION_BITBUCKET:
+      apps = await getAppsBitBucket({
+        accessToken,
+        workspaceSlug
+      });
+      break;
+    case INTEGRATION_CODEFRESH:
+      apps = await getAppsCodefresh({
+        accessToken,
+      });
+      break;
   }
 
   return apps;
@@ -203,10 +220,10 @@ const getAppsVercel = async ({
       },
       ...(integrationAuth?.teamId
         ? {
-            params: {
-              teamId: integrationAuth.teamId,
-            },
-          }
+          params: {
+            teamId: integrationAuth.teamId,
+          },
+        }
         : {}),
     })
   ).data;
@@ -702,15 +719,76 @@ const getAppsCheckly = async ({ accessToken }: { accessToken: string }) => {
  * @returns {Object[]} apps - Cloudflare Pages projects
  * @returns {String} apps.name - name of Cloudflare Pages project
  */
-const getAppsCloudflarePages = async ({ 
-    accessToken,
-    accountId
+const getAppsCloudflarePages = async ({
+  accessToken,
+  accountId
 }: {
-    accessToken: string;
-    accountId?: string;
+  accessToken: string;
+  accountId?: string;
 }) => {
-    const { data } = await standardRequest.get(
-        `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accountId}/pages/projects`,
+  const { data } = await standardRequest.get(
+    `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accountId}/pages/projects`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept": "application/json",
+      },
+    }
+  );
+
+  const apps = data.result.map((a: any) => {
+    return {
+      name: a.name,
+      appId: a.id,
+    };
+  });
+  return apps;
+}
+
+/**
+ * Return list of repositories for the BitBucket integration based on provided BitBucket workspace
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for BitBucket API
+ * @param {String} obj.workspaceSlug - Workspace identifier for fetching BitBucket repositories
+ * @returns {Object[]} apps - BitBucket repositories
+ * @returns {String} apps.name - name of BitBucket repository
+ */
+const getAppsBitBucket = async ({ 
+  accessToken,
+  workspaceSlug,
+}: {
+  accessToken: string;
+  workspaceSlug?: string;
+}) => {
+  interface RepositoriesResponse {
+    size: number;
+    page: number;
+    pageLen: number;
+    next: string;
+    previous: string;
+    values: Array<Repository>;
+  }
+
+  interface Repository {
+    type: string;
+    uuid: string;
+    name: string;
+    is_private: boolean;
+    created_on: string;
+    updated_on: string;
+  }
+
+  if (!workspaceSlug) {
+    return []
+  }
+  
+  const repositories: Repository[] = [];
+  let hasNextPage = true;
+  let repositoriesUrl = `${INTEGRATION_BITBUCKET_API_URL}/2.0/repositories/${workspaceSlug}`
+
+  while (hasNextPage) {
+    const { data }: { data: RepositoriesResponse } = await standardRequest.get(
+        repositoriesUrl,
         {
             headers: {
                 Authorization: `Bearer ${accessToken}`,
@@ -719,13 +797,26 @@ const getAppsCloudflarePages = async ({
         }
     );
 
-    const apps = data.result.map((a: any) => {
-        return {
-            name: a.name,
-            appId: a.id,
-        };
-    });
-    return apps;
+    if (data?.values.length > 0) {
+      data.values.forEach((repository) => {
+        repositories.push(repository)
+      })
+    }
+
+    if (data.next) {
+      repositoriesUrl = data.next
+    } else {
+      hasNextPage = false
+    }
+  }
+
+  const apps = repositories.map((repository) => {
+      return {
+          name: repository.name,
+          appId: repository.uuid,
+      };
+  });
+  return apps;
 }
  /* Return list of projects for Northflank integration
  * @param {Object} obj
@@ -786,4 +877,34 @@ const getAppsNorthflank = async ({ accessToken }: { accessToken: string }) => {
   return apps;
 };
 
+/**
+ * Return list of projects for Supabase integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Supabase API
+ * @returns {Object[]} apps - names of Supabase apps
+ * @returns {String} apps.name - name of Supabase app
+ */
+
+const getAppsCodefresh = async ({
+  accessToken,
+}: {
+  accessToken: string;
+}) => {
+  const res = (
+    await standardRequest.get(`${INTEGRATION_CODEFRESH_API_URL}/projects`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json",
+      },
+    })
+  ).data;
+
+  const apps = res.projects.map((a: any) => ({
+    name: a.projectName,
+    appId: a.id,
+  }));
+
+  return apps;
+
+};
 export { getApps };

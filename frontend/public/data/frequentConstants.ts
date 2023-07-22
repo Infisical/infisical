@@ -6,22 +6,24 @@ const integrationSlugNameMapping: Mapping = {
   "azure-key-vault": "Azure Key Vault",
   "aws-parameter-store": "AWS Parameter Store",
   "aws-secret-manager": "AWS Secret Manager",
-  "heroku": "Heroku",
-  "vercel": "Vercel",
-  "netlify": "Netlify",
-  "github": "GitHub",
-  "gitlab": "GitLab",
-  "render": "Render",
+  heroku: "Heroku",
+  vercel: "Vercel",
+  netlify: "Netlify",
+  github: "GitHub",
+  gitlab: "GitLab",
+  render: "Render",
   "laravel-forge": "Laravel Forge",
-  "railway": "Railway",
-  "flyio": "Fly.io",
-  "circleci": "CircleCI",
-  "travisci": "TravisCI",
-  "supabase": "Supabase",
-  "checkly": "Checkly",
+  railway: "Railway",
+  flyio: "Fly.io",
+  circleci: "CircleCI",
+  travisci: "TravisCI",
+  supabase: "Supabase",
+  checkly: "Checkly",
   "hashicorp-vault": "Vault",
-  "cloudflare-pages": "Cloudflare Pages"
-}
+  "cloudflare-pages": "Cloudflare Pages",
+  "codefresh": "Codefresh",
+  bitbucket: "BitBucket"
+};
 
 const envMapping: Mapping = {
   Development: "dev",

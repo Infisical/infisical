@@ -277,7 +277,7 @@ export const OrgServiceAccountsTable = () => {
     
     return (
         <div className="w-full">
-            <div className="flex justify-between mb-8">
+            <div className="flex justify-between mb-4">
                 <p className="text-xl font-semibold text-mineshaft-100">Service Accounts</p>
                 <Button
                     colorSchema="secondary"

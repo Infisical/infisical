@@ -93,7 +93,7 @@ export const E2EESection = () => {
     };
 
     return bot ? (
-      <div className="mb-6 p-4 bg-mineshaft-900 max-w-screen-lg rounded-lg border border-mineshaft-600">
+      <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
         <p className="mb-3 text-xl font-semibold">End-to-End Encryption</p>
         <p className="text-gray-400 mb-8">
             Disabling, end-to-end encryption (E2EE) unlocks capabilities like native integrations to cloud providers as well as HTTP calls to get secrets back raw but enables the server to read/decrypt your secret values.

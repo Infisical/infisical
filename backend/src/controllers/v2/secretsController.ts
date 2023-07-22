@@ -30,9 +30,12 @@ import Folder from "../../models/folder";
 import {
   getFolderByPath,
   getFolderIdFromServiceToken,
-  searchByFolderId
+  searchByFolderId,
+  searchByFolderIdWithDir
 } from "../../services/FolderService";
 import { isValidScope } from "../../helpers/secrets";
+import path from "path";
+import { getAllImportedSecrets } from "../../services/SecretImportService";
 
 /**
  * Peform a batch of any specified CUD secret operations
@@ -47,14 +50,13 @@ export const batchSecrets = async (req: Request, res: Response) => {
   const {
     workspaceId,
     environment,
-    requests,
-    secretPath
+    requests
   }: {
     workspaceId: string;
     environment: string;
     requests: BatchSecretRequest[];
-    secretPath: string;
   } = req.body;
+  let secretPath = req.body.secretPath as string;
   let folderId = req.body.folderId as string;
 
   const createSecrets: BatchSecret[] = [];
@@ -68,10 +70,6 @@ export const batchSecrets = async (req: Request, res: Response) => {
   });
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
-  if (folders && folderId !== "root") {
-    const folder = searchByFolderId(folders.nodes, folderId as string);
-    if (!folder) throw BadRequestError({ message: "Folder not found" });
-  }
 
   if (req.authData.authPayload instanceof ServiceTokenData) {
     const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, secretPath);
@@ -85,6 +83,15 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
   if (secretPath) {
     folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
+  }
+
+  if (folders && folderId !== "root") {
+    const folder = searchByFolderIdWithDir(folders.nodes, folderId as string);
+    if (!folder?.folder) throw BadRequestError({ message: "Folder not found" });
+    secretPath = path.join(
+      "/",
+      ...folder.dir.map(({ name }) => name).filter((name) => name !== "root")
+    );
   }
 
   for await (const request of requests) {
@@ -319,7 +326,10 @@ export const batchSecrets = async (req: Request, res: Response) => {
   // // trigger event - push secrets
   await EventService.handleEvent({
     event: eventPushSecrets({
-      workspaceId: new Types.ObjectId(workspaceId)
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      // root condition else this will be filled according to the path or folderid
+      secretPath: secretPath || "/"
     })
   });
 
@@ -535,7 +545,9 @@ export const createSecrets = async (req: Request, res: Response) => {
     // trigger event - push secrets
     await EventService.handleEvent({
       event: eventPushSecrets({
-        workspaceId: new Types.ObjectId(workspaceId)
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath: secretPath || "/"
       })
     });
   }, 5000);
@@ -679,7 +691,7 @@ export const getSecrets = async (req: Request, res: Response) => {
     }   
     */
 
-  const { tagSlugs, secretPath } = req.query;
+  const { tagSlugs, secretPath, include_imports } = req.query;
   let { folderId } = req.query;
   const workspaceId = req.query.workspaceId as string;
   const environment = req.query.environment as string;
@@ -816,6 +828,12 @@ export const getSecrets = async (req: Request, res: Response) => {
     secrets = await Secret.find(secretQuery).populate("tags");
   }
 
+  // TODO(akhilmhdh) - secret-imp change this to org type
+  let importedSecrets: any[] = [];
+  if (include_imports) {
+    importedSecrets = await getAllImportedSecrets(workspaceId, environment, folderId as string);
+  }
+
   const channel = getChannelFromUserAgent(req.headers["user-agent"]);
 
   const readAction = await EELogService.createAction({
@@ -857,7 +875,8 @@ export const getSecrets = async (req: Request, res: Response) => {
   }
 
   return res.status(200).send({
-    secrets
+    secrets,
+    ...(include_imports && { imports: importedSecrets })
   });
 };
 
@@ -1033,13 +1052,16 @@ export const updateSecrets = async (req: Request, res: Response) => {
 
   Object.keys(workspaceSecretObj).forEach(async (key) => {
     // trigger event - push secrets
-    setTimeout(async () => {
-      await EventService.handleEvent({
-        event: eventPushSecrets({
-          workspaceId: new Types.ObjectId(key)
-        })
-      });
-    }, 10000);
+    // This route is not used anymore thus keep it commented out as it does not expose environment
+    // it will end up creating a lot of requests from the server
+    // setTimeout(async () => {
+    //   await EventService.handleEvent({
+    //     event: eventPushSecrets({
+    //       workspaceId: new Types.ObjectId(key),
+    //       environment,
+    //     })
+    //   });
+    // }, 10000);
 
     const updateAction = await EELogService.createAction({
       name: ACTION_UPDATE_SECRETS,
@@ -1174,11 +1196,13 @@ export const deleteSecrets = async (req: Request, res: Response) => {
 
   Object.keys(workspaceSecretObj).forEach(async (key) => {
     // trigger event - push secrets
-    await EventService.handleEvent({
-      event: eventPushSecrets({
-        workspaceId: new Types.ObjectId(key)
-      })
-    });
+    // DEPRECIATED(akhilmhdh): as this would cause server to send so many request
+    // and this route is not used anymore thus like snapshot keeping it commented out
+    // await EventService.handleEvent({
+    //   event: eventPushSecrets({
+    //     workspaceId: new Types.ObjectId(key)
+    //   })
+    // });
     const deleteAction = await EELogService.createAction({
       name: ACTION_DELETE_SECRETS,
       userId: req.user?._id,

@@ -7,6 +7,10 @@ const REGEX = /([$]{.*?})/g;
 export const useSyntaxHighlight = () => {
   const syntaxHighlight = useCallback((text: string, isHidden?: boolean) => {
     if (isHidden) {
+      if (!text) {
+        return "EMPTY";
+      }
+
       return text
         .split("")
         .slice(0, 200)

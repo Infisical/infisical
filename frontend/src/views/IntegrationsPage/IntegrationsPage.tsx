@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import NavHeader from "@app/components/navigation/NavHeader";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -49,6 +48,7 @@ export const IntegrationsPage = ({ frameworkIntegrations }: Props) => {
 
   const { data: cloudIntegrations, isLoading: isCloudIntegrationsLoading } =
     useGetCloudIntegrations();
+
   const { data: integrationAuths, isLoading: isIntegrationAuthLoading } =
     useGetWorkspaceAuthorizations(
       workspaceId,
@@ -177,10 +177,7 @@ export const IntegrationsPage = ({ frameworkIntegrations }: Props) => {
   };
 
   return (
-    <div className="container mx-auto max-w-7xl px-8 pb-12 text-white">
-      <div className="ml-4">
-        <NavHeader pageName={t("integrations.title")} isProjectRelated />
-      </div>
+    <div className="container mx-auto max-w-7xl pb-12 text-white">
       <IntegrationsSection
         isLoading={isIntegrationLoading}
         integrations={integrations}

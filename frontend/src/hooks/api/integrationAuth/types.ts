@@ -30,3 +30,9 @@ export type Service = {
   name: string;
   serviceId: string;
 };
+
+export type BitBucketWorkspace = {
+  uuid: string;
+  name: string;
+  slug: string;
+}

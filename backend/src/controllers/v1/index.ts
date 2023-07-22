@@ -13,21 +13,27 @@ import * as signupController from "./signupController";
 import * as userActionController from "./userActionController";
 import * as userController from "./userController";
 import * as workspaceController from "./workspaceController";
+import * as secretScanningController from "./secretScanningController";
+import * as webhookController from "./webhookController";
+import * as secretImportController from "./secretImportController";
 
 export {
-	authController,
-	botController,
-	integrationAuthController,
-	integrationController,
-	keyController,
-	membershipController,
-	membershipOrgController,
-	organizationController,
-	passwordController,
-	secretController,
-	serviceTokenController,
-	signupController,
-	userActionController,
-	userController,
-	workspaceController,
+  authController,
+  botController,
+  integrationAuthController,
+  integrationController,
+  keyController,
+  membershipController,
+  membershipOrgController,
+  organizationController,
+  passwordController,
+  secretController,
+  serviceTokenController,
+  signupController,
+  userActionController,
+  userController,
+  workspaceController,
+  secretScanningController,
+  webhookController,
+  secretImportController
 };

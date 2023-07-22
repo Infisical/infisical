@@ -13,4 +13,6 @@ export {
   useLogoutUser,
   useRegisterUserAction,
   useRevokeMySessions,
-  useUpdateOrgUserRole} from "./queries";
+  useUpdateOrgUserRole,
+  useUpdateUserAuthProvider
+} from "./queries";

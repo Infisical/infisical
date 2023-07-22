@@ -16,6 +16,7 @@ import {
   CreateAPIKeyRes,
   DeletOrgMembershipDTO,
   OrgUser,
+  RenameUserDTO,
   TokenVersion,
   UpdateOrgUserRoleDTO,
   User} from "./types";
@@ -43,6 +44,39 @@ const fetchUserAction = async (action: string) => {
     }
   });
   return data.userAction;
+};
+
+export const useRenameUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, RenameUserDTO>({
+    mutationFn: ({ newName }) =>
+      apiRequest.patch("/api/v2/users/me/name", { firstName: newName?.split(" ")[0], lastName: newName?.split(" ").slice(1).join(" ") }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(userKeys.getUser);
+    }
+  });
+};
+
+export const useUpdateUserAuthProvider = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      authProvider
+    }: {
+      authProvider: string;
+    }) => {
+      const { data: { user } } = await apiRequest.patch("/api/v2/users/me/auth-provider", { 
+        authProvider
+      });
+      
+      return user;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(userKeys.getUser);
+    }
+  });
 };
 
 export const useGetUserAction = (action: string) =>

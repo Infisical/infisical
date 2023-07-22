@@ -10,6 +10,9 @@ import {
     AUTH_MODE_API_KEY,
     AUTH_MODE_JWT,
 } from "../../variables";
+import {
+    AuthProvider
+} from "../../models";
 
 router.get(
     "/me",
@@ -27,6 +30,30 @@ router.patch(
     body("isMfaEnabled").exists().isBoolean(),
     validateRequest,
     usersController.updateMyMfaEnabled
+);
+
+router.patch(
+    "/me/name",
+    requireAuth({
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+    }),
+    body("firstName").exists().isString(),
+    body("lastName").isString(),
+    validateRequest,
+    usersController.updateName
+);
+
+router.patch(
+    "/me/auth-provider",
+    requireAuth({
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+    }),
+    body("authProvider").exists().isString().isIn([
+        AuthProvider.EMAIL,
+        AuthProvider.GOOGLE
+    ]),
+    validateRequest,
+    usersController.updateAuthProvider
 );
 
 router.get(

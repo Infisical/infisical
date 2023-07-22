@@ -1,11 +1,18 @@
 import { UserWsKeyPair } from "../keys/types";
 
+export enum AuthProvider {
+	EMAIL = "email",
+	GOOGLE = "google",
+	OKTA_SAML = "okta-saml"
+}
+
 export type User = {
   createdAt: Date;
   updatedAt: Date;
   email?: string;
   firstName?: string;
   lastName?: string;
+  authProvider?: AuthProvider;
   encryptionVersion?: number;
   protectedKey?: string;
   protectedKeyIV?: string;
@@ -66,6 +73,10 @@ export type CreateAPIKeyRes = {
   apiKey: string;
   apiKeyData: APIKeyData;
 }
+
+export type RenameUserDTO = {
+  newName: string;
+};
 
 export type APIKeyData = {
   _id: string;

@@ -2,6 +2,8 @@ import { standardRequest } from "../config/request";
 import { IIntegrationAuth } from "../models";
 import {
   INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_BITBUCKET,
+  INTEGRATION_BITBUCKET_TOKEN_URL,
   INTEGRATION_GITLAB,
   INTEGRATION_HEROKU,
 } from "../variables";
@@ -13,8 +15,10 @@ import {
 import { IntegrationService } from "../services";
 import {
   getClientIdAzure,
+  getClientIdBitBucket,
   getClientIdGitLab,
   getClientSecretAzure,
+  getClientSecretBitBucket,
   getClientSecretGitLab,
   getClientSecretHeroku,
   getSiteURL,
@@ -44,6 +48,15 @@ interface RefreshTokenGitLabResponse {
   access_token: string;
   refresh_token: string;
   created_at: number;
+}
+
+interface RefreshTokenBitBucketResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_token: string;
+  scopes: string;
+  state: string;
 }
 
 /**
@@ -80,6 +93,11 @@ const exchangeRefresh = async ({
       break;
     case INTEGRATION_GITLAB:
       tokenDetails = await exchangeRefreshGitLab({
+        refreshToken,
+      });
+      break;
+    case INTEGRATION_BITBUCKET:
+      tokenDetails = await exchangeRefreshBitBucket({
         refreshToken,
       });
       break;
@@ -201,6 +219,48 @@ const exchangeRefreshGitLab = async ({
       client_id: await getClientIdGitLab(),
       client_secret: await getClientSecretGitLab(),
       redirect_uri: `${await getSiteURL()}/integrations/gitlab/oauth2/callback`,
+    } as any),
+    {
+      headers: {
+        "Accept-Encoding": "application/json",
+      },
+    }
+  );
+
+  accessExpiresAt.setSeconds(accessExpiresAt.getSeconds() + data.expires_in);
+
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token,
+    accessExpiresAt,
+  };
+};
+
+/**
+ * Return new access token by exchanging refresh token [refreshToken] for the
+ * BitBucket integration
+ * @param {Object} obj
+ * @param {String} obj.refreshToken - refresh token to use to get new access token for BitBucket
+ * @returns
+ */
+const exchangeRefreshBitBucket = async ({
+  refreshToken,
+}: {
+  refreshToken: string;
+}) => {
+  const accessExpiresAt = new Date();
+  const {
+    data,
+  }: {
+    data: RefreshTokenBitBucketResponse;
+  } = await standardRequest.post(
+    INTEGRATION_BITBUCKET_TOKEN_URL,
+    new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: await getClientIdBitBucket(),
+      client_secret: await getClientSecretBitBucket(),
+      redirect_uri: `${await getSiteURL()}/integrations/bitbucket/oauth2/callback`,
     } as any),
     {
       headers: {

@@ -5,7 +5,7 @@ import {
   requireAuth,
   requireSecretsAuth,
   requireWorkspaceAuth,
-  validateRequest,
+  validateRequest
 } from "../../middleware";
 import { validateClientForSecrets } from "../../validation";
 import { body, query } from "express-validator";
@@ -20,22 +20,18 @@ import {
   PERMISSION_READ_SECRETS,
   PERMISSION_WRITE_SECRETS,
   SECRET_PERSONAL,
-  SECRET_SHARED,
+  SECRET_SHARED
 } from "../../variables";
 import { BatchSecretRequest } from "../../types/secret";
 
 router.post(
   "/batch",
   requireAuth({
-    acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-    ],
+    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "body",
+    locationWorkspaceId: "body"
   }),
   body("workspaceId").exists().isString().trim(),
   body("folderId").default("root").isString().trim(),
@@ -52,10 +48,8 @@ router.post(
         if (secretIds.length > 0) {
           req.secrets = await validateClientForSecrets({
             authData: req.authData,
-            secretIds: secretIds.map(
-              (secretId: string) => new Types.ObjectId(secretId)
-            ),
-            requiredPermissions: [],
+            secretIds: secretIds.map((secretId: string) => new Types.ObjectId(secretId)),
+            requiredPermissions: []
           });
         }
       }
@@ -76,14 +70,11 @@ router.post(
     .custom((value) => {
       if (Array.isArray(value)) {
         // case: create multiple secrets
-        if (value.length === 0)
-          throw new Error("secrets cannot be an empty array");
+        if (value.length === 0) throw new Error("secrets cannot be an empty array");
         for (const secret of value) {
           if (
             !secret.type ||
-            !(
-              secret.type === SECRET_PERSONAL || secret.type === SECRET_SHARED
-            ) ||
+            !(secret.type === SECRET_PERSONAL || secret.type === SECRET_SHARED) ||
             !secret.secretKeyCiphertext ||
             !secret.secretKeyIV ||
             !secret.secretKeyTag ||
@@ -108,9 +99,7 @@ router.post(
           !value.secretValueIV ||
           !value.secretValueTag
         ) {
-          throw new Error(
-            "secrets object is missing required secret properties"
-          );
+          throw new Error("secrets object is missing required secret properties");
         }
       } else {
         throw new Error("secrets must be an object or an array of objects");
@@ -120,17 +109,13 @@ router.post(
     }),
   validateRequest,
   requireAuth({
-    acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-    ],
+    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
     locationWorkspaceId: "body",
     locationEnvironment: "body",
-    requiredPermissions: [PERMISSION_WRITE_SECRETS],
+    requiredPermissions: [PERMISSION_WRITE_SECRETS]
   }),
   secretsController.createSecrets
 );
@@ -142,20 +127,21 @@ router.get(
   query("tagSlugs"),
   query("folderId").default("root").isString().trim(),
   query("secretPath").optional().isString().trim(),
+  query("include_imports").optional().default(false).isBoolean(),
   validateRequest,
   requireAuth({
     acceptedAuthModes: [
       AUTH_MODE_JWT,
       AUTH_MODE_API_KEY,
       AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT,
-    ],
+      AUTH_MODE_SERVICE_ACCOUNT
+    ]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
     locationWorkspaceId: "query",
     locationEnvironment: "query",
-    requiredPermissions: [PERMISSION_READ_SECRETS],
+    requiredPermissions: [PERMISSION_READ_SECRETS]
   }),
   secretsController.getSecrets
 );
@@ -167,8 +153,7 @@ router.patch(
     .custom((value) => {
       if (Array.isArray(value)) {
         // case: update multiple secrets
-        if (value.length === 0)
-          throw new Error("secrets cannot be an empty array");
+        if (value.length === 0) throw new Error("secrets cannot be an empty array");
         for (const secret of value) {
           if (!secret.id) {
             throw new Error("Each secret must contain a ID property");
@@ -187,15 +172,11 @@ router.patch(
     }),
   validateRequest,
   requireAuth({
-    acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-    ],
+    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
   }),
   requireSecretsAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    requiredPermissions: [PERMISSION_WRITE_SECRETS],
+    requiredPermissions: [PERMISSION_WRITE_SECRETS]
   }),
   secretsController.updateSecrets
 );
@@ -210,8 +191,7 @@ router.delete(
 
       if (Array.isArray(value)) {
         // case: delete multiple secrets
-        if (value.length === 0)
-          throw new Error("secrets cannot be an empty array");
+        if (value.length === 0) throw new Error("secrets cannot be an empty array");
         return value.every((id: string) => typeof id === "string");
       }
 
@@ -221,15 +201,11 @@ router.delete(
     .isEmpty(),
   validateRequest,
   requireAuth({
-    acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-    ],
+    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
   }),
   requireSecretsAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    requiredPermissions: [PERMISSION_WRITE_SECRETS],
+    requiredPermissions: [PERMISSION_WRITE_SECRETS]
   }),
   secretsController.deleteSecrets
 );

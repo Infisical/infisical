@@ -1,9 +1,11 @@
 /* eslint-disable react/jsx-no-useless-fragment */
-import { memo, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import {
+  faCheck,
   faCodeBranch,
   faComment,
+  faCopy,
   faEllipsis,
   faInfoCircle,
   faPlus,
@@ -30,6 +32,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { useToggle } from "@app/hooks";
 import { WsTag } from "@app/hooks/api/types";
 
 import { FormData, SecretActionType } from "../../DashboardPage.utils";
@@ -95,6 +98,16 @@ export const SecretInputRow = memo(
       name: `secrets.${index}.key`,
       disabled: isKeySubDisabled.current
     });
+    const secValue = useWatch({
+      control,
+      name: `secrets.${index}.value`,
+      disabled: isKeySubDisabled.current
+    });
+    const secValueOverride = useWatch({
+      control,
+      name: `secrets.${index}.valueOverride`,
+      disabled: isKeySubDisabled.current
+    })
     const secId = useWatch({ control, name: `secrets.${index}._id` });
 
     const tags = useWatch({ control, name: `secrets.${index}.tags`, defaultValue: [] }) || [];
@@ -102,6 +115,21 @@ export const SecretInputRow = memo(
       (prev, curr) => ({ ...prev, [curr.slug]: true }),
       {}
     );
+
+    const [isInviteLinkCopied, setInviteLinkCopied] = useToggle(false);
+
+    useEffect(() => {
+      let timer: NodeJS.Timeout;
+      if (isInviteLinkCopied) {
+        timer = setTimeout(() => setInviteLinkCopied.off(), 2000);
+      }
+      return () => clearTimeout(timer);
+    }, [isInviteLinkCopied]);
+
+    const copyTokenToClipboard = () => {
+      navigator.clipboard.writeText((secValueOverride || secValue) as string);
+      setInviteLinkCopied.on();
+    };
 
     // when secret is override by personal values
     const isOverridden =
@@ -223,6 +251,19 @@ export const SecretInputRow = memo(
                 {slug}
               </Tag>
             ))}
+            <div className="w-0 group-hover:w-6 overflow-hidden">
+              <Tooltip content="Copy value">
+                <IconButton
+                  variant="plain"
+                  size="md"
+                  ariaLabel="add-tag"
+                  className="py-[0.42rem]"
+                  onClick={copyTokenToClipboard}
+                >
+                  <FontAwesomeIcon icon={isInviteLinkCopied ? faCheck : faCopy} />
+                </IconButton>
+              </Tooltip>
+            </div>
             {!(isReadOnly || isAddOnly || isRollbackMode) && (
               <div className="duration-0 ml-1 overflow-hidden">
                 <Popover>
@@ -366,7 +407,7 @@ export const SecretInputRow = memo(
               <div className="opacity-0 group-hover:opacity-100">
                 <Tooltip content="Delete">
                   <IconButton
-                    size="md"
+                    size="lg"
                     variant="plain"
                     colorSchema="danger"
                     ariaLabel="delete"

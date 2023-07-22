@@ -21,7 +21,8 @@ router.post(
 	body("salt").exists().isString().trim().notEmpty(),
 	body("verifier").exists().isString().trim().notEmpty(),
 	body("organizationName").exists().isString().trim().notEmpty(),
-	body("providerAuthToken").isString().trim().optional({nullable: true}),
+	body("providerAuthToken").isString().trim().optional({ nullable: true }),
+	body("attributionSource").optional().isString().trim(),
     validateRequest,
     signupController.completeAccountSignup,
 );

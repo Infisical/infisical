@@ -1,5 +1,6 @@
 import {
     getClientIdAzure,
+    getClientIdBitBucket,
     getClientIdGitHub,
     getClientIdGitLab,
     getClientIdHeroku,
@@ -26,6 +27,8 @@ export const INTEGRATION_SUPABASE = "supabase";
 export const INTEGRATION_CHECKLY = "checkly";
 export const INTEGRATION_HASHICORP_VAULT = "hashicorp-vault";
 export const INTEGRATION_CLOUDFLARE_PAGES = "cloudflare-pages";
+export const INTEGRATION_BITBUCKET = "bitbucket";
+export const INTEGRATION_CODEFRESH = "codefresh";
 export const INTEGRATION_NORTHFLANK = "northflank";
 export const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
@@ -43,6 +46,8 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_CHECKLY,
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_BITBUCKET,
+  INTEGRATION_CODEFRESH,
   INTEGRATION_NORTHFLANK
 ]);
 
@@ -58,6 +63,7 @@ export const INTEGRATION_NETLIFY_TOKEN_URL = "https://api.netlify.com/oauth/toke
 export const INTEGRATION_GITHUB_TOKEN_URL =
   "https://github.com/login/oauth/access_token";
 export const INTEGRATION_GITLAB_TOKEN_URL = "https://gitlab.com/oauth/token";
+export const INTEGRATION_BITBUCKET_TOKEN_URL = "https://bitbucket.org/site/oauth2/access_token"
 
 // integration apps endpoints
 export const INTEGRATION_HEROKU_API_URL = "https://api.heroku.com";
@@ -73,6 +79,8 @@ export const INTEGRATION_SUPABASE_API_URL = "https://api.supabase.com";
 export const INTEGRATION_LARAVELFORGE_API_URL = "https://forge.laravel.com";
 export const INTEGRATION_CHECKLY_API_URL = "https://api.checklyhq.com";
 export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = "https://api.cloudflare.com";
+export const INTEGRATION_BITBUCKET_API_URL = "https://api.bitbucket.org";
+export const INTEGRATION_CODEFRESH_API_URL = "https://g.codefresh.io/api";
 export const INTEGRATION_NORTHFLANK_API_URL = "https://api.northflank.com";
 
 export const getIntegrationOptions = async () => {
@@ -248,6 +256,24 @@ export const getIntegrationOptions = async () => {
             type: "pat",
             clientId: "",
             docsLink: ""
+        },
+        {
+          name: "BitBucket",
+          slug: "bitbucket",
+          image: "BitBucket.png",
+          isAvailable: true,
+          type: "oauth",
+          clientId: await getClientIdBitBucket(),
+          docsLink: ""
+        },
+        {
+            name: "Codefresh",
+            slug: "codefresh",
+            image: "Codefresh.png",
+            isAvailable: true,
+            type: "pat",
+            clientId: "",
+            docsLink: "",
         },
         {
             name: "Northflank",

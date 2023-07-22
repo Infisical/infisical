@@ -7,9 +7,11 @@ import { ISecretVersion, SecretSnapshot, SecretVersion } from "../../ee/models";
 import {
   BackupPrivateKey,
   Bot,
+  BotOrg,
   ISecret,
   Integration,
   IntegrationAuth,
+  Organization,
   Secret,
   SecretBlindIndexData,
   ServiceTokenData,
@@ -135,6 +137,103 @@ export const backfillBots = async () => {
   );
 
   await Bot.insertMany(botsToInsert);
+};
+
+/**
+ * Backfill organization bots to ensure that every organization has a bot
+ */
+export const backfillBotOrgs = async () => {
+  const encryptionKey = await getEncryptionKey();
+  const rootEncryptionKey = await getRootEncryptionKey();
+
+  const organizationIdsWithBot = await BotOrg.distinct("organization");
+  const organizationIdsToAddBot = await Organization.distinct("_id", {
+    _id: {
+      $nin: organizationIdsWithBot
+    }
+  });
+
+  if (organizationIdsToAddBot.length === 0) return;
+
+  const botsToInsert = await Promise.all(
+    organizationIdsToAddBot.map(async (organizationToAddBot) => {
+      const { publicKey, privateKey } = generateKeyPair();
+      
+      const key = client.createSymmetricKey();
+
+      if (rootEncryptionKey) {
+        const {
+          ciphertext: encryptedPrivateKey,
+          iv: privateKeyIV,
+          tag: privateKeyTag
+        } = client.encryptSymmetric(privateKey, rootEncryptionKey);
+
+        const {
+          ciphertext: encryptedSymmetricKey,
+          iv: symmetricKeyIV,
+          tag: symmetricKeyTag
+        } = client.encryptSymmetric(key, rootEncryptionKey);
+
+        return new BotOrg({
+          name: "Infisical Bot",
+          organization: organizationToAddBot,
+          isActive: false,
+          publicKey,
+          encryptedSymmetricKey,
+          symmetricKeyIV,
+          symmetricKeyTag,
+          symmetricKeyAlgorithm: ALGORITHM_AES_256_GCM,
+          symmetricKeyKeyEncoding: ENCODING_SCHEME_BASE64,
+          encryptedPrivateKey,
+          privateKeyIV,
+          privateKeyTag,
+          privateKeyAlgorithm: ALGORITHM_AES_256_GCM,
+          privateKeyKeyEncoding: ENCODING_SCHEME_BASE64
+        });
+      } else if (encryptionKey) {
+        const {
+          ciphertext: encryptedPrivateKey,
+          iv: privateKeyIV,
+          tag: privateKeyTag
+        } = encryptSymmetric128BitHexKeyUTF8({
+          plaintext: privateKey,
+          key: encryptionKey
+        });
+        
+        const {
+          ciphertext: encryptedSymmetricKey,
+          iv: symmetricKeyIV,
+          tag: symmetricKeyTag
+        } = encryptSymmetric128BitHexKeyUTF8({
+          plaintext: key,
+          key: encryptionKey
+        });
+
+        return new BotOrg({
+          name: "Infisical Bot",
+          organization: organizationToAddBot,
+          isActive: false,
+          publicKey,
+          encryptedSymmetricKey,
+          symmetricKeyIV,
+          symmetricKeyTag,
+          symmetricKeyAlgorithm: ALGORITHM_AES_256_GCM,
+          symmetricKeyKeyEncoding: ENCODING_SCHEME_UTF8,
+          encryptedPrivateKey,
+          privateKeyIV,
+          privateKeyTag,
+          privateKeyAlgorithm: ALGORITHM_AES_256_GCM,
+          privateKeyKeyEncoding: ENCODING_SCHEME_UTF8
+        });
+      }
+
+      throw InternalServerError({
+        message: "Failed to backfill organization bots due to missing encryption key"
+      });
+    })
+  );
+  
+  await BotOrg.insertMany(botsToInsert);
 };
 
 /**

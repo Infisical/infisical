@@ -32,7 +32,6 @@ export const IntegrationsSection = ({
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteConfirmation"
   ] as const);
-
   return (
     <div className="mb-8">
       <div className="mx-4 mb-4 mt-6 flex flex-col items-start justify-between px-2 text-xl">
@@ -45,10 +44,12 @@ export const IntegrationsSection = ({
         </div>
       )}
       {!isLoading && !integrations.length && (
-        <EmptyState
-          className="mx-6 rounded-md border border-mineshaft-700 pt-8 pb-4"
-          title="No integrations found. Click on one of the below providers to sync secrets."
-        />
+        <div className="mx-6">
+          <EmptyState
+            className="rounded-md border border-mineshaft-700 pt-8 pb-4"
+            title="No integrations found. Click on one of the below providers to sync secrets."
+          />
+        </div>
       )}
       {!isLoading && (
         <div className="flex flex-col space-y-4 p-6 pt-0">
@@ -104,7 +105,8 @@ export const IntegrationsSection = ({
                 {(integration.integration === "vercel" ||
                   integration.integration === "netlify" ||
                   integration.integration === "railway" ||
-                  integration.integration === "gitlab") && (
+                  integration.integration === "gitlab" ||
+                  integration.integration === "bitbucket") && (
                   <div className="ml-4 flex flex-col">
                     <FormLabel label="Target Environment" />
                     <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">

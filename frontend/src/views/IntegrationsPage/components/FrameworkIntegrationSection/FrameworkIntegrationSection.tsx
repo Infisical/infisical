@@ -12,6 +12,8 @@ type Props = {
 export const FrameworkIntegrationSection = ({ frameworks }: Props) => {
   const { t } = useTranslation();
 
+  const sortedFrameworks = frameworks.sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <>
       <div className="mx-4 mt-12 mb-4 flex flex-col items-start justify-between px-2 text-xl">
@@ -22,7 +24,7 @@ export const FrameworkIntegrationSection = ({ frameworks }: Props) => {
         className="mx-6 mt-4 grid grid-flow-dense gap-3"
         style={{ gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))" }}
       >
-        {frameworks.map((framework) => (
+        {sortedFrameworks.map((framework) => (
           <a
             key={`framework-integration-${framework.slug}`}
             href={framework.docsLink}

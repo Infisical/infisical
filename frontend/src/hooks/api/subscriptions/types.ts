@@ -13,6 +13,8 @@ export type SubscriptionPlan = {
   workspaceLimit: number;
   workspacesUsed: number;
   environmentLimit: number;
+  samlSSO: boolean;
   status: "incomplete" | "incomplete_expired" | "trialing" | "active" | "past_due" | "canceled" | "unpaid" | null;
   trial_end: number | null;
+  has_used_trial: boolean;
 };

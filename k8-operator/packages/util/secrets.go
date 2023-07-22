@@ -89,13 +89,18 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string, en
 		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("unable to decrypt the required workspace key")
 	}
 
-	plainTextSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, encryptedSecretsResponse)
+	plainTextSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, encryptedSecretsResponse.Secrets)
 	if err != nil {
 		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("unable to decrypt your secrets [err=%v]", err)
 	}
 
+	plainTextSecretsMergedWithImports, err := InjectImportedSecret(plainTextWorkspaceKey, plainTextSecrets, encryptedSecretsResponse.ImportedSecrets)
+	if err != nil {
+		return nil, api.GetEncryptedSecretsV3Response{}, err
+	}
+
 	// expand secrets that are referenced
-	expandedSecrets := ExpandSecrets(plainTextSecrets, fullServiceToken)
+	expandedSecrets := ExpandSecrets(plainTextSecretsMergedWithImports, fullServiceToken)
 
 	return expandedSecrets, encryptedSecretsResponse, nil
 }
@@ -163,7 +168,7 @@ func GetPlainTextSecretsViaServiceAccount(serviceAccountCreds model.ServiceAccou
 		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("unable to fetch secrets because [err=%v]", err)
 	}
 
-	plainTextSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, encryptedSecretsResponse)
+	plainTextSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, encryptedSecretsResponse.Secrets)
 	if err != nil {
 		return nil, api.GetEncryptedSecretsV3Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to get plain text secrets because [err=%v]", err)
 	}
@@ -200,9 +205,9 @@ func GetBase64DecodedSymmetricEncryptionDetails(key string, cipher string, IV st
 	}, nil
 }
 
-func GetPlainTextSecrets(key []byte, encryptedSecretsResponse api.GetEncryptedSecretsV3Response) ([]model.SingleEnvironmentVariable, error) {
+func GetPlainTextSecrets(key []byte, encryptedSecrets []api.EncryptedSecretV3) ([]model.SingleEnvironmentVariable, error) {
 	plainTextSecrets := []model.SingleEnvironmentVariable{}
-	for _, secret := range encryptedSecretsResponse.Secrets {
+	for _, secret := range encryptedSecrets {
 		// Decrypt key
 		key_iv, err := base64.StdEncoding.DecodeString(secret.SecretKeyIV)
 		if err != nil {
@@ -332,7 +337,7 @@ func ExpandSecrets(secrets []model.SingleEnvironmentVariable, infisicalToken str
 				// if not in cross reference cache, fetch it from server
 				refSecs, _, err := GetPlainTextSecretsViaServiceToken(infisicalToken, "", env, secPath)
 				if err != nil {
-					fmt.Println("HELLO===>", "MOO", err)
+					fmt.Printf("Could not fetch secrets in environment: %s secret-path: %s", env, secPath)
 					// HandleError(err, fmt.Sprintf("Could not fetch secrets in environment: %s secret-path: %s", env, secPath), "If you are using a service token to fetch secrets, please ensure it is valid")
 				}
 				refSecsByKey := getSecretsByKeys(refSecs)
@@ -357,4 +362,33 @@ func getSecretsByKeys(secrets []model.SingleEnvironmentVariable) map[string]mode
 	}
 
 	return secretMapByName
+}
+
+func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []model.SingleEnvironmentVariable, importedSecrets []api.ImportedSecretV3) ([]model.SingleEnvironmentVariable, error) {
+	if importedSecrets == nil {
+		return secrets, nil
+	}
+
+	hasOverriden := make(map[string]bool)
+	for _, sec := range secrets {
+		hasOverriden[sec.Key] = true
+	}
+
+	for i := len(importedSecrets) - 1; i >= 0; i-- {
+		importSec := importedSecrets[i]
+		plainTextImportedSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, importSec.Secrets)
+
+		if err != nil {
+			return nil, fmt.Errorf("unable to decrypt your imported secrets [err=%v]", err)
+		}
+
+		for _, sec := range plainTextImportedSecrets {
+			if _, ok := hasOverriden[sec.Key]; !ok {
+				secrets = append(secrets, sec)
+				hasOverriden[sec.Key] = true
+			}
+		}
+	}
+
+	return secrets, nil
 }

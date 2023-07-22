@@ -4,8 +4,6 @@ const ALGORITHM = "aes-256-gcm";
 const BLOCK_SIZE_BYTES = 16;
 
 export default class AesGCM {
-	constructor() {}
-
 	static encrypt(
 		text: string,
 		secret: string

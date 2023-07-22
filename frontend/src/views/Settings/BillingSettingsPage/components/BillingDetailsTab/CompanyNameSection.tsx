@@ -7,7 +7,8 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import { 
     Button,
     FormControl,
-    Input} from "@app/components/v2";
+    Input
+} from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { 
     useGetOrgBillingDetails,
@@ -63,7 +64,7 @@ export const CompanyNameSection = () => {
     return (
         <form 
             onSubmit={handleSubmit(onFormSubmit)}
-            className="p-4 bg-mineshaft-900 mb-6 max-w-screen-lg rounded-lg border border-mineshaft-600"
+            className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
         >
             <h2 className="text-xl font-semibold flex-1 text-mineshaft-100 mb-8">
                 Business name
