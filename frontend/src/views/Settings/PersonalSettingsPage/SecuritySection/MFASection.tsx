@@ -9,7 +9,7 @@ import { useGetUser } from "../../../../hooks/api";
 import { User } from "../../../../hooks/api/types";
 import updateMyMfaEnabled from "../../../../pages/api/user/updateMyMfaEnabled";
 
-export const SecuritySection = () => {
+export const MFASection = () => {
   const [isMfaEnabled, setIsMfaEnabled] = useState(false);
   const { data: user } = useGetUser();
   const { createNotification } = useNotificationContext();

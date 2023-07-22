@@ -26,7 +26,7 @@ export const OrgSSOSection = (): JSX.Element => {
         "upgradePlan",
         "addSSO"
     ] as const);
-
+    
     const handleSamlSSOToggle = async (value: boolean) => {
         try {
             if (!currentOrg?._id) return;
@@ -53,7 +53,7 @@ export const OrgSSOSection = (): JSX.Element => {
         <div className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600">
             <div className="flex items-center mb-8">
                 <h2 className="text-xl font-semibold flex-1 text-white">
-                    Configuration
+                    SAML SSO Configuration
                 </h2>
                 {!isLoading && (
                     <Button

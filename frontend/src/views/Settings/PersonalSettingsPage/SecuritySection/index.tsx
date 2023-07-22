@@ -1,1 +1,1 @@
-export { SecuritySection } from "./SecuritySection";
+export { MFASection } from "./MFASection";
