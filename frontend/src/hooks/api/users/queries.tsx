@@ -58,6 +58,27 @@ export const useRenameUser = () => {
   });
 };
 
+export const useUpdateUserAuthProvider = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      authProvider
+    }: {
+      authProvider: string;
+    }) => {
+      const { data: { user } } = await apiRequest.patch("/api/v2/users/me/auth-provider", { 
+        authProvider
+      });
+      
+      return user;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(userKeys.getUser);
+    }
+  });
+};
+
 export const useGetUserAction = (action: string) =>
   useQuery({
     queryKey: userKeys.userAction,

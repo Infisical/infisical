@@ -2,8 +2,8 @@ import { FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-// import { faGoogle } from "@fortawesome/free-brands-svg-icons";
-// import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faGoogle } from "@fortawesome/free-brands-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import axios from "axios"
 
 import Error from "@app/components/basic/Error";
@@ -159,7 +159,7 @@ export const InitialStep = ({
                 <span className='px-4 text-sm text-bunker-400'>or</span>
                 <div className='w-1/2 border-t border-mineshaft-500' />
             </div>
-            {/* <div className='lg:w-1/6 w-1/4 min-w-[20rem] rounded-md'>
+            <div className='lg:w-1/6 w-1/4 min-w-[20rem] rounded-md'>
                 <Button
                     colorSchema="primary" 
                     variant="solid"
@@ -172,7 +172,7 @@ export const InitialStep = ({
                 > 
                     {t("login.continue-with-google")}
                 </Button>
-            </div> */}
+            </div>
             <div className='lg:w-1/6 w-1/4 min-w-[20rem] text-center rounded-md mt-4'>
                 <Button
                     colorSchema="primary"

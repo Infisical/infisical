@@ -2,10 +2,12 @@ import { Fragment } from "react"
 import { Tab } from "@headlessui/react"
 
 import { PersonalAPIKeyTab } from "../PersonalAPIKeyTab";
-import { PersonalSecurityTab } from "../PersonalSecurityTab";
+import { PersonalAuthTab } from "../PersonalAuthTab";
+import { PersonalGeneralTab } from "../PersonalGeneralTab";
 
 const tabs = [
-    { name: "General", key: "tab-account-security" },
+    { name: "General", key: "tab-account-general" },
+    { name: "Authentication", key: "tab-account-auth" },
     { name: "API Keys", key: "tab-account-api-keys" }
 ];
 
@@ -28,7 +30,10 @@ export const PersonalTabGroup = () => {
             </Tab.List>
             <Tab.Panels>
                 <Tab.Panel>
-                    <PersonalSecurityTab />
+                    <PersonalGeneralTab />
+                </Tab.Panel>
+                <Tab.Panel>
+                    <PersonalAuthTab />
                 </Tab.Panel>
                 <Tab.Panel>
                     <PersonalAPIKeyTab />

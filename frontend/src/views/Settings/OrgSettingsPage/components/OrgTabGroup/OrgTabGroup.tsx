@@ -24,7 +24,7 @@ export const OrgTabGroup = () => {
         
     if (isRoleSufficient) {
         tabs.push(
-            { name: "SAML SSO", key: "tab-org-saml" }
+            { name: "Authentication", key: "tab-org-auth" }
         );
     }
 
