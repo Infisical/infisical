@@ -1,4 +1,3 @@
-import { Document, Schema, Types, model } from "mongoose";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_BASE64,
@@ -9,6 +8,7 @@ import {
   INTEGRATION_BITBUCKET,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUD_66,
   INTEGRATION_CODEFRESH,
   INTEGRATION_FLYIO,
   INTEGRATION_GITHUB,
@@ -23,6 +23,7 @@ import {
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL
 } from "../variables";
+import { Document, Schema, Types, model } from "mongoose";
 
 export interface IIntegrationAuth extends Document {
   _id: Types.ObjectId;
@@ -46,7 +47,8 @@ export interface IIntegrationAuth extends Document {
     | "checkly"
     | "cloudflare-pages"
     | "codefresh"
-    | "bitbucket";
+    | "bitbucket"
+    | "cloud-66";
   teamId: string;
   accountId: string;
   url: string;
@@ -93,7 +95,8 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
         INTEGRATION_BITBUCKET,
-        INTEGRATION_CODEFRESH
+        INTEGRATION_CODEFRESH,
+        INTEGRATION_CLOUD_66,
       ],
       required: true,
     },

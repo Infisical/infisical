@@ -220,6 +220,7 @@
         "integrations/cloud/checkly",
         "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",
+        "integrations/cloud/cloud-66",
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",
         "integrations/cicd/circleci",

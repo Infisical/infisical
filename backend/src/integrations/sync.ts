@@ -1,14 +1,10 @@
-import _ from "lodash";
-import AWS from "aws-sdk";
 import {
   CreateSecretCommand,
   GetSecretValueCommand,
   ResourceNotFoundException,
   SecretsManagerClient,
-  UpdateSecretCommand,
+  UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
-import { Octokit } from "@octokit/rest";
-import sodium from "libsodium-wrappers";
 import { IIntegration, IIntegrationAuth } from "../models";
 import {
   INTEGRATION_AWS_PARAMETER_STORE,
@@ -22,6 +18,8 @@ import {
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_CLOUDFLARE_PAGES_API_URL,
+  INTEGRATION_CLOUD_66,
+  INTEGRATION_CLOUD_66_API_URL,
   INTEGRATION_CODEFRESH,
   INTEGRATION_CODEFRESH_API_URL,
   INTEGRATION_FLYIO,
@@ -47,6 +45,10 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_VERCEL_API_URL
 } from "../variables";
+import AWS from "aws-sdk";
+import { Octokit } from "@octokit/rest";
+import _ from "lodash";
+import sodium from "libsodium-wrappers";
 import { standardRequest } from "../config/request";
 
 /**
@@ -218,6 +220,13 @@ const syncSecrets = async ({
         integration,
         secrets,
         accessToken,
+      });
+      break;
+    case INTEGRATION_CLOUD_66:
+      await syncSecretsCloud66({
+        integration,
+        secrets,
+        accessToken
       });
       break;
   }
@@ -2068,10 +2077,11 @@ const syncSecretsBitBucket = async ({
   }
 }
 
-/*
- * Sync/push [secrets] to Codefresh with name [integration.app]
+/**
+ * Sync/push [secrets] to Codefresh project with name [integration.app]
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
  * @param {String} obj.accessToken - access token for Codefresh integration
  */
@@ -2099,6 +2109,108 @@ const syncSecretsCodefresh = async ({
       },
     }
   ); 
+};
+
+/**
+ * Sync/push [secrets] to Cloud66 application with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Cloud66 integration
+ */
+const syncSecretsCloud66 = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  interface Cloud66Secret {
+    id: number;
+    key: string;
+    value: string;
+    readonly: boolean;
+    created_at: string;
+    updated_at: string;
+    is_password: boolean;
+    is_generated: boolean;
+    history: any[];
+  }
+
+  // get all current secrets
+  const res = (
+    await standardRequest.get(
+      `${INTEGRATION_CLOUD_66_API_URL}/3/stacks/${integration.appId}/environments`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json"
+        }
+      }
+    )
+  )
+  .data
+  .response
+  .filter((secret: Cloud66Secret) => !secret.readonly || !secret.is_generated)
+  .reduce(
+    (obj: any, secret: any) => ({
+      ...obj,
+      [secret.key]: secret
+    }),
+    {}
+  );
+
+  for await (const key of Object.keys(secrets)) {
+    if (key in res) {
+      // update existing secret
+      await standardRequest.put(
+          `${INTEGRATION_CLOUD_66_API_URL}/3/stacks/${integration.appId}/environments/${key}`,
+          {
+            key,
+            value: secrets[key]
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json"
+            }
+          }
+        );
+    } else {
+      // create new secret
+      await standardRequest.post(
+          `${INTEGRATION_CLOUD_66_API_URL}/3/stacks/${integration.appId}/environments`,
+          {
+            key,
+            value: secrets[key]
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json"
+            }
+          }
+        );
+    }
+  }
+
+  for await (const key of Object.keys(res)) {
+    if (!(key in secrets)) {
+      // delete secret
+      await standardRequest.delete(
+          `${INTEGRATION_CLOUD_66_API_URL}/3/stacks/${integration.appId}/environments/${key}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json"
+            }
+          }
+        );
+    }
+  }
 };
 
 export { syncSecrets };

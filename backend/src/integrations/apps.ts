@@ -1,6 +1,3 @@
-import { Octokit } from "@octokit/rest";
-import { IIntegrationAuth } from "../models";
-import { standardRequest } from "../config/request";
 import {
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
@@ -13,6 +10,8 @@ import {
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_CLOUDFLARE_PAGES_API_URL,
+  INTEGRATION_CLOUD_66,
+  INTEGRATION_CLOUD_66_API_URL,
   INTEGRATION_CODEFRESH,
   INTEGRATION_CODEFRESH_API_URL,
   INTEGRATION_FLYIO,
@@ -37,6 +36,9 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_VERCEL_API_URL
 } from "../variables";
+import { IIntegrationAuth } from "../models";
+import { Octokit } from "@octokit/rest";
+import { standardRequest } from "../config/request";
 
 interface App {
   name: string;
@@ -159,6 +161,11 @@ const getApps = async ({
       break;
     case INTEGRATION_CODEFRESH:
       apps = await getAppsCodefresh({
+        accessToken,
+      });
+      break;
+    case INTEGRATION_CLOUD_66:
+      apps = await getAppsCloud66({
         accessToken,
       });
       break;
@@ -819,7 +826,6 @@ const getAppsBitBucket = async ({
  * @returns {Object[]} apps - names of Supabase apps
  * @returns {String} apps.name - name of Supabase app
  */
-
 const getAppsCodefresh = async ({
   accessToken,
 }: {
@@ -842,4 +848,64 @@ const getAppsCodefresh = async ({
   return apps;
 
 };
+
+/**
+ * Return list of applications for Cloud66 integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - personal access token for Cloud66 API
+ * @returns {Object[]} apps - Cloud66 apps
+ * @returns {String} apps.name - name of Cloud66 app
+ * @returns {String} apps.appId - uid of Cloud66 app
+ */
+const getAppsCloud66 = async ({ accessToken }: { accessToken: string }) => {
+  interface Cloud66Apps {
+    uid: string;
+    name: string;
+    account_id: number;
+    git: string;
+    git_branch: string;
+    environment: string;
+    cloud: string;
+    fqdn: string;
+    language: string;
+    framework: string;
+    status: number;
+    health: number;
+    last_activity: string;
+    last_activity_iso: string;
+    maintenance_mode: boolean;
+    has_loadbalancer: boolean;
+    created_at: string;
+    updated_at: string;
+    deploy_directory: string;
+    cloud_status: string;
+    backend: string;
+    version: string;
+    revision: string;
+    is_busy: boolean;
+    account_name: string;
+    is_cluster: boolean;
+    is_inside_cluster: boolean;
+    cluster_name: any;
+    application_address: string;
+    configstore_namespace: string;
+  }
+
+  const stacks = (
+    await standardRequest.get(`${INTEGRATION_CLOUD_66_API_URL}/3/stacks`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
+      }
+    })
+  ).data.response as Cloud66Apps[]
+
+  const apps = stacks.map((app) => ({
+    name: app.name,
+    appId: app.uid
+  }));
+
+  return apps;
+};
+
 export { getApps };
