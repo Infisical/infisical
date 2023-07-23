@@ -112,10 +112,6 @@ export const UserInfoSSOStep = ({
       const privateKey = encodeBase64(secretKeyUint8Array);
       const publicKey = encodeBase64(publicKeyUint8Array);
       localStorage.setItem("PRIVATE_KEY", privateKey);
-      
-      console.log("make");
-      console.log("email: ", email);
-      console.log("password: ", password);
 
       client.init(
         {

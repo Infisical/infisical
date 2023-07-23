@@ -177,7 +177,6 @@ export const backfillBotOrgs = async () => {
         return new BotOrg({
           name: "Infisical Bot",
           organization: organizationToAddBot,
-          isActive: false,
           publicKey,
           encryptedSymmetricKey,
           symmetricKeyIV,
@@ -212,7 +211,6 @@ export const backfillBotOrgs = async () => {
         return new BotOrg({
           name: "Infisical Bot",
           organization: organizationToAddBot,
-          isActive: false,
           publicKey,
           encryptedSymmetricKey,
           symmetricKeyIV,
