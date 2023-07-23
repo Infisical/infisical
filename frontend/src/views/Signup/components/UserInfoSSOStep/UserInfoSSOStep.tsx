@@ -69,13 +69,13 @@ export const UserInfoSSOStep = ({
   const [nameError, setNameError] = useState(false);
   const [organizationName, setOrganizationName] = useState("");
   const [organizationNameError, setOrganizationNameError] = useState(false);
+  const [attributionSource, setAttributionSource] = useState("");
   const [errors, setErrors] = useState<Errors>({});
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
 
   useEffect(() => {
-    console.log("providerOrganizationName: ", providerOrganizationName);
-    if (providerOrganizationName) {
+    if (providerOrganizationName !== undefined) {
       setOrganizationName(providerOrganizationName);
     }
   }, []);
@@ -171,7 +171,8 @@ export const UserInfoSSOStep = ({
                 providerAuthToken,
                 salt: result.salt,
                 verifier: result.verifier,
-                organizationName
+                organizationName,
+                attributionSource
               });
 
               // unset signup JWT token and set JWT token
@@ -209,7 +210,7 @@ export const UserInfoSSOStep = ({
       setIsLoading(false);
     }
   };
-
+  
   return (
     <div className="h-full mx-auto mb-36 w-max rounded-xl md:px-8 md:mb-16">
       <p className="mx-8 mb-6 flex justify-center text-xl font-bold text-medium md:mx-16 text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
@@ -228,18 +229,31 @@ export const UserInfoSSOStep = ({
           />
           {nameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your name</p>}
         </div>
-        <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
-          <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Organization Name</p>
-          <Input
-            placeholder="Infisical"
-            value={organizationName}
-            onChange={(e) => setOrganizationName(e.target.value)}
-            isRequired
-            className="h-12"
-            disabled
-          />
-          {organizationNameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your organization name</p>}
-        </div>
+        {providerOrganizationName === undefined && (
+          <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
+            <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Organization Name</p>
+            <Input
+              placeholder="Infisical"
+              value={organizationName}
+              onChange={(e) => setOrganizationName(e.target.value)}
+              isRequired
+              className="h-12"
+              disabled
+            />
+            {organizationNameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your organization name</p>}
+          </div>
+        )}
+        {providerOrganizationName === undefined && (
+          <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
+            <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Where did you hear about us? <span className="font-light">(optional)</span></p>
+            <Input
+              placeholder=""
+              onChange={(e) => setAttributionSource(e.target.value)}
+              value={attributionSource}
+              className="h-12"
+            />
+          </div>
+        )}
         <div className="mt-2 flex lg:w-1/6 w-1/4 min-w-[20rem] max-h-60 w-full flex-col items-center justify-center rounded-lg py-2">
           <InputField
             label={t("section.password.password")}
