@@ -14,7 +14,7 @@ export default function Cloud66CreateIntegrationPage() {
     try {
       setApiKeyErrorText("");
       if (apiKey.length === 0) {
-        setApiKeyErrorText("API Key cannot be blank");
+        setApiKeyErrorText("Access token cannot be blank");
         return;
       }
 
@@ -42,7 +42,7 @@ export default function Cloud66CreateIntegrationPage() {
       <Card className="max-w-md rounded-md p-8">
         <CardTitle className="text-center">Cloud 66 Integration</CardTitle>
         <FormControl
-          label="Cloud 66 API Key"
+          label="Cloud 66 Personal Access Token"
           errorText={apiKeyErrorText}
           isError={apiKeyErrorText !== "" ?? false}
         >

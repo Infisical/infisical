@@ -826,7 +826,6 @@ const getAppsBitBucket = async ({
  * @returns {Object[]} apps - names of Supabase apps
  * @returns {String} apps.name - name of Supabase app
  */
-
 const getAppsCodefresh = async ({
   accessToken,
 }: {
@@ -851,9 +850,13 @@ const getAppsCodefresh = async ({
 };
 
 /**
- * Return list of projects for Cloud 66 integration
+ * Return list of applications for Cloud66 integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - personal access token for Cloud66 API
+ * @returns {Object[]} apps - Cloud66 apps
+ * @returns {String} apps.name - name of Cloud66 app
+ * @returns {String} apps.appId - uid of Cloud66 app
  */
-
 const getAppsCloud66 = async ({ accessToken }: { accessToken: string }) => {
   interface Cloud66Apps {
     uid: string;

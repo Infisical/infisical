@@ -113,7 +113,7 @@ export default function Cloud66CreateIntegrationPage() {
             placeholder="Provide a path, default is /"
           />
         </FormControl>
-        <FormControl label="Cloud 66 Service" className="mt-4">
+        <FormControl label="Cloud 66 Application" className="mt-4">
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
@@ -131,7 +131,7 @@ export default function Cloud66CreateIntegrationPage() {
               ))
             ) : (
               <SelectItem value="none" key="target-app-none">
-                No services found
+                No applications found
               </SelectItem>
             )}
           </Select>
