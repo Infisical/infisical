@@ -207,6 +207,12 @@
             "integrations/cloud/aws-secret-manager"
           ]
         },
+        {
+          "group": "Digital Ocean",
+          "pages": [
+            "integrations/cloud/digital-ocean-app-platform"
+          ]
+        },
         "integrations/cloud/heroku",
         "integrations/cloud/vercel",
         "integrations/cloud/netlify",
