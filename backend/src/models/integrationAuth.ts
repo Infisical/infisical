@@ -10,6 +10,7 @@ import {
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_CLOUD_66,
   INTEGRATION_CODEFRESH,
+  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
@@ -47,6 +48,7 @@ export interface IIntegrationAuth extends Document {
     | "checkly"
     | "cloudflare-pages"
     | "codefresh"
+    | "digital-ocean-app-platform"
     | "bitbucket"
     | "cloud-66";
   teamId: string;
@@ -95,6 +97,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
         INTEGRATION_BITBUCKET,
+        INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
         INTEGRATION_CODEFRESH,
         INTEGRATION_CLOUD_66,
       ],

@@ -7,8 +7,7 @@ in plaintext. Effectively, this means each such secret operation only requires 1
 
 <AccordionGroup>
     <Accordion title="Retrieve secrets">
-        Retrieve all secrets for an Infisical project and environment.
-
+        Retrieve all secrets for an Infisical project and environment. 
         <Tabs>
             <Tab title="cURL">
                 ```bash
@@ -18,7 +17,12 @@ in plaintext. Effectively, this means each such secret operation only requires 1
                 ```
             </Tab>
         </Tabs>
-
+    ####
+    <Info>
+        When using a [service token](../../../documentation/platform/token) with access to a single environment and path, you don't need to provide request parameters because the server will automatically scope the request to the defined environment/secrets path of the service token used. 
+        For all other cases, request parameters are required.
+    </Info>
+    ####
         <ParamField query="workspaceId" type="string" required>
             The ID of the workspace
         </ParamField>

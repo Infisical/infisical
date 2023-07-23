@@ -18,8 +18,8 @@ import {
 
 router.get(
   "/raw",
-  query("workspaceId").exists().isString().trim(),
-  query("environment").exists().isString().trim(),
+  query("workspaceId").optional().isString().trim(),
+  query("environment").optional().isString().trim(),
   query("secretPath").default("/").isString().trim(),
   query("include_imports").optional().isBoolean().default(false),
   validateRequest,
@@ -30,14 +30,6 @@ router.get(
       AUTH_MODE_SERVICE_TOKEN,
       AUTH_MODE_SERVICE_ACCOUNT
     ]
-  }),
-  requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "query",
-    locationEnvironment: "query",
-    requiredPermissions: [PERMISSION_READ_SECRETS],
-    requireBlindIndicesEnabled: true,
-    requireE2EEOff: true
   }),
   secretsController.getSecretsRaw
 );

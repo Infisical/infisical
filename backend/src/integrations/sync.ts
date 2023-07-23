@@ -22,6 +22,8 @@ import {
   INTEGRATION_CLOUD_66_API_URL,
   INTEGRATION_CODEFRESH,
   INTEGRATION_CODEFRESH_API_URL,
+  INTEGRATION_DIGITAL_OCEAN_API_URL,
+  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
@@ -217,6 +219,13 @@ const syncSecrets = async ({
       break;
     case INTEGRATION_BITBUCKET:
       await syncSecretsBitBucket({
+        integration,
+        secrets,
+        accessToken,
+      });
+      break;
+    case INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM:
+      await syncSecretsDigitalOceanAppPlatform({
         integration,
         secrets,
         accessToken,
@@ -2112,6 +2121,40 @@ const syncSecretsCodefresh = async ({
 };
 
 /**
+ * Sync/push [secrets] to DigitalOcean App Platform application with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - personal access token for DigitalOcean
+ */
+const syncSecretsDigitalOceanAppPlatform = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  await standardRequest.put(
+    `${INTEGRATION_DIGITAL_OCEAN_API_URL}/v2/apps/${integration.appId}`,
+    {
+      spec: {
+        name: integration.app,
+        envs: Object.entries(secrets).map(([key, value]) => ({ key, value }))
+      }
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      }
+    }
+  );
+}
+
+/**
  * Sync/push [secrets] to Cloud66 application with name [integration.app]
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
@@ -2128,6 +2171,7 @@ const syncSecretsCloud66 = async ({
   secrets: any;
   accessToken: string;
 }) => {
+  
   interface Cloud66Secret {
     id: number;
     key: string;

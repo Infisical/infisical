@@ -44,6 +44,7 @@ import { EELogService, EESecretService } from "../ee/services";
 import { getAuthDataPayloadIdObj, getAuthDataPayloadUserObj } from "../utils/auth";
 import { getFolderIdFromServiceToken } from "../services/FolderService";
 import picomatch from "picomatch";
+import path from "path";
 
 export const isValidScope = (
   authPayload: IServiceTokenData,
@@ -59,6 +60,13 @@ export const isValidScope = (
 
   return Boolean(validScope);
 };
+
+export function containsGlobPatterns(secretPath: string) {
+  const globChars = ["*", "?", "[", "]", "{", "}", "**"];
+  const normalizedPath = path.normalize(secretPath);
+  return globChars.some(char => normalizedPath.includes(char));
+}
+
 
 /**
  * Returns an object containing secret [secret] but with its value, key, comment decrypted.
