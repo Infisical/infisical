@@ -13,6 +13,8 @@ export const SAMLSSOStep = ({
     const [ssoIdentifier, setSSOIdentifier] = useState("");
     const { t } = useTranslation();
 
+    const queryParams = new URLSearchParams(window.location.search);
+
     return (
         <div className="mx-auto w-full max-w-md md:px-6">
             <p className="mx-auto mb-6 flex w-max justify-center text-xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 text-center mb-8">
@@ -37,7 +39,8 @@ export const SAMLSSOStep = ({
                     colorSchema="primary" 
                     variant="outline_bg"
                     onClick={() => {
-                        window.open(`/api/v1/sso/redirect/saml2/${ssoIdentifier}`);
+                        const callbackPort = queryParams.get("callback_port");
+                        window.open(`/api/v1/sso/redirect/saml2/${ssoIdentifier}${callbackPort ? `?callback_port=${callbackPort}` : ""}`);
                         window.close();
                     }} 
                     isFullWidth

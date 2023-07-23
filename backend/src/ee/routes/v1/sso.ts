@@ -18,10 +18,15 @@ import {
 router.get(
   "/redirect/google",
   authLimiter,
-  passport.authenticate("google", {
-    scope: ["profile", "email"],
-    session: false,
-  })
+  (req, res, next) => {
+    passport.authenticate("google", {
+      scope: ["profile", "email"],
+      session: false,
+      ...(req.query.callback_port ? {
+        state: req.query.callback_port as string
+      } : {})
+    })(req, res, next);
+  }
 );
 
 router.get(
@@ -36,16 +41,22 @@ router.get(
 router.get(
   "/redirect/saml2/:ssoIdentifier",
   authLimiter,
-  passport.authenticate("saml", {
-    failureRedirect: "/login/fail"
-  })
+  (req, res, next) => {
+    const options = {
+        failureRedirect: "/",
+        additionalParams: {
+          RelayState: req.query.callback_port ?? ""
+        },
+    };
+    passport.authenticate("saml", options)(req, res, next);
+  }
 );
 
 router.post("/saml2/:ssoIdentifier",
   passport.authenticate("saml", { 
     failureRedirect: "/login/provider/error", 
     failureFlash: true, 
-    session: false 
+    session: false
   }),
   ssoController.redirectSSO
 );

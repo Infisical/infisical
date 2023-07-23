@@ -36,6 +36,7 @@ type Props = {
   email: string;
   password: string;
   providerAuthToken?: string;
+  callbackPort?: string | null;
 }
 
 interface VerifyMfaTokenError {
@@ -53,7 +54,8 @@ interface VerifyMfaTokenError {
 export const MFAStep = ({
   email,
   password,
-  providerAuthToken
+  providerAuthToken,
+  callbackPort
 }: Props) => {
   const { createNotification } = useNotificationContext();
   const router = useRouter();
@@ -77,9 +79,7 @@ export const MFAStep = ({
       }
 
       setIsLoading(true);
-      const queryParams = new URLSearchParams(window.location.search)
-      if (queryParams && queryParams.get("callback_port")){
-        const callbackPort = queryParams.get("callback_port")
+      if (callbackPort){
 
         // attemptCliLogin
         const isCliLoginSuccessful = await attemptCliLoginMfa({

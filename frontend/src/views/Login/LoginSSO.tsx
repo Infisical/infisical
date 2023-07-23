@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useRouter } from "next/router"
 import jwt_decode from "jwt-decode";
 
 import {
@@ -14,25 +13,20 @@ type Props = {
 export const LoginSSO = ({ providerAuthToken }: Props) => {
     const [step, setStep] = useState(0);
     const [password, setPassword] = useState("");
-    const router = useRouter();
 
     const {
         email,
         isUserCompleted,
+        callbackPort
     } = jwt_decode(providerAuthToken) as any;
-
+    
     useEffect(() => {
-        if (!isUserCompleted) {
-            router.push(`/signup/sso?token=${encodeURIComponent(providerAuthToken)}`); 
-        }
-        
         if (isUserCompleted) {
             setStep(1);
         }
     }, []);
     
     const renderView = () => {
-        // TODO: consider adding a complete account step here that's uniquely for SSO
         switch (step) {
             case 0:
                 return (
@@ -42,6 +36,7 @@ export const LoginSSO = ({ providerAuthToken }: Props) => {
                 return (
                     <PasswordStep 
                         providerAuthToken={providerAuthToken}
+                        callbackPort={callbackPort}
                         email={email}
                         password={password}
                         setPassword={setPassword}
@@ -52,6 +47,7 @@ export const LoginSSO = ({ providerAuthToken }: Props) => {
                 return (
                     <MFAStep 
                         providerAuthToken={providerAuthToken}
+                        callbackPort={callbackPort}
                         email={email}
                         password={password}
                     />

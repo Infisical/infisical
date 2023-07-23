@@ -34,6 +34,8 @@ export const InitialStep = ({
     const [isLoading, setIsLoading] = useState(false);
     const [loginError, setLoginError] = useState(false);
 
+    const queryParams = new URLSearchParams(window.location.search);
+
     const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         try {
@@ -42,7 +44,6 @@ export const InitialStep = ({
             }
 
             setIsLoading(true);
-            const queryParams = new URLSearchParams(window.location.search)
             if (queryParams && queryParams.get("callback_port")) {
                 const callbackPort = queryParams.get("callback_port")
 
@@ -164,7 +165,9 @@ export const InitialStep = ({
                     colorSchema="primary" 
                     variant="solid"
                     onClick={() => {
-                        window.open("/api/v1/sso/redirect/google");
+                        const callbackPort = queryParams.get("callback_port");
+                        
+                        window.open(`/api/v1/sso/redirect/google${callbackPort ? `?callback_port=${callbackPort}` : ""}`);
                         window.close();
                     }} 
                     leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-1" />}

@@ -114,7 +114,10 @@ const initializePassport = async () => {
           firstName,
           lastName,
           authProvider: user.authProvider,
-          isUserCompleted
+          isUserCompleted,
+          ...(req.query.state ? {
+            callbackPort: req.query.state as string
+          } : {})
         },
         expiresIn: await getJwtProviderAuthLifetime(),
         secret: await getJwtProviderAuthSecret(),
@@ -153,7 +156,6 @@ const initializePassport = async () => {
       },
     },
     async (req: any, profile: any, done: any) => {
-      
       if (!req.ssoConfig.isActive) return done(InternalServerError());
 
       const organization = await Organization.findById(req.ssoConfig.organization);
@@ -199,7 +201,10 @@ const initializePassport = async () => {
           lastName,
           organizationName: organization?.name,
           authProvider: user.authProvider,
-          isUserCompleted
+          isUserCompleted,
+          ...(req.body.RelayState ? {
+            callbackPort: req.body.RelayState as string
+          } : {})
         },
         expiresIn: await getJwtProviderAuthLifetime(),
         secret: await getJwtProviderAuthSecret(),

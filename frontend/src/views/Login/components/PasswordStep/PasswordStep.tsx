@@ -2,14 +2,17 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router"
+import axios from "axios"
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import { Button, Input } from "@app/components/v2";
 import getOrganizations from "@app/pages/api/organization/getOrgs";
 
 type Props = { 
     providerAuthToken: string;
+    callbackPort?: string;
     email: string;
     password: string;
     setPassword: (password: string) => void;
@@ -18,6 +21,7 @@ type Props = {
 
 export const PasswordStep = ({
     providerAuthToken,
+    callbackPort,
     email,
     password,
     setPassword,
@@ -31,34 +35,64 @@ export const PasswordStep = ({
     const handleLogin = async () => {
         try {
             setIsLoading(true);
-            const loginAttempt = await attemptLogin({
-                email,
-                password,
-                providerAuthToken,
-            });
+            
+            if (callbackPort) {
+                // attemptCliLogin
+                const isCliLoginSuccessful = await attemptCliLogin({
+                    email,
+                    password,
+                    providerAuthToken
+                })
 
-            if (loginAttempt && loginAttempt.success) {
-                // case: login was successful
+                if (isCliLoginSuccessful && isCliLoginSuccessful.success) {
 
-                if (loginAttempt.mfaEnabled) {
-                    // TODO: deal with MFA
-                    // case: login requires MFA step
-                    setIsLoading(false);
-                    setStep(2);
-                    return;
+                    if (isCliLoginSuccessful.mfaEnabled) {
+                        // case: login requires MFA step
+                        setStep(2);
+                        setIsLoading(false);
+                        return;
+                    }
+                    // case: login was successful
+                    const cliUrl = `http://localhost:${callbackPort}`
+
+                    // send request to server endpoint
+                    const instance = axios.create()
+                    await instance.post(cliUrl, { ...isCliLoginSuccessful.loginResponse })
+
+                    // cli page
+                    router.push("/cli-redirect");
+
+                    // on success, router.push to cli Login Successful page
                 }
-
-                // case: login does not require MFA step
-                const userOrgs = await getOrganizations();
-                const userOrg = userOrgs[0]._id;
-                setIsLoading(false);
-                createNotification({
-                    text: "Successfully logged in",
-                    type: "success"
+            } else {
+                const loginAttempt = await attemptLogin({
+                    email,
+                    password,
+                    providerAuthToken,
                 });
-                router.push(`/org/${userOrg?._id}/overview`);
-            }
 
+                if (loginAttempt && loginAttempt.success) {
+                    // case: login was successful
+
+                    if (loginAttempt.mfaEnabled) {
+                        // TODO: deal with MFA
+                        // case: login requires MFA step
+                        setIsLoading(false);
+                        setStep(2);
+                        return;
+                    }
+
+                    // case: login does not require MFA step
+                    const userOrgs = await getOrganizations();
+                    const userOrg = userOrgs[0]._id;
+                    setIsLoading(false);
+                    createNotification({
+                        text: "Successfully logged in",
+                        type: "success"
+                    });
+                    router.push(`/org/${userOrg?._id}/overview`);
+                }
+            }
         } catch (err) {
             setIsLoading(false);
             createNotification({
