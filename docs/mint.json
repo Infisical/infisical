@@ -118,8 +118,9 @@
         "documentation/platform/pit-recovery",
         "documentation/platform/secret-versioning",
         "documentation/platform/audit-logs",
+        "documentation/platform/token",
         "documentation/platform/mfa",
-        "documentation/platform/token"
+        "documentation/platform/saml"
       ]
     },
     {
