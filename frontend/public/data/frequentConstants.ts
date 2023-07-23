@@ -23,7 +23,8 @@ const integrationSlugNameMapping: Mapping = {
   "cloudflare-pages": "Cloudflare Pages",
   "codefresh": "Codefresh",
   "digital-ocean-app-platform": "Digital Ocean App Platform",
-  bitbucket: "BitBucket"
+  bitbucket: "BitBucket",
+  "cloud-66": "Cloud 66"
 };
 
 const envMapping: Mapping = {

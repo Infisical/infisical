@@ -101,6 +101,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "digital-ocean-app-platform":
         link = `${window.location.origin}/integrations/digital-ocean-app-platform/authorize`;
         break;
+      case "cloud-66":
+        link = `${window.location.origin}/integrations/cloud-66/authorize`;
+        break;
       default:
         break;
     }

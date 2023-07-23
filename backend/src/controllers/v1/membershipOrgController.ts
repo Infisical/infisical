@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import { Request, Response } from "express";
 import { MembershipOrg, Organization, User } from "../../models";
+import { SSOConfig } from "../../ee/models";
 import { deleteMembershipOrg as deleteMemberFromOrg } from "../../helpers/membershipOrg";
 import { createToken } from "../../helpers/auth";
 import { updateSubscriptionOrgQuantity } from "../../helpers/organization";
@@ -110,6 +111,18 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
   }
 
   const plan = await EELicenseService.getPlan(organizationId);
+  
+  const ssoConfig = await SSOConfig.findOne({
+    organization: new Types.ObjectId(organizationId)
+  });
+
+  if (ssoConfig && ssoConfig.isActive) {
+    // case: SAML SSO is enabled for the organization
+    return res.status(400).send({
+      message:
+        "Failed to invite member due to SAML SSO configured for organization"
+    }); 
+  }
 
   if (plan.memberLimit !== null) {
     // case: limit imposed on number of members allowed

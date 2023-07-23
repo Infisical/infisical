@@ -183,7 +183,9 @@ export default function Users() {
         <div className="ml-2 flex min-w-max flex-row items-start justify-start">
           <Button
             text={String(t("section.members.add-member"))}
-            onButtonPressed={openAddModal}
+            onButtonPressed={() => {
+              openAddModal();
+            }}
             color="mineshaft"
             size="md"
             icon={faPlus}
