@@ -4,6 +4,7 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 import {
     APIKeyData,
+    AuthProvider,
     MembershipOrg,
     TokenVersion,
     User
@@ -121,6 +122,10 @@ export const updateAuthProvider = async (req: Request, res: Response) => {
     const {
         authProvider
     } = req.body;
+    
+    if (req.user?.authProvider === AuthProvider.OKTA_SAML) return res.status(400).send({
+        message: "Failed to update user authentication method because SAML SSO is enforced"
+    });
 
     const user = await User.findByIdAndUpdate(
         req.user._id.toString(),
