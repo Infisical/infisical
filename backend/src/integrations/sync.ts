@@ -1,14 +1,10 @@
-import _ from "lodash";
-import AWS from "aws-sdk";
 import {
   CreateSecretCommand,
   GetSecretValueCommand,
   ResourceNotFoundException,
   SecretsManagerClient,
-  UpdateSecretCommand,
+  UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
-import { Octokit } from "@octokit/rest";
-import sodium from "libsodium-wrappers";
 import { IIntegration, IIntegrationAuth } from "../models";
 import {
   INTEGRATION_AWS_PARAMETER_STORE,
@@ -22,6 +18,8 @@ import {
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_CLOUDFLARE_PAGES_API_URL,
+  INTEGRATION_CLOUD_66,
+  INTEGRATION_CLOUD_66_API_URL,
   INTEGRATION_CODEFRESH,
   INTEGRATION_CODEFRESH_API_URL,
   INTEGRATION_FLYIO,
@@ -47,6 +45,10 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_VERCEL_API_URL
 } from "../variables";
+import AWS from "aws-sdk";
+import { Octokit } from "@octokit/rest";
+import _ from "lodash";
+import sodium from "libsodium-wrappers";
 import { standardRequest } from "../config/request";
 
 /**
@@ -218,6 +220,13 @@ const syncSecrets = async ({
         integration,
         secrets,
         accessToken,
+      });
+      break;
+    case INTEGRATION_CLOUD_66:
+      await syncSecretsCloud66({
+        integration,
+        secrets,
+        accessToken
       });
       break;
   }
@@ -2099,6 +2108,81 @@ const syncSecretsCodefresh = async ({
       },
     }
   ); 
+};
+
+
+const syncSecretsCloud66 = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  interface Cloud66Secret {
+    id: number;
+    key: string;
+    value: string;
+    readonly: boolean;
+    created_at: string;
+    updated_at: string;
+    is_password: boolean;
+    is_generated: boolean;
+    history: any[];
+  }
+
+  // get all current secrets
+  const currentSecrets = (
+    await standardRequest.get(
+      `${INTEGRATION_CLOUD_66_API_URL}/3/stacks/${integration.appId}/environments`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json"
+        }
+      }
+    )
+  ).data.response as Cloud66Secret[];
+
+  // filter out generated secrets
+  const secretsToDelete = currentSecrets.filter((s) => !s.is_generated);
+
+  // delete all current secrets
+  await Promise.all(
+    secretsToDelete.map(
+      async (s) =>
+        await standardRequest.delete(
+          `${INTEGRATION_CLOUD_66_API_URL}/3/stacks/${integration.appId}/environments/${s.key}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json"
+            }
+          }
+        )
+    )
+  );
+
+  // add new secrets
+  await Promise.all(
+    Object.entries(secrets).map(
+      async ([key, value]) =>
+        await standardRequest.post(
+          `${INTEGRATION_CLOUD_66_API_URL}/3/stacks/${integration.appId}/environments`,
+          {
+            key,
+            value
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json"
+            }
+          }
+        )
+    )
+  );
 };
 
 export { syncSecrets };

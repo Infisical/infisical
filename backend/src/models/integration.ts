@@ -1,4 +1,3 @@
-import { Schema, Types, model } from "mongoose";
 import {
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
@@ -7,6 +6,7 @@ import {
   INTEGRATION_CHECKLY,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUD_66,
   INTEGRATION_CODEFRESH,
   INTEGRATION_FLYIO,
   INTEGRATION_GITHUB,
@@ -21,6 +21,7 @@ import {
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL
 } from "../variables";
+import { Schema, Types, model } from "mongoose";
 
 export interface IIntegration {
   _id: Types.ObjectId;
@@ -59,6 +60,7 @@ export interface IIntegration {
     | "cloudflare-pages"
     | "bitbucket"
     | "codefresh"
+    | "cloud-66"
   integrationAuth: Types.ObjectId;
 }
 
@@ -149,7 +151,8 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
         INTEGRATION_BITBUCKET,
-        INTEGRATION_CODEFRESH
+        INTEGRATION_CODEFRESH,
+        INTEGRATION_CLOUD_66,
       ],
       required: true,
     },
