@@ -29,6 +29,7 @@ export const INTEGRATION_HASHICORP_VAULT = "hashicorp-vault";
 export const INTEGRATION_CLOUDFLARE_PAGES = "cloudflare-pages";
 export const INTEGRATION_BITBUCKET = "bitbucket";
 export const INTEGRATION_CODEFRESH = "codefresh";
+export const INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM = "digital-ocean-app-platform";
 export const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
@@ -46,6 +47,7 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_BITBUCKET,
+  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_CODEFRESH
 ]);
 
@@ -79,6 +81,7 @@ export const INTEGRATION_CHECKLY_API_URL = "https://api.checklyhq.com";
 export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = "https://api.cloudflare.com";
 export const INTEGRATION_BITBUCKET_API_URL = "https://api.bitbucket.org";
 export const INTEGRATION_CODEFRESH_API_URL = "https://g.codefresh.io/api";
+export const INTEGRATION_DIGITAL_OCEAN_API_URL = "https://api.digitalocean.com";
 
 export const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [
@@ -271,7 +274,16 @@ export const getIntegrationOptions = async () => {
             type: "pat",
             clientId: "",
             docsLink: "",
-        }
+        },
+        {
+            name: "Digital Ocean App Platform",
+            slug: "digital-ocean-app-platform",
+            image: "Digital Ocean.png",
+            isAvailable: true,
+            type: "pat",
+            clientId: "",
+            docsLink: "",
+        },
     ]
     
     return INTEGRATION_OPTIONS;

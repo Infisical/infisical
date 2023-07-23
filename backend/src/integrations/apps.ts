@@ -15,6 +15,8 @@ import {
   INTEGRATION_CLOUDFLARE_PAGES_API_URL,
   INTEGRATION_CODEFRESH,
   INTEGRATION_CODEFRESH_API_URL,
+  INTEGRATION_DIGITAL_OCEAN_API_URL,
+  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
@@ -161,6 +163,9 @@ const getApps = async ({
       apps = await getAppsCodefresh({
         accessToken,
       });
+      break;
+    case INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM:
+      apps = await getAppsDigitalOceanAppPlatform({ accessToken });
       break;
   }
 
@@ -842,4 +847,46 @@ const getAppsCodefresh = async ({
   return apps;
 
 };
+
+/**
+ * Return list of projects for Digital Ocean App Platform integration
+ */
+
+const getAppsDigitalOceanAppPlatform = async ({ accessToken }: { accessToken: string }) => {
+  interface DigitalOceanApp {
+    id: string;
+    owner_uuid: string;
+    spec: Spec;
+  }
+
+  interface Spec {
+    name: string;
+    region: string;
+    envs: Env[];
+  }
+
+  interface Env {
+    key: string;
+    value: string;
+    scope: string;
+  }
+
+  const res = (
+    await standardRequest.get(`${INTEGRATION_DIGITAL_OCEAN_API_URL}/v2/apps`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
+      }
+    })
+  ).data;
+
+  const apps = res.apps.map((a: DigitalOceanApp) => ({
+    name: a.spec.name,
+    appId: a.id
+  }));
+
+  return apps;
+};
+
+
 export { getApps };

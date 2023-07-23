@@ -98,6 +98,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "codefresh":
         link = `${window.location.origin}/integrations/codefresh/authorize`;
         break;
+      case "digital-ocean-app-platform":
+        link = `${window.location.origin}/integrations/digital-ocean-app-platform/authorize`;
+        break;
       default:
         break;
     }

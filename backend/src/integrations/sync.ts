@@ -24,6 +24,8 @@ import {
   INTEGRATION_CLOUDFLARE_PAGES_API_URL,
   INTEGRATION_CODEFRESH,
   INTEGRATION_CODEFRESH_API_URL,
+  INTEGRATION_DIGITAL_OCEAN_API_URL,
+  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
@@ -215,6 +217,13 @@ const syncSecrets = async ({
       break;
     case INTEGRATION_BITBUCKET:
       await syncSecretsBitBucket({
+        integration,
+        secrets,
+        accessToken,
+      });
+      break;
+    case INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM:
+      await syncSecretsDigitalOceanAppPlatform({
         integration,
         secrets,
         accessToken,
@@ -2099,6 +2108,32 @@ const syncSecretsCodefresh = async ({
       },
     }
   ); 
+};
+
+const syncSecretsDigitalOceanAppPlatform = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  await standardRequest.put(
+    `${INTEGRATION_DIGITAL_OCEAN_API_URL}/v2/apps/${integration.appId}`,
+    {
+      spec: {
+        name: integration.app,
+        envs: Object.entries(secrets).map(([key, value]) => ({ key, value }))
+      }
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      }
+    }
+  );
 };
 
 export { syncSecrets };
