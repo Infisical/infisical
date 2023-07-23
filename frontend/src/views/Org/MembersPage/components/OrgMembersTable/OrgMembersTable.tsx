@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
   Button,
   DeleteActionModal,
@@ -26,9 +27,11 @@ import {
   Th,
   THead,
   Tr,
-  UpgradePlanModal} from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+  UpgradePlanModal
+} from "@app/components/v2";
+import { useOrganization , useWorkspace } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
+import { useGetSSOConfig } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { OrgUser, Workspace } from "@app/hooks/api/types";
 
@@ -69,6 +72,9 @@ export const OrgMembersTable = ({
   setCompleteInviteLink
 }: Props) => {
   const router = useRouter();
+  const { createNotification } = useNotificationContext();
+  const { currentOrg } = useOrganization();
+  const { data: ssoConfig, isLoading: isLoadingSSOConfig } = useGetSSOConfig(currentOrg?._id ?? "");
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
   const {data: serverDetails } = useFetchServerStatus()
   const { workspaces } = useWorkspace();
@@ -79,7 +85,7 @@ export const OrgMembersTable = ({
     "upgradePlan",
     "setUpEmail"
   ] as const);
-
+  
   useEffect(() => {
     if (router.query.action === "invite") {
       handlePopUpOpen("addMember");
@@ -152,6 +158,15 @@ export const OrgMembersTable = ({
         <Button
           leftIcon={<FontAwesomeIcon icon={faPlus} />}
           onClick={() => {
+            if (!isLoadingSSOConfig && ssoConfig && ssoConfig.isActive) {
+              createNotification({
+                text: "You cannot invite users when SAML SSO is configured for your organization",
+                type: "error"
+              });
+              
+              return;
+            }
+            
             if (isMoreUserNotAllowed) {
               handlePopUpOpen("upgradePlan");
             } else {
