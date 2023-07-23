@@ -10,6 +10,7 @@ import { getSSOConfigHelper } from "../../helpers/organizations";
 import { client } from "../../../config";
 import { ResourceNotFoundError } from "../../../utils/errors";
 import { getSiteURL } from "../../../config";
+import { EELicenseService } from "../../services";
 
 /**
  * Redirect user to appropriate SSO endpoint after successful authentication
@@ -58,6 +59,12 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
         cert,
         audience
     } = req.body;
+
+    const plan = await EELicenseService.getPlan(organizationId);
+    
+    if (!plan.samlSSO) return res.status(400).send({
+        message: "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
+    });
     
     interface PatchUpdate {
         authProvider?: string;
@@ -203,6 +210,12 @@ export const createSSOConfig = async (req: Request, res: Response) => {
         cert,
         audience
     } = req.body;
+
+    const plan = await EELicenseService.getPlan(organizationId);
+    
+    if (!plan.samlSSO) return res.status(400).send({
+        message: "Failed to create SAML SSO configuration due to plan restriction. Upgrade plan to add SSO configuration."
+    });
     
     const key = await BotOrgService.getSymmetricKey(
         new Types.ObjectId(organizationId)
