@@ -14,6 +14,8 @@ import {
   INTEGRATION_CLOUD_66_API_URL,
   INTEGRATION_CODEFRESH,
   INTEGRATION_CODEFRESH_API_URL,
+  INTEGRATION_DIGITAL_OCEAN_API_URL,
+  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
@@ -162,6 +164,11 @@ const getApps = async ({
     case INTEGRATION_CODEFRESH:
       apps = await getAppsCodefresh({
         accessToken,
+      });
+      break;
+    case INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM:
+      apps = await getAppsDigitalOceanAppPlatform({ 
+        accessToken 
       });
       break;
     case INTEGRATION_CLOUD_66:
@@ -849,6 +856,48 @@ const getAppsCodefresh = async ({
 
 };
 
+/**
+ * Return list of applications for DigitalOcean App Platform integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - personal access token for DigitalOcean
+ * @returns {Object[]} apps - names of DigitalOcean apps
+ * @returns {String} apps.name - name of DigitalOcean app
+ * @returns {String} apps.appId - id of DigitalOcean app
+ */
+const getAppsDigitalOceanAppPlatform = async ({ accessToken }: { accessToken: string }) => {
+  interface DigitalOceanApp {
+    id: string;
+    owner_uuid: string;
+    spec: Spec;
+  }
+
+  interface Spec {
+    name: string;
+    region: string;
+    envs: Env[];
+  }
+
+  interface Env {
+    key: string;
+    value: string;
+    scope: string;
+  }
+  
+  const res = (
+    await standardRequest.get(`${INTEGRATION_DIGITAL_OCEAN_API_URL}/v2/apps`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
+      }
+    })
+  ).data;
+
+  return (res.apps ?? []).map((a: DigitalOceanApp) => ({
+    name: a.spec.name,
+    appId: a.id
+  }));
+}
+  
 /**
  * Return list of applications for Cloud66 integration
  * @param {Object} obj

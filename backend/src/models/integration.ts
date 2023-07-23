@@ -8,6 +8,7 @@ import {
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_CLOUD_66,
   INTEGRATION_CODEFRESH,
+  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
@@ -60,6 +61,7 @@ export interface IIntegration {
     | "cloudflare-pages"
     | "bitbucket"
     | "codefresh"
+    | "digital-ocean-app-platform"
     | "cloud-66"
   integrationAuth: Types.ObjectId;
 }
@@ -151,6 +153,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
         INTEGRATION_BITBUCKET,
+        INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
         INTEGRATION_CODEFRESH,
         INTEGRATION_CLOUD_66,
       ],
