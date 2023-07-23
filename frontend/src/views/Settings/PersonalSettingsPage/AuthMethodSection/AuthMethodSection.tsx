@@ -102,7 +102,7 @@ export const AuthMethodSection = () => {
                                 defaultValue={field.value}
                                 {...field}
                                 onValueChange={(e) => onChange(e)}
-                                className="w-full"
+                                className="w-full bg-mineshaft-800 border border-mineshaft-600"
                             >
                                 {authMethods.map((authMethod) => {
                                     return (
