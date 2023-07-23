@@ -870,7 +870,7 @@ const getAppsDigitalOceanAppPlatform = async ({ accessToken }: { accessToken: st
     value: string;
     scope: string;
   }
-
+  
   const res = (
     await standardRequest.get(`${INTEGRATION_DIGITAL_OCEAN_API_URL}/v2/apps`, {
       headers: {
@@ -879,13 +879,11 @@ const getAppsDigitalOceanAppPlatform = async ({ accessToken }: { accessToken: st
       }
     })
   ).data;
-
-  const apps = res.apps.map((a: DigitalOceanApp) => ({
+  
+  return (res.apps ?? []).map((a: DigitalOceanApp) => ({
     name: a.spec.name,
     appId: a.id
   }));
-
-  return apps;
 };
 
 
