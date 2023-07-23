@@ -67,18 +67,9 @@ export const CloudIntegrationSection = ({
                 width={70}
                 alt="integration logo"
               />
-              {cloudIntegration.name.split(" ").length > 2 ? (
-                <div className="ml-4 max-w-xs text-3xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
-                  <div>{cloudIntegration.name.split(" ")[0]}</div>
-                  <div className="text-base">
-                    {cloudIntegration.name.split(" ")[1]} {cloudIntegration.name.split(" ")[2]}
-                  </div>
-                </div>
-              ) : (
-                <div className="ml-4 max-w-xs text-xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
-                  {cloudIntegration.name}
-                </div>
-              )}
+              <div className="ml-4 max-w-xs text-xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
+                {cloudIntegration.name}
+              </div>
               {cloudIntegration.isAvailable &&
                 Boolean(integrationAuths?.[cloudIntegration.slug]) && (
                   <div className="absolute top-0 right-0 z-40 h-full">
