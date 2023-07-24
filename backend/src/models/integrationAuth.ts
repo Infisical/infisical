@@ -22,7 +22,8 @@ import {
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
   INTEGRATION_TRAVISCI,
-  INTEGRATION_VERCEL
+  INTEGRATION_VERCEL,
+  INTEGRATION_SCALEWAY
 } from "../variables";
 import { Document, Schema, Types, model } from "mongoose";
 
@@ -50,7 +51,7 @@ export interface IIntegrationAuth extends Document {
     | "codefresh"
     | "digital-ocean-app-platform"
     | "bitbucket"
-    | "cloud-66";
+    | "cloud-66"| 'scaleway';
   teamId: string;
   accountId: string;
   url: string;
@@ -100,6 +101,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
         INTEGRATION_CODEFRESH,
         INTEGRATION_CLOUD_66,
+        INTEGRATION_SCALEWAY
       ],
       required: true,
     },

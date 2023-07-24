@@ -36,7 +36,9 @@ import {
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
-  INTEGRATION_VERCEL_API_URL
+  INTEGRATION_VERCEL_API_URL,
+  INTEGRATION_SCALEWAY,
+  INTEGRATION_SCALEWAY_API_URL
 } from "../variables";
 import { IIntegrationAuth } from "../models";
 import { Octokit } from "@octokit/rest";
@@ -176,6 +178,13 @@ const getApps = async ({
         accessToken,
       });
       break;
+
+      case INTEGRATION_SCALEWAY:
+        apps = await getAppsScaleway({
+          accessToken,
+          organizationId: accessId
+        });
+        break;
   }
 
   return apps;
@@ -957,4 +966,36 @@ const getAppsCloud66 = async ({ accessToken }: { accessToken: string }) => {
   return apps;
 };
 
+/**
+* Return list of projects for the Scaleway Pages integration
+* @param {Object} obj
+* @param {String} obj.accessToken - api key for the Scaleway API
+* @returns {Object[]} apps - Scaleway Pages projects
+* @returns {String} apps.name - name of Scaleway Pages project
+*/
+
+const getAppsScaleway = async ({
+  accessToken,
+  organizationId
+ }: {
+  accessToken: string;
+  organizationId?: string
+ }) => {
+  const res = (
+    await standardRequest.get(`${INTEGRATION_SCALEWAY_API_URL}/account/v2/projects?organization_id=${organizationId}`, {
+      headers: {
+        'X-Auth-Token': `${accessToken}`,
+        "Accept-Encoding": "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+  ).data;
+ 
+  const apps = res.projects.map((a: any) => ({
+    name: a.name,
+    appId: a.id,
+  }));
+ 
+  return apps;
+ }
 export { getApps };

@@ -20,7 +20,8 @@ import {
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
   INTEGRATION_TRAVISCI,
-  INTEGRATION_VERCEL
+  INTEGRATION_VERCEL,
+  INTEGRATION_SCALEWAY
 } from "../variables";
 import { Schema, Types, model } from "mongoose";
 
@@ -63,6 +64,7 @@ export interface IIntegration {
     | "codefresh"
     | "digital-ocean-app-platform"
     | "cloud-66"
+    | "scaleway"
   integrationAuth: Types.ObjectId;
 }
 
@@ -156,6 +158,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
         INTEGRATION_CODEFRESH,
         INTEGRATION_CLOUD_66,
+        INTEGRATION_SCALEWAY
       ],
       required: true,
     },

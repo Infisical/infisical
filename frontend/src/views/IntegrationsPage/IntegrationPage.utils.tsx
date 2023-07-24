@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-import { TCloudIntegration,UserWsKeyPair } from "@app/hooks/api/types";
+import { TCloudIntegration, UserWsKeyPair } from "@app/hooks/api/types";
 
 import {
   decryptAssymmetric,
@@ -104,6 +104,11 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "cloud-66":
         link = `${window.location.origin}/integrations/cloud-66/authorize`;
         break;
+
+      case "scaleway":
+        link = `${window.location.origin}/integrations/scaleway/authorize`;
+        break;
+
       default:
         break;
     }
