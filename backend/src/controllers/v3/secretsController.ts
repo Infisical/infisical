@@ -59,7 +59,7 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
     workspaceId: new Types.ObjectId(workspaceId)
   });
 
-  if (includeImports) {
+  if (includeImports === "true") {
     const folders = await Folder.findOne({ workspace: workspaceId, environment });
     let folderId = "root";
     // if folder exist get it and replace folderid with new one
