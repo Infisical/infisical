@@ -332,7 +332,8 @@
       "pages": [
         "security/overview",
         "security/data-model",
-        "security/mechanics"
+        "security/mechanics",
+        "security/service-tokens"
       ]
     },
     {

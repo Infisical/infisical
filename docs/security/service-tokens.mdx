@@ -1,0 +1,22 @@
+---
+title: "Service Tokens"
+description: "Understanding service tokens and their best practices"
+---
+
+## Background
+
+Many clients use service tokens to authenticate and read/write secrets from/to Infisical.
+
+Each service token consist of two parts used for authentication and decryption, separated by `.`. Consider the token `st.abc.def.ghi`. Here, `st.abc.def` can be used to authenticate with the API, by including it in the `Authorization` header under `Bearer st.abc.def`, and retrieve (encrypted) secrets as well as a project key back. Meanwhile, `ghi`, a hex-string, can be used to decrypt the project key used to decrypt the secrets.
+
+Note that when using service tokens via select client methods like SDK or CLI, cryptographic operations are abstracted for you that is the token is parsed and encryption/decryption operations are handled. If using service tokens with the REST API and end-to-end encryption enabled, then you will have to handle the encryption/decryption operations yourself.
+
+## Recommendations
+
+1. Issuance: When creating a new service token, it’s important to consider the [principle of least privilege(PoLP)](https://en.wikipedia.org/wiki/Principle_of_least_privilege) when setting its scope and expiration date. For example, if the client using the token only requires access to a staging environment, then you should scope the token to that environment only; you can further scope tokens to path(s) within environment(s) if you happen to use [path-based secret storage](/documentation/platform/folder). Likewise, if the client does not intend to access secrets indefinitely, then you may consider setting a finite lifetime for the token such as 6 months or 1 year from now. Finally, you should consider carefully whether or not your client requires the ability to read and/or write secrets from/to Infisical.
+
+2. Network access: We recommend configuring the IP whitelist settings of each project to allow either single IP addresses or CIDR-notated range of addresses to read/write secrets to Infisical. With this feature, you can specify the IP range of your client servers to restrict access to your project in Infisical.
+
+3. Storage: Since service tokens grant access to your secrets, we recommend storing service tokens securely across your development cycle whether it be in a `.env` file in local development or as an environment variable of your deployment platform.
+
+4. Rotation: We recommend periodically rotating the service token, even in the absence of compromise. Since service tokens are capable of decrypting project keys used to decrypt secrets, all of which use AES-256-GCM encryption, they should be rotated before approximately 2^32 encryptions have been performed; this follows the guidance set forth by NIST publication 800-38D. Note that Infisical keeps track of the number of times that service tokens are used and will alert you when you have reached 90% of the recommended capacity.
