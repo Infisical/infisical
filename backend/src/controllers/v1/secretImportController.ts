@@ -30,7 +30,6 @@ export const createSecretImport = async (req: Request, res: Response) => {
   if (doesImportExist) {
     throw BadRequestError({ message: "Secret import already exist" });
   }
-
   importSecDoc.imports.push({
     environment: secretImport.environment,
     secretPath: secretImport.secretPath

@@ -25,14 +25,17 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
   let secretPath = req.query.secretPath as string;
   const includeImports = req.query.include_imports as string;
 
-  // if the service token has single scope, it will get all secrets for that scope by default 
-  const serviceTokenDetails: IServiceTokenData = req?.serviceTokenData
+  // if the service token has single scope, it will get all secrets for that scope by default
+  const serviceTokenDetails: IServiceTokenData = req?.serviceTokenData;
   if (serviceTokenDetails) {
-    if (serviceTokenDetails.scopes.length == 1 && !containsGlobPatterns(serviceTokenDetails.scopes[0].secretPath)) {
-      const scope = serviceTokenDetails.scopes[0]
-      secretPath = scope.secretPath
-      environment = scope.environment
-      workspaceId = serviceTokenDetails.workspace.toString()
+    if (
+      serviceTokenDetails.scopes.length == 1 &&
+      !containsGlobPatterns(serviceTokenDetails.scopes[0].secretPath)
+    ) {
+      const scope = serviceTokenDetails.scopes[0];
+      secretPath = scope.secretPath;
+      environment = scope.environment;
+      workspaceId = serviceTokenDetails.workspace.toString();
     } else {
       requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -41,7 +44,7 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
         requiredPermissions: [PERMISSION_READ_SECRETS],
         requireBlindIndicesEnabled: true,
         requireE2EEOff: true
-      })
+      });
     }
   }
 
@@ -294,7 +297,7 @@ export const getSecrets = async (req: Request, res: Response) => {
     authData: req.authData
   });
 
-  if (includeImports) {
+  if (includeImports === "true") {
     const folders = await Folder.findOne({ workspace: workspaceId, environment });
     let folderId = "root";
     // if folder exist get it and replace folderid with new one
