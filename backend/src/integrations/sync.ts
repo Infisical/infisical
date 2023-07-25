@@ -1832,28 +1832,81 @@ const syncSecretsTerraformCloud = async ({
   accessToken: string;
 }) => {
 
-  Object.entries(secrets).map( async ([key, value]) => 
-    await standardRequest.post(
-      `${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`, 
-      {
-        data: {
-          type: 'vars',
-          attributes: {
-            key,
-            value,
-            category: `${integration.targetService}`,
+  // get secrets from Terraform Cloud
+  const getSecretsRes = (
+    await standardRequest.get(`${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`, 
+  {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  }
+  )).data.data;
+
+  // create or update secrets on Terraform Cloud
+  for await (const key of Object.keys(secrets)) {
+    const existingSecret = getSecretsRes.find((sec: any) => sec.attributes.key == key);
+
+    if (!existingSecret) {
+      await standardRequest.post(
+        `${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`,
+        {
+          data: {
+            type: "vars",
+            attributes: {
+              key,
+              value: secrets[key],
+              category: integration.targetService,
+            },
           },
         },
-      },
-      {
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/vnd.api+json",
+            Accept: "application/vnd.api+json",
+          },
+        }
+      )
+    } else {
+      if (secrets[key] !== existingSecret.attributes.value) {
+
+        await standardRequest.patch(
+          `${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${existingSecret.id}`,
+          {
+            data: {
+              type: "vars",
+              id: existingSecret.id,
+              attributes: {
+                ...existingSecret,
+                value: secrets[existingSecret.attributes.key],
+              },
+            },
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/vnd.api+json",
+              Accept: "application/vnd.api+json",
+            },
+          }
+        )
+      }
+    }
+  }
+
+  // delete secrets from Terraform Cloud
+  for await (const sec of getSecretsRes) {
+    if (!(sec.attributes.key in secrets)) {
+      await standardRequest.delete(`${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${sec.id}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/vnd.api+json",
           Accept: "application/vnd.api+json",
         },
-      }
-    )
-  )
+      })
+    }
+  }
 };
 
 /**
