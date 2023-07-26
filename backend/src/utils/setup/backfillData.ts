@@ -572,13 +572,13 @@ export const backfillTrustedIps = async () => {
   
   const trustedIpsToInsert = workspaceIdsToAddTrustedIp.map((workspaceId) => {
     return new TrustedIP({
-      workspace: new Types.ObjectId(workspaceId),
+      workspace: workspaceId,
       ipAddress: "0.0.0.0",
       type: IPType.IPV4,
       prefix: 0,
       isActive: true,
       comment: "",
-    }).save();
+    });
   });
 
   await TrustedIP.insertMany(trustedIpsToInsert);
