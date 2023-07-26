@@ -5,6 +5,7 @@ export {
   useCreateAPIKey,
   useDeleteAPIKey,
   useDeleteOrgMembership,
+  useGetMyIp,
   useGetMyAPIKeys,
   useGetMySessions,
   useGetOrgUsers,

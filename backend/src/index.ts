@@ -22,7 +22,8 @@ import {
   sso as eeSSORouter,
   secret as eeSecretRouter,
   secretSnapshot as eeSecretSnapshotRouter,
-  workspace as eeWorkspaceRouter
+  users as eeUsersRouter,
+  workspace as eeWorkspaceRouter,
 } from "./ee/routes/v1";
 import {
   auth as v1AuthRouter,
@@ -129,6 +130,7 @@ const main = async () => {
   // (EE) routes
   app.use("/api/v1/secret", eeSecretRouter);
   app.use("/api/v1/secret-snapshot", eeSecretSnapshotRouter);
+  app.use("/api/v1/users", eeUsersRouter);
   app.use("/api/v1/workspace", eeWorkspaceRouter);
   app.use("/api/v1/action", eeActionRouter);
   app.use("/api/v1/organizations", eeOrganizationsRouter);

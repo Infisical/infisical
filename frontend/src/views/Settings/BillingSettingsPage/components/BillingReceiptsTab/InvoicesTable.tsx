@@ -1,6 +1,5 @@
 import { faDownload, faFileInvoice } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
 import {
   EmptyState,
   IconButton,
@@ -11,7 +10,8 @@ import {
   Td,
   Th,
   THead,
-  Tr} from "@app/components/v2";
+  Tr
+} from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { 
     useGetOrgInvoices

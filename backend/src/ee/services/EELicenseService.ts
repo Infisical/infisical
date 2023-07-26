@@ -26,6 +26,7 @@ interface FeatureSet {
     environmentsUsed: number;
     secretVersioning: boolean;
     pitRecovery: boolean;
+    ipAllowlisting: boolean;
     rbac: boolean;
     customRateLimits: boolean;
     customAlerts: boolean;
@@ -60,6 +61,7 @@ class EELicenseService {
         environmentsUsed: 0,
         secretVersioning: true,
         pitRecovery: false,
+        ipAllowlisting: false,
         rbac: true,
         customRateLimits: true,
         customAlerts: true,

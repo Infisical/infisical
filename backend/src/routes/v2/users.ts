@@ -93,7 +93,7 @@ router.delete(
     usersController.deleteAPIKey
 );
 
-router.get( // new
+router.get(
     "/me/sessions",
     requireAuth({
         acceptedAuthModes: [AUTH_MODE_JWT],
@@ -101,7 +101,7 @@ router.get( // new
     usersController.getMySessions
 );
 
-router.delete( // new
+router.delete(
     "/me/sessions",
     requireAuth({
         acceptedAuthModes: [AUTH_MODE_JWT],

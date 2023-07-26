@@ -124,9 +124,7 @@ const secretVersionSchema = new Schema<ISecretVersion>(
   }
 );
 
-const SecretVersion = model<ISecretVersion>(
+export const SecretVersion = model<ISecretVersion>(
   "SecretVersion",
   secretVersionSchema
 );
-
-export default SecretVersion;

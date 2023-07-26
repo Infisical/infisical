@@ -56,7 +56,8 @@ router.get(
     locationEnvironment: "query",
     requiredPermissions: [PERMISSION_READ_SECRETS],
     requireBlindIndicesEnabled: true,
-    requireE2EEOff: true
+    requireE2EEOff: true,
+    checkIPAllowlist: true
   }),
   secretsController.getSecretByNameRaw
 );
@@ -84,7 +85,8 @@ router.post(
     locationEnvironment: "body",
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
-    requireE2EEOff: true
+    requireE2EEOff: true,
+    checkIPAllowlist: true
   }),
   secretsController.createSecretRaw
 );
@@ -112,7 +114,8 @@ router.patch(
     locationEnvironment: "body",
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
-    requireE2EEOff: true
+    requireE2EEOff: true,
+    checkIPAllowlist: true
   }),
   secretsController.updateSecretByNameRaw
 );
@@ -139,7 +142,8 @@ router.delete(
     locationEnvironment: "body",
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
-    requireE2EEOff: true
+    requireE2EEOff: true,
+    checkIPAllowlist: true
   }),
   secretsController.deleteSecretByNameRaw
 );
@@ -164,7 +168,8 @@ router.get(
     locationEnvironment: "query",
     requiredPermissions: [PERMISSION_READ_SECRETS],
     requireBlindIndicesEnabled: true,
-    requireE2EEOff: false
+    requireE2EEOff: false,
+    checkIPAllowlist: true
   }),
   secretsController.getSecrets
 );
@@ -199,7 +204,8 @@ router.post(
     locationEnvironment: "body",
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
-    requireE2EEOff: false
+    requireE2EEOff: false,
+    checkIPAllowlist: true
   }),
   secretsController.createSecret
 );
@@ -225,7 +231,8 @@ router.get(
     locationWorkspaceId: "query",
     locationEnvironment: "query",
     requiredPermissions: [PERMISSION_READ_SECRETS],
-    requireBlindIndicesEnabled: true
+    requireBlindIndicesEnabled: true,
+    checkIPAllowlist: true
   }),
   secretsController.getSecretByName
 );
@@ -255,7 +262,8 @@ router.patch(
     locationEnvironment: "body",
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
-    requireE2EEOff: false
+    requireE2EEOff: false,
+    checkIPAllowlist: true
   }),
   secretsController.updateSecretByName
 );
@@ -282,7 +290,8 @@ router.delete(
     locationEnvironment: "body",
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
-    requireE2EEOff: false
+    requireE2EEOff: false,
+    checkIPAllowlist: true
   }),
   secretsController.deleteSecretByName
 );
