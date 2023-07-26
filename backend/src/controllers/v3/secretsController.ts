@@ -27,26 +27,22 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
 
   // if the service token has single scope, it will get all secrets for that scope by default
   const serviceTokenDetails: IServiceTokenData = req?.serviceTokenData;
-  if (serviceTokenDetails) {
-    if (
-      serviceTokenDetails.scopes.length == 1 &&
-      !containsGlobPatterns(serviceTokenDetails.scopes[0].secretPath)
-    ) {
-      const scope = serviceTokenDetails.scopes[0];
-      secretPath = scope.secretPath;
-      environment = scope.environment;
-      workspaceId = serviceTokenDetails.workspace.toString();
-    } else {
-      requireWorkspaceAuth({
-        acceptedRoles: [ADMIN, MEMBER],
-        locationWorkspaceId: "query",
-        locationEnvironment: "query",
-        requiredPermissions: [PERMISSION_READ_SECRETS],
-        requireBlindIndicesEnabled: true,
-        requireE2EEOff: true
-      });
-    }
+  if (serviceTokenDetails && serviceTokenDetails.scopes.length == 1 && !containsGlobPatterns(serviceTokenDetails.scopes[0].secretPath)) {
+    const scope = serviceTokenDetails.scopes[0];
+    secretPath = scope.secretPath;
+    environment = scope.environment;
+    workspaceId = serviceTokenDetails.workspace.toString();
+  } else {
+    requireWorkspaceAuth({
+      acceptedRoles: [ADMIN, MEMBER],
+      locationWorkspaceId: "query",
+      locationEnvironment: "query",
+      requiredPermissions: [PERMISSION_READ_SECRETS],
+      requireBlindIndicesEnabled: true,
+      requireE2EEOff: true
+    });
   }
+
 
   const secrets = await SecretService.getSecrets({
     workspaceId: new Types.ObjectId(workspaceId),
