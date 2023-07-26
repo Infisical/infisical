@@ -43,8 +43,7 @@ const trustedIpSchema = new Schema<ITrustedIP>(
             required: true
         },
         comment: {
-            type: String,
-            required: true
+            type: String
         }
     },
     {
