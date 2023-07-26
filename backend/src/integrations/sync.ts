@@ -2067,7 +2067,7 @@ const syncSecretsWindmill = async ({
   
   Object.keys(secrets).forEach(
     (key) => {
-        const pattern = new RegExp('^([a-zA-Z0-9])\/([a-zA-Z-0-9-_])+\/([a-zA-Z0-9-_])+')
+        const pattern = new RegExp('^[uf]+[\/](?:[a-zA-Z0-9-_]+[\/])*([a-zA-Z0-9-_]+)')
         if((key.startsWith("u/") || key.startsWith("f/")) && pattern.test(key)) {
           if(secretsResList.includes(key)) {
             modifiedFormatForUpdateSecretInjection.push({
