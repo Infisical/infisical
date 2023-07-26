@@ -19,6 +19,7 @@ import {
   INTEGRATION_RAILWAY,
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
+  INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL
 } from "../variables";
@@ -57,6 +58,7 @@ export interface IIntegration {
     | "travisci"
     | "supabase"
     | "checkly"
+    | "terraform-cloud"
     | "hashicorp-vault"
     | "cloudflare-pages"
     | "bitbucket"
@@ -150,6 +152,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_TRAVISCI,
         INTEGRATION_SUPABASE,
         INTEGRATION_CHECKLY,
+        INTEGRATION_TERRAFORM_CLOUD,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
         INTEGRATION_BITBUCKET,

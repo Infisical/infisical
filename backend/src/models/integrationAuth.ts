@@ -21,6 +21,7 @@ import {
   INTEGRATION_RAILWAY,
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
+  INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL
 } from "../variables";
@@ -50,7 +51,8 @@ export interface IIntegrationAuth extends Document {
     | "codefresh"
     | "digital-ocean-app-platform"
     | "bitbucket"
-    | "cloud-66";
+    | "cloud-66"
+    | "terraform-cloud";
   teamId: string;
   accountId: string;
   url: string;
@@ -94,6 +96,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_LARAVELFORGE,
         INTEGRATION_TRAVISCI,
         INTEGRATION_SUPABASE,
+        INTEGRATION_TERRAFORM_CLOUD,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
         INTEGRATION_BITBUCKET,

@@ -86,6 +86,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "railway":
         link = `${window.location.origin}/integrations/railway/authorize`;
         break;
+      case "terraform-cloud":
+        link = `${window.location.origin}/integrations/terraform-cloud/authorize`;
+        break;
       case "hashicorp-vault":
         link = `${window.location.origin}/integrations/hashicorp-vault/authorize`;
         break;

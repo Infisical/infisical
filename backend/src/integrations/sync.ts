@@ -42,6 +42,8 @@ import {
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_SUPABASE,
   INTEGRATION_SUPABASE_API_URL,
+  INTEGRATION_TERRAFORM_CLOUD,
+  INTEGRATION_TERRAFORM_CLOUD_API_URL,
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
@@ -188,6 +190,13 @@ const syncSecrets = async ({
       break;
     case INTEGRATION_CHECKLY:
       await syncSecretsCheckly({
+        integration,
+        secrets,
+        accessToken,
+      });
+      break;
+    case INTEGRATION_TERRAFORM_CLOUD:
+      await syncSecretsTerraformCloud({
         integration,
         secrets,
         accessToken,
@@ -1836,6 +1845,106 @@ const syncSecretsCheckly = async ({
           },
         }
       );
+    }
+  }
+};
+
+/**
+ * Sync/push [secrets] to Terraform Cloud project with id [integration.appId]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Terraform Cloud API
+ */
+const syncSecretsTerraformCloud = async ({
+  integration,
+  secrets,
+  accessToken,
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  // get secrets from Terraform Cloud
+  const getSecretsRes = (
+    await standardRequest.get(`${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`, 
+  {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  }
+  ))
+  .data
+  .data
+  .reduce((obj: any, secret: any) => ({
+      ...obj,
+      [secret.attributes.key]: secret
+  }), {});
+  
+  // create or update secrets on Terraform Cloud
+  for await (const key of Object.keys(secrets)) {
+    if (!(key in getSecretsRes)) {
+      // case: secret does not exist in Terraform Cloud
+      // -> add secret
+      await standardRequest.post(
+        `${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`,
+        {
+          data: {
+            type: "vars",
+            attributes: {
+              key,
+              value: secrets[key],
+              category: integration.targetService,
+            },
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/vnd.api+json",
+            Accept: "application/vnd.api+json",
+          },
+        }
+      );
+    } else {
+      // case: secret exists in Terraform Cloud
+      if (secrets[key] !== getSecretsRes[key].attributes.value) {
+        // -> update secret
+        await standardRequest.patch(
+          `${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${getSecretsRes[key].id}`,
+          {
+            data: {
+              type: "vars",
+              id: getSecretsRes[key].id,
+              attributes: {
+                ...getSecretsRes[key],
+                value: secrets[key]
+              },
+            },
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/vnd.api+json",
+              Accept: "application/vnd.api+json",
+            },
+          }
+        );
+      }
+    }
+  }
+
+  for await (const key of Object.keys(getSecretsRes)) {
+    if (!(key in secrets)) {
+      // case: delete secret
+      await standardRequest.delete(`${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${getSecretsRes[key].id}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/vnd.api+json",
+          Accept: "application/vnd.api+json",
+        },
+      })
     }
   }
 };

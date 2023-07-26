@@ -33,6 +33,8 @@ import {
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_SUPABASE,
   INTEGRATION_SUPABASE_API_URL,
+  INTEGRATION_TERRAFORM_CLOUD,
+  INTEGRATION_TERRAFORM_CLOUD_API_URL,
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
@@ -132,6 +134,12 @@ const getApps = async ({
       apps = await getAppsLaravelForge({
         accessToken,
         serverId: accessId
+      });
+      break;
+    case INTEGRATION_TERRAFORM_CLOUD:
+      apps = await getAppsTerraformCloud({
+        accessToken,
+        workspacesId: accessId,
       });
       break;
     case INTEGRATION_TRAVISCI:
@@ -562,6 +570,43 @@ const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
 
   return apps;
 };
+
+/**
+ * Return list of projects for Terraform Cloud integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Terraform Cloud API
+ * @param {String} obj.workspacesId - workspace id of Terraform Cloud projects
+ * @returns {Object[]} apps - names and ids of Terraform Cloud projects
+ * @returns {String} apps.name - name of Terraform Cloud projects
+ */
+const getAppsTerraformCloud = async ({ 
+  accessToken,
+  workspacesId
+}: {
+  accessToken: string;
+  workspacesId?: string;
+}) => {
+  const res = (
+    await standardRequest.get(`${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${workspacesId}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+    })
+  ).data.data;
+
+  const apps = []
+
+  const appsObj = {
+      name: res?.attributes.name,
+      appId: res?.id,
+  };
+
+  apps.push(appsObj)
+
+  return apps;
+};
+
 
 /**
  * Return list of repositories for GitLab integration
