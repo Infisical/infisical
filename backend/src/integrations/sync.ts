@@ -1,14 +1,10 @@
-import _ from "lodash";
-import AWS from "aws-sdk";
 import {
   CreateSecretCommand,
   GetSecretValueCommand,
   ResourceNotFoundException,
   SecretsManagerClient,
-  UpdateSecretCommand,
+  UpdateSecretCommand
 } from "@aws-sdk/client-secrets-manager";
-import { Octokit } from "@octokit/rest";
-import sodium from "libsodium-wrappers";
 import { IIntegration, IIntegrationAuth } from "../models";
 import {
   INTEGRATION_AWS_PARAMETER_STORE,
@@ -22,8 +18,12 @@ import {
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_CLOUDFLARE_PAGES_API_URL,
+  INTEGRATION_CLOUD_66,
+  INTEGRATION_CLOUD_66_API_URL,
   INTEGRATION_CODEFRESH,
   INTEGRATION_CODEFRESH_API_URL,
+  INTEGRATION_DIGITAL_OCEAN_API_URL,
+  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
@@ -44,11 +44,17 @@ import {
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_SUPABASE,
   INTEGRATION_SUPABASE_API_URL,
+  INTEGRATION_TERRAFORM_CLOUD,
+  INTEGRATION_TERRAFORM_CLOUD_API_URL,
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
   INTEGRATION_VERCEL_API_URL
 } from "../variables";
+import AWS from "aws-sdk";
+import { Octokit } from "@octokit/rest";
+import _ from "lodash";
+import sodium from "libsodium-wrappers";
 import { standardRequest } from "../config/request";
 
 /**
@@ -191,6 +197,13 @@ const syncSecrets = async ({
         accessToken,
       });
       break;
+    case INTEGRATION_TERRAFORM_CLOUD:
+      await syncSecretsTerraformCloud({
+        integration,
+        secrets,
+        accessToken,
+      });
+      break;
     case INTEGRATION_HASHICORP_VAULT:
       await syncSecretsHashiCorpVault({
         integration,
@@ -220,6 +233,20 @@ const syncSecrets = async ({
         integration,
         secrets,
         accessToken,
+      });
+      break;
+    case INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM:
+      await syncSecretsDigitalOceanAppPlatform({
+        integration,
+        secrets,
+        accessToken,
+      });
+      break;
+    case INTEGRATION_CLOUD_66:
+      await syncSecretsCloud66({
+        integration,
+        secrets,
+        accessToken
       });
       break;
     case INTEGRATION_NORTHFLANK:
@@ -1832,6 +1859,106 @@ const syncSecretsCheckly = async ({
 };
 
 /**
+ * Sync/push [secrets] to Terraform Cloud project with id [integration.appId]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Terraform Cloud API
+ */
+const syncSecretsTerraformCloud = async ({
+  integration,
+  secrets,
+  accessToken,
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  // get secrets from Terraform Cloud
+  const getSecretsRes = (
+    await standardRequest.get(`${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`, 
+  {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  }
+  ))
+  .data
+  .data
+  .reduce((obj: any, secret: any) => ({
+      ...obj,
+      [secret.attributes.key]: secret
+  }), {});
+  
+  // create or update secrets on Terraform Cloud
+  for await (const key of Object.keys(secrets)) {
+    if (!(key in getSecretsRes)) {
+      // case: secret does not exist in Terraform Cloud
+      // -> add secret
+      await standardRequest.post(
+        `${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`,
+        {
+          data: {
+            type: "vars",
+            attributes: {
+              key,
+              value: secrets[key],
+              category: integration.targetService,
+            },
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/vnd.api+json",
+            Accept: "application/vnd.api+json",
+          },
+        }
+      );
+    } else {
+      // case: secret exists in Terraform Cloud
+      if (secrets[key] !== getSecretsRes[key].attributes.value) {
+        // -> update secret
+        await standardRequest.patch(
+          `${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${getSecretsRes[key].id}`,
+          {
+            data: {
+              type: "vars",
+              id: getSecretsRes[key].id,
+              attributes: {
+                ...getSecretsRes[key],
+                value: secrets[key]
+              },
+            },
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/vnd.api+json",
+              Accept: "application/vnd.api+json",
+            },
+          }
+        );
+      }
+    }
+  }
+
+  for await (const key of Object.keys(getSecretsRes)) {
+    if (!(key in secrets)) {
+      // case: delete secret
+      await standardRequest.delete(`${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars/${getSecretsRes[key].id}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/vnd.api+json",
+          Accept: "application/vnd.api+json",
+        },
+      })
+    }
+  }
+};
+
+/**
  * Sync/push [secrets] to HashiCorp Vault path
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
@@ -2077,10 +2204,11 @@ const syncSecretsBitBucket = async ({
   }
 }
 
-/*
- * Sync/push [secrets] to Codefresh with name [integration.app]
+/**
+ * Sync/push [secrets] to Codefresh project with name [integration.app]
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
  * @param {String} obj.accessToken - access token for Codefresh integration
  */
@@ -2108,6 +2236,143 @@ const syncSecretsCodefresh = async ({
       },
     }
   ); 
+};
+
+/**
+ * Sync/push [secrets] to DigitalOcean App Platform application with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - personal access token for DigitalOcean
+ */
+const syncSecretsDigitalOceanAppPlatform = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  await standardRequest.put(
+    `${INTEGRATION_DIGITAL_OCEAN_API_URL}/v2/apps/${integration.appId}`,
+    {
+      spec: {
+        name: integration.app,
+        envs: Object.entries(secrets).map(([key, value]) => ({ key, value }))
+      }
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      }
+    }
+  );
+}
+
+/**
+ * Sync/push [secrets] to Cloud66 application with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Cloud66 integration
+ */
+const syncSecretsCloud66 = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  
+  interface Cloud66Secret {
+    id: number;
+    key: string;
+    value: string;
+    readonly: boolean;
+    created_at: string;
+    updated_at: string;
+    is_password: boolean;
+    is_generated: boolean;
+    history: any[];
+  }
+
+  // get all current secrets
+  const res = (
+    await standardRequest.get(
+      `${INTEGRATION_CLOUD_66_API_URL}/3/stacks/${integration.appId}/environments`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json"
+        }
+      }
+    )
+  )
+  .data
+  .response
+  .filter((secret: Cloud66Secret) => !secret.readonly || !secret.is_generated)
+  .reduce(
+    (obj: any, secret: any) => ({
+      ...obj,
+      [secret.key]: secret
+    }),
+    {}
+  );
+
+  for await (const key of Object.keys(secrets)) {
+    if (key in res) {
+      // update existing secret
+      await standardRequest.put(
+          `${INTEGRATION_CLOUD_66_API_URL}/3/stacks/${integration.appId}/environments/${key}`,
+          {
+            key,
+            value: secrets[key]
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json"
+            }
+          }
+        );
+    } else {
+      // create new secret
+      await standardRequest.post(
+          `${INTEGRATION_CLOUD_66_API_URL}/3/stacks/${integration.appId}/environments`,
+          {
+            key,
+            value: secrets[key]
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json"
+            }
+          }
+        );
+    }
+  }
+
+  for await (const key of Object.keys(res)) {
+    if (!(key in secrets)) {
+      // delete secret
+      await standardRequest.delete(
+          `${INTEGRATION_CLOUD_66_API_URL}/3/stacks/${integration.appId}/environments/${key}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json"
+            }
+          }
+        );
+    }
+  }
 };
 
  /* Sync/push [secrets] to Northflank

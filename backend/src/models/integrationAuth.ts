@@ -1,4 +1,3 @@
-import { Document, Schema, Types, model } from "mongoose";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_BASE64,
@@ -9,7 +8,9 @@ import {
   INTEGRATION_BITBUCKET,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUD_66,
   INTEGRATION_CODEFRESH,
+  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
@@ -21,9 +22,11 @@ import {
   INTEGRATION_RAILWAY,
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
+  INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL
 } from "../variables";
+import { Document, Schema, Types, model } from "mongoose";
 
 export interface IIntegrationAuth extends Document {
   _id: Types.ObjectId;
@@ -47,7 +50,10 @@ export interface IIntegrationAuth extends Document {
     | "checkly"
     | "cloudflare-pages"
     | "codefresh"
+    | "digital-ocean-app-platform"
     | "bitbucket"
+    | "cloud-66"
+    | "terraform-cloud"
     | "northflank";
   teamId: string;
   accountId: string;
@@ -92,10 +98,13 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_LARAVELFORGE,
         INTEGRATION_TRAVISCI,
         INTEGRATION_SUPABASE,
+        INTEGRATION_TERRAFORM_CLOUD,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
         INTEGRATION_BITBUCKET,
+        INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
         INTEGRATION_CODEFRESH,
+        INTEGRATION_CLOUD_66,
         INTEGRATION_NORTHFLANK
       ],
       required: true,

@@ -25,6 +25,7 @@ const userKeys = {
   getUser: ["user"] as const,
   userAction: ["user-action"] as const,
   getOrgUsers: (orgId: string) => [{ orgId }, "user"],
+  myIp: ["ip"] as const,
   myAPIKeys: ["api-keys"] as const,
   mySessions: ["sessions"] as const
 };
@@ -205,6 +206,19 @@ export const useLogoutUser = () =>
       localStorage.setItem("PRIVATE_KEY", "");
     }
   });
+
+export const useGetMyIp = () => {
+ return useQuery({
+    queryKey: userKeys.myIp,
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ ip: string; }>(
+        "/api/v1/users/me/ip"
+      );
+      return data.ip;
+    },
+    enabled: true
+  }); 
+}
 
 export const useGetMyAPIKeys = () => {
   return useQuery({

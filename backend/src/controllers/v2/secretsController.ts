@@ -830,7 +830,7 @@ export const getSecrets = async (req: Request, res: Response) => {
 
   // TODO(akhilmhdh) - secret-imp change this to org type
   let importedSecrets: any[] = [];
-  if (include_imports) {
+  if (include_imports === "true") {
     importedSecrets = await getAllImportedSecrets(workspaceId, environment, folderId as string);
   }
 

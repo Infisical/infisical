@@ -1,0 +1,42 @@
+---
+title: "Terraform Cloud"
+description: "How to sync secrets from Infisical to Terraform Cloud"
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+
+## Navigate to your project's integrations tab
+
+![integrations](../../images/integrations.png)
+
+## Enter your Terraform Cloud API Token and Workspace Id
+
+Obtain a Terraform Cloud API Token in User Settings > Tokens
+
+![integrations terraform cloud dashboard](../../images/integrations-terraformcloud-dashboard.png)
+![integrations terraform cloud tokens](../../images/integrations-terraformcloud-tokens.png)
+
+Obtain your Terraform Cloud Workspace Id in Projects & Workspaces > Workspace > ID
+
+![integrations terraform cloud projects & workspaces](../../images/integrations-terraformcloud-workspaces.png)
+![integrations terraform cloud workspace id](../../images/integrations-terraformcloud-workspaceid.png)
+
+Press on the Terraform Cloud tile and input your Terraform Cloud API Token and Workspace Id to grant Infisical access to your Terraform Cloud account.
+
+![integrations terraform cloud authorization](../../images/integrations-terraformcloud-auth.png)
+
+<Info>
+  If this is your project's first cloud integration, then you'll have to grant
+  Infisical access to your project's environment variables. Although this step
+  breaks E2EE, it's necessary for Infisical to sync the environment variables to
+  the cloud platform.
+</Info>
+
+## Start integration
+
+Select which Infisical environment secrets and Terraform Cloud variable type you want to sync to which Terraform Cloud workspace/project and press create integration to start syncing secrets to Terraform Cloud.
+
+![integrations terraform cloud](../../images/integrations-terraformcloud-create.png)
+![integrations terraform cloud](../../images/integrations-terraformcloud.png)

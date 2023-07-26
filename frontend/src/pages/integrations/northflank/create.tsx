@@ -57,7 +57,7 @@ export default function NorthflankCreateIntegrationPage() {
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
         const selectedApp = integrationAuthApps?.filter((integrationAuthApp) => integrationAuthApp.name === targetApp);
-        if (selectedApp.length > 0) {
+        if (selectedApp.length > 0 && selectedApp[0].secretGroups) {
           setSecretGroupList(selectedApp[0].secretGroups);
           setTargetSecretGroup(selectedApp[0]?.secretGroups[0]);
         } else {
@@ -172,7 +172,7 @@ export default function NorthflankCreateIntegrationPage() {
                 </SelectItem>
               ))
             ) : (
-              <SelectItem value="No secret groups found" key="target-app-none">
+              <SelectItem value="none" key="target-secret-group-none">
                 No secret groups found
               </SelectItem>
             )}
@@ -183,7 +183,7 @@ export default function NorthflankCreateIntegrationPage() {
           color="mineshaft"
           className="mt-4"
           isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0 && secretGroupList === 0}
+          isDisabled={secretGroupList === 0}
         >
           Create Integration
         </Button>

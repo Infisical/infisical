@@ -6,6 +6,7 @@ export type SubscriptionPlan = {
   customAlerts: boolean;
   customRateLimits: boolean;
   pitRecovery: boolean;
+  ipAllowlisting: boolean;
   rbac: boolean;
   secretVersioning: boolean;
   slug: string;

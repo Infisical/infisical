@@ -1,4 +1,3 @@
-import { Schema, Types, model } from "mongoose";
 import {
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
@@ -7,7 +6,9 @@ import {
   INTEGRATION_CHECKLY,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUD_66,
   INTEGRATION_CODEFRESH,
+  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
@@ -19,9 +20,11 @@ import {
   INTEGRATION_RAILWAY,
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
+  INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL
 } from "../variables";
+import { Schema, Types, model } from "mongoose";
 
 export interface IIntegration {
   _id: Types.ObjectId;
@@ -57,10 +60,13 @@ export interface IIntegration {
     | "travisci"
     | "supabase"
     | "checkly"
+    | "terraform-cloud"
     | "hashicorp-vault"
     | "cloudflare-pages"
     | "bitbucket"
     | "codefresh"
+    | "digital-ocean-app-platform"
+    | "cloud-66"
     | "northflank"
   integrationAuth: Types.ObjectId;
 }
@@ -149,10 +155,13 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_TRAVISCI,
         INTEGRATION_SUPABASE,
         INTEGRATION_CHECKLY,
+        INTEGRATION_TERRAFORM_CLOUD,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
         INTEGRATION_BITBUCKET,
+        INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
         INTEGRATION_CODEFRESH,
+        INTEGRATION_CLOUD_66,
         INTEGRATION_NORTHFLANK
       ],
       required: true,

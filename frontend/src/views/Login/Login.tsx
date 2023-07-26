@@ -18,6 +18,8 @@ export const Login = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     
+    const queryParams = new URLSearchParams(window.location.search)
+    
     useEffect(() => {
     // TODO(akhilmhdh): workspace will be controlled by a workspace context
     const redirectToDashboard = async () => {
@@ -30,7 +32,6 @@ export const Login = () => {
         const userDetails = await fetchUserDetails()
         // send details back to client
 
-        const queryParams = new URLSearchParams(window.location.search)
         if (queryParams && queryParams.get("callback_port")) {
           const callbackPort = queryParams.get("callback_port")
 
@@ -67,6 +68,7 @@ export const Login = () => {
                         email={email}
                         password={password}
                         providerAuthToken={undefined}
+                        callbackPort={queryParams.get("callback_port")}
                     />
                 );
             case 2:

@@ -108,6 +108,22 @@ brews:
       zsh_completion.install "completions/infisical.zsh" => "_infisical"
       fish_completion.install "completions/infisical.fish"
       man1.install "manpages/infisical.1.gz"
+  - name: 'infisical@{{.Version}}'
+    tap:
+      owner: Infisical
+      name: homebrew-get-cli
+    commit_author:
+      name: "Infisical"
+      email: ai@infisical.com
+    folder: Formula
+    homepage: "https://infisical.com"
+    description: "The official Infisical CLI"
+    install: |-
+      bin.install "infisical"
+      bash_completion.install "completions/infisical.bash" => "infisical"
+      zsh_completion.install "completions/infisical.zsh" => "_infisical"
+      fish_completion.install "completions/infisical.fish"
+      man1.install "manpages/infisical.1.gz"
 
 nfpms:
   - id: infisical

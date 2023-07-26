@@ -66,6 +66,4 @@ const actionSchema = new Schema<IAction>(
     }
 );
 
-const Action = model<IAction>("Action", actionSchema);
-
-export default Action;
+export const Action = model<IAction>("Action", actionSchema);

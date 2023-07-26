@@ -3,12 +3,15 @@ import { Types } from "mongoose";
 import { EventService, SecretService } from "../../services";
 import { eventPushSecrets } from "../../events";
 import { BotService } from "../../services";
-import { repackageSecretToRaw } from "../../helpers/secrets";
+import { containsGlobPatterns, repackageSecretToRaw } from "../../helpers/secrets";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
 import Folder from "../../models/folder";
 import { getFolderByPath } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
+import { IServiceTokenData } from "../../models";
+import { requireWorkspaceAuth } from "../../middleware";
+import { ADMIN, MEMBER, PERMISSION_READ_SECRETS } from "../../variables";
 
 /**
  * Return secrets for workspace with id [workspaceId] and environment
@@ -17,10 +20,33 @@ import { BadRequestError } from "../../utils/errors";
  * @param res
  */
 export const getSecretsRaw = async (req: Request, res: Response) => {
-  const workspaceId = req.query.workspaceId as string;
-  const environment = req.query.environment as string;
-  const secretPath = req.query.secretPath as string;
+  let workspaceId = req.query.workspaceId as string;
+  let environment = req.query.environment as string;
+  let secretPath = req.query.secretPath as string;
   const includeImports = req.query.include_imports as string;
+
+  // if the service token has single scope, it will get all secrets for that scope by default
+  const serviceTokenDetails: IServiceTokenData = req?.serviceTokenData;
+  if (serviceTokenDetails) {
+    if (
+      serviceTokenDetails.scopes.length == 1 &&
+      !containsGlobPatterns(serviceTokenDetails.scopes[0].secretPath)
+    ) {
+      const scope = serviceTokenDetails.scopes[0];
+      secretPath = scope.secretPath;
+      environment = scope.environment;
+      workspaceId = serviceTokenDetails.workspace.toString();
+    } else {
+      requireWorkspaceAuth({
+        acceptedRoles: [ADMIN, MEMBER],
+        locationWorkspaceId: "query",
+        locationEnvironment: "query",
+        requiredPermissions: [PERMISSION_READ_SECRETS],
+        requireBlindIndicesEnabled: true,
+        requireE2EEOff: true
+      });
+    }
+  }
 
   const secrets = await SecretService.getSecrets({
     workspaceId: new Types.ObjectId(workspaceId),
@@ -33,7 +59,7 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
     workspaceId: new Types.ObjectId(workspaceId)
   });
 
-  if (includeImports) {
+  if (includeImports === "true") {
     const folders = await Folder.findOne({ workspace: workspaceId, environment });
     let folderId = "root";
     // if folder exist get it and replace folderid with new one
@@ -271,7 +297,7 @@ export const getSecrets = async (req: Request, res: Response) => {
     authData: req.authData
   });
 
-  if (includeImports) {
+  if (includeImports === "true") {
     const folders = await Folder.findOne({ workspace: workspaceId, environment });
     let folderId = "root";
     // if folder exist get it and replace folderid with new one

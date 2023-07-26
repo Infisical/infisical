@@ -33,6 +33,9 @@ export const InitialStep = ({
     const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState(false);
     const [loginError, setLoginError] = useState(false);
+    const [loginEmailChosen, setLoginEmailChosen] = useState(false);
+
+    const queryParams = new URLSearchParams(window.location.search);
 
     const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -42,7 +45,6 @@ export const InitialStep = ({
             }
 
             setIsLoading(true);
-            const queryParams = new URLSearchParams(window.location.search)
             if (queryParams && queryParams.get("callback_port")) {
                 const callbackPort = queryParams.get("callback_port")
 
@@ -115,34 +117,49 @@ export const InitialStep = ({
     return (
         <form onSubmit={handleLogin} className='flex flex-col mx-auto w-full justify-center items-center'>
             <h1 className='text-xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 text-center mb-8' >Login to Infisical</h1>
-            <div className="relative md:px-1.5 flex items-center justify-center lg:w-1/6 w-1/4 min-w-[21.3rem] md:min-w-[22rem] mx-auto rounded-lg max-h-24 md:max-h-28">
-                <div className="flex items-center justify-center w-full md:px-2 md:py-1 rounded-lg max-h-24 md:max-h-28">
-                    <Input
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        type="email"
-                        placeholder="Enter your email..."
-                        isRequired
-                        autoComplete="username"
-                        className="h-12"
-                    />
-                </div>
+            <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
+                <Button
+                    colorSchema="primary" 
+                    variant={loginEmailChosen ? "outline_bg" : "solid"}
+                    onClick={() => {
+                        const callbackPort = queryParams.get("callback_port");
+                        
+                        window.open(`/api/v1/sso/redirect/google${callbackPort ? `?callback_port=${callbackPort}` : ""}`);
+                        window.close();
+                    }} 
+                    leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-1" />}
+                    className="h-12 w-full mx-0"
+                > 
+                    {t("login.continue-with-google")}
+                </Button>
             </div>
-            <div className="relative pt-2 md:pt-0 md:px-1.5 flex items-center justify-center w-1/4 lg:w-1/6 min-w-[21.3rem] md:min-w-[22rem] mx-auto rounded-lg max-h-24 md:max-h-28">
-                <div className="flex items-center justify-center w-full md:p-2 rounded-lg max-h-24 md:max-h-28">
-                    <Input
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        type="password"
-                        placeholder="Enter your password..."
-                        isRequired
-                        autoComplete="current-password"
-                        id="current-password"
-                        className="h-12 select:-webkit-autofill:focus"
-                    />
-                </div>
+            {loginEmailChosen && <>
+            <div className='lg:w-1/6 w-1/4 min-w-[20rem] flex flex-row items-center my-4 py-2'>
+                <div className='w-full border-t border-mineshaft-500' />
             </div>
-            {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
+            <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md'>
+                <Input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    type="email"
+                    placeholder="Enter your email..."
+                    isRequired
+                    autoComplete="username"
+                    className="h-12"
+                />
+            </div>
+            <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
+                <Input
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    type="password"
+                    placeholder="Enter your password..."
+                    isRequired
+                    autoComplete="current-password"
+                    id="current-password"
+                    className="h-12 select:-webkit-autofill:focus"
+                />
+            </div>
             <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
                 <Button
                     type="submit"
@@ -152,28 +169,25 @@ export const InitialStep = ({
                     colorSchema="primary"
                     variant="solid"
                     isLoading={isLoading}
-                > Login </Button>
+                > Continue with Email </Button>
             </div>
-            <div className='lg:w-1/6 w-1/4 min-w-[20rem] flex flex-row items-center my-4 py-2'>
-                <div className='w-1/2 border-t border-mineshaft-500' />
-                <span className='px-4 text-sm text-bunker-400'>or</span>
-                <div className='w-1/2 border-t border-mineshaft-500' />
-            </div>
-            <div className='lg:w-1/6 w-1/4 min-w-[20rem] rounded-md'>
+            {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
+            <div className='lg:w-1/6 w-1/4 min-w-[20rem] flex flex-row items-center mt-4 py-2'>
+                <div className='w-full border-t border-mineshaft-500' />
+            </div></>}
+            {!loginEmailChosen && <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
                 <Button
-                    colorSchema="primary" 
-                    variant="solid"
                     onClick={() => {
-                        window.open("/api/v1/sso/redirect/google");
-                        window.close();
-                    }} 
-                    leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-1" />}
-                    className="h-14 w-full mx-0"
-                > 
-                    {t("login.continue-with-google")}
-                </Button>
-            </div>
-            <div className='lg:w-1/6 w-1/4 min-w-[20rem] text-center rounded-md mt-4'>
+                        setLoginEmailChosen(true);
+                    }}
+                    size="sm"
+                    isFullWidth
+                    className='h-12'
+                    colorSchema="primary"
+                    variant="outline_bg"
+                > Continue with Email </Button>
+            </div>}
+            <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
                 <Button
                     colorSchema="primary"
                     variant="outline_bg"
@@ -181,7 +195,7 @@ export const InitialStep = ({
                         setStep(2);
                     }}
                     isFullWidth
-                    className="h-14 w-full mx-0"
+                    className="h-12 w-full mx-0"
                 >
                     Continue with SAML SSO
                 </Button>

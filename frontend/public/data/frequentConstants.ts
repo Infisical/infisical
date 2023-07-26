@@ -19,10 +19,13 @@ const integrationSlugNameMapping: Mapping = {
   travisci: "TravisCI",
   supabase: "Supabase",
   checkly: "Checkly",
+  'terraform-cloud': 'Terraform Cloud',
   "hashicorp-vault": "Vault",
   "cloudflare-pages": "Cloudflare Pages",
   "codefresh": "Codefresh",
+  "digital-ocean-app-platform": "Digital Ocean App Platform",
   bitbucket: "BitBucket",
+  "cloud-66": "Cloud 66",
   northflank: "Northflank"
 };
 
