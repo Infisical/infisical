@@ -568,18 +568,29 @@ export const backfillTrustedIps = async () => {
     }
   });
 
-  if (workspaceIdsToAddTrustedIp.length === 0) return;
-  
-  const trustedIpsToInsert = workspaceIdsToAddTrustedIp.map((workspaceId) => {
-    return new TrustedIP({
-      workspace: workspaceId,
-      ipAddress: "0.0.0.0",
-      type: IPType.IPV4,
-      prefix: 0,
-      isActive: true,
-      comment: "",
-    });
-  });
+  if (workspaceIdsToAddTrustedIp.length > 0) {
+    const operations = workspaceIdsToAddTrustedIp.map((workspaceId) => {
+      const update = {
+        workspace: workspaceId,
+        ipAddress: "0.0.0.0",
+        type: IPType.IPV4,
+        prefix: 0,
+        isActive: true,
+        comment: ""
+      }
 
-  await TrustedIP.insertMany(trustedIpsToInsert);
+      return {
+        updateOne: {
+          filter: update,
+          update: {
+            $setOnInsert: update
+          },
+          upsert: true,
+        },
+      };
+    });
+
+    await TrustedIP.bulkWrite(operations);
+    console.log("Backfill: Trusted IPs complete");
+  }
 }
