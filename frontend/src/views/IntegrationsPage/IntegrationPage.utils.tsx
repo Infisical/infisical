@@ -104,6 +104,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "cloud-66":
         link = `${window.location.origin}/integrations/cloud-66/authorize`;
         break;
+      case "harness":
+        link = `${window.location.origin}/integrations/harness/authorize`;
+        break;
       default:
         break;
     }

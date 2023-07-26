@@ -48,7 +48,7 @@ const onboardingCheck = async ({
   const orgUsers = await getOrganizationUsers({
     orgId: orgId || ""
   });
-  if (orgUsers.length > 1) {
+  if (orgUsers?.length > 1) {
     countActions += 1;
   }
   if (setUsersInOrg) setUsersInOrg(orgUsers.length > 1);

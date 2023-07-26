@@ -14,6 +14,7 @@ import {
   INTEGRATION_FLYIO,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
+  INTEGRATION_HARNESS,
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_HEROKU,
   INTEGRATION_LARAVELFORGE,
@@ -50,6 +51,7 @@ export interface IIntegrationAuth extends Document {
     | "codefresh"
     | "digital-ocean-app-platform"
     | "bitbucket"
+    | "harness"
     | "cloud-66";
   teamId: string;
   accountId: string;
@@ -100,6 +102,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
         INTEGRATION_CODEFRESH,
         INTEGRATION_CLOUD_66,
+        INTEGRATION_HARNESS,
       ],
       required: true,
     },

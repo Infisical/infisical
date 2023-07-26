@@ -24,7 +24,8 @@ const integrationSlugNameMapping: Mapping = {
   "codefresh": "Codefresh",
   "digital-ocean-app-platform": "Digital Ocean App Platform",
   bitbucket: "BitBucket",
-  "cloud-66": "Cloud 66"
+  "cloud-66": "Cloud 66",
+  harness: "Harness",
 };
 
 const envMapping: Mapping = {

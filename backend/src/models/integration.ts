@@ -12,6 +12,7 @@ import {
   INTEGRATION_FLYIO,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
+  INTEGRATION_HARNESS,
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_HEROKU,
   INTEGRATION_LARAVELFORGE,
@@ -63,6 +64,7 @@ export interface IIntegration {
     | "codefresh"
     | "digital-ocean-app-platform"
     | "cloud-66"
+    | "harness";
   integrationAuth: Types.ObjectId;
 }
 
@@ -71,65 +73,65 @@ const integrationSchema = new Schema<IIntegration>(
     workspace: {
       type: Schema.Types.ObjectId,
       ref: "Workspace",
-      required: true,
+      required: true
     },
     environment: {
       type: String,
-      required: true,
+      required: true
     },
     isActive: {
       type: Boolean,
-      required: true,
+      required: true
     },
     url: {
       // for custom self-hosted integrations (e.g. self-hosted GitHub enterprise)
       type: String,
-      default: null,
+      default: null
     },
     app: {
       // name of app in provider
       type: String,
-      default: null,
+      default: null
     },
     appId: {
       // id of app in provider
       type: String,
-      default: null,
+      default: null
     },
     targetEnvironment: {
       // target environment
       type: String,
-      default: null,
+      default: null
     },
     targetEnvironmentId: {
       type: String,
-      default: null,
+      default: null
     },
     targetService: {
       // railway-specific service
       type: String,
-      default: null,
+      default: null
     },
     targetServiceId: {
       // railway-specific service
       type: String,
-      default: null,
+      default: null
     },
     owner: {
       // github-specific repo owner-login
       type: String,
-      default: null,
+      default: null
     },
     path: {
       // aws-parameter-store-specific path
       // (also) vercel preview-branch
       type: String,
-      default: null,
+      default: null
     },
     region: {
       // aws-parameter-store-specific path
       type: String,
-      default: null,
+      default: null
     },
     integration: {
       type: String,
@@ -156,22 +158,23 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
         INTEGRATION_CODEFRESH,
         INTEGRATION_CLOUD_66,
+        INTEGRATION_HARNESS
       ],
-      required: true,
+      required: true
     },
     integrationAuth: {
       type: Schema.Types.ObjectId,
       ref: "IntegrationAuth",
-      required: true,
+      required: true
     },
     secretPath: {
       type: String,
       required: true,
-      default: "/",
-    },
+      default: "/"
+    }
   },
   {
-    timestamps: true,
+    timestamps: true
   }
 );
 

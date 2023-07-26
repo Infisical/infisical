@@ -31,6 +31,7 @@ export const INTEGRATION_BITBUCKET = "bitbucket";
 export const INTEGRATION_CODEFRESH = "codefresh";
 export const INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM = "digital-ocean-app-platform";
 export const INTEGRATION_CLOUD_66 = "cloud-66";
+export const INTEGRATION_HARNESS = "harness";
 export const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
@@ -50,7 +51,8 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_BITBUCKET,
   INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_CODEFRESH,
-  INTEGRATION_CLOUD_66
+  INTEGRATION_CLOUD_66,
+  INTEGRATION_HARNESS,
 ]);
 
 // integration types
@@ -85,6 +87,7 @@ export const INTEGRATION_BITBUCKET_API_URL = "https://api.bitbucket.org";
 export const INTEGRATION_CODEFRESH_API_URL = "https://g.codefresh.io/api";
 export const INTEGRATION_DIGITAL_OCEAN_API_URL = "https://api.digitalocean.com";
 export const INTEGRATION_CLOUD_66_API_URL = "https://app.cloud66.com/api";
+export const INTEGRATION_HARNESS_API_URL = "https://app.harness.io";
 
 export const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [
@@ -291,6 +294,15 @@ export const getIntegrationOptions = async () => {
             name: "Cloud 66",
             slug: "cloud-66",
             image: "Cloud 66.png",
+            isAvailable: true,
+            type: "pat",
+            clientId: "",
+            docsLink: "",
+        },
+        {
+            name: "Harness",
+            slug: "harness",
+            image: "Harness.png",
             isAvailable: true,
             type: "pat",
             clientId: "",
