@@ -35,7 +35,7 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
     // generate CSRF token for OAuth2 code-token exchange integrations
     const state = crypto.randomBytes(16).toString("hex");
     localStorage.setItem("latestCSRFToken", state);
-
+    
     let link = "";
     switch (integrationOption.slug) {
       case "azure-key-vault":

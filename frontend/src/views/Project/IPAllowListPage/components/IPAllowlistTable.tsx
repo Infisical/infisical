@@ -29,6 +29,7 @@ type Props = {
             ipAddress?: string;
             comment?: string;
             isActive?: boolean;
+            prefix?: number;
         },
     ) => void;
     handlePopUpToggle: (popUpName: keyof UsePopUpState<["upgradePlan"]>, state?: boolean) => void;
@@ -103,6 +104,7 @@ export const IPAllowlistTable = ({
                                                     trustedIpId: _id,
                                                     ipAddress,
                                                     comment,
+                                                    prefix,
                                                     isActive
                                                 });
                                                 } else {
