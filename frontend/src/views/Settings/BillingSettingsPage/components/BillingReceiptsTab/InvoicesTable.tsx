@@ -11,7 +11,8 @@ import {
   Td,
   Th,
   THead,
-  Tr} from "@app/components/v2";
+  Tr
+} from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { 
     useGetOrgInvoices

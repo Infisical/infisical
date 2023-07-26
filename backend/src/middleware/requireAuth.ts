@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { Types } from "mongoose";
 import { NextFunction, Request, Response } from "express";
 import {
 	getAuthAPIKeyPayload,
@@ -51,6 +52,10 @@ const requireAuth = ({
 		});
 
 		let authPayload: IUser | IServiceAccount | IServiceTokenData;
+		let authUserPayload: {
+			user: IUser;
+			tokenVersionId: Types.ObjectId;
+		};
 		switch (authMode) {
 			case AUTH_MODE_SERVICE_ACCOUNT:
 				authPayload = await getAuthSAAKPayload({
@@ -71,12 +76,12 @@ const requireAuth = ({
 				req.user = authPayload;
 				break;
 			default:
-				const { user, tokenVersionId } = await getAuthUserPayload({
+				authUserPayload = await getAuthUserPayload({
 					authTokenValue,
 				});
-				authPayload = user;
-				req.user = user;
-				req.tokenVersionId = tokenVersionId;
+				authPayload = authUserPayload.user;
+				req.user = authUserPayload.user;
+				req.tokenVersionId = authUserPayload.tokenVersionId;
 				break;
 		}
 

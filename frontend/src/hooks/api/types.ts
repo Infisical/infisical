@@ -8,6 +8,7 @@ export type { CreateServiceTokenDTO, ServiceToken } from "./serviceTokens/types"
 export type { SubscriptionPlan } from "./subscriptions/types";
 export type { WsTag } from "./tags/types";
 export type { AddUserToWsDTO, AddUserToWsRes, OrgUser, User } from "./users/types";
+export type { TWebhook } from "./webhooks/types";
 export type {
   CreateEnvironmentDTO,
   CreateWorkspaceDTO,

@@ -3,9 +3,8 @@ title: 'Install'
 description: "Infisical's CLI is one of the best way to manage environments and secrets. Install it here"
 ---
 
-Prerequisite: Set up an account with [Infisical Cloud](https://app.infisical.com) or via a [self-hosted installation](/self-hosting/overview).
-
-The Infisical CLI provides a way to inject environment variables from the platform into your apps and infrastructure.
+The Infisical CLI is powerful command line tool that can be used to retrieve, modify, export and inject secrets into any process or application as environment variables. 
+You can use it across various environments, whether it's local development, CI/CD, staging, or production.
 
 ## Installation
 
@@ -59,7 +58,10 @@ The Infisical CLI provides a way to inject environment variables from the platfo
     	```bash
     	apk update && sudo apk add infisical
     	```
-
+		###
+		<Tip>
+			If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+		</Tip>
    </Tab>
 	 <Tab title="RedHat/CentOs/Amazon">
 	 Add Infisical repository
@@ -73,7 +75,10 @@ The Infisical CLI provides a way to inject environment variables from the platfo
     	```bash
     	sudo yum install infisical
     	```
-
+		###
+		<Tip>
+			If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+		</Tip>
    </Tab>
 	 <Tab title="Debian/Ubuntu">
 	 	Add Infisical repository 
@@ -88,7 +93,10 @@ The Infisical CLI provides a way to inject environment variables from the platfo
     	```bash
     	sudo apt-get update && sudo apt-get install -y infisical
     	```
-
+	###
+	<Tip>
+		If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+	</Tip>
    </Tab>
 	<Tab title="Arch Linux">
 		Use the `yay` package manager to install from the [Arch User Repository](https://aur.archlinux.org/packages/infisical-bin)
@@ -97,52 +105,9 @@ The Infisical CLI provides a way to inject environment variables from the platfo
 		yay -S infisical-bin
 		```
 
+	###
+	<Tip>
+		If you are installing the CLI in production environments, we highly recommend to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+	</Tip>
    </Tab>
 </Tabs>
-
-### Log in to the Infisical CLI
-
-```bash
-infisical login
-```
-
-<Accordion title="Optional: point CLI to self-hosted">
-The CLI is set to connect to Infisical Cloud by default, but if you're running your own instance of Infisical, you can direct the CLI to it using one of the methods provided below.
-
-#### Method 1: Use the updated CLI
-Beginning with CLI version V0.4.0, it is now possible to choose between logging in through the Infisical cloud or your own self-hosted instance. Simply execute the `infisical login` command and follow the on-screen instructions.
-
-#### Method 2: Export environment variable 
-You can point the CLI to the self hosted Infisical instance by exporting the environment variable `INFISICAL_API_URL` in your terminal.
-
-<Tabs>
-  <Tab title="Linux/MacOs">
-		```bash
-		# Set backend host 
-		export INFISICAL_API_URL="https://your-self-hosted-infisical.com/api"
-
-		# Remove backend host 
-		unset INFISICAL_API_URL
-		```
-  </Tab>
-  <Tab title="Windows Powershell">
-		```bash
-		# Set backend host 
-		setx INFISICAL_API_URL "https://your-self-hosted-infisical.com/api"
-
-		# Remove backend host 
-		setx INFISICAL_API_URL ""
-
-		# NOTE: Once set or removed, please restart powershell for the change to take effect
-		```
-  </Tab>
-</Tabs>
-
-#### Method 3: Set manually on every command
-Another option to point the CLI to your self hosted Infisical instance is to set it via a flag on every command you run.
-
-```bash 
-# Example
-infisical <any-command> --domain="https://your-self-hosted-infisical.com/api"
-```
-</Accordion>

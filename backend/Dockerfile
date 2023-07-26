@@ -19,6 +19,10 @@ RUN npm ci --only-production
 
 COPY --from=build /app .
 
+RUN apk add --no-cache bash curl && curl -1sLf \
+  'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
+  && apk add infisical=0.8.1
+
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \  
   CMD node healthcheck.js
 

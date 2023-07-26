@@ -56,7 +56,7 @@ export const login1 = async (req: Request, res: Response) => {
 
         if (!user) throw new Error("Failed to find user");
 
-        if (user.authProvider) {
+        if (user.authProvider && user.authProvider !== AuthProvider.EMAIL) {
             await validateProviderAuthToken({
                 email,
                 user,
@@ -117,7 +117,7 @@ export const login2 = async (req: Request, res: Response) => {
 
         if (!user) throw new Error("Failed to find user");
 
-        if (user.authProvider) {
+        if (user.authProvider && user.authProvider !== AuthProvider.EMAIL) {
             await validateProviderAuthToken({
                 email,
                 user,

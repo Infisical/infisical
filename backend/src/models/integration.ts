@@ -1,11 +1,14 @@
-import { Schema, Types, model } from "mongoose";
 import {
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_BITBUCKET,
   INTEGRATION_CHECKLY,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUD_66,
+  INTEGRATION_CODEFRESH,
+  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
@@ -18,8 +21,9 @@ import {
   INTEGRATION_SUPABASE,
   INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TRAVISCI,
-  INTEGRATION_VERCEL,
+  INTEGRATION_VERCEL
 } from "../variables";
+import { Schema, Types, model } from "mongoose";
 
 export interface IIntegration {
   _id: Types.ObjectId;
@@ -56,7 +60,11 @@ export interface IIntegration {
     | "checkly"
     | "terraform-cloud"
     | "hashicorp-vault"
-    | "cloudflare-pages";
+    | "cloudflare-pages"
+    | "bitbucket"
+    | "codefresh"
+    | "digital-ocean-app-platform"
+    | "cloud-66"
   integrationAuth: Types.ObjectId;
 }
 
@@ -147,6 +155,10 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_TERRAFORM_CLOUD,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
+        INTEGRATION_BITBUCKET,
+        INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
+        INTEGRATION_CODEFRESH,
+        INTEGRATION_CLOUD_66,
       ],
       required: true,
     },

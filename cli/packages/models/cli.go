@@ -65,4 +65,5 @@ type GetAllSecretsParameters struct {
 	TagSlugs                 string
 	WorkspaceId              string
 	SecretsPath              string
+	IncludeImport            bool
 }

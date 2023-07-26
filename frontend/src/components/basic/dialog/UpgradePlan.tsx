@@ -2,6 +2,8 @@ import { Fragment } from "react";
 import { useRouter } from "next/router";
 import { Dialog, Transition } from "@headlessui/react";
 
+import { useOrganization } from "@app/context";
+
 // REFACTOR: Move all these modals into one reusable one 
 type Props = {
   isOpen?: boolean;
@@ -15,6 +17,7 @@ const UpgradePlanModal = ({
   text,
 }:Props) => {
   const router = useRouter();
+  const { currentOrg } = useOrganization();
 
   return (
     <div>
@@ -61,7 +64,7 @@ const UpgradePlanModal = ({
                     <button
                       type='button'
                       className='inline-flex justify-center rounded-md border border-transparent bg-primary opacity-80 hover:opacity-100 px-4 py-2 text-sm font-medium text-black hover:text-semibold duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
-                      onClick={() => router.push(`/settings/billing/${localStorage.getItem("projectData.id")}`)}
+                      onClick={() => router.push(`/org/${currentOrg?._id}/billing`)}
                     >
                       Upgrade Now
                     </button>

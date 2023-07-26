@@ -72,12 +72,12 @@ export const TabsObject = () => {
       >
         Windows
       </Tabs.Trigger>
-      <Tabs.Trigger
+      {/* <Tabs.Trigger
         className="bg-bunker-700 px-5 h-10 flex-1 flex items-center justify-center text-sm leading-none text-bunker-300 select-none first:rounded-tl-md last:rounded-tr-md data-[state=active]:text-primary data-[state=active]:font-medium data-[state=active]:focus:relative data-[state=active]:border-b data-[state=active]:border-primary outline-none cursor-default"
         value="tab3"
       >
         Arch Linux
-      </Tabs.Trigger>
+      </Tabs.Trigger> */}
       <a
           target='_blank'
           rel="noopener noreferrer"
@@ -88,7 +88,7 @@ export const TabsObject = () => {
       </a>
     </Tabs.List>
     <Tabs.Content
-      className="grow p-5 bg-bunker-700 rounded-b-md outline-none cursor-default"
+      className="grow p-5 pt-0 bg-bunker-700 rounded-b-md outline-none cursor-default"
       value="tab1"
     >
       <CodeItem isCopied={downloadCodeCopied} setIsCopied={setDownloadCodeCopied} textExplanation="1. Download CLI" code="brew install infisical/get-cli/infisical" id="downloadCode" />
@@ -105,10 +105,10 @@ export const TabsObject = () => {
       </a>. </p>
     </Tabs.Content>
     <Tabs.Content
-      className="grow p-5 bg-bunker-700 rounded-b-md outline-none"
+      className="grow p-5 pt-0 bg-bunker-700 rounded-b-md outline-none"
       value="tab2"
     >
-      <CodeItem isCopied={downloadCodeCopied} setIsCopied={setDownloadCodeCopied} textExplanation="1. Download CLI" code="brew install infisical/get-cli/infisical" id="downloadCodeW" />
+      <CodeItem isCopied={downloadCodeCopied} setIsCopied={setDownloadCodeCopied} textExplanation="1. Download CLI" code="scoop bucket add org https://github.com/Infisical/scoop-infisical.git" id="downloadCodeW" />
       <div className='font-mono text-sm px-3 py-2 mt-2 bg-bunker rounded-md border border-mineshaft-600 flex flex-row items-center justify-between'>
         <input disabled value="scoop install infisical" id="downloadCodeW2" className='w-full bg-transparent text-bunker-200'/>
         <button
@@ -129,23 +129,6 @@ export const TabsObject = () => {
       <CodeItem isCopied={loginCodeCopied} setIsCopied={setLoginCodeCopied} textExplanation="2. Login" code="infisical login" id="loginCodeW" />
       <CodeItem isCopied={initCodeCopied} setIsCopied={setInitCodeCopied} textExplanation="3. Choose Project" code="infisical init" id="initCodeW" />
       <CodeItem isCopied={runCodeCopied} setIsCopied={setRunCodeCopied} textExplanation="4. Done! Now, you can prepend your usual start script with:" code="infisical run -- [YOUR USUAL CODE START SCRIPT GOES HERE]" id="runCodeW" />
-      <p className='text-bunker-300 text-sm mt-2'>You can find example of start commands for different frameworks <a
-        className='text-primary underline underline-offset-2'
-        target="_blank"
-        rel="noopener noreferrer"
-        href='https://infisical.com/docs/integrations/overview'
-      >
-        here
-      </a>. </p>
-    </Tabs.Content>
-    <Tabs.Content
-      className="grow p-5 bg-bunker-700 rounded-b-md outline-none cursor-default"
-      value="tab3"
-    >
-      <CodeItem isCopied={downloadCodeCopied} setIsCopied={setDownloadCodeCopied} textExplanation="1. Download CLI" code="brew install infisical/get-cli/infisical" id="downloadCodeL" />
-      <CodeItem isCopied={loginCodeCopied} setIsCopied={setLoginCodeCopied} textExplanation="2. Login" code="infisical login" id="loginCodeL" />
-      <CodeItem isCopied={initCodeCopied} setIsCopied={setInitCodeCopied} textExplanation="3. Choose Project" code="infisical init" id="initCodeL" />
-      <CodeItem isCopied={runCodeCopied} setIsCopied={setRunCodeCopied} textExplanation="4. Done! Now, you can prepend your usual start script with:" code="infisical run -- [YOUR USUAL CODE START SCRIPT GOES HERE]" id="runCodeL" />
       <p className='text-bunker-300 text-sm mt-2'>You can find example of start commands for different frameworks <a
         className='text-primary underline underline-offset-2'
         target="_blank"

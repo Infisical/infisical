@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { Integration } from "../../models";
 import { EventService } from "../../services";
-import { eventPushSecrets } from "../../events";
+import { eventStartIntegration } from "../../events";
 import Folder from "../../models/folder";
 import { getFolderByPath } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
@@ -27,19 +27,19 @@ export const createIntegration = async (req: Request, res: Response) => {
     owner,
     path,
     region,
-    secretPath,
+    secretPath
   } = req.body;
 
   const folders = await Folder.findOne({
     workspace: req.integrationAuth.workspace._id,
-    environment: sourceEnvironment,
+    environment: sourceEnvironment
   });
 
   if (folders) {
     const folder = getFolderByPath(folders.nodes, secretPath);
     if (!folder) {
       throw BadRequestError({
-        message: "Path for service token does not exist",
+        message: "Path for service token does not exist"
       });
     }
   }
@@ -62,21 +62,21 @@ export const createIntegration = async (req: Request, res: Response) => {
     region,
     secretPath,
     integration: req.integrationAuth.integration,
-    integrationAuth: new Types.ObjectId(integrationAuthId),
+    integrationAuth: new Types.ObjectId(integrationAuthId)
   }).save();
 
   if (integration) {
     // trigger event - push secrets
     EventService.handleEvent({
-      event: eventPushSecrets({
+      event: eventStartIntegration({
         workspaceId: integration.workspace,
-        environment: sourceEnvironment,
-      }),
+        environment: sourceEnvironment
+      })
     });
   }
 
   return res.status(200).send({
-    integration,
+    integration
   });
 };
 
@@ -97,26 +97,26 @@ export const updateIntegration = async (req: Request, res: Response) => {
     appId,
     targetEnvironment,
     owner, // github-specific integration param
-    secretPath,
+    secretPath
   } = req.body;
 
   const folders = await Folder.findOne({
     workspace: req.integration.workspace,
-    environment,
+    environment
   });
 
   if (folders) {
     const folder = getFolderByPath(folders.nodes, secretPath);
     if (!folder) {
       throw BadRequestError({
-        message: "Path for service token does not exist",
+        message: "Path for service token does not exist"
       });
     }
   }
 
   const integration = await Integration.findOneAndUpdate(
     {
-      _id: req.integration._id,
+      _id: req.integration._id
     },
     {
       environment,
@@ -125,25 +125,25 @@ export const updateIntegration = async (req: Request, res: Response) => {
       appId,
       targetEnvironment,
       owner,
-      secretPath,
+      secretPath
     },
     {
-      new: true,
+      new: true
     }
   );
 
   if (integration) {
     // trigger event - push secrets
     EventService.handleEvent({
-      event: eventPushSecrets({
+      event: eventStartIntegration({
         workspaceId: integration.workspace,
-        environment,
-      }),
+        environment
+      })
     });
   }
 
   return res.status(200).send({
-    integration,
+    integration
   });
 };
 
@@ -158,12 +158,12 @@ export const deleteIntegration = async (req: Request, res: Response) => {
   const { integrationId } = req.params;
 
   const integration = await Integration.findOneAndDelete({
-    _id: integrationId,
+    _id: integrationId
   });
 
   if (!integration) throw new Error("Failed to find integration");
 
   return res.status(200).send({
-    integration,
+    integration
   });
 };

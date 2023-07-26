@@ -3,10 +3,11 @@ import { Types } from "mongoose";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import {
-    MembershipOrg,
-    User,
     APIKeyData,
-    TokenVersion
+    AuthProvider,
+    MembershipOrg,
+    TokenVersion,
+    User
 } from "../../models";
 import { getSaltRounds } from "../../config";
 
@@ -77,6 +78,67 @@ export const updateMyMfaEnabled = async (req: Request, res: Response) => {
     
     return res.status(200).send({
         user,
+    });
+}
+
+/**
+ * Update name of the current user to [firstName, lastName].
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const updateName = async (req: Request, res: Response) => {
+    const { 
+        firstName, 
+        lastName 
+    }: { 
+        firstName: string; 
+        lastName: string; 
+    } = req.body;
+    
+    const user = await User.findByIdAndUpdate(
+        req.user._id.toString(),
+        {
+            firstName,
+            lastName: lastName ?? ""
+        },
+        {
+            new: true
+        }
+    );
+    
+    return res.status(200).send({
+        user,
+    });
+}
+
+/**
+ * Update auth provider of the current user to [authProvider]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const updateAuthProvider = async (req: Request, res: Response) => {
+    const {
+        authProvider
+    } = req.body;
+    
+    if (req.user?.authProvider === AuthProvider.OKTA_SAML) return res.status(400).send({
+        message: "Failed to update user authentication method because SAML SSO is enforced"
+    });
+
+    const user = await User.findByIdAndUpdate(
+        req.user._id.toString(),
+        {
+            authProvider
+        },
+        {
+            new: true
+        }
+    );
+
+    return res.status(200).send({
+        user
     });
 }
 

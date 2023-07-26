@@ -1,4 +1,3 @@
-import { Document, Schema, Types, model } from "mongoose";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_BASE64,
@@ -6,8 +5,12 @@ import {
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_BITBUCKET,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUD_66,
+  INTEGRATION_CODEFRESH,
+  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
@@ -22,11 +25,34 @@ import {
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL
 } from "../variables";
+import { Document, Schema, Types, model } from "mongoose";
 
 export interface IIntegrationAuth extends Document {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: "heroku" | "vercel" | "netlify" | "github" | "gitlab" | "render" | "railway" | "flyio" | "azure-key-vault" | "laravel-forge" | "circleci" | "travisci" | "supabase" | "aws-parameter-store" | "aws-secret-manager" | "terraform-cloud" | "checkly" | "cloudflare-pages";
+  integration:
+    | "heroku"
+    | "vercel"
+    | "netlify"
+    | "github"
+    | "gitlab"
+    | "render"
+    | "railway"
+    | "flyio"
+    | "azure-key-vault"
+    | "laravel-forge"
+    | "circleci"
+    | "travisci"
+    | "supabase"
+    | "aws-parameter-store"
+    | "aws-secret-manager"
+    | "checkly"
+    | "cloudflare-pages"
+    | "codefresh"
+    | "digital-ocean-app-platform"
+    | "bitbucket"
+    | "cloud-66"
+    | "terraform-cloud";
   teamId: string;
   accountId: string;
   url: string;
@@ -73,6 +99,10 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_TERRAFORM_CLOUD,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
+        INTEGRATION_BITBUCKET,
+        INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
+        INTEGRATION_CODEFRESH,
+        INTEGRATION_CLOUD_66,
       ],
       required: true,
     },

@@ -10,7 +10,8 @@ import {
   Modal,
   ModalContent,
   Select,
-  SelectItem} from "@app/components/v2";
+  SelectItem
+} from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useAddOrgTaxId } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -138,22 +139,22 @@ export const TaxIDModal = ({
                     defaultValue="eu_vat"
                     render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                         <FormControl
-                        label="Type"
-                        errorText={error?.message}
-                        isError={Boolean(error)}
+                            label="Type"
+                            errorText={error?.message}
+                            isError={Boolean(error)}
                         >
-                        <Select
-                            defaultValue={field.value}
-                            {...field}
-                            onValueChange={(e) => onChange(e)}
-                            className="w-full"
-                        >
-                            {taxIDTypes.map(({ label, value }) => (
-                            <SelectItem value={String(value || "")} key={label}>
-                                {label}
-                            </SelectItem>
-                            ))}
-                        </Select>
+                            <Select
+                                defaultValue={field.value}
+                                {...field}
+                                onValueChange={(e) => onChange(e)}
+                                className="w-full"
+                            >
+                                {taxIDTypes.map(({ label, value }) => (
+                                    <SelectItem value={String(value || "")} key={label}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
+                            </Select>
                         </FormControl>
                     )}
                 />
@@ -163,9 +164,9 @@ export const TaxIDModal = ({
                     name="value"
                     render={({ field, fieldState: { error } }) => (
                         <FormControl
-                        label="Value"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
+                            label="Value"
+                            isError={Boolean(error)}
+                            errorText={error?.message}
                         >
                         <Input 
                             {...field} 

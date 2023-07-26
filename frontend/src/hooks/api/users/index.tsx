@@ -6,6 +6,7 @@ export {
   useDeleteAPIKey,
   useDeleteOrgMembership,
   useGetMyAPIKeys,
+  useGetMyIp,
   useGetMySessions,
   useGetOrgUsers,
   useGetUser,
@@ -13,4 +14,6 @@ export {
   useLogoutUser,
   useRegisterUserAction,
   useRevokeMySessions,
-  useUpdateOrgUserRole} from "./queries";
+  useUpdateOrgUserRole,
+  useUpdateUserAuthProvider
+} from "./queries";

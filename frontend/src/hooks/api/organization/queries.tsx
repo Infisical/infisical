@@ -10,8 +10,9 @@ import {
   PlanBillingInfo,
   PmtMethod,
   ProductsTable,
-  RenameOrgDTO, 
-  TaxID} from "./types";
+  RenameOrgDTO,
+  TaxID
+} from "./types";
 
 const organizationKeys = {
   getUserOrganization: ["organization"] as const,
@@ -21,7 +22,7 @@ const organizationKeys = {
   getOrgBillingDetails: (orgId: string) => [{ orgId }, "organization-billing-details"] as const,
   getOrgPmtMethods: (orgId: string) => [{ orgId }, "organization-pmt-methods"] as const,
   getOrgTaxIds: (orgId: string) => [{ orgId }, "organization-tax-ids"] as const,
-  getOrgInvoices: (orgId: string) => [{ orgId }, "organization-invoices"] as const
+  getOrgInvoices: (orgId: string) => [{ orgId }, "organization-invoices"] as const,
 };
 
 export const useGetOrganization = () => {
@@ -43,6 +44,24 @@ export const useRenameOrg = () => {
       apiRequest.patch(`/api/v1/organization/${orgId}/name`, { name: newOrgName }),
     onSuccess: () => {
       queryClient.invalidateQueries(organizationKeys.getUserOrganization);
+    }
+  });
+};
+
+export const useGetOrgTrialUrl = () => {
+  return useMutation({
+    mutationFn: async ({ 
+      orgId, 
+      success_url 
+    }: {
+      orgId: string;
+      success_url: string;
+    }) => {
+      const { data: { url } } = await apiRequest.post(`/api/v1/organizations/${orgId}/session/trial`, {
+        success_url
+      })
+      
+      return url;
     }
   });
 };

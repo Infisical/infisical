@@ -14,6 +14,9 @@ import {
   licenseKeyRequest,
   licenseServerKeyRequest,
 } from "../config/request";
+import {
+  createBotOrg
+} from "./botOrg";
 
 /**
  * Create an organization with name [name]
@@ -29,6 +32,7 @@ export const createOrganization = async ({
   name: string;
   email: string;
 }) => {
+  
   const licenseServerKey = await getLicenseServerKey();
   let organization;
   
@@ -51,6 +55,12 @@ export const createOrganization = async ({
       name,
     }).save();
   }
+
+  // initialize bot for organization
+  await createBotOrg({
+    name,
+    organizationId: organization._id
+  });
 
   return organization;
 };

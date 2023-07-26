@@ -46,9 +46,7 @@ const secretSnapshotSchema = new Schema<ISecretSnapshot>(
   }
 );
 
-const SecretSnapshot = model<ISecretSnapshot>(
+export const SecretSnapshot = model<ISecretSnapshot>(
   "SecretSnapshot",
   secretSnapshotSchema
 );
-
-export default SecretSnapshot;

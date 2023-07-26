@@ -35,7 +35,7 @@ export const AutoCapitalizationSection = () => {
   }
 
   return (
-    <div className="mb-6 p-4 bg-mineshaft-900 max-w-screen-lg rounded-lg border border-mineshaft-600">
+    <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
       <p className="mb-3 text-xl font-semibold">{t("settings.project.auto-capitalization")}</p>
       <Checkbox
         className="data-[state=checked]:bg-primary"

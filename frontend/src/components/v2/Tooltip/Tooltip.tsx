@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { twMerge } from "tailwind-merge";
 
-export type TooltipProps = {
+export type TooltipProps = Omit<TooltipPrimitive.TooltipContentProps, "open" | "content"> & {
   children: ReactNode;
   content?: ReactNode;
   isOpen?: boolean;
@@ -10,7 +10,7 @@ export type TooltipProps = {
   asChild?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
   defaultOpen?: boolean;
-} & Omit<TooltipPrimitive.TooltipContentProps, "open">;
+};
 
 export const Tooltip = ({
   children,

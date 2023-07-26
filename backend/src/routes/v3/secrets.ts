@@ -1,10 +1,6 @@
 import express from "express";
 const router = express.Router();
-import {
-  requireAuth,
-  requireWorkspaceAuth,
-  validateRequest,
-} from "../../middleware";
+import { requireAuth, requireWorkspaceAuth, validateRequest } from "../../middleware";
 import { body, param, query } from "express-validator";
 import { secretsController } from "../../controllers/v3";
 import {
@@ -17,30 +13,23 @@ import {
   PERMISSION_READ_SECRETS,
   PERMISSION_WRITE_SECRETS,
   SECRET_PERSONAL,
-  SECRET_SHARED,
+  SECRET_SHARED
 } from "../../variables";
 
 router.get(
   "/raw",
-  query("workspaceId").exists().isString().trim(),
-  query("environment").exists().isString().trim(),
+  query("workspaceId").optional().isString().trim(),
+  query("environment").optional().isString().trim(),
   query("secretPath").default("/").isString().trim(),
+  query("include_imports").optional().isBoolean().default(false),
   validateRequest,
   requireAuth({
     acceptedAuthModes: [
       AUTH_MODE_JWT,
       AUTH_MODE_API_KEY,
       AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT,
-    ],
-  }),
-  requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "query",
-    locationEnvironment: "query",
-    requiredPermissions: [PERMISSION_READ_SECRETS],
-    requireBlindIndicesEnabled: true,
-    requireE2EEOff: true,
+      AUTH_MODE_SERVICE_ACCOUNT
+    ]
   }),
   secretsController.getSecretsRaw
 );
@@ -58,8 +47,8 @@ router.get(
       AUTH_MODE_JWT,
       AUTH_MODE_API_KEY,
       AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT,
-    ],
+      AUTH_MODE_SERVICE_ACCOUNT
+    ]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -68,6 +57,7 @@ router.get(
     requiredPermissions: [PERMISSION_READ_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: true,
+    checkIPAllowlist: true
   }),
   secretsController.getSecretByNameRaw
 );
@@ -86,8 +76,8 @@ router.post(
       AUTH_MODE_JWT,
       AUTH_MODE_API_KEY,
       AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT,
-    ],
+      AUTH_MODE_SERVICE_ACCOUNT
+    ]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -96,6 +86,7 @@ router.post(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: true,
+    checkIPAllowlist: true
   }),
   secretsController.createSecretRaw
 );
@@ -114,8 +105,8 @@ router.patch(
       AUTH_MODE_JWT,
       AUTH_MODE_API_KEY,
       AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT,
-    ],
+      AUTH_MODE_SERVICE_ACCOUNT
+    ]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -124,6 +115,7 @@ router.patch(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: true,
+    checkIPAllowlist: true
   }),
   secretsController.updateSecretByNameRaw
 );
@@ -141,8 +133,8 @@ router.delete(
       AUTH_MODE_JWT,
       AUTH_MODE_API_KEY,
       AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT,
-    ],
+      AUTH_MODE_SERVICE_ACCOUNT
+    ]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -151,6 +143,7 @@ router.delete(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: true,
+    checkIPAllowlist: true
   }),
   secretsController.deleteSecretByNameRaw
 );
@@ -166,8 +159,8 @@ router.get(
       AUTH_MODE_JWT,
       AUTH_MODE_API_KEY,
       AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT,
-    ],
+      AUTH_MODE_SERVICE_ACCOUNT
+    ]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -176,6 +169,7 @@ router.get(
     requiredPermissions: [PERMISSION_READ_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: false,
+    checkIPAllowlist: true
   }),
   secretsController.getSecrets
 );
@@ -201,8 +195,8 @@ router.post(
       AUTH_MODE_JWT,
       AUTH_MODE_API_KEY,
       AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT,
-    ],
+      AUTH_MODE_SERVICE_ACCOUNT
+    ]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -211,6 +205,7 @@ router.post(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: false,
+    checkIPAllowlist: true
   }),
   secretsController.createSecret
 );
@@ -228,8 +223,8 @@ router.get(
       AUTH_MODE_JWT,
       AUTH_MODE_API_KEY,
       AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT,
-    ],
+      AUTH_MODE_SERVICE_ACCOUNT
+    ]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -237,6 +232,7 @@ router.get(
     locationEnvironment: "query",
     requiredPermissions: [PERMISSION_READ_SECRETS],
     requireBlindIndicesEnabled: true,
+    checkIPAllowlist: true
   }),
   secretsController.getSecretByName
 );
@@ -257,8 +253,8 @@ router.patch(
       AUTH_MODE_JWT,
       AUTH_MODE_API_KEY,
       AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT,
-    ],
+      AUTH_MODE_SERVICE_ACCOUNT
+    ]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -267,6 +263,7 @@ router.patch(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: false,
+    checkIPAllowlist: true
   }),
   secretsController.updateSecretByName
 );
@@ -284,8 +281,8 @@ router.delete(
       AUTH_MODE_JWT,
       AUTH_MODE_API_KEY,
       AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT,
-    ],
+      AUTH_MODE_SERVICE_ACCOUNT
+    ]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -294,6 +291,7 @@ router.delete(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: false,
+    checkIPAllowlist: true
   }),
   secretsController.deleteSecretByName
 );

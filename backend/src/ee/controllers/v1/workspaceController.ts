@@ -3,16 +3,20 @@ import { PipelineStage, Types } from "mongoose";
 import { Secret } from "../../../models";
 import {
   FolderVersion,
+  IPType,
   ISecretVersion,
   Log,
   SecretSnapshot,
   SecretVersion,
   TFolderRootVersionSchema,
+  TrustedIP
 } from "../../models";
 import { EESecretService } from "../../services";
 import { getLatestSecretVersionIds } from "../../helpers/secretVersion";
 import Folder, { TFolderSchema } from "../../../models/folder";
 import { searchByFolderId } from "../../../services/FolderService";
+import { EELicenseService } from "../../services";
+import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
 
 /**
  * Return secret snapshots for workspace with id [workspaceId]
@@ -588,3 +592,147 @@ export const getWorkspaceLogs = async (req: Request, res: Response) => {
     logs,
   });
 };
+
+/**
+ * Return trusted ips for workspace with id [workspaceId]
+ * @param req
+ * @param res 
+ */
+export const getWorkspaceTrustedIps = async (req: Request, res: Response) => {
+  const { workspaceId } = req.params;
+
+  const trustedIps = await TrustedIP.find({
+    workspace: new Types.ObjectId(workspaceId)
+  });
+    
+  return res.status(200).send({
+    trustedIps
+  });
+}
+
+/**
+ * Add a trusted ip to workspace with id [workspaceId]
+ * @param req 
+ * @param res 
+ */
+export const addWorkspaceTrustedIp = async (req: Request, res: Response) => {
+  const { workspaceId } = req.params;
+  const {
+    ipAddress: ip,
+    comment,
+    isActive
+  } = req.body;
+  
+  const plan = await EELicenseService.getPlan(req.workspace.organization.toString());
+  
+  if (!plan.ipAllowlisting) return res.status(400).send({
+    message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
+  });
+  
+  const isValidIPOrCidr = isValidIpOrCidr(ip);
+  
+  if (!isValidIPOrCidr) return res.status(400).send({
+    message: "The IP is not a valid IPv4, IPv6, or CIDR block"
+  });
+  
+  const { ipAddress, type, prefix } = extractIPDetails(ip);
+
+  const trustedIp = await new TrustedIP({
+    workspace: new Types.ObjectId(workspaceId),
+    ipAddress,
+    type,
+    prefix,
+    isActive,
+    comment,
+  }).save();
+
+  return res.status(200).send({
+    trustedIp
+  });
+}
+
+/**
+ * Update trusted ip with id [trustedIpId] workspace with id [workspaceId]
+ * @param req 
+ * @param res 
+ */
+export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
+  const { workspaceId, trustedIpId } = req.params;
+  const {
+    ipAddress: ip,
+    comment
+  } = req.body;
+
+  const plan = await EELicenseService.getPlan(req.workspace.organization.toString());
+
+  if (!plan.ipAllowlisting) return res.status(400).send({
+    message: "Failed to update IP access range due to plan restriction. Upgrade plan to update IP access range."
+  });
+
+  const isValidIPOrCidr = isValidIpOrCidr(ip);
+  
+  if (!isValidIPOrCidr) return res.status(400).send({
+    message: "The IP is not a valid IPv4, IPv6, or CIDR block"
+  });
+  
+  const { ipAddress, type, prefix } = extractIPDetails(ip);
+
+  const updateObject: {
+    ipAddress: string;
+    type: IPType;
+    comment: string;
+    prefix?: number;
+    $unset?: {
+      prefix: number;
+    }
+  } = {
+    ipAddress,
+    type,
+    comment
+  };
+  
+  if (prefix !== undefined) {
+    updateObject.prefix = prefix;
+  } else {
+    updateObject.$unset = { prefix: 1 };
+  }
+  
+  const trustedIp = await TrustedIP.findOneAndUpdate(
+    {
+      _id: new Types.ObjectId(trustedIpId),
+      workspace: new Types.ObjectId(workspaceId),
+    },
+    updateObject,
+    {
+      new: true
+    }
+  );
+  
+  return res.status(200).send({
+    trustedIp
+  });
+}
+
+/**
+ * Delete IP access range from workspace with id [workspaceId]
+ * @param req 
+ * @param res 
+ */
+export const deleteWorkspaceTrustedIp = async (req: Request, res: Response) => {
+  const { workspaceId, trustedIpId } = req.params;
+
+  const plan = await EELicenseService.getPlan(req.workspace.organization.toString());
+  
+  if (!plan.ipAllowlisting) return res.status(400).send({
+    message: "Failed to delete IP access range due to plan restriction. Upgrade plan to delete IP access range."
+  });
+  
+  const trustedIp = await TrustedIP.findOneAndDelete({
+    _id: new Types.ObjectId(trustedIpId),
+    workspace: new Types.ObjectId(workspaceId)
+  });
+
+  return res.status(200).send({
+    trustedIp
+  });
+}

@@ -21,6 +21,10 @@
       "to": "#F8B7BD"
     }
   },
+  "feedback": {
+    "suggestEdit": true,
+    "raiseIssue": true
+  },
   "api": {
     "baseUrl": ["https://app.infisical.com", "http://localhost:8080"],
     "auth": {
@@ -69,7 +73,7 @@
     {
       "name": "Slack",
       "icon": "slack",
-      "url": "https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg"
+      "url": "https://infisical.com/slack"
     },
     {
       "name": "GitHub",
@@ -87,9 +91,8 @@
             "documentation/getting-started/introduction",
             "documentation/getting-started/platform",
             "documentation/getting-started/sdks",
-            "documentation/getting-started/cli",
-            "documentation/getting-started/docker",
-            "documentation/getting-started/kubernetes",
+            "integrations/platforms/kubernetes",
+            "integrations/platforms/docker-intro",
             "documentation/getting-started/api"
           ]
         },
@@ -110,11 +113,15 @@
         "documentation/platform/organization",
         "documentation/platform/project",
         "documentation/platform/folder",
+        "documentation/platform/secret-reference",
+        "documentation/platform/webhooks",
         "documentation/platform/pit-recovery",
         "documentation/platform/secret-versioning",
         "documentation/platform/audit-logs",
+        "documentation/platform/token",
+        "documentation/platform/ip-allowlisting",
         "documentation/platform/mfa",
-        "documentation/platform/token"
+        "documentation/platform/saml"
       ]
     },
     {
@@ -172,21 +179,39 @@
     {
       "group": "Integrations",
       "pages": [
-        "integrations/overview",
+        "integrations/overview"
+      ]
+    },
+    {
+      "group": "Infrastructure Integrations",
+      "pages": [
         {
           "group": "Docker",
           "pages": [
+            "integrations/platforms/docker-intro",
             "integrations/platforms/docker",
+            "integrations/platforms/docker-pass-envs",
             "integrations/platforms/docker-compose"
           ]
         },
         "integrations/platforms/kubernetes",
-        "integrations/frameworks/terraform",
+        "integrations/frameworks/terraform"
+      ]
+    },
+    {
+      "group": "3rd-party Integrations",
+      "pages": [
         {
           "group": "AWS",
           "pages": [
             "integrations/cloud/aws-parameter-store",
             "integrations/cloud/aws-secret-manager"
+          ]
+        },
+        {
+          "group": "Digital Ocean",
+          "pages": [
+            "integrations/cloud/digital-ocean-app-platform"
           ]
         },
         "integrations/cloud/heroku",
@@ -202,10 +227,18 @@
         "integrations/cloud/checkly",
         "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",
+        "integrations/cloud/cloud-66",
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",
         "integrations/cicd/circleci",
         "integrations/cicd/travisci",
+        "integrations/cicd/bitbucket",
+        "integrations/cicd/codefresh"
+      ]
+    },
+    {
+      "group": "Framework Integrations",
+      "pages": [
         "integrations/frameworks/spring-boot-maven",
         "integrations/frameworks/react",
         "integrations/frameworks/vue",
@@ -229,18 +262,6 @@
     {
       "group": "Overview",
       "pages": ["sdks/overview"]
-    },
-    {
-      "group": "SDKs",
-      "pages": [
-        "sdks/languages/node",
-        "sdks/languages/python",
-        "sdks/languages/java",
-        "sdks/languages/ruby",
-        "sdks/languages/go",
-        "sdks/languages/rust",
-        "sdks/languages/php"
-      ]
     },
     {
       "group": "Overview",
@@ -312,7 +333,8 @@
       "pages": [
         "security/overview",
         "security/data-model",
-        "security/mechanics"
+        "security/mechanics",
+        "security/service-tokens"
       ]
     },
     {

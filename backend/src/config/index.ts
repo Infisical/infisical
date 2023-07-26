@@ -10,7 +10,7 @@ export const getEncryptionKey = async () => {
   return secretValue === "" ? undefined : secretValue;
 }
 export const getRootEncryptionKey = async () => {
-  const secretValue = (await client.getSecret("ROOT_ENCRYPTION_KEY")).secretValue; 
+  const secretValue = (await client.getSecret("ROOT_ENCRYPTION_KEY")).secretValue;
   return secretValue === "" ? undefined : secretValue;
 }
 export const getInviteOnlySignup = async () => (await client.getSecret("INVITE_ONLY_SIGNUP")).secretValue === "true"
@@ -37,6 +37,7 @@ export const getClientIdNetlify = async () => (await client.getSecret("CLIENT_ID
 export const getClientIdGitHub = async () => (await client.getSecret("CLIENT_ID_GITHUB")).secretValue;
 export const getClientIdGitLab = async () => (await client.getSecret("CLIENT_ID_GITLAB")).secretValue;
 export const getClientIdGoogle = async () => (await client.getSecret("CLIENT_ID_GOOGLE")).secretValue;
+export const getClientIdBitBucket = async () => (await client.getSecret("CLIENT_ID_BITBUCKET")).secretValue;
 export const getClientSecretAzure = async () => (await client.getSecret("CLIENT_SECRET_AZURE")).secretValue;
 export const getClientSecretHeroku = async () => (await client.getSecret("CLIENT_SECRET_HEROKU")).secretValue;
 export const getClientSecretVercel = async () => (await client.getSecret("CLIENT_SECRET_VERCEL")).secretValue;
@@ -44,6 +45,7 @@ export const getClientSecretNetlify = async () => (await client.getSecret("CLIEN
 export const getClientSecretGitHub = async () => (await client.getSecret("CLIENT_SECRET_GITHUB")).secretValue;
 export const getClientSecretGitLab = async () => (await client.getSecret("CLIENT_SECRET_GITLAB")).secretValue;
 export const getClientSecretGoogle = async () => (await client.getSecret("CLIENT_SECRET_GOOGLE")).secretValue;
+export const getClientSecretBitBucket = async () => (await client.getSecret("CLIENT_SECRET_BITBUCKET")).secretValue;
 export const getClientSlugVercel = async () => (await client.getSecret("CLIENT_SLUG_VERCEL")).secretValue;
 export const getPostHogHost = async () => (await client.getSecret("POSTHOG_HOST")).secretValue || "https://app.posthog.com";
 export const getPostHogProjectApiKey = async () => (await client.getSecret("POSTHOG_PROJECT_API_KEY")).secretValue || "phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE";
@@ -56,6 +58,11 @@ export const getSmtpUsername = async () => (await client.getSecret("SMTP_USERNAM
 export const getSmtpPassword = async () => (await client.getSecret("SMTP_PASSWORD")).secretValue;
 export const getSmtpFromAddress = async () => (await client.getSecret("SMTP_FROM_ADDRESS")).secretValue;
 export const getSmtpFromName = async () => (await client.getSecret("SMTP_FROM_NAME")).secretValue || "Infisical";
+
+export const getSecretScanningWebhookProxy = async () => (await client.getSecret("SECRET_SCANNING_WEBHOOK_PROXY")).secretValue;
+export const getSecretScanningWebhookSecret = async () => (await client.getSecret("SECRET_SCANNING_WEBHOOK_SECRET")).secretValue;
+export const getSecretScanningGitAppId = async () => (await client.getSecret("SECRET_SCANNING_GIT_APP_ID")).secretValue;
+export const getSecretScanningPrivateKey = async () => (await client.getSecret("SECRET_SCANNING_PRIVATE_KEY")).secretValue;
 
 export const getLicenseKey = async () => {
   const secretValue = (await client.getSecret("LICENSE_KEY")).secretValue;

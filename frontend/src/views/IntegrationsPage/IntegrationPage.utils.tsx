@@ -35,7 +35,7 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
     // generate CSRF token for OAuth2 code-token exchange integrations
     const state = crypto.randomBytes(16).toString("hex");
     localStorage.setItem("latestCSRFToken", state);
-
+    
     let link = "";
     switch (integrationOption.slug) {
       case "azure-key-vault":
@@ -94,6 +94,18 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
         break;
       case "cloudflare-pages":
         link = `${window.location.origin}/integrations/cloudflare-pages/authorize`;
+        break;
+      case "bitbucket":
+        link = `https://bitbucket.org/site/oauth2/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/bitbucket/oauth2/callback&state=${state}`;
+        break;
+      case "codefresh":
+        link = `${window.location.origin}/integrations/codefresh/authorize`;
+        break;
+      case "digital-ocean-app-platform":
+        link = `${window.location.origin}/integrations/digital-ocean-app-platform/authorize`;
+        break;
+      case "cloud-66":
+        link = `${window.location.origin}/integrations/cloud-66/authorize`;
         break;
       default:
         break;

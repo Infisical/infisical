@@ -34,6 +34,7 @@ export type DecryptedSecret = {
   valueOverride?: string;
   idOverride?: string;
   overrideAction?: string;
+  folderId?: string;
 };
 
 export type EncryptedSecretVersion = {
@@ -98,6 +99,7 @@ export type GetProjectSecretsDTO = {
   folderId?: string;
   secretPath?: string;
   isPaused?: boolean;
+  include_imports?: boolean;
   onSuccess?: (data: DecryptedSecret[]) => void;
 };
 

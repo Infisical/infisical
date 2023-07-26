@@ -6,13 +6,18 @@ import {
   validateRequest,
 } from "../../../middleware";
 import { body, param, query } from "express-validator";
-import { ADMIN, MEMBER } from "../../../variables";
+import {
+  ADMIN, 
+  AUTH_MODE_API_KEY,
+  AUTH_MODE_JWT,
+  MEMBER
+} from "../../../variables";
 import { workspaceController } from "../../controllers/v1";
 
 router.get(
   "/:workspaceId/secret-snapshots",
   requireAuth({
-    acceptedAuthModes: ["jwt", "apiKey"],
+    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -30,7 +35,7 @@ router.get(
 router.get(
   "/:workspaceId/secret-snapshots/count",
   requireAuth({
-    acceptedAuthModes: ["jwt"],
+    acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -46,7 +51,7 @@ router.get(
 router.post(
   "/:workspaceId/secret-snapshots/rollback",
   requireAuth({
-    acceptedAuthModes: ["jwt", "apiKey"],
+    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -63,7 +68,7 @@ router.post(
 router.get(
   "/:workspaceId/logs",
   requireAuth({
-    acceptedAuthModes: ["jwt", "apiKey"],
+    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -77,6 +82,68 @@ router.get(
   query("actionNames"),
   validateRequest,
   workspaceController.getWorkspaceLogs
+);
+
+router.get(
+  "/:workspaceId/trusted-ips",
+  param("workspaceId").exists().isString().trim(),
+  requireAuth({
+      acceptedAuthModes: [AUTH_MODE_JWT],
+  }),
+  requireWorkspaceAuth({
+      acceptedRoles: [ADMIN, MEMBER],
+      locationWorkspaceId: "params",
+  }),
+  workspaceController.getWorkspaceTrustedIps
+);
+
+router.post(
+  "/:workspaceId/trusted-ips",
+  param("workspaceId").exists().isString().trim(),
+  body("ipAddress").exists().isString().trim(),
+  body("comment").default("").isString().trim(),
+  body("isActive").exists().isBoolean(),
+  validateRequest,
+  requireAuth({
+      acceptedAuthModes: [AUTH_MODE_JWT],
+  }),
+  requireWorkspaceAuth({
+      acceptedRoles: [ADMIN],
+      locationWorkspaceId: "params",
+  }),
+  workspaceController.addWorkspaceTrustedIp
+);
+
+router.patch(
+  "/:workspaceId/trusted-ips/:trustedIpId",
+  param("workspaceId").exists().isString().trim(),
+  param("trustedIpId").exists().isString().trim(),
+  body("ipAddress").isString().trim().default(""),
+  body("comment").default("").isString().trim(),
+  validateRequest,
+  requireAuth({
+      acceptedAuthModes: [AUTH_MODE_JWT],
+  }),
+  requireWorkspaceAuth({
+      acceptedRoles: [ADMIN],
+      locationWorkspaceId: "params",
+  }),
+  workspaceController.updateWorkspaceTrustedIp
+);
+
+router.delete(
+  "/:workspaceId/trusted-ips/:trustedIpId",
+  param("workspaceId").exists().isString().trim(),
+  param("trustedIpId").exists().isString().trim(),
+  validateRequest,
+  requireAuth({
+      acceptedAuthModes: [AUTH_MODE_JWT],
+  }),
+  requireWorkspaceAuth({
+      acceptedRoles: [ADMIN],
+      locationWorkspaceId: "params",
+  }),
+  workspaceController.deleteWorkspaceTrustedIp
 );
 
 export default router;

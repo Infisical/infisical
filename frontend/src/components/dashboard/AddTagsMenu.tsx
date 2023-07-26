@@ -50,7 +50,7 @@ const AddTagsMenu = ({ allTags, currentTags, modifyTags, id }: { allTags: Tag[];
           <button
             type="button"
             className='w-full text-left bg-mineshaft-800 hover:bg-primary hover:text-black duration-200 px-2 py-0.5 text-bunker-200 rounded-sm'
-            onClick={() => router.push(`/settings/project/${String(router.query.id)}`)}
+            onClick={() => router.push(`/project/${String(router.query.id)}/settings`)}
           >
             <FontAwesomeIcon icon={faPlus} className="mr-2 text-xs" />Add more tags
           </button>

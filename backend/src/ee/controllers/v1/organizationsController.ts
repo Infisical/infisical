@@ -28,6 +28,30 @@ export const getOrganizationPlan = async (req: Request, res: Response) => {
 }
 
 /**
+ * Return checkout url for pro trial
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const startOrganizationTrial = async (req: Request, res: Response) => {
+    const { organizationId } = req.params;
+    const { success_url } = req.body;
+
+    const { data: { url } } = await licenseServerKeyRequest.post(
+        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/session/trial`,
+        {
+            success_url
+        }
+    ); 
+    
+    EELicenseService.delPlan(organizationId);
+    
+    return res.status(200).send({
+        url
+    });
+}
+
+/**
  * Return the organization's current plan's billing info
  * @param req 
  * @param res 
@@ -154,6 +178,12 @@ export const addOrganizationTaxId = async (req: Request, res: Response) => {
     return res.status(200).send(data); 
 }
 
+/**
+ * Delete tax id with id [taxId] from organization tax ids on file
+ * @param req 
+ * @param res 
+ * @returns 
+ */
 export const deleteOrganizationTaxId = async (req: Request, res: Response) => {
     const { taxId } = req.params;
 
@@ -164,6 +194,12 @@ export const deleteOrganizationTaxId = async (req: Request, res: Response) => {
     return res.status(200).send(data); 
 }
 
+/**
+ * Return organization's invoices on file
+ * @param req 
+ * @param res 
+ * @returns 
+ */
 export const getOrganizationInvoices = async (req: Request, res: Response) => {
     const { data: { invoices } } = await licenseServerKeyRequest.get(
         `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/invoices`

@@ -27,16 +27,16 @@ export const createWorkspaceEnvironment = async (
   const { workspaceId } = req.params;
   const { environmentName, environmentSlug } = req.body;
   const workspace = await Workspace.findById(workspaceId).exec();
-  
+
   if (!workspace) throw WorkspaceNotFoundError();
-  
+
   const plan = await EELicenseService.getPlan(workspace.organization.toString());
-  
+
   if (plan.environmentLimit !== null) {
     // case: limit imposed on number of environments allowed
     if (workspace.environments.length >= plan.environmentLimit) {
       // case: number of environments used exceeds the number of environments allowed
-      
+
       return res.status(400).send({
         message: "Failed to create environment due to environment limit reached. Upgrade plan to create more environments.",
       });
@@ -191,14 +191,21 @@ export const deleteWorkspaceEnvironment = async (
     workspace: workspaceId,
     environment: environmentSlug,
   });
-  await ServiceToken.deleteMany({
-    workspace: workspaceId,
-    environment: environmentSlug,
-  });
-  await ServiceTokenData.deleteMany({
-    workspace: workspaceId,
-    environment: environmentSlug,
-  });
+
+  // await ServiceToken.deleteMany({
+  //   workspace: workspaceId,
+  //   environment: environmentSlug,
+  // });
+
+  const result = await ServiceTokenData.updateMany(
+    { workspace: workspaceId },
+    { $pull: { scopes: { environment: environmentSlug } } }
+  );
+
+  if (result.modifiedCount > 0) {
+    await ServiceTokenData.deleteMany({ workspace: workspaceId, scopes: { $size: 0 } });
+  }
+
   await Integration.deleteMany({
     workspace: workspaceId,
     environment: environmentSlug,
