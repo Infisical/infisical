@@ -55,10 +55,16 @@ export const IPAllowlistModal = ({
     });
     
     useEffect(() => {
+        const trustedIpData = popUp?.trustedIp?.data as { 
+            ipAddress: string;
+            comment: string;
+            prefix: number;
+        };
+
         if (popUp?.trustedIp?.data) {
-            reset(popUp?.trustedIp?.data as { 
-                ipAddress: string;
-                comment: string;
+            reset({
+                ipAddress: `${trustedIpData.ipAddress}${trustedIpData.prefix !== undefined ? `/${trustedIpData.prefix}` : ""}`,
+                comment: trustedIpData.comment
             });
         } else {
            reset({

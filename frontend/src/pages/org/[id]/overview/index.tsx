@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { faSlack } from "@fortawesome/free-brands-svg-icons";
@@ -325,9 +324,12 @@ export default function Organization() {
           {orgWorkspaces.filter(ws => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase())).map(workspace => <div key={workspace._id} className="h-40 min-w-72 rounded-md bg-mineshaft-800 border border-mineshaft-600 p-4 flex flex-col justify-between">
             <div className="text-lg text-mineshaft-100 mt-0">{workspace.name}</div>
             <div className="text-sm text-mineshaft-300 mt-0 pb-6">{(workspace.environments?.length || 0)} environments</div>
-            <Link href={`/project/${workspace._id}/secrets`}>
-              <div className="group cursor-default ml-auto hover:bg-primary-800/20 text-sm text-mineshaft-300 hover:text-mineshaft-200 bg-mineshaft-900 py-2 px-4 rounded-full w-max border border-mineshaft-600 hover:border-primary-500/80">Explore <FontAwesomeIcon icon={faArrowRight} className="pl-1.5 pr-0.5 group-hover:pl-2 group-hover:pr-0 duration-200" /></div>
-            </Link>
+            <button type="button" onClick={() => {
+              router.push(`/project/${workspace._id}/secrets`);
+              localStorage.setItem("projectData.id", workspace._id);
+            }}>
+                <div className="group cursor-default ml-auto hover:bg-primary-800/20 text-sm text-mineshaft-300 hover:text-mineshaft-200 bg-mineshaft-900 py-2 px-4 rounded-full w-max border border-mineshaft-600 hover:border-primary-500/80">Explore <FontAwesomeIcon icon={faArrowRight} className="pl-1.5 pr-0.5 group-hover:pl-2 group-hover:pr-0 duration-200" /></div>
+            </button>
           </div>)}
         </div>
         {orgWorkspaces.length === 0 && ( 

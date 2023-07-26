@@ -32,7 +32,7 @@ export const CloudIntegrationSection = ({
   const isEmpty = !isLoading && !cloudIntegrations?.length;
 
   const sortedCloudIntegrations = cloudIntegrations.sort((a, b) => a.name.localeCompare(b.name));
-
+  
   return (
     <div>
       <div className="m-4 mt-7 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">

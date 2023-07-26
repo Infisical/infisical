@@ -3,6 +3,7 @@ import { PipelineStage, Types } from "mongoose";
 import { Secret } from "../../../models";
 import {
   FolderVersion,
+  IPType,
   ISecretVersion,
   Log,
   SecretSnapshot,
@@ -675,23 +676,38 @@ export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
   });
   
   const { ipAddress, type, prefix } = extractIPDetails(ip);
+
+  const updateObject: {
+    ipAddress: string;
+    type: IPType;
+    comment: string;
+    prefix?: number;
+    $unset?: {
+      prefix: number;
+    }
+  } = {
+    ipAddress,
+    type,
+    comment
+  };
+  
+  if (prefix !== undefined) {
+    updateObject.prefix = prefix;
+  } else {
+    updateObject.$unset = { prefix: 1 };
+  }
   
   const trustedIp = await TrustedIP.findOneAndUpdate(
     {
       _id: new Types.ObjectId(trustedIpId),
       workspace: new Types.ObjectId(workspaceId),
     },
-    {
-      ipAddress,
-      type,
-      prefix,
-      comment
-    },
+    updateObject,
     {
       new: true
     }
   );
-
+  
   return res.status(200).send({
     trustedIp
   });
