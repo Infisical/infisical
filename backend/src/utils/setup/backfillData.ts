@@ -4,11 +4,11 @@ import { Types } from "mongoose";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../crypto";
 import { EESecretService } from "../../ee/services";
 import { 
+  IPType, 
   ISecretVersion, 
-  SecretSnapshot, 
+  SecretSnapshot,
   SecretVersion,
-  TrustedIP,
-  IPType
+  TrustedIP
 } from "../../ee/models";
 import {
   BackupPrivateKey,

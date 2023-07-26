@@ -1,22 +1,23 @@
+import { faGlobe, faPencil, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import {
-    TableContainer,
+    EmptyState,
+    IconButton,
     Table,
-    THead,
-    Tr,
-    Th,
+    TableContainer,
+    TableSkeleton,
     TBody,
     Td,
-    EmptyState,
-    TableSkeleton,
-    IconButton,
+    Th,
+    THead,
+    Tr,
     UpgradePlanModal
 } from "@app/components/v2";
 import { useSubscription, useWorkspace } from "@app/context";
 import {
     useGetTrustedIps
 } from "@app/hooks/api";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faGlobe, faPencil, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -56,7 +57,7 @@ export const IPAllowlistTable = ({
                             <Th className="flex-1">Format</Th>
                             <Th className="flex-1">Comment</Th>
                             {/* <Th className="flex-1">Status</Th> */}
-                            <Th className="w-5"></Th>
+                            <Th className="w-5" />
                         </Tr>
                     </THead>
                     <TBody>

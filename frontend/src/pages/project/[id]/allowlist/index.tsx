@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
+
 import { IPAllowlistPage } from "@app/views/Project/IPAllowListPage";
 
 const ProjectAllowlist = () => {

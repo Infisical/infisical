@@ -1,5 +1,6 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
   Button,
@@ -11,6 +12,7 @@ import {
   useDeleteWsEnvironment
 } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
+
 import { AddEnvironmentModal } from "./AddEnvironmentModal";
 import { EnvironmentTable } from "./EnvironmentTable";
 import { UpdateEnvironmentModal } from "./UpdateEnvironmentModal";

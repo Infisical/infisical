@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { PipelineStage, trusted, Types } from "mongoose";
+import { PipelineStage, Types } from "mongoose";
 import { Secret } from "../../../models";
 import {
   FolderVersion,
@@ -15,7 +15,7 @@ import { getLatestSecretVersionIds } from "../../helpers/secretVersion";
 import Folder, { TFolderSchema } from "../../../models/folder";
 import { searchByFolderId } from "../../../services/FolderService";
 import { EELicenseService } from "../../services";
-import { isValidIpOrCidr, extractIPDetails } from "../../../utils/ip";
+import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
 
 /**
  * Return secret snapshots for workspace with id [workspaceId]

@@ -1,18 +1,20 @@
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { 
     Button,
     DeleteActionModal,
     UpgradePlanModal
 } from "@app/components/v2";
+import { useSubscription,useWorkspace } from "@app/context";
 import {
     useDeleteTrustedIp
 } from "@app/hooks/api";
-import { useSubscription,useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { IPAllowlistTable } from "./IPAllowlistTable";
+
 import { IPAllowlistModal } from "./IPAllowlistModal";
+import { IPAllowlistTable } from "./IPAllowlistTable";
 
 export const IPAllowlistSection = () => {
     const { createNotification } = useNotificationContext();

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form"; 
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
   Button,
@@ -10,13 +11,13 @@ import {
   Modal,
   ModalContent
 } from "@app/components/v2";
-import { UsePopUpState } from "@app/hooks/usePopUp";
 import { useWorkspace } from "@app/context";
 import {
-    useGetMyIp,
     useAddTrustedIp,
+    useGetMyIp,
     useUpdateTrustedIp
 } from "@app/hooks/api";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup.object({
     ipAddress: yup.string().required("IP address is required"),

@@ -88,7 +88,7 @@ export const isValidCidr = (cidr: string): boolean => {
 */
 export const isValidIpOrCidr = (ip: string): boolean => {
     // if the string contains a slash, treat it as a CIDR block
-    if (ip.includes('/')) {
+    if (ip.includes("/")) {
         return isValidCidr(ip);
     }
 
