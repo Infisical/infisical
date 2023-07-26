@@ -58,7 +58,7 @@ export default function TerraformCloudCreateIntegrationPage() {
           <Input placeholder="API Token" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
         </FormControl>
         <FormControl
-          label="Terraform Cloud Workspace Id"
+          label="Terraform Cloud Workspace ID"
           errorText={workspacesIdErrorText}
           isError={workspacesIdErrorText !== "" ?? false}
         >

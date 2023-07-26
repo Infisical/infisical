@@ -18,6 +18,11 @@ import {
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 import createIntegration from "../../api/integrations/createIntegration";
 
+const variableTypes = [
+  { name: "env" },
+  { name: "terraform" }
+];
+
 export default function TerraformCloudCreateIntegrationPage() {
   const router = useRouter();
 
@@ -39,6 +44,7 @@ export default function TerraformCloudCreateIntegrationPage() {
   useEffect(() => {
     if (workspace) {
       setSelectedSourceEnvironment(workspace.environments[0].slug);
+      setVariableType(variableTypes[0].name);
     }
   }, [workspace]);
 
@@ -90,10 +96,6 @@ export default function TerraformCloudCreateIntegrationPage() {
     }
   };
 
-  const variableTypes = [
-    { name: "env" },
-    { name: "terraform" }
-  ]
 
   return integrationAuth &&
     workspace &&
@@ -126,7 +128,7 @@ export default function TerraformCloudCreateIntegrationPage() {
             placeholder="Provide a path, default is /"
           />
         </FormControl>
-        <FormControl label="Variable Type" className="mt-4" errorText={variableTypeErrorText}
+        <FormControl label="Category" className="mt-4" errorText={variableTypeErrorText}
             isError={variableTypeErrorText !== "" ?? false}>
           <Select
             value={variableType}
