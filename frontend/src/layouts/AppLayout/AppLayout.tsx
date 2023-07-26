@@ -404,6 +404,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         </MenuItem>
                       </a>
                     </Link>
+                    <Link href={`/project/${currentWorkspace?._id}/allowlist`} passHref>
+                      <a>
+                        <MenuItem
+                          isSelected={
+                            router.asPath === `/project/${currentWorkspace?._id}/allowlist`
+                          }
+                          icon="system-outline-109-slider-toggle-settings"
+                        >
+                          IP Allowlist
+                        </MenuItem>
+                      </a>
+                    </Link>
                     <Link href={`/project/${currentWorkspace?._id}/audit-logs`} passHref>
                       <a>
                         <MenuItem

@@ -3,7 +3,13 @@ import crypto from "crypto";
 import { Types } from "mongoose";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../crypto";
 import { EESecretService } from "../../ee/services";
-import { ISecretVersion, SecretSnapshot, SecretVersion } from "../../ee/models";
+import { 
+  IPType, 
+  ISecretVersion, 
+  SecretSnapshot,
+  SecretVersion,
+  TrustedIP
+} from "../../ee/models";
 import {
   BackupPrivateKey,
   Bot,
@@ -549,3 +555,31 @@ export const backfillServiceTokenMultiScope = async () => {
 
   console.log("Migration: Service token migration v2 complete");
 };
+
+/**
+ * Backfill each workspace without any registered trusted IPs to
+ * have default trusted ip of 0.0.0.0/0
+ */
+export const backfillTrustedIps = async () => {
+  const workspaceIdsWithTrustedIps = await TrustedIP.distinct("workspace");
+  const workspaceIdsToAddTrustedIp = await Workspace.distinct("_id", {
+    _id: {
+      $nin: workspaceIdsWithTrustedIps
+    }
+  });
+
+  if (workspaceIdsToAddTrustedIp.length === 0) return;
+  
+  const trustedIpsToInsert = workspaceIdsToAddTrustedIp.map((workspaceId) => {
+    return new TrustedIP({
+      workspace: new Types.ObjectId(workspaceId),
+      ipAddress: "0.0.0.0",
+      type: IPType.IPV4,
+      prefix: 0,
+      isActive: true,
+      comment: "",
+    }).save();
+  });
+
+  await TrustedIP.insertMany(trustedIpsToInsert);
+}

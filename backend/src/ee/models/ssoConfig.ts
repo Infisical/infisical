@@ -77,6 +77,4 @@ const ssoConfigSchema = new Schema<ISSOConfig>(
     }
 );
 
-const SSOConfig = model<ISSOConfig>("SSOConfig", ssoConfigSchema);
-
-export default SSOConfig;
+export const SSOConfig = model<ISSOConfig>("SSOConfig", ssoConfigSchema);

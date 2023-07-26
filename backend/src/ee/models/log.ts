@@ -69,6 +69,4 @@ const logSchema = new Schema<ILog>(
     }
 );
 
-const Log = model<ILog>("Log", logSchema);
-
-export default Log;
+export const Log = model<ILog>("Log", logSchema);
