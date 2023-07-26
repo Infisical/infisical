@@ -411,7 +411,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={
                             router.asPath === `/project/${currentWorkspace?._id}/allowlist`
                           }
-                          icon="system-outline-109-slider-toggle-settings"
+                          icon="system-outline-126-verified"
                         >
                           IP Allowlist
                         </MenuItem>
