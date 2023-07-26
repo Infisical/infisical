@@ -183,7 +183,7 @@ export default function NorthflankCreateIntegrationPage() {
           color="mineshaft"
           className="mt-4"
           isLoading={isLoading}
-          isDisabled={secretGroupList === 0}
+          isDisabled={secretGroupList.length === 0}
         >
           Create Integration
         </Button>
