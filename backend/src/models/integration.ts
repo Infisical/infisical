@@ -168,6 +168,7 @@ const integrationSchema = new Schema<IIntegration>(
       default: "/",
     },
     secretGroup: {
+      // northflank-specific service
       type: String,
       default: null,
     },

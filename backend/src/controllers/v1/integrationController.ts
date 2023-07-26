@@ -27,7 +27,8 @@ export const createIntegration = async (req: Request, res: Response) => {
     owner,
     path,
     region,
-    secretPath
+    secretPath,
+    secretGroup
   } = req.body;
 
   const folders = await Folder.findOne({
@@ -61,6 +62,7 @@ export const createIntegration = async (req: Request, res: Response) => {
     path,
     region,
     secretPath,
+    secretGroup,
     integration: req.integrationAuth.integration,
     integrationAuth: new Types.ObjectId(integrationAuthId)
   }).save();

@@ -2109,6 +2109,7 @@ const syncSecretsCodefresh = async ({
     }
   ); 
 };
+
  /* Sync/push [secrets] to Northflank
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details

@@ -22,7 +22,8 @@ const integrationSlugNameMapping: Mapping = {
   "hashicorp-vault": "Vault",
   "cloudflare-pages": "Cloudflare Pages",
   "codefresh": "Codefresh",
-  bitbucket: "BitBucket"
+  bitbucket: "BitBucket",
+  northflank: "Northflank"
 };
 
 const envMapping: Mapping = {

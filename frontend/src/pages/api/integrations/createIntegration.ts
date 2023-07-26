@@ -4,7 +4,7 @@ interface Props {
   integrationAuthId: string;
   isActive: boolean;
   secretPath: string;
-  secretGroup: string;
+  secretGroup?: string;
   app: string | null;
   appId: string | null;
   sourceEnvironment: string;
