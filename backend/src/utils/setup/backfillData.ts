@@ -570,20 +570,19 @@ export const backfillTrustedIps = async () => {
 
   if (workspaceIdsToAddTrustedIp.length > 0) {
     const operations = workspaceIdsToAddTrustedIp.map((workspaceId) => {
-      const update = {
-        workspace: workspaceId,
-        ipAddress: "0.0.0.0",
-        type: IPType.IPV4,
-        prefix: 0,
-        isActive: true,
-        comment: ""
-      }
-
       return {
         updateOne: {
-          filter: update,
+          filter: {
+            workspace: workspaceId,
+            ipAddress: "0.0.0.0"
+          },
           update: {
-            $setOnInsert: update
+            workspace: workspaceId,
+            ipAddress: "0.0.0.0",
+            type: IPType.IPV4.toString(),
+            prefix: 0,
+            isActive: true,
+            comment: ""
           },
           upsert: true,
         },
