@@ -83,3 +83,27 @@ Password: `testInfisical1`
 # To stop environment use Control+C (on Mac) CTRL+C (on Win) or
 docker-compose -f docker-compose.dev.yml down
 ```
+
+## Starting Infisical docs locally
+
+We use [Mintlify](https://mintlify.com/) for our docs.
+
+#### Install Mintlify CLI.
+
+```bash
+npm i -g mintlify
+```
+
+or
+
+```bash
+yarn global add mintlify
+```
+
+#### Running the docs
+Go to `docs` directory and run `mintlify dev`. This will start up the docs on `localhost:3000`
+
+```bash
+# From the root directory
+cd docs; mintlify dev;
+```

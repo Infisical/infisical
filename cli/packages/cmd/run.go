@@ -143,13 +143,13 @@ var runCmd = &cobra.Command{
 
 			err = executeMultipleCommandWithEnvs(command, len(secretsByKey), env)
 			if err != nil {
-				util.HandleError(err, "Unable to execute your chained command")
+				fmt.Println(err)
 			}
 
 		} else {
 			err = executeSingleCommandWithEnvs(args, len(secretsByKey), env)
 			if err != nil {
-				util.HandleError(err, "Unable to execute your single command")
+				fmt.Println(err)
 			}
 		}
 	},
