@@ -45,7 +45,9 @@ import {
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
-  INTEGRATION_VERCEL_API_URL
+  INTEGRATION_VERCEL_API_URL,
+  INTEGRATION_SCALEWAY,
+  INTEGRATION_SCALEWAY_API_URL
 } from "../variables";
 import AWS from "aws-sdk";
 import { Octokit } from "@octokit/rest";
@@ -237,6 +239,14 @@ const syncSecrets = async ({
         secrets,
         accessToken
       });
+
+      case INTEGRATION_SCALEWAY:
+        await syncSecretsScaleway({
+          integration,
+          secrets,
+          accessToken
+        });
+
       break;
   }
 };
@@ -2257,4 +2267,99 @@ const syncSecretsCloud66 = async ({
   }
 };
 
+
+/**
+ * Sync/push [secrets] to Scaleway app
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Scaleway integration
+ */
+const syncSecretsScaleway = async ({
+  integration,
+  secrets,
+  accessToken,
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  // get secrets from travis-ci  
+  const getSecretsRes = (
+    await standardRequest.get(
+      `${INTEGRATION_SCALEWAY_API_URL}/secret-manager/v1alpha1/regions/fr-par/secrets`,
+      {
+        headers: {
+          "X-Auth-Token": `${accessToken}`,
+          "Accept-Encoding": "application/json",
+        },
+      }
+    )
+  )
+    .data.secrets
+    .reduce((obj: any, secret: any) => ({
+      ...obj,
+      [secret.key]: secret.value,
+    }), {});
+
+  // add secrets
+  for await (const key of Object.keys(secrets)) {
+    if (!(key in getSecretsRes)) {
+      // case: secret does not exist in checkly
+      // -> add secret
+
+      await standardRequest.post(
+        `${INTEGRATION_SCALEWAY_API_URL}/secret-manager/v1alpha1/regions/fr-par/secrets`,
+        {
+          "name": secrets[key],
+          "project_id": integration.appId,
+          "tags": [
+             secrets[key]
+          ]
+        },
+        {
+          headers: {
+            "X-Auth-Token": `${accessToken}`,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    } else {
+      // case: secret exists in checkly
+      // -> update/set secret
+
+      if (secrets[key] !== getSecretsRes[key]) {
+        await standardRequest.patch(
+          `${INTEGRATION_SCALEWAY_API_URL}/secret-manager/v1alpha1/regions/fr-par/secrets/${key}`,
+          {
+            value: secrets[key],
+          },
+          {
+            headers: {
+              "X-Auth-Token": `${accessToken}`,
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+          }
+        );
+      }
+    }
+  }
+
+  for await (const key of Object.keys(getSecretsRes)) {
+    if (!(key in secrets)) {
+      // delete secret
+      await standardRequest.delete(
+        `${INTEGRATION_SCALEWAY_API_URL}/secret-manager/v1alpha1/regions/fr-par/secrets/${key}`,
+        {
+          headers: {
+            "X-Auth-Token": `${accessToken}`,
+            "Accept": "application/json",
+          },
+        }
+      );
+    }
+  }
+};
 export { syncSecrets };
