@@ -119,6 +119,7 @@
         "documentation/platform/secret-versioning",
         "documentation/platform/audit-logs",
         "documentation/platform/token",
+        "documentation/platform/ip-allowlisting",
         "documentation/platform/mfa",
         "documentation/platform/saml"
       ]

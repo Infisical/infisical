@@ -8,9 +8,9 @@ import {
 import { body, param, query } from "express-validator";
 import {
   ADMIN, 
-  MEMBER,
+  AUTH_MODE_API_KEY,
   AUTH_MODE_JWT,
-  AUTH_MODE_API_KEY
+  MEMBER
 } from "../../../variables";
 import { workspaceController } from "../../controllers/v1";
 
@@ -108,7 +108,7 @@ router.post(
       acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
-      acceptedRoles: [ADMIN, MEMBER],
+      acceptedRoles: [ADMIN],
       locationWorkspaceId: "params",
   }),
   workspaceController.addWorkspaceTrustedIp
@@ -125,7 +125,7 @@ router.patch(
       acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
-      acceptedRoles: [ADMIN, MEMBER],
+      acceptedRoles: [ADMIN],
       locationWorkspaceId: "params",
   }),
   workspaceController.updateWorkspaceTrustedIp
@@ -140,7 +140,7 @@ router.delete(
       acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
-      acceptedRoles: [ADMIN, MEMBER],
+      acceptedRoles: [ADMIN],
       locationWorkspaceId: "params",
   }),
   workspaceController.deleteWorkspaceTrustedIp
