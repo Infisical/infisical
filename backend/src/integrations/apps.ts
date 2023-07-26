@@ -789,7 +789,7 @@ const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
   const authCheckForApps = async (data: any) => {
     const allAppResponse = data.map(async (app: any) => {
       return standardRequest.get(
-        `${INTEGRATION_WINDMILL_API_URL}/w/${app.name}/users/whoami`,
+        `${INTEGRATION_WINDMILL_API_URL}/w/${app.id}/users/whoami`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,

@@ -2049,7 +2049,7 @@ const syncSecretsWindmill = async ({
 
   // get secrets stored in windmill workspace
   const { data: getSecretsRes } = await standardRequest.get(
-    `${INTEGRATION_WINDMILL_API_URL}/w/${integration.app}/variables/list`,
+    `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/list`,
     {
       headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -2091,7 +2091,7 @@ const syncSecretsWindmill = async ({
   // create new secrets in windmill workspace
   modifiedFormatForCreateSecretInjection.forEach(async (secretObj: any) => {
     await standardRequest.post(
-      `${INTEGRATION_WINDMILL_API_URL}/w/${integration.app}/variables/create`,
+      `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/create`,
       secretObj,
       {
         headers: {
@@ -2105,7 +2105,7 @@ const syncSecretsWindmill = async ({
   // update old secrets already present in windmill workspace
   modifiedFormatForUpdateSecretInjection.forEach(async (secretObj: any) => {
     await standardRequest.post(
-      `${INTEGRATION_WINDMILL_API_URL}/w/${integration.app}/variables/update/${secretObj.path}`,
+      `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/update/${secretObj.path}`,
       secretObj,
       {
         headers: {
@@ -2127,7 +2127,7 @@ const syncSecretsWindmill = async ({
   // delete all secrets from secretsToDelete List
   secretsToDelete.forEach(async (secret: string) => {
     await standardRequest.delete(
-      `${INTEGRATION_WINDMILL_API_URL}/w/${integration.app}/variables/delete/${secret}`,
+      `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/delete/${secret}`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
