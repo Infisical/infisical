@@ -53,7 +53,7 @@ export const OrgIncidentContactsTable = ({
   isLoading
 }: Props) => {
   const [searchContact, setSearchContact] = useState("");
-  const {data: serverDetails } = useFetchServerStatus()
+  const { data: serverDetails } = useFetchServerStatus();
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addContact",
     "removeContact",
@@ -98,7 +98,7 @@ export const OrgIncidentContactsTable = ({
           <Button
             leftIcon={<FontAwesomeIcon icon={faPlus} />}
             onClick={() => {
-              if (serverDetails?.emailConfigured){
+              if (serverDetails?.emailConfigured) {
                 handlePopUpOpen("addContact");
               } else {
                 handlePopUpOpen("setUpEmail");
@@ -119,7 +119,7 @@ export const OrgIncidentContactsTable = ({
               </Tr>
             </THead>
             <TBody>
-              {isLoading && <TableSkeleton columns={2} key="incident-contact" />}
+              {isLoading && <TableSkeleton columns={2} innerKey="incident-contact" />}
               {filteredContacts?.map(({ email }) => (
                 <Tr key={email}>
                   <Td className="w-full">{email}</Td>

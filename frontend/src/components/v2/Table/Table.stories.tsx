@@ -52,7 +52,7 @@ export const Loading: Story = {
           </Tr>
         </THead>
         <TBody>
-          <TableSkeleton columns={3} key="story-book-table" />
+          <TableSkeleton columns={3} innerKey="story-book-table" />
         </TBody>
       </Table>
     </TableContainer>

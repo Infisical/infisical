@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
@@ -9,6 +9,7 @@ import {
   DeleteFolderDTO,
   GetProjectFoldersBatchDTO,
   GetProjectFoldersDTO,
+  TGetFoldersByEnvDTO,
   TSecretFolder,
   UpdateFolderDTO
 } from "./types";
@@ -61,6 +62,48 @@ export const useGetProjectFolders = ({
       [sortDir]
     )
   });
+
+export const useGetFoldersByEnv = ({
+  parentFolderPath,
+  workspaceId,
+  environments,
+  parentFolderId
+}: TGetFoldersByEnvDTO) => {
+  const folders = useQueries({
+    queries: environments.map((env) => ({
+      queryKey: queryKeys.getSecretFolders(workspaceId, env, parentFolderPath || parentFolderId),
+      queryFn: async () => fetchProjectFolders(workspaceId, env, parentFolderId, parentFolderPath),
+      enabled: Boolean(workspaceId) && Boolean(env)
+    }))
+  });
+
+  const folderNames = useMemo(() => {
+    const names = new Set<string>();
+    folders?.forEach(({ data }) => {
+      data?.folders.forEach(({ name }) => {
+        names.add(name);
+      });
+    });
+    return [...names];
+  }, [(folders || []).map((folder) => folder.data)]);
+
+  const isFolderPresentInEnv = useCallback(
+    (name: string, env: string) => {
+      const selectedEnvIndex = environments.indexOf(env);
+      if (selectedEnvIndex !== -1) {
+        return Boolean(
+          folders?.[selectedEnvIndex]?.data?.folders?.find(
+            ({ name: folderName }) => folderName === name
+          )
+        );
+      }
+      return false;
+    },
+    [(folders || []).map((folder) => folder.data)]
+  );
+
+  return { folders, folderNames, isFolderPresentInEnv };
+};
 
 export const useGetProjectFoldersBatch = ({
   folders = [],

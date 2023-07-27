@@ -1,16 +1,10 @@
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
-import { useRouter } from "next/router";
 
 import { DashboardPage } from "@app/views/DashboardPage";
-import { DashboardEnvOverview } from "@app/views/DashboardPage/DashboardEnvOverview";
 
 const Dashboard = () => {
   const { t } = useTranslation();
-  const router = useRouter();
-
-  const queryEnv = router.query.env as string;
-  const isOverviewMode = !queryEnv;
 
   return (
     <>
@@ -22,7 +16,7 @@ const Dashboard = () => {
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Head>
       <div className="h-full">
-        {isOverviewMode ? <DashboardEnvOverview /> : <DashboardPage envFromTop={queryEnv} />}
+        <DashboardPage />
       </div>
     </>
   );

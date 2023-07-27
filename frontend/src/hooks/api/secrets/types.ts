@@ -118,3 +118,32 @@ export type GetSecretVersionsDTO = {
   offset: number;
   decryptFileKey: UserWsKeyPair;
 };
+
+export type TCreateSecretsV3DTO = {
+  latestFileKey: UserWsKeyPair;
+  secretName: string;
+  secretValue: string;
+  secretComment: string;
+  secretPath: string;
+  workspaceId: string;
+  environment: string;
+  type: string;
+};
+
+export type TUpdateSecretsV3DTO = {
+  latestFileKey: UserWsKeyPair;
+  workspaceId: string;
+  environment: string;
+  type: string;
+  secretPath: string;
+  secretName: string;
+  secretValue: string;
+};
+
+export type TDeleteSecretsV3DTO = {
+  workspaceId: string;
+  environment: string;
+  type: string;
+  secretPath: string;
+  secretName: string;
+};
