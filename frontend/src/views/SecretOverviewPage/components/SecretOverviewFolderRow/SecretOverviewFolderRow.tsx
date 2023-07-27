@@ -19,9 +19,9 @@ export const SecretOverviewFolderRow = ({
 }: Props) => {
   return (
     <Tr isHoverable isSelectable className="group" onClick={() => onClick(folderName)}>
-      <Td className="sticky left-0 z-10 border-x border-mineshaft-700 bg-mineshaft-800 bg-clip-padding py-3 group-hover:bg-mineshaft-600">
-        <div className="flex items-center space-x-4">
-          <div className="text-primary">
+      <Td className="sticky left-0 z-10 border-x border-mineshaft-700 bg-mineshaft-800 bg-clip-padding py-2.5 group-hover:bg-mineshaft-700">
+        <div className="flex items-center space-x-5">
+          <div className="text-yellow-700">
             <FontAwesomeIcon icon={faFolder} />
           </div>
           <div>{folderName}</div>
@@ -33,8 +33,8 @@ export const SecretOverviewFolderRow = ({
           <Td
             key={`sec-overview-${slug}-${i + 1}-folder`}
             className={twMerge(
-              "border-x border-mineshaft-700 py-3",
-              isPresent ? "text-green-600" : "text-red-800"
+              "border-x border-mineshaft-700 py-3 group-hover:bg-mineshaft-700",
+              isPresent ? "text-green-600" : "text-red-600"
             )}
           >
             <div className="flex justify-center">

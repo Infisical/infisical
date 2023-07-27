@@ -260,12 +260,12 @@ export const SecretOverviewPage = () => {
           />
         </div>
       </div>
-      <div className="thin-scrollbar mt-6" ref={parentTableRef}>
+      <div className="thin-scrollbar mt-4 max-h-[calc(100vh-250px)] overflow-y-auto" ref={parentTableRef}>
         <TableContainer>
           <Table>
-            <THead>
+            <THead className="sticky top-0">
               <Tr>
-                <Th className="sticky left-0 z-10 min-w-[20rem] bg-clip-padding">Secret</Th>
+                <Th className="sticky left-0 z-10 min-w-[20rem] bg-clip-padding">Name</Th>
                 {userAvailableEnvs?.map(({ name, slug }, index) => {
                   const envSecKeyCount = getEnvSecretKeyCount(slug);
                   const missingKeyCount = secKeys.length - envSecKeyCount;
@@ -281,7 +281,7 @@ export const SecretOverviewPage = () => {
                             className="max-w-none lowercase"
                             content={`${missingKeyCount} secrets missing\n compared to other environments`}
                           >
-                            <div className="ml-2 flex h-5 cursor-default items-center justify-center rounded-sm bg-red-700 p-1 text-xs text-bunker-100">
+                            <div className="ml-2 h-[1.1rem] font-medium flex cursor-default items-center justify-center rounded-sm bg-red-600 border border-red-400 p-1 text-xs text-bunker-100">
                               <span className="text-bunker-100">{missingKeyCount}</span>
                             </div>
                           </Tooltip>
@@ -323,13 +323,14 @@ export const SecretOverviewPage = () => {
                 />
               ))}
               <Tr>
-                <Td className="sticky left-0 z-10 border-x  border-mineshaft-700 bg-mineshaft-800 bg-clip-padding" />
+                <Td className="fixed left-0 z-10 border-x border-mineshaft-700 bg-mineshaft-800 bg-clip-padding" />
                 {userAvailableEnvs.map(({ name, slug }) => (
                   <Td key={`explore-${name}-btn`} className=" border-x border-mineshaft-700">
                     <div className="flex items-center justify-center">
                       <Button
                         size="xs"
                         variant="outline_bg"
+                        isFullWidth
                         onClick={() => handleExploreEnvClick(slug)}
                       >
                         Explore

@@ -1,4 +1,5 @@
-import { faCheck, faEye, faEyeSlash, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faCircle } from "@fortawesome/free-regular-svg-icons";
+import { faCheck, faEye, faEyeSlash, faKey, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -34,22 +35,31 @@ export const SecretOverviewTableRow = ({
   return (
     <>
       <Tr isHoverable isSelectable onClick={() => setIsFormExpanded.toggle()} className="group">
-        <Td className="sticky left-0 z-10 border-x border-mineshaft-700 bg-mineshaft-800 bg-clip-padding py-3 group-hover:bg-mineshaft-600">
-          {secretKey}
+        <Td className="sticky left-0 z-10 border-x border-mineshaft-700 bg-mineshaft-800 bg-clip-padding py-2.5 group-hover:bg-mineshaft-700">
+          <div className="flex items-center space-x-5">
+            <div className="text-blue-300/70">
+              <FontAwesomeIcon icon={faKey} />
+            </div>
+            <div>{secretKey}</div>
+          </div>
         </Td>
         {environments.map(({ slug }, i) => {
           const secret = getSecretByKey(slug, secretKey);
           const isSecretPresent = Boolean(secret);
+          const isSecretEmpty = secret?.value === "";
           return (
             <Td
               key={`sec-overview-${slug}-${i + 1}-value`}
               className={twMerge(
-                "border-x border-mineshaft-700 py-3",
-                isSecretPresent ? "text-green-600" : "text-red-800"
+                "border-x border-mineshaft-600 py-3 group-hover:bg-mineshaft-700",
+                isSecretPresent && !isSecretEmpty ? "text-green-600" : "",
+                isSecretPresent && isSecretEmpty ? "text-yellow" : "",
+                !isSecretPresent && !isSecretEmpty ? "text-red-600" : ""
               )}
             >
               <div className="flex justify-center">
-                <FontAwesomeIcon icon={isSecretPresent ? faCheck : faXmark} />
+                {!isSecretEmpty && <FontAwesomeIcon icon={!isSecretPresent ? faCheck : faXmark} />}
+                {isSecretEmpty && <FontAwesomeIcon icon={faCircle} />}
               </div>
             </Td>
           );
@@ -59,7 +69,7 @@ export const SecretOverviewTableRow = ({
         <Tr>
           <Td colSpan={totalCols}>
             <div
-              className="rounded-md bg-bunker-700 p-4 pb-6"
+              className="rounded-md bg-bunker-700 p-2"
               style={{
                 width: `calc(${expandableColWidth}px - 2rem)`,
                 position: "sticky",
@@ -67,33 +77,30 @@ export const SecretOverviewTableRow = ({
                 right: "1.25rem"
               }}
             >
-              <div className="mb-4 flex items-center justify-between">
-                <div className="text-lg font-medium">Secrets</div>
-                <div>
-                  <Button
-                    variant="outline_bg"
-                    className="p-1"
-                    leftIcon={<FontAwesomeIcon icon={isSecretVisible ? faEyeSlash : faEye} />}
-                    onClick={() => setIsSecretVisible.toggle()}
-                  >
-                    {isSecretVisible ? "Hide" : "Reveal"}
-                  </Button>
-                </div>
-              </div>
               <TableContainer>
                 <table className="secret-table">
                   <thead>
-                    <tr>
+                    <tr className="h-10 border-b-2 border-mineshaft-600">
                       <th
                         style={{ padding: "0.5rem 1rem" }}
                         className="min-table-row min-w-[11rem]"
                       >
                         Environment
                       </th>
-                      <th style={{ padding: "0.5rem 1rem" }}>Value</th>
+                      <th style={{ padding: "0.5rem 1rem" }} className="border-none">Value</th>
+                      <div className="absolute top-0 right-0 w-min ml-auto mt-1 mr-1">
+                        <Button
+                          variant="outline_bg"
+                          className="p-1"
+                          leftIcon={<FontAwesomeIcon icon={isSecretVisible ? faEyeSlash : faEye} />}
+                          onClick={() => setIsSecretVisible.toggle()}
+                        >
+                          {isSecretVisible ? "Hide Values" : "Reveal Values"}
+                        </Button>
+                      </div>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="border-t-2 border-mineshaft-600">
                     {environments.map(({ name, slug }) => {
                       const secret = getSecretByKey(slug, secretKey);
                       const isCreatable = !secret;
@@ -104,12 +111,9 @@ export const SecretOverviewTableRow = ({
                           className="hover:bg-mineshaft-700"
                         >
                           <td className="flex" style={{ padding: "0.25rem 1rem" }}>
-                            <div className="flex h-10 items-center">{name}</div>
+                            <div className="flex h-8 items-center">{name}</div>
                           </td>
-                          <td
-                            className="h-10 border-l border-mineshaft-600"
-                            style={{ padding: "0.5rem 1rem" }}
-                          >
+                          <td className="h-8 col-span-2 w-full">
                             <SecretEditRow
                               isVisible={isSecretVisible}
                               secretName={secretKey}
