@@ -34,7 +34,7 @@ const createIntegration = ({
   owner,
   path,
   region,
-  secretPath
+  secretPath,
 }: Props) =>
   SecurityClient.fetchCall("/api/v1/integration", {
     method: "POST",
@@ -54,7 +54,7 @@ const createIntegration = ({
       owner,
       path,
       region,
-      secretPath
+      secretPath,
     })
   }).then(async (res) => {
     if (res && res.status === 200) {

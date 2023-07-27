@@ -19,9 +19,11 @@ import {
   action as eeActionRouter,
   cloudProducts as eeCloudProductsRouter,
   organizations as eeOrganizationsRouter,
+  sso as eeSSORouter,
   secret as eeSecretRouter,
   secretSnapshot as eeSecretSnapshotRouter,
-  workspace as eeWorkspaceRouter
+  users as eeUsersRouter,
+  workspace as eeWorkspaceRouter,
 } from "./ee/routes/v1";
 import {
   auth as v1AuthRouter,
@@ -34,6 +36,7 @@ import {
   membership as v1MembershipRouter,
   organization as v1OrganizationRouter,
   password as v1PasswordRouter,
+  secretImport as v1SecretImportRouter,
   secret as v1SecretRouter,
   secretScanning as v1SecretScanningRouter,
   secretsFolder as v1SecretsFolder,
@@ -41,22 +44,21 @@ import {
   signup as v1SignupRouter,
   userAction as v1UserActionRouter,
   user as v1UserRouter,
-  workspace as v1WorkspaceRouter,
   webhooks as v1WebhooksRouter,
-  secretImport as v1SecretImportRouter
+  workspace as v1WorkspaceRouter
 } from "./routes/v1";
 import {
   auth as v2AuthRouter,
+  environment as v2EnvironmentRouter,
   organizations as v2OrganizationsRouter,
-  signup as v2SignupRouter,
-  users as v2UsersRouter,
-  workspace as v2WorkspaceRouter,
   secret as v2SecretRouter, // begin to phase out
   secrets as v2SecretsRouter,
-  serviceTokenData as v2ServiceTokenDataRouter,
   serviceAccounts as v2ServiceAccountsRouter,
-  environment as v2EnvironmentRouter,
-  tags as v2TagsRouter
+  serviceTokenData as v2ServiceTokenDataRouter,
+  signup as v2SignupRouter,
+  tags as v2TagsRouter,
+  users as v2UsersRouter,
+  workspace as v2WorkspaceRouter,
 } from "./routes/v2";
 import {
   auth as v3AuthRouter,
@@ -81,6 +83,7 @@ const main = async () => {
   const app = express();
   app.enable("trust proxy");
   app.use(express.json());
+  app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
   app.use(
     cors({
@@ -127,9 +130,11 @@ const main = async () => {
   // (EE) routes
   app.use("/api/v1/secret", eeSecretRouter);
   app.use("/api/v1/secret-snapshot", eeSecretSnapshotRouter);
+  app.use("/api/v1/users", eeUsersRouter);
   app.use("/api/v1/workspace", eeWorkspaceRouter);
   app.use("/api/v1/action", eeActionRouter);
   app.use("/api/v1/organizations", eeOrganizationsRouter);
+  app.use("/api/v1/sso", eeSSORouter);
   app.use("/api/v1/cloud-products", eeCloudProductsRouter);
 
   // v1 routes (default)

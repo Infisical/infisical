@@ -63,11 +63,10 @@ const logSchema = new Schema<ILog>(
         ipAddress: {
             type: String,
         },
-    }, {
-    timestamps: true,
-}
+    }, 
+    {
+        timestamps: true,
+    }
 );
 
-const Log = model<ILog>("Log", logSchema);
-
-export default Log;
+export const Log = model<ILog>("Log", logSchema);

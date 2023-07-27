@@ -52,9 +52,7 @@ const folderRootVersionSchema = new Schema<TFolderRootVersionSchema>(
   }
 );
 
-const FolderVersion = model<TFolderRootVersionSchema>(
+export const FolderVersion = model<TFolderRootVersionSchema>(
   "FolderVersion",
   folderRootVersionSchema
 );
-
-export default FolderVersion;

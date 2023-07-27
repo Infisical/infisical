@@ -1,6 +1,8 @@
 import {
     Bot,
+    BotOrg,
     IBot,
+    IBotOrg,
     ISecretBlindIndexData,
     SecretBlindIndexData,
 } from "../../models";
@@ -17,7 +19,7 @@ import {
 } from "../../variables";
 
 /**
- * Re-encrypt bot private keys from hex 128-bit ENCRYPTION_KEY
+ * Re-encrypt bot private keys from under hex 128-bit ENCRYPTION_KEY
  * to base64 256-bit ROOT_ENCRYPTION_KEY
  */
 export const reencryptBotPrivateKeys = async () => {
@@ -67,6 +69,79 @@ export const reencryptBotPrivateKeys = async () => {
         );
         
         await Bot.bulkWrite(operationsBot);
+    }
+}
+
+/**
+ * Re-encrypt organization bot keys (symmetric and private) from under hex 128-bit ENCRYPTION_KEY
+ * to base64 256-bit ROOT_ENCRYPTION_KEY
+ */
+export const reencryptBotOrgKeys = async () => {
+    const encryptionKey = await getEncryptionKey();
+    const rootEncryptionKey = await getRootEncryptionKey();
+
+    if (encryptionKey && rootEncryptionKey) {
+        // 1: re-encrypt organization bot keys under ROOT_ENCRYPTION_KEY
+        const botOrgs = await BotOrg.find({
+            symmetricKeyAlgorithm: ALGORITHM_AES_256_GCM,
+            symmetricKeyKeyEncoding: ENCODING_SCHEME_UTF8,
+            privateKeyAlgorithm: ALGORITHM_AES_256_GCM,
+            privateKeyKeyEncoding: ENCODING_SCHEME_UTF8
+        }).select("+encryptedPrivateKey iv tag algorithm keyEncoding");
+        
+        if (botOrgs.length === 0) return;
+        
+        const operationsBotOrg = await Promise.all(
+            botOrgs.map(async (botOrg: IBotOrg) => {
+                const privateKey = decryptSymmetric128BitHexKeyUTF8({
+                    ciphertext: botOrg.encryptedPrivateKey,
+                    iv: botOrg.privateKeyIV,
+                    tag: botOrg.privateKeyTag,
+                    key: encryptionKey
+                });
+
+                const {
+                    ciphertext: encryptedPrivateKey,
+                    iv: privateKeyIV,
+                    tag: privateKeyTag,
+                } = client.encryptSymmetric(privateKey, rootEncryptionKey);
+                
+                const symmetricKey = decryptSymmetric128BitHexKeyUTF8({
+                    ciphertext: botOrg.encryptedSymmetricKey,
+                    iv: botOrg.symmetricKeyIV,
+                    tag: botOrg.symmetricKeyTag,
+                    key: encryptionKey
+                });
+
+                const {
+                    ciphertext: encryptedSymmetricKey,
+                    iv: symmetricKeyIV,
+                    tag: symmetricKeyTag,
+                } = client.encryptSymmetric(symmetricKey, rootEncryptionKey);
+                
+                return ({
+                    updateOne: {
+                        filter: {
+                            _id: botOrg._id,
+                        },
+                        update: {
+                            encryptedSymmetricKey,
+                            symmetricKeyIV,
+                            symmetricKeyTag,
+                            symmetricKeyAlgorithm: ALGORITHM_AES_256_GCM,
+                            symmetricKeyKeyEncoding: ENCODING_SCHEME_BASE64,
+                            encryptedPrivateKey,
+                            privateKeyIV,
+                            privateKeyTag,
+                            privateKeyAlgorithm: ALGORITHM_AES_256_GCM,
+                            privateKeyKeyEncoding: ENCODING_SCHEME_BASE64,
+                        },
+                    },
+                })
+            })
+        );
+        
+        await BotOrg.bulkWrite(operationsBotOrg);
     }
 }
 

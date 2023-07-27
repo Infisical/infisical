@@ -46,7 +46,7 @@ router.delete(
   body("secretImportPath").isString().exists().trim(),
   body("secretImportEnv").isString().exists().trim(),
   validateRequest,
-  secretImportController.updateSecretImport
+  secretImportController.deleteSecretImport
 );
 
 router.get(

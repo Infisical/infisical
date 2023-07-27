@@ -9,8 +9,6 @@ import {
 } from "../../types/secret";
 const { ValidationError } = mongoose.Error;
 import {
-  BadRequestError,
-  InternalServerError,
   ValidationError as RouteValidationError,
   UnauthorizedRequestError
 } from "../../utils/errors";

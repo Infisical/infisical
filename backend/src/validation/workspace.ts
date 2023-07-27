@@ -1,14 +1,15 @@
+import net from "net";
 import { Types } from "mongoose";
 import {
-    IServiceAccount,
-    IServiceTokenData,
-    IUser,
     SecretBlindIndexData,
     ServiceAccount,
     ServiceTokenData,
     User,
     Workspace,
 } from "../models";
+import {
+	TrustedIP
+} from "../ee/models";
 import { validateServiceAccountClientForWorkspace } from "./serviceAccount";
 import { validateUserClientForWorkspace } from "./user";
 import { validateServiceTokenDataClientForWorkspace } from "./serviceTokenData";
@@ -24,6 +25,8 @@ import {
     AUTH_MODE_SERVICE_TOKEN,
 } from "../variables";
 import { BotService } from "../services";
+import { AuthData } from "../interfaces/middleware";
+import { extractIPDetails } from "../utils/ip";
 
 /**
  * Validate authenticated clients for workspace with id [workspaceId] based
@@ -43,17 +46,16 @@ export const validateClientForWorkspace = async ({
 	requiredPermissions,
 	requireBlindIndicesEnabled,
 	requireE2EEOff,
+	checkIPAllowlist
 }: {
-	authData: {
-		authMode: string;
-		authPayload: IUser | IServiceAccount | IServiceTokenData;
-	};
+	authData: AuthData;
 	workspaceId: Types.ObjectId;
 	environment?: string;
 	acceptedRoles: Array<"admin" | "member">;
 	requiredPermissions?: string[];
 	requireBlindIndicesEnabled: boolean;
 	requireE2EEOff: boolean;
+	checkIPAllowlist: boolean;
 }) => {
 	const workspace = await Workspace.findById(workspaceId);
 
@@ -82,6 +84,8 @@ export const validateClientForWorkspace = async ({
 			message: "Failed workspace authorization due to end-to-end encryption not being disabled",
 		});
 	}
+	
+	
 
 	if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
 		const membership = await validateUserClientForWorkspace({
@@ -107,6 +111,40 @@ export const validateClientForWorkspace = async ({
 	}
 	
 	if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
+		if (checkIPAllowlist) {
+			const trustedIps = await TrustedIP.find({
+				workspace: workspaceId
+			});
+			
+			if (trustedIps.length > 0) {
+				// case: check the IP address of the inbound request against trusted IPs
+
+				const blockList = new net.BlockList();
+	
+				for (const trustedIp of trustedIps) {
+					if (trustedIp.prefix !== undefined) {
+						blockList.addSubnet(
+							trustedIp.ipAddress, 
+							trustedIp.prefix, 
+							trustedIp.type
+						);
+					} else {
+						blockList.addAddress(
+							trustedIp.ipAddress, 
+							trustedIp.type
+						);
+					}
+				}
+				
+				const { type } = extractIPDetails(authData.authIP);
+				const check = blockList.check(authData.authIP, type);
+				
+				if (!check) throw UnauthorizedRequestError({
+					message: "Failed workspace authorization"
+				});
+			}
+		}
+
 		await validateServiceTokenDataClientForWorkspace({
 			serviceTokenData: authData.authPayload,
 			workspaceId,

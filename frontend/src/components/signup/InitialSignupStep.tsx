@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { faGoogle } from "@fortawesome/free-brands-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-// import { faGoogle } from '@fortawesome/free-brands-svg-icons';
-// import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button } from "../v2";
 
 export default function InitialSignupStep({
@@ -16,23 +16,24 @@ export default function InitialSignupStep({
 
     return <div className='flex flex-col mx-auto w-full justify-center items-center'>
         <h1 className='text-xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 text-center mb-8' >{t("signup.initial-title")}</h1>
-        {/* <div className='lg:w-1/6 w-1/4 min-w-[20rem] rounded-md'>
+        <div className='lg:w-1/6 w-1/4 min-w-[20rem] rounded-md'>
             <Button
                 colorSchema="primary"
                 variant="solid"
                 onClick={() => {
-                    window.open('/api/v1/auth/redirect/google')
+                    window.open("/api/v1/sso/redirect/google");
+                    window.close();
                 }}
                 leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-1" />}
                 className="h-14 w-full mx-0"
             >
-                {t('signup.continue-with-google')}
+                {t("signup.continue-with-google")}
             </Button>
-        </div> */}
-        <div className='lg:w-1/6 w-1/4 min-w-[20rem] text-center rounded-md'>
+        </div>
+        <div className='lg:w-1/6 w-1/4 min-w-[20rem] text-center rounded-md mt-4'>
             <Button
                 colorSchema="primary"
-                variant="solid"
+                variant="outline_bg"
                 onClick={() => {
                     setIsSignupWithEmail(true);
                 }}

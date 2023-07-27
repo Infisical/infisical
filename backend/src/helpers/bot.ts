@@ -16,7 +16,6 @@ import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
 import { InternalServerError } from "../utils/errors";
 import Folder from "../models/folder";
 import { getFolderByPath } from "../services/FolderService";
-import { environment } from "../routes/v2";
 
 /**
  * Create an inactive bot with name [name] for workspace with id [workspaceId]

@@ -4,6 +4,7 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 import {
     APIKeyData,
+    AuthProvider,
     MembershipOrg,
     TokenVersion,
     User
@@ -81,22 +82,63 @@ export const updateMyMfaEnabled = async (req: Request, res: Response) => {
 }
 
 /**
- * Update the current user's name [firstName, lastName].
+ * Update name of the current user to [firstName, lastName].
  * @param req 
  * @param res 
  * @returns 
  */
 export const updateName = async (req: Request, res: Response) => {
-    const { firstName, lastName }: { firstName: string; lastName: string; } = req.body;
-    req.user.firstName = firstName;
-    req.user.lastName = lastName || "";
+    const { 
+        firstName, 
+        lastName 
+    }: { 
+        firstName: string; 
+        lastName: string; 
+    } = req.body;
     
-    await req.user.save();
-    
-    const user = req.user;
+    const user = await User.findByIdAndUpdate(
+        req.user._id.toString(),
+        {
+            firstName,
+            lastName: lastName ?? ""
+        },
+        {
+            new: true
+        }
+    );
     
     return res.status(200).send({
         user,
+    });
+}
+
+/**
+ * Update auth provider of the current user to [authProvider]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const updateAuthProvider = async (req: Request, res: Response) => {
+    const {
+        authProvider
+    } = req.body;
+    
+    if (req.user?.authProvider === AuthProvider.OKTA_SAML) return res.status(400).send({
+        message: "Failed to update user authentication method because SAML SSO is enforced"
+    });
+
+    const user = await User.findByIdAndUpdate(
+        req.user._id.toString(),
+        {
+            authProvider
+        },
+        {
+            new: true
+        }
+    );
+
+    return res.status(200).send({
+        user
     });
 }
 

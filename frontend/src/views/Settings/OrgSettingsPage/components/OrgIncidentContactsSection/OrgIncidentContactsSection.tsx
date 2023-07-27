@@ -17,7 +17,7 @@ export const OrgIncidentContactsSection = () => {
     ] as const);
 
     return (
-        <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
+        <div className="p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
             <div className="flex justify-between mb-4">
                 <p className="min-w-max text-xl font-semibold">
                     {t("section.incident.incident-contacts")}

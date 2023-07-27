@@ -1,5 +1,6 @@
 import {
     getClientIdAzure,
+    getClientIdBitBucket,
     getClientIdGitHub,
     getClientIdGitLab,
     getClientIdHeroku,
@@ -24,10 +25,15 @@ export const INTEGRATION_CIRCLECI = "circleci";
 export const INTEGRATION_TRAVISCI = "travisci";
 export const INTEGRATION_SUPABASE = "supabase";
 export const INTEGRATION_CHECKLY = "checkly";
+export const INTEGRATION_TERRAFORM_CLOUD = "terraform-cloud";
 export const INTEGRATION_HASHICORP_VAULT = "hashicorp-vault";
 export const INTEGRATION_CLOUDFLARE_PAGES = "cloudflare-pages";
+export const INTEGRATION_BITBUCKET = "bitbucket";
 export const INTEGRATION_CODEFRESH = "codefresh";
 export const INTEGRATION_WINDMILL = "windmill";
+export const INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM = "digital-ocean-app-platform";
+export const INTEGRATION_CLOUD_66 = "cloud-66";
+export const INTEGRATION_NORTHFLANK = "northflank";
 export const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
@@ -42,10 +48,15 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_TRAVISCI,
   INTEGRATION_SUPABASE,
   INTEGRATION_CHECKLY,
+  INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_CODEFRESH,
-  INTEGRATION_WINDMILL
+  INTEGRATION_WINDMILL,
+  INTEGRATION_BITBUCKET,
+  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
+  INTEGRATION_CLOUD_66,
+  INTEGRATION_NORTHFLANK
 ]);
 
 // integration types
@@ -60,6 +71,7 @@ export const INTEGRATION_NETLIFY_TOKEN_URL = "https://api.netlify.com/oauth/toke
 export const INTEGRATION_GITHUB_TOKEN_URL =
   "https://github.com/login/oauth/access_token";
 export const INTEGRATION_GITLAB_TOKEN_URL = "https://gitlab.com/oauth/token";
+export const INTEGRATION_BITBUCKET_TOKEN_URL = "https://bitbucket.org/site/oauth2/access_token"
 
 // integration apps endpoints
 export const INTEGRATION_HEROKU_API_URL = "https://api.heroku.com";
@@ -74,9 +86,14 @@ export const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
 export const INTEGRATION_SUPABASE_API_URL = "https://api.supabase.com";
 export const INTEGRATION_LARAVELFORGE_API_URL = "https://forge.laravel.com";
 export const INTEGRATION_CHECKLY_API_URL = "https://api.checklyhq.com";
+export const INTEGRATION_TERRAFORM_CLOUD_API_URL = "https://app.terraform.io";
 export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = "https://api.cloudflare.com";
+export const INTEGRATION_BITBUCKET_API_URL = "https://api.bitbucket.org";
 export const INTEGRATION_CODEFRESH_API_URL = "https://g.codefresh.io/api";
 export const INTEGRATION_WINDMILL_API_URL = "https://app.windmill.dev/api";
+export const INTEGRATION_DIGITAL_OCEAN_API_URL = "https://api.digitalocean.com";
+export const INTEGRATION_CLOUD_66_API_URL = "https://app.cloud66.com/api";
+export const INTEGRATION_NORTHFLANK_API_URL = "https://api.northflank.com";
 
 export const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [
@@ -199,6 +216,15 @@ export const getIntegrationOptions = async () => {
             docsLink: "",
         },
         {
+            name: "Terraform Cloud",
+            slug: "terraform-cloud",
+            image: "Terraform Cloud.png",
+            isAvailable: true,
+            type: "pat",
+            cliendId: "",
+            docsLink: "",
+        },
+        {
             name: "Travis CI",
             slug: "travisci",
             image: "Travis CI.png",
@@ -253,6 +279,15 @@ export const getIntegrationOptions = async () => {
             docsLink: ""
         },
         {
+          name: "BitBucket",
+          slug: "bitbucket",
+          image: "BitBucket.png",
+          isAvailable: true,
+          type: "oauth",
+          clientId: await getClientIdBitBucket(),
+          docsLink: ""
+        },
+        {
             name: "Codefresh",
             slug: "codefresh",
             image: "Codefresh.png",
@@ -268,9 +303,35 @@ export const getIntegrationOptions = async () => {
             isAvailable: true,
             type: "pat",
             clientId: "",
+            docsLink: "",
+        },
+        {
+            name: "Digital Ocean App Platform",
+            slug: "digital-ocean-app-platform",
+            image: "Digital Ocean.png",
+            isAvailable: true,
+            type: "pat",
+            clientId: "",
+            docsLink: "",
+        },
+        {
+            name: "Cloud 66",
+            slug: "cloud-66",
+            image: "Cloud 66.png",
+            isAvailable: true,
+            type: "pat",
+            clientId: "",
+            docsLink: "",
+        },
+        {
+            name: "Northflank",
+            slug: "northflank",
+            image: "Northflank.png",
+            isAvailable: true,
+            type: "pat",
+            clientId: "",
             docsLink: ""
         },
-
     ]
     
     return INTEGRATION_OPTIONS;

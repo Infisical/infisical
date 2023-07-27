@@ -18,6 +18,7 @@ const requireWorkspaceAuth = ({
 	requiredPermissions = [],
 	requireBlindIndicesEnabled = false,
 	requireE2EEOff = false,
+	checkIPAllowlist = false
 }: {
 	acceptedRoles: Array<"admin" | "member">;
 	locationWorkspaceId: req;
@@ -25,6 +26,7 @@ const requireWorkspaceAuth = ({
 	requiredPermissions?: string[];
 	requireBlindIndicesEnabled?: boolean;
 	requireE2EEOff?: boolean;
+	checkIPAllowlist?: boolean;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
 		const workspaceId = req[locationWorkspaceId]?.workspaceId;
@@ -39,6 +41,7 @@ const requireWorkspaceAuth = ({
 			requiredPermissions,
 			requireBlindIndicesEnabled,
 			requireE2EEOff,
+			checkIPAllowlist
 		});
 		
 		if (membership) {

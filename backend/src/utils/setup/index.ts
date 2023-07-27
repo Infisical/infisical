@@ -7,6 +7,7 @@ import { createTestUserForDevelopment } from "../addDevelopmentUser";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import { validateEncryptionKeysConfig } from "./validateConfig";
 import {
+  backfillBotOrgs,
   backfillBots,
   backfillEncryptionMetadata,
   backfillIntegration,
@@ -14,9 +15,14 @@ import {
   backfillSecretFolders,
   backfillSecretVersions,
   backfillServiceToken,
-  backfillServiceTokenMultiScope
+  backfillServiceTokenMultiScope,
+  backfillTrustedIps
 } from "./backfillData";
-import { reencryptBotPrivateKeys, reencryptSecretBlindIndexDataSalts } from "./reencryptData";
+import { 
+  reencryptBotOrgKeys,
+  reencryptBotPrivateKeys,
+  reencryptSecretBlindIndexDataSalts
+} from "./reencryptData";
 import {
   getClientIdGoogle,
   getClientSecretGoogle,
@@ -72,16 +78,19 @@ export const setup = async () => {
   // backfilling data to catch up with new collections and updated fields
   await backfillSecretVersions();
   await backfillBots();
+  await backfillBotOrgs();
   await backfillSecretBlindIndexData();
   await backfillEncryptionMetadata();
   await backfillSecretFolders();
   await backfillServiceToken();
   await backfillIntegration();
   await backfillServiceTokenMultiScope();
+  await backfillTrustedIps();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY
   await reencryptBotPrivateKeys();
+  await reencryptBotOrgKeys();
   await reencryptSecretBlindIndexDataSalts();
 
   // initializing Sentry

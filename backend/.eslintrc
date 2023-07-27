@@ -10,6 +10,8 @@
     "plugin:@typescript-eslint/recommended"
   ],
   "rules": {
+    "no-empty-function": "off",
+    "@typescript-eslint/no-empty-function": "off",
     "no-console": 2,
     "quotes": [
       "error",
@@ -24,7 +26,6 @@
     ],
     "@typescript-eslint/no-unused-vars": "off",
     "unused-imports/no-unused-imports": "error",
-    "@typescript-eslint/no-empty-function": "off",
     "unused-imports/no-unused-vars": [
       "warn",
       {

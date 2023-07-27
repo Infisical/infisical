@@ -5,6 +5,10 @@ import {
 	Secret,
 	Workspace,
 } from "../models";
+import {
+	IPType,
+	TrustedIP
+} from "../ee/models";
 import { createBot } from "../helpers/bot";
 import { EELicenseService } from "../ee/services";
 import { SecretService } from "../services";
@@ -39,6 +43,26 @@ export const createWorkspace = async ({
 	// initialize blind index salt for workspace
 	await SecretService.createSecretBlindIndexData({
 		workspaceId: workspace._id,
+	});
+	
+	// initialize default trusted IPv4 CIDR - 0.0.0.0/0
+	await new TrustedIP({
+		workspace: workspace._id,
+		ipAddress: "0.0.0.0",
+		type: IPType.IPV4,
+		prefix: 0,
+		isActive: true,
+		comment: ""
+	}).save()
+	
+	// initialize default trusted IPv6 CIDR - ::/0
+	await new TrustedIP({
+		workspace: workspace._id,
+		ipAddress: "::",
+		type: IPType.IPV6,
+		prefix: 0,
+		isActive: true,
+		comment: ""
 	});
 
 	await EELicenseService.refreshPlan(organizationId);

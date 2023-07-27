@@ -66,12 +66,12 @@ metadata:
 spec:
   # The host that should be used to pull secrets from. If left empty, the value specified in Global configuration will be used
   hostAPI: https://app.infisical.com/api
-  resyncInterval:
+  resyncInterval: 60
   authentication:
     serviceToken:
       serviceTokenSecretReference:
         secretName: service-token
-        secretNamespace: option
+        secretNamespace: default
       secretsScope:
         envSlug: dev
         secretsPath: "/"

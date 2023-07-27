@@ -13,6 +13,7 @@ export type App = {
   name: string;
   appId?: string;
   owner?: string;
+  secretGroups?: string[];
 };
 
 export type Team = {
@@ -29,3 +30,14 @@ export type Service = {
   name: string;
   serviceId: string;
 };
+
+export type BitBucketWorkspace = {
+  uuid: string;
+  name: string;
+  slug: string;
+}
+
+export type NorthflankSecretGroup = {
+  name: string;
+  groupId: string;
+}

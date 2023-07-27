@@ -330,6 +330,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       className="w-full truncate bg-mineshaft-600 py-2.5 font-medium"
                       onValueChange={(value) => {
                         router.push(`/project/${value}/secrets`);
+                        localStorage.setItem("projectData.id", value);
                       }}
                       position="popper"
                       dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50 max-h-96 border-gray-700"
@@ -401,6 +402,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           icon="system-outline-82-extension"
                         >
                           {t("nav.menu.integrations")}
+                        </MenuItem>
+                      </a>
+                    </Link>
+                    <Link href={`/project/${currentWorkspace?._id}/allowlist`} passHref>
+                      <a>
+                        <MenuItem
+                          isSelected={
+                            router.asPath === `/project/${currentWorkspace?._id}/allowlist`
+                          }
+                          icon="system-outline-126-verified"
+                        >
+                          IP Allowlist
                         </MenuItem>
                       </a>
                     </Link>

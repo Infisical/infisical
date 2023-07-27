@@ -10,6 +10,9 @@ import {
     AUTH_MODE_API_KEY,
     AUTH_MODE_JWT,
 } from "../../variables";
+import {
+    AuthProvider
+} from "../../models";
 
 router.get(
     "/me",
@@ -34,9 +37,23 @@ router.patch(
     requireAuth({
         acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
     }),
-    body("firstName").exists(),
+    body("firstName").exists().isString(),
+    body("lastName").isString(),
     validateRequest,
     usersController.updateName
+);
+
+router.patch(
+    "/me/auth-provider",
+    requireAuth({
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+    }),
+    body("authProvider").exists().isString().isIn([
+        AuthProvider.EMAIL,
+        AuthProvider.GOOGLE
+    ]),
+    validateRequest,
+    usersController.updateAuthProvider
 );
 
 router.get(
@@ -76,7 +93,7 @@ router.delete(
     usersController.deleteAPIKey
 );
 
-router.get( // new
+router.get(
     "/me/sessions",
     requireAuth({
         acceptedAuthModes: [AUTH_MODE_JWT],
@@ -84,7 +101,7 @@ router.get( // new
     usersController.getMySessions
 );
 
-router.delete( // new
+router.delete(
     "/me/sessions",
     requireAuth({
         acceptedAuthModes: [AUTH_MODE_JWT],

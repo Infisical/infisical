@@ -1,11 +1,10 @@
 ---
-title: "Docker"
+title: "Docker Entrypoint"
 description: "How to use Infisical to inject environment variables into a Docker container."
 ---
 
-Prerequisites:
-
-- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+This approach allows you to inject secrets from Infisical directly into your application.
+This is achieved by installing the Infisical CLI into your docker image and modifying your start command to execute with Infisical.
 
 ## Add the Infisical CLI to your Dockerfile
 
@@ -33,6 +32,10 @@ Prerequisites:
 		```
    </Tab>
 </Tabs>
+####
+<Tip>
+  We recommend you to set the version of the CLI to a specific version. This will help keep your CLI version consistent across reinstalls. [View versions](https://cloudsmith.io/~infisical/repos/infisical-cli/packages/)
+</Tip>
 
 ## Modify the start command in your Dockerfile
 
@@ -48,18 +51,17 @@ CMD ["infisical", "run", "--", "npm", "run", "start"]
 CMD ["infisical", "run", "--command", "npm run start && ..."]
 ```
 
-## Generate an Infisical Token
+## Generate an service token
 
-Head to your project settings in Infisical Cloud to generate an [Infisical Token](/documentation/platform/token).
+Head to your project settings in the Infisical dashboard to generate an [service token](/documentation/platform/token). 
+This service token will allow you to authenticate and fetch secrets from Infisical. 
+Once you have created a service token with the required permissions, you’ll need to feed the token to the CLI installed in your docker container.
 
-## Feed Docker your Infisical Token
+## Feed service token to docker container
+The last step is to give the Infisical CLI installed in your Docker container access to the service token. This will allow the CLI to fetch and inject the secrets into your application.
+
+To feed the service token to the container, use the INFISICAL_TOKEN environment variable as shown below.
 
 ```bash
  docker run --env INFISICAL_TOKEN=[token] [DOCKER-IMAGE]...
 ```
-
-<Info>
-
-The Infisical CLI uses the detected `INFISICAL_TOKEN` environment variable to authenticate, retrieve, and inject the environment variables which the token is authorized for.
-
-</Info>

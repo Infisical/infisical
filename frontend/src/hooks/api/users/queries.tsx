@@ -25,6 +25,7 @@ const userKeys = {
   getUser: ["user"] as const,
   userAction: ["user-action"] as const,
   getOrgUsers: (orgId: string) => [{ orgId }, "user"],
+  myIp: ["ip"] as const,
   myAPIKeys: ["api-keys"] as const,
   mySessions: ["sessions"] as const
 };
@@ -52,6 +53,27 @@ export const useRenameUser = () => {
   return useMutation<{}, {}, RenameUserDTO>({
     mutationFn: ({ newName }) =>
       apiRequest.patch("/api/v2/users/me/name", { firstName: newName?.split(" ")[0], lastName: newName?.split(" ").slice(1).join(" ") }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(userKeys.getUser);
+    }
+  });
+};
+
+export const useUpdateUserAuthProvider = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      authProvider
+    }: {
+      authProvider: string;
+    }) => {
+      const { data: { user } } = await apiRequest.patch("/api/v2/users/me/auth-provider", { 
+        authProvider
+      });
+      
+      return user;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(userKeys.getUser);
     }
@@ -184,6 +206,19 @@ export const useLogoutUser = () =>
       localStorage.setItem("PRIVATE_KEY", "");
     }
   });
+
+export const useGetMyIp = () => {
+ return useQuery({
+    queryKey: userKeys.myIp,
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ ip: string; }>(
+        "/api/v1/users/me/ip"
+      );
+      return data.ip;
+    },
+    enabled: true
+  }); 
+}
 
 export const useGetMyAPIKeys = () => {
   return useQuery({

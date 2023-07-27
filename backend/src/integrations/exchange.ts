@@ -2,6 +2,8 @@ import { standardRequest } from "../config/request";
 import {
   INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_AZURE_TOKEN_URL,
+  INTEGRATION_BITBUCKET,
+  INTEGRATION_BITBUCKET_TOKEN_URL,
   INTEGRATION_GITHUB,
   INTEGRATION_GITHUB_TOKEN_URL,
   INTEGRATION_GITLAB,
@@ -15,11 +17,13 @@ import {
 } from "../variables";
 import {
   getClientIdAzure,
+  getClientIdBitBucket,
   getClientIdGitHub,
   getClientIdGitLab,
   getClientIdNetlify,
   getClientIdVercel,
   getClientSecretAzure,
+  getClientSecretBitBucket,
   getClientSecretGitHub,
   getClientSecretGitLab,
   getClientSecretHeroku,
@@ -78,6 +82,15 @@ interface ExchangeCodeGitlabResponse {
   created_at: number;
 }
 
+interface ExchangeCodeBitBucketResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_token: string;
+  scopes: string;
+  state: string;
+}
+
 /**
  * Return [accessToken], [accessExpiresAt], and [refreshToken] for OAuth2
  * code-token exchange for integration named [integration]
@@ -129,6 +142,12 @@ const exchangeCode = async ({
       obj = await exchangeCodeGitlab({
         code,
       });
+      break;
+    case INTEGRATION_BITBUCKET:
+      obj = await exchangeCodeBitBucket({
+        code,
+      });
+      break;
   }
 
   return obj;
@@ -329,6 +348,45 @@ const exchangeCodeGitlab = async ({ code }: { code: string }) => {
         client_id: await getClientIdGitLab(),
         client_secret: await getClientSecretGitLab(),
         redirect_uri: `${await getSiteURL()}/integrations/gitlab/oauth2/callback`,
+      } as any),
+      {
+        headers: {
+          "Accept-Encoding": "application/json",
+        },
+      }
+    )
+  ).data;
+
+  accessExpiresAt.setSeconds(accessExpiresAt.getSeconds() + res.expires_in);
+
+  return {
+    accessToken: res.access_token,
+    refreshToken: res.refresh_token,
+    accessExpiresAt,
+  };
+};
+
+/**
+ * Return [accessToken], [accessExpiresAt], and [refreshToken] for BitBucket
+ * code-token exchange
+ * @param {Object} obj1
+ * @param {Object} obj1.code - code for code-token exchange
+ * @returns {Object} obj2
+ * @returns {String} obj2.accessToken - access token for BitBucket API
+ * @returns {String} obj2.refreshToken - refresh token for BitBucket API
+ * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
+ */
+const exchangeCodeBitBucket = async ({ code }: { code: string }) => {
+  const accessExpiresAt = new Date();
+  const res: ExchangeCodeBitBucketResponse = (
+    await standardRequest.post(
+      INTEGRATION_BITBUCKET_TOKEN_URL,
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        code: code,
+        client_id: await getClientIdBitBucket(),
+        client_secret: await getClientSecretBitBucket(),
+        redirect_uri: `${await getSiteURL()}/integrations/bitbucket/oauth2/callback`,
       } as any),
       {
         headers: {

@@ -18,7 +18,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
     handlePopUpOpen: (
-        popUpName: keyof UsePopUpState<["updateEnv", "deleteEnv", "deleteEnv", "upgradePlan"]>,
+        popUpName: keyof UsePopUpState<["updateEnv", "deleteEnv", "upgradePlan"]>,
         {
             name,
             slug

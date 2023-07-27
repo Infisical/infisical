@@ -227,7 +227,7 @@
     },
     "password": {
       "password": "Password",
-      "change": "Change password",
+      "change": "Change Password",
       "current": "Current password",
       "current-wrong": "The current password may be wrong",
       "new": "New password",

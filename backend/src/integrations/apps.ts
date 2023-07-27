@@ -1,16 +1,21 @@
-import { Octokit } from "@octokit/rest";
-import { IIntegrationAuth } from "../models";
-import { standardRequest } from "../config/request";
 import {
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_BITBUCKET,
+  INTEGRATION_BITBUCKET_API_URL,
   INTEGRATION_CHECKLY,
   INTEGRATION_CHECKLY_API_URL,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_CLOUDFLARE_PAGES_API_URL,
+  INTEGRATION_CLOUD_66,
+  INTEGRATION_CLOUD_66_API_URL,
+  INTEGRATION_CODEFRESH,
+  INTEGRATION_CODEFRESH_API_URL,
+  INTEGRATION_DIGITAL_OCEAN_API_URL,
+  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
@@ -22,21 +27,26 @@ import {
   INTEGRATION_LARAVELFORGE_API_URL,
   INTEGRATION_NETLIFY,
   INTEGRATION_NETLIFY_API_URL,
+  INTEGRATION_NORTHFLANK,
+  INTEGRATION_NORTHFLANK_API_URL,
   INTEGRATION_RAILWAY,
   INTEGRATION_RAILWAY_API_URL,
   INTEGRATION_RENDER,
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_SUPABASE,
   INTEGRATION_SUPABASE_API_URL,
+  INTEGRATION_TERRAFORM_CLOUD,
+  INTEGRATION_TERRAFORM_CLOUD_API_URL,
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
   INTEGRATION_VERCEL_API_URL,
-  INTEGRATION_CODEFRESH,
-  INTEGRATION_CODEFRESH_API_URL,
   INTEGRATION_WINDMILL,
   INTEGRATION_WINDMILL_API_URL,
 } from "../variables";
+import { IIntegrationAuth } from "../models";
+import { Octokit } from "@octokit/rest";
+import { standardRequest } from "../config/request";
 
 interface App {
   name: string;
@@ -58,11 +68,13 @@ const getApps = async ({
   accessToken,
   accessId,
   teamId,
+  workspaceSlug,
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
   accessId?: string;
   teamId?: string;
+  workspaceSlug?: string;
 }) => {
   let apps: App[] = [];
   switch (integrationAuth.integration) {
@@ -128,6 +140,12 @@ const getApps = async ({
         serverId: accessId
       });
       break;
+    case INTEGRATION_TERRAFORM_CLOUD:
+      apps = await getAppsTerraformCloud({
+        accessToken,
+        workspacesId: accessId,
+      });
+      break;
     case INTEGRATION_TRAVISCI:
       apps = await getAppsTravisCI({
         accessToken,
@@ -147,7 +165,18 @@ const getApps = async ({
       apps = await getAppsCloudflarePages({
         accessToken,
         accountId: accessId
-      })
+      });
+      break;
+    case INTEGRATION_NORTHFLANK:
+      apps = await getAppsNorthflank({
+        accessToken,
+      });
+      break;
+    case INTEGRATION_BITBUCKET:
+      apps = await getAppsBitBucket({
+        accessToken,
+        workspaceSlug
+      });
       break;
     case INTEGRATION_CODEFRESH:
       apps = await getAppsCodefresh({
@@ -156,6 +185,16 @@ const getApps = async ({
       break;
     case INTEGRATION_WINDMILL:
       apps = await getAppsWindmill({
+        accessToken
+      });
+      break;
+    case INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM:
+      apps = await getAppsDigitalOceanAppPlatform({ 
+        accessToken 
+      });
+      break;
+    case INTEGRATION_CLOUD_66:
+      apps = await getAppsCloud66({
         accessToken,
       });
       break;
@@ -547,6 +586,43 @@ const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
 };
 
 /**
+ * Return list of projects for Terraform Cloud integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Terraform Cloud API
+ * @param {String} obj.workspacesId - workspace id of Terraform Cloud projects
+ * @returns {Object[]} apps - names and ids of Terraform Cloud projects
+ * @returns {String} apps.name - name of Terraform Cloud projects
+ */
+const getAppsTerraformCloud = async ({ 
+  accessToken,
+  workspacesId
+}: {
+  accessToken: string;
+  workspacesId?: string;
+}) => {
+  const res = (
+    await standardRequest.get(`${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${workspacesId}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+    })
+  ).data.data;
+
+  const apps = []
+
+  const appsObj = {
+      name: res?.attributes.name,
+      appId: res?.id,
+  };
+
+  apps.push(appsObj)
+
+  return apps;
+};
+
+
+/**
  * Return list of repositories for GitLab integration
  * @param {Object} obj
  * @param {String} obj.accessToken - access token for GitLab API
@@ -736,13 +812,119 @@ const getAppsCloudflarePages = async ({
 }
 
 /**
+ * Return list of repositories for the BitBucket integration based on provided BitBucket workspace
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for BitBucket API
+ * @param {String} obj.workspaceSlug - Workspace identifier for fetching BitBucket repositories
+ * @returns {Object[]} apps - BitBucket repositories
+ * @returns {String} apps.name - name of BitBucket repository
+ */
+const getAppsBitBucket = async ({ 
+  accessToken,
+  workspaceSlug,
+}: {
+  accessToken: string;
+  workspaceSlug?: string;
+}) => {
+  interface RepositoriesResponse {
+    size: number;
+    page: number;
+    pageLen: number;
+    next: string;
+    previous: string;
+    values: Array<Repository>;
+  }
+
+  interface Repository {
+    type: string;
+    uuid: string;
+    name: string;
+    is_private: boolean;
+    created_on: string;
+    updated_on: string;
+  }
+
+  if (!workspaceSlug) {
+    return []
+  }
+  
+  const repositories: Repository[] = [];
+  let hasNextPage = true;
+  let repositoriesUrl = `${INTEGRATION_BITBUCKET_API_URL}/2.0/repositories/${workspaceSlug}`
+
+  while (hasNextPage) {
+    const { data }: { data: RepositoriesResponse } = await standardRequest.get(
+        repositoriesUrl,
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept": "application/json",
+            },
+        }
+    );
+
+    if (data?.values.length > 0) {
+      data.values.forEach((repository) => {
+        repositories.push(repository)
+      })
+    }
+
+    if (data.next) {
+      repositoriesUrl = data.next
+    } else {
+      hasNextPage = false
+    }
+  }
+
+  const apps = repositories.map((repository) => {
+      return {
+          name: repository.name,
+          appId: repository.uuid,
+      };
+  });
+  return apps;
+}
+
+/** Return list of projects for Northflank integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Northflank API
+ * @returns {Object[]} apps - names of Northflank apps
+ * @returns {String} apps.name - name of Northflank app
+ */
+const getAppsNorthflank = async ({ accessToken }: { accessToken: string }) => {
+  const {
+    data: {
+      data: {
+        projects
+      }
+    }
+  } = await standardRequest.get(
+    `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json",
+      },
+    }
+  );
+
+  const apps = projects.map((a: any) => {
+    return {
+      name: a.name,
+      appId: a.id
+    };
+  });
+
+  return apps;
+};
+
+/**
  * Return list of projects for Supabase integration
  * @param {Object} obj
  * @param {String} obj.accessToken - access token for Supabase API
  * @returns {Object[]} apps - names of Supabase apps
  * @returns {String} apps.name - name of Supabase app
  */
-
 const getAppsCodefresh = async ({
   accessToken,
 }: {
@@ -862,9 +1044,109 @@ const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
       appId: a.id,
     };
   });
+  
+  return apps;
+}
+
+/**
+ * Return list of applications for DigitalOcean App Platform integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - personal access token for DigitalOcean
+ * @returns {Object[]} apps - names of DigitalOcean apps
+ * @returns {String} apps.name - name of DigitalOcean app
+ * @returns {String} apps.appId - id of DigitalOcean app
+ */
+const getAppsDigitalOceanAppPlatform = async ({ accessToken }: { accessToken: string }) => {
+  interface DigitalOceanApp {
+    id: string;
+    owner_uuid: string;
+    spec: Spec;
+  }
+
+  interface Spec {
+    name: string;
+    region: string;
+    envs: Env[];
+  }
+
+  interface Env {
+    key: string;
+    value: string;
+    scope: string;
+  }
+  
+  const res = (
+    await standardRequest.get(`${INTEGRATION_DIGITAL_OCEAN_API_URL}/v2/apps`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
+      }
+    })
+  ).data;
+
+  return (res.apps ?? []).map((a: DigitalOceanApp) => ({
+    name: a.spec.name,
+    appId: a.id
+  }));
+}
+  
+/**
+ * Return list of applications for Cloud66 integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - personal access token for Cloud66 API
+ * @returns {Object[]} apps - Cloud66 apps
+ * @returns {String} apps.name - name of Cloud66 app
+ * @returns {String} apps.appId - uid of Cloud66 app
+ */
+const getAppsCloud66 = async ({ accessToken }: { accessToken: string }) => {
+  interface Cloud66Apps {
+    uid: string;
+    name: string;
+    account_id: number;
+    git: string;
+    git_branch: string;
+    environment: string;
+    cloud: string;
+    fqdn: string;
+    language: string;
+    framework: string;
+    status: number;
+    health: number;
+    last_activity: string;
+    last_activity_iso: string;
+    maintenance_mode: boolean;
+    has_loadbalancer: boolean;
+    created_at: string;
+    updated_at: string;
+    deploy_directory: string;
+    cloud_status: string;
+    backend: string;
+    version: string;
+    revision: string;
+    is_busy: boolean;
+    account_name: string;
+    is_cluster: boolean;
+    is_inside_cluster: boolean;
+    cluster_name: any;
+    application_address: string;
+    configstore_namespace: string;
+  }
+
+  const stacks = (
+    await standardRequest.get(`${INTEGRATION_CLOUD_66_API_URL}/3/stacks`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
+      }
+    })
+  ).data.response as Cloud66Apps[]
+
+  const apps = stacks.map((app) => ({
+    name: app.name,
+    appId: app.uid
+  }));
 
   return apps;
 };
-
 
 export { getApps };
