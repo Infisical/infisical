@@ -75,12 +75,29 @@ export type FormData = yup.InferType<typeof schema>;
 export type TSecretDetailsOpen = { index: number; id: string };
 export type TSecOverwriteOpt = { secrets: Record<string, { comments: string[]; value: string }> };
 
-export const downloadSecret = (secrets: FormData["secrets"] = [], env: string = "unknown") => {
-  const finalSecret = secrets.map(({ key, value, valueOverride, overrideAction, comment }) => ({
-    key,
-    value: overrideAction && overrideAction !== SecretActionType.Deleted ? valueOverride : value,
-    comment
-  }));
+export const downloadSecret = (
+  secrets: FormData["secrets"] = [],
+  importedSecrets: { key: string; value?: string; comment?: string }[] = [],
+  env: string = "unknown"
+) => {
+  const importSecPos: Record<string, number> = {};
+  importedSecrets.forEach((el, index) => {
+    importSecPos[el.key] = index;
+  });
+  const finalSecret = [...importedSecrets];
+  secrets.forEach(({ key, value, valueOverride, overrideAction, comment }) => {
+    const newValue = {
+      key,
+      value: overrideAction && overrideAction !== SecretActionType.Deleted ? valueOverride : value,
+      comment
+    };
+    // can also be zero thus failing
+    if (typeof importSecPos?.[key] === "undefined") {
+      finalSecret.push(newValue);
+    } else {
+      finalSecret[importSecPos[key]] = newValue;
+    }
+  });
 
   let file = "";
   finalSecret.forEach(({ key, value, comment }) => {

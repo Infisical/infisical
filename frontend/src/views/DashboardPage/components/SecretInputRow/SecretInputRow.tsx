@@ -1,6 +1,13 @@
 /* eslint-disable react/jsx-no-useless-fragment */
-import { memo, useEffect, useRef } from "react";
-import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
+import { memo, useEffect, useRef, useState } from "react";
+import {
+  Control,
+  Controller,
+  useFieldArray,
+  UseFormRegister,
+  UseFormSetValue,
+  useWatch
+} from "react-hook-form";
 import {
   faCheck,
   faCodeBranch,
@@ -28,6 +35,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  SecretInput,
   Tag,
   TextArea,
   Tooltip
@@ -36,24 +44,6 @@ import { useToggle } from "@app/hooks";
 import { WsTag } from "@app/hooks/api/types";
 
 import { FormData, SecretActionType } from "../../DashboardPage.utils";
-import { MaskedInput } from "./MaskedInput";
-
-type Props = {
-  index: number;
-  // permission and external state's that decided to hide or show
-  isReadOnly?: boolean;
-  isAddOnly?: boolean;
-  isRollbackMode?: boolean;
-  isSecretValueHidden: boolean;
-  searchTerm: string;
-  // to record the ids of deleted ones
-  onSecretDelete: (index: number, id?: string, overrideId?: string) => void;
-  // sidebar control props
-  onRowExpand: () => void;
-  // tag props
-  wsTags?: WsTag[];
-  onCreateTagOpen: () => void;
-};
 
 const tagColors = [
   { bg: "bg-[#f1c40f]/40", text: "text-[#fcf0c3]/70" },
@@ -66,6 +56,31 @@ const tagColors = [
   { bg: "bg-[#332FD0]/40", text: "text-[#DFF6FF]/70" }
 ];
 
+type Props = {
+  index: number;
+  // backend generated unique id
+  secUniqId?: string;
+  // permission and external state's that decided to hide or show
+  isReadOnly?: boolean;
+  isAddOnly?: boolean;
+  isRollbackMode?: boolean;
+  isSecretValueHidden: boolean;
+  searchTerm: string;
+  // to record the ids of deleted ones
+  onSecretDelete: (index: number, id?: string, overrideId?: string) => void;
+  // sidebar control props
+  onRowExpand: (secId: string | undefined, index: number) => void;
+  // tag props
+  wsTags?: WsTag[];
+  onCreateTagOpen: () => void;
+  // rhf specific functions, dont put this using useFormContext. This is passed as props to avoid re-rendering
+  control: Control<FormData>;
+  register: UseFormRegister<FormData>;
+  setValue: UseFormSetValue<FormData>;
+  isKeyError?: boolean;
+  keyError?: string;
+};
+
 export const SecretInputRow = memo(
   ({
     index,
@@ -77,10 +92,15 @@ export const SecretInputRow = memo(
     wsTags,
     onCreateTagOpen,
     onSecretDelete,
-    searchTerm
+    searchTerm,
+    control,
+    register,
+    setValue,
+    isKeyError,
+    keyError,
+    secUniqId
   }: Props): JSX.Element => {
     const isKeySubDisabled = useRef<boolean>(false);
-    const { register, setValue, control } = useFormContext<FormData>();
     // comment management in a row
     const {
       fields: secretTags,
@@ -89,28 +109,40 @@ export const SecretInputRow = memo(
     } = useFieldArray({ control, name: `secrets.${index}.tags` });
 
     // to get details on a secret
-    const overrideAction = useWatch({ control, name: `secrets.${index}.overrideAction` });
-    const idOverride = useWatch({ control, name: `secrets.${index}.idOverride` });
-    const secComment = useWatch({ control, name: `secrets.${index}.comment` });
+    const overrideAction = useWatch({
+      control,
+      name: `secrets.${index}.overrideAction`,
+      exact: true
+    });
+    const idOverride = useWatch({ control, name: `secrets.${index}.idOverride`, exact: true });
+    const secComment = useWatch({ control, name: `secrets.${index}.comment`, exact: true });
     const hasComment = Boolean(secComment);
     const secKey = useWatch({
       control,
       name: `secrets.${index}.key`,
-      disabled: isKeySubDisabled.current
+      disabled: isKeySubDisabled.current,
+      exact: true
     });
     const secValue = useWatch({
       control,
       name: `secrets.${index}.value`,
-      disabled: isKeySubDisabled.current
+      disabled: isKeySubDisabled.current,
+      exact: true
     });
     const secValueOverride = useWatch({
       control,
       name: `secrets.${index}.valueOverride`,
-      disabled: isKeySubDisabled.current
-    })
-    const secId = useWatch({ control, name: `secrets.${index}._id` });
+      disabled: isKeySubDisabled.current,
+      exact: true
+    });
+    // when secret is override by personal values
+    const isOverridden =
+      overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
+    const [editorRef, setEditorRef] = useState(isOverridden ? secValueOverride : secValue);
 
-    const tags = useWatch({ control, name: `secrets.${index}.tags`, defaultValue: [] }) || [];
+    const secId = useWatch({ control, name: `secrets.${index}._id`, exact: true });
+    const tags =
+      useWatch({ control, name: `secrets.${index}.tags`, exact: true, defaultValue: [] }) || [];
     const selectedTagIds = tags.reduce<Record<string, boolean>>(
       (prev, curr) => ({ ...prev, [curr.slug]: true }),
       {}
@@ -126,14 +158,14 @@ export const SecretInputRow = memo(
       return () => clearTimeout(timer);
     }, [isInviteLinkCopied]);
 
+    useEffect(() => {
+      setEditorRef(isOverridden ? secValueOverride : secValue);
+    }, [isOverridden]);
+
     const copyTokenToClipboard = () => {
       navigator.clipboard.writeText((secValueOverride || secValue) as string);
       setInviteLinkCopied.on();
     };
-
-    // when secret is override by personal values
-    const isOverridden =
-      overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
 
     const onSecretOverride = () => {
       if (isOverridden) {
@@ -193,10 +225,10 @@ export const SecretInputRow = memo(
           control={control}
           defaultValue=""
           name={`secrets.${index}.key`}
-          render={({ fieldState: { error }, field }) => (
-            <HoverCard openDelay={0} open={error?.message ? undefined : false}>
+          render={({ field }) => (
+            <HoverCard openDelay={0} open={isKeyError ? undefined : false}>
               <HoverCardTrigger asChild>
-                <td className={cx(error?.message ? "rounded ring ring-red/50" : null)}>
+                <td className={cx(isKeyError ? "rounded ring ring-red/50" : null)}>
                   <div className="relative flex w-full min-w-[220px] items-center justify-end lg:min-w-[240px] xl:min-w-[280px]">
                     <Input
                       autoComplete="off"
@@ -220,21 +252,70 @@ export const SecretInputRow = memo(
                   <div>
                     <FontAwesomeIcon icon={faInfoCircle} className="text-red" />
                   </div>
-                  <div className="text-sm">{error?.message}</div>
+                  <div className="text-sm">{keyError}</div>
                 </div>
               </HoverCardContent>
             </HoverCard>
           )}
         />
-        <td className="flex w-full flex-grow flex-row border-r border-none border-red">
-          <MaskedInput
-            isReadOnly={
-              isReadOnly || isRollbackMode || (isOverridden ? isAddOnly : shouldBeBlockedInAddOnly)
-            }
-            isOverridden={isOverridden}
-            isSecretValueHidden={isSecretValueHidden}
-            index={index}
-          />
+        <td
+          className="flex w-full flex-grow flex-row border-r border-none border-red"
+          style={{ padding: "0.5rem 0 0.5rem 1rem" }}
+        >
+          <div className="w-full">
+            {isOverridden ? (
+              <Controller
+                control={control}
+                name={`secrets.${index}.valueOverride`}
+                render={({ field: { onChange, onBlur } }) => (
+                  <SecretInput
+                    key={`secrets.${index}.valueOverride`}
+                    isDisabled={
+                      isReadOnly ||
+                      isRollbackMode ||
+                      (isOverridden ? isAddOnly : shouldBeBlockedInAddOnly)
+                    }
+                    value={editorRef}
+                    isVisible={!isSecretValueHidden}
+                    onChange={(val, html) => {
+                      console.log(val);
+                      onChange(val);
+                      setEditorRef(html);
+                    }}
+                    onBlur={(html) => {
+                      setEditorRef(html);
+                      onBlur();
+                    }}
+                  />
+                )}
+              />
+            ) : (
+              <Controller
+                control={control}
+                name={`secrets.${index}.value`}
+                render={({ field: { onBlur, onChange } }) => (
+                  <SecretInput
+                    key={`secrets.${index}.value`}
+                    isVisible={!isSecretValueHidden}
+                    isDisabled={
+                      isReadOnly ||
+                      isRollbackMode ||
+                      (isOverridden ? isAddOnly : shouldBeBlockedInAddOnly)
+                    }
+                    onChange={(val, html) => {
+                      onChange(val);
+                      setEditorRef(html);
+                    }}
+                    value={editorRef}
+                    onBlur={(html) => {
+                      setEditorRef(html);
+                      onBlur();
+                    }}
+                  />
+                )}
+              />
+            )}
+          </div>
         </td>
         <td className="min-w-sm flex">
           <div className="flex h-8 items-center pl-2">
@@ -251,7 +332,7 @@ export const SecretInputRow = memo(
                 {slug}
               </Tag>
             ))}
-            <div className="w-0 group-hover:w-6 overflow-hidden">
+            <div className="w-0 overflow-hidden group-hover:w-6">
               <Tooltip content="Copy value">
                 <IconButton
                   variant="plain"
@@ -396,7 +477,7 @@ export const SecretInputRow = memo(
                       size="lg"
                       colorSchema="primary"
                       variant="plain"
-                      onClick={onRowExpand}
+                      onClick={() => onRowExpand(secUniqId, index)}
                       ariaLabel="expand"
                     >
                       <FontAwesomeIcon icon={faEllipsis} />
