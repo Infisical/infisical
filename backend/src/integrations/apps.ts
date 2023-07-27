@@ -766,7 +766,6 @@ const getAppsCodefresh = async ({
 
 };
 
-
 /**
  * Return list of projects for Windmill integration
  * @param {Object} obj
@@ -784,8 +783,8 @@ const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
       },
     }
   );
-
-  //check for write access of secrets in windmill workspaces
+  
+  // check for write access of secrets in windmill workspaces
   const writeAccessCheck = data.map(async (app: any) => {
     try {
       const userPath = "u/user/variable";

@@ -43,7 +43,7 @@ export default function WindmillCreateIntegrationPage() {
         <Card className="max-w-md rounded-md p-8">
           <CardTitle className="text-center">Windmill Integration</CardTitle>
           <FormControl
-            label="Windmill API Token"
+            label="Windmill Access Token"
             errorText={apiKeyErrorText}
             isError={apiKeyErrorText !== "" ?? false}
           >

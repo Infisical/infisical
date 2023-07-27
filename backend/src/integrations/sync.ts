@@ -48,6 +48,7 @@ import {
   INTEGRATION_WINDMILL_API_URL,
 } from "../variables";
 import { standardRequest } from "../config/request";
+import { handleAuthProviderCallback } from "../controllers/v1/authController";
 
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
@@ -2048,7 +2049,7 @@ const syncSecretsWindmill = async ({
   }
 
   // get secrets stored in windmill workspace
-  const { data: getSecretsRes } = await standardRequest.get(
+  const res = (await standardRequest.get(
     `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/list`,
     {
       headers: {
@@ -2056,87 +2057,75 @@ const syncSecretsWindmill = async ({
           "Accept-Encoding": "application/json",
       },
     }
+  ))
+  .data
+  .reduce(
+    (obj: any, secret: WindmillSecret) => ({
+      ...obj,
+      [secret.path]: secret
+    }),
+    {}
   );
-
-  // convert secret results to [key] format
-  const secretsResList = getSecretsRes.map((secretObj: any) => (secretObj.path));
-    
-  // convert the secrets to [{}] format
-  const modifiedFormatForCreateSecretInjection: WindmillSecret[] = [];
-  const modifiedFormatForUpdateSecretInjection: WindmillSecret[] = [];
   
-  Object.keys(secrets).forEach(
-    (key) => {
-        const pattern = new RegExp('^[uf]+[\/](?:[a-zA-Z0-9-_]+[\/])*([a-zA-Z0-9-_]+)')
-        if((key.startsWith("u/") || key.startsWith("f/")) && pattern.test(key)) {
-          if(secretsResList.includes(key)) {
-            modifiedFormatForUpdateSecretInjection.push({
-              path: key,
-              value: secrets[key],
-              is_secret: true,
-              description: secretComments[key] || ""
-            });
+  const pattern = /^(u\/|f\/)[a-zA-Z0-9_-]+\/([a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]*[^\/]$/;
+  
+  for await (const key of Object.keys(secrets)) {
+    if((key.startsWith("u/") || key.startsWith("f/")) && pattern.test(key)) {
+          if(!(key in res)) {
+            // case: secret does not exist in windmill
+            // -> create secret
+            
+            await standardRequest.post(
+              `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/create`,
+              {
+                path: key,
+                value: secrets[key],
+                is_secret: true,
+                description: secretComments[key] || ""
+              },
+              {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Accept-Encoding": "application/json",
+                },
+              }
+            );
           } else {
-            modifiedFormatForCreateSecretInjection.push({
-              path: key,
-              value: secrets[key],
-              is_secret: true,
-              description: secretComments[key] || ""
-            });
+            // -> update secret
+            await standardRequest.post(
+              `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/update/${res[key].path}`,
+              {
+                path: key,
+                value: secrets[key],
+                is_secret: true,
+                description: secretComments[key] || ""
+              },
+              {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Accept-Encoding": "application/json",
+                },
+              }
+            );
           }
       };
-    }
-  );
-
-  // create new secrets in windmill workspace
-  modifiedFormatForCreateSecretInjection.forEach(async (secretObj: any) => {
-    await standardRequest.post(
-      `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/create`,
-      secretObj,
-      {
-        headers: {
+  }
+  
+  for await (const key of Object.keys(res)) {
+    if (!(key in secrets)) {
+      // -> delete secret
+      await standardRequest.delete(
+        `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/delete/${res[key].path}`,
+        {
+          headers: {
             Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
             "Accept-Encoding": "application/json",
-        },
-      }
-    );
-  })
-
-  // update old secrets already present in windmill workspace
-  modifiedFormatForUpdateSecretInjection.forEach(async (secretObj: any) => {
-    await standardRequest.post(
-      `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/update/${secretObj.path}`,
-      secretObj,
-      {
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json",
-        },
-      }
-    )
-  })
-
-  // create list of secrets to delete
-  const secretsToDelete: string[] = [];
-  secretsResList.forEach((secret: string) => {
-    if(!(secret in secrets)) {
-      secretsToDelete.push(secret);
-    }
-  })
-
-  // delete all secrets from secretsToDelete List
-  secretsToDelete.forEach(async (secret: string) => {
-    await standardRequest.delete(
-      `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/delete/${secret}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          "Accept-Encoding": "application/json",
+          }
         }
-      }
-    );
-  });
+      );
+    }
+  }
 };
 
 export { syncSecrets };

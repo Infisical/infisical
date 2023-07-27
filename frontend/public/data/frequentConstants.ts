@@ -22,7 +22,7 @@ const integrationSlugNameMapping: Mapping = {
   'hashicorp-vault': 'Vault',
   'cloudflare-pages': 'Cloudflare Pages',
   'codefresh': 'Codefresh',
-  'windmill': 'windmill'
+  'windmill': 'Windmill'
 }
 
 const envMapping: Mapping = {

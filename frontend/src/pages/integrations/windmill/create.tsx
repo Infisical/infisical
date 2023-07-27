@@ -114,7 +114,7 @@ export default function WindmillCreateIntegrationPage() {
             placeholder="Provide a path, default is /"
           />
         </FormControl>
-        <FormControl label="Windmill Workspace (Write Access)" className="mt-4">
+        <FormControl label="Windmill Workspace" className="mt-4">
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}

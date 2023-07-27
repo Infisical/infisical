@@ -110,12 +110,12 @@ class BotService {
   }
 
   /**
-   * Return decreypted secrets comment for workspace with id [worskpaceId] and
+   * Return decrypted secret comments for workspace with id [worskpaceId] and
    * environment [environment] shared to bot.
    * @param {Object} obj
    * @param {String} obj.workspaceId - id of workspace of secrets
    * @param {String} obj.environment - environment for secrets
-   * @returns {Object} secretObj - object where keys are secret keys and values are comment values
+   * @returns {Object} secretObj - object where keys are secret keys and values are comments
    */
   static async getSecretComments({
     workspaceId,

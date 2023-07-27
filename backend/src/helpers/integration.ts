@@ -131,7 +131,6 @@ export const syncIntegrationsHelper = async ({
   for await (const integration of integrations) {
     // get workspace, environment (shared) secrets
     const secrets = await BotService.getSecrets({
-      // issue here?
       workspaceId: integration.workspace,
       environment: integration.environment,
       secretPath: integration.secretPath,
@@ -143,7 +142,6 @@ export const syncIntegrationsHelper = async ({
       environment: integration.environment,
       secretPath: integration.secretPath,
    })
-
 
     const integrationAuth = await IntegrationAuth.findById(
       integration.integrationAuth
