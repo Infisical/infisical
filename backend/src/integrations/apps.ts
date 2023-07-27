@@ -785,41 +785,82 @@ const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
     }
   );
 
-  // make calls for each app to check user is admin for that app or not
-  const authCheckForApps = async (data: any) => {
-    const allAppResponse = data.map(async (app: any) => {
-      return standardRequest.get(
-        `${INTEGRATION_WINDMILL_API_URL}/w/${app.id}/users/whoami`,
+  //check for write access of secrets in windmill workspaces
+  const writeAccessCheck = data.map(async (app: any) => {
+    try {
+      const userPath = "u/user/variable";
+      const folderPath = "f/folder/variable";
+
+      const { data: writeUser } = await standardRequest.post(
+        `${INTEGRATION_WINDMILL_API_URL}/w/${app.id}/variables/create`,
+        {
+          path: userPath,
+          value: "variable",
+          is_secret: true,
+          description: "variable description"
+        },
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             "Accept-Encoding": "application/json",
           },
         }
-      )
-      .then((response: any) => {
-        const modifiedData = { ...response.data };
-        modifiedData.appName = app.name;
-        return modifiedData;
-      })
-      .catch((error: any) => {
-        return undefined;
-      });
-    });
+      );
 
-    const appPromiseResponses = await Promise.all(allAppResponse)
-    const filteredAppResponses = appPromiseResponses.filter((authRes: any) => (authRes !== undefined) && (authRes.is_admin));
-    
-    return filteredAppResponses;
-  }
+      const { data: writeFolder } = await standardRequest.post(
+        `${INTEGRATION_WINDMILL_API_URL}/w/${app.id}/variables/create`,
+        {
+          path: folderPath,
+          value: "variable",
+          is_secret: true,
+          description: "variable description"
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      );
+      
+      // is write access is allowed then delete the created secrets from workspace
+      if (writeUser && writeFolder) {
+        await standardRequest.delete(
+        `${INTEGRATION_WINDMILL_API_URL}/w/${app.id}/variables/delete/${userPath}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Accept-Encoding": "application/json",
+            },
+          }
+        );
 
-  // get apps that user(auth token) is authorized for
-  const authorizedApps = await authCheckForApps(data);
+        await standardRequest.delete(
+        `${INTEGRATION_WINDMILL_API_URL}/w/${app.id}/variables/delete/${folderPath}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Accept-Encoding": "application/json",
+            },
+          }
+        );
 
-  const apps = authorizedApps.map((a: any) => {
+        return app;
+      } else {
+        return { error: "cannot write secret" };
+      }
+    } catch (err: any) {
+      return { error: err.message };
+    }
+  });
+
+  const appsWriteResponses = await Promise.all(writeAccessCheck);
+  const appsWithWriteAccess = appsWriteResponses.filter((appRes: any) => !appRes.error);
+  
+  const apps = appsWithWriteAccess.map((a: any) => {
     return {
-      name: a.appName,
-      appId: a.workspace_id,
+      name: a.name,
+      appId: a.id,
     };
   });
 
