@@ -877,7 +877,8 @@ const getAppsBitBucket = async ({
   });
   return apps;
 }
- /* Return list of projects for Northflank integration
+
+/** Return list of projects for Northflank integration
  * @param {Object} obj
  * @param {String} obj.accessToken - access token for Northflank API
  * @returns {Object[]} apps - names of Northflank apps
@@ -903,35 +904,9 @@ const getAppsNorthflank = async ({ accessToken }: { accessToken: string }) => {
   const apps = projects.map((a: any) => {
     return {
       name: a.name,
-      appId: a.id,
-      secretGroups: []
+      appId: a.id
     };
   });
-
-  for (let i = 0; i < apps.length; i++) {
-    const appName = apps[i].name;
-    const {
-      data: {
-        data: {
-          secrets
-        }
-      }
-    } = await standardRequest.get(
-      `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects/${appName}/secrets`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Accept-Encoding": "application/json",
-        },
-      }
-    );
-
-    const secretGroups = secrets.map((a: any) => {
-      return a.id
-    });
-
-    apps[i].secretGroups = secretGroups
-  }
 
   return apps;
 };

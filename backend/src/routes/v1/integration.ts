@@ -37,7 +37,6 @@ router.post(
   body("owner").trim(),
   body("path").trim(),
   body("region").trim(),
-  body("secretGroup").isString().trim(),
   validateRequest,
   integrationController.createIntegration
 );

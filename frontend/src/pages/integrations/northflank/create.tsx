@@ -13,13 +13,21 @@ import {
 } from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
-  useGetIntegrationAuthById
+  useGetIntegrationAuthById,
+  useGetIntegrationAuthNorthflankSecretGroups
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 import createIntegration from "../../api/integrations/createIntegration";
 
 export default function NorthflankCreateIntegrationPage() {
   const router = useRouter();
+
+  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [secretPath, setSecretPath] = useState("/");
+  const [targetAppId, setTargetAppId] = useState("");
+  const [targetSecretGroupId, setTargetSecretGroupId] = useState<string | null>(null);
+
+  const [isLoading, setIsLoading] = useState(false);
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
@@ -28,15 +36,11 @@ export default function NorthflankCreateIntegrationPage() {
   const { data: integrationAuthApps } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
-
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
-  const [secretPath, setSecretPath] = useState("/");
-  const [targetApp, setTargetApp] = useState("");
-  const [secretGroupList, setSecretGroupList] = useState<any>([]);
-  const [targetSecretGroup, setTargetSecretGroup] = useState("");
-
-  const [isLoading, setIsLoading] = useState(false);
-
+  const { data: integrationAuthSecretGroups } = useGetIntegrationAuthNorthflankSecretGroups({
+    integrationAuthId: (integrationAuthId as string) ?? "",
+    appId: targetAppId
+  });
+  
   useEffect(() => {
     if (workspace) {
       setSelectedSourceEnvironment(workspace.environments[0].slug);
@@ -46,28 +50,28 @@ export default function NorthflankCreateIntegrationPage() {
   useEffect(() => {
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
-        setTargetApp(integrationAuthApps[0].name);
+        // setTargetApp(integrationAuthApps[0].name);
+        setTargetAppId(integrationAuthApps[0].appId as string);
       } else {
-        setTargetApp("none");
+        // setTargetApp("none");
+        setTargetAppId("none");
       }
     }
   }, [integrationAuthApps]);
-
+  
   useEffect(() => {
-    if (integrationAuthApps) {
-      if (integrationAuthApps.length > 0) {
-        const selectedApp = integrationAuthApps?.filter((integrationAuthApp) => integrationAuthApp.name === targetApp);
-        if (selectedApp.length > 0 && selectedApp[0].secretGroups) {
-          setSecretGroupList(selectedApp[0].secretGroups);
-          setTargetSecretGroup(selectedApp[0]?.secretGroups[0]);
-        } else {
-          setSecretGroupList([]);
-          setTargetSecretGroup("none");
-        }
+    if (integrationAuthSecretGroups) {
+      if (integrationAuthSecretGroups.length > 0) {
+        // case: project has at least 1 secret group in Northflank
+        setTargetSecretGroupId(integrationAuthSecretGroups[0].groupId);
+      } else {
+        // case: project has no secret groups in Northflank
+        setTargetSecretGroupId("none");
       }
     }
-  }, [targetApp])
-
+      
+  }, [integrationAuthSecretGroups]);
+  
   const handleButtonClick = async () => {
     try {
       if (!integrationAuth?._id) return;
@@ -77,20 +81,19 @@ export default function NorthflankCreateIntegrationPage() {
       await createIntegration({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
-        app: targetApp,
-        appId:
-          integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp)
-            ?.appId ?? null,
+        app: integrationAuthApps?.find(
+            (integrationAuthApp) => integrationAuthApp.appId === targetAppId
+          )?.name ?? null,
+        appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: null,
         targetEnvironmentId: null,
         targetService: null,
-        targetServiceId: null,
+        targetServiceId: targetSecretGroupId,
         owner: null,
         path: null,
         region: null,
-        secretPath,
-        secretGroup: targetSecretGroup
+        secretPath
       });
 
       setIsLoading(false);
@@ -100,12 +103,12 @@ export default function NorthflankCreateIntegrationPage() {
       console.error(err);
     }
   };
-
+  
   return integrationAuth &&
     workspace &&
     selectedSourceEnvironment &&
     integrationAuthApps &&
-    targetApp ? (
+    targetAppId ? (
     <div className="flex h-full w-full items-center justify-center">
       <Card className="max-w-md rounded-md p-8">
         <CardTitle className="text-center">Northflank Integration</CardTitle>
@@ -134,15 +137,15 @@ export default function NorthflankCreateIntegrationPage() {
         </FormControl>
         <FormControl label="Northflank Project" className="mt-4">
           <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
+            value={targetAppId}
+            onValueChange={(val) => setTargetAppId(val)}
             className="w-full border border-mineshaft-500"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
               integrationAuthApps.map((integrationAuthApp) => (
                 <SelectItem
-                  value={integrationAuthApp.name}
+                  value={integrationAuthApp.appId as string}
                   key={`target-environment-${integrationAuthApp.name}`}
                 >
                   {integrationAuthApp.name}
@@ -155,35 +158,37 @@ export default function NorthflankCreateIntegrationPage() {
             )}
           </Select>
         </FormControl>
-        <FormControl label="Secret Group" className="mt-4">
-          <Select
-            value={targetSecretGroup}
-            onValueChange={(val) => setTargetSecretGroup(val)}
-            className="w-full border border-mineshaft-500"
-            isDisabled={secretGroupList.length === 0}
-          >
-            {secretGroupList.length > 0 ? (
-              secretGroupList.map((group: any) => (
-                <SelectItem
-                  value={group}
-                  key={`target-secret-group-${group}`}
-                >
-                  {group}
+        {targetSecretGroupId && integrationAuthSecretGroups && (
+          <FormControl label="Secret Group" className="mt-4">
+            <Select
+              value={targetSecretGroupId}
+              onValueChange={(val) => setTargetSecretGroupId(val)}
+              className="w-full border border-mineshaft-500"
+              isDisabled={integrationAuthSecretGroups.length === 0}
+            >
+              {integrationAuthSecretGroups.length > 0 ? (
+                integrationAuthSecretGroups.map((secretGroup: any) => (
+                  <SelectItem
+                    value={secretGroup.groupId}
+                    key={`target-secret-group-${secretGroup.groupId}`}
+                  >
+                    {secretGroup.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="none" key="target-secret-group-none">
+                  No secret groups found
                 </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-secret-group-none">
-                No secret groups found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
+              )}
+            </Select>
+          </FormControl>
+        )}
         <Button
           onClick={handleButtonClick}
           color="mineshaft"
           className="mt-4"
           isLoading={isLoading}
-          isDisabled={secretGroupList.length === 0}
+          isDisabled={integrationAuthApps.length === 0 || integrationAuthSecretGroups?.length === 0}
         >
           Create Integration
         </Button>

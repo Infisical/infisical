@@ -2375,7 +2375,7 @@ const syncSecretsCloud66 = async ({
   }
 };
 
- /* Sync/push [secrets] to Northflank
+/** Sync/push [secrets] to Northflank
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
@@ -2390,16 +2390,13 @@ const syncSecretsNorthflank = async ({
   secrets: any;
   accessToken: string;
 }) => {
-
-  const modifiedFormatForSecretInjection = {
-    secrets: {
-      variables: secrets
-    }
-  }
-
-  await standardRequest.post(
-    `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects/${integration.appId}/secrets/${integration.secretGroup}`,
-    modifiedFormatForSecretInjection,
+  await standardRequest.patch(
+    `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects/${integration.appId}/secrets/${integration.targetServiceId}`,
+    {
+      secrets: {
+        variables: secrets
+      }
+    },
     {
       headers: {
           Authorization: `Bearer ${accessToken}`,

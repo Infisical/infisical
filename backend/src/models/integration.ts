@@ -42,7 +42,6 @@ export interface IIntegration {
   path: string;
   region: string;
   secretPath: string;
-  secretGroup: string;
   integration:
     | "azure-key-vault"
     | "aws-parameter-store"
@@ -175,12 +174,7 @@ const integrationSchema = new Schema<IIntegration>(
       type: String,
       required: true,
       default: "/",
-    },
-    secretGroup: {
-      // northflank-specific service
-      type: String,
-      default: null,
-    },
+    }
   },
   {
     timestamps: true,
