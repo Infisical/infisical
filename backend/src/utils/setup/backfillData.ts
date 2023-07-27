@@ -567,10 +567,29 @@ export const backfillTrustedIps = async () => {
       $nin: workspaceIdsWithTrustedIps
     }
   });
-
+  
   if (workspaceIdsToAddTrustedIp.length > 0) {
-    const operations = workspaceIdsToAddTrustedIp.map((workspaceId) => {
-      return {
+    const operations: {
+      updateOne: {
+        filter: {
+          workspace: Types.ObjectId;
+          ipAddress: string;
+        },
+        update: {
+          workspace: Types.ObjectId;
+          ipAddress: string;
+          type: string;
+          prefix: number;
+          isActive: boolean;
+          comment: string;
+        },
+        upsert: boolean;
+      }
+    }[] = [];
+    
+    workspaceIdsToAddTrustedIp.forEach((workspaceId) => {
+      // default IPv4 trusted CIDR
+      operations.push({
         updateOne: {
           filter: {
             workspace: workspaceId,
@@ -584,9 +603,28 @@ export const backfillTrustedIps = async () => {
             isActive: true,
             comment: ""
           },
-          upsert: true,
-        },
-      };
+          upsert: true
+        }
+      });
+      
+      // default IPv6 trusted CIDR
+      operations.push({
+        updateOne: {
+          filter: {
+            workspace: workspaceId,
+            ipAddress: "::"
+          },
+          update: {
+            workspace: workspaceId,
+            ipAddress: "::",
+            type: IPType.IPV6.toString(),
+            prefix: 0,
+            isActive: true,
+            comment: ""
+          },
+          upsert: true
+        }
+      });
     });
 
     await TrustedIP.bulkWrite(operations);
