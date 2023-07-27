@@ -18,6 +18,7 @@ import {
   INTEGRATION_HEROKU,
   INTEGRATION_LARAVELFORGE,
   INTEGRATION_NETLIFY,
+  INTEGRATION_NORTHFLANK,
   INTEGRATION_RAILWAY,
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
@@ -52,7 +53,8 @@ export interface IIntegrationAuth extends Document {
     | "digital-ocean-app-platform"
     | "bitbucket"
     | "cloud-66"
-    | "terraform-cloud";
+    | "terraform-cloud"
+    | "northflank";
   teamId: string;
   accountId: string;
   url: string;
@@ -103,6 +105,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
         INTEGRATION_CODEFRESH,
         INTEGRATION_CLOUD_66,
+        INTEGRATION_NORTHFLANK
       ],
       required: true,
     },

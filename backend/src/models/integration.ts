@@ -16,6 +16,7 @@ import {
   INTEGRATION_HEROKU,
   INTEGRATION_LARAVELFORGE,
   INTEGRATION_NETLIFY,
+  INTEGRATION_NORTHFLANK,
   INTEGRATION_RAILWAY,
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
@@ -65,6 +66,7 @@ export interface IIntegration {
     | "codefresh"
     | "digital-ocean-app-platform"
     | "cloud-66"
+    | "northflank"
   integrationAuth: Types.ObjectId;
 }
 
@@ -159,6 +161,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
         INTEGRATION_CODEFRESH,
         INTEGRATION_CLOUD_66,
+        INTEGRATION_NORTHFLANK
       ],
       required: true,
     },
@@ -171,7 +174,7 @@ const integrationSchema = new Schema<IIntegration>(
       type: String,
       required: true,
       default: "/",
-    },
+    }
   },
   {
     timestamps: true,

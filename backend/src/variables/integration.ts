@@ -32,6 +32,7 @@ export const INTEGRATION_BITBUCKET = "bitbucket";
 export const INTEGRATION_CODEFRESH = "codefresh";
 export const INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM = "digital-ocean-app-platform";
 export const INTEGRATION_CLOUD_66 = "cloud-66";
+export const INTEGRATION_NORTHFLANK = "northflank";
 export const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
@@ -52,7 +53,8 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_BITBUCKET,
   INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_CODEFRESH,
-  INTEGRATION_CLOUD_66
+  INTEGRATION_CLOUD_66,
+  INTEGRATION_NORTHFLANK
 ]);
 
 // integration types
@@ -88,6 +90,7 @@ export const INTEGRATION_BITBUCKET_API_URL = "https://api.bitbucket.org";
 export const INTEGRATION_CODEFRESH_API_URL = "https://g.codefresh.io/api";
 export const INTEGRATION_DIGITAL_OCEAN_API_URL = "https://api.digitalocean.com";
 export const INTEGRATION_CLOUD_66_API_URL = "https://app.cloud66.com/api";
+export const INTEGRATION_NORTHFLANK_API_URL = "https://api.northflank.com";
 
 export const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [
@@ -307,6 +310,15 @@ export const getIntegrationOptions = async () => {
             type: "pat",
             clientId: "",
             docsLink: "",
+        },
+        {
+            name: "Northflank",
+            slug: "northflank",
+            image: "Northflank.png",
+            isAvailable: true,
+            type: "pat",
+            clientId: "",
+            docsLink: ""
         },
     ]
     

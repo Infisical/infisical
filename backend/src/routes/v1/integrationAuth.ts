@@ -155,6 +155,20 @@ router.get(
 	integrationAuthController.getIntegrationAuthBitBucketWorkspaces
 );
 
+router.get(
+	"/:integrationAuthId/northflank/secret-groups",
+	requireAuth({
+        acceptedAuthModes: [AUTH_MODE_JWT],
+    }),
+	requireIntegrationAuthorizationAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+	}),
+	param("integrationAuthId").exists().isString(),
+	query("appId").exists().isString(),
+	validateRequest,
+	integrationAuthController.getIntegrationAuthNorthflankSecretGroups
+);
+
 router.delete(
 	"/:integrationAuthId",
 	requireAuth({

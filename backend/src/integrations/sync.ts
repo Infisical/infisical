@@ -36,6 +36,8 @@ import {
   INTEGRATION_LARAVELFORGE_API_URL,
   INTEGRATION_NETLIFY,
   INTEGRATION_NETLIFY_API_URL,
+  INTEGRATION_NORTHFLANK,
+  INTEGRATION_NORTHFLANK_API_URL,
   INTEGRATION_RAILWAY,
   INTEGRATION_RAILWAY_API_URL,
   INTEGRATION_RENDER,
@@ -69,7 +71,7 @@ const syncSecrets = async ({
   integrationAuth,
   secrets,
   accessId,
-  accessToken,
+  accessToken
 }: {
   integration: IIntegration;
   integrationAuth: IIntegrationAuth;
@@ -242,6 +244,13 @@ const syncSecrets = async ({
       break;
     case INTEGRATION_CLOUD_66:
       await syncSecretsCloud66({
+        integration,
+        secrets,
+        accessToken
+      });
+      break;
+    case INTEGRATION_NORTHFLANK:
+      await syncSecretsNorthflank({
         integration,
         secrets,
         accessToken
@@ -2364,6 +2373,37 @@ const syncSecretsCloud66 = async ({
         );
     }
   }
+};
+
+/** Sync/push [secrets] to Northflank
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Northflank integration
+ */
+const syncSecretsNorthflank = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  await standardRequest.patch(
+    `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects/${integration.appId}/secrets/${integration.targetServiceId}`,
+    {
+      secrets: {
+        variables: secrets
+      }
+    },
+    {
+      headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
+      }
+    }
+  );
 };
 
 export { syncSecrets };
