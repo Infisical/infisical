@@ -45,7 +45,7 @@ export const createWorkspace = async ({
 		workspaceId: workspace._id,
 	});
 	
-	// initialize default trusted ip of 0.0.0.0/0
+	// initialize default trusted IPv4 CIDR - 0.0.0.0/0
 	await new TrustedIP({
 		workspace: workspace._id,
 		ipAddress: "0.0.0.0",
@@ -54,6 +54,16 @@ export const createWorkspace = async ({
 		isActive: true,
 		comment: ""
 	}).save()
+	
+	// initialize default trusted IPv6 CIDR - ::/0
+	await new TrustedIP({
+		workspace: workspace._id,
+		ipAddress: "::",
+		type: IPType.IPV6,
+		prefix: 0,
+		isActive: true,
+		comment: ""
+	});
 
 	await EELicenseService.refreshPlan(organizationId);
 
