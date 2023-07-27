@@ -222,6 +222,7 @@
         "integrations/cloud/flyio",
         "integrations/cloud/laravel-forge",
         "integrations/cloud/supabase",
+        "integrations/cloud/northflank",
         "integrations/cloud/terraform-cloud",
         "integrations/cloud/cloudflare-pages",
         "integrations/cloud/checkly",
