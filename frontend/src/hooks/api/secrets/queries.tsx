@@ -1,6 +1,6 @@
 /* eslint-disable no-param-reassign */
 import { useCallback } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   decryptAssymmetric,
@@ -15,7 +15,8 @@ import {
   EncryptedSecret,
   EncryptedSecretVersion,
   GetProjectSecretsDTO,
-  GetSecretVersionsDTO
+  GetSecretVersionsDTO,
+  TGetProjectSecretsAllEnvDTO
 } from "./types";
 
 export const secretKeys = {
@@ -158,6 +159,21 @@ export const useGetProjectSecrets = ({
       },
       [decryptFileKey]
     )
+  });
+
+export const useGetProjectSecretsAllEnv = ({
+  workspaceId,
+  envs,
+  decryptFileKey,
+  folderId,
+  secretPath
+}: TGetProjectSecretsAllEnvDTO) =>
+  useQueries({
+    queries: envs.map((env) => ({
+      queryKey: secretKeys.getProjectSecret(workspaceId, env, secretPath || folderId),
+      enabled: Boolean(decryptFileKey && workspaceId && env),
+      queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, folderId, secretPath)
+    }))
   });
 
 export const useGetProjectSecretsByKey = ({

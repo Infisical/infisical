@@ -103,6 +103,15 @@ export type GetProjectSecretsDTO = {
   onSuccess?: (data: DecryptedSecret[]) => void;
 };
 
+export type TGetProjectSecretsAllEnvDTO = {
+  workspaceId: string;
+  envs: string[];
+  decryptFileKey: UserWsKeyPair;
+  folderId?: string;
+  secretPath?: string;
+  isPaused?: boolean;
+};
+
 export type GetSecretVersionsDTO = {
   secretId: string;
   limit: number;
