@@ -123,7 +123,7 @@ export const syncIntegrationsHelper = async ({
         ? {
           environment,
         }
-        : {}),
+      : {}),
       isActive: true,
       app: { $ne: null },
     });
@@ -133,17 +133,24 @@ export const syncIntegrationsHelper = async ({
     for await (const integration of integrations) {
       // get workspace, environment (shared) secrets
       const secrets = await BotService.getSecrets({
-        // issue here?
         workspaceId: integration.workspace,
         environment: integration.environment,
         secretPath: integration.secretPath,
       });
 
+      // get workspace, environment (shared) secrets comments
+      const secretComments = await BotService.getSecretComments({
+        workspaceId: integration.workspace,
+        environment: integration.environment,
+        secretPath: integration.secretPath,
+      })
+
       const integrationAuth = await IntegrationAuth.findById(
         integration.integrationAuth
       );
-      if (!integrationAuth) throw new Error("Failed to find integration auth");
 
+      if (!integrationAuth) throw new Error("Failed to find integration auth");
+      
       // get integration auth access token
       const access = await getIntegrationAuthAccessHelper({
         integrationAuthId: integration.integrationAuth,
@@ -156,6 +163,7 @@ export const syncIntegrationsHelper = async ({
         secrets,
         accessId: access.accessId === undefined ? null : access.accessId,
         accessToken: access.accessToken,
+        secretComments
       });
     }
   } catch (err) {
