@@ -26,6 +26,7 @@ import {
 } from "../variables";
 import { BotService } from "../services";
 import { AuthData } from "../interfaces/middleware";
+import { extractIPDetails } from "../utils/ip";
 
 /**
  * Validate authenticated clients for workspace with id [workspaceId] based
@@ -135,7 +136,8 @@ export const validateClientForWorkspace = async ({
 					}
 				}
 				
-				const check = blockList.check(authData.authIP);
+				const { type } = extractIPDetails(authData.authIP);
+				const check = blockList.check(authData.authIP, type);
 				
 				if (!check) throw UnauthorizedRequestError({
 					message: "Failed workspace authorization"
