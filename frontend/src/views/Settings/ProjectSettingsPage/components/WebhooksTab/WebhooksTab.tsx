@@ -160,7 +160,7 @@ export const WebhooksTab = () => {
               </Tr>
             </THead>
             <TBody>
-              {isWebhooksLoading && <TableSkeleton columns={5} key="webhooks-loading" />}
+              {isWebhooksLoading && <TableSkeleton columns={5} innerKey="webhooks-loading" />}
               {!isWebhooksLoading && webhooks && webhooks?.length === 0 && (
                 <Tr>
                   <Td colSpan={5}>

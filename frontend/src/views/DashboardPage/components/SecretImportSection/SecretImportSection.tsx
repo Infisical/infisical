@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 import { useWorkspace } from "@app/context";
@@ -62,32 +63,31 @@ type Props = {
   items: { id: string; environment: string; secretPath: string }[];
 };
 
-export const SecretImportSection = ({
-  secrets = [],
-  importedSecrets = [],
-  onSecretImportDelete,
-  items = []
-}: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const environments = currentWorkspace?.environments || [];
+export const SecretImportSection = memo(
+  ({ secrets = [], importedSecrets = [], onSecretImportDelete, items = [] }: Props) => {
+    const { currentWorkspace } = useWorkspace();
+    const environments = currentWorkspace?.environments || [];
 
-  return (
-    <SortableContext items={items} strategy={verticalListSortingStrategy}>
-      {items.map(({ secretPath: impSecPath, environment: importSecEnv, id }) => (
-        <SecretImportItem
-          key={id}
-          importedEnv={importSecEnv}
-          importedSecrets={computeImportedSecretRows(
-            importSecEnv,
-            impSecPath,
-            importedSecrets,
-            secrets,
-            environments
-          )}
-          onDelete={onSecretImportDelete}
-          importedSecPath={impSecPath}
-        />
-      ))}
-    </SortableContext>
-  );
-};
+    return (
+      <SortableContext items={items} strategy={verticalListSortingStrategy}>
+        {items.map(({ secretPath: impSecPath, environment: importSecEnv, id }) => (
+          <SecretImportItem
+            key={id}
+            importedEnv={importSecEnv}
+            importedSecrets={computeImportedSecretRows(
+              importSecEnv,
+              impSecPath,
+              importedSecrets,
+              secrets,
+              environments
+            )}
+            onDelete={onSecretImportDelete}
+            importedSecPath={impSecPath}
+          />
+        ))}
+      </SortableContext>
+    );
+  }
+);
+
+SecretImportSection.displayName = "SecretImportSection";

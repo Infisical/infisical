@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
@@ -30,7 +30,11 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger
+} from "@radix-ui/react-dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -119,12 +123,13 @@ type TDeleteSecretImport = { environment: string; secretPath: string };
  * Instead when user delete we raise a flag so if user decides to go back to toggle personal before saving
  * They will get it back
  */
-export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
+export const DashboardPage = () => {
   const { subscription } = useSubscription();
   const { t } = useTranslation();
   const router = useRouter();
   const { createNotification } = useNotificationContext();
   const queryClient = useQueryClient();
+  const envQuery = router.query.env as string;
 
   const secretContainer = useRef<HTMLDivElement | null>(null);
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
@@ -172,8 +177,8 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     onSuccess: (data) => {
       // get an env with one of the access available
       const env = data.find(({ isReadDenied, isWriteDenied }) => !isWriteDenied || !isReadDenied);
-      if (env && data?.map((wsenv) => wsenv.slug).includes(envFromTop)) {
-        setSelectedEnv(data?.filter((dp) => dp.slug === envFromTop)[0]);
+      if (env && data?.map((wsenv) => wsenv.slug).includes(envQuery)) {
+        setSelectedEnv(data?.filter((dp) => dp.slug === envQuery)[0]);
       }
     }
   });
@@ -293,11 +298,12 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   });
 
   const {
+    register,
     control,
     handleSubmit,
     getValues,
     setValue,
-    formState: { isSubmitting, isDirty },
+    formState: { isSubmitting, isDirty, errors },
     reset
   } = method;
   const { fields, prepend, append, remove } = useFieldArray({ control, name: "secrets" });
@@ -461,9 +467,9 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     }
   };
 
-  const onDrawerOpen = (dto: TSecretDetailsOpen) => {
-    handlePopUpOpen("secretDetails", dto);
-  };
+  const onDrawerOpen = useCallback((id: string | undefined, index: number) => {
+    handlePopUpOpen("secretDetails", { id, index } as TSecretDetailsOpen);
+  }, []);
 
   const onEnvChange = (slug: string) => {
     if (hasUnsavedChanges) {
@@ -480,17 +486,27 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     });
   };
 
+  const handleDownloadSecret = () => {
+    const secretsFromImport: { key: string; value: string; comment: string }[] = [];
+    importedSecrets?.forEach(({ secrets: impSec }) => {
+      impSec.forEach((el) => {
+        secretsFromImport.push({ key: el.key, value: el.value, comment: el.comment });
+      });
+    });
+    downloadSecret(getValues("secrets"), secretsFromImport, selectedEnv?.slug);
+  };
+
   // record all deleted ids
   // This will make final deletion easier
-  const onSecretDelete = (index: number, id?: string, overrideId?: string) => {
+  const onSecretDelete = useCallback((index: number, id?: string, overrideId?: string) => {
     if (id) deletedSecretIds.current.push(id);
     if (overrideId) deletedSecretIds.current.push(overrideId);
     remove(index);
     // just the case if this is called from drawer
     handlePopUpClose("secretDetails");
-  };
+  }, []);
 
-  const onCreateWsTag = async (tagName: string) => {
+  const onCreateWsTag = useCallback(async (tagName: string) => {
     try {
       await createWsTag({
         workspaceID: workspaceId,
@@ -509,10 +525,11 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
         type: "error"
       });
     }
-  };
+  }, []);
 
-  const handleFolderOpen = (id: string) => {
+  const handleFolderOpen = useCallback((id: string) => {
     setSearchFilter("");
+    console.log(router.query);
     router.push({
       pathname: router.pathname,
       query: {
@@ -520,10 +537,11 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
         folderId: id
       }
     });
-  };
+  }, []);
 
   const isEditFolder = Boolean(popUp?.folderForm?.data);
 
+  // FOLDER SECTION
   const handleFolderCreate = async (name: string) => {
     try {
       await createFolder({
@@ -546,7 +564,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     }
   };
 
-  const handleFolderUpdate = async (name: string) => {
+  const handleFolderUpdate = useCallback(async (name: string) => {
     const { id } = popUp?.folderForm?.data as TDeleteFolderForm;
     try {
       await updateFolder({
@@ -567,9 +585,9 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
         type: "error"
       });
     }
-  };
+  }, []);
 
-  const handleFolderDelete = async () => {
+  const handleFolderDelete = useCallback(async () => {
     const { id } = popUp?.deleteFolder?.data as TDeleteFolderForm;
     try {
       deleteFolder({
@@ -589,8 +607,9 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
         type: "error"
       });
     }
-  };
+  }, []);
 
+  // SECRET IMPORT SECTION
   const handleSecretImportCreate = async (env: string, secretPath: string) => {
     try {
       await createSecretImport({
@@ -664,6 +683,25 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     }
   };
 
+  // OPTIMIZATION HOOKS PURELY FOR PERFORMANCE AND TO AVOID RE-RENDERING
+  const handleCreateTagModalOpen = useCallback(() => handlePopUpOpen("addTag"), []);
+  const handleFolderCreatePopUpOpen = useCallback(
+    (id: string, name: string) => handlePopUpOpen("folderForm", { id, name }),
+    []
+  );
+  const handleFolderDeletePopUpOpen = useCallback(
+    (id: string, name: string) => handlePopUpOpen("deleteFolder", { id, name }),
+    []
+  );
+  const handleSecretImportDelPopUpOpen = useCallback(
+    (impSecEnv: string, impSecPath: string) =>
+      handlePopUpOpen("deleteSecretImport", {
+        environment: impSecEnv,
+        secretPath: impSecPath
+      }),
+    []
+  );
+
   // when secrets is not loading and secrets list is empty
   const isDashboardSecretEmpty = !isSecretsLoading && !fields?.length;
 
@@ -693,259 +731,259 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
 
   return (
     <div className="container mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
-      <FormProvider {...method}>
-        <form autoComplete="off" className="h-full">
-          {/* breadcrumb row */}
-          <div className="relative right-6 -top-2 mb-2 ml-6">
-            <NavHeader
-              pageName={t("dashboard.title")}
-              currentEnv={
-                userAvailableEnvs?.filter((envir) => envir.slug === envFromTop)[0].name || ""
-              }
-              isFolderMode
-              folders={folderData?.dir}
-              isProjectRelated
-              userAvailableEnvs={userAvailableEnvs}
-              onEnvChange={onEnvChange}
+      <form autoComplete="off" className="h-full">
+        {/* breadcrumb row */}
+        <div className="relative right-6 -top-2 mb-2 ml-6">
+          <NavHeader
+            pageName={t("dashboard.title")}
+            currentEnv={userAvailableEnvs?.filter((envir) => envir.slug === envQuery)[0].name || ""}
+            isFolderMode
+            folders={folderData?.dir}
+            isProjectRelated
+            userAvailableEnvs={userAvailableEnvs}
+            onEnvChange={onEnvChange}
+          />
+        </div>
+        <div className="mb-4">
+          <h6 className="text-2xl">{isRollbackMode ? "Secret Snapshot" : ""}</h6>
+          {isRollbackMode && Boolean(snapshotSecret) && (
+            <Tag colorSchema="green">
+              {new Date(snapshotSecret?.createdAt || "").toLocaleString()}
+            </Tag>
+          )}
+        </div>
+        {/* Environment, search and other action row */}
+        <div className="flex items-center justify-between space-x-2">
+          <div className="flex max-w-lg flex-grow space-x-2">
+            <Input
+              className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+              placeholder="Search by folder name, key name, comment..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
             />
           </div>
-          <div className="mb-4">
-            <h6 className="text-2xl">{isRollbackMode ? "Secret Snapshot" : ""}</h6>
-            {isRollbackMode && Boolean(snapshotSecret) && (
-              <Tag colorSchema="green">
-                {new Date(snapshotSecret?.createdAt || "").toLocaleString()}
-              </Tag>
-            )}
-          </div>
-          {/* Environment, search and other action row */}
-          <div className="flex items-center justify-between space-x-2">
-            <div className="flex max-w-lg flex-grow space-x-2">
-              <Input
-                className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-                placeholder="Search by folder name, key name, comment..."
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-              />
+          <div className="flex items-center space-x-2">
+            <div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <IconButton ariaLabel="download" variant="outline_bg">
+                    <FontAwesomeIcon icon={faDownload} />
+                  </IconButton>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-1"
+                  hideCloseBtn
+                >
+                  <div className="flex flex-col space-y-2">
+                    <Button
+                      onClick={handleDownloadSecret}
+                      colorSchema="primary"
+                      variant="outline_bg"
+                      className="h-8 bg-bunker-700"
+                    >
+                      Download as .env
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
-            <div className="flex items-center space-x-2">
-              <div>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <IconButton ariaLabel="download" variant="outline_bg">
-                      <FontAwesomeIcon icon={faDownload} />
-                    </IconButton>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-1"
-                    hideCloseBtn
-                  >
-                    <div className="flex flex-col space-y-2">
-                      <Button
-                        onClick={() => downloadSecret(getValues("secrets"), selectedEnv?.slug)}
-                        colorSchema="primary"
-                        variant="outline_bg"
-                        className="h-8 bg-bunker-700"
-                      >
-                        Download as .env
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div>
-                <Tooltip content={isSecretValueHidden ? "Reveal Secrets" : "Hide secrets"}>
-                  <IconButton
-                    ariaLabel="reveal"
-                    variant="outline_bg"
-                    onClick={() => setIsSecretValueHidden.toggle()}
-                  >
-                    <FontAwesomeIcon icon={isSecretValueHidden ? faEye : faEyeSlash} />
-                  </IconButton>
-                </Tooltip>
-              </div>
-              <div className="block xl:hidden">
-                <Tooltip content="Point-in-time Recovery">
-                  <IconButton
-                    ariaLabel="recovery"
-                    variant="outline_bg"
-                    onClick={() => handlePopUpOpen("secretSnapshots")}
-                  >
-                    <FontAwesomeIcon icon={faCodeCommit} />
-                  </IconButton>
-                </Tooltip>
-              </div>
-              <div className="hidden xl:block">
-                <Button
+            <div>
+              <Tooltip content={isSecretValueHidden ? "Reveal Secrets" : "Hide secrets"}>
+                <IconButton
+                  ariaLabel="reveal"
                   variant="outline_bg"
-                  onClick={() => {
-                    if (subscription && subscription.pitRecovery) {
-                      handlePopUpOpen("secretSnapshots");
-                      return;
-                    }
-
-                    handlePopUpOpen("upgradePlan");
-                  }}
-                  leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
-                  isLoading={isLoadingSnapshotCount}
-                  isDisabled={!canDoRollback}
-                  className="h-10"
+                  onClick={() => setIsSecretValueHidden.toggle()}
                 >
-                  {snapshotCount} Commits
-                </Button>
-              </div>
-              {!isReadOnly && !isRollbackMode && (
-                <div className="flex flex-row items-center justify-center">
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      if (!(isReadOnly || isRollbackMode)) {
-                        if (secretContainer.current) {
-                          secretContainer.current.scroll({
-                            top: 0,
-                            behavior: "smooth"
-                          });
-                        }
-                        prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
-                        setSearchFilter("");
-                      }
-                    }}
-                    className="font-semibold bg-mineshaft-600 border border-mineshaft-500 p-2 rounded-l-md text-sm text-mineshaft-300 cursor-pointer hover:bg-primary/[0.1] hover:border-primary/40 pr-4 duration-200"
-                  >
-                    <FontAwesomeIcon icon={faPlus} className="px-2"/>Add Secret
-                  </button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild className="data-[state=open]:bg-mineshaft-600">
-                      <div className="bg-mineshaft-600 border border-mineshaft-500 p-2 rounded-r-md text-sm text-mineshaft-300 cursor-pointer hover:bg-primary/[0.1] hover:border-primary/40 duration-200">
-                        <FontAwesomeIcon icon={faAngleDown} className="pr-2 pl-1.5"/>
-                      </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="mt-1 z-[60] left-20 w-[10.8rem]">
-                      <div className="bg-mineshaft-800 p-1 border border-mineshaft-600 rounded-md">
-                        <div className="w-full pb-1">
-                          <Button
-                            leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
-                            onClick={() => handlePopUpOpen("folderForm")}
-                            isDisabled={isReadOnly || isRollbackMode}
-                            variant="outline_bg"
-                            className="h-10"
-                            isFullWidth
-                          >
-                            Add Folder
-                          </Button>
-                        </div>
-                        <div className="w-full">
-                          <Button
-                            leftIcon={<FontAwesomeIcon icon={faFileImport} />}
-                            onClick={() => handlePopUpOpen("addSecretImport")}
-                            isDisabled={isReadOnly || isRollbackMode}
-                            variant="outline_bg"
-                            className="h-10"
-                            isFullWidth
-                          >
-                            Add Import
-                          </Button>
-                        </div>
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )}
-              {isRollbackMode && (
-                <Button
-                  variant="star"
-                  leftIcon={<FontAwesomeIcon icon={faArrowLeft} />}
-                  onClick={() => {
-                    setSnaphotId(null);
-                    reset({ ...secrets, isSnapshotMode: false });
-                  }}
-                  className="h-10"
+                  <FontAwesomeIcon icon={isSecretValueHidden ? faEye : faEyeSlash} />
+                </IconButton>
+              </Tooltip>
+            </div>
+            <div className="block xl:hidden">
+              <Tooltip content="Point-in-time Recovery">
+                <IconButton
+                  ariaLabel="recovery"
+                  variant="outline_bg"
+                  onClick={() => handlePopUpOpen("secretSnapshots")}
                 >
-                  Go back
-                </Button>
-              )}
+                  <FontAwesomeIcon icon={faCodeCommit} />
+                </IconButton>
+              </Tooltip>
+            </div>
+            <div className="hidden xl:block">
               <Button
-                isDisabled={isSubmitDisabled}
-                isLoading={isSubmitting}
-                leftIcon={<FontAwesomeIcon icon={isRollbackMode ? faClockRotateLeft : faCheck} />}
-                onClick={handleSubmit(onSaveSecret)}
-                className="h-10 text-black"
-                color="primary"
-                variant="solid"
+                variant="outline_bg"
+                onClick={() => {
+                  if (subscription && subscription.pitRecovery) {
+                    handlePopUpOpen("secretSnapshots");
+                    return;
+                  }
+
+                  handlePopUpOpen("upgradePlan");
+                }}
+                leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
+                isLoading={isLoadingSnapshotCount}
+                isDisabled={!canDoRollback}
+                className="h-10"
               >
-                {isRollbackMode ? "Rollback" : "Save Changes"}
+                {snapshotCount} Commits
               </Button>
             </div>
-          </div>
-          <div
-            className={`${
-              isEmptyPage ? "flex flex-col items-center justify-center" : ""
-            } no-scrollbar::-webkit-scrollbar mt-3 h-3/4 overflow-x-hidden overflow-y-scroll no-scrollbar`}
-            ref={secretContainer}
-          >
-            {!isEmptyPage && (
-              <DndContext
-                onDragEnd={handleDragEnd}
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                modifiers={[restrictToVerticalAxis]}
-              >
-                <TableContainer className="no-scrollbar::-webkit-scrollbar max-h-[calc(100%-120px)] no-scrollbar">
-                  <table className="secret-table relative">
-                    <SecretTableHeader sortDir={sortDir} onSort={onSortSecrets} />
-                    <tbody className="max-h-96 overflow-y-auto">
-                      <SecretImportSection
-                        onSecretImportDelete={(impSecEnv, impSecPath) =>
-                          handlePopUpOpen("deleteSecretImport", {
-                            environment: impSecEnv,
-                            secretPath: impSecPath
-                          })
-                        }
-                        secrets={secrets?.secrets}
-                        importedSecrets={importedSecrets}
-                        items={items}
-                      />
-                      <FolderSection
-                        onFolderOpen={handleFolderOpen}
-                        onFolderUpdate={(id, name) => handlePopUpOpen("folderForm", { id, name })}
-                        onFolderDelete={(id, name) => handlePopUpOpen("deleteFolder", { id, name })}
-                        folders={folderList}
-                        search={searchFilter}
-                      />
-                      {fields.map(({ id, _id }, index) => (
-                        <SecretInputRow
-                          key={id}
-                          isReadOnly={isReadOnly}
-                          isRollbackMode={isRollbackMode}
-                          isAddOnly={isAddOnly}
-                          index={index}
-                          searchTerm={searchFilter}
-                          onSecretDelete={onSecretDelete}
-                          onRowExpand={() => onDrawerOpen({ id: _id as string, index })}
-                          isSecretValueHidden={isSecretValueHidden}
-                          wsTags={wsTags}
-                          onCreateTagOpen={() => handlePopUpOpen("addTag")}
-                        />
-                      ))}
-                      {!isReadOnly && !isRollbackMode && (
-                        <tr>
-                          <td colSpan={3} className="hover:bg-mineshaft-700">
-                            <button
-                              type="button"
-                              className="flex h-8 w-full cursor-default items-center justify-start pl-12 font-normal text-bunker-300"
-                              onClick={onAppendSecret}
-                            >
-                              <FontAwesomeIcon icon={faPlus} />
-                              <span className="ml-2 w-20">Add Secret</span>
-                            </button>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </TableContainer>
-              </DndContext>
+            {!isReadOnly && !isRollbackMode && (
+              <div className="flex flex-row items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!(isReadOnly || isRollbackMode)) {
+                      if (secretContainer.current) {
+                        secretContainer.current.scroll({
+                          top: 0,
+                          behavior: "smooth"
+                        });
+                      }
+                      prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
+                      setSearchFilter("");
+                    }
+                  }}
+                  className="cursor-pointer rounded-l-md border border-mineshaft-500 bg-mineshaft-600 p-2 pr-4 text-sm font-semibold text-mineshaft-300 duration-200 hover:border-primary/40 hover:bg-primary/[0.1]"
+                >
+                  <FontAwesomeIcon icon={faPlus} className="px-2" />
+                  Add Secret
+                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild className="data-[state=open]:bg-mineshaft-600">
+                    <div className="cursor-pointer rounded-r-md border border-mineshaft-500 bg-mineshaft-600 p-2 text-sm text-mineshaft-300 duration-200 hover:border-primary/40 hover:bg-primary/[0.1]">
+                      <FontAwesomeIcon icon={faAngleDown} className="pr-2 pl-1.5" />
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="left-20 z-[60] mt-1 w-[10.8rem]">
+                    <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+                      <div className="w-full pb-1">
+                        <Button
+                          leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
+                          onClick={() => handlePopUpOpen("folderForm")}
+                          isDisabled={isReadOnly || isRollbackMode}
+                          variant="outline_bg"
+                          className="h-10"
+                          isFullWidth
+                        >
+                          Add Folder
+                        </Button>
+                      </div>
+                      <div className="w-full">
+                        <Button
+                          leftIcon={<FontAwesomeIcon icon={faFileImport} />}
+                          onClick={() => handlePopUpOpen("addSecretImport")}
+                          isDisabled={isReadOnly || isRollbackMode}
+                          variant="outline_bg"
+                          className="h-10"
+                          isFullWidth
+                        >
+                          Add Import
+                        </Button>
+                      </div>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             )}
+            {isRollbackMode && (
+              <Button
+                variant="star"
+                leftIcon={<FontAwesomeIcon icon={faArrowLeft} />}
+                onClick={() => {
+                  setSnaphotId(null);
+                  reset({ ...secrets, isSnapshotMode: false });
+                }}
+                className="h-10"
+              >
+                Go back
+              </Button>
+            )}
+            <Button
+              isDisabled={isSubmitDisabled}
+              isLoading={isSubmitting}
+              leftIcon={<FontAwesomeIcon icon={isRollbackMode ? faClockRotateLeft : faCheck} />}
+              onClick={handleSubmit(onSaveSecret)}
+              className="h-10 text-black"
+              color="primary"
+              variant="solid"
+            >
+              {isRollbackMode ? "Rollback" : "Save Changes"}
+            </Button>
+          </div>
+        </div>
+        <div
+          className={`${
+            isEmptyPage ? "flex flex-col items-center justify-center" : ""
+          } no-scrollbar::-webkit-scrollbar mt-3 h-3/4 overflow-x-hidden overflow-y-scroll no-scrollbar`}
+          ref={secretContainer}
+        >
+          {!isEmptyPage && (
+            <DndContext
+              onDragEnd={handleDragEnd}
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              modifiers={[restrictToVerticalAxis]}
+            >
+              <TableContainer className="no-scrollbar::-webkit-scrollbar max-h-[calc(100%-120px)] no-scrollbar">
+                <table className="secret-table relative">
+                  <SecretTableHeader sortDir={sortDir} onSort={onSortSecrets} />
+                  <tbody className="max-h-96 overflow-y-auto">
+                    <SecretImportSection
+                      onSecretImportDelete={handleSecretImportDelPopUpOpen}
+                      secrets={secrets?.secrets}
+                      importedSecrets={importedSecrets}
+                      items={items}
+                    />
+                    <FolderSection
+                      onFolderOpen={handleFolderOpen}
+                      onFolderUpdate={handleFolderCreatePopUpOpen}
+                      onFolderDelete={handleFolderDeletePopUpOpen}
+                      folders={folderList}
+                      search={searchFilter}
+                    />
+                    {fields.map(({ id, _id }, index) => (
+                      <SecretInputRow
+                        key={id}
+                        secUniqId={_id}
+                        isReadOnly={isReadOnly}
+                        isRollbackMode={isRollbackMode}
+                        isAddOnly={isAddOnly}
+                        index={index}
+                        searchTerm={searchFilter}
+                        onSecretDelete={onSecretDelete}
+                        isKeyError={Boolean(errors?.secrets?.[index]?.key?.message)}
+                        keyError={errors?.secrets?.[index]?.key?.message}
+                        onRowExpand={onDrawerOpen}
+                        isSecretValueHidden={isSecretValueHidden}
+                        wsTags={wsTags}
+                        onCreateTagOpen={handleCreateTagModalOpen}
+                        register={register}
+                        control={control}
+                        setValue={setValue}
+                      />
+                    ))}
+                    {!isReadOnly && !isRollbackMode && (
+                      <tr>
+                        <td colSpan={3} className="hover:bg-mineshaft-700">
+                          <button
+                            type="button"
+                            className="flex h-8 w-full cursor-default items-center justify-start pl-12 font-normal text-bunker-300"
+                            onClick={onAppendSecret}
+                          >
+                            <FontAwesomeIcon icon={faPlus} />
+                            <span className="ml-2 w-20">Add Secret</span>
+                          </button>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </TableContainer>
+            </DndContext>
+          )}
+          <FormProvider {...method}>
             <PitDrawer
               isDrawerOpen={popUp?.secretSnapshots?.isOpen}
               onOpenChange={(isOpen) => handlePopUpToggle("secretSnapshots", isOpen)}
@@ -966,120 +1004,121 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
               index={(popUp?.secretDetails?.data as TSecretDetailsOpen)?.index}
               onEnvCompare={(key) => handlePopUpOpen("compareSecrets", key)}
             />
-            <SecretDropzone
-              isSmaller={!isEmptyPage}
-              onParsedEnv={handleUploadedEnv}
-              onAddNewSecret={onAppendSecret}
-            />
-          </div>
-          {/* secrets table and drawers, modals */}
-        </form>
-        {/* Create a new tag modal */}
-        <Modal
-          isOpen={popUp?.addTag?.isOpen}
-          onOpenChange={(open) => {
-            handlePopUpToggle("addTag", open);
-          }}
+          </FormProvider>
+
+          <SecretDropzone
+            isSmaller={!isEmptyPage}
+            onParsedEnv={handleUploadedEnv}
+            onAddNewSecret={onAppendSecret}
+          />
+        </div>
+        {/* secrets table and drawers, modals */}
+      </form>
+      {/* Create a new tag modal */}
+      <Modal
+        isOpen={popUp?.addTag?.isOpen}
+        onOpenChange={(open) => {
+          handlePopUpToggle("addTag", open);
+        }}
+      >
+        <ModalContent
+          title="Create tag"
+          subTitle="Specify your tag name, and the slug will be created automatically."
         >
-          <ModalContent
-            title="Create tag"
-            subTitle="Specify your tag name, and the slug will be created automatically."
-          >
-            <CreateTagModal onCreateTag={onCreateWsTag} />
-          </ModalContent>
-        </Modal>
-        {/* Uploaded env override or not confirmation modal */}
-        <Modal
-          isOpen={popUp?.uploadedSecOpts?.isOpen}
-          onOpenChange={(open) => handlePopUpToggle("uploadedSecOpts", open)}
+          <CreateTagModal onCreateTag={onCreateWsTag} />
+        </ModalContent>
+      </Modal>
+      {/* Uploaded env override or not confirmation modal */}
+      <Modal
+        isOpen={popUp?.uploadedSecOpts?.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("uploadedSecOpts", open)}
+      >
+        <ModalContent
+          title="Duplicate Secrets"
+          footerContent={[
+            <Button
+              key="keep-old-btn"
+              className="mr-4"
+              onClick={() => handlePopUpClose("uploadedSecOpts")}
+            >
+              Keep old
+            </Button>,
+            <Button colorSchema="danger" key="overwrite-btn" onClick={onOverwriteSecrets}>
+              Overwrite
+            </Button>
+          ]}
         >
-          <ModalContent
-            title="Duplicate Secrets"
-            footerContent={[
-              <Button
-                key="keep-old-btn"
-                className="mr-4"
-                onClick={() => handlePopUpClose("uploadedSecOpts")}
-              >
-                Keep old
-              </Button>,
-              <Button colorSchema="danger" key="overwrite-btn" onClick={onOverwriteSecrets}>
-                Overwrite
-              </Button>
-            ]}
-          >
-            <div className="flex flex-col space-y-2 text-gray-300">
-              <div>Your file contains following duplicate secrets</div>
-              <div className="text-sm text-gray-400">
-                {Object.keys((popUp?.uploadedSecOpts?.data as TSecOverwriteOpt)?.secrets || {})
-                  ?.map((key) => key)
-                  .join(", ")}
-              </div>
-              <div>Are you sure you want to overwrite these secrets?</div>
+          <div className="flex flex-col space-y-2 text-gray-300">
+            <div>Your file contains following duplicate secrets</div>
+            <div className="text-sm text-gray-400">
+              {Object.keys((popUp?.uploadedSecOpts?.data as TSecOverwriteOpt)?.secrets || {})
+                ?.map((key) => key)
+                .join(", ")}
             </div>
-          </ModalContent>
-        </Modal>
-        <Modal
-          isOpen={popUp?.folderForm?.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("folderForm", isOpen)}
+            <div>Are you sure you want to overwrite these secrets?</div>
+          </div>
+        </ModalContent>
+      </Modal>
+      <Modal
+        isOpen={popUp?.folderForm?.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("folderForm", isOpen)}
+      >
+        <ModalContent title={isEditFolder ? "Edit Folder" : "Create Folder"}>
+          <FolderForm
+            isEdit={isEditFolder}
+            onUpdateFolder={handleFolderUpdate}
+            onCreateFolder={handleFolderCreate}
+            defaultFolderName={(popUp?.folderForm?.data as TEditFolderForm)?.name}
+          />
+        </ModalContent>
+      </Modal>
+      <Modal
+        isOpen={popUp?.addSecretImport?.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addSecretImport", isOpen)}
+      >
+        <ModalContent
+          title="Add Secret Link"
+          subTitle="To inherit secrets from another environment or folder"
         >
-          <ModalContent title={isEditFolder ? "Edit Folder" : "Create Folder"}>
-            <FolderForm
-              isEdit={isEditFolder}
-              onUpdateFolder={handleFolderUpdate}
-              onCreateFolder={handleFolderCreate}
-              defaultFolderName={(popUp?.folderForm?.data as TEditFolderForm)?.name}
-            />
-          </ModalContent>
-        </Modal>
-        <Modal
-          isOpen={popUp?.addSecretImport?.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("addSecretImport", isOpen)}
+          <SecretImportForm
+            environments={currentWorkspace?.environments}
+            onCreate={handleSecretImportCreate}
+          />
+        </ModalContent>
+      </Modal>
+      <DeleteActionModal
+        isOpen={popUp.deleteFolder.isOpen}
+        deleteKey={(popUp.deleteFolder?.data as TDeleteFolderForm)?.name}
+        title="Do you want to delete this folder?"
+        onChange={(isOpen) => handlePopUpToggle("deleteFolder", isOpen)}
+        onDeleteApproved={handleFolderDelete}
+      />
+      <DeleteActionModal
+        isOpen={popUp.deleteSecretImport.isOpen}
+        deleteKey="unlink"
+        title="Do you want to remove this secret import?"
+        subTitle={`This will unlink secrets from environment ${
+          (popUp.deleteSecretImport?.data as TDeleteSecretImport)?.environment
+        } of path ${(popUp.deleteSecretImport?.data as TDeleteSecretImport)?.secretPath}?`}
+        onChange={(isOpen) => handlePopUpToggle("deleteSecretImport", isOpen)}
+        onDeleteApproved={handleSecretImportDelete}
+      />
+      <Modal
+        isOpen={popUp?.compareSecrets?.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("compareSecrets", open)}
+      >
+        <ModalContent
+          title={popUp?.compareSecrets?.data as string}
+          subTitle="Below is the comparison of secret values across available environments"
+          overlayClassName="z-[90]"
         >
-          <ModalContent
-            title="Add Secret Link"
-            subTitle="To inherit secrets from another environment or folder"
-          >
-            <SecretImportForm
-              environments={currentWorkspace?.environments}
-              onCreate={handleSecretImportCreate}
-            />
-          </ModalContent>
-        </Modal>
-        <DeleteActionModal
-          isOpen={popUp.deleteFolder.isOpen}
-          deleteKey={(popUp.deleteFolder?.data as TDeleteFolderForm)?.name}
-          title="Do you want to delete this folder?"
-          onChange={(isOpen) => handlePopUpToggle("deleteFolder", isOpen)}
-          onDeleteApproved={handleFolderDelete}
-        />
-        <DeleteActionModal
-          isOpen={popUp.deleteSecretImport.isOpen}
-          deleteKey="unlink"
-          title="Do you want to remove this secret import?"
-          subTitle={`This will unlink secrets from environment ${
-            (popUp.deleteSecretImport?.data as TDeleteSecretImport)?.environment
-          } of path ${(popUp.deleteSecretImport?.data as TDeleteSecretImport)?.secretPath}?`}
-          onChange={(isOpen) => handlePopUpToggle("deleteSecretImport", isOpen)}
-          onDeleteApproved={handleSecretImportDelete}
-        />
-        <Modal
-          isOpen={popUp?.compareSecrets?.isOpen}
-          onOpenChange={(open) => handlePopUpToggle("compareSecrets", open)}
-        >
-          <ModalContent
-            title={popUp?.compareSecrets?.data as string}
-            subTitle="Below is the comparison of secret values across available environments"
-            overlayClassName="z-[90]"
-          >
-            <CompareSecret
-              workspaceId={workspaceId}
-              envs={userAvailableEnvs || []}
-              secretKey={popUp?.compareSecrets?.data as string}
-            />
-          </ModalContent>
-        </Modal>
-      </FormProvider>
+          <CompareSecret
+            workspaceId={workspaceId}
+            envs={userAvailableEnvs || []}
+            secretKey={popUp?.compareSecrets?.data as string}
+          />
+        </ModalContent>
+      </Modal>
       {subscription && (
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}

@@ -17,6 +17,13 @@ export type GetProjectFoldersBatchDTO = {
   parentFolderPath?: string;
 };
 
+export type TGetFoldersByEnvDTO = {
+  environments: string[];
+  workspaceId: string;
+  parentFolderPath?: string;
+  parentFolderId?: string;
+};
+
 export type CreateFolderDTO = {
   workspaceId: string;
   environment: string;

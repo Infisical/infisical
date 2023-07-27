@@ -1,7 +1,14 @@
 import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/router";
-import { faCheck, faCopy, faMagnifyingGlass, faPlus, faTrash, faUsers } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheck,
+  faCopy,
+  faMagnifyingGlass,
+  faPlus,
+  faTrash,
+  faUsers
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -10,7 +17,8 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import {
   Button,
   DeleteActionModal,
-  EmailServiceSetupModal,  EmptyState,
+  EmailServiceSetupModal,
+  EmptyState,
   FormControl,
   IconButton,
   Input,
@@ -29,7 +37,7 @@ import {
   Tr,
   UpgradePlanModal
 } from "@app/components/v2";
-import { useOrganization , useWorkspace } from "@app/context";
+import { useOrganization, useWorkspace } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetSSOConfig } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -47,8 +55,8 @@ type Props = {
   onGrantAccess: (userId: string, publicKey: string) => Promise<void>;
   // the current user id to block remove org button
   userId: string;
-  completeInviteLink: string | undefined,
-  setCompleteInviteLink: Dispatch<SetStateAction<string | undefined>>
+  completeInviteLink: string | undefined;
+  setCompleteInviteLink: Dispatch<SetStateAction<string | undefined>>;
 };
 
 const addMemberFormSchema = yup.object({
@@ -76,7 +84,7 @@ export const OrgMembersTable = ({
   const { currentOrg } = useOrganization();
   const { data: ssoConfig, isLoading: isLoadingSSOConfig } = useGetSSOConfig(currentOrg?._id ?? "");
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
-  const {data: serverDetails } = useFetchServerStatus()
+  const { data: serverDetails } = useFetchServerStatus();
   const { workspaces } = useWorkspace();
   const [isInviteLinkCopied, setInviteLinkCopied] = useToggle(false);
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -85,7 +93,7 @@ export const OrgMembersTable = ({
     "upgradePlan",
     "setUpEmail"
   ] as const);
-  
+
   useEffect(() => {
     if (router.query.action === "invite") {
       handlePopUpOpen("addMember");
@@ -101,11 +109,11 @@ export const OrgMembersTable = ({
 
   const onAddMember = async ({ email }: TAddMemberForm) => {
     await onInviteMember(email);
-      if (serverDetails?.emailConfigured){
-        handlePopUpClose("addMember");
-      }
-      
-      reset();
+    if (serverDetails?.emailConfigured) {
+      handlePopUpClose("addMember");
+    }
+
+    reset();
   };
 
   const onRemoveOrgMemberApproved = async () => {
@@ -118,7 +126,7 @@ export const OrgMembersTable = ({
     () => members.find(({ user }) => userId === user?._id)?.role === "owner",
     [userId, members]
   );
-  
+
   const filterdUser = useMemo(
     () =>
       members.filter(
@@ -163,10 +171,10 @@ export const OrgMembersTable = ({
                 text: "You cannot invite users when SAML SSO is configured for your organization",
                 type: "error"
               });
-              
+
               return;
             }
-            
+
             if (isMoreUserNotAllowed) {
               handlePopUpOpen("upgradePlan");
             } else {
@@ -190,7 +198,7 @@ export const OrgMembersTable = ({
               </Tr>
             </THead>
             <TBody>
-              {isLoading && <TableSkeleton columns={5} key="org-members" />}
+              {isLoading && <TableSkeleton columns={5} innerKey="org-members" />}
               {!isLoading &&
                 filterdUser.map(({ user, inviteEmail, role, _id: orgMembershipId, status }) => {
                   const name = user ? `${user.firstName} ${user.lastName}` : "-";
@@ -219,11 +227,17 @@ export const OrgMembersTable = ({
                             <SelectItem value="member">member</SelectItem>
                           </Select>
                         )}
-                        {((status === "invited" || status === "verified") && serverDetails?.emailConfigured) && (
-                          <Button className='w-40' colorSchema="primary" variant="outline_bg" onClick={() => onInviteMember(email)}>
-                            Resend Invite
-                          </Button>
-                        )}
+                        {(status === "invited" || status === "verified") &&
+                          serverDetails?.emailConfigured && (
+                            <Button
+                              className="w-40"
+                              colorSchema="primary"
+                              variant="outline_bg"
+                              onClick={() => onInviteMember(email)}
+                            >
+                              Resend Invite
+                            </Button>
+                          )}
                         {status === "completed" && (
                           <Button
                             colorSchema="secondary"
@@ -241,18 +255,33 @@ export const OrgMembersTable = ({
                             </Tag>
                           ))
                         ) : (
-                          <div className='flex flex-row'>
-                            {((status === "invited" || status === "verified") && serverDetails?.emailConfigured) 
-                            ? <Tag colorSchema="red">This user hasn&apos;t accepted the invite yet</Tag>
-                            : <Tag colorSchema="red">This user isn&apos;t part of any projects yet</Tag>}
-                            {router.query.id !== "undefined" && !((status === "invited" || status === "verified") && serverDetails?.emailConfigured) && <button 
-                              type="button"
-                              onClick={() => router.push(`/project/${workspaces[0]?._id}/members`)}
-                              className='text-sm bg-mineshaft w-max px-1.5 py-0.5 hover:bg-primary duration-200 hover:text-black cursor-pointer rounded-sm'
-                            >
-                              <FontAwesomeIcon icon={faPlus} className="mr-1" />
-                              Add to projects
-                            </button>}
+                          <div className="flex flex-row">
+                            {(status === "invited" || status === "verified") &&
+                            serverDetails?.emailConfigured ? (
+                              <Tag colorSchema="red">
+                                This user hasn&apos;t accepted the invite yet
+                              </Tag>
+                            ) : (
+                              <Tag colorSchema="red">
+                                This user isn&apos;t part of any projects yet
+                              </Tag>
+                            )}
+                            {router.query.id !== "undefined" &&
+                              !(
+                                (status === "invited" || status === "verified") &&
+                                serverDetails?.emailConfigured
+                              ) && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    router.push(`/project/${workspaces[0]?._id}/members`)
+                                  }
+                                  className="w-max cursor-pointer rounded-sm bg-mineshaft px-1.5 py-0.5 text-sm duration-200 hover:bg-primary hover:text-black"
+                                >
+                                  <FontAwesomeIcon icon={faPlus} className="mr-1" />
+                                  Add to projects
+                                </button>
+                              )}
                           </div>
                         )}
                       </Td>
@@ -282,67 +311,73 @@ export const OrgMembersTable = ({
         isOpen={popUp?.addMember?.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("addMember", isOpen);
-          setCompleteInviteLink(undefined) 
+          setCompleteInviteLink(undefined);
         }}
       >
         <ModalContent
           title={`Invite others to ${orgName}`}
           subTitle={
             <div>
-              {!completeInviteLink && <div>
-                An invite is specific to an email address and expires after 1 day.
-                <br />
-                For security reasons, you will need to separately add members to projects.
-              </div>}
-              {completeInviteLink && "This Infisical instance does not have a email provider setup. Please share this invite link with the invitee manually"}
+              {!completeInviteLink && (
+                <div>
+                  An invite is specific to an email address and expires after 1 day.
+                  <br />
+                  For security reasons, you will need to separately add members to projects.
+                </div>
+              )}
+              {completeInviteLink &&
+                "This Infisical instance does not have a email provider setup. Please share this invite link with the invitee manually"}
             </div>
           }
         >
-          {!completeInviteLink && <form onSubmit={handleSubmit(onAddMember)} >
-            <Controller
-              control={control}
-              defaultValue=""
-              name="email"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl label="Email" isError={Boolean(error)} errorText={error?.message}>
-                  <Input {...field} />
-                </FormControl>
-              )}
-            />
-            <div className="mt-8 flex items-center">
-              <Button
-                className="mr-4"
-                size="sm"
-                type="submit"
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting}
-              >
-                Add Member
-              </Button>
-              <Button
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => handlePopUpClose("addMember")}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>}
-          {
-            completeInviteLink && 
+          {!completeInviteLink && (
+            <form onSubmit={handleSubmit(onAddMember)}>
+              <Controller
+                control={control}
+                defaultValue=""
+                name="email"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl label="Email" isError={Boolean(error)} errorText={error?.message}>
+                    <Input {...field} />
+                  </FormControl>
+                )}
+              />
+              <div className="mt-8 flex items-center">
+                <Button
+                  className="mr-4"
+                  size="sm"
+                  type="submit"
+                  isLoading={isSubmitting}
+                  isDisabled={isSubmitting}
+                >
+                  Add Member
+                </Button>
+                <Button
+                  colorSchema="secondary"
+                  variant="plain"
+                  onClick={() => handlePopUpClose("addMember")}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
+          {completeInviteLink && (
             <div className="mt-2 mb-3 mr-2 flex items-center justify-end rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-            <p className="mr-4 break-all">{completeInviteLink}</p>
-            <IconButton
-              ariaLabel="copy icon"
-              colorSchema="secondary"
-              className="group relative"
-              onClick={copyTokenToClipboard}
-            >
-              <FontAwesomeIcon icon={isInviteLinkCopied ? faCheck : faCopy} />
-              <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">click to copy</span>
-            </IconButton>
-          </div>
-          }
+              <p className="mr-4 break-all">{completeInviteLink}</p>
+              <IconButton
+                ariaLabel="copy icon"
+                colorSchema="secondary"
+                className="group relative"
+                onClick={copyTokenToClipboard}
+              >
+                <FontAwesomeIcon icon={isInviteLinkCopied ? faCheck : faCopy} />
+                <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">
+                  click to copy
+                </span>
+              </IconButton>
+            </div>
+          )}
         </ModalContent>
       </Modal>
       <DeleteActionModal

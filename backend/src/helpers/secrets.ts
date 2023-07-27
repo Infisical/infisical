@@ -346,6 +346,7 @@ export const createSecretHelper = async ({
     workspace: new Types.ObjectId(workspaceId),
     folder: folderId,
     type,
+    environment,
     ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {})
   });
 
@@ -362,6 +363,7 @@ export const createSecretHelper = async ({
       secretBlindIndex,
       folder: folderId,
       workspace: new Types.ObjectId(workspaceId),
+      environment,
       type: SECRET_SHARED
     });
 
