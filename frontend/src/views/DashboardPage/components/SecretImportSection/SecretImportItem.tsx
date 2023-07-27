@@ -26,7 +26,7 @@ export const EnvFolderIcon = ({ env, secretPath }: { env: string; secretPath: st
     <div style={{ minWidth: "96px" }}>{env || "-"}</div>
     {secretPath && (
       <div className="inline-flex items-center space-x-2 border-l border-mineshaft-600 pl-2">
-        <FontAwesomeIcon icon={faFolder} size="lg" className="text-primary-700" />
+        <FontAwesomeIcon icon={faFolder} className="text-green-700 text-md" />
         <span>{secretPath}</span>
       </div>
     )}
@@ -66,7 +66,7 @@ export const SecretImportItem = ({
         onClick={() => setIsExpanded.toggle()}
       >
         <td className="ml-0.5 flex h-10 w-10 items-center justify-center border-none px-4">
-          <FontAwesomeIcon icon={faFileImport} className="text-primary-700" />
+          <FontAwesomeIcon icon={faFileImport} className="text-green-700" />
         </td>
         <td
           colSpan={2}

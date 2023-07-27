@@ -63,7 +63,7 @@ export const SecretEditRow = ({
   };
 
   const handleFormSubmit = async ({ value }: { value?: string | null }) => {
-    if (value && secretName) {
+    if ((value || value === "") && secretName) {
       if (isCreatable) {
         await onSecretCreate(environment, secretName, value);
       } else {

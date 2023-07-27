@@ -26,7 +26,8 @@ const replaceContentWithDot = (str: string) => {
 };
 
 const syntaxHighlight = (orgContent?: string | null, isVisible?: boolean) => {
-  if (!orgContent) return "";
+  if (orgContent === "") return "EMPTY";
+  if (!orgContent) return "missing";
   if (!isVisible) return replaceContentWithDot(orgContent);
   const content = stripSpanTags(orgContent);
   const newContent = content.replace(
@@ -69,7 +70,7 @@ export const SecretInput = ({
         dangerouslySetInnerHTML={{
           __html: syntaxHighlight(value, isVisible || isSecretFocused)
         }}
-        className="absolute top-0 left-0 z-0 h-full w-full text-ellipsis whitespace-pre-line break-all"
+        className={`absolute top-0 left-0 z-0 h-full w-full text-ellipsis whitespace-pre-line break-all ${!value && value !== "" && "text-red-600 italic"}`}
       />
       <ContentEditable
         className="relative z-10 h-full w-full text-ellipsis whitespace-pre-line  break-all text-transparent caret-white outline-none"

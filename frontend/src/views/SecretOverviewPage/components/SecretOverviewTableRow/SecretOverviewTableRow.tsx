@@ -1,9 +1,9 @@
 import { faCircle } from "@fortawesome/free-regular-svg-icons";
-import { faCheck, faEye, faEyeSlash, faKey, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faAngleDown, faCheck, faEye, faEyeSlash, faKey, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { Button, TableContainer, Td, Tr } from "@app/components/v2";
+import { Button, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
 
@@ -35,12 +35,14 @@ export const SecretOverviewTableRow = ({
   return (
     <>
       <Tr isHoverable isSelectable onClick={() => setIsFormExpanded.toggle()} className="group">
-        <Td className="sticky left-0 z-10 border-x border-mineshaft-700 bg-mineshaft-800 bg-clip-padding py-2.5 group-hover:bg-mineshaft-700">
-          <div className="flex items-center space-x-5">
-            <div className="text-blue-300/70">
-              <FontAwesomeIcon icon={faKey} />
+        <Td className={`sticky left-0 py-0 px-0 z-10 bg-mineshaft-800 bg-clip-padding group-hover:bg-mineshaft-700 ${isFormExpanded && "border-t-2 border-mineshaft-500"}`}>
+          <div className="w-full h-full border-x border-mineshaft-700 py-2.5 px-5">
+            <div className="flex items-center space-x-5">
+              <div className="text-blue-300/70">
+                <FontAwesomeIcon icon={isFormExpanded ? faAngleDown : faKey} />
+              </div>
+              <div>{secretKey}</div>
             </div>
-            <div>{secretKey}</div>
           </div>
         </Td>
         {environments.map(({ slug }, i) => {
@@ -51,15 +53,20 @@ export const SecretOverviewTableRow = ({
             <Td
               key={`sec-overview-${slug}-${i + 1}-value`}
               className={twMerge(
-                "border-x border-mineshaft-600 py-3 group-hover:bg-mineshaft-700",
+                "py-0 px-0 group-hover:bg-mineshaft-700",
+                isFormExpanded && "border-t-2 border-mineshaft-500",
                 isSecretPresent && !isSecretEmpty ? "text-green-600" : "",
                 isSecretPresent && isSecretEmpty ? "text-yellow" : "",
                 !isSecretPresent && !isSecretEmpty ? "text-red-600" : ""
               )}
             >
-              <div className="flex justify-center">
-                {!isSecretEmpty && <FontAwesomeIcon icon={!isSecretPresent ? faCheck : faXmark} />}
-                {isSecretEmpty && <FontAwesomeIcon icon={faCircle} />}
+              <div className="w-full h-full py-[0.85rem] px-5 border-r border-mineshaft-600">
+                <div className="flex justify-center">
+                  {!isSecretEmpty && <FontAwesomeIcon icon={isSecretPresent ? faCheck : faXmark} />}
+                  {isSecretEmpty && <Tooltip content="Empty value">
+                    <FontAwesomeIcon icon={faCircle} />
+                  </Tooltip>}
+                </div>
               </div>
             </Td>
           );
@@ -67,14 +74,14 @@ export const SecretOverviewTableRow = ({
       </Tr>
       {isFormExpanded && (
         <Tr>
-          <Td colSpan={totalCols}>
+          <Td colSpan={totalCols} className={`px-0 py-0 ${isFormExpanded && "border-b-2 border-mineshaft-500"}`}>
             <div
-              className="rounded-md bg-bunker-700 p-2"
+              className="rounded-md bg-bunker-600 p-2"
               style={{
                 width: `calc(${expandableColWidth}px - 2rem)`,
-                position: "sticky",
-                left: "1.25rem",
-                right: "1.25rem"
+                // position: "sticky",
+                // left: "1.25rem",
+                // right: "1.25rem"
               }}
             >
               <TableContainer>

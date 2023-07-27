@@ -33,7 +33,7 @@ export const FolderBreadCrumbs = ({ secretPath = "/", onResetSearch }: Props) =>
         role="button"
         tabIndex={0}
       >
-        <FontAwesomeIcon icon={faFolderOpen} className="text-primary" />
+        <FontAwesomeIcon icon={faFolderOpen} className="text-primary-700" />
       </div>
       {(secretPath || "")
         .split("/")

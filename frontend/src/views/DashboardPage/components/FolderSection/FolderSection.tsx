@@ -30,7 +30,7 @@ export const FolderSection = memo(
               className="group flex cursor-default flex-row items-center hover:bg-mineshaft-700"
             >
               <td className="ml-0.5 flex h-10 w-10 items-center justify-center border-none px-4">
-                <FontAwesomeIcon icon={faFolder} className="text-primary-700" />
+                <FontAwesomeIcon icon={faFolder} className="text-yellow-700" />
               </td>
               <td
                 colSpan={2}

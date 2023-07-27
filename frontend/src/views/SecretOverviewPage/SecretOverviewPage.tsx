@@ -261,7 +261,7 @@ export const SecretOverviewPage = () => {
         </div>
       </div>
       <div className="thin-scrollbar mt-4 max-h-[calc(100vh-250px)] overflow-y-auto" ref={parentTableRef}>
-        <TableContainer>
+        <TableContainer className="sticky top-0">
           <Table>
             <THead className="sticky top-0">
               <Tr>
