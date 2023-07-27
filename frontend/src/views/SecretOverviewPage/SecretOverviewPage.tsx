@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
@@ -38,6 +38,26 @@ export const SecretOverviewPage = () => {
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
   const router = useRouter();
+
+  // this is to set expandable table width
+  // coz when overflow the table goes to the right
+  const parentTableRef = useRef<HTMLTableElement>(null);
+  const [expandableTableWidth, setExpandableTableWidth] = useState(0);
+
+  useEffect(() => {
+    const handleParentTableWidthResize = () => {
+      setExpandableTableWidth(parentTableRef.current?.clientWidth || 0);
+    };
+
+    window.addEventListener("resize", handleParentTableWidthResize);
+    return () => window.removeEventListener("resize", handleParentTableWidthResize);
+  }, []);
+
+  useEffect(() => {
+    if (parentTableRef.current) {
+      setExpandableTableWidth(parentTableRef.current.clientWidth);
+    }
+  }, [parentTableRef.current]);
 
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
   const { currentOrg } = useOrganization();
@@ -240,12 +260,12 @@ export const SecretOverviewPage = () => {
           />
         </div>
       </div>
-      <div className="mt-6">
+      <div className="thin-scrollbar mt-6" ref={parentTableRef}>
         <TableContainer>
           <Table>
             <THead>
               <Tr>
-                <Th className="sticky left-0 z-10 bg-clip-padding">Secret</Th>
+                <Th className="sticky left-0 z-10 min-w-[20rem] bg-clip-padding">Secret</Th>
                 {userAvailableEnvs?.map(({ name, slug }, index) => {
                   const envSecKeyCount = getEnvSecretKeyCount(slug);
                   const missingKeyCount = secKeys.length - envSecKeyCount;
@@ -261,7 +281,7 @@ export const SecretOverviewPage = () => {
                             className="max-w-none lowercase"
                             content={`${missingKeyCount} secrets missing\n compared to other environments`}
                           >
-                            <div className="ml-2 flex h-5 w-5 cursor-default items-center justify-center rounded-sm bg-red-700 text-xs text-bunker-100">
+                            <div className="ml-2 flex h-5 cursor-default items-center justify-center rounded-sm bg-red-700 p-1 text-xs text-bunker-100">
                               <span className="text-bunker-100">{missingKeyCount}</span>
                             </div>
                           </Tooltip>
@@ -299,10 +319,11 @@ export const SecretOverviewPage = () => {
                   environments={userAvailableEnvs}
                   secretKey={key}
                   getSecretByKey={getSecretByKey}
+                  expandableColWidth={expandableTableWidth}
                 />
               ))}
               <Tr>
-                <Td />
+                <Td className="sticky left-0 z-10 border-x  border-mineshaft-700 bg-mineshaft-800 bg-clip-padding" />
                 {userAvailableEnvs.map(({ name, slug }) => (
                   <Td key={`explore-${name}-btn`} className=" border-x border-mineshaft-700">
                     <div className="flex items-center justify-center">

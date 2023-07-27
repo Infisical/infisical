@@ -11,6 +11,7 @@ import { SecretEditRow } from "./SecretEditRow";
 type Props = {
   secretKey: string;
   environments: { name: string; slug: string }[];
+  expandableColWidth: number;
   getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
   onSecretUpdate: (env: string, key: string, value: string) => Promise<void>;
@@ -23,7 +24,8 @@ export const SecretOverviewTableRow = ({
   getSecretByKey,
   onSecretUpdate,
   onSecretCreate,
-  onSecretDelete
+  onSecretDelete,
+  expandableColWidth
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 1; // secret key row
@@ -56,7 +58,15 @@ export const SecretOverviewTableRow = ({
       {isFormExpanded && (
         <Tr>
           <Td colSpan={totalCols}>
-            <div className="rounded-md bg-bunker-700 p-4 pb-6">
+            <div
+              className="rounded-md bg-bunker-700 p-4 pb-6"
+              style={{
+                width: `calc(${expandableColWidth}px - 2rem)`,
+                position: "sticky",
+                left: "1.25rem",
+                right: "1.25rem"
+              }}
+            >
               <div className="mb-4 flex items-center justify-between">
                 <div className="text-lg font-medium">Secrets</div>
                 <div>
