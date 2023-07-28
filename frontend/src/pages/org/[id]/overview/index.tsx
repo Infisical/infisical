@@ -31,6 +31,7 @@ import {
   Input,
   Modal,
   ModalContent,
+  Skeleton,
   UpgradePlanModal
 } from "@app/components/v2";
 import { TabsObject } from "@app/components/v2/Tabs";
@@ -60,7 +61,7 @@ type ItemProps = {
   link?: string;
 };
 
-const learningItem = ({
+const LearningItem = ({
   text,
   subText,
   complete,
@@ -159,7 +160,7 @@ const learningItem = ({
   );
 };
 
-const learningItemSquare = ({
+const LearningItemSquare = ({
   text,
   subText,
   complete,
@@ -241,7 +242,7 @@ export default function Organization() {
 
   const router = useRouter();
 
-  const { workspaces } = useWorkspace();
+  const { workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
   const orgWorkspaces =
     workspaces?.filter(
       (workspace) => workspace.organization === localStorage.getItem("orgData.id")
@@ -334,6 +335,8 @@ export default function Organization() {
     });
   }, []);
 
+  const isWorkspaceEmpty = !isWorkspaceLoading && orgWorkspaces?.length === 0;
+
   return (
     <div className="mx-auto flex max-w-7xl flex-col justify-start bg-bunker-800 md:h-screen">
       <Head>
@@ -366,6 +369,23 @@ export default function Organization() {
           </Button>
         </div>
         <div className="mt-4 grid w-full grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {isWorkspaceLoading &&
+            Array.apply(0, Array(3)).map((_x, i) => (
+              <div
+                key={`workspace-cards-loading-${i + 1}`}
+                className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+              >
+                <div className="mt-0 text-lg text-mineshaft-100">
+                  <Skeleton className="w-3/4 bg-mineshaft-600" />
+                </div>
+                <div className="mt-0 pb-6 text-sm text-mineshaft-300">
+                  <Skeleton className="w-1/2 bg-mineshaft-600" />
+                </div>
+                <div className="flex justify-end">
+                  <Skeleton className="w-1/2 bg-mineshaft-600" />
+                </div>
+              </div>
+            ))}
           {orgWorkspaces
             .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
             .map((workspace) => (
@@ -395,7 +415,7 @@ export default function Organization() {
               </div>
             ))}
         </div>
-        {orgWorkspaces.length === 0 && (
+        {isWorkspaceEmpty && (
           <div className="w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
             <FontAwesomeIcon
               icon={faFolderOpen}
@@ -416,43 +436,46 @@ export default function Organization() {
         <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
           <p className="mr-4 mb-4 font-semibold text-white">Onboarding Guide</p>
           <div className="mb-3 grid w-full grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {learningItemSquare({
-              text: "Watch Infisical demo",
-              subText: "Set up Infisical in 3 min.",
-              complete: hasUserClickedIntro,
-              icon: faHandPeace,
-              time: "3 min",
-              userAction: "intro_cta_clicked",
-              link: "https://www.youtube.com/watch?v=PK23097-25I"
-            })}
-            {orgWorkspaces.length !== 0 &&
-              learningItemSquare({
-                text: "Add your secrets",
-                subText: "Drop a .env file or type your secrets.",
-                complete: hasUserPushedSecrets,
-                icon: faPlus,
-                time: "1 min",
-                userAction: "first_time_secrets_pushed",
-                link: `/project/${orgWorkspaces[0]?._id}/secrets/overview`
-              })}
-            {learningItemSquare({
-              text: "Invite your teammates",
-              subText: "Infisical is better used as a team.",
-              complete: usersInOrg,
-              icon: faUserPlus,
-              time: "2 min",
-              link: `/org/${router.query.id}/members?action=invite`
-            })}
+            <LearningItemSquare
+              text="Watch Infisical demo"
+              subText="Set up Infisical in 3 min."
+              complete={hasUserClickedIntro}
+              icon={faHandPeace}
+              time="3 min"
+              userAction="intro_cta_clicked"
+              link="https://www.youtube.com/watch?v=PK23097-25I"
+            />
+            {orgWorkspaces.length !== 0 && (
+              <>
+                <LearningItemSquare
+                  text="Add your secrets"
+                  subText="Drop a .env file or type your secrets."
+                  complete={hasUserPushedSecrets}
+                  icon={faPlus}
+                  time="1 min"
+                  userAction="first_time_secrets_pushed"
+                  link={`/project/${orgWorkspaces[0]?._id}/secrets/overview`}
+                />
+                <LearningItemSquare
+                  text="Invite your teammates"
+                  subText="Infisical is better used as a team."
+                  complete={usersInOrg}
+                  icon={faUserPlus}
+                  time="2 min"
+                  link={`/org/${router.query.id}/members?action=invite`}
+                />
+              </>
+            )}
             <div className="block xl:hidden 2xl:block">
-              {learningItemSquare({
-                text: "Join Infisical Slack",
-                subText: "Have any questions? Ask us!",
-                complete: hasUserClickedSlack,
-                icon: faSlack,
-                time: "1 min",
-                userAction: "slack_cta_clicked",
-                link: "https://infisical.com/slack"
-              })}
+              <LearningItemSquare
+                text="Join Infisical Slack"
+                subText="Have any questions? Ask us!"
+                complete={hasUserClickedSlack}
+                icon={faSlack}
+                time="1 min"
+                userAction="slack_cta_clicked"
+                link="https://infisical.com/slack"
+              />
             </div>
           </div>
           {orgWorkspaces.length !== 0 && (
@@ -485,18 +508,19 @@ export default function Organization() {
               {false && <div className="absolute bottom-0 left-0 h-1 w-full bg-green" />}
             </div>
           )}
-          {orgWorkspaces.length !== 0 &&
-            learningItem({
-              text: "Integrate Infisical with your infrastructure",
-              subText: "Connect Infisical to various 3rd party services and platforms.",
-              complete: false,
-              icon: faPlug,
-              time: "15 min",
-              link: "https://infisical.com/docs/integrations/overview"
-            })}
+          {orgWorkspaces.length !== 0 && (
+            <LearningItem
+              text="Integrate Infisical with your infrastructure"
+              subText="Connect Infisical to various 3rd party services and platforms."
+              complete={false}
+              icon={faPlug}
+              time="15 min"
+              link="https://infisical.com/docs/integrations/overview"
+            />
+          )}
         </div>
       )}
-      <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 pb-6 text-3xl">
+      <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-6 text-3xl">
         <p className="mr-4 font-semibold text-white">Explore More</p>
         <div
           className="mt-4 grid w-full grid-flow-dense gap-4"
