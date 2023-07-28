@@ -76,9 +76,9 @@ export const SecretOverviewTableRow = ({
         <Tr>
           <Td colSpan={totalCols} className={`px-0 py-0 ${isFormExpanded && "border-b-2 border-mineshaft-500"}`}>
             <div
-              className="rounded-md bg-bunker-600 p-2"
+              className="bg-bunker-600 p-2"
               style={{
-                width: `calc(${expandableColWidth}px - 2rem)`,
+                width: `calc(${expandableColWidth}px - 0.4rem)`,
                 // position: "sticky",
                 // left: "1.25rem",
                 // right: "1.25rem"
