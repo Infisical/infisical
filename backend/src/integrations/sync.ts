@@ -2268,11 +2268,21 @@ const syncSecretsDigitalOceanAppPlatform = async ({
   secrets: any;
   accessToken: string;
 }) => {
+  // get current app settings
+  const appSettings = (
+    await standardRequest.get(`${INTEGRATION_DIGITAL_OCEAN_API_URL}/v2/apps/${integration.appId}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      }
+    })
+  ).data.app.spec;
+
   await standardRequest.put(
     `${INTEGRATION_DIGITAL_OCEAN_API_URL}/v2/apps/${integration.appId}`,
     {
       spec: {
-        name: integration.app,
+        ...appSettings,
         envs: Object.entries(secrets).map(([key, value]) => ({ key, value }))
       }
     },
@@ -2283,7 +2293,7 @@ const syncSecretsDigitalOceanAppPlatform = async ({
       }
     }
   );
-}
+};
 
 /**
  * Sync/push [secrets] to Windmill with name [integration.app]
