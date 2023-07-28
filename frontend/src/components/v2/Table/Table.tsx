@@ -51,6 +51,17 @@ export const THead = ({ children, className }: THeadProps): JSX.Element => (
   </thead>
 );
 
+export type TFootProps = {
+  children: ReactNode;
+  className?: string;
+};
+
+export const TFoot = ({ children, className }: TFootProps): JSX.Element => (
+  <tfoot className={twMerge("bg-mineshaft-800 text-xs uppercase text-bunker-300", className)}>
+    {children}
+  </tfoot>
+);
+
 // table rows
 export type TrProps = {
   children: ReactNode;
@@ -68,7 +79,7 @@ export const Tr = ({
 }: TrProps): JSX.Element => (
   <tr
     className={twMerge(
-      "cursor-default border border-solid border-mineshaft-700",
+      "cursor-default border border-solid border-mineshaft-600",
       isHoverable && "hover:bg-mineshaft-600",
       isSelectable && "cursor-pointer",
       className
@@ -126,7 +137,12 @@ export type TBodyLoader = {
   innerKey: string;
 };
 
-export const TableSkeleton = ({ rows = 3, columns, innerKey, className }: TBodyLoader): JSX.Element => (
+export const TableSkeleton = ({
+  rows = 3,
+  columns,
+  innerKey,
+  className
+}: TBodyLoader): JSX.Element => (
   <>
     {Array.apply(0, Array(rows)).map((_x, i) => (
       <Tr key={`${innerKey}-skeleton-rows-${i + 1}`}>

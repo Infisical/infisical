@@ -87,6 +87,10 @@
     scrollbar-width: thin;
     scrollbar-color: gray transparent;
   }
+
+  #nprogress .bar {
+    @apply bg-primary-400;
+  }
 }
 
 @import "@fontsource/inter/400.css";

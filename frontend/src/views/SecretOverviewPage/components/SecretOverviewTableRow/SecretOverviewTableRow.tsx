@@ -1,5 +1,12 @@
 import { faCircle } from "@fortawesome/free-regular-svg-icons";
-import { faAngleDown, faCheck, faEye, faEyeSlash, faKey, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faAngleDown,
+  faCheck,
+  faEye,
+  faEyeSlash,
+  faKey,
+  faXmark
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
@@ -35,8 +42,12 @@ export const SecretOverviewTableRow = ({
   return (
     <>
       <Tr isHoverable isSelectable onClick={() => setIsFormExpanded.toggle()} className="group">
-        <Td className={`sticky left-0 py-0 px-0 z-10 bg-mineshaft-800 bg-clip-padding group-hover:bg-mineshaft-700 ${isFormExpanded && "border-t-2 border-mineshaft-500"}`}>
-          <div className="w-full h-full border-x border-mineshaft-700 py-2.5 px-5">
+        <Td
+          className={`sticky left-0 z-10 bg-mineshaft-800 bg-clip-padding py-0 px-0 group-hover:bg-mineshaft-700 ${
+            isFormExpanded && "border-t-2 border-mineshaft-500"
+          }`}
+        >
+          <div className="h-full w-full border-r border-mineshaft-600 py-2.5 px-5">
             <div className="flex items-center space-x-5">
               <div className="text-blue-300/70">
                 <FontAwesomeIcon icon={isFormExpanded ? faAngleDown : faKey} />
@@ -60,12 +71,14 @@ export const SecretOverviewTableRow = ({
                 !isSecretPresent && !isSecretEmpty ? "text-red-600" : ""
               )}
             >
-              <div className="w-full h-full py-[0.85rem] px-5 border-r border-mineshaft-600">
+              <div className="h-full w-full border-r border-mineshaft-600 py-[0.85rem] px-5">
                 <div className="flex justify-center">
                   {!isSecretEmpty && <FontAwesomeIcon icon={isSecretPresent ? faCheck : faXmark} />}
-                  {isSecretEmpty && <Tooltip content="Empty value">
-                    <FontAwesomeIcon icon={faCircle} />
-                  </Tooltip>}
+                  {isSecretEmpty && (
+                    <Tooltip content="Empty value">
+                      <FontAwesomeIcon icon={faCircle} />
+                    </Tooltip>
+                  )}
                 </div>
               </div>
             </Td>
@@ -74,14 +87,16 @@ export const SecretOverviewTableRow = ({
       </Tr>
       {isFormExpanded && (
         <Tr>
-          <Td colSpan={totalCols} className={`px-0 py-0 ${isFormExpanded && "border-b-2 border-mineshaft-500"}`}>
+          <Td
+            colSpan={totalCols}
+            className={`bg-bunker-600 px-0 py-0 ${
+              isFormExpanded && "border-b-2 border-mineshaft-500"
+            }`}
+          >
             <div
-              className="bg-bunker-600 p-2"
+              className="ml-2 p-2"
               style={{
-                width: `calc(${expandableColWidth}px - 0.4rem)`,
-                // position: "sticky",
-                // left: "1.25rem",
-                // right: "1.25rem"
+                width: `calc(${expandableColWidth}px - 1rem)`
               }}
             >
               <TableContainer>
@@ -94,8 +109,10 @@ export const SecretOverviewTableRow = ({
                       >
                         Environment
                       </th>
-                      <th style={{ padding: "0.5rem 1rem" }} className="border-none">Value</th>
-                      <div className="absolute top-0 right-0 w-min ml-auto mt-1 mr-1">
+                      <th style={{ padding: "0.5rem 1rem" }} className="border-none">
+                        Value
+                      </th>
+                      <div className="absolute top-0 right-0 ml-auto mt-1 mr-1 w-min">
                         <Button
                           variant="outline_bg"
                           className="p-1"
@@ -120,7 +137,7 @@ export const SecretOverviewTableRow = ({
                           <td className="flex" style={{ padding: "0.25rem 1rem" }}>
                             <div className="flex h-8 items-center">{name}</div>
                           </td>
-                          <td className="h-8 col-span-2 w-full">
+                          <td className="col-span-2 h-8 w-full">
                             <SecretEditRow
                               isVisible={isSecretVisible}
                               secretName={secretKey}

@@ -85,7 +85,7 @@ export const SecretEditRow = ({
   };
 
   return (
-    <div className="group flex w-full cursor-text items-start space-x-2 items-center">
+    <div className="group flex w-full cursor-text space-x-2 items-center">
       <div className="flex-grow border-r border-r-mineshaft-600 pr-2 pl-1">
         <Controller
           control={control}
