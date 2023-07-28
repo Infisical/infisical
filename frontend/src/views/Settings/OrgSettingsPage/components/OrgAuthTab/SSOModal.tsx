@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form"; 
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
     Button,
@@ -29,8 +28,7 @@ const schema = yup.object({
     authProvider: yup.string().required("SSO Type is required"),
     entryPoint: yup.string().required("IDP entrypoint is required"),
     issuer: yup.string().required("Issuer string is required"),
-    cert: yup.string().required("IDP's public signing certificate is required"),
-    audience: yup.string().required("Expected SAML response audience is required"),
+    cert: yup.string().required("IDP's public signing certificate is required")
 }).required();
 
 export type AddSSOFormData = yup.InferType<typeof schema>;
@@ -70,8 +68,7 @@ export const SSOModal = ({
                 authProvider: data?.authProvider ?? "",
                 entryPoint: data?.entryPoint ?? "",
                 issuer: data?.issuer ?? "",
-                cert: data?.cert ?? "",
-                audience: data?.audience ?? ""
+                cert: data?.cert ?? ""
             });
         }
     }, [data]);
@@ -80,8 +77,7 @@ export const SSOModal = ({
         authProvider,
         entryPoint,
         issuer,
-        cert,
-        audience
+        cert
     }: AddSSOFormData) => {
         try {
             if (!currentOrg) return;
@@ -93,8 +89,7 @@ export const SSOModal = ({
                     isActive: false,
                     entryPoint,
                     issuer,
-                    cert,
-                    audience
+                    cert
                 });
             } else {
                 await updateMutateAsync({
@@ -103,8 +98,7 @@ export const SSOModal = ({
                     isActive: false,
                     entryPoint,
                     issuer,
-                    cert,
-                    audience 
+                    cert
                 });
             }
 
@@ -160,24 +154,16 @@ export const SSOModal = ({
                             </FormControl>
                         )}
                     />
-                    {authProvider && authProvider === "okta-saml" && (
+                    {authProvider && authProvider === "okta-saml" && data && (
                         <>
-                            <Controller
-                                control={control}
-                                name="audience"
-                                render={({ field, fieldState: { error } }) => (
-                                    <FormControl
-                                        label="Audience"
-                                        errorText={error?.message}
-                                        isError={Boolean(error)}
-                                    >
-                                        <Input 
-                                            {...field} 
-                                            placeholder="https://your-domain.com"
-                                        />
-                                    </FormControl>
-                                )}
-                            />
+                            <div className="mb-4">
+                                <h3 className="text-mineshaft-400 text-sm">ACS URL</h3>
+                                <p className="text-gray-400 text-md break-all">{`${window.origin}/api/v1/sso/saml2/${data._id}`}</p>
+                            </div>
+                            <div className="mb-4">
+                                <h3 className="text-mineshaft-400 text-sm">Entity ID</h3>
+                                <p className="text-gray-400 text-md">{window.origin}</p>
+                            </div>
                             <Controller
                                 control={control}
                                 name="entryPoint"

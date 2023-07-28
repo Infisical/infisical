@@ -2,6 +2,9 @@ import express from "express";
 const router = express.Router();
 import passport from "passport";
 import {
+  AuthProvider
+} from "../../models";
+import {
     requireAuth,
     requireOrganizationAuth,
     validateRequest,
@@ -87,12 +90,11 @@ router.post(
         locationOrganizationId: "body"
     }),
     body("organizationId").exists().trim(),
-    body("authProvider").exists().isString(),
+    body("authProvider").exists().isString().isIn([AuthProvider.OKTA_SAML]),
     body("isActive").exists().isBoolean(),
     body("entryPoint").exists().isString(),
     body("issuer").exists().isString(),
     body("cert").exists().isString(),
-    body("audience").exists().isString(),
     validateRequest,
     ssoController.createSSOConfig
 );
@@ -113,7 +115,6 @@ router.patch(
     body("entryPoint").optional().isString(),
     body("issuer").optional().isString(),
     body("cert").optional().isString(),
-    body("audience").optional().isString(),
     validateRequest,
     ssoController.updateSSOConfig
 );

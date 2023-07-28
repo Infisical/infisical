@@ -57,7 +57,6 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
         entryPoint,
         issuer,
         cert,
-        audience
     } = req.body;
 
     const plan = await EELicenseService.getPlan(organizationId);
@@ -78,9 +77,6 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
         encryptedCert?: string;
         certIV?: string;
         certTag?: string;
-        encryptedAudience?: string;
-        audienceIV?: string;
-        audienceTag?: string;
     }
     
     const update: PatchUpdate = {};
@@ -131,18 +127,6 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
         update.encryptedCert = encryptedCert;
         update.certIV = certIV;
         update.certTag = certTag;
-    }
-
-    if (audience) {
-        const {
-            ciphertext: encryptedAudience,
-            iv: audienceIV,
-            tag: audienceTag
-        } = client.encryptSymmetric(audience, key);
-        
-        update.encryptedAudience = encryptedAudience;
-        update.audienceIV = audienceIV;
-        update.audienceTag = audienceTag;
     }
     
     const ssoConfig = await SSOConfig.findOneAndUpdate(
@@ -207,8 +191,7 @@ export const createSSOConfig = async (req: Request, res: Response) => {
         isActive,
         entryPoint,
         issuer,
-        cert,
-        audience
+        cert
     } = req.body;
 
     const plan = await EELicenseService.getPlan(organizationId);
@@ -238,12 +221,6 @@ export const createSSOConfig = async (req: Request, res: Response) => {
         iv: certIV,
         tag: certTag
     } = client.encryptSymmetric(cert, key);
-
-    const {
-        ciphertext: encryptedAudience,
-        iv: audienceIV,
-        tag: audienceTag
-    } = client.encryptSymmetric(audience, key);
     
     const ssoConfig = await new SSOConfig({
         organization: new Types.ObjectId(organizationId),
@@ -257,10 +234,7 @@ export const createSSOConfig = async (req: Request, res: Response) => {
         issuerTag,
         encryptedCert,
         certIV,
-        certTag,
-        encryptedAudience,
-        audienceIV,
-        audienceTag
+        certTag
     }).save();
 
     return res.status(200).send(ssoConfig);

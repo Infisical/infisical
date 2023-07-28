@@ -4,7 +4,8 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   getAuthToken,
   getMfaTempToken,
-  getSignupTempToken} from "@app/reactQuery";
+  getSignupTempToken
+} from "@app/reactQuery";
 
 export const apiRequest = axios.create({
   baseURL: "/",

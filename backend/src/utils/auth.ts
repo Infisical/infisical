@@ -147,7 +147,7 @@ const initializePassport = async () => {
           entryPoint: ssoConfig.entryPoint,
           issuer: ssoConfig.issuer,
           cert: ssoConfig.cert,
-          audience: ssoConfig.audience
+          audience: await getSiteURL()
         });
         
         req.ssoConfig = ssoConfig;
