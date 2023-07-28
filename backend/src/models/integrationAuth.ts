@@ -24,7 +24,8 @@ import {
   INTEGRATION_SUPABASE,
   INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TRAVISCI,
-  INTEGRATION_VERCEL
+  INTEGRATION_VERCEL,
+  INTEGRATION_WINDMILL
 } from "../variables";
 import { Document, Schema, Types, model } from "mongoose";
 
@@ -54,7 +55,8 @@ export interface IIntegrationAuth extends Document {
     | "bitbucket"
     | "cloud-66"
     | "terraform-cloud"
-    | "northflank";
+    | "northflank"
+    | "windmill";
   teamId: string;
   accountId: string;
   url: string;
@@ -101,9 +103,10 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_TERRAFORM_CLOUD,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
+        INTEGRATION_CODEFRESH,
+        INTEGRATION_WINDMILL,
         INTEGRATION_BITBUCKET,
         INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
-        INTEGRATION_CODEFRESH,
         INTEGRATION_CLOUD_66,
         INTEGRATION_NORTHFLANK
       ],

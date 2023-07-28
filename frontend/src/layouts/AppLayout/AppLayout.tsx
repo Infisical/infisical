@@ -13,7 +13,18 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
-import { faAngleDown, faArrowLeft, faArrowUpRightFromSquare, faBook, faCheck, faEnvelope, faInfinity, faMobile, faPlus, faQuestion } from "@fortawesome/free-solid-svg-icons";
+import {
+  faAngleDown,
+  faArrowLeft,
+  faArrowUpRightFromSquare,
+  faBook,
+  faCheck,
+  faEnvelope,
+  faInfinity,
+  faMobile,
+  faPlus,
+  faQuestion
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
@@ -41,7 +52,14 @@ import {
 } from "@app/components/v2";
 import { useOrganization, useSubscription, useUser, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useGetOrgTrialUrl, useLogoutUser, useUploadWsKey } from "@app/hooks/api";
+import {
+  fetchOrgUsers,
+  useAddUserToWs,
+  useCreateWorkspace,
+  useGetOrgTrialUrl,
+  useLogoutUser,
+  useUploadWsKey
+} from "@app/hooks/api";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -89,7 +107,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { subscription } = useSubscription();
   // const [ isLearningNoteOpen, setIsLearningNoteOpen ] = useState(true);
 
-  const isAddingProjectsAllowed = subscription?.workspaceLimit ? (subscription.workspacesUsed < subscription.workspaceLimit) : true;
+  const isAddingProjectsAllowed = subscription?.workspaceLimit
+    ? subscription.workspacesUsed < subscription.workspaceLimit
+    : true;
 
   const createWs = useCreateWorkspace();
   const uploadWsKey = useUploadWsKey();
@@ -110,22 +130,22 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { t } = useTranslation();
 
-	useEffect(() => {
-		const handleRouteChange = () => {
-			(window).Intercom("update");
-		};
-		
-		router.events.on("routeChangeComplete", handleRouteChange);
-		
-		return () => {
-		  router.events.off("routeChangeComplete", handleRouteChange);
-		};
-	}, []);
+  useEffect(() => {
+    const handleRouteChange = () => {
+      window.Intercom("update");
+    };
+
+    router.events.on("routeChangeComplete", handleRouteChange);
+
+    return () => {
+      router.events.off("routeChangeComplete", handleRouteChange);
+    };
+  }, []);
 
   const logout = useLogoutUser();
   const logOutUser = async () => {
     try {
-      console.log("Logging out...")
+      console.log("Logging out...");
       await logout.mutateAsync();
       localStorage.removeItem("protectedKey");
       localStorage.removeItem("protectedKeyIV");
@@ -145,27 +165,30 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const changeOrg = async (orgId) => {
     localStorage.setItem("orgData.id", orgId);
-    router.push(`/org/${orgId}/overview`)
-  }
+    router.push(`/org/${orgId}/overview`);
+  };
 
   // TODO(akhilmhdh): This entire logic will be rechecked and will try to avoid
   // Placing the localstorage as much as possible
   // Wait till tony integrates the azure and its launched
   useEffect(() => {
-
     // Put a user in an org if they're not in one yet
     const putUserInOrg = async () => {
       if (tempLocalStorage("orgData.id") === "") {
         localStorage.setItem("orgData.id", orgs[0]?._id);
       }
 
-      if (currentOrg && (
-        (workspaces?.length === 0 && router.asPath.includes("project")) 
-        || router.asPath.includes("/project/undefined")
-        || (!orgs?.map(org => org._id)?.includes(router.query.id) && !router.asPath.includes("project") && !router.asPath.includes("personal") && !router.asPath.includes("integration"))
-      )) {
+      if (
+        currentOrg &&
+        ((workspaces?.length === 0 && router.asPath.includes("project")) ||
+          router.asPath.includes("/project/undefined") ||
+          (!orgs?.map((org) => org._id)?.includes(router.query.id) &&
+            !router.asPath.includes("project") &&
+            !router.asPath.includes("personal") &&
+            !router.asPath.includes("integration")))
+      ) {
         router.push(`/org/${currentOrg?._id}/overview`);
-      } 
+      }
       // else if (!router.asPath.includes("org") && !router.asPath.includes("project") && !router.asPath.includes("integrations") && !router.asPath.includes("personal-settings")) {
 
       //   const pathSegments = router.asPath.split("/").filter((segment) => segment.length > 0);
@@ -233,7 +256,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       }
       createNotification({ text: "Workspace created", type: "success" });
       handlePopUpClose("addNewWs");
-      router.push(`/project/${newWorkspaceId}/secrets`);
+      router.push(`/project/${newWorkspaceId}/secrets/overview`);
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create workspace", type: "error" });
@@ -244,190 +267,235 @@ export const AppLayout = ({ children }: LayoutProps) => {
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
-          <aside className="w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60 dark">
+          <aside className="dark w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
               <div>
-                {!router.asPath.includes("personal") && <div className="h-12 px-3 flex items-center pt-6 cursor-default">
-                  {(router.asPath.includes("project") || router.asPath.includes("integrations")) && <Link href={`/org/${currentOrg?._id}/overview`}><div className="pl-1 pr-2 text-mineshaft-400 hover:text-mineshaft-100 duration-200">
-                    <FontAwesomeIcon icon={faArrowLeft} />
-                  </div></Link>}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild className="data-[state=open]:bg-mineshaft-600">
-                      <div className="mr-auto flex items-center hover:bg-mineshaft-600 py-1.5 pl-1.5 pr-2 rounded-md">
-                        <div className="w-5 h-5 rounded-md bg-primary flex justify-center items-center text-sm">{currentOrg?.name.charAt(0)}</div>
-                        <div className="pl-3 text-mineshaft-100 text-sm">{currentOrg?.name} <FontAwesomeIcon icon={faAngleDown} className="text-xs pl-1 pt-1 text-mineshaft-300" /></div>
-                      </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="p-1">
-                      <div className="text-xs text-mineshaft-400 px-2 py-1">{user?.email}</div>
-                      {orgs?.map(org => <DropdownMenuItem key={org._id}>
-                          <Button
-                            onClick={() => changeOrg(org?._id)}
-                            variant="plain"
-                            colorSchema="secondary"
-                            size="xs"
-                            className="w-full flex items-center justify-start p-0 font-normal"
-                            leftIcon={currentOrg._id === org._id && <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary"/>}
-                          >
-                            <div className="w-full flex justify-between items-center">{org.name}</div>
-                          </Button>
-                        </DropdownMenuItem>
-                      )}
-                      <div className="h-1 mt-1 border-t border-mineshaft-600"/>
-                      <button
-                        type="button"
-                        onClick={logOutUser}
-                        className="w-full"
-                      >
-                        <DropdownMenuItem>Log Out</DropdownMenuItem>
-                      </button>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild className="hover:bg-primary-400 hover:text-black data-[state=open]:text-black data-[state=open]:bg-primary-400 p-1">
-                      <div className="child w-6 h-6 rounded-full bg-mineshaft hover:bg-mineshaft-500 pr-1 text-xs text-mineshaft-300 flex justify-center items-center">
-                        {user?.firstName?.charAt(0)}{user?.lastName && user?.lastName?.charAt(0)}
-                      </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="p-1">
-                      <div className="text-xs text-mineshaft-400 px-2 py-1">{user?.email}</div>
-                      <Link href="/personal-settings"><DropdownMenuItem>Personal Settings</DropdownMenuItem></Link>
-                      <a
-                        href="https://infisical.com/docs/documentation/getting-started/introduction"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full mt-3 text-sm text-mineshaft-300 font-normal leading-[1.2rem] hover:text-mineshaft-100"
-                      >
-                        <DropdownMenuItem>Documentation<FontAwesomeIcon icon={faArrowUpRightFromSquare} className="pl-1.5 text-xxs mb-[0.06rem]" /></DropdownMenuItem>
-                      </a>
-                      <a
-                        href="https://infisical.com/slack"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full mt-3 text-sm text-mineshaft-300 font-normal leading-[1.2rem] hover:text-mineshaft-100"
-                      >
-                        <DropdownMenuItem>Join Slack Community<FontAwesomeIcon icon={faArrowUpRightFromSquare} className="pl-1.5 text-xxs mb-[0.06rem]" /></DropdownMenuItem>
-                      </a>
-                      <div className="h-1 mt-1 border-t border-mineshaft-600"/>
-                      <button
-                        type="button"
-                        onClick={logOutUser}
-                        className="w-full"
-                      >
-                        <DropdownMenuItem>Log Out</DropdownMenuItem>
-                      </button>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>}
-                {!router.asPath.includes("org") && (!router.asPath.includes("personal") && currentWorkspace ? (
-                  <div className="mt-5 mb-4 w-full p-3">
-                    <p className="ml-1.5 mb-1 text-xs font-semibold uppercase text-gray-400">
-                      Project
-                    </p>
-                    <Select
-                      defaultValue={currentWorkspace?._id}
-                      value={currentWorkspace?._id}
-                      className="w-full truncate bg-mineshaft-600 py-2.5 font-medium"
-                      onValueChange={(value) => {
-                        router.push(`/project/${value}/secrets`);
-                        localStorage.setItem("projectData.id", value);
-                      }}
-                      position="popper"
-                      dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50 max-h-96 border-gray-700"
-                    >
-                      <div className='h-full no-scrollbar no-scrollbar::-webkit-scrollbar'>
-                        {workspaces
-                        .filter((ws) => ws.organization === currentOrg?._id)
-                        .map(({ _id, name }) => (
-                          <SelectItem
-                            key={`ws-layout-list-${_id}`}
-                            value={_id}
-                            className={`${currentWorkspace?._id === _id && "bg-mineshaft-600"}`}
-                          >
-                            {name}
-                          </SelectItem>
+                {!router.asPath.includes("personal") && (
+                  <div className="flex h-12 cursor-default items-center px-3 pt-6">
+                    {(router.asPath.includes("project") ||
+                      router.asPath.includes("integrations")) && (
+                      <Link href={`/org/${currentOrg?._id}/overview`}>
+                        <div className="pl-1 pr-2 text-mineshaft-400 duration-200 hover:text-mineshaft-100">
+                          <FontAwesomeIcon icon={faArrowLeft} />
+                        </div>
+                      </Link>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild className="data-[state=open]:bg-mineshaft-600">
+                        <div className="mr-auto flex items-center rounded-md py-1.5 pl-1.5 pr-2 hover:bg-mineshaft-600">
+                          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary text-sm">
+                            {currentOrg?.name.charAt(0)}
+                          </div>
+                          <div className="pl-3 text-sm text-mineshaft-100">
+                            {currentOrg?.name}{" "}
+                            <FontAwesomeIcon
+                              icon={faAngleDown}
+                              className="pl-1 pt-1 text-xs text-mineshaft-300"
+                            />
+                          </div>
+                        </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="p-1">
+                        <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.email}</div>
+                        {orgs?.map((org) => (
+                          <DropdownMenuItem key={org._id}>
+                            <Button
+                              onClick={() => changeOrg(org?._id)}
+                              variant="plain"
+                              colorSchema="secondary"
+                              size="xs"
+                              className="flex w-full items-center justify-start p-0 font-normal"
+                              leftIcon={
+                                currentOrg._id === org._id && (
+                                  <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary" />
+                                )
+                              }
+                            >
+                              <div className="flex w-full items-center justify-between">
+                                {org.name}
+                              </div>
+                            </Button>
+                          </DropdownMenuItem>
                         ))}
-                      </div>
-                      <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />
-                      <div className="w-full">
-                        <Button
-                          className="w-full bg-mineshaft-700 py-2 text-bunker-200"
-                          colorSchema="primary"
-                          variant="outline_bg"
-                          size="sm"
-                          onClick={() => {
-                            if (isAddingProjectsAllowed) {
-                              handlePopUpOpen("addNewWs")
-                            } else {
-                              handlePopUpOpen("upgradePlan");
-                            }
-                          }}
-                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                        <div className="mt-1 h-1 border-t border-mineshaft-600" />
+                        <button type="button" onClick={logOutUser} className="w-full">
+                          <DropdownMenuItem>Log Out</DropdownMenuItem>
+                        </button>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        asChild
+                        className="p-1 hover:bg-primary-400 hover:text-black data-[state=open]:bg-primary-400 data-[state=open]:text-black"
+                      >
+                        <div className="child flex h-6 w-6 items-center justify-center rounded-full bg-mineshaft pr-1 text-xs text-mineshaft-300 hover:bg-mineshaft-500">
+                          {user?.firstName?.charAt(0)}
+                          {user?.lastName && user?.lastName?.charAt(0)}
+                        </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="p-1">
+                        <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.email}</div>
+                        <Link href="/personal-settings">
+                          <DropdownMenuItem>Personal Settings</DropdownMenuItem>
+                        </Link>
+                        <a
+                          href="https://infisical.com/docs/documentation/getting-started/introduction"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-3 w-full text-sm font-normal leading-[1.2rem] text-mineshaft-300 hover:text-mineshaft-100"
                         >
-                          Add Project
-                        </Button>
-                      </div>
-                    </Select>
+                          <DropdownMenuItem>
+                            Documentation
+                            <FontAwesomeIcon
+                              icon={faArrowUpRightFromSquare}
+                              className="mb-[0.06rem] pl-1.5 text-xxs"
+                            />
+                          </DropdownMenuItem>
+                        </a>
+                        <a
+                          href="https://infisical.com/slack"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-3 w-full text-sm font-normal leading-[1.2rem] text-mineshaft-300 hover:text-mineshaft-100"
+                        >
+                          <DropdownMenuItem>
+                            Join Slack Community
+                            <FontAwesomeIcon
+                              icon={faArrowUpRightFromSquare}
+                              className="mb-[0.06rem] pl-1.5 text-xxs"
+                            />
+                          </DropdownMenuItem>
+                        </a>
+                        <div className="mt-1 h-1 border-t border-mineshaft-600" />
+                        <button type="button" onClick={logOutUser} className="w-full">
+                          <DropdownMenuItem>Log Out</DropdownMenuItem>
+                        </button>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                ) : <Link href={`/org/${currentOrg?._id}/overview`}><div className="pr-2 my-6 flex justify-center items-center text-mineshaft-300 hover:text-mineshaft-100 cursor-default text-sm">
-                  <FontAwesomeIcon icon={faArrowLeft} className="pr-3"/>
-                  Back to organization
-                </div></Link>)}
+                )}
+                {!router.asPath.includes("org") &&
+                  (!router.asPath.includes("personal") && currentWorkspace ? (
+                    <div className="mt-5 mb-4 w-full p-3">
+                      <p className="ml-1.5 mb-1 text-xs font-semibold uppercase text-gray-400">
+                        Project
+                      </p>
+                      <Select
+                        defaultValue={currentWorkspace?._id}
+                        value={currentWorkspace?._id}
+                        className="w-full truncate bg-mineshaft-600 py-2.5 font-medium"
+                        onValueChange={(value) => {
+                          router.push(`/project/${value}/secrets/overview`);
+                          localStorage.setItem("projectData.id", value);
+                        }}
+                        position="popper"
+                        dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50 max-h-96 border-gray-700"
+                      >
+                        <div className="no-scrollbar::-webkit-scrollbar h-full no-scrollbar">
+                          {workspaces
+                            .filter((ws) => ws.organization === currentOrg?._id)
+                            .map(({ _id, name }) => (
+                              <SelectItem
+                                key={`ws-layout-list-${_id}`}
+                                value={_id}
+                                className={`${currentWorkspace?._id === _id && "bg-mineshaft-600"}`}
+                              >
+                                {name}
+                              </SelectItem>
+                            ))}
+                        </div>
+                        <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />
+                        <div className="w-full">
+                          <Button
+                            className="w-full bg-mineshaft-700 py-2 text-bunker-200"
+                            colorSchema="primary"
+                            variant="outline_bg"
+                            size="sm"
+                            onClick={() => {
+                              if (isAddingProjectsAllowed) {
+                                handlePopUpOpen("addNewWs");
+                              } else {
+                                handlePopUpOpen("upgradePlan");
+                              }
+                            }}
+                            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                          >
+                            Add Project
+                          </Button>
+                        </div>
+                      </Select>
+                    </div>
+                  ) : (
+                    <Link href={`/org/${currentOrg?._id}/overview`}>
+                      <div className="my-6 flex cursor-default items-center justify-center pr-2 text-sm text-mineshaft-300 hover:text-mineshaft-100">
+                        <FontAwesomeIcon icon={faArrowLeft} className="pr-3" />
+                        Back to organization
+                      </div>
+                    </Link>
+                  ))}
                 <div className={`px-1 ${!router.asPath.includes("personal") ? "block" : "hidden"}`}>
-                  {((router.asPath.includes("project") || router.asPath.includes("integrations")) && currentWorkspace) ? <Menu>
-                    <Link href={`/project/${currentWorkspace?._id}/secrets`} passHref>
-                      <a>
-                        <MenuItem
-                          isSelected={router.asPath.includes(`/project/${currentWorkspace?._id}/secrets`)}
-                          icon="system-outline-90-lock-closed"
-                        >
-                          {t("nav.menu.secrets")}
-                        </MenuItem>
-                      </a>
-                    </Link>
-                    <Link href={`/project/${currentWorkspace?._id}/members`} passHref>
-                      <a>
-                        <MenuItem
-                          isSelected={router.asPath === `/project/${currentWorkspace?._id}/members`}
-                          icon="system-outline-96-groups"
-                        >
-                          {t("nav.menu.members")}
-                        </MenuItem>
-                      </a>
-                    </Link>
-                    <Link href={`/integrations/${currentWorkspace?._id}`} passHref>
-                      <a>
-                        <MenuItem
-                          isSelected={router.asPath === `/integrations/${currentWorkspace?._id}`}
-                          icon="system-outline-82-extension"
-                        >
-                          {t("nav.menu.integrations")}
-                        </MenuItem>
-                      </a>
-                    </Link>
-                    <Link href={`/project/${currentWorkspace?._id}/allowlist`} passHref>
-                      <a>
-                        <MenuItem
-                          isSelected={
-                            router.asPath === `/project/${currentWorkspace?._id}/allowlist`
-                          }
-                          icon="system-outline-126-verified"
-                        >
-                          IP Allowlist
-                        </MenuItem>
-                      </a>
-                    </Link>
-                    <Link href={`/project/${currentWorkspace?._id}/audit-logs`} passHref>
-                      <a>
-                        <MenuItem
-                          isSelected={router.asPath === `/project/${currentWorkspace?._id}/audit-logs`}
-                          icon="system-outline-168-view-headline"
-                        >
-                          Audit Logs
-                        </MenuItem>
-                      </a>
-                    </Link>
-                    {/* <Link href={`/project/${currentWorkspace?._id}/secret-scanning`} passHref>
+                  {(router.asPath.includes("project") || router.asPath.includes("integrations")) &&
+                  currentWorkspace ? (
+                    <Menu>
+                      <Link href={`/project/${currentWorkspace?._id}/secrets/overview`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath.includes(
+                              `/project/${currentWorkspace?._id}/secrets/overview`
+                            )}
+                            icon="system-outline-90-lock-closed"
+                          >
+                            {t("nav.menu.secrets")}
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      <Link href={`/project/${currentWorkspace?._id}/members`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={
+                              router.asPath === `/project/${currentWorkspace?._id}/members`
+                            }
+                            icon="system-outline-96-groups"
+                          >
+                            {t("nav.menu.members")}
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      <Link href={`/integrations/${currentWorkspace?._id}`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath === `/integrations/${currentWorkspace?._id}`}
+                            icon="system-outline-82-extension"
+                          >
+                            {t("nav.menu.integrations")}
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      <Link href={`/project/${currentWorkspace?._id}/allowlist`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={
+                              router.asPath === `/project/${currentWorkspace?._id}/allowlist`
+                            }
+                            icon="system-outline-126-verified"
+                          >
+                            IP Allowlist
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      <Link href={`/project/${currentWorkspace?._id}/audit-logs`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={
+                              router.asPath === `/project/${currentWorkspace?._id}/audit-logs`
+                            }
+                            icon="system-outline-168-view-headline"
+                          >
+                            Audit Logs
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      {/* <Link href={`/project/${currentWorkspace?._id}/secret-scanning`} passHref>
                       <a>
                         <MenuItem
                           isSelected={router.asPath === `/project/${currentWorkspace?._id}/secret-scanning`}
@@ -438,20 +506,21 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         </MenuItem>
                       </a>
                     </Link> */}
-                    <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>
-                      <a>
-                        <MenuItem
-                          isSelected={
-                            router.asPath === `/project/${currentWorkspace?._id}/settings`
-                          }
-                          icon="system-outline-109-slider-toggle-settings"
-                        >
-                          {t("nav.menu.project-settings")}
-                        </MenuItem>
-                      </a>
-                    </Link>
-                  </Menu>
-                  : <Menu className="mt-4">
+                      <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={
+                              router.asPath === `/project/${currentWorkspace?._id}/settings`
+                            }
+                            icon="system-outline-109-slider-toggle-settings"
+                          >
+                            {t("nav.menu.project-settings")}
+                          </MenuItem>
+                        </a>
+                      </Link>
+                    </Menu>
+                  ) : (
+                    <Menu className="mt-4">
                       <Link href={`/org/${currentOrg?._id}/overview`} passHref>
                         <a>
                           <MenuItem
@@ -462,7 +531,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      {/* {workspaces.map(project => <Link key={project._id} href={`/project/${project?._id}/secrets`} passHref>
+                      {/* {workspaces.map(project => <Link key={project._id} href={`/project/${project?._id}/secrets/overview`} passHref>
                         <a>
                           <SubMenuItem
                             isSelected={false}
@@ -508,20 +577,25 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <Link href={`/org/${currentOrg?._id}/settings`} passHref>
                         <a>
                           <MenuItem
-                            isSelected={
-                              router.asPath === `/org/${currentOrg?._id}/settings`
-                            }
+                            isSelected={router.asPath === `/org/${currentOrg?._id}/settings`}
                             icon="system-outline-109-slider-toggle-settings"
                           >
                             Organization Settings
                           </MenuItem>
                         </a>
                       </Link>
-                  </Menu>}
+                    </Menu>
+                  )}
                 </div>
               </div>
-              <div className={`relative mt-10 ${subscription && subscription.slug === "starter" && !subscription.has_used_trial ? "mb-2" : "mb-4"} w-full px-3 text-mineshaft-400 cursor-default text-sm flex flex-col items-center`}>
-              {/*   <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[9.9rem] ${router.asPath.includes("org") ? "bottom-[8.4rem]" : "bottom-[5.4rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-30`}/>
+              <div
+                className={`relative mt-10 ${
+                  subscription && subscription.slug === "starter" && !subscription.has_used_trial
+                    ? "mb-2"
+                    : "mb-4"
+                } flex w-full cursor-default flex-col items-center px-3 text-sm text-mineshaft-400`}
+              >
+                {/*   <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[9.9rem] ${router.asPath.includes("org") ? "bottom-[8.4rem]" : "bottom-[5.4rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-30`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[10.7rem] ${router.asPath.includes("org") ? "bottom-[8.15rem]" : "bottom-[5.15rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-50`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[11.5rem] ${router.asPath.includes("org") ? "bottom-[7.9rem]" : "bottom-[4.9rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-70`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[12.3rem] ${router.asPath.includes("org") ? "bottom-[7.65rem]" : "bottom-[4.65rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-90`}/>
@@ -549,22 +623,24 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     </a>
                   </div>
                 </div> */}
-                {router.asPath.includes("org") && <div
-                  onKeyDown={() => null}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => router.push(`/org/${router.query.id}/members?action=invite`)}
-                  className="w-full"
-                >
-                  <div className="hover:text-mineshaft-200 duration-200 mb-3 pl-5 w-full">
-                    <FontAwesomeIcon icon={faPlus} className="mr-3"/>
-                    Invite people
+                {router.asPath.includes("org") && (
+                  <div
+                    onKeyDown={() => null}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => router.push(`/org/${router.query.id}/members?action=invite`)}
+                    className="w-full"
+                  >
+                    <div className="mb-3 w-full pl-5 duration-200 hover:text-mineshaft-200">
+                      <FontAwesomeIcon icon={faPlus} className="mr-3" />
+                      Invite people
+                    </div>
                   </div>
-                </div>}
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <div className="hover:text-mineshaft-200 duration-200 mb-2 pl-5 w-full">
-                      <FontAwesomeIcon icon={faQuestion} className="px-[0.1rem] mr-3"/>
+                    <div className="mb-2 w-full pl-5 duration-200 hover:text-mineshaft-200">
+                      <FontAwesomeIcon icon={faQuestion} className="mr-3 px-[0.1rem]" />
                       Help & Support
                     </div>
                   </DropdownMenuTrigger>
@@ -586,28 +662,33 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                {subscription && subscription.slug === "starter" && !subscription.has_used_trial && (
-                  <button 
-                    type="button"
-                    onClick={async () => {
-                      if (!subscription || !currentOrg) return;
-              
-                      // direct user to start pro trial
-                      const url = await mutateAsync({
-                        orgId: currentOrg._id,
-                        success_url: window.location.href
-                      });
-                      
-                      window.location.href = url;
-                    }}
-                    className="w-full mt-1.5"
-                  >
-                    <div className="hover:text-primary-400 text-mineshaft-300 duration-200 flex justify-left items-center py-1 bg-mineshaft-600 rounded-md hover:bg-mineshaft-500 mb-1.5 mt-1.5 pl-4 w-full">
-                      <FontAwesomeIcon icon={faInfinity} className="mr-3 ml-0.5 py-2 text-primary"/>
-                      Start Free Pro Trial
-                    </div>
-                  </button>
-                )}
+                {subscription &&
+                  subscription.slug === "starter" &&
+                  !subscription.has_used_trial && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!subscription || !currentOrg) return;
+
+                        // direct user to start pro trial
+                        const url = await mutateAsync({
+                          orgId: currentOrg._id,
+                          success_url: window.location.href
+                        });
+
+                        window.location.href = url;
+                      }}
+                      className="mt-1.5 w-full"
+                    >
+                      <div className="justify-left mb-1.5 mt-1.5 flex w-full items-center rounded-md bg-mineshaft-600 py-1 pl-4 text-mineshaft-300 duration-200 hover:bg-mineshaft-500 hover:text-primary-400">
+                        <FontAwesomeIcon
+                          icon={faInfinity}
+                          className="mr-3 ml-0.5 py-2 text-primary"
+                        />
+                        Start Free Pro Trial
+                      </div>
+                    </button>
+                  )}
               </div>
             </nav>
           </aside>

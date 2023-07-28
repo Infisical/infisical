@@ -1,6 +1,6 @@
 /* eslint-disable no-param-reassign */
-import { useCallback } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   decryptAssymmetric,
@@ -15,7 +15,8 @@ import {
   EncryptedSecret,
   EncryptedSecretVersion,
   GetProjectSecretsDTO,
-  GetSecretVersionsDTO
+  GetSecretVersionsDTO,
+  TGetProjectSecretsAllEnvDTO
 } from "./types";
 
 export const secretKeys = {
@@ -37,40 +38,15 @@ const fetchProjectEncryptedSecrets = async (
   folderId?: string,
   secretPath?: string
 ) => {
-  if (typeof env === "string") {
-    const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>("/api/v2/secrets", {
-      params: {
-        environment: env,
-        workspaceId,
-        folderId: folderId || undefined,
-        secretPath
-      }
-    });
-    return data.secrets;
-  }
-
-  if (typeof env === "object") {
-    let allEnvData: any = [];
-
-    // eslint-disable-next-line no-restricted-syntax
-    for (const envPoint of env) {
-      // eslint-disable-next-line no-await-in-loop
-      const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>("/api/v2/secrets", {
-        params: {
-          environment: envPoint,
-          workspaceId,
-          folderId,
-          secretPath
-        }
-      });
-      allEnvData = allEnvData.concat(data.secrets);
+  const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>("/api/v2/secrets", {
+    params: {
+      environment: env,
+      workspaceId,
+      folderId: folderId || undefined,
+      secretPath
     }
-
-    return allEnvData;
-    // eslint-disable-next-line no-else-return
-  } else {
-    return null;
-  }
+  });
+  return data.secrets;
 };
 
 export const useGetProjectSecrets = ({
@@ -160,22 +136,19 @@ export const useGetProjectSecrets = ({
     )
   });
 
-export const useGetProjectSecretsByKey = ({
+export const useGetProjectSecretsAllEnv = ({
   workspaceId,
-  env,
+  envs,
   decryptFileKey,
-  isPaused,
   folderId,
   secretPath
-}: GetProjectSecretsDTO) =>
-  useQuery({
-    // wait for all values to be available
-    enabled: Boolean(decryptFileKey && workspaceId && env) && !isPaused,
-    // right now secretpath is passed as folderid as only this is used in overview
-    queryKey: secretKeys.getProjectSecret(workspaceId, env, secretPath),
-    queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, folderId, secretPath),
-    select: useCallback(
-      (data: EncryptedSecret[]) => {
+}: TGetProjectSecretsAllEnvDTO) => {
+  const secrets = useQueries({
+    queries: envs.map((env) => ({
+      queryKey: secretKeys.getProjectSecret(workspaceId, env, secretPath || folderId),
+      enabled: Boolean(decryptFileKey && workspaceId && env),
+      queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, folderId, secretPath),
+      select: (data: EncryptedSecret[]) => {
         const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
         const latestKey = decryptFileKey;
         const key = decryptAssymmetric({
@@ -185,12 +158,11 @@ export const useGetProjectSecretsByKey = ({
           privateKey: PRIVATE_KEY
         });
 
-        const sharedSecrets: Record<string, DecryptedSecret[]> = {};
+        const sharedSecrets: Record<string, DecryptedSecret> = {};
         const personalSecrets: Record<string, { id: string; value: string }> = {};
         // this used for add-only mode in dashboard
         // type won't be there thus only one key is shown
         const duplicateSecretKey: Record<string, boolean> = {};
-        const uniqSecKeys: Record<string, boolean> = {};
         data.forEach((encSecret: EncryptedSecret) => {
           const secretKey = decryptSymmetric({
             ciphertext: encSecret.secretKeyCiphertext,
@@ -198,7 +170,6 @@ export const useGetProjectSecretsByKey = ({
             tag: encSecret.secretKeyTag,
             key
           });
-          if (!uniqSecKeys?.[secretKey]) uniqSecKeys[secretKey] = true;
 
           const secretValue = decryptSymmetric({
             ciphertext: encSecret.secretValueCiphertext,
@@ -226,34 +197,64 @@ export const useGetProjectSecretsByKey = ({
           };
 
           if (encSecret.type === "personal") {
-            personalSecrets[`${decryptedSecret.key}-${decryptedSecret.env}`] = {
+            personalSecrets[decryptedSecret.key] = {
               id: encSecret._id,
               value: secretValue
             };
           } else {
-            if (!duplicateSecretKey?.[`${decryptedSecret.key}-${decryptedSecret.env}`]) {
-              if (!sharedSecrets?.[secretKey]) sharedSecrets[secretKey] = [];
-              sharedSecrets[secretKey].push(decryptedSecret);
+            if (!duplicateSecretKey?.[decryptedSecret.key]) {
+              sharedSecrets[decryptedSecret.key] = decryptedSecret;
             }
-            duplicateSecretKey[`${decryptedSecret.key}-${decryptedSecret.env}`] = true;
+            duplicateSecretKey[decryptedSecret.key] = true;
           }
         });
-        Object.keys(sharedSecrets).forEach((secName) => {
-          sharedSecrets[secName].forEach((val) => {
-            const dupKey = `${val.key}-${val.env}`;
-            if (personalSecrets?.[dupKey]) {
-              val.idOverride = personalSecrets[dupKey].id;
-              val.valueOverride = personalSecrets[dupKey].value;
-              val.overrideAction = "modified";
-            }
-          });
-        });
 
-        return { secrets: sharedSecrets, uniqueSecCount: Object.keys(uniqSecKeys).length };
-      },
-      [decryptFileKey]
-    )
+        Object.keys(sharedSecrets).forEach((val) => {
+          if (personalSecrets?.[val]) {
+            sharedSecrets[val].idOverride = personalSecrets[val].id;
+            sharedSecrets[val].valueOverride = personalSecrets[val].value;
+            sharedSecrets[val].overrideAction = "modified";
+          }
+        });
+        return sharedSecrets;
+      }
+    }))
   });
+
+  const secKeys = useMemo(() => {
+    const keys = new Set<string>();
+    secrets?.forEach(({ data }) => {
+      // TODO(akhilmhdh): find out why this is unknown
+      Object.keys(data || {}).forEach((key) => keys.add(key));
+    });
+    return [...keys];
+  }, [(secrets || []).map((sec) => sec.data)]);
+
+  const getEnvSecretKeyCount = useCallback(
+    (env: string) => {
+      const selectedEnvIndex = envs.indexOf(env);
+      if (selectedEnvIndex !== -1) {
+        return Object.keys(secrets[selectedEnvIndex]?.data || {}).length;
+      }
+      return 0;
+    },
+    [(secrets || []).map((sec) => sec.data)]
+  );
+
+  const getSecretByKey = useCallback(
+    (env: string, key: string) => {
+      const selectedEnvIndex = envs.indexOf(env);
+      if (selectedEnvIndex !== -1) {
+        const sec = secrets[selectedEnvIndex]?.data?.[key];
+        return sec;
+      }
+      return undefined;
+    },
+    [(secrets || []).map((sec) => sec.data)]
+  );
+
+  return { data: secrets, secKeys, getSecretByKey, getEnvSecretKeyCount };
+};
 
 const fetchEncryptedSecretVersion = async (secretId: string, offset: number, limit: number) => {
   const { data } = await apiRequest.get<{ secretVersions: EncryptedSecretVersion[] }>(

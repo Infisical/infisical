@@ -30,6 +30,7 @@ export const INTEGRATION_HASHICORP_VAULT = "hashicorp-vault";
 export const INTEGRATION_CLOUDFLARE_PAGES = "cloudflare-pages";
 export const INTEGRATION_BITBUCKET = "bitbucket";
 export const INTEGRATION_CODEFRESH = "codefresh";
+export const INTEGRATION_WINDMILL = "windmill";
 export const INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM = "digital-ocean-app-platform";
 export const INTEGRATION_CLOUD_66 = "cloud-66";
 export const INTEGRATION_NORTHFLANK = "northflank";
@@ -50,9 +51,10 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CODEFRESH,
+  INTEGRATION_WINDMILL,
   INTEGRATION_BITBUCKET,
   INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
-  INTEGRATION_CODEFRESH,
   INTEGRATION_CLOUD_66,
   INTEGRATION_NORTHFLANK
 ]);
@@ -88,6 +90,7 @@ export const INTEGRATION_TERRAFORM_CLOUD_API_URL = "https://app.terraform.io";
 export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = "https://api.cloudflare.com";
 export const INTEGRATION_BITBUCKET_API_URL = "https://api.bitbucket.org";
 export const INTEGRATION_CODEFRESH_API_URL = "https://g.codefresh.io/api";
+export const INTEGRATION_WINDMILL_API_URL = "https://app.windmill.dev/api";
 export const INTEGRATION_DIGITAL_OCEAN_API_URL = "https://api.digitalocean.com";
 export const INTEGRATION_CLOUD_66_API_URL = "https://app.cloud66.com/api";
 export const INTEGRATION_NORTHFLANK_API_URL = "https://api.northflank.com";
@@ -288,6 +291,15 @@ export const getIntegrationOptions = async () => {
             name: "Codefresh",
             slug: "codefresh",
             image: "Codefresh.png",
+            isAvailable: true,
+            type: "pat",
+            clientId: "",
+            docsLink: "",
+        },
+        {
+            name: "Windmill",
+            slug: "windmill",
+            image: "Windmill.png",
             isAvailable: true,
             type: "pat",
             clientId: "",

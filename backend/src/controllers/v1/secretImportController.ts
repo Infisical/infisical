@@ -108,7 +108,7 @@ export const getAllSecretsFromImport = async (req: Request, res: Response) => {
   });
 
   if (!importSecDoc) {
-    return res.status(200).json({ secrets: {} });
+    return res.status(200).json({ secrets: [] });
   }
 
   const secrets = await getAllImportedSecrets(workspaceId, environment, folderId);

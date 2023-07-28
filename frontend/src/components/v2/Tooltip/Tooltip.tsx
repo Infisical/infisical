@@ -23,7 +23,7 @@ export const Tooltip = ({
   ...props
 }: TooltipProps) => (
   <TooltipPrimitive.Root
-    delayDuration={150}
+    delayDuration={50}
     open={isOpen}
     defaultOpen={defaultOpen}
     onOpenChange={onOpenChange}

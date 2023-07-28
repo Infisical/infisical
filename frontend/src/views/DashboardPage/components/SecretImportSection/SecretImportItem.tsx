@@ -9,7 +9,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { EmptyState, IconButton, TableContainer, Tooltip } from "@app/components/v2";
+import { EmptyState, IconButton, SecretInput, TableContainer, Tooltip } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks/useToggle";
 
@@ -26,7 +26,7 @@ export const EnvFolderIcon = ({ env, secretPath }: { env: string; secretPath: st
     <div style={{ minWidth: "96px" }}>{env || "-"}</div>
     {secretPath && (
       <div className="inline-flex items-center space-x-2 border-l border-mineshaft-600 pl-2">
-        <FontAwesomeIcon icon={faFolder} size="lg" className="text-primary-700" />
+        <FontAwesomeIcon icon={faFolder} className="text-green-700 text-md" />
         <span>{secretPath}</span>
       </div>
     )}
@@ -66,7 +66,7 @@ export const SecretImportItem = ({
         onClick={() => setIsExpanded.toggle()}
       >
         <td className="ml-0.5 flex h-10 w-10 items-center justify-center border-none px-4">
-          <FontAwesomeIcon icon={faFileImport} className="text-primary-700" />
+          <FontAwesomeIcon icon={faFileImport} className="text-green-700" />
         </td>
         <td
           colSpan={2}
@@ -138,7 +138,7 @@ export const SecretImportItem = ({
                           {key}
                         </td>
                         <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
-                          {value}
+                          <SecretInput value={value} isDisabled isVisible />
                         </td>
                         <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
                           <EnvFolderIcon env={overriden?.env} secretPath={overriden?.secretPath} />

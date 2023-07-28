@@ -22,7 +22,8 @@ import {
   INTEGRATION_SUPABASE,
   INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TRAVISCI,
-  INTEGRATION_VERCEL
+  INTEGRATION_VERCEL,
+  INTEGRATION_WINDMILL
 } from "../variables";
 import { Schema, Types, model } from "mongoose";
 
@@ -67,6 +68,7 @@ export interface IIntegration {
     | "digital-ocean-app-platform"
     | "cloud-66"
     | "northflank"
+    | "windmill";
   integrationAuth: Types.ObjectId;
 }
 
@@ -157,9 +159,10 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_TERRAFORM_CLOUD,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
+        INTEGRATION_CODEFRESH,
+        INTEGRATION_WINDMILL,
         INTEGRATION_BITBUCKET,
         INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
-        INTEGRATION_CODEFRESH,
         INTEGRATION_CLOUD_66,
         INTEGRATION_NORTHFLANK
       ],

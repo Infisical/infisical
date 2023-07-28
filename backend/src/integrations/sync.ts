@@ -49,7 +49,9 @@ import {
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
-  INTEGRATION_VERCEL_API_URL
+  INTEGRATION_VERCEL_API_URL,
+  INTEGRATION_WINDMILL,
+  INTEGRATION_WINDMILL_API_URL,
 } from "../variables";
 import AWS from "aws-sdk";
 import { Octokit } from "@octokit/rest";
@@ -65,19 +67,22 @@ import { standardRequest } from "../config/request";
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
  * @param {String} obj.accessId - access id for integration
  * @param {String} obj.accessToken - access token for integration
+ * @param {Object} obj.secretComments - secret comments to push to integration (object where keys are secret keys and values are comment values)
  */
 const syncSecrets = async ({
   integration,
   integrationAuth,
   secrets,
   accessId,
-  accessToken
+  accessToken,
+  secretComments
 }: {
   integration: IIntegration;
   integrationAuth: IIntegrationAuth;
   secrets: any;
   accessId: string | null;
   accessToken: string;
+  secretComments: any;
 }) => {
   switch (integration.integration) {
     case INTEGRATION_AZURE_KEY_VAULT:
@@ -256,7 +261,15 @@ const syncSecrets = async ({
         accessToken
       });
       break;
-  }
+    case INTEGRATION_WINDMILL:
+      await syncSecretsWindmill({
+          integration,
+          secrets,
+          accessToken,
+          secretComments
+      });
+      break;
+    }
 };
 
 /**
@@ -2244,7 +2257,7 @@ const syncSecretsCodefresh = async ({
  * @param {IIntegration} obj.integration - integration details
  * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
- * @param {String} obj.accessToken - personal access token for DigitalOcean
+ * @param {String} obj.accessToken - access token for integration
  */
 const syncSecretsDigitalOceanAppPlatform = async ({
   integration,
@@ -2270,6 +2283,114 @@ const syncSecretsDigitalOceanAppPlatform = async ({
       }
     }
   );
+}
+
+/**
+ * Sync/push [secrets] to Windmill with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for windmill integration
+ * @param {Object} obj.secretComments - secret comments to push to integration (object where keys are secret keys and values are comment values)
+ */
+const syncSecretsWindmill = async ({
+  integration,
+  secrets,
+  accessToken,
+  secretComments
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+  secretComments: any;
+}) => {
+  interface WindmillSecret {
+    path: string;
+    value: string;
+    is_secret: boolean;
+    description?: string;
+  }
+
+  // get secrets stored in windmill workspace
+  const res = (await standardRequest.get(
+    `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/list`,
+    {
+      headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json",
+      },
+    }
+  ))
+  .data
+  .reduce(
+    (obj: any, secret: WindmillSecret) => ({
+      ...obj,
+      [secret.path]: secret
+    }),
+    {}
+  );
+  
+  // eslint-disable-next-line no-useless-escape
+  const pattern = new RegExp("^(u\/|f\/)[a-zA-Z0-9_-]+\/([a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]*[^\/]$");
+  
+  for await (const key of Object.keys(secrets)) {
+    if((key.startsWith("u/") || key.startsWith("f/")) && pattern.test(key)) {
+          if(!(key in res)) {
+            // case: secret does not exist in windmill
+            // -> create secret
+            
+            await standardRequest.post(
+              `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/create`,
+              {
+                path: key,
+                value: secrets[key],
+                is_secret: true,
+                description: secretComments[key] || ""
+              },
+              {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Accept-Encoding": "application/json",
+                },
+              }
+            );
+          } else {
+            // -> update secret
+            await standardRequest.post(
+              `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/update/${res[key].path}`,
+              {
+                path: key,
+                value: secrets[key],
+                is_secret: true,
+                description: secretComments[key] || ""
+              },
+              {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Accept-Encoding": "application/json",
+                },
+              }
+            );
+          }
+      }
+  }
+  
+  for await (const key of Object.keys(res)) {
+    if (!(key in secrets)) {
+      // -> delete secret
+      await standardRequest.delete(
+        `${INTEGRATION_WINDMILL_API_URL}/w/${integration.appId}/variables/delete/${res[key].path}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            "Accept-Encoding": "application/json",
+          }
+        }
+      );
+    }
+  }
 }
 
 /**

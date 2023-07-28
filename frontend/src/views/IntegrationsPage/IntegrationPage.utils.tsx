@@ -110,6 +110,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "northflank":
         link = `${window.location.origin}/integrations/northflank/authorize`;
         break;
+      case "windmill":
+        link = `${window.location.origin}/integrations/windmill/authorize`;
+        break;
       default:
         break;
     }

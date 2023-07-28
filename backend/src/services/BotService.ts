@@ -5,6 +5,7 @@ import {
   getIsWorkspaceE2EEHelper,
   getKey,
   getSecretsBotHelper,
+  getSecretsCommentBotHelper,
 } from "../helpers/bot";
 
 /**
@@ -105,6 +106,30 @@ class BotService {
       ciphertext,
       iv,
       tag,
+    });
+  }
+
+  /**
+   * Return decrypted secret comments for workspace with id [worskpaceId] and
+   * environment [environment] shared to bot.
+   * @param {Object} obj
+   * @param {String} obj.workspaceId - id of workspace of secrets
+   * @param {String} obj.environment - environment for secrets
+   * @returns {Object} secretObj - object where keys are secret keys and values are comments
+   */
+  static async getSecretComments({
+    workspaceId,
+    environment,
+    secretPath
+  }: {
+    workspaceId: Types.ObjectId;
+    environment: string;
+    secretPath: string;
+  }) {
+    return await getSecretsCommentBotHelper({
+      workspaceId,
+      environment,
+      secretPath
     });
   }
 }

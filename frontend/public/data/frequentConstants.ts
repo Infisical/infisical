@@ -26,8 +26,9 @@ const integrationSlugNameMapping: Mapping = {
   "digital-ocean-app-platform": "Digital Ocean App Platform",
   bitbucket: "BitBucket",
   "cloud-66": "Cloud 66",
-  northflank: "Northflank"
-};
+  northflank: "Northflank",
+  'windmill': 'Windmill'
+}
 
 const envMapping: Mapping = {
   Development: "dev",

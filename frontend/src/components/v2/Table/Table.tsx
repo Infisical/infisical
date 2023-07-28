@@ -33,10 +33,7 @@ export type TableProps = {
 
 export const Table = ({ children, className }: TableProps): JSX.Element => (
   <table
-    className={twMerge(
-      "w-full bg-mineshaft-800 p-2 text-left text-sm text-gray-300",
-      className
-    )}
+    className={twMerge("w-full bg-mineshaft-800 p-2 text-left text-sm text-gray-300", className)}
   >
     {children}
   </table>
@@ -58,11 +55,24 @@ export const THead = ({ children, className }: THeadProps): JSX.Element => (
 export type TrProps = {
   children: ReactNode;
   className?: string;
+  isHoverable?: boolean;
+  isSelectable?: boolean;
 } & HTMLAttributes<HTMLTableRowElement>;
 
-export const Tr = ({ children, className, ...props }: TrProps): JSX.Element => (
+export const Tr = ({
+  children,
+  className,
+  isHoverable,
+  isSelectable,
+  ...props
+}: TrProps): JSX.Element => (
   <tr
-    className={twMerge("border border-solid border-mineshaft-700 cursor-default", className)}
+    className={twMerge(
+      "cursor-default border border-solid border-mineshaft-700",
+      isHoverable && "hover:bg-mineshaft-600",
+      isSelectable && "cursor-pointer",
+      className
+    )}
     {...props}
   >
     {children}
@@ -76,7 +86,14 @@ export type ThProps = {
 };
 
 export const Th = ({ children, className }: ThProps): JSX.Element => (
-  <th className={twMerge("bg-mineshaft-800 px-5 pt-4 pb-3.5 font-semibold border-b-2 border-mineshaft-600", className)}>{children}</th>
+  <th
+    className={twMerge(
+      "border-b-2 border-mineshaft-600 bg-mineshaft-800 px-5 pt-4 pb-3.5 font-semibold",
+      className
+    )}
+  >
+    {children}
+  </th>
 );
 
 // table body
@@ -106,15 +123,15 @@ export type TBodyLoader = {
   columns: number;
   className?: string;
   // unique key for mapping
-  key: string;
+  innerKey: string;
 };
 
-export const TableSkeleton = ({ rows = 3, columns, key, className }: TBodyLoader): JSX.Element => (
+export const TableSkeleton = ({ rows = 3, columns, innerKey, className }: TBodyLoader): JSX.Element => (
   <>
     {Array.apply(0, Array(rows)).map((_x, i) => (
-      <Tr key={`${key}-skeleton-rows-${i + 1}`}>
+      <Tr key={`${innerKey}-skeleton-rows-${i + 1}`}>
         {Array.apply(0, Array(columns)).map((_y, j) => (
-          <Td key={`${key}-skeleton-rows-${i + 1}-column-${j + 1}`}>
+          <Td key={`${innerKey}-skeleton-rows-${i + 1}-column-${j + 1}`}>
             <Skeleton className={className} />
           </Td>
         ))}

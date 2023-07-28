@@ -13,6 +13,11 @@
   .flex-3 {
     flex-grow: 3;
   }
+
+  .min-table-row {
+    width: 1%;
+    white-space: nowrap;
+  }
 }
 
 @layer components {
@@ -40,7 +45,7 @@
 
   .breadcrumb::after,
   .breadcrumb::before {
-    content: '';
+    content: "";
     height: 60%;
     width: 100%;
     z-index: -1;
@@ -58,18 +63,32 @@
   }
 
   .breadcrumb::after {
-    left: 5px;
-    bottom: -3px;
+    left: 4px;
+    bottom: -2.5px;
     transform: skew(-30deg);
   }
 
   .breadcrumb::before {
-    left: 5px;
-    top: -3px;
+    left: 4px;
+    top: -2.5px;
     transform: skew(30deg);
+  }
+
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 0.25rem;
+    background-color: transparent;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background-color: gray;
+  }
+
+  .thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: gray transparent;
   }
 }
 
-@import '@fontsource/inter/400.css';
-@import '@fontsource/inter/500.css';
-@import '@fontsource/inter/700.css';
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/700.css";

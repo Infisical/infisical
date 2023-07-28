@@ -48,7 +48,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
           </Tr>
         </THead>
         <TBody>
-          {isLoading && <TableSkeleton columns={4} key="project-service-tokens" />}
+          {isLoading && <TableSkeleton columns={4} innerKey="project-service-tokens" />}
           {!isLoading &&
             data &&
             data.map((row) => (

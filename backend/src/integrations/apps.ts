@@ -40,7 +40,9 @@ import {
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
-  INTEGRATION_VERCEL_API_URL
+  INTEGRATION_VERCEL_API_URL,
+  INTEGRATION_WINDMILL,
+  INTEGRATION_WINDMILL_API_URL,
 } from "../variables";
 import { IIntegrationAuth } from "../models";
 import { Octokit } from "@octokit/rest";
@@ -179,6 +181,11 @@ const getApps = async ({
     case INTEGRATION_CODEFRESH:
       apps = await getAppsCodefresh({
         accessToken,
+      });
+      break;
+    case INTEGRATION_WINDMILL:
+      apps = await getAppsWindmill({
+        accessToken
       });
       break;
     case INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM:
@@ -940,6 +947,106 @@ const getAppsCodefresh = async ({
   return apps;
 
 };
+
+/**
+ * Return list of projects for Windmill integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Windmill API
+ * @returns {Object[]} apps - names of Windmill workspaces
+ * @returns {String} apps.name - name of Windmill workspace
+ */
+const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
+  const { data } = await standardRequest.get(
+    `${INTEGRATION_WINDMILL_API_URL}/workspaces/list`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json",
+      },
+    }
+  );
+  
+  // check for write access of secrets in windmill workspaces
+  const writeAccessCheck = data.map(async (app: any) => {
+    try {
+      const userPath = "u/user/variable";
+      const folderPath = "f/folder/variable";
+
+      const { data: writeUser } = await standardRequest.post(
+        `${INTEGRATION_WINDMILL_API_URL}/w/${app.id}/variables/create`,
+        {
+          path: userPath,
+          value: "variable",
+          is_secret: true,
+          description: "variable description"
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      );
+
+      const { data: writeFolder } = await standardRequest.post(
+        `${INTEGRATION_WINDMILL_API_URL}/w/${app.id}/variables/create`,
+        {
+          path: folderPath,
+          value: "variable",
+          is_secret: true,
+          description: "variable description"
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      );
+      
+      // is write access is allowed then delete the created secrets from workspace
+      if (writeUser && writeFolder) {
+        await standardRequest.delete(
+        `${INTEGRATION_WINDMILL_API_URL}/w/${app.id}/variables/delete/${userPath}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Accept-Encoding": "application/json",
+            },
+          }
+        );
+
+        await standardRequest.delete(
+        `${INTEGRATION_WINDMILL_API_URL}/w/${app.id}/variables/delete/${folderPath}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Accept-Encoding": "application/json",
+            },
+          }
+        );
+
+        return app;
+      } else {
+        return { error: "cannot write secret" };
+      }
+    } catch (err: any) {
+      return { error: err.message };
+    }
+  });
+
+  const appsWriteResponses = await Promise.all(writeAccessCheck);
+  const appsWithWriteAccess = appsWriteResponses.filter((appRes: any) => !appRes.error);
+  
+  const apps = appsWithWriteAccess.map((a: any) => {
+    return {
+      name: a.name,
+      appId: a.id,
+    };
+  });
+  
+  return apps;
+}
 
 /**
  * Return list of applications for DigitalOcean App Platform integration

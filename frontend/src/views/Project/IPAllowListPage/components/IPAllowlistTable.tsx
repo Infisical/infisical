@@ -138,7 +138,7 @@ export const IPAllowlistTable = ({
                                 </Tr>
                             );
                         })}
-                        {isLoading && <TableSkeleton columns={4} key="ip-access-ranges" />}
+                        {isLoading && <TableSkeleton innerKey="ip-access-table" columns={4} key="ip-access-ranges" />}
                         {!isLoading && data && data?.length === 0 && (
                             <Tr>
                                 <Td colSpan={5}>
