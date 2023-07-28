@@ -433,7 +433,7 @@ export default function Organization() {
                 icon: faPlus,
                 time: "1 min",
                 userAction: "first_time_secrets_pushed",
-                link: `/project/${orgWorkspaces[0]?._id}/secrets`
+                link: `/project/${orgWorkspaces[0]?._id}/secrets/overview`
               })}
             {learningItemSquare({
               text: "Invite your teammates",
