@@ -1,19 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import Link from "next/link";
 import { useRouter } from "next/router";
-import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { faFolderBlank, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import NavHeader from "@app/components/navigation/NavHeader";
 import {
   Button,
+  EmptyState,
   Input,
   Table,
   TableContainer,
   TableSkeleton,
   TBody,
   Td,
+  TFoot,
   Th,
   THead,
   Tooltip,
@@ -210,8 +213,9 @@ export const SecretOverviewPage = () => {
     );
   }
 
-  const isTableLoading =
-    folders?.some(({ isLoading }) => isLoading) && secrets?.some(({ isLoading }) => isLoading);
+  const isTableLoading = !(
+    folders?.some(({ isLoading }) => !isLoading) && secrets?.some(({ isLoading }) => !isLoading)
+  );
 
   const filteredSecretNames = secKeys?.filter((name) =>
     name.toUpperCase().includes(searchFilter.toUpperCase())
@@ -219,6 +223,12 @@ export const SecretOverviewPage = () => {
   const filteredFolderNames = folderNames?.filter((name) =>
     name.toLowerCase().includes(searchFilter.toLowerCase())
   );
+  const isTableEmpty =
+    !(
+      folders?.every(({ isLoading }) => isLoading) && secrets?.every(({ isLoading }) => isLoading)
+    ) &&
+    filteredSecretNames?.length === 0 &&
+    filteredFolderNames?.length === 0;
 
   return (
     <div className="container mx-auto px-6 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -260,28 +270,32 @@ export const SecretOverviewPage = () => {
           />
         </div>
       </div>
-      <div className="thin-scrollbar mt-4 max-h-[calc(100vh-250px)] overflow-y-auto" ref={parentTableRef}>
-        <TableContainer className="sticky top-0">
+      <div className="thin-scrollbar mt-4" ref={parentTableRef}>
+        <TableContainer className="max-h-[calc(100vh-250px)] overflow-y-auto">
           <Table>
-            <THead className="sticky top-0">
-              <Tr>
-                <Th className="sticky left-0 z-10 min-w-[20rem] bg-clip-padding">Name</Th>
+            <THead>
+              <Tr className="sticky top-0 z-20 border-0">
+                <Th className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0">
+                  <div className="flex items-center border-b border-r border-mineshaft-600 px-5 pt-4 pb-3.5">
+                    Name
+                  </div>
+                </Th>
                 {userAvailableEnvs?.map(({ name, slug }, index) => {
                   const envSecKeyCount = getEnvSecretKeyCount(slug);
                   const missingKeyCount = secKeys.length - envSecKeyCount;
                   return (
                     <Th
-                      className="min-table-row min-w-[11rem] text-center"
+                      className="min-table-row min-w-[11rem] border-b-0 p-0 text-center"
                       key={`secret-overview-${name}-${index + 1}`}
                     >
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center border-b border-mineshaft-600 px-5 pt-4 pb-3.5">
                         {name}
                         {missingKeyCount > 0 && (
                           <Tooltip
                             className="max-w-none lowercase"
                             content={`${missingKeyCount} secrets missing\n compared to other environments`}
                           >
-                            <div className="ml-2 h-[1.1rem] font-medium flex cursor-default items-center justify-center rounded-sm bg-red-600 border border-red-400 p-1 text-xs text-bunker-100">
+                            <div className="ml-2 flex h-[1.1rem] cursor-default items-center justify-center rounded-sm border border-red-400 bg-red-600 p-1 text-xs font-medium text-bunker-100">
                               <span className="text-bunker-100">{missingKeyCount}</span>
                             </div>
                           </Tooltip>
@@ -300,6 +314,22 @@ export const SecretOverviewPage = () => {
                   rows={5}
                   className="bg-mineshaft-700"
                 />
+              )}
+              {isTableEmpty && (
+                <Tr>
+                  <Td colSpan={userAvailableEnvs.length + 1}>
+                    <EmptyState title="Let's add some secrets" icon={faFolderBlank} iconSize="3x">
+                      <Link
+                        href={{
+                          pathname: "/project/[id]/secrets/[env]",
+                          query: { id: workspaceId, env: userAvailableEnvs?.[0]?.slug }
+                        }}
+                      >
+                        <Button className="mt-2 p-1">Go to {userAvailableEnvs?.[0]?.name}</Button>
+                      </Link>
+                    </EmptyState>
+                  </Td>
+                </Tr>
               )}
               {filteredFolderNames.map((folderName, index) => (
                 <SecretOverviewFolderRow
@@ -322,11 +352,18 @@ export const SecretOverviewPage = () => {
                   expandableColWidth={expandableTableWidth}
                 />
               ))}
-              <Tr>
-                <Td className="fixed left-0 z-10 border-x border-mineshaft-700 bg-mineshaft-800 bg-clip-padding" />
+            </TBody>
+            <TFoot>
+              <Tr className="sticky bottom-0 z-10 border-0 bg-mineshaft-800">
+                <Td className="sticky left-0 z-10 border-0 bg-mineshaft-800 p-0">
+                  <div
+                    className="w-full border-t border-r border-mineshaft-600"
+                    style={{ height: "45px" }}
+                  />
+                </Td>
                 {userAvailableEnvs.map(({ name, slug }) => (
-                  <Td key={`explore-${name}-btn`} className=" border-x border-mineshaft-700">
-                    <div className="flex items-center justify-center">
+                  <Td key={`explore-${name}-btn`} className="border-0 border-mineshaft-600 p-0">
+                    <div className="flex w-full items-center justify-center border-r border-t border-mineshaft-600 px-5 py-2">
                       <Button
                         size="xs"
                         variant="outline_bg"
@@ -339,7 +376,7 @@ export const SecretOverviewPage = () => {
                   </Td>
                 ))}
               </Tr>
-            </TBody>
+            </TFoot>
           </Table>
         </TableContainer>
       </div>

@@ -9,6 +9,7 @@ import { AppProps } from "next/app";
 import { useRouter } from "next/router";
 import { config } from "@fortawesome/fontawesome-svg-core";
 import { QueryClientProvider } from "@tanstack/react-query";
+import NProgress from "nprogress";
 
 import NotificationProvider from "@app/components/context/Notifications/NotificationProvider";
 import { IntercomProvider } from "@app/components/utilities/intercom/intercomProvider";
@@ -25,6 +26,7 @@ import {
 import { AppLayout } from "@app/layouts";
 import { queryClient } from "@app/reactQuery";
 
+import "nprogress/nprogress.css";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "../styles/globals.css";
 
@@ -44,7 +46,7 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
     const telemetry = new Telemetry().getInstance();
 
     const handleRouteChange = () => {
-			// (window).Intercom('update');
+      // (window).Intercom('update');
       if (typeof window !== "undefined") {
         telemetry.capture("$pageview");
       }
@@ -56,6 +58,22 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
       router.events.off("routeChangeComplete", handleRouteChange);
     };
   }, [router.events]);
+
+  useEffect(() => {
+    const handleStart = () => NProgress.start();
+
+    const handleStop = () => NProgress.done();
+
+    router.events.on("routeChangeStart", handleStart);
+    router.events.on("routeChangeComplete", handleStop);
+    router.events.on("routeChangeError", handleStop);
+
+    return () => {
+      router.events.off("routeChangeStart", handleStart);
+      router.events.off("routeChangeComplete", handleStop);
+      router.events.off("routeChangeError", handleStop);
+    };
+  }, [router]);
 
   // If it's one of these routes, don't add the layout (e.g., these routes are external)
   if (

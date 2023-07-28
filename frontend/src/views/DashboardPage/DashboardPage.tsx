@@ -506,38 +506,44 @@ export const DashboardPage = () => {
     handlePopUpClose("secretDetails");
   }, []);
 
-  const onCreateWsTag = useCallback(async (tagName: string) => {
-    try {
-      await createWsTag({
-        workspaceID: workspaceId,
-        tagName,
-        tagSlug: tagName.replace(" ", "_")
-      });
-      handlePopUpClose("addTag");
-      createNotification({
-        text: "Successfully created a tag",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to create a tag",
-        type: "error"
-      });
-    }
-  }, []);
-
-  const handleFolderOpen = useCallback((id: string) => {
-    setSearchFilter("");
-    console.log(router.query);
-    router.push({
-      pathname: router.pathname,
-      query: {
-        ...router.query,
-        folderId: id
+  const onCreateWsTag = useCallback(
+    async (tagName: string) => {
+      try {
+        await createWsTag({
+          workspaceID: workspaceId,
+          tagName,
+          tagSlug: tagName.replace(" ", "_")
+        });
+        handlePopUpClose("addTag");
+        createNotification({
+          text: "Successfully created a tag",
+          type: "success"
+        });
+      } catch (error) {
+        console.error(error);
+        createNotification({
+          text: "Failed to create a tag",
+          type: "error"
+        });
       }
-    });
-  }, []);
+    },
+    [workspaceId]
+  );
+
+  const handleFolderOpen = useCallback(
+    (id: string) => {
+      setSearchFilter("");
+      router.push({
+        pathname: router.pathname,
+        query: {
+          id: workspaceId,
+          env: envQuery,
+          folderId: id
+        }
+      });
+    },
+    [envQuery, workspaceId]
+  );
 
   const isEditFolder = Boolean(popUp?.folderForm?.data);
 
@@ -564,28 +570,31 @@ export const DashboardPage = () => {
     }
   };
 
-  const handleFolderUpdate = useCallback(async (name: string) => {
-    const { id } = popUp?.folderForm?.data as TDeleteFolderForm;
-    try {
-      await updateFolder({
-        folderId: id,
-        workspaceId,
-        environment: selectedEnv?.slug || "",
-        name
-      });
-      createNotification({
-        type: "success",
-        text: "Successfully updated folder"
-      });
-      handlePopUpClose("folderForm");
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to update folder",
-        type: "error"
-      });
-    }
-  }, []);
+  const handleFolderUpdate = useCallback(
+    async (name: string) => {
+      const { id } = popUp?.folderForm?.data as TDeleteFolderForm;
+      try {
+        await updateFolder({
+          folderId: id,
+          workspaceId,
+          environment: selectedEnv?.slug || "",
+          name
+        });
+        createNotification({
+          type: "success",
+          text: "Successfully updated folder"
+        });
+        handlePopUpClose("folderForm");
+      } catch (error) {
+        console.error(error);
+        createNotification({
+          text: "Failed to update folder",
+          type: "error"
+        });
+      }
+    },
+    [selectedEnv?.slug, (popUp?.folderForm?.data as TDeleteFolderForm)?.id]
+  );
 
   const handleFolderDelete = useCallback(async () => {
     const { id } = popUp?.deleteFolder?.data as TDeleteFolderForm;
@@ -607,7 +616,7 @@ export const DashboardPage = () => {
         type: "error"
       });
     }
-  }, []);
+  }, [selectedEnv?.slug, (popUp?.deleteFolder?.data as TDeleteFolderForm)?.id]);
 
   // SECRET IMPORT SECTION
   const handleSecretImportCreate = async (env: string, secretPath: string) => {

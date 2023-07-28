@@ -70,7 +70,9 @@ export const SecretInput = ({
         dangerouslySetInnerHTML={{
           __html: syntaxHighlight(value, isVisible || isSecretFocused)
         }}
-        className={`absolute top-0 left-0 z-0 h-full w-full text-ellipsis whitespace-pre-line break-all ${!value && value !== "" && "text-red-600 italic"}`}
+        className={`absolute top-0 left-0 z-0 h-full w-full text-ellipsis whitespace-pre-line break-all ${
+          !value && value !== "" && "italic text-red-600/70"
+        }`}
       />
       <ContentEditable
         className="relative z-10 h-full w-full text-ellipsis whitespace-pre-line  break-all text-transparent caret-white outline-none"

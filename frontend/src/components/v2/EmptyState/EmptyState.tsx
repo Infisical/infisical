@@ -26,7 +26,7 @@ export const EmptyState = ({
     )}
   >
     <FontAwesomeIcon icon={icon} size={iconSize} />
-    <div className="flex flex-row items-center py-4">
+    <div className="flex flex-col items-center py-4">
       <div className="text-sm text-bunker-300">{title}</div>
       <div>{children}</div>
     </div>
