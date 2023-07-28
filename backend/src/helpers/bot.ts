@@ -150,7 +150,21 @@ export const getSecretsBotHelper = async ({
     content[secretKey] = secretValue;
   });
 
-  return content;
+
+  type Secrets = { [key: string]: string }
+  const parseVariables = (obj: Secrets): Secrets => {
+    const result: Secrets = {};
+  
+    for (const [key, value] of Object.entries(obj)) {
+      const pattern = /\${(.*?)}/g // matches "${<anything>}"
+
+      // reference https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace#specifying_a_function_as_the_replacement
+      result[key] = value.replace(pattern, (_, key) => content[key])
+    }
+    return result;
+  }
+
+    return parseVariables(content);
 };
 
 /**
