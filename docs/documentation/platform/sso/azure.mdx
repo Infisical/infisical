@@ -1,0 +1,56 @@
+---
+title: "Azure SAML"
+description: "Configure Azure SAML for Infisical SSO"
+---
+
+1. In the Azure Portal, navigate to the Azure Active Directory and select Enterprise applications. On this screen, select
+   the **+ New application** button.
+
+TODO: insert image.
+
+2. On the next screen, press the **+ Create your own application** button.
+   Give the application a unique, Infisical-specific name; choose the "Integrate any other application you don't find in the gallery (Non-gallery)"
+   option and hit the **Create** button.
+
+TODO: insert image
+
+3. On the application overview screen, select **Single sign-on** from the left sidebar. From there,
+   select the **SAML** single sign-on method.
+
+4. Next, press the **Edit** button in the **Basic SAML Configuration** section and configure the following fields:
+
+- Identifier (Entity ID): https://app.infisical.com
+- Reply URL (Assertion Consumer Service URL): `https://app.infisical.com/api/v1/sso/saml2/:identifier`
+
+<Note>
+  If you're self-hosting Infisical, then you will want to replace
+  `https://app.infisical.com` with your own domain.
+</Note>
+
+5. Next, press the **Edit** button in the **Attributes & Claims** section.
+
+In the **Attributes && Claims** section, configure the following claims to map:
+
+- `email -> user.userprinciplename`
+- `firstName -> user.firstName`
+- `lastName -> user.lastName`
+
+Once you've done that, head back to the **Set up Single Sign-On with SAML** screen.
+
+6. Get IdP values:
+
+Back in Infisical > Organization settings > Authentication, select **Set up SAML SSO** and paste your Infisical SAML SSO configuration details
+with the following map from the **Set up Single Sign-On with SAML** screen in Azure:
+
+- `Audience -> Azure `
+- `Entrypoint -> X`
+- `Issuer -> X`
+- `Certificate -> X.509 Certificate from Azure`
+
+7. Assignments
+
+Finally, navigate to the **Users and groups** tab and select the + button to assign access to the login with SSO application on a user or group-level.
+
+8. Return to Infisical and enable SAML SSO.
+
+Enabling SAML SSO enforces all members in your organization to only be able to log into Infisical via Azure.
