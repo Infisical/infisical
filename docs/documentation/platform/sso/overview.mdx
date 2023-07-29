@@ -1,0 +1,18 @@
+---
+title: "SSO Overview"
+description: "Log in to Infisical via SSO protocols"
+---
+
+<Warning>
+  Infisical currently only supports SAML SSO authentication with Okta and Azure
+  AD. We're expanding support for other IdPs in the coming months, so stay tuned
+  with this issue [here](https://github.com/Infisical/infisical/issues/442).
+</Warning>
+
+You can configure your organization in Infisical to have members authenticate with the platform via protocols like [SAML 2.0](https://en.wikipedia.org/wiki/SAML_2.0).
+
+To note, configuring SSO retains the end-to-end encrypted architecture of Infisical because we decouple the **authentication** and **decryption** steps. In all login with SSO implementations,
+your IdP cannot and will not have access to the decryption key needed to decrypt your secrets.
+
+- [Okta SAML](/documentation/platform/sso/okta)
+- [Azure SAML](/documentation/platform/sso/azure)

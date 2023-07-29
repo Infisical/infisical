@@ -51,13 +51,6 @@ export const getSSOConfigHelper = async ({
         ssoConfig.certIV,
         ssoConfig.certTag
     );
-
-    const audience = client.decryptSymmetric(
-        ssoConfig.encryptedAudience,
-        key,
-        ssoConfig.audienceIV,
-        ssoConfig.audienceTag
-    );
     
     return ({
         _id: ssoConfig._id,
@@ -66,7 +59,6 @@ export const getSSOConfigHelper = async ({
         isActive: ssoConfig.isActive,
         entryPoint,
         issuer,
-        cert,
-        audience
+        cert
     });
 }

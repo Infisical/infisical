@@ -135,24 +135,24 @@ const initializePassport = async () => {
     {
       passReqToCallback: true,
       getSamlOptions: async (req: any, done: any) => {
-          const { ssoIdentifier } = req.params;
-          
-          const ssoConfig = await getSSOConfigHelper({
-            ssoConfigId: new Types.ObjectId(ssoIdentifier)
-          });
-          
-          const samlConfig = ({
-            path: "/api/v1/auth/callback/saml",
-            callbackURL: `${await getSiteURL()}/api/v1/auth/callback/saml`,
-            entryPoint: ssoConfig.entryPoint,
-            issuer: ssoConfig.issuer,
-            cert: ssoConfig.cert,
-            audience: ssoConfig.audience
-          });
-          
-          req.ssoConfig = ssoConfig;
+        const { ssoIdentifier } = req.params;
+        
+        const ssoConfig = await getSSOConfigHelper({
+          ssoConfigId: new Types.ObjectId(ssoIdentifier)
+        });
+        
+        const samlConfig = ({
+          path: `/api/v1/sso/saml2/${ssoIdentifier}`,
+          callbackURL: `${await getSiteURL()}/api/v1/sso/saml2${ssoIdentifier}`,
+          entryPoint: ssoConfig.entryPoint,
+          issuer: ssoConfig.issuer,
+          cert: ssoConfig.cert,
+          audience: await getSiteURL()
+        });
+        
+        req.ssoConfig = ssoConfig;
 
-          done(null, samlConfig);
+        done(null, samlConfig);
       },
     },
     async (req: any, profile: any, done: any) => {
@@ -161,7 +161,7 @@ const initializePassport = async () => {
       const organization = await Organization.findById(req.ssoConfig.organization);
       
       if (!organization) return done(OrganizationNotFoundError());
-      
+
       const email = profile.email;
       const firstName = profile.firstName;
       const lastName = profile.lastName;
