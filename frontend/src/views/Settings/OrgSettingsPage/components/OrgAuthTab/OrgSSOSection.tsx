@@ -5,8 +5,8 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import { Button, Switch, UpgradePlanModal } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
 import { 
-    useGetSSOConfig,
     useCreateSSOConfig,
+    useGetSSOConfig,
     useUpdateSSOConfig
 } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -29,7 +29,7 @@ export const OrgSSOSection = (): JSX.Element => {
         "addSSO"
     ] as const);
     
-    const { mutateAsync: createMutateAsync, isLoading: createIsLoading } = useCreateSSOConfig();
+    const { mutateAsync: createMutateAsync } = useCreateSSOConfig();
     
     const handleSamlSSOToggle = async (value: boolean) => {
         try {
