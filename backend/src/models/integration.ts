@@ -20,6 +20,7 @@ import {
   INTEGRATION_RAILWAY,
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
+  INTEGRATION_TEAMCITY,
   INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL,
@@ -61,6 +62,7 @@ export interface IIntegration {
     | "supabase"
     | "checkly"
     | "terraform-cloud"
+    | "teamcity"
     | "hashicorp-vault"
     | "cloudflare-pages"
     | "bitbucket"
@@ -157,6 +159,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_SUPABASE,
         INTEGRATION_CHECKLY,
         INTEGRATION_TERRAFORM_CLOUD,
+        INTEGRATION_TEAMCITY,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
         INTEGRATION_CODEFRESH,

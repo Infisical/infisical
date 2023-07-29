@@ -35,6 +35,8 @@ import {
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_SUPABASE,
   INTEGRATION_SUPABASE_API_URL,
+  INTEGRATION_TEAMCITY,
+  INTEGRATION_TEAMCITY_API_URL,
   INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TERRAFORM_CLOUD_API_URL,
   INTEGRATION_TRAVISCI,
@@ -148,6 +150,11 @@ const getApps = async ({
       break;
     case INTEGRATION_TRAVISCI:
       apps = await getAppsTravisCI({
+        accessToken,
+      });
+      break;
+    case INTEGRATION_TEAMCITY:
+      apps = await getAppsTeamCity({
         accessToken,
       });
       break;
@@ -718,6 +725,37 @@ const getAppsGitlab = async ({
       page++;
     }
   }
+
+  return apps;
+};
+
+/**
+ * Return list of projects for TeamCity integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for TeamCity API
+ * @returns {Object[]} apps - names and ids of TeamCity projects
+ * @returns {String} apps.name - name of TeamCity projects
+ */
+const getAppsTeamCity = async ({ 
+  accessToken,
+}: {
+  accessToken: string;
+}) => {
+  const res = (
+    await standardRequest.get(`${INTEGRATION_TEAMCITY_API_URL}/app/rest/projects`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+    })
+  ).data.project.slice(1);
+
+  const apps = res.map((a: any) => {
+    return {
+      name: a.name,
+      appId: a.id,
+    };
+  });
 
   return apps;
 };

@@ -113,6 +113,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "windmill":
         link = `${window.location.origin}/integrations/windmill/authorize`;
         break;
+      case "teamcity":
+        link = `${window.location.origin}/integrations/teamcity/authorize`;
+        break;
       default:
         break;
     }

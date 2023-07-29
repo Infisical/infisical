@@ -19,7 +19,8 @@ const integrationSlugNameMapping: Mapping = {
   travisci: "TravisCI",
   supabase: "Supabase",
   checkly: "Checkly",
-  'terraform-cloud': 'Terraform Cloud',
+  "terraform-cloud": "Terraform Cloud",
+  "teamcity": "TeamCity",
   "hashicorp-vault": "Vault",
   "cloudflare-pages": "Cloudflare Pages",
   "codefresh": "Codefresh",
@@ -27,7 +28,7 @@ const integrationSlugNameMapping: Mapping = {
   bitbucket: "BitBucket",
   "cloud-66": "Cloud 66",
   northflank: "Northflank",
-  'windmill': 'Windmill'
+  "windmill": "Windmill"
 }
 
 const envMapping: Mapping = {

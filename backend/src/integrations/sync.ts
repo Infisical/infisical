@@ -44,6 +44,8 @@ import {
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_SUPABASE,
   INTEGRATION_SUPABASE_API_URL,
+  INTEGRATION_TEAMCITY,
+  INTEGRATION_TEAMCITY_API_URL,
   INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TERRAFORM_CLOUD_API_URL,
   INTEGRATION_TRAVISCI,
@@ -228,6 +230,13 @@ const syncSecrets = async ({
       break;
     case INTEGRATION_CODEFRESH:
       await syncSecretsCodefresh({
+        integration,
+        secrets,
+        accessToken,
+      });
+      break;
+    case INTEGRATION_TEAMCITY:
+      await syncSecretsTeamCity({
         integration,
         secrets,
         accessToken,
@@ -1969,6 +1978,96 @@ const syncSecretsTerraformCloud = async ({
       })
     }
   }
+};
+
+/**
+ * Sync/push [secrets] to TeamCity project
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration
+ * @param {String} obj.accessToken - access token for TeamCity integration
+ */
+const syncSecretsTeamCity = async ({
+  integration,
+  secrets,
+  accessToken,
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+
+  // get projects from TeamCity
+  const res = (
+    await standardRequest.get(`${INTEGRATION_TEAMCITY_API_URL}/app/rest/projects`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+    })
+  ).data.project.slice(1);
+
+  // get secrets from Teamcity
+  const getParametersRes = (
+    await standardRequest.get(
+      `${INTEGRATION_TEAMCITY_API_URL}/app/rest/projects/id:${integration.appId}/parameters`, 
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+    })
+  ).data.property;
+
+  for await (const key of Object.keys(secrets)) {
+    if (key in res) {
+      await standardRequest.put(
+        `${INTEGRATION_TEAMCITY_API_URL}/app/rest/projects/id:${integration.appId}/parameters/${res.id}`,
+        {
+          name: `env.${key}`,
+          value: secrets[key]
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json"
+          }
+        }
+      );
+    } else {
+      await standardRequest.post(
+        `${INTEGRATION_TEAMCITY_API_URL}/app/rest/projects/id:${integration.appId}/parameters`,
+        {
+          name: `env.${key}`,
+          value: secrets[key]
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json"
+          }
+        }
+      );
+    }
+  }
+
+  for await (const sec of getParametersRes) {
+    const originalString = sec.name;
+    const modifiedString = originalString.replace(/^env\./, "");  
+    
+    if (!(modifiedString in secrets)) {
+    await standardRequest.delete(
+      `${INTEGRATION_TEAMCITY_API_URL}/app/rest/projects/id:${integration.appId}/parameters/${sec.name}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json"
+          }
+        }
+      );
+    }
+  }
+
 };
 
 /**

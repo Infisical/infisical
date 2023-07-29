@@ -22,6 +22,7 @@ import {
   INTEGRATION_RAILWAY,
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
+  INTEGRATION_TEAMCITY,
   INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL,
@@ -55,6 +56,7 @@ export interface IIntegrationAuth extends Document {
     | "bitbucket"
     | "cloud-66"
     | "terraform-cloud"
+    | "teamcity"
     | "northflank"
     | "windmill";
   teamId: string;
@@ -99,6 +101,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_CIRCLECI,
         INTEGRATION_LARAVELFORGE,
         INTEGRATION_TRAVISCI,
+        INTEGRATION_TEAMCITY,
         INTEGRATION_SUPABASE,
         INTEGRATION_TERRAFORM_CLOUD,
         INTEGRATION_HASHICORP_VAULT,
