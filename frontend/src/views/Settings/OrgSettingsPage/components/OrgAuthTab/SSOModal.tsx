@@ -20,15 +20,21 @@ import {
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+enum AuthProvider {
+    OKTA_SAML = "okta-saml",
+    AZURE_SAML = "azure-saml"
+}
+
 const ssoAuthProviders = [
-    { label: "Okta SAML 2.0", value: "okta-saml" }
+    { label: "Okta SAML", value: AuthProvider.OKTA_SAML },
+    { label: "Azure SAML", value: AuthProvider.AZURE_SAML }
 ];
 
 const schema = yup.object({
     authProvider: yup.string().required("SSO Type is required"),
-    entryPoint: yup.string().required("IDP entrypoint is required"),
+    entryPoint: yup.string().required("IdP entrypoint is required"),
     issuer: yup.string().required("Issuer string is required"),
-    cert: yup.string().required("IDP's public signing certificate is required")
+    cert: yup.string().required("IdP's public signing certificate is required")
 }).required();
 
 export type AddSSOFormData = yup.InferType<typeof schema>;
@@ -57,7 +63,7 @@ export const SSOModal = ({
         watch,
     } = useForm<AddSSOFormData>({
         defaultValues: {
-            authProvider: "okta-saml"
+            authProvider: AuthProvider.OKTA_SAML
         },
         resolver: yupResolver(schema)
     });
@@ -117,6 +123,38 @@ export const SSOModal = ({
         }
     }
 
+    const renderLabels = (authProvider: string) => {
+        switch (authProvider){
+            case AuthProvider.OKTA_SAML:
+                return ({
+                    acsUrl: "Single sign-on URL",
+                    entityId: "Audience URI (SP Entity ID)",
+                    entryPoint: "Identity Provider Single Sign-On URL",
+                    entryPointPlaceholder: "https://your-domain.okta.com/app/app-name/xxx/sso/saml",
+                    issuer: "Identity Provider Issuer",
+                    issuerPlaceholder: "http://www.okta.com/xxx"
+                });
+            case AuthProvider.AZURE_SAML:
+                return ({
+                    acsUrl: "Reply URL (Assertion Consumer Service URL)",
+                    entityId: "Identifier (Entity ID)",
+                    entryPoint: "Login URL",
+                    entryPointPlaceholder: "https://login.microsoftonline.com/xxx/saml2",
+                    issuer: "Azure AD Identifier",
+                    issuerPlaceholder: "https://sts.windows.net/xxx/"
+                });
+            default:
+                return ({
+                    acsUrl: "ACS URL",
+                    entityId: "Entity ID",
+                    entryPoint: "Entrypoint",
+                    entryPointPlaceholder: "Enter entrypoint...",
+                    issuer: "Issuer",
+                    issuerPlaceholder: "Enter placeholder..."
+                });
+        }
+    }
+    
     const authProvider = watch("authProvider");
 
     return (
@@ -154,14 +192,14 @@ export const SSOModal = ({
                             </FormControl>
                         )}
                     />
-                    {authProvider && authProvider === "okta-saml" && data && (
+                    {authProvider && data && (
                         <>
                             <div className="mb-4">
-                                <h3 className="text-mineshaft-400 text-sm">ACS URL</h3>
+                                <h3 className="text-mineshaft-400 text-sm">{renderLabels(authProvider).acsUrl}</h3>
                                 <p className="text-gray-400 text-md break-all">{`${window.origin}/api/v1/sso/saml2/${data._id}`}</p>
                             </div>
                             <div className="mb-4">
-                                <h3 className="text-mineshaft-400 text-sm">Entity ID</h3>
+                                <h3 className="text-mineshaft-400 text-sm">{renderLabels(authProvider).entityId}</h3>
                                 <p className="text-gray-400 text-md">{window.origin}</p>
                             </div>
                             <Controller
@@ -169,13 +207,13 @@ export const SSOModal = ({
                                 name="entryPoint"
                                 render={({ field, fieldState: { error } }) => (
                                     <FormControl
-                                        label="Entrypoint"
+                                        label={renderLabels(authProvider).entryPoint}
                                         errorText={error?.message}
                                         isError={Boolean(error)}
                                     >
                                         <Input 
                                             {...field} 
-                                            placeholder="https://your-domain.okta.com/app/app-name/xxx/sso/saml"
+                                            placeholder={renderLabels(authProvider).entryPointPlaceholder}
                                         />
                                     </FormControl>
                                 )}
@@ -185,13 +223,13 @@ export const SSOModal = ({
                                 name="issuer"
                                 render={({ field, fieldState: { error } }) => (
                                     <FormControl
-                                        label="Issuer"
+                                        label={renderLabels(authProvider).issuer}
                                         errorText={error?.message}
                                         isError={Boolean(error)}
                                     >
                                         <Input 
                                             {...field} 
-                                            placeholder="http://www.okta.com/xxx"
+                                            placeholder={renderLabels(authProvider).issuerPlaceholder}
                                         />
                                     </FormControl>
                                 )}

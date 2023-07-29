@@ -1,7 +1,8 @@
 import { Schema, Types, model } from "mongoose";
 
 export enum AuthProvider {
-    OKTA_SAML = "okta-saml"
+    OKTA_SAML = "okta-saml",
+    AZURE_SAML = "azure-saml"
 }
 
 export interface ISSOConfig {

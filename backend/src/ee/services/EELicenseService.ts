@@ -66,7 +66,7 @@ class EELicenseService {
         customRateLimits: true,
         customAlerts: true,
         auditLogs: false,
-        samlSSO: true,
+        samlSSO: false,
         status: null,
         trial_end: null,
         has_used_trial: true

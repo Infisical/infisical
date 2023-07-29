@@ -14,7 +14,8 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { SSOModal } from "./SSOModal";
 
 const ssoAuthProviderMap: { [key: string]: string } = {
-    "okta-saml": "Okta SAML 2.0"
+    "okta-saml": "Okta SAML",
+    "azure-saml": "Azure SAML"
 }
 
 export const OrgSSOSection = (): JSX.Element => {
@@ -76,8 +77,6 @@ export const OrgSSOSection = (): JSX.Element => {
             console.error(err);
         }
     }
-    
-    console.log("getSSOConfig: ", data);
     
     return (
         <div className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600">
