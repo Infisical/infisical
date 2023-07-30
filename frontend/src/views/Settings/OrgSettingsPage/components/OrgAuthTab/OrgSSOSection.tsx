@@ -15,7 +15,8 @@ import { SSOModal } from "./SSOModal";
 
 const ssoAuthProviderMap: { [key: string]: string } = {
     "okta-saml": "Okta SAML",
-    "azure-saml": "Azure SAML"
+    "azure-saml": "Azure SAML",
+    "jumpcloud-saml": "JumpCloud SAML"
 }
 
 export const OrgSSOSection = (): JSX.Element => {

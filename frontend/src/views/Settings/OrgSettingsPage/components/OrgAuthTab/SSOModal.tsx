@@ -23,12 +23,14 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 enum AuthProvider {
     OKTA_SAML = "okta-saml",
-    AZURE_SAML = "azure-saml"
+    AZURE_SAML = "azure-saml",
+    JUMPCLOUD_SAML = "jumpcloud-saml"
 }
 
 const ssoAuthProviders = [
     { label: "Okta SAML", value: AuthProvider.OKTA_SAML },
-    { label: "Azure SAML", value: AuthProvider.AZURE_SAML }
+    { label: "Azure SAML", value: AuthProvider.AZURE_SAML },
+    { label: "JumpCloud SAML", value: AuthProvider.JUMPCLOUD_SAML }
 ];
 
 const schema = yup.object({
@@ -144,6 +146,16 @@ export const SSOModal = ({
                     issuer: "Azure AD Identifier",
                     issuerPlaceholder: "https://sts.windows.net/xxx/"
                 });
+            case AuthProvider.JUMPCLOUD_SAML:
+                return ({
+                    acsUrl: "ACS URL",
+                    entityId: "SP Entity ID",
+                    entryPoint: "IDP URL",
+                    entryPointPlaceholder: "https://sso.jumpcloud.com/saml2/xxx",
+                    issuer: "IdP Entity ID",
+                    issuerPlaceholder: "xxx"
+                });
+                
             default:
                 return ({
                     acsUrl: "ACS URL",

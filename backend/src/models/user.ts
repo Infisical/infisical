@@ -3,7 +3,9 @@ import { Document, Schema, Types, model } from "mongoose";
 export enum AuthProvider {
 	EMAIL = "email",
 	GOOGLE = "google",
-	OKTA_SAML = "okta-saml"
+	OKTA_SAML = "okta-saml",
+	AZURE_SAML = "azure-saml",
+	JUMPCLOUD_SAML = "jumpcloud-saml",
 }
 
 export interface IUser extends Document {
