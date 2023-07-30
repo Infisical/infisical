@@ -45,7 +45,6 @@ import {
   INTEGRATION_SUPABASE,
   INTEGRATION_SUPABASE_API_URL,
   INTEGRATION_TEAMCITY,
-  INTEGRATION_TEAMCITY_API_URL,
   INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TERRAFORM_CLOUD_API_URL,
   INTEGRATION_TRAVISCI,
@@ -237,6 +236,7 @@ const syncSecrets = async ({
       break;
     case INTEGRATION_TEAMCITY:
       await syncSecretsTeamCity({
+        integrationAuth,
         integration,
         secrets,
         accessToken,
@@ -1988,10 +1988,12 @@ const syncSecretsTerraformCloud = async ({
  * @param {String} obj.accessToken - access token for TeamCity integration
  */
 const syncSecretsTeamCity = async ({
+  integrationAuth,
   integration,
   secrets,
   accessToken,
 }: {
+  integrationAuth: IIntegrationAuth;
   integration: IIntegration;
   secrets: any;
   accessToken: string;
@@ -1999,7 +2001,7 @@ const syncSecretsTeamCity = async ({
 
   // get projects from TeamCity
   const res = (
-    await standardRequest.get(`${INTEGRATION_TEAMCITY_API_URL}/app/rest/projects`, {
+    await standardRequest.get(`${integrationAuth.url}/app/rest/projects`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
@@ -2010,7 +2012,7 @@ const syncSecretsTeamCity = async ({
   // get secrets from Teamcity
   const getParametersRes = (
     await standardRequest.get(
-      `${INTEGRATION_TEAMCITY_API_URL}/app/rest/projects/id:${integration.appId}/parameters`, 
+      `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`, 
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -2022,7 +2024,7 @@ const syncSecretsTeamCity = async ({
   for await (const key of Object.keys(secrets)) {
     if (key in res) {
       await standardRequest.put(
-        `${INTEGRATION_TEAMCITY_API_URL}/app/rest/projects/id:${integration.appId}/parameters/${res.id}`,
+        `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters/${res.id}`,
         {
           name: `env.${key}`,
           value: secrets[key]
@@ -2036,7 +2038,7 @@ const syncSecretsTeamCity = async ({
       );
     } else {
       await standardRequest.post(
-        `${INTEGRATION_TEAMCITY_API_URL}/app/rest/projects/id:${integration.appId}/parameters`,
+        `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`,
         {
           name: `env.${key}`,
           value: secrets[key]
@@ -2057,7 +2059,7 @@ const syncSecretsTeamCity = async ({
     
     if (!(modifiedString in secrets)) {
     await standardRequest.delete(
-      `${INTEGRATION_TEAMCITY_API_URL}/app/rest/projects/id:${integration.appId}/parameters/${sec.name}`,
+      `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters/${sec.name}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,

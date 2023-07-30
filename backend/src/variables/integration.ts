@@ -89,7 +89,6 @@ export const INTEGRATION_SUPABASE_API_URL = "https://api.supabase.com";
 export const INTEGRATION_LARAVELFORGE_API_URL = "https://forge.laravel.com";
 export const INTEGRATION_CHECKLY_API_URL = "https://api.checklyhq.com";
 export const INTEGRATION_TERRAFORM_CLOUD_API_URL = "https://app.terraform.io";
-export const INTEGRATION_TEAMCITY_API_URL = "https://devaandrew.teamcity.com"; // URL needs to be changed
 export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = "https://api.cloudflare.com";
 export const INTEGRATION_BITBUCKET_API_URL = "https://api.bitbucket.org";
 export const INTEGRATION_CODEFRESH_API_URL = "https://g.codefresh.io/api";

@@ -8,14 +8,22 @@ export default function TeamCityCreateIntegrationPage() {
   const router = useRouter();
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
+  const [serverUrl, setServerUrl] = useState("");
+  const [serverUrlErrorText, setServerUrlErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleButtonClick = async () => {
     try {
       setApiKeyErrorText("");
+      setServerUrlErrorText("");
 
       if (apiKey.length === 0) {
         setApiKeyErrorText("API Token cannot be blank");
+        return;
+      }
+
+      if (serverUrl.length === 0) {
+        setServerUrlErrorText("Server URL cannot be blank");
         return;
       }
 
@@ -26,7 +34,7 @@ export default function TeamCityCreateIntegrationPage() {
         integration: "teamcity",
         accessId: null,
         accessToken: apiKey,
-        url: null,
+        url: serverUrl,
         namespace: null
       });
 
@@ -47,7 +55,22 @@ export default function TeamCityCreateIntegrationPage() {
           errorText={apiKeyErrorText}
           isError={apiKeyErrorText !== "" ?? false}
         >
-          <Input placeholder="API Token" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+          <Input
+            placeholder="API Token"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+          />
+        </FormControl>
+        <FormControl
+          label="TeamCity Server URL"
+          errorText={serverUrlErrorText}
+          isError={serverUrlErrorText !== "" ?? false}
+        >
+          <Input
+            placeholder="https://example.teamcity.com"
+            value={serverUrl}
+            onChange={(e) => setServerUrl(e.target.value)}
+          />
         </FormControl>
         <Button
           onClick={handleButtonClick}
