@@ -141,7 +141,17 @@ const initializePassport = async () => {
           ssoConfigId: new Types.ObjectId(ssoIdentifier)
         });
         
-        const samlConfig = ({
+        interface ISAMLConfig {
+          path: string;
+          callbackURL: string;
+          entryPoint: string;
+          issuer: string;
+          cert: string;
+          audience: string;
+          wantAuthnResponseSigned?: boolean;
+        }
+        
+        const samlConfig: ISAMLConfig = ({
           path: `/api/v1/sso/saml2/${ssoIdentifier}`,
           callbackURL: `${await getSiteURL()}/api/v1/sso/saml2${ssoIdentifier}`,
           entryPoint: ssoConfig.entryPoint,
@@ -149,6 +159,10 @@ const initializePassport = async () => {
           cert: ssoConfig.cert,
           audience: await getSiteURL()
         });
+        
+        if (ssoConfig.authProvider === AuthProvider.JUMPCLOUD_SAML) {
+          samlConfig.wantAuthnResponseSigned = false;
+        }
         
         req.ssoConfig = ssoConfig;
 
