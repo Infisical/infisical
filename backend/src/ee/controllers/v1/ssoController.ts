@@ -21,7 +21,7 @@ import { EELicenseService } from "../../services";
  */
 export const redirectSSO = async (req: Request, res: Response) => {
     if (req.isUserCompleted) {
-      return res.redirect(`${await getSiteURL()}/login/sso?token=${encodeURIComponent(req.providerAuthToken)}`);
+        return res.redirect(`${await getSiteURL()}/login/sso?token=${encodeURIComponent(req.providerAuthToken)}`);
     }
     
     return res.redirect(`${await getSiteURL()}/signup/sso?token=${encodeURIComponent(req.providerAuthToken)}`);

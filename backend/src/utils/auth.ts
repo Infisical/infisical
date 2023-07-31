@@ -19,7 +19,7 @@ import {
 } from "../config";
 import { getSSOConfigHelper } from "../ee/helpers/organizations";
 import { InternalServerError, OrganizationNotFoundError } from "./errors";
-import { INVITED, MEMBER } from "../variables";
+import { ACCEPTED, INVITED, MEMBER } from "../variables";
 import { getSiteURL } from "../config";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -152,7 +152,7 @@ const initializePassport = async () => {
         }
         
         const samlConfig: ISAMLConfig = ({
-          path: `/api/v1/sso/saml2/${ssoIdentifier}`,
+          path: `${await getSiteURL()}/api/v1/sso/saml2/${ssoIdentifier}`,
           callbackURL: `${await getSiteURL()}/api/v1/sso/saml2${ssoIdentifier}`,
           entryPoint: ssoConfig.entryPoint,
           issuer: ssoConfig.issuer,
@@ -165,7 +165,7 @@ const initializePassport = async () => {
         }
         
         req.ssoConfig = ssoConfig;
-
+        
         done(null, samlConfig);
       },
     },
@@ -184,15 +184,44 @@ const initializePassport = async () => {
         email
       }).select("+publicKey");
       
-      if (user && user.authProvider !== AuthProvider.OKTA_SAML) {
-        done(InternalServerError());
-      }
-
-      if (!user) {
+      if (user) {
+        if (!user.authProvider || user.authProvider === AuthProvider.EMAIL || user.authProvider === AuthProvider.GOOGLE) {
+          await User.findByIdAndUpdate(
+            user._id, 
+            {
+              authProvider: req.ssoConfig.authProvider
+            },
+            {
+              new: true
+            }
+          );
+        }
+        
+        let membershipOrg = await MembershipOrg.findOne(
+          {
+            user: user._id,
+            organization: organization._id
+          }
+        );
+        
+        if (!membershipOrg) {
+          membershipOrg = await new MembershipOrg({
+            inviteEmail: email,
+            user: user._id,
+            organization: organization._id,
+            role: MEMBER,
+            status: ACCEPTED
+          }).save();
+        }
+        
+        if (membershipOrg.status === INVITED) {
+          membershipOrg.status = ACCEPTED;
+          await membershipOrg.save();
+        }
+      } else {
         user = await new User({
           email,
-          authProvider: AuthProvider.OKTA_SAML,
-          authId: profile.id,
+          authProvider: req.ssoConfig.authProvider,
           firstName,
           lastName
         }).save();
@@ -200,7 +229,7 @@ const initializePassport = async () => {
         await new MembershipOrg({
           inviteEmail: email,
           user: user._id,
-          organization: organization?._id,
+          organization: organization._id,
           role: MEMBER,
           status: INVITED
         }).save();

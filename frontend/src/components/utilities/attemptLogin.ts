@@ -125,6 +125,7 @@ const attemptLogin = async (
             // because this function is about logging the user in
             // and not initializing the login details
             const userOrgs = await getOrganizations(); 
+            
             const orgId = userOrgs[0]._id;
             localStorage.setItem("orgData.id", orgId);
             

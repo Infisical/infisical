@@ -106,7 +106,6 @@ export const login1 = async (req: Request, res: Response) => {
  */
 export const login2 = async (req: Request, res: Response) => {
     try {
-
         if (!req.headers["user-agent"]) throw InternalServerError({ message: "User-Agent header is required" });
 
         const { email, clientProof, providerAuthToken } = req.body;
@@ -189,7 +188,7 @@ export const login2 = async (req: Request, res: Response) => {
                         ip: req.realIP,
                         userAgent: req.headers["user-agent"] ?? "",
                     });
-
+                    
                     // store (refresh) token in httpOnly cookie
                     res.cookie("jid", tokens.refreshToken, {
                         httpOnly: true,
