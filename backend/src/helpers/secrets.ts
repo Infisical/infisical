@@ -42,9 +42,10 @@ import { TelemetryService } from "../services";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
 import { EELogService, EESecretService } from "../ee/services";
 import { getAuthDataPayloadIdObj, getAuthDataPayloadUserObj } from "../utils/auth";
-import { getFolderIdFromServiceToken } from "../services/FolderService";
+import { getFolderByPath, getFolderIdFromServiceToken } from "../services/FolderService";
 import picomatch from "picomatch";
 import path from "path";
+import Folder, { TFolderRootSchema } from "../models/folder";
 
 export const isValidScope = (
   authPayload: IServiceTokenData,
@@ -64,9 +65,8 @@ export const isValidScope = (
 export function containsGlobPatterns(secretPath: string) {
   const globChars = ["*", "?", "[", "]", "{", "}", "**"];
   const normalizedPath = path.normalize(secretPath);
-  return globChars.some(char => normalizedPath.includes(char));
+  return globChars.some((char) => normalizedPath.includes(char));
 }
-
 
 /**
  * Returns an object containing secret [secret] but with its value, key, comment decrypted.
@@ -928,4 +928,147 @@ export const deleteSecretHelper = async ({
     secrets,
     secret
   };
+};
+
+const fetchSecretsCrossEnv = (workspaceId: string, folders: TFolderRootSchema[], key: string) => {
+  const fetchCache: Record<string, Record<string, string>> = {};
+
+  return async (secRefEnv: string, secRefPath: string[], secRefKey: string) => {
+    const secRefPathUrl = path.join("/", ...secRefPath);
+    const uniqKey = `${secRefEnv}-${secRefPathUrl}`;
+
+    if (fetchCache?.[uniqKey]) {
+      return fetchCache[uniqKey][secRefKey];
+    }
+
+    let folderId = "root";
+    const folder = folders.find(({ environment }) => environment === secRefEnv);
+    if (!folder && secRefPathUrl !== "/") {
+      throw BadRequestError({ message: "Folder not found" });
+    }
+
+    if (folder) {
+      const selectedFolder = getFolderByPath(folder.nodes, secRefPathUrl);
+      if (!selectedFolder) {
+        throw BadRequestError({ message: "Folder not found" });
+      }
+      folderId = selectedFolder.id;
+    }
+
+    const secrets = await Secret.find({
+      workspace: workspaceId,
+      environment: secRefEnv,
+      type: SECRET_SHARED,
+      folder: folderId
+    });
+
+    const decryptedSec = secrets.reduce<Record<string, string>>((prev, secret) => {
+      const secretKey = decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretKeyCiphertext,
+        iv: secret.secretKeyIV,
+        tag: secret.secretKeyTag,
+        key
+      });
+      const secretValue = decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretValueCiphertext,
+        iv: secret.secretValueIV,
+        tag: secret.secretValueTag,
+        key
+      });
+
+      prev[secretKey] = secretValue;
+      return prev;
+    }, {});
+
+    fetchCache[uniqKey] = decryptedSec;
+
+    return fetchCache[uniqKey][secRefKey];
+  };
+};
+
+const INTERPOLATION_SYNTAX_REG = new RegExp(/\${([^}]+)}/g);
+const recursivelyExpandSecret = async (
+  expandedSec: Record<string, string>,
+  interpolatedSec: Record<string, string>,
+  fetchCrossEnv: (env: string, secPath: string[], secKey: string) => Promise<string>,
+  key: string
+) => {
+  if (expandedSec?.[key]) {
+    return expandedSec[key];
+  }
+
+  let interpolatedValue = interpolatedSec[key];
+  if (!interpolatedValue) {
+    throw new Error(`Couldn't find referenced value - ${key}`);
+  }
+
+  const refs = interpolatedValue.match(INTERPOLATION_SYNTAX_REG);
+  if (refs) {
+    for (const interpolationSyntax of refs) {
+      const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
+      const entities = interpolationKey.trim().split(".");
+
+      if (entities.length === 1) {
+        const val = await recursivelyExpandSecret(
+          expandedSec,
+          interpolatedSec,
+          fetchCrossEnv,
+          interpolationKey
+        );
+        if (val) {
+          interpolatedValue = interpolatedValue.replace(interpolationSyntax, val);
+        }
+        return;
+      }
+
+      if (entities.length > 1) {
+        const secRefEnv = entities[0];
+        const secRefPath = entities.slice(1, entities.length - 1);
+        const secRefKey = entities[entities.length - 1];
+
+        const val = await fetchCrossEnv(secRefEnv, secRefPath, secRefKey);
+        interpolatedValue = interpolatedValue.replace(interpolationSyntax, val);
+      }
+    }
+  }
+
+  return interpolatedValue;
+};
+
+export const expandSecrets = async (
+  workspaceId: string,
+  rootEncKey: string,
+  secrets: Record<string, { value: string; comment?: string }>
+) => {
+  const expandedSec: Record<string, string> = {};
+  const interpolatedSec: Record<string, string> = {};
+
+  const folders = await Folder.find({ workspace: workspaceId });
+  const crossSecEnvFetch = fetchSecretsCrossEnv(workspaceId, folders, rootEncKey);
+
+  Object.keys(secrets).forEach((key) => {
+    if (secrets[key].value.match(INTERPOLATION_SYNTAX_REG)) {
+      interpolatedSec[key] = secrets[key].value;
+    } else {
+      expandedSec[key] = secrets[key].value;
+    }
+  });
+
+  for (const key of Object.keys(secrets)) {
+    if (expandedSec?.[key]) {
+      secrets[key].value = expandedSec[key];
+      return;
+    }
+
+    const expandedVal = await recursivelyExpandSecret(
+      expandedSec,
+      interpolatedSec,
+      crossSecEnvFetch,
+      key
+    );
+
+    secrets[key].value = expandedVal || "";
+  }
+
+  return secrets;
 };
