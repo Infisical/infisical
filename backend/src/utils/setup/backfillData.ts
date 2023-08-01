@@ -3,9 +3,9 @@ import crypto from "crypto";
 import { Types } from "mongoose";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../crypto";
 import { EESecretService } from "../../ee/services";
-import { 
-  IPType, 
-  ISecretVersion, 
+import {
+  IPType,
+  ISecretVersion,
   SecretSnapshot,
   SecretVersion,
   TrustedIP
@@ -164,7 +164,7 @@ export const backfillBotOrgs = async () => {
   const botsToInsert = await Promise.all(
     organizationIdsToAddBot.map(async (organizationToAddBot) => {
       const { publicKey, privateKey } = generateKeyPair();
-      
+
       const key = client.createSymmetricKey();
 
       if (rootEncryptionKey) {
@@ -204,7 +204,7 @@ export const backfillBotOrgs = async () => {
           plaintext: privateKey,
           key: encryptionKey
         });
-        
+
         const {
           ciphertext: encryptedSymmetricKey,
           iv: symmetricKeyIV,
@@ -236,7 +236,7 @@ export const backfillBotOrgs = async () => {
       });
     })
   );
-  
+
   await BotOrg.insertMany(botsToInsert);
 };
 
@@ -490,7 +490,7 @@ export const backfillSecretFolders = async () => {
       });
 
       await SecretSnapshot.insertMany(newSnapshots);
-      await secSnapshot.delete();
+      await secSnapshot.deleteOne();
     }
 
     secretSnapshots = await SecretSnapshot.find({
@@ -567,7 +567,7 @@ export const backfillTrustedIps = async () => {
       $nin: workspaceIdsWithTrustedIps
     }
   });
-  
+
   if (workspaceIdsToAddTrustedIp.length > 0) {
     const operations: {
       updateOne: {
@@ -586,7 +586,7 @@ export const backfillTrustedIps = async () => {
         upsert: boolean;
       }
     }[] = [];
-    
+
     workspaceIdsToAddTrustedIp.forEach((workspaceId) => {
       // default IPv4 trusted CIDR
       operations.push({
@@ -606,7 +606,7 @@ export const backfillTrustedIps = async () => {
           upsert: true
         }
       });
-      
+
       // default IPv6 trusted CIDR
       operations.push({
         updateOne: {

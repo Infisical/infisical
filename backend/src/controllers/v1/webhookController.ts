@@ -72,7 +72,8 @@ export const deleteWebhook = async (req: Request, res: Response) => {
     workspaceId: webhook.workspace,
     acceptedRoles: [ADMIN, MEMBER]
   });
-  await webhook.remove();
+
+  await webhook.deleteOne();
 
   return res.status(200).send({
     message: "successfully removed webhook"

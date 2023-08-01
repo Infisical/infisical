@@ -122,11 +122,11 @@ export const getAuthUserPayload = async ({
 	}, {
 		lastUsed: new Date(),
 	});
-	
+
 	if (!tokenVersion) throw UnauthorizedRequestError({
 		message: "Failed to validate access token",
 	});
-	
+
 	if (decodedToken.accessVersion !== tokenVersion.accessVersion) throw UnauthorizedRequestError({
 		message: "Failed to validate access token",
 	});
@@ -151,7 +151,7 @@ export const getAuthSTDPayload = async ({
 	const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split(".", 3);
 
 	let serviceTokenData = await ServiceTokenData
-		.findById(TOKEN_IDENTIFIER, "+secretHash +expiresAt");
+		.findById(TOKEN_IDENTIFIER, "+secretHash +expiresAt").lean();
 
 	if (!serviceTokenData) {
 		throw ServiceTokenDataNotFoundError({ message: "Failed to find service token data" });
@@ -176,7 +176,7 @@ export const getAuthSTDPayload = async ({
 		}, {
 			new: true,
 		})
-		.select("+encryptedKey +iv +tag");
+		.select("+encryptedKey +iv +tag").lean();
 
 	if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: "Failed to find service token data" });
 
@@ -275,11 +275,11 @@ export const getAuthAPIKeyPayload = async ({
  * @return {String} obj.token - issued JWT token
  * @return {String} obj.refreshToken - issued refresh token
  */
-export const issueAuthTokens = async ({ 
+export const issueAuthTokens = async ({
 	userId,
 	ip,
 	userAgent,
-}: { 
+}: {
 	userId: Types.ObjectId;
 	ip: string;
 	userAgent: string;
@@ -292,7 +292,7 @@ export const issueAuthTokens = async ({
 		ip,
 		userAgent,
 	});
-	
+
 	if (!tokenVersion) {
 		// case: no existing ip and user agent exists
 		// -> create new (session) token version for ip and user agent
@@ -389,7 +389,7 @@ export const validateProviderAuthToken = async ({
 	const decodedToken = <jwt.ProviderAuthJwtPayload>(
 		jwt.verify(providerAuthToken, await getJwtProviderAuthSecret())
 	);
-	
+
 	if (
 		decodedToken.authProvider !== user.authProvider ||
 		decodedToken.email !== email

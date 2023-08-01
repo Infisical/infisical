@@ -109,9 +109,9 @@ export const v1PushSecrets = async ({
     if (`${s.type}-${s.secretKeyHash}` in newSecretsObj) {
       if (
         s.secretValueHash !==
-          newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashValue ||
+        newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashValue ||
         s.secretCommentHash !==
-          newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashComment
+        newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashComment
       ) {
         // case: filter secrets where value or comment changed
         return true;
@@ -371,9 +371,9 @@ export const v2PushSecrets = async ({
     if (`${s.type}-${s.secretKeyHash}` in newSecretsObj) {
       if (
         s.secretValueHash !==
-          newSecretsObj[`${s.type}-${s.secretKeyHash}`].secretValueHash ||
+        newSecretsObj[`${s.type}-${s.secretKeyHash}`].secretValueHash ||
         s.secretCommentHash !==
-          newSecretsObj[`${s.type}-${s.secretKeyHash}`].secretCommentHash
+        newSecretsObj[`${s.type}-${s.secretKeyHash}`].secretCommentHash
       ) {
         // case: filter secrets where value or comment changed
         return true;
@@ -484,7 +484,7 @@ export const v2PushSecrets = async ({
 
     // (EE) add secret versions for new secrets
     EESecretService.addSecretVersions({
-      secretVersions: newSecrets.map((secretDocument: ISecret) => {
+      secretVersions: newSecrets.map((secretDocument) => {
         return new SecretVersion({
           ...secretDocument,
           secret: secretDocument._id,

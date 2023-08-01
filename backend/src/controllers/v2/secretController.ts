@@ -309,16 +309,16 @@ export const updateSecret = async (req: Request, res: Response) => {
     { _id: secretModificationsRequested._id, workspace: workspaceId },
     { $inc: { version: 1 }, $set: sanitizedSecret }
   )
-  .catch((error) => {
-    if (error instanceof ValidationError) {
-      throw RouteValidationError({
-        message: "Unable to apply modifications, please try again",
-        stack: error.stack
-      });
-    }
+    .catch((error) => {
+      if (error instanceof ValidationError) {
+        throw RouteValidationError({
+          message: "Unable to apply modifications, please try again",
+          stack: error.stack
+        });
+      }
 
-    throw error;
-  });
+      throw error;
+    });
 
   if (postHogClient) {
     postHogClient.capture({
@@ -370,12 +370,12 @@ export const getSecrets = async (req: Request, res: Response) => {
     $or: [{ user: userId }, { user: { $exists: false } }],
     type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
   })
-  .catch((err) => {
-    throw RouteValidationError({
-      message: "Failed to get secrets, please try again",
-      stack: err.stack
-    });
-  })
+    .catch((err) => {
+      throw RouteValidationError({
+        message: "Failed to get secrets, please try again",
+        stack: err.stack
+      });
+    })
 
   if (postHogClient) {
     postHogClient.capture({
