@@ -1998,19 +1998,13 @@ const syncSecretsTeamCity = async ({
   secrets: any;
   accessToken: string;
 }) => {
-
-  // get projects from TeamCity
-  const res = (
-    await standardRequest.get(`${integrationAuth.url}/app/rest/projects`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
-    })
-  ).data.project.slice(1);
+  interface TeamCitySecret {
+    name: string;
+    value: string;
+  }
 
   // get secrets from Teamcity
-  const getParametersRes = (
+  const res = (
     await standardRequest.get(
       `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`, 
       {
@@ -2019,24 +2013,24 @@ const syncSecretsTeamCity = async ({
           Accept: "application/json",
         },
     })
-  ).data.property;
+  )
+  .data
+  .property
+  .reduce(
+    (obj: any, secret: TeamCitySecret) => {
+      const secretName = secret.name.replace(/^env\./, "");  
+      return ({
+        ...obj,
+        [secretName]: secret.value
+      })
+    },
+    {}
+  );
 
   for await (const key of Object.keys(secrets)) {
-    if (key in res) {
-      await standardRequest.put(
-        `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters/${res.id}`,
-        {
-          name: `env.${key}`,
-          value: secrets[key]
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json"
-          }
-        }
-      );
-    } else {
+    if (!(key in res) || (key in res && secrets[key] !== res[key])) {
+      // case: secret does not exist in TeamCity or secret value has changed
+      // -> create/update secret
       await standardRequest.post(
         `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`,
         {
@@ -2053,13 +2047,11 @@ const syncSecretsTeamCity = async ({
     }
   }
 
-  for await (const sec of getParametersRes) {
-    const originalString = sec.name;
-    const modifiedString = originalString.replace(/^env\./, "");  
-    
-    if (!(modifiedString in secrets)) {
-    await standardRequest.delete(
-      `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters/${sec.name}`,
+  for await (const key of Object.keys(res)) {
+    if (!(key in secrets)) {
+      // delete secret
+      await standardRequest.delete(
+        `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters/env.${key}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -2069,7 +2061,6 @@ const syncSecretsTeamCity = async ({
       );
     }
   }
-
 };
 
 /**

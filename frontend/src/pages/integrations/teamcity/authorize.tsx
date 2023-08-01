@@ -18,7 +18,7 @@ export default function TeamCityCreateIntegrationPage() {
       setServerUrlErrorText("");
 
       if (apiKey.length === 0) {
-        setApiKeyErrorText("API Token cannot be blank");
+        setApiKeyErrorText("Access Token cannot be blank");
         return;
       }
 
@@ -51,12 +51,12 @@ export default function TeamCityCreateIntegrationPage() {
       <Card className="max-w-md rounded-md p-8">
         <CardTitle className="text-center">TeamCity Integration</CardTitle>
         <FormControl
-          label="TeamCity API Token"
+          label="TeamCity Access Token"
           errorText={apiKeyErrorText}
           isError={apiKeyErrorText !== "" ?? false}
         >
           <Input
-            placeholder="API Token"
+            placeholder="Access Token"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
           />
