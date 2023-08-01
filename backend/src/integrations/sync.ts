@@ -2303,6 +2303,7 @@ const syncSecretsDigitalOceanAppPlatform = async ({
     {
       spec: {
         name: integration.app,
+        ...appSettings,
         envs: Object.entries(secrets).map(([key, data]) => ({ key, value: data.value }))
       }
     },
