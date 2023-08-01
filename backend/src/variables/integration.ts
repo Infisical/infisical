@@ -23,6 +23,7 @@ export const INTEGRATION_FLYIO = "flyio";
 export const INTEGRATION_LARAVELFORGE = "laravel-forge"
 export const INTEGRATION_CIRCLECI = "circleci";
 export const INTEGRATION_TRAVISCI = "travisci";
+export const INTEGRATION_TEAMCITY = "teamcity";
 export const INTEGRATION_SUPABASE = "supabase";
 export const INTEGRATION_CHECKLY = "checkly";
 export const INTEGRATION_TERRAFORM_CLOUD = "terraform-cloud";
@@ -46,6 +47,7 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_CIRCLECI,
   INTEGRATION_LARAVELFORGE,
   INTEGRATION_TRAVISCI,
+  INTEGRATION_TEAMCITY,
   INTEGRATION_SUPABASE,
   INTEGRATION_CHECKLY,
   INTEGRATION_TERRAFORM_CLOUD,
@@ -228,6 +230,15 @@ export const getIntegrationOptions = async () => {
             name: "Travis CI",
             slug: "travisci",
             image: "Travis CI.png",
+            isAvailable: true,
+            type: "pat",
+            clientId: "",
+            docsLink: "",
+        },
+        {
+            name: "TeamCity",
+            slug: "teamcity",
+            image: "TeamCity.png",
             isAvailable: true,
             type: "pat",
             clientId: "",

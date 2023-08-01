@@ -232,6 +232,7 @@
         "integrations/cloud/supabase",
         "integrations/cloud/northflank",
         "integrations/cloud/terraform-cloud",
+        "integrations/cloud/teamcity",
         "integrations/cloud/cloudflare-pages",
         "integrations/cloud/checkly",
         "integrations/cloud/hashicorp-vault",
