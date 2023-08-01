@@ -87,7 +87,7 @@ export const createServiceAccount = async (req: Request, res: Response) => {
 
     const serviceAccountObj = serviceAccount.toObject();
 
-    delete serviceAccountObj.secretHash;
+    delete (serviceAccountObj as any).secretHash;
 
     // provision default org-level permission for service account
     await new ServiceAccountOrganizationPermission({
