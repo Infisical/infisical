@@ -48,7 +48,7 @@
     "typescript": "^4.9.3",
     "utility-types": "^3.10.0",
     "winston": "^3.8.2",
-    "winston-loki": "^6.0.6"
+    "winston-loki": "^6.0.7"
   },
   "name": "infisical-api",
   "version": "1.0.0",
