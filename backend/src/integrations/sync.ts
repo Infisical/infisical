@@ -59,9 +59,11 @@ import _ from "lodash";
 import sodium from "libsodium-wrappers";
 import { standardRequest } from "../config/request";
 
-const getSecretKeyValuePair = (secrets: Record<string, { value: string; comment?: string }>) =>
+const getSecretKeyValuePair = (
+  secrets: Record<string, { value: string; comment?: string } | null>
+) =>
   Object.keys(secrets).reduce<Record<string, string>>((prev, key) => {
-    prev[key] = secrets[key].value;
+    if (secrets[key]) prev[key] = secrets[key]?.value || "";
     return prev;
   }, {});
 
@@ -667,7 +669,7 @@ const syncSecretsHeroku = async ({
   accessToken
 }: {
   integration: IIntegration;
-  secrets: Record<string, { value: string; comment?: string }>;
+  secrets: Record<string, { value: string; comment?: string } | null>;
   accessToken: string;
 }) => {
   const herokuSecrets = (
@@ -682,7 +684,7 @@ const syncSecretsHeroku = async ({
 
   Object.keys(herokuSecrets).forEach((key) => {
     if (!(key in secrets)) {
-      delete secrets[key];
+      secrets[key] = null;
     }
   });
 

@@ -991,11 +991,16 @@ const recursivelyExpandSecret = async (
   expandedSec: Record<string, string>,
   interpolatedSec: Record<string, string>,
   fetchCrossEnv: (env: string, secPath: string[], secKey: string) => Promise<string>,
+  recursionChainBreaker: Record<string, boolean>,
   key: string
 ) => {
   if (expandedSec?.[key]) {
     return expandedSec[key];
   }
+  if (recursionChainBreaker?.[key]) {
+    return "";
+  }
+  recursionChainBreaker[key] = true;
 
   let interpolatedValue = interpolatedSec[key];
   if (!interpolatedValue) {
@@ -1013,12 +1018,13 @@ const recursivelyExpandSecret = async (
           expandedSec,
           interpolatedSec,
           fetchCrossEnv,
+          recursionChainBreaker,
           interpolationKey
         );
         if (val) {
-          interpolatedValue = interpolatedValue.replace(interpolationSyntax, val);
+          interpolatedValue = interpolatedValue.replaceAll(interpolationSyntax, val);
         }
-        return;
+        continue;
       }
 
       if (entities.length > 1) {
@@ -1027,11 +1033,12 @@ const recursivelyExpandSecret = async (
         const secRefKey = entities[entities.length - 1];
 
         const val = await fetchCrossEnv(secRefEnv, secRefPath, secRefKey);
-        interpolatedValue = interpolatedValue.replace(interpolationSyntax, val);
+        interpolatedValue = interpolatedValue.replaceAll(interpolationSyntax, val);
       }
     }
   }
 
+  expandedSec[key] = interpolatedValue;
   return interpolatedValue;
 };
 
@@ -1057,17 +1064,21 @@ export const expandSecrets = async (
   for (const key of Object.keys(secrets)) {
     if (expandedSec?.[key]) {
       secrets[key].value = expandedSec[key];
-      return;
+      continue;
     }
 
+    // this is to avoid recursion loop. So the graph should be direct graph rather than cyclic
+    // so for any recursion building if there is an entity two times same key meaning it will be looped
+    const recursionChainBreaker: Record<string, boolean> = {};
     const expandedVal = await recursivelyExpandSecret(
       expandedSec,
       interpolatedSec,
       crossSecEnvFetch,
+      recursionChainBreaker,
       key
     );
 
-    secrets[key].value = expandedVal || "";
+    secrets[key].value = expandedVal;
   }
 
   return secrets;
