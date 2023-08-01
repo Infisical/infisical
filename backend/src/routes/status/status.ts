@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import { getSecretScanningGitAppId, getSecretScanningPrivateKey, getSecretScanningWebhookSecret, getSmtpConfigured } from "../../config";
+import { getInviteOnlySignup, getSecretScanningGitAppId, getSecretScanningPrivateKey, getSecretScanningWebhookSecret, getSmtpConfigured } from "../../config";
 
 const router = express.Router();
 
@@ -11,6 +11,7 @@ router.get(
       message: "Ok",
       emailConfigured: await getSmtpConfigured(),
       secretScanningConfigured: await getSecretScanningGitAppId() && await getSecretScanningWebhookSecret() && await getSecretScanningPrivateKey(),
+      inviteOnlySignup: await getInviteOnlySignup()
     })
   }
 );

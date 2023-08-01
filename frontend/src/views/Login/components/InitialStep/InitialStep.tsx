@@ -11,6 +11,7 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import { Button, Input } from "@app/components/v2";
+import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import getOrganizations from "@app/pages/api/organization/getOrgs";
 
 type Props = {
@@ -34,7 +35,7 @@ export const InitialStep = ({
     const [isLoading, setIsLoading] = useState(false);
     const [loginError, setLoginError] = useState(false);
     const [loginEmailChosen, setLoginEmailChosen] = useState(false);
-
+    const { data: serverDetails } = useFetchServerStatus();
     const queryParams = new URLSearchParams(window.location.search);
 
     const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
@@ -200,12 +201,15 @@ export const InitialStep = ({
                     Continue with SAML SSO
                 </Button>
             </div>
-            <div className="mt-6 text-bunker-400 text-sm flex flex-row">
-                <span className="mr-1">Don&apos;t have an acount yet?</span>
-                <Link href="/signup">
-                    <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>{t("login.create-account")}</span>
-                </Link>
-            </div>
+            {
+                !serverDetails?.inviteOnlySignup ?
+                <div className="mt-6 text-bunker-400 text-sm flex flex-row">
+                    <span className="mr-1">Don&apos;t have an acount yet?</span>
+                    <Link href="/signup">
+                        <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>{t("login.create-account")}</span>
+                    </Link>
+                </div> : <div />
+            }
             <div className="text-bunker-400 text-sm flex flex-row">
                 <span className="mr-1">Forgot password?</span>
                 <Link href="/verify-email">
