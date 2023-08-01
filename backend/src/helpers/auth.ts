@@ -150,8 +150,8 @@ export const getAuthSTDPayload = async ({
 }) => {
 	const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split(".", 3);
 
-	let serviceTokenData = await ServiceTokenData
-		.findById(TOKEN_IDENTIFIER, "+secretHash +expiresAt").lean();
+	const serviceTokenData = await ServiceTokenData
+		.findById(TOKEN_IDENTIFIER, "+secretHash +expiresAt")
 
 	if (!serviceTokenData) {
 		throw ServiceTokenDataNotFoundError({ message: "Failed to find service token data" });
@@ -168,7 +168,7 @@ export const getAuthSTDPayload = async ({
 		message: "Failed to authenticate service token",
 	});
 
-	serviceTokenData = await ServiceTokenData
+	const serviceTokenDataToReturn = await ServiceTokenData
 		.findOneAndUpdate({
 			_id: new Types.ObjectId(TOKEN_IDENTIFIER),
 		}, {
@@ -176,11 +176,11 @@ export const getAuthSTDPayload = async ({
 		}, {
 			new: true,
 		})
-		.select("+encryptedKey +iv +tag").lean();
+		.select("+encryptedKey +iv +tag")
 
-	if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: "Failed to find service token data" });
+	if (!serviceTokenDataToReturn) throw ServiceTokenDataNotFoundError({ message: "Failed to find service token data" });
 
-	return serviceTokenData;
+	return serviceTokenDataToReturn;
 }
 
 /**
