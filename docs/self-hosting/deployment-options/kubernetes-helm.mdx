@@ -7,9 +7,6 @@ description: "Use our Helm chart to Install Infisical on your Kubernetes cluster
 - Installed [Helm package manager](https://helm.sh/) version v3.11.3 or greater
 - You have [kubectl](https://kubernetes.io/docs/reference/kubectl/kubectl/) installed and connected to your kubernetes cluster
 
-<iframe width="100%" height="375" src="https://www.youtube.com/embed/ugJZSCcZaV8" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
- 
-
 By deploying Infisical on Kubernetes, you can take advantage of its features to ensure that the application is fault-tolerant, highly available, and scalable.
 To make the installation process easier and more streamlined, we have created a Helm chart that you can use to install Infisical on Kubernetes. 
 
@@ -34,10 +31,11 @@ By default, the application will use the latest tag to retrieve the required Doc
 However, it's important to specify a particular version of Infisical during installation to prevent any significant updates from disrupting your deployment.
 View [properties for frontend and backend](https://github.com/Infisical/infisical/tree/main/helm-charts/infisical#parameters).
 
-
-To determine the appropriate versions to use for the docker images, follow the links bellow 
-- [frontend Docker image](https://hub.docker.com/r/infisical/frontend/tags) 
-- [backend Docker image](https://hub.docker.com/r/infisical/backend/tags)
+<Tip>
+  To find the latest version number of Infisical, follow the links bellow 
+  - [frontend Docker image](https://hub.docker.com/r/infisical/frontend/tags) 
+  - [backend Docker image](https://hub.docker.com/r/infisical/backend/tags)
+</Tip>
 
 ```yaml simple-values-example.yaml 
 frontend:
@@ -45,14 +43,14 @@ frontend:
   replicaCount: 2
   image:
     repository: infisical/frontend
-    tag: "v0.1.3"
+    tag: "v0.26.0" # <--- frontend version 
     pullPolicy: Always
 
 backend:
   replicaCount: 2
   image:
     repository: infisical/backend
-    tag: "v0.1.3"
+    tag: "v0.26.0" # <--- backend version 
     pullPolicy: Always
 ```
 
