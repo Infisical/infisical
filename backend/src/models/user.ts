@@ -3,6 +3,7 @@ import { Document, Schema, Types, model } from "mongoose";
 export enum AuthProvider {
 	EMAIL = "email",
 	GOOGLE = "google",
+	GITHUB = "github",
 	OKTA_SAML = "okta-saml",
 	AZURE_SAML = "azure-saml",
 	JUMPCLOUD_SAML = "jumpcloud-saml",
