@@ -136,6 +136,7 @@ Not sure where to get started? You can:
 
 - [Book a free, non-pressure pairing session / code walkthrough with one of our teammates](https://cal.com/tony-infisical/30-min-meeting-contributing)!
 - Join our <a href="https://infisical.com/slack">Slack</a>, and ask us any questions there.
+- Join our [community calls](https://us06web.zoom.us/j/82623506356) every Wednesday at 11am EST to ask any questions, provide feedback, hangout and more.
 
 ## Resources
 
