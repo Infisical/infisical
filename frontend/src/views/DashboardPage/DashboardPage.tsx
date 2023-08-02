@@ -740,7 +740,7 @@ export const DashboardPage = () => {
 
   return (
     <div className="container mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
-      <form autoComplete="off" className="h-full">
+      <form autoComplete="off" className="h-full flex flex-col">
         {/* breadcrumb row */}
         <div className="relative right-6 -top-2 mb-2 ml-6">
           <NavHeader
@@ -924,8 +924,8 @@ export const DashboardPage = () => {
         </div>
         <div
           className={`${
-            isEmptyPage ? "flex flex-col items-center justify-center" : ""
-          } no-scrollbar::-webkit-scrollbar mt-3 h-3/4 overflow-x-hidden overflow-y-scroll no-scrollbar`}
+            isEmptyPage ? "flex flex-col flex-grow items-center justify-center" : ""
+          } no-scrollbar::-webkit-scrollbar mt-3 flex flex-col overflow-x-hidden overflow-y-scroll no-scrollbar`}
           ref={secretContainer}
         >
           {!isEmptyPage && (
@@ -935,7 +935,7 @@ export const DashboardPage = () => {
               collisionDetection={closestCenter}
               modifiers={[restrictToVerticalAxis]}
             >
-              <TableContainer className="no-scrollbar::-webkit-scrollbar max-h-[calc(100%-120px)] no-scrollbar">
+              <TableContainer className="no-scrollbar::-webkit-scrollbar max-h-[calc(100%-120px)] no-scrollbar flex-grow">
                 <table className="secret-table relative">
                   <SecretTableHeader sortDir={sortDir} onSort={onSortSecrets} />
                   <tbody className="max-h-96 overflow-y-auto">
@@ -1016,9 +1016,12 @@ export const DashboardPage = () => {
           </FormProvider>
 
           <SecretDropzone
+            workspaceId={workspaceId}
             isSmaller={!isEmptyPage}
             onParsedEnv={handleUploadedEnv}
             onAddNewSecret={onAppendSecret}
+            environments={userAvailableEnvs}
+            decryptFileKey={latestFileKey!}
           />
         </div>
         {/* secrets table and drawers, modals */}
