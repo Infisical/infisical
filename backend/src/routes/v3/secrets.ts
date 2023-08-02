@@ -57,7 +57,7 @@ router.get(
     requiredPermissions: [PERMISSION_READ_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: true,
-    checkIPAllowlist: false
+    checkIPAllowlist: true
   }),
   secretsController.getSecretByNameRaw
 );
@@ -86,7 +86,7 @@ router.post(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: true,
-    checkIPAllowlist: false
+    checkIPAllowlist: true
   }),
   secretsController.createSecretRaw
 );
@@ -115,7 +115,7 @@ router.patch(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: true,
-    checkIPAllowlist: false
+    checkIPAllowlist: true
   }),
   secretsController.updateSecretByNameRaw
 );
@@ -143,7 +143,7 @@ router.delete(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: true,
-    checkIPAllowlist: false
+    checkIPAllowlist: true
   }),
   secretsController.deleteSecretByNameRaw
 );
@@ -169,7 +169,7 @@ router.get(
     requiredPermissions: [PERMISSION_READ_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: false,
-    checkIPAllowlist: false
+    checkIPAllowlist: true
   }),
   secretsController.getSecrets
 );
@@ -205,7 +205,7 @@ router.post(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: false,
-    checkIPAllowlist: false
+    checkIPAllowlist: true
   }),
   secretsController.createSecret
 );
@@ -232,7 +232,7 @@ router.get(
     locationEnvironment: "query",
     requiredPermissions: [PERMISSION_READ_SECRETS],
     requireBlindIndicesEnabled: true,
-    checkIPAllowlist: false
+    checkIPAllowlist: true
   }),
   secretsController.getSecretByName
 );
@@ -263,7 +263,7 @@ router.patch(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: false,
-    checkIPAllowlist: false
+    checkIPAllowlist: true
   }),
   secretsController.updateSecretByName
 );
@@ -291,7 +291,7 @@ router.delete(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: false,
-    checkIPAllowlist: false
+    checkIPAllowlist: true
   }),
   secretsController.deleteSecretByName
 );
