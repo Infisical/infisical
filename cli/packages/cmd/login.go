@@ -57,7 +57,7 @@ var loginCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 		// if the key can't be found or there is an error getting current credentials from key ring, allow them to override
-		if err != nil && (strings.Contains(err.Error(), "The specified item could not be found in the keyring") || strings.Contains(err.Error(), "unable to get key from Keyring") || strings.Contains(err.Error(), "GetUserCredsFromKeyRing")) {
+		if err != nil && (strings.Contains(err.Error(), "we couldn't find your logged in details")) {
 			log.Debug().Err(err)
 		} else if err != nil {
 			util.HandleError(err)
@@ -117,8 +117,7 @@ var loginCmd = &cobra.Command{
 
 		err = util.StoreUserCredsInKeyRing(&userCredentialsToBeStored)
 		if err != nil {
-			currentVault, _ := util.GetCurrentVaultBackend()
-			log.Error().Msgf("Unable to store your credentials in system vault [%s]. Rerun with flag -d to see full logs", currentVault)
+			log.Error().Msgf("Unable to store your credentials in system vault [%s]")
 			log.Error().Msgf("\nTo trouble shoot further, read https://infisical.com/docs/cli/faq")
 			log.Debug().Err(err)
 			//return here

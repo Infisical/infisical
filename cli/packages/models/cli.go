@@ -1,9 +1,5 @@
 package models
 
-import (
-	"github.com/99designs/keyring"
-)
-
 type UserCredentials struct {
 	Email        string `json:"email"`
 	PrivateKey   string `json:"privateKey"`
@@ -13,10 +9,9 @@ type UserCredentials struct {
 
 // The file struct for Infisical config file
 type ConfigFile struct {
-	LoggedInUserEmail  string              `json:"loggedInUserEmail"`
-	LoggedInUserDomain string              `json:"LoggedInUserDomain,omitempty"`
-	VaultBackendType   keyring.BackendType `json:"vaultBackendType"`
-	LoggedInUsers      []LoggedInUser      `json:"loggedInUsers,omitempty"`
+	LoggedInUserEmail  string         `json:"loggedInUserEmail"`
+	LoggedInUserDomain string         `json:"LoggedInUserDomain,omitempty"`
+	LoggedInUsers      []LoggedInUser `json:"loggedInUsers,omitempty"`
 }
 
 type LoggedInUser struct {

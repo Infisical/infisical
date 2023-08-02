@@ -207,6 +207,10 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 			return nil, err
 		}
 
+		if loggedInUserDetails.LoginExpired {
+			PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+		}
+
 		workspaceFile, err := GetWorkSpaceFromFile()
 		if err != nil {
 			return nil, err
