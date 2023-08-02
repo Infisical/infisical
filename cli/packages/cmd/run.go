@@ -188,7 +188,7 @@ func filterReservedEnvVars(env map[string]models.SingleEnvironmentVariable) {
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-	runCmd.Flags().String("token", "", "Fetch secrets using the service token [can also set via environment variable name: INFISICAL_TOKEN")
+	runCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	runCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
 	runCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	runCmd.Flags().Bool("include-imports", true, "Import linked secrets ")

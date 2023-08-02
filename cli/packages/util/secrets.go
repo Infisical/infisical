@@ -17,18 +17,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func containsGlobPatterns(secretPath string) bool {
-	globChars := []string{"*", "?", "[", "]", "{", "}", "**"}
-	normalizedPath := path.Clean(secretPath)
-	for _, char := range globChars {
-		if strings.Contains(normalizedPath, char) {
-			return true
-		}
-	}
-
-	return false
-}
-
 func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment string, secretPath string, includeImports bool) ([]models.SingleEnvironmentVariable, api.GetServiceTokenDetailsResponse, error) {
 	serviceTokenParts := strings.SplitN(fullServiceToken, ".", 4)
 	if len(serviceTokenParts) < 4 {
@@ -38,6 +26,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment str
 	serviceToken := fmt.Sprintf("%v.%v.%v", serviceTokenParts[0], serviceTokenParts[1], serviceTokenParts[2])
 
 	httpClient := resty.New()
+
 	httpClient.SetAuthToken(serviceToken).
 		SetHeader("Accept", "application/json")
 
@@ -209,19 +198,13 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 			log.Debug().Msg("GetAllEnvironmentVariables: Connected to internet, checking logged in creds")
 			RequireLocalWorkspaceFile()
 			RequireLogin()
-		} else {
-			PrintErrorMessageAndExit("It looks like you are not connected to the internet, please reconnect and try again")
 		}
 
-		log.Trace().Msg("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
+		log.Debug().Msg("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
 
 		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
 		if err != nil {
 			return nil, err
-		}
-
-		if loggedInUserDetails.LoginExpired {
-			PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
 		}
 
 		workspaceFile, err := GetWorkSpaceFromFile()
@@ -259,7 +242,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 		}
 
 	} else {
-		log.Trace().Msg("Trying to fetch secrets using service token")
+		log.Debug().Msg("Trying to fetch secrets using service token")
 		secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(infisicalToken, params.Environment, params.SecretsPath, params.IncludeImport)
 	}
 
@@ -429,11 +412,7 @@ func ExpandSecrets(secrets []models.SingleEnvironmentVariable, infisicalToken st
 				// if not in cross reference cache, fetch it from server
 				refSecs, err := GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: env, InfisicalToken: infisicalToken, SecretsPath: secPath})
 				if err != nil {
-					if infisicalToken != "" {
-						HandleError(err, fmt.Sprintf("Could not fetch secrets in environment: %s secret-path: %s", env, secPath), "Please ensure your service token has access to the required environments and paths to fetch the requested secrets")
-					} else {
-						HandleError(err, fmt.Sprintf("Could not fetch secrets in environment: %s secret-path: %s", env, secPath))
-					}
+					HandleError(err, fmt.Sprintf("Could not fetch secrets in environment: %s secret-path: %s", env, secPath), "If you are using a service token to fetch secrets, please ensure it is valid")
 				}
 				refSecsByKey := getSecretsByKeys(refSecs)
 				// save it to avoid calling api again for same environment and folder path
@@ -697,6 +676,7 @@ func GetEnvelopmentBasedOnGitBranch(workspaceFile models.WorkspaceConfigFile) st
 	if err == nil && ok {
 		return envBasedOnGitBranch
 	} else {
+		log.Debug().Msgf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
 		return ""
 	}
 }

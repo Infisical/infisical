@@ -166,6 +166,7 @@
             "cli/commands/run",
             "cli/commands/secrets",
             "cli/commands/export",
+            "cli/commands/vault",
             "cli/commands/user",
             "cli/commands/reset",
             {

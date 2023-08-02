@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/go-resty/resty/v2"
@@ -25,10 +24,8 @@ func CallGetEncryptedWorkspaceKey(httpClient *resty.Client, request GetEncrypted
 		return GetEncryptedWorkspaceKeyResponse{}, fmt.Errorf("CallGetEncryptedWorkspaceKey: Unable to complete api request [err=%s]", err)
 	}
 
-	PrintApiRequestDebugLog(response)
-
 	if response.IsError() {
-		return GetEncryptedWorkspaceKeyResponse{}, PrintApiRequestError(response)
+		return GetEncryptedWorkspaceKeyResponse{}, fmt.Errorf("CallGetEncryptedWorkspaceKey: Unsuccessful response: [response=%s]", response)
 	}
 
 	return result, nil
@@ -42,14 +39,12 @@ func CallGetServiceTokenDetailsV2(httpClient *resty.Client) (GetServiceTokenDeta
 		SetHeader("User-Agent", USER_AGENT).
 		Get(fmt.Sprintf("%v/v2/service-token", config.INFISICAL_URL))
 
-	PrintApiRequestDebugLog(response)
-
 	if err != nil {
 		return GetServiceTokenDetailsResponse{}, fmt.Errorf("CallGetServiceTokenDetails: Unable to complete api request [err=%s]", err)
 	}
 
 	if response.IsError() {
-		return GetServiceTokenDetailsResponse{}, PrintApiRequestError(response)
+		return GetServiceTokenDetailsResponse{}, fmt.Errorf("CallGetServiceTokenDetails: Unsuccessful response: [response=%s]", response)
 	}
 
 	return tokenDetailsResponse, nil
@@ -64,14 +59,12 @@ func CallLogin1V2(httpClient *resty.Client, request GetLoginOneV2Request) (GetLo
 		SetBody(request).
 		Post(fmt.Sprintf("%v/v2/auth/login1", config.INFISICAL_URL))
 
-	PrintApiRequestDebugLog(response)
-
 	if err != nil {
 		return GetLoginOneV2Response{}, fmt.Errorf("CallLogin1V2: Unable to complete api request [err=%s]", err)
 	}
 
 	if response.IsError() {
-		return GetLoginOneV2Response{}, PrintApiRequestError(response)
+		return GetLoginOneV2Response{}, fmt.Errorf("CallLogin1V2: Unsuccessful response: [response=%s]", response)
 	}
 
 	return loginOneV2Response, nil
@@ -103,8 +96,6 @@ func CallVerifyMfaToken(httpClient *resty.Client, request VerifyMfaTokenRequest)
 	if refreshToken != nil {
 		verifyMfaTokenResponse.RefreshToken = refreshToken.Value
 	}
-
-	PrintApiRequestDebugLog(response)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("CallVerifyMfaToken: Unable to complete api request [err=%s]", err)
@@ -142,14 +133,12 @@ func CallLogin2V2(httpClient *resty.Client, request GetLoginTwoV2Request) (GetLo
 		loginTwoV2Response.RefreshToken = refreshToken.Value
 	}
 
-	PrintApiRequestDebugLog(response)
-
 	if err != nil {
 		return GetLoginTwoV2Response{}, fmt.Errorf("CallLogin2V2: Unable to complete api request [err=%s]", err)
 	}
 
 	if response.IsError() {
-		return GetLoginTwoV2Response{}, PrintApiRequestError(response)
+		return GetLoginTwoV2Response{}, fmt.Errorf("CallLogin2V2: Unsuccessful response: [response=%s]", response)
 	}
 
 	return loginTwoV2Response, nil
@@ -163,14 +152,12 @@ func CallGetAllWorkSpacesUserBelongsTo(httpClient *resty.Client) (GetWorkSpacesR
 		SetHeader("User-Agent", USER_AGENT).
 		Get(fmt.Sprintf("%v/v1/workspace", config.INFISICAL_URL))
 
-	PrintApiRequestDebugLog(response)
-
 	if err != nil {
 		return GetWorkSpacesResponse{}, err
 	}
 
 	if response.IsError() {
-		return GetWorkSpacesResponse{}, PrintApiRequestError(response)
+		return GetWorkSpacesResponse{}, fmt.Errorf("CallGetAllWorkSpacesUserBelongsTo: Unsuccessful response:  [response=%v]", response)
 	}
 
 	return workSpacesResponse, nil
@@ -183,8 +170,6 @@ func CallIsAuthenticated(httpClient *resty.Client) bool {
 		SetResult(&workSpacesResponse).
 		SetHeader("User-Agent", USER_AGENT).
 		Post(fmt.Sprintf("%v/v1/auth/checkAuth", config.INFISICAL_URL))
-
-	PrintApiRequestDebugLog(response)
 
 	if err != nil {
 		return false
@@ -206,14 +191,12 @@ func CallGetAccessibleEnvironments(httpClient *resty.Client, request GetAccessib
 		SetHeader("User-Agent", USER_AGENT).
 		Get(fmt.Sprintf("%v/v2/workspace/%s/environments", config.INFISICAL_URL, request.WorkspaceId))
 
-	PrintApiRequestDebugLog(response)
-
 	if err != nil {
 		return GetAccessibleEnvironmentsResponse{}, err
 	}
 
 	if response.IsError() {
-		return GetAccessibleEnvironmentsResponse{}, PrintApiRequestError(response)
+		return GetAccessibleEnvironmentsResponse{}, fmt.Errorf("CallGetAccessibleEnvironments: Unsuccessful response:  [response=%v]", response)
 	}
 
 	return accessibleEnvironmentsResponse, nil
@@ -231,14 +214,12 @@ func CallGetNewAccessTokenWithRefreshToken(httpClient *resty.Client, refreshToke
 		}).
 		Post(fmt.Sprintf("%v/v1/auth/token", config.INFISICAL_URL))
 
-	PrintApiRequestDebugLog(response)
-
 	if err != nil {
 		return GetNewAccessTokenWithRefreshTokenResponse{}, err
 	}
 
 	if response.IsError() {
-		return GetNewAccessTokenWithRefreshTokenResponse{}, PrintApiRequestError(response)
+		return GetNewAccessTokenWithRefreshTokenResponse{}, fmt.Errorf("CallGetNewAccessTokenWithRefreshToken: Unsuccessful response:  [response=%v]", response)
 	}
 
 	return newAccessToken, nil
@@ -264,8 +245,6 @@ func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Req
 
 	response, err := httpRequest.Get(fmt.Sprintf("%v/v3/secrets", config.INFISICAL_URL))
 
-	PrintApiRequestDebugLog(response)
-
 	if err != nil {
 		return GetEncryptedSecretsV3Response{}, fmt.Errorf("CallGetSecretsV3: Unable to complete api request [err=%s]", err)
 	}
@@ -274,7 +253,7 @@ func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Req
 		if response.StatusCode() == 401 {
 			return GetEncryptedSecretsV3Response{}, fmt.Errorf("CallGetSecretsV3: Request to access secrets with [environment=%v] [path=%v] [workspaceId=%v] is denied. Please check if your authentication method has access to requested scope", request.Environment, request.SecretPath, request.WorkspaceId)
 		} else {
-			return GetEncryptedSecretsV3Response{}, fmt.Errorf("CallGetSecretsV3: Unsuccessful response with http [status=%v]. Please make sure your secret path, workspace and environment name are all correct", response.StatusCode())
+			return GetEncryptedSecretsV3Response{}, fmt.Errorf("CallGetSecretsV3: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%v]", response.RawResponse)
 		}
 	}
 
@@ -290,14 +269,12 @@ func CallCreateSecretsV3(httpClient *resty.Client, request CreateSecretV3Request
 		SetBody(request).
 		Post(fmt.Sprintf("%v/v3/secrets/%s", config.INFISICAL_URL, request.SecretName))
 
-	PrintApiRequestDebugLog(response)
-
 	if err != nil {
 		return fmt.Errorf("CallCreateSecretsV3: Unable to complete api request [err=%s]", err)
 	}
 
 	if response.IsError() {
-		return fmt.Errorf("CallCreateSecretsV3: Unsuccessful response with http [status=%v]. Please make sure your secret path, workspace and environment name are all correct", response.StatusCode())
+		return fmt.Errorf("CallCreateSecretsV3: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
 	}
 
 	return nil
@@ -312,14 +289,12 @@ func CallDeleteSecretsV3(httpClient *resty.Client, request DeleteSecretV3Request
 		SetBody(request).
 		Delete(fmt.Sprintf("%v/v3/secrets/%s", config.INFISICAL_URL, request.SecretName))
 
-	PrintApiRequestDebugLog(response)
-
 	if err != nil {
 		return fmt.Errorf("CallDeleteSecretsV3: Unable to complete api request [err=%s]", err)
 	}
 
 	if response.IsError() {
-		return fmt.Errorf("CallDeleteSecretsV3: Unsuccessful response with http [status=%v]. Please make sure your secret path, workspace and environment name are all correct", response.StatusCode())
+		return fmt.Errorf("CallDeleteSecretsV3: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
 	}
 
 	return nil
@@ -333,8 +308,6 @@ func CallUpdateSecretsV3(httpClient *resty.Client, request UpdateSecretByNameV3R
 		SetHeader("User-Agent", USER_AGENT).
 		SetBody(request).
 		Patch(fmt.Sprintf("%v/v3/secrets/%s", config.INFISICAL_URL, request.SecretName))
-
-	PrintApiRequestDebugLog(response)
 
 	if err != nil {
 		return fmt.Errorf("CallUpdateSecretsV3: Unable to complete api request [err=%s]", err)
@@ -356,8 +329,6 @@ func CallGetSingleSecretByNameV3(httpClient *resty.Client, request CreateSecretV
 		SetBody(request).
 		Post(fmt.Sprintf("%v/v3/secrets/%s", config.INFISICAL_URL, request.SecretName))
 
-	PrintApiRequestDebugLog(response)
-
 	if err != nil {
 		return fmt.Errorf("CallGetSingleSecretByNameV3: Unable to complete api request [err=%s]", err)
 	}
@@ -367,18 +338,4 @@ func CallGetSingleSecretByNameV3(httpClient *resty.Client, request CreateSecretV
 	}
 
 	return nil
-}
-
-// API helper
-func PrintApiRequestError(response *resty.Response) error {
-	method := strings.ToUpper(response.Request.Method)
-	url := response.Request.URL
-	responseStatus := response.StatusCode()
-	return fmt.Errorf("request to call %v %v resulted in response status %v", method, url, responseStatus)
-}
-
-func PrintApiRequestDebugLog(response *resty.Response) {
-	method := strings.ToUpper(response.Request.Method)
-	url := response.Request.URL
-	log.Debug().Msgf("requesting to call %v %v with [request=%v] returned [response=%v]", method, url, response.Request, response.RawResponse)
 }

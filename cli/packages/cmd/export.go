@@ -77,7 +77,7 @@ var exportCmd = &cobra.Command{
 
 		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, WorkspaceId: projectId, SecretsPath: secretsPath})
 		if err != nil {
-			util.HandleError(err, "Something went wrong when fetching secrets for export")
+			util.HandleError(err, "Unable to fetch secrets")
 		}
 
 		if secretOverriding {
@@ -112,7 +112,7 @@ func init() {
 	exportCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	exportCmd.Flags().StringP("format", "f", "dotenv", "Set the format of the output file (dotenv, json, csv)")
 	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
-	exportCmd.Flags().String("token", "", "Fetch secrets using the service token [can also set via environment variable name: INFISICAL_TOKEN")
+	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	exportCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	exportCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets from")
 	exportCmd.Flags().String("path", "/", "get secrets within a folder path")

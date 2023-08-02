@@ -26,8 +26,13 @@ var resetCmd = &cobra.Command{
 
 		os.RemoveAll(pathToDir)
 
-		// TODO
-		// keyring.Delete()
+		// delete keyring
+		keyringInstance, err := util.GetKeyRing()
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		keyringInstance.Remove(util.KEYRING_SERVICE_NAME)
 
 		// delete secrets backup
 		util.DeleteBackupSecrets()

@@ -11,6 +11,8 @@ import (
 	"strings"
 	"unicode"
 
+	"crypto/sha256"
+
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
@@ -126,10 +128,6 @@ var secretsSetCmd = &cobra.Command{
 			util.HandleError(err, "Unable to authenticate")
 		}
 
-		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
-		}
-
 		httpClient := resty.New().
 			SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken).
 			SetHeader("Accept", "application/json")
@@ -188,11 +186,13 @@ var secretsSetCmd = &cobra.Command{
 			key := strings.ToUpper(splitKeyValueFromArg[0])
 			value := splitKeyValueFromArg[1]
 
+			hashedKey := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
 			encryptedKey, err := crypto.EncryptSymmetric([]byte(key), []byte(plainTextEncryptionKey))
 			if err != nil {
 				util.HandleError(err, "unable to encrypt your secrets")
 			}
 
+			hashedValue := fmt.Sprintf("%x", sha256.Sum256([]byte(value)))
 			encryptedValue, err := crypto.EncryptSymmetric([]byte(value), []byte(plainTextEncryptionKey))
 			if err != nil {
 				util.HandleError(err, "unable to encrypt your secrets")
@@ -205,6 +205,7 @@ var secretsSetCmd = &cobra.Command{
 					SecretValueCiphertext: base64.StdEncoding.EncodeToString(encryptedValue.CipherText),
 					SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
 					SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
+					SecretValueHash:       hashedValue,
 					PlainTextKey:          key,
 					Type:                  existingSecret.Type,
 				}
@@ -232,9 +233,11 @@ var secretsSetCmd = &cobra.Command{
 					SecretKeyCiphertext:   base64.StdEncoding.EncodeToString(encryptedKey.CipherText),
 					SecretKeyIV:           base64.StdEncoding.EncodeToString(encryptedKey.Nonce),
 					SecretKeyTag:          base64.StdEncoding.EncodeToString(encryptedKey.AuthTag),
+					SecretKeyHash:         hashedKey,
 					SecretValueCiphertext: base64.StdEncoding.EncodeToString(encryptedValue.CipherText),
 					SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
 					SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
+					SecretValueHash:       hashedValue,
 					Type:                  util.SECRET_TYPE_SHARED,
 					PlainTextKey:          key,
 				}
@@ -329,10 +332,6 @@ var secretsDeleteCmd = &cobra.Command{
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 		if err != nil {
 			util.HandleError(err, "Unable to authenticate")
-		}
-
-		if loggedInUserDetails.LoginExpired {
-			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
 		}
 
 		workspaceFile, err := util.GetWorkSpaceFromFile()
@@ -628,10 +627,10 @@ func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]mod
 
 func init() {
 
-	secretsGenerateExampleEnvCmd.Flags().String("token", "", "Fetch secrets using the service token [can also set via environment variable name: INFISICAL_TOKEN")
+	secretsGenerateExampleEnvCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	secretsCmd.AddCommand(secretsGenerateExampleEnvCmd)
 
-	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the service token [can also set via environment variable name: INFISICAL_TOKEN")
+	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	secretsCmd.AddCommand(secretsGetCmd)
 
 	secretsCmd.AddCommand(secretsSetCmd)
@@ -650,7 +649,7 @@ func init() {
 		util.RequireLocalWorkspaceFile()
 	}
 
-	secretsCmd.Flags().String("token", "", "Fetch secrets using the service token [can also set via environment variable name: INFISICAL_TOKEN")
+	secretsCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
 	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	secretsCmd.Flags().Bool("include-imports", true, "Imported linked secrets ")

@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/fatih/color"
-	"github.com/rs/zerolog/log"
 )
 
 func HandleError(err error, messages ...string) {
@@ -17,11 +16,12 @@ func PrintErrorAndExit(exitCode int, err error, messages ...string) {
 
 	if len(messages) > 0 {
 		for _, message := range messages {
-			log.Info().Msg(message)
+			fmt.Println(message)
 		}
 	}
 
-	log.Info().Msg("If this issue continues, get support at https://infisical.com/slack")
+	supportMsg := fmt.Sprintf("\n\nIf this issue continues, get support at https://infisical.com/slack")
+	fmt.Fprintln(os.Stderr, supportMsg)
 
 	os.Exit(exitCode)
 }
@@ -45,5 +45,5 @@ func PrintErrorMessageAndExit(messages ...string) {
 }
 
 func printError(e error) {
-	log.Error().Msg(e.Error())
+	color.New(color.FgRed).Fprintf(os.Stderr, "Hmm, we ran into an error: %v\n", e)
 }
