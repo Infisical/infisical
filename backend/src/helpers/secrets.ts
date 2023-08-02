@@ -1042,6 +1042,13 @@ const recursivelyExpandSecret = async (
   return interpolatedValue;
 };
 
+// used to convert multi line ones to quotes ones with \n
+const formatMultiValueEnv = (val?: string) => {
+  if (!val) return "";
+  if (!val.match("\n")) return val;
+  return `"${val.replace(/\n/g, "\\n")}"`;
+};
+
 export const expandSecrets = async (
   workspaceId: string,
   rootEncKey: string,
@@ -1063,7 +1070,7 @@ export const expandSecrets = async (
 
   for (const key of Object.keys(secrets)) {
     if (expandedSec?.[key]) {
-      secrets[key].value = expandedSec[key];
+      secrets[key].value = formatMultiValueEnv(expandedSec[key]);
       continue;
     }
 
@@ -1078,7 +1085,7 @@ export const expandSecrets = async (
       key
     );
 
-    secrets[key].value = expandedVal;
+    secrets[key].value = formatMultiValueEnv(expandedVal);
   }
 
   return secrets;
