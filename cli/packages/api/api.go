@@ -196,7 +196,7 @@ func CallGetAccessibleEnvironments(httpClient *resty.Client, request GetAccessib
 	}
 
 	if response.IsError() {
-		return GetAccessibleEnvironmentsResponse{}, fmt.Errorf("CallGetAccessibleEnvironments: Unsuccessful response:  [response=%v]", response)
+		return GetAccessibleEnvironmentsResponse{}, fmt.Errorf("CallGetAccessibleEnvironments: Unsuccessful response:  [response=%v] [response-code=%v] [url=%s]", response, response.StatusCode(), response.Request.URL)
 	}
 
 	return accessibleEnvironmentsResponse, nil
