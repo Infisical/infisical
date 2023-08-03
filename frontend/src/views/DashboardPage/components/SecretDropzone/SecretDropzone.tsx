@@ -265,7 +265,7 @@ export const SecretDropzone = ({
                 <ModalContent
                   className="max-w-2xl"
                   title="Copy Secret From An Environment"
-                  subTitle="This can be used to populate your dashboard with secrets from another board"
+                  subTitle="Copy/paste secrets from other environments into this context"
                 >
                   <form>
                     <div className="flex items-center space-x-2">
