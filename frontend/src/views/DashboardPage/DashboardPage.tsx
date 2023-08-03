@@ -971,6 +971,7 @@ export const DashboardPage = () => {
                         register={register}
                         control={control}
                         setValue={setValue}
+                        autoCapitalization={currentWorkspace?.autoCapitalization}
                       />
                     ))}
                     {!isReadOnly && !isRollbackMode && (
