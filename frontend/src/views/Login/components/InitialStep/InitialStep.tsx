@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub,faGoogle } from "@fortawesome/free-brands-svg-icons";
+import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import axios from "axios"
 
@@ -116,47 +117,6 @@ export const InitialStep = ({
     return (
         <form onSubmit={handleLogin} className='flex flex-col mx-auto w-full justify-center items-center'>
             <h1 className='text-xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 text-center mb-8' >Login to Infisical</h1>
-            <div className='lg:w-1/6 w-1/4 min-w-[20rem] flex flex-row items-center my-4 py-2'>
-                <div className='w-full border-t border-mineshaft-500' />
-            </div>
-            <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md'>
-                <Input
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    type="email"
-                    placeholder="Enter your email..."
-                    isRequired
-                    autoComplete="username"
-                    className="h-12"
-                />
-            </div>
-            <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
-                <Input
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    type="password"
-                    placeholder="Enter your password..."
-                    isRequired
-                    autoComplete="current-password"
-                    id="current-password"
-                    className="h-12 select:-webkit-autofill:focus"
-                />
-            </div>
-            <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
-                <Button
-                    type="submit"
-                    size="sm"
-                    isFullWidth
-                    className='h-12'
-                    colorSchema="primary"
-                    variant="solid"
-                    isLoading={isLoading}
-                > Continue with Email </Button>
-            </div>
-            {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
-            <div className='lg:w-1/6 w-1/4 min-w-[20rem] flex flex-row items-center mt-4 py-2'>
-                <div className='w-full border-t border-mineshaft-500' />
-            </div>
             <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
                 <Button
                     colorSchema="primary" 
@@ -168,7 +128,7 @@ export const InitialStep = ({
                         window.close();
                     }} 
                     leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-2" />}
-                    className="h-12 w-full mx-0"
+                    className="h-11 w-full mx-0"
                 > 
                     {t("login.continue-with-google")}
                 </Button>
@@ -185,7 +145,7 @@ export const InitialStep = ({
                         window.close();
                     }} 
                     leftIcon={<FontAwesomeIcon icon={faGithub} className="mr-2" />}
-                    className="h-12 w-full mx-0"
+                    className="h-11 w-full mx-0"
                 > 
                     Continue with GitHub
                 </Button>
@@ -197,12 +157,52 @@ export const InitialStep = ({
                     onClick={() => {
                         setStep(2);
                     }}
-                    isFullWidth
-                    className="h-12 w-full mx-0"
+                    leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
+                    className="h-11 w-full mx-0"
                 >
-                    Continue with SAML SSO
+                    Continue with SSO
                 </Button>
             </div>
+            <div className='lg:w-1/6 w-1/4 min-w-[20rem] flex flex-row items-center my-4 py-2'>
+                <div className='w-full border-t border-mineshaft-400/60' /> 
+                <span className="mx-2 text-mineshaft-200 text-xs">or</span>
+                <div className='w-full border-t border-mineshaft-400/60' />
+            </div>
+            <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md'>
+                <Input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    type="email"
+                    placeholder="Enter your email..."
+                    isRequired
+                    autoComplete="username"
+                    className="h-11"
+                />
+            </div>
+            <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
+                <Input
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    type="password"
+                    placeholder="Enter your password..."
+                    isRequired
+                    autoComplete="current-password"
+                    id="current-password"
+                    className="h-11 select:-webkit-autofill:focus"
+                />
+            </div>
+            <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-5'>
+                <Button
+                    type="submit"
+                    size="sm"
+                    isFullWidth
+                    className='h-11'
+                    colorSchema="primary"
+                    variant="solid"
+                    isLoading={isLoading}
+                > Continue with Email </Button>
+            </div>
+            {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
             {
                 !serverDetails?.inviteOnlySignup ?
                 <div className="mt-6 text-bunker-400 text-sm flex flex-row">

@@ -87,7 +87,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     ref
   ): JSX.Element => {
     const handleInput = (event: ChangeEvent<HTMLInputElement>) => {
-      console.log(123, props, autoCapitalization)
       if (autoCapitalization) {
         // eslint-disable-next-line no-param-reassign
         event.target.value = event.target.value.toUpperCase();

@@ -281,7 +281,6 @@ export const SecretInputRow = memo(
                     value={editorRef}
                     isVisible={!isSecretValueHidden}
                     onChange={(val, html) => {
-                      console.log(val);
                       onChange(val);
                       setEditorRef(html);
                     }}
