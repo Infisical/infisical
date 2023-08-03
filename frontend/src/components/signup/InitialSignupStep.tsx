@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faGoogle } from "@fortawesome/free-brands-svg-icons";
+import { faGithub,faGoogle } from "@fortawesome/free-brands-svg-icons";
+import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button } from "../v2";
@@ -24,10 +25,24 @@ export default function InitialSignupStep({
                     window.open("/api/v1/sso/redirect/google");
                     window.close();
                 }}
-                leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-1" />}
+                leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-2" />}
                 className="h-14 w-full mx-0"
             >
                 {t("signup.continue-with-google")}
+            </Button>
+        </div>
+        <div className='lg:w-1/6 w-1/4 min-w-[20rem] rounded-md mt-4'>
+            <Button
+                colorSchema="primary"
+                variant="outline_bg"
+                onClick={() => {
+                    window.open("/api/v1/sso/redirect/github");
+                    window.close();
+                }}
+                leftIcon={<FontAwesomeIcon icon={faGithub} className="mr-2" />}
+                className="h-14 w-full mx-0"
+            >
+                Continue with GitHub
             </Button>
         </div>
         <div className='lg:w-1/6 w-1/4 min-w-[20rem] text-center rounded-md mt-4'>
@@ -37,10 +52,10 @@ export default function InitialSignupStep({
                 onClick={() => {
                     setIsSignupWithEmail(true);
                 }}
-                isFullWidth
+                leftIcon={<FontAwesomeIcon icon={faEnvelope} className="mr-2" />}
                 className="h-14 w-full mx-0"
             >
-                Sign Up with email
+                Continue with Email
             </Button>
         </div>
         <div className='lg:w-1/6 w-1/4 min-w-[20rem] text-center rounded-md mt-4'>
