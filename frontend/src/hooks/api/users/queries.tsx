@@ -293,12 +293,10 @@ export const useRevokeMySessions = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      console.log("useRevokeAllSessions 1");
       const { data } = await apiRequest.delete(
         "/api/v2/users/me/sessions"
       );
 
-      console.log("useRevokeAllSessions 2: ", data);
       return data;
     },
     onSuccess() {

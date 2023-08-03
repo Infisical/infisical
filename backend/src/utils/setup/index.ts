@@ -24,8 +24,6 @@ import {
   reencryptSecretBlindIndexDataSalts
 } from "./reencryptData";
 import {
-  getClientIdGoogle,
-  getClientSecretGoogle,
   getMongoURL,
   getNodeEnv,
   getSentryDSN
@@ -55,12 +53,7 @@ export const setup = async () => {
   // initializing the database connection
   await DatabaseService.initDatabase(await getMongoURL());
 
-  const googleClientSecret: string = await getClientSecretGoogle();
-  const googleClientId: string = await getClientIdGoogle();
-
-  if (googleClientId && googleClientSecret) {
-    await initializePassport();
-  }
+  await initializePassport();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY

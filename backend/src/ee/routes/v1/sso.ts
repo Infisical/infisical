@@ -42,6 +42,29 @@ router.get(
 );
 
 router.get(
+  "/redirect/github",
+  authLimiter,
+  (req, res, next) => {
+    passport.authenticate("github", {
+      session: false,
+      ...(req.query.callback_port ? {
+        state: req.query.callback_port as string
+      } : {})
+    })(req, res, next);
+  }
+);
+
+router.get(
+  "/github",
+  authLimiter,
+  passport.authenticate("github", { 
+    failureRedirect: "/login/provider/error", 
+    session: false 
+  }),
+  ssoController.redirectSSO
+);
+
+router.get(
   "/redirect/saml2/:ssoIdentifier",
   authLimiter,
   (req, res, next) => {

@@ -17,7 +17,10 @@ import {
 const authMethods = [
     { label: "Email", value: "email" },
     { label: "Google SSO", value: "google" },
-    { label: "Okta SAML 2.0", value: "okta-saml" },
+    { label: "GitHub SSO", value: "github" },
+    { label: "Okta SAML", value: "okta-saml" },
+    { label: "Azure SAML", value: "azure-saml" },
+    { label: "JumpCloud SAML", value: "jumpcloud-saml" }
 ];
 
 const schema = yup.object({
@@ -54,9 +57,13 @@ export const AuthMethodSection = () => {
         authMethod
     }: FormData) => {
         try {
-            if (authMethod === "okta-saml") {
+            if (
+                authMethod === "okta-saml" 
+                || authMethod === "azure-saml"
+                || authMethod === "jumpcloud-saml"
+            ) {
                 createNotification({
-                    text: "Okta SAML 2.0 can only be configured in your organization settings",
+                    text: "SAML authentication can only be configured in your organization settings",
                     type: "error"
                 });
                 

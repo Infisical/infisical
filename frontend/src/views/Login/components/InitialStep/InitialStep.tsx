@@ -2,7 +2,7 @@ import { FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faGoogle } from "@fortawesome/free-brands-svg-icons";
+import { faGithub,faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import axios from "axios"
 
@@ -34,7 +34,6 @@ export const InitialStep = ({
     const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState(false);
     const [loginError, setLoginError] = useState(false);
-    const [loginEmailChosen, setLoginEmailChosen] = useState(false);
     const { data: serverDetails } = useFetchServerStatus();
     const queryParams = new URLSearchParams(window.location.search);
 
@@ -68,8 +67,7 @@ export const InitialStep = ({
 
                     // send request to server endpoint
                     const instance = axios.create()
-                    const cliResp = await instance.post(cliUrl, { ...isCliLoginSuccessful.loginResponse })
-                    console.log(cliResp)
+                    await instance.post(cliUrl, { ...isCliLoginSuccessful.loginResponse })
 
                     // cli page
                     router.push("/cli-redirect");
@@ -118,23 +116,6 @@ export const InitialStep = ({
     return (
         <form onSubmit={handleLogin} className='flex flex-col mx-auto w-full justify-center items-center'>
             <h1 className='text-xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 text-center mb-8' >Login to Infisical</h1>
-            <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
-                <Button
-                    colorSchema="primary" 
-                    variant={loginEmailChosen ? "outline_bg" : "solid"}
-                    onClick={() => {
-                        const callbackPort = queryParams.get("callback_port");
-                        
-                        window.open(`/api/v1/sso/redirect/google${callbackPort ? `?callback_port=${callbackPort}` : ""}`);
-                        window.close();
-                    }} 
-                    leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-1" />}
-                    className="h-12 w-full mx-0"
-                > 
-                    {t("login.continue-with-google")}
-                </Button>
-            </div>
-            {loginEmailChosen && <>
             <div className='lg:w-1/6 w-1/4 min-w-[20rem] flex flex-row items-center my-4 py-2'>
                 <div className='w-full border-t border-mineshaft-500' />
             </div>
@@ -175,19 +156,40 @@ export const InitialStep = ({
             {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
             <div className='lg:w-1/6 w-1/4 min-w-[20rem] flex flex-row items-center mt-4 py-2'>
                 <div className='w-full border-t border-mineshaft-500' />
-            </div></>}
-            {!loginEmailChosen && <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
+            </div>
+            <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
                 <Button
-                    onClick={() => {
-                        setLoginEmailChosen(true);
-                    }}
-                    size="sm"
-                    isFullWidth
-                    className='h-12'
-                    colorSchema="primary"
+                    colorSchema="primary" 
                     variant="outline_bg"
-                > Continue with Email </Button>
-            </div>}
+                    onClick={() => {
+                        const callbackPort = queryParams.get("callback_port");
+                        
+                        window.open(`/api/v1/sso/redirect/google${callbackPort ? `?callback_port=${callbackPort}` : ""}`);
+                        window.close();
+                    }} 
+                    leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-2" />}
+                    className="h-12 w-full mx-0"
+                > 
+                    {t("login.continue-with-google")}
+                </Button>
+            </div>
+            <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
+                <Button
+                    colorSchema="primary" 
+                    variant="outline_bg"
+                    onClick={() => {
+                        const callbackPort = queryParams.get("callback_port");
+                        
+                        window.open(`/api/v1/sso/redirect/github${callbackPort ? `?callback_port=${callbackPort}` : ""}`);
+                        
+                        window.close();
+                    }} 
+                    leftIcon={<FontAwesomeIcon icon={faGithub} className="mr-2" />}
+                    className="h-12 w-full mx-0"
+                > 
+                    Continue with GitHub
+                </Button>
+            </div>
             <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
                 <Button
                     colorSchema="primary"
