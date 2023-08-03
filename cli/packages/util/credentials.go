@@ -2,14 +2,16 @@ package util
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 
-	"github.com/99designs/keyring"
+	keyringwrapper "github.com/Infisical/infisical-merge/internal"
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/go-resty/resty/v2"
-	"github.com/rs/zerolog/log"
+	"github.com/zalando/go-keyring"
 )
 
 type LoggedInUserDetails struct {
@@ -24,17 +26,7 @@ func StoreUserCredsInKeyRing(userCred *models.UserCredentials) error {
 		return fmt.Errorf("StoreUserCredsInKeyRing: something went wrong when marshalling user creds [err=%s]", err)
 	}
 
-	// Get keyring
-	configuredKeyring, err := GetKeyRing()
-	if err != nil {
-		return fmt.Errorf("StoreUserCredsInKeyRing: unable to get keyring instance with [err=%s]", err)
-	}
-
-	err = configuredKeyring.Set(keyring.Item{
-		Key:  userCred.Email,
-		Data: []byte(string(userCredMarshalled)),
-	})
-
+	err = keyringwrapper.Set(userCred.Email, string(userCredMarshalled))
 	if err != nil {
 		return fmt.Errorf("StoreUserCredsInKeyRing: unable to store user credentials because [err=%s]", err)
 	}
@@ -43,20 +35,20 @@ func StoreUserCredsInKeyRing(userCred *models.UserCredentials) error {
 }
 
 func GetUserCredsFromKeyRing(userEmail string) (credentials models.UserCredentials, err error) {
-	// Get keyring
-	configuredKeyring, err := GetKeyRing()
+	credentialsValue, err := keyringwrapper.Get(userEmail)
 	if err != nil {
-		return models.UserCredentials{}, fmt.Errorf("GetUserCredsFromKeyRing: unable to get keyring instance with [err=%s]", err)
-	}
-
-	credentialsValue, err := configuredKeyring.Get(userEmail)
-	if err != nil {
-		return models.UserCredentials{}, fmt.Errorf("GetUserCredsFromKeyRing: unable to get key from Keyring. could not find login credentials in your Keyring. This is common if you have switched vault backend recently. If so, please login in again and retry [err=%s]", err)
+		if err == keyring.ErrUnsupportedPlatform {
+			return models.UserCredentials{}, errors.New("your OS does not support keyring. Consider using a service token https://infisical.com/docs/documentation/platform/token")
+		} else if err == keyring.ErrNotFound {
+			return models.UserCredentials{}, errors.New("credentials not found in system keyring")
+		} else {
+			return models.UserCredentials{}, fmt.Errorf("something went wrong, failed to retrieve value from system keyring [error=%v]", err)
+		}
 	}
 
 	var userCredentials models.UserCredentials
 
-	err = json.Unmarshal([]byte(credentialsValue.Data), &userCredentials)
+	err = json.Unmarshal([]byte(credentialsValue), &userCredentials)
 	if err != nil {
 		return models.UserCredentials{}, fmt.Errorf("getUserCredsFromKeyRing: Something went wrong when unmarshalling user creds [err=%s]", err)
 	}
@@ -81,7 +73,11 @@ func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
 
 		userCreds, err := GetUserCredsFromKeyRing(configFile.LoggedInUserEmail)
 		if err != nil {
-			return LoggedInUserDetails{}, fmt.Errorf("getCurrentLoggedInUserDetails: unable to your credentials from Keyring [err=%s]", err)
+			if strings.Contains(err.Error(), "credentials not found in system keyring") {
+				return LoggedInUserDetails{}, errors.New("we couldn't find your logged in details, try running [infisical login] then try again")
+			} else {
+				return LoggedInUserDetails{}, fmt.Errorf("failed to fetch creditnals from keyring because [err=%s]", err)
+			}
 		}
 
 		// check to to see if the JWT is still valid
@@ -97,19 +93,19 @@ func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
 		}
 
 		isAuthenticated := api.CallIsAuthenticated(httpClient)
+		// TODO: add refresh token
+		// if !isAuthenticated {
+		// 	accessTokenResponse, err := api.CallGetNewAccessTokenWithRefreshToken(httpClient, userCreds.RefreshToken)
+		// 	if err == nil && accessTokenResponse.Token != "" {
+		// 		isAuthenticated = true
+		// 		userCreds.JTWToken = accessTokenResponse.Token
+		// 	}
+		// }
 
-		if !isAuthenticated {
-			accessTokenResponse, _ := api.CallGetNewAccessTokenWithRefreshToken(httpClient, userCreds.RefreshToken)
-			if accessTokenResponse.Token != "" {
-				isAuthenticated = true
-				userCreds.JTWToken = accessTokenResponse.Token
-			}
-		}
-
-		err = StoreUserCredsInKeyRing(&userCreds)
-		if err != nil {
-			log.Debug().Msg("unable to store your user credentials with new access token")
-		}
+		// err = StoreUserCredsInKeyRing(&userCreds)
+		// if err != nil {
+		// 	log.Debug().Msg("unable to store your user credentials with new access token")
+		// }
 
 		if !isAuthenticated {
 			return LoggedInUserDetails{

@@ -45,5 +45,5 @@ func PrintErrorMessageAndExit(messages ...string) {
 }
 
 func printError(e error) {
-	color.New(color.FgRed).Fprintf(os.Stderr, "Hmm, we ran into an error: %v\n", e)
+	color.New(color.FgRed).Fprintf(os.Stderr, "error: %v\n", e)
 }

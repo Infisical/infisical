@@ -79,6 +79,7 @@ type Props = {
   setValue: UseFormSetValue<FormData>;
   isKeyError?: boolean;
   keyError?: string;
+  autoCapitalization?: boolean;
 };
 
 export const SecretInputRow = memo(
@@ -98,7 +99,8 @@ export const SecretInputRow = memo(
     setValue,
     isKeyError,
     keyError,
-    secUniqId
+    secUniqId,
+    autoCapitalization
   }: Props): JSX.Element => {
     const isKeySubDisabled = useRef<boolean>(false);
     // comment management in a row
@@ -243,6 +245,7 @@ export const SecretInputRow = memo(
                         isKeySubDisabled.current = false;
                         field.onBlur();
                       }}
+                      autoCapitalization={autoCapitalization}
                     />
                   </div>
                 </td>

@@ -52,7 +52,6 @@ func WriteInitalConfig(userCredentials *models.UserCredentials) error {
 	configFile := models.ConfigFile{
 		LoggedInUserEmail:  userCredentials.Email,
 		LoggedInUserDomain: config.INFISICAL_URL,
-		VaultBackendType:   existingConfigFile.VaultBackendType,
 		LoggedInUsers:      existingConfigFile.LoggedInUsers,
 	}
 

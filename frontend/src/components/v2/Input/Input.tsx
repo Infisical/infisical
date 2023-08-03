@@ -1,4 +1,4 @@
-import { forwardRef, InputHTMLAttributes, ReactNode } from "react";
+import { ChangeEvent, forwardRef, InputHTMLAttributes, ReactNode } from "react";
 import { cva, VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
@@ -10,6 +10,7 @@ type Props = {
   rightIcon?: ReactNode;
   isDisabled?: boolean;
   isReadOnly?: boolean;
+  autoCapitalization?: boolean;
 };
 
 const inputVariants = cva(
@@ -80,10 +81,19 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       variant = "filled",
       size = "md",
       isReadOnly,
+      autoCapitalization,
       ...props
     },
     ref
   ): JSX.Element => {
+    const handleInput = (event: ChangeEvent<HTMLInputElement>) => {
+      console.log(123, props, autoCapitalization)
+      if (autoCapitalization) {
+        // eslint-disable-next-line no-param-reassign
+        event.target.value = event.target.value.toUpperCase();
+      }
+    };
+
     return (
       <div className={inputParentContainerVariants({ isRounded, isError, isFullWidth, variant })}>
         {leftIcon && <span className="absolute left-0 ml-3 text-sm">{leftIcon}</span>}
@@ -93,6 +103,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           readOnly={isReadOnly}
           disabled={isDisabled}
+          onInput={handleInput}
           className={twMerge(
             leftIcon ? "pl-10" : "pl-2.5",
             rightIcon ? "pr-10" : "pr-2.5",

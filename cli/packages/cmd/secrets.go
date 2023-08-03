@@ -128,6 +128,10 @@ var secretsSetCmd = &cobra.Command{
 			util.HandleError(err, "Unable to authenticate")
 		}
 
+		if loggedInUserDetails.LoginExpired {
+			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+		}
+
 		httpClient := resty.New().
 			SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken).
 			SetHeader("Accept", "application/json")
@@ -332,6 +336,10 @@ var secretsDeleteCmd = &cobra.Command{
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 		if err != nil {
 			util.HandleError(err, "Unable to authenticate")
+		}
+
+		if loggedInUserDetails.LoginExpired {
+			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
 		}
 
 		workspaceFile, err := util.GetWorkSpaceFromFile()

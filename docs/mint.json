@@ -23,7 +23,8 @@
   },
   "feedback": {
     "suggestEdit": true,
-    "raiseIssue": true
+    "raiseIssue": true,
+    "thumbsRating": true
   },
   "api": {
     "baseUrl": ["https://app.infisical.com", "http://localhost:8080"],

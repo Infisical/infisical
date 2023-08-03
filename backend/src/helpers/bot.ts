@@ -4,18 +4,20 @@ import {
   decryptAsymmetric,
   decryptSymmetric128BitHexKeyUTF8,
   encryptSymmetric128BitHexKeyUTF8,
-  generateKeyPair,
+  generateKeyPair
 } from "../utils/crypto";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_BASE64,
   ENCODING_SCHEME_UTF8,
-  SECRET_SHARED,
+  SECRET_SHARED
 } from "../variables";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
 import { InternalServerError } from "../utils/errors";
 import Folder from "../models/folder";
 import { getFolderByPath } from "../services/FolderService";
+import { getAllImportedSecrets } from "../services/SecretImportService";
+import { expandSecrets } from "./secrets";
 
 /**
  * Create an inactive bot with name [name] for workspace with id [workspaceId]
@@ -25,7 +27,7 @@ import { getFolderByPath } from "../services/FolderService";
  */
 export const createBot = async ({
   name,
-  workspaceId,
+  workspaceId
 }: {
   name: string;
   workspaceId: Types.ObjectId;
@@ -36,10 +38,7 @@ export const createBot = async ({
   const { publicKey, privateKey } = generateKeyPair();
 
   if (rootEncryptionKey) {
-    const { ciphertext, iv, tag } = client.encryptSymmetric(
-      privateKey,
-      rootEncryptionKey
-    );
+    const { ciphertext, iv, tag } = client.encryptSymmetric(privateKey, rootEncryptionKey);
 
     return await new Bot({
       name,
@@ -50,12 +49,12 @@ export const createBot = async ({
       iv,
       tag,
       algorithm: ALGORITHM_AES_256_GCM,
-      keyEncoding: ENCODING_SCHEME_BASE64,
+      keyEncoding: ENCODING_SCHEME_BASE64
     }).save();
   } else if (encryptionKey) {
     const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
       plaintext: privateKey,
-      key: await getEncryptionKey(),
+      key: await getEncryptionKey()
     });
 
     return await new Bot({
@@ -67,12 +66,12 @@ export const createBot = async ({
       iv,
       tag,
       algorithm: ALGORITHM_AES_256_GCM,
-      keyEncoding: ENCODING_SCHEME_UTF8,
+      keyEncoding: ENCODING_SCHEME_UTF8
     }).save();
   }
 
   throw InternalServerError({
-    message: "Failed to create new bot due to missing encryption key",
+    message: "Failed to create new bot due to missing encryption key"
   });
 };
 
@@ -82,7 +81,7 @@ export const createBot = async ({
  */
 export const getIsWorkspaceE2EEHelper = async (workspaceId: Types.ObjectId) => {
   const botKey = await BotKey.exists({
-    workspace: workspaceId,
+    workspace: workspaceId
   });
 
   return botKey ? false : true;
@@ -98,19 +97,19 @@ export const getIsWorkspaceE2EEHelper = async (workspaceId: Types.ObjectId) => {
 export const getSecretsBotHelper = async ({
   workspaceId,
   environment,
-  secretPath,
+  secretPath
 }: {
   workspaceId: Types.ObjectId;
   environment: string;
   secretPath: string;
 }) => {
-  const content = {} as any;
+  const content: Record<string, { value: string; comment?: string }> = {};
   const key = await getKey({ workspaceId: workspaceId });
 
   let folderId = "root";
   const folders = await Folder.findOne({
     workspace: workspaceId,
-    environment,
+    environment
   });
 
   if (!folders && secretPath !== "/") {
@@ -129,7 +128,43 @@ export const getSecretsBotHelper = async ({
     workspace: workspaceId,
     environment,
     type: SECRET_SHARED,
-    folder: folderId,
+    folder: folderId
+  });
+
+  const importedSecrets = await getAllImportedSecrets(
+    workspaceId.toString(),
+    environment,
+    folderId
+  );
+
+  importedSecrets.forEach(({ secrets }) => {
+    secrets.forEach((secret) => {
+      const secretKey = decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretKeyCiphertext,
+        iv: secret.secretKeyIV,
+        tag: secret.secretKeyTag,
+        key
+      });
+
+      const secretValue = decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretValueCiphertext,
+        iv: secret.secretValueIV,
+        tag: secret.secretValueTag,
+        key
+      });
+
+      content[secretKey] = { value: secretValue };
+
+      if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
+        const commentValue = decryptSymmetric128BitHexKeyUTF8({
+          ciphertext: secret.secretCommentCiphertext,
+          iv: secret.secretCommentIV,
+          tag: secret.secretCommentTag,
+          key
+        });
+        content[secretKey].comment = commentValue;
+      }
+    });
   });
 
   secrets.forEach((secret: ISecret) => {
@@ -137,18 +172,30 @@ export const getSecretsBotHelper = async ({
       ciphertext: secret.secretKeyCiphertext,
       iv: secret.secretKeyIV,
       tag: secret.secretKeyTag,
-      key,
+      key
     });
 
     const secretValue = decryptSymmetric128BitHexKeyUTF8({
       ciphertext: secret.secretValueCiphertext,
       iv: secret.secretValueIV,
       tag: secret.secretValueTag,
-      key,
+      key
     });
 
-    content[secretKey] = secretValue;
+    content[secretKey] = { value: secretValue };
+
+    if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
+      const commentValue = decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretCommentCiphertext,
+        iv: secret.secretCommentIV,
+        tag: secret.secretCommentTag,
+        key
+      });
+      content[secretKey].comment = commentValue;
+    }
   });
+
+  await expandSecrets(workspaceId.toString(), key, content);
 
   return content;
 };
@@ -160,22 +207,18 @@ export const getSecretsBotHelper = async ({
  * @param {String} obj.workspaceId - id of workspace
  * @returns {String} key - decrypted workspace key
  */
-export const getKey = async ({
-  workspaceId,
-}: {
-  workspaceId: Types.ObjectId;
-}) => {
+export const getKey = async ({ workspaceId }: { workspaceId: Types.ObjectId }) => {
   const encryptionKey = await getEncryptionKey();
   const rootEncryptionKey = await getRootEncryptionKey();
 
   const botKey = await BotKey.findOne({
-    workspace: workspaceId,
+    workspace: workspaceId
   }).populate<{ sender: IUser }>("sender", "publicKey");
 
   if (!botKey) throw new Error("Failed to find bot key");
 
   const bot = await Bot.findOne({
-    workspace: workspaceId,
+    workspace: workspaceId
   }).select("+encryptedPrivateKey +iv +tag +algorithm +keyEncoding");
 
   if (!bot) throw new Error("Failed to find bot");
@@ -194,7 +237,7 @@ export const getKey = async ({
       ciphertext: botKey.encryptedKey,
       nonce: botKey.nonce,
       publicKey: botKey.sender.publicKey as string,
-      privateKey: privateKeyBot,
+      privateKey: privateKeyBot
     });
   } else if (encryptionKey && bot.keyEncoding === ENCODING_SCHEME_UTF8) {
     // case: encoding scheme is utf8
@@ -202,20 +245,19 @@ export const getKey = async ({
       ciphertext: bot.encryptedPrivateKey,
       iv: bot.iv,
       tag: bot.tag,
-      key: encryptionKey,
+      key: encryptionKey
     });
 
     return decryptAsymmetric({
       ciphertext: botKey.encryptedKey,
       nonce: botKey.nonce,
       publicKey: botKey.sender.publicKey as string,
-      privateKey: privateKeyBot,
+      privateKey: privateKeyBot
     });
   }
 
   throw InternalServerError({
-    message:
-      "Failed to obtain bot's copy of workspace key needed for bot operations",
+    message: "Failed to obtain bot's copy of workspace key needed for bot operations"
   });
 };
 
@@ -228,7 +270,7 @@ export const getKey = async ({
  */
 export const encryptSymmetricHelper = async ({
   workspaceId,
-  plaintext,
+  plaintext
 }: {
   workspaceId: Types.ObjectId;
   plaintext: string;
@@ -236,13 +278,13 @@ export const encryptSymmetricHelper = async ({
   const key = await getKey({ workspaceId: workspaceId });
   const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
     plaintext,
-    key,
+    key
   });
 
   return {
     ciphertext,
     iv,
-    tag,
+    tag
   };
 };
 /**
@@ -258,7 +300,7 @@ export const decryptSymmetricHelper = async ({
   workspaceId,
   ciphertext,
   iv,
-  tag,
+  tag
 }: {
   workspaceId: Types.ObjectId;
   ciphertext: string;
@@ -270,7 +312,7 @@ export const decryptSymmetricHelper = async ({
     ciphertext,
     iv,
     tag,
-    key,
+    key
   });
 
   return plaintext;
@@ -281,24 +323,24 @@ export const decryptSymmetricHelper = async ({
  * and [envionment] using bot
  * @param {Object} obj
  * @param {String} obj.workspaceId - id of workspace
- * @param {String} obj.environment - environment 
+ * @param {String} obj.environment - environment
  */
 export const getSecretsCommentBotHelper = async ({
   workspaceId,
   environment,
   secretPath
-} : {
+}: {
   workspaceId: Types.ObjectId;
   environment: string;
   secretPath: string;
 }) => {
   const content = {} as any;
   const key = await getKey({ workspaceId: workspaceId });
-  
+
   let folderId = "root";
   const folders = await Folder.findOne({
     workspace: workspaceId,
-    environment,
+    environment
   });
 
   if (!folders && secretPath !== "/") {
@@ -317,23 +359,23 @@ export const getSecretsCommentBotHelper = async ({
     workspace: workspaceId,
     environment,
     type: SECRET_SHARED,
-    folder: folderId,
+    folder: folderId
   });
 
   secrets.forEach((secret: ISecret) => {
-    if(secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
+    if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
       const secretKey = decryptSymmetric128BitHexKeyUTF8({
         ciphertext: secret.secretKeyCiphertext,
         iv: secret.secretKeyIV,
         tag: secret.secretKeyTag,
-        key,
+        key
       });
-  
+
       const commentValue = decryptSymmetric128BitHexKeyUTF8({
         ciphertext: secret.secretCommentCiphertext,
         iv: secret.secretCommentIV,
         tag: secret.secretCommentTag,
-        key,
+        key
       });
 
       content[secretKey] = commentValue;
@@ -341,4 +383,4 @@ export const getSecretsCommentBotHelper = async ({
   });
 
   return content;
-}
+};

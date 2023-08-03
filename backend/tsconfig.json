@@ -1,9 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2016",
-    "lib": [
-      "es6"
-    ],
+    "lib": ["es6", "es2021"],
     "module": "commonjs",
     "rootDir": "src",
     "resolveJsonModule": true,
@@ -15,15 +13,8 @@
     "strict": true,
     "noImplicitAny": true,
     "skipLibCheck": true,
-    "typeRoots": [
-      "./src/types",
-      "./node_modules/@types"
-    ]
+    "typeRoots": ["./src/types", "./node_modules/@types"]
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
 }

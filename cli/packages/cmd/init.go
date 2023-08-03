@@ -46,6 +46,10 @@ var initCmd = &cobra.Command{
 			util.HandleError(err, "Unable to get your login details")
 		}
 
+		if userCreds.LoginExpired {
+			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
+		}
+
 		httpClient := resty.New()
 		httpClient.SetAuthToken(userCreds.UserCredentials.JTWToken)
 		workspaceResponse, err := api.CallGetAllWorkSpacesUserBelongsTo(httpClient)
