@@ -5,7 +5,7 @@ description: "Configure your environment variables when self-hosting Infisical."
 
 ## Backend environment variables
 
-Depending on your choosen self hosted deployment method, you may need to configured at least the required environment variable listed below. 
+Depending on your choosen self hosted deployment method, you may need to configured at least the required environment variable listed below.
 Other environment variables are listed below to increase the functionality of your self hosted instance based on your use case.
 
 <Tabs>
@@ -14,25 +14,40 @@ Other environment variables are listed below to increase the functionality of yo
     Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
   </ParamField>
 
-  <ParamField query="JWT_SIGNUP_SECRET" type="string" default="none" required>
-    Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
-  </ParamField>
+{" "}
 
-  <ParamField query="JWT_REFRESH_SECRET" type="string" default="none" required>
-    Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
-  </ParamField>
+<ParamField query="JWT_SIGNUP_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex
+  16`
+</ParamField>
 
-  <ParamField query="JWT_AUTH_SECRET" type="string" default="none" required>
-    Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
-  </ParamField>
+{" "}
 
-  <ParamField query="JWT_MFA_SECRET" type="string" default="none" required>
-    Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
-  </ParamField>
+<ParamField query="JWT_REFRESH_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex
+  16`
+</ParamField>
 
-  <ParamField query="JWT_SERVICE_SECRET" type="string" default="none" required>
-    Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
-  </ParamField>
+{" "}
+
+<ParamField query="JWT_AUTH_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex
+  16`
+</ParamField>
+
+{" "}
+
+<ParamField query="JWT_MFA_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex
+  16`
+</ParamField>
+
+{" "}
+
+<ParamField query="JWT_SERVICE_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex
+  16`
+</ParamField>
 
   <ParamField query="MONGO_URL" type="string" default="none" required>
     *TLS based connection string is not yet supported
@@ -58,7 +73,7 @@ Other environment variables are listed below to increase the functionality of yo
     </ParamField>
 
     <ParamField query="SMTP_SECURE" type="string" default="none" optional>
-    If true, use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported 
+    If true, use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported
     </ParamField>
 
     <ParamField query="SMTP_FROM_ADDRESS" type="string" default="none" optional>
@@ -68,9 +83,10 @@ Other environment variables are listed below to increase the functionality of yo
     <ParamField query="SMTP_FROM_NAME" type="string" default="none" optional>
       Name label to be used in From field (e.g. Team)
     </ParamField>
+
   </Tab>
   <Tab title="Secret Integrations">
-    To sync secret to third party services, provide value for the related services 
+    To sync secret to third party services, provide value for the related services
 
     <ParamField query="CLIENT_ID_HEROKU" type="string" default="none" optional>
       OAuth2 client ID for Heroku integration
@@ -81,7 +97,7 @@ Other environment variables are listed below to increase the functionality of yo
     </ParamField>
 
     <ParamField query="CLIENT_ID_VERCEL" type="string" default="none" optional>
-      OAuth2 client ID for Vercel integration 
+      OAuth2 client ID for Vercel integration
     </ParamField>
 
     <ParamField query="CLIENT_SECRET_VERCEL" type="string" default="none" optional>
@@ -89,7 +105,7 @@ Other environment variables are listed below to increase the functionality of yo
     </ParamField>
 
     <ParamField query="CLIENT_ID_NETLIFY" type="string" default="none" optional>
-      OAuth2 client ID for Netlify integration  
+      OAuth2 client ID for Netlify integration
     </ParamField>
 
     <ParamField query="CLIENT_SECRET_NETLIFY" type="string" default="none" optional>
@@ -97,7 +113,7 @@ Other environment variables are listed below to increase the functionality of yo
     </ParamField>
 
     <ParamField query="CLIENT_ID_GITHUB" type="string" default="none" optional>
-      OAuth2 client ID for GitHub integration         
+      OAuth2 client ID for GitHub integration
     </ParamField>
 
     <ParamField query="CLIENT_SECRET_GITHUB" type="string" default="none" optional>
@@ -109,23 +125,30 @@ Other environment variables are listed below to increase the functionality of yo
     </ParamField>
 
     <ParamField query="CLIENT_ID_BITBUCKET" type="string" default="none" optional>
-      OAuth2 client ID for BitBucket integration         
+      OAuth2 client ID for BitBucket integration
     </ParamField>
 
     <ParamField query="CLIENT_SECRET_BITBUCKET" type="string" default="none" optional>
       OAuth2 client secret for BitBucket integration
     </ParamField>
+
   </Tab>
   <Tab title="Auth Integrations">
     To integrate with external auth providers, provide value for the related keys
     <ParamField query="JWT_PROVIDER_AUTH_SECRET" type="string" required>
       Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
     </ParamField>
-    <ParamField query="CLIENT_ID_GOOGLE" type="string" default="none" optional>
-      OAuth2 client ID for Google auth integration         
+    <ParamField query="CLIENT_ID_GOOGLE_LOGIN" type="string" default="none" optional>
+      OAuth2 client ID for Google login
     </ParamField>
-    <ParamField query="CLIENT_SECRET_GOOGLE" type="string" default="none" optional>
-      OAuth2 client secret for Google auth integration         
+    <ParamField query="CLIENT_SECRET_GOOGLE_LOGIN" type="string" default="none" optional>
+      OAuth2 client secret for Google login
+    </ParamField>
+    <ParamField query="CLIENT_ID_GITHUB_LOGIN" type="string" default="none" optional>
+      OAuth2 client ID for GitHub login
+    </ParamField>
+    <ParamField query="CLIENT_SECRET_GITHUB_LOGIN" type="string" default="none" optional>
+      OAuth2 client secret for GitHub login
     </ParamField>
   </Tab>
   <Tab title="Others">
@@ -150,18 +173,44 @@ Other environment variables are listed below to increase the functionality of yo
       JWT token lifetime expressed in seconds or a string describing a time span
     </ParamField>
 
-  <ParamField query="MONGO_USERNAME" type="string" default="none" optional></ParamField>
+{" "}
 
-  <ParamField query="MONGO_PASSWORD" type="string" default="none" optional></ParamField>
+<ParamField
+  query="MONGO_USERNAME"
+  type="string"
+  default="none"
+  optional
+></ParamField>
 
-  #### Error logging 
-  Infisical uses Sentry to report error logs 
-  <ParamField query="SENTRY_DSN" type="string" default="none" optional></ParamField>
+{" "}
 
-  #### Settings
-  <ParamField query="INVITE_ONLY_SIGNUP" type="string" default="false" optional>
-    Only allow users who are invited to sign up
-  </ParamField>
+<ParamField
+  query="MONGO_PASSWORD"
+  type="string"
+  default="none"
+  optional
+></ParamField>
+
+#### Error logging
+
+Infisical uses Sentry to report error logs
+
+{" "}
+
+<ParamField
+  query="SENTRY_DSN"
+  type="string"
+  default="none"
+  optional
+></ParamField>
+
+#### Settings
+
+{" "}
+
+<ParamField query="INVITE_ONLY_SIGNUP" type="string" default="false" optional>
+  Only allow users who are invited to sign up
+</ParamField>
 
   <ParamField query="SITE_URL" type="string" default="none" optional>
     Site URL - should be an absolute URL including the protocol (e.g. https://app.infisical.com)
@@ -170,6 +219,11 @@ Other environment variables are listed below to increase the functionality of yo
   </Tab>
 </Tabs>
 
-
 ## Frontend environment variables
-<ParamField query="TELEMETRY_ENABLED" type="string" default="true" optional></ParamField>
+
+<ParamField
+  query="TELEMETRY_ENABLED"
+  type="string"
+  default="true"
+  optional
+></ParamField>

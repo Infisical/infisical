@@ -123,9 +123,15 @@ export const updateAuthProvider = async (req: Request, res: Response) => {
         authProvider
     } = req.body;
     
-    if (req.user?.authProvider === AuthProvider.OKTA_SAML) return res.status(400).send({
-        message: "Failed to update user authentication method because SAML SSO is enforced"
-    });
+    if (
+        req.user?.authProvider === AuthProvider.OKTA_SAML
+        || req.user?.authProvider === AuthProvider.AZURE_SAML
+        || req.user?.authProvider === AuthProvider.JUMPCLOUD_SAML
+    ) {
+        return res.status(400).send({
+            message: "Failed to update user authentication method because SAML SSO is enforced"
+        });
+    }
 
     const user = await User.findByIdAndUpdate(
         req.user._id.toString(),

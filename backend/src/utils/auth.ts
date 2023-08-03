@@ -12,8 +12,10 @@ import {
 } from "../models";
 import { createToken } from "../helpers/auth";
 import {
-  getClientIdGoogle,
-  getClientSecretGoogle,
+  getClientIdGitHubLogin,
+  getClientIdGoogleLogin,
+  getClientSecretGitHubLogin,
+  getClientSecretGoogleLogin,
   getJwtProviderAuthLifetime,
   getJwtProviderAuthSecret,
 } from "../config";
@@ -24,6 +26,8 @@ import { getSiteURL } from "../config";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const GitHubStrategy = require("passport-github").Strategy;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { MultiSamlStrategy } = require("@node-saml/passport-saml");
 
@@ -67,42 +71,97 @@ const getAuthDataPayloadUserObj = (authData: AuthData) => {
 }
 
 const initializePassport = async () => {
-  const googleClientSecret = await getClientSecretGoogle();
-  const googleClientId = await getClientIdGoogle();
+  const clientIdGoogleLogin = await getClientIdGoogleLogin();
+  const clientSecretGoogleLogin = await getClientSecretGoogleLogin();
+  const clientIdGitHubLogin = await getClientIdGitHubLogin();
+  const clientSecretGitHubLogin = await getClientSecretGitHubLogin();
 
-  passport.use(new GoogleStrategy({
-    passReqToCallback: true,
-    clientID: googleClientId,
-    clientSecret: googleClientSecret,
-    callbackURL: "/api/v1/sso/google",
-    scope: ["profile", " email"],
-  }, async (
-    req: express.Request,
-    accessToken: string,
-    refreshToken: string,
-    profile: any,
-    done: any
-  ) => {
-    try {
+  if (clientIdGoogleLogin && clientSecretGoogleLogin) {
+    passport.use(new GoogleStrategy({
+      passReqToCallback: true,
+      clientID: clientIdGoogleLogin,
+      clientSecret: clientSecretGoogleLogin,
+      callbackURL: "/api/v1/sso/google",
+      scope: ["profile", " email"],
+    }, async (
+      req: express.Request,
+      accessToken: string,
+      refreshToken: string,
+      profile: any,
+      done: any
+    ) => {
+      try {
+        const email = profile.emails[0].value;
+        
+        let user = await User.findOne({
+          email
+        }).select("+publicKey");
+        
+        if (user && user.authProvider !== AuthProvider.GOOGLE) {
+          done(InternalServerError());
+        }
+
+        if (!user) {
+          user = await new User({
+            email,
+            authProvider: AuthProvider.GOOGLE,
+            authId: profile.id,
+            firstName: profile.name.givenName,
+            lastName: profile.name.familyName
+          }).save();
+        }
+
+        const isUserCompleted = !!user.publicKey;
+        const providerAuthToken = createToken({
+          payload: {
+            userId: user._id.toString(),
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            authProvider: user.authProvider,
+            isUserCompleted,
+            ...(req.query.state ? {
+              callbackPort: req.query.state as string
+            } : {})
+          },
+          expiresIn: await getJwtProviderAuthLifetime(),
+          secret: await getJwtProviderAuthSecret(),
+        });
+
+        req.isUserCompleted = isUserCompleted;
+        req.providerAuthToken = providerAuthToken;
+        done(null, profile);
+      } catch (err) {
+        done(null, false);
+      }
+    }));
+  }
+
+  if (clientIdGitHubLogin && clientSecretGitHubLogin) {
+    passport.use(new GitHubStrategy({
+      passReqToCallback: true,
+      clientID: clientIdGitHubLogin,
+      clientSecret: clientSecretGitHubLogin,
+      callbackURL: "/api/v1/sso/github"
+    },
+    async (req : express.Request, accessToken : any, refreshToken : any, profile : any, done : any) => {
       const email = profile.emails[0].value;
-      const firstName = profile.name.givenName;
-      const lastName = profile.name.familyName;
       
       let user = await User.findOne({
         email
       }).select("+publicKey");
       
-      if (user && user.authProvider !== AuthProvider.GOOGLE) {
+      if (user && user.authProvider !== AuthProvider.GITHUB) {
         done(InternalServerError());
       }
-
+      
       if (!user) {
         user = await new User({
-          email,
-          authProvider: AuthProvider.GOOGLE,
+          email: email,
+          authProvider: AuthProvider.GITHUB,
           authId: profile.id,
-          firstName,
-          lastName
+          firstName: profile.displayName,
+          lastName: ""
         }).save();
       }
 
@@ -111,8 +170,8 @@ const initializePassport = async () => {
         payload: {
           userId: user._id.toString(),
           email: user.email,
-          firstName,
-          lastName,
+          firstName: user.firstName,
+          lastName: user.lastName,
           authProvider: user.authProvider,
           isUserCompleted,
           ...(req.query.state ? {
@@ -125,11 +184,10 @@ const initializePassport = async () => {
 
       req.isUserCompleted = isUserCompleted;
       req.providerAuthToken = providerAuthToken;
-      done(null, profile);
-    } catch (err) {
-      done(null, false);
+      return done(null, profile);
     }
-  }));
+    ));
+  }
   
   passport.use("saml", new MultiSamlStrategy(
     {

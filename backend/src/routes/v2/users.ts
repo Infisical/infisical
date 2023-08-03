@@ -50,7 +50,8 @@ router.patch(
     }),
     body("authProvider").exists().isString().isIn([
         AuthProvider.EMAIL,
-        AuthProvider.GOOGLE
+        AuthProvider.GOOGLE,
+        AuthProvider.GITHUB
     ]),
     validateRequest,
     usersController.updateAuthProvider
