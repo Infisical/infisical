@@ -2,7 +2,13 @@ import { ChangeEvent, DragEvent, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { faSquareCheck } from "@fortawesome/free-regular-svg-icons";
-import { faClone, faSearch, faSquareXmark, faUpload } from "@fortawesome/free-solid-svg-icons";
+import {
+  faClone,
+  faKey,
+  faSearch,
+  faSquareXmark,
+  faUpload
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { twMerge } from "tailwind-merge";
@@ -14,6 +20,7 @@ import { parseDotEnv } from "@app/components/utilities/parseDotEnv";
 import {
   Button,
   Checkbox,
+  EmptyState,
   FormControl,
   IconButton,
   Input,
@@ -85,8 +92,17 @@ export const SecretDropzone = ({
   const { createNotification } = useNotificationContext();
   const { popUp, handlePopUpClose, handlePopUpToggle } = usePopUp(["importSecEnv"] as const);
   const [searchFilter, setSearchFilter] = useState("");
+  const [shouldIncludeValues, setShouldIncludeValues] = useState(true);
 
-  const { handleSubmit, control, watch, register, reset, setValue } = useForm<TFormSchema>({
+  const {
+    handleSubmit,
+    control,
+    watch,
+    register,
+    reset,
+    setValue,
+    formState: { isDirty }
+  } = useForm<TFormSchema>({
     resolver: yupResolver(formSchema),
     defaultValues: { secretPath: "/", environment: environments?.[0]?.slug }
   });
@@ -169,7 +185,10 @@ export const SecretDropzone = ({
     const secretsToBePulled: Record<string, { value: string; comments: string[] }> = {};
     Object.keys(data.secrets || {}).forEach((key) => {
       if (data.secrets[key]) {
-        secretsToBePulled[key] = { value: data.secrets[key] || "", comments: [""] };
+        secretsToBePulled[key] = {
+          value: (shouldIncludeValues && data.secrets[key]) || "",
+          comments: [""]
+        };
       }
     });
     onParsedEnv(secretsToBePulled);
@@ -219,7 +238,12 @@ export const SecretDropzone = ({
               accept=".txt,.env,.yml,.yaml,.json"
               onChange={handleFileUpload}
             />
-            <div className="flex w-full flex-row items-center justify-center py-4">
+            <div
+              className={twMerge(
+                "flex w-full flex-row items-center justify-center py-4",
+                isSmaller && "py-1"
+              )}
+            >
               <div className="w-1/5 border-t border-mineshaft-700" />
               <p className="mx-4 text-xs text-mineshaft-400">OR</p>
               <div className="w-1/5 border-t border-mineshaft-700" />
@@ -235,12 +259,12 @@ export const SecretDropzone = ({
               >
                 <ModalTrigger asChild>
                   <Button variant="star" size={isSmaller ? "xs" : "sm"}>
-                    Pull Secrets From An Environment
+                    Copy Secrets From An Environment
                   </Button>
                 </ModalTrigger>
                 <ModalContent
                   className="max-w-2xl"
-                  title="Copy Secret From An Envronment"
+                  title="Copy Secret From An Environment"
                   subTitle="This can be used to populate your dashboard with secrets from another board"
                 >
                   <form>
@@ -309,14 +333,18 @@ export const SecretDropzone = ({
                           </Tooltip>
                         </div>
                       </div>
+                      {!isSecretsLoading && !secrets?.secrets?.length && (
+                        <EmptyState title="No secrets found" icon={faKey} />
+                      )}
                       <div className="grid grid-cols-2 gap-4 max-h-64 overflow-auto thin-scrollbar ">
                         {isSecretsLoading &&
-                          Array.apply(0, Array(4)).map((_x, i) => (
+                          Array.apply(0, Array(2)).map((_x, i) => (
                             <Skeleton
                               key={`secret-pull-loading-${i + 1}`}
                               className="bg-mineshaft-700"
                             />
                           ))}
+
                         {secrets?.secrets
                           ?.filter(({ key }) =>
                             key.toLowerCase().includes(searchFilter.toLowerCase())
@@ -338,8 +366,23 @@ export const SecretDropzone = ({
                             />
                           ))}
                       </div>
-                      <div className="flex items-center space-x-2 mt-8">
-                        <Button leftIcon={<FontAwesomeIcon icon={faClone} />} type="submit">
+                      <div className="mt-6 mb-4">
+                        <Checkbox
+                          id="populate-include-value"
+                          isChecked={shouldIncludeValues}
+                          onCheckedChange={(isChecked) =>
+                            setShouldIncludeValues(isChecked as boolean)
+                          }
+                        >
+                          Include secret values
+                        </Checkbox>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          leftIcon={<FontAwesomeIcon icon={faClone} />}
+                          type="submit"
+                          isDisabled={!isDirty}
+                        >
                           Paste Secrets
                         </Button>
                         <Button variant="plain" colorSchema="secondary">
