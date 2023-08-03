@@ -4,9 +4,11 @@ import { Tab } from "@headlessui/react"
 import { BillingCloudTab } from "../BillingCloudTab";
 import { BillingDetailsTab } from "../BillingDetailsTab";
 import { BillingReceiptsTab } from "../BillingReceiptsTab";
+import { BillingSelfHostedTab } from "../BillingSelfHostedTab";
 
 const tabs = [
     { name: "Infisical Cloud", key: "tab-infisical-cloud" },
+    { name: "Infisical Self-Hosted", key: "tab-infisical-self-hosted" },
     { name: "Receipts", key: "tab-receipts" },
     { name: "Billing details", key: "tab-billing-details" }
 ];
@@ -31,6 +33,9 @@ export const BillingTabGroup = () => {
             <Tab.Panels>
                 <Tab.Panel>
                     <BillingCloudTab />
+                </Tab.Panel>
+                <Tab.Panel>
+                    <BillingSelfHostedTab />
                 </Tab.Panel>
                 <Tab.Panel>
                     <BillingReceiptsTab />

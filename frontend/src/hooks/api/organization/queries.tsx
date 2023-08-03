@@ -5,14 +5,14 @@ import { apiRequest } from "@app/config/request";
 import { 
   BillingDetails,
   Invoice,
+  License,
   Organization, 
   OrgPlanTable,
   PlanBillingInfo,
   PmtMethod,
   ProductsTable,
   RenameOrgDTO,
-  TaxID
-} from "./types";
+  TaxID} from "./types";
 
 const organizationKeys = {
   getUserOrganization: ["organization"] as const,
@@ -23,6 +23,7 @@ const organizationKeys = {
   getOrgPmtMethods: (orgId: string) => [{ orgId }, "organization-pmt-methods"] as const,
   getOrgTaxIds: (orgId: string) => [{ orgId }, "organization-tax-ids"] as const,
   getOrgInvoices: (orgId: string) => [{ orgId }, "organization-invoices"] as const,
+  getOrgLicenses: (orgId: string) => [{ orgId }, "organization-licenses"] as const
 };
 
 export const useGetOrganization = () => {
@@ -312,3 +313,19 @@ export const useCreateCustomerPortalSession = () => {
     }
   });
 };
+
+export const useGetOrgLicenses = (organizationId: string) => {
+  return useQuery({
+    queryKey: organizationKeys.getOrgLicenses(organizationId),
+    queryFn: async () => {
+      if (organizationId === "") return undefined;
+      
+      const { data } = await apiRequest.get<License[]>(
+        `/api/v1/organizations/${organizationId}/licenses`
+      );
+
+      return data;
+    },
+    enabled: true
+  });
+}

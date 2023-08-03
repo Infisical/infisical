@@ -47,9 +47,10 @@ const ActivityLogsRow = ({
   const { t } = useTranslation();
 
   const renderUser = () => {
+    
     if (row?.user) return `${row.user}`;
     if (row?.serviceAccount) return `Service Account: ${row.serviceAccount.name}`;
-    if (row?.serviceTokenData.name) return `Service Token: ${row.serviceTokenData.name}`;
+    if (row?.serviceTokenData?.name) return `Service Token: ${row.serviceTokenData.name}`;
 
     return "";
   };

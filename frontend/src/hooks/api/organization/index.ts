@@ -7,6 +7,7 @@ export {
     useGetOrganization, 
     useGetOrgBillingDetails,
     useGetOrgInvoices,
+    useGetOrgLicenses,
     useGetOrgPlanBillingInfo,
     useGetOrgPlansTable,
     useGetOrgPlanTable,
@@ -14,5 +15,4 @@ export {
     useGetOrgTaxIds,
     useGetOrgTrialUrl,
     useRenameOrg, 
-    useUpdateOrgBillingDetails
-} from "./queries";
+    useUpdateOrgBillingDetails} from "./queries";
