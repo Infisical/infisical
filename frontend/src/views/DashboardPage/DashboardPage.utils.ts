@@ -75,6 +75,13 @@ export type FormData = yup.InferType<typeof schema>;
 export type TSecretDetailsOpen = { index: number; id: string };
 export type TSecOverwriteOpt = { secrets: Record<string, { comments: string[]; value: string }> };
 
+// to convert multi line into single line ones by quoting them and changing to string \n
+const formatMultiValueEnv = (val?: string) => {
+  if (!val) return "";
+  if (!val.match("\n")) return val;
+  return `"${val.replace(/\n/g, "\\n")}"`;
+};
+
 export const downloadSecret = (
   secrets: FormData["secrets"] = [],
   importedSecrets: { key: string; value?: string; comment?: string }[] = [],
@@ -86,9 +93,11 @@ export const downloadSecret = (
   });
   const finalSecret = [...importedSecrets];
   secrets.forEach(({ key, value, valueOverride, overrideAction, comment }) => {
+    const finalVal =
+      overrideAction && overrideAction !== SecretActionType.Deleted ? valueOverride : value;
     const newValue = {
       key,
-      value: overrideAction && overrideAction !== SecretActionType.Deleted ? valueOverride : value,
+      value: formatMultiValueEnv(finalVal),
       comment
     };
     // can also be zero thus failing

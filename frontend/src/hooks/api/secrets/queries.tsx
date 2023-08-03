@@ -54,13 +54,14 @@ export const useGetProjectSecrets = ({
   env,
   decryptFileKey,
   isPaused,
-  folderId
+  folderId,
+  secretPath
 }: GetProjectSecretsDTO) =>
   useQuery({
     // wait for all values to be available
     enabled: Boolean(decryptFileKey && workspaceId && env) && !isPaused,
-    queryKey: secretKeys.getProjectSecret(workspaceId, env, folderId),
-    queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, folderId),
+    queryKey: secretKeys.getProjectSecret(workspaceId, env, folderId || secretPath),
+    queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, folderId, secretPath),
     select: useCallback(
       (data: EncryptedSecret[]) => {
         const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
