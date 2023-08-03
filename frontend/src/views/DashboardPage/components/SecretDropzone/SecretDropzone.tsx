@@ -1,7 +1,8 @@
 import { ChangeEvent, DragEvent, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { faClone, faSearch, faUpload } from "@fortawesome/free-solid-svg-icons";
+import { faSquareCheck } from "@fortawesome/free-regular-svg-icons";
+import { faClone, faSearch, faSquareXmark, faUpload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { twMerge } from "tailwind-merge";
@@ -14,13 +15,15 @@ import {
   Button,
   Checkbox,
   FormControl,
+  IconButton,
   Input,
   Modal,
   ModalContent,
   ModalTrigger,
   Select,
   SelectItem,
-  Skeleton
+  Skeleton,
+  Tooltip
 } from "@app/components/v2";
 import { useDebounce, usePopUp, useToggle } from "@app/hooks";
 import { useGetProjectSecrets } from "@app/hooks/api";
@@ -174,6 +177,15 @@ export const SecretDropzone = ({
     reset();
   };
 
+  const handleSecSelectAll = () => {
+    if (secrets?.secrets) {
+      setValue(
+        "secrets",
+        secrets?.secrets?.reduce((prev, curr) => ({ ...prev, [curr.key]: curr.value }), {})
+      );
+    }
+  };
+
   return (
     <div
       onDragEnter={handleDrag}
@@ -228,7 +240,7 @@ export const SecretDropzone = ({
                 </ModalTrigger>
                 <ModalContent
                   className="max-w-2xl"
-                  title="Import Secret From An Envronment"
+                  title="Copy Secret From An Envronment"
                   subTitle="This can be used to populate your dashboard with secrets from another board"
                 >
                   <form>
@@ -267,7 +279,7 @@ export const SecretDropzone = ({
                     <div className="border-t border-mineshaft-600 pt-4">
                       <div className="mb-4 flex items-center justify-between">
                         <div>Secrets</div>
-                        <div className="w-1/2">
+                        <div className="w-1/2 flex items-center space-x-2">
                           <Input
                             placeholder="Search for secret"
                             value={searchFilter}
@@ -275,6 +287,26 @@ export const SecretDropzone = ({
                             leftIcon={<FontAwesomeIcon icon={faSearch} />}
                             onChange={(evt) => setSearchFilter(evt.target.value)}
                           />
+                          <Tooltip content="Select All">
+                            <IconButton
+                              ariaLabel="Select all"
+                              variant="outline_bg"
+                              size="xs"
+                              onClick={handleSecSelectAll}
+                            >
+                              <FontAwesomeIcon icon={faSquareCheck} size="lg" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip content="Unselect All">
+                            <IconButton
+                              ariaLabel="UnSelect all"
+                              variant="outline_bg"
+                              size="xs"
+                              onClick={() => reset()}
+                            >
+                              <FontAwesomeIcon icon={faSquareXmark} size="lg" />
+                            </IconButton>
+                          </Tooltip>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4 max-h-64 overflow-auto thin-scrollbar ">
@@ -308,7 +340,7 @@ export const SecretDropzone = ({
                       </div>
                       <div className="flex items-center space-x-2 mt-8">
                         <Button leftIcon={<FontAwesomeIcon icon={faClone} />} type="submit">
-                          Pull Secrets
+                          Paste Secrets
                         </Button>
                         <Button variant="plain" colorSchema="secondary">
                           Cancel
