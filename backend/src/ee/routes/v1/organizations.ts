@@ -220,4 +220,18 @@ router.get(
     organizationsController.getOrganizationInvoices
 );
 
+router.get(
+    "/:organizationId/licenses",
+    requireAuth({
+		acceptedAuthModes: ["jwt"],
+	}),
+    requireOrganizationAuth({
+        acceptedRoles: [OWNER, ADMIN],
+        acceptedStatuses: [ACCEPTED],
+    }),
+    param("organizationId").exists().trim(),
+    validateRequest,
+    organizationsController.getOrganizationLicenses
+);
+
 export default router;
