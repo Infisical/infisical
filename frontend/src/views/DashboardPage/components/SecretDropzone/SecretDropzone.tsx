@@ -200,7 +200,8 @@ export const SecretDropzone = ({
     if (secrets?.secrets) {
       setValue(
         "secrets",
-        secrets?.secrets?.reduce((prev, curr) => ({ ...prev, [curr.key]: curr.value }), {})
+        secrets?.secrets?.reduce((prev, curr) => ({ ...prev, [curr.key]: curr.value }), {}),
+        { shouldDirty: true }
       );
     }
   };
