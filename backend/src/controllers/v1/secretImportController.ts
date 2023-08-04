@@ -1,15 +1,55 @@
 import { Request, Response } from "express";
-import { validateMembership } from "../../helpers";
-import { Folder, SecretImport } from "../../models";
+import path from "path";
+import { isValidScope, validateMembership } from "../../helpers";
+import { ServiceTokenData } from "../../models";
+import Folder, { TFolderRootSchema } from "../../models/folder";
+import SecretImport from "../../models/secretImports";
+import { searchByFolderIdWithDir } from "../../services/FolderService";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
-import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
+import { BadRequestError, ResourceNotFoundError,UnauthorizedRequestError } from "../../utils/errors";
 import { ADMIN, MEMBER } from "../../variables";
 import { EEAuditLogService } from "../../ee/services";
 import { EventType } from "../../ee/models";
 import { getFolderPath } from "../../services/FolderService";
 
+const getFolderWithPathFromId = (folders: TFolderRootSchema, parentFolderId: string) => {
+  const search = searchByFolderIdWithDir(folders.nodes, parentFolderId);
+  if (!search) {
+    throw { message: "Folder permission denied" };
+  }
+  const { folder, dir } = search;
+  const folderPath = path.join(
+    "/",
+    ...dir.filter(({ name }) => name !== "root").map(({ name }) => name)
+  );
+  return { folder, folderPath, dir };
+};
+
 export const createSecretImport = async (req: Request, res: Response) => {
   const { workspaceId, environment, folderId, secretImport } = req.body;
+
+  const folders = await Folder.findOne({
+    workspace: workspaceId,
+    environment
+  }).lean();
+
+  if (!folders && folderId !== "root") {
+    throw BadRequestError({ message: "Folder doesn't exist" });
+  }
+
+  let secretPath = "/";
+  if (folders) {
+    const { folderPath } = getFolderWithPathFromId(folders, folderId);
+    secretPath = folderPath;
+  }
+  if (req.authData.authPayload instanceof ServiceTokenData) {
+    // root check
+    const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, secretPath);
+    if (!isValidScopeAccess) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+  }
+
   const importSecDoc = await SecretImport.findOne({
     workspace: workspaceId,
     environment,
@@ -99,11 +139,34 @@ export const updateSecretImport = async (req: Request, res: Response) => {
     throw BadRequestError({ message: "Import not found" });
   }
 
-  await validateMembership({
-    userId: req.user._id.toString(),
-    workspaceId: importSecDoc.workspace,
-    acceptedRoles: [ADMIN, MEMBER]
-  });
+  if (!(req.authData.authPayload instanceof ServiceTokenData)) {
+    await validateMembership({
+      userId: req.user._id.toString(),
+      workspaceId: importSecDoc.workspace,
+      acceptedRoles: [ADMIN, MEMBER]
+    });
+  } else {
+    // check for service token validity
+    const folders = await Folder.findOne({
+      workspace: importSecDoc.workspace,
+      environment: importSecDoc.environment
+    }).lean();
+
+    let secretPath = "/";
+    if (folders) {
+      const { folderPath } = getFolderWithPathFromId(folders, importSecDoc.folderId);
+      secretPath = folderPath;
+    }
+
+    const isValidScopeAccess = isValidScope(
+      req.authData.authPayload,
+      importSecDoc.environment,
+      secretPath
+    );
+    if (!isValidScopeAccess) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+  }
 
   const orderBefore = importSecDoc.imports;
   importSecDoc.imports = secretImports;
@@ -149,11 +212,34 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
     throw BadRequestError({ message: "Import not found" });
   }
 
-  await validateMembership({
-    userId: req.user._id.toString(),
-    workspaceId: importSecDoc.workspace,
-    acceptedRoles: [ADMIN, MEMBER]
-  });
+  if (!(req.authData.authPayload instanceof ServiceTokenData)) {
+    await validateMembership({
+      userId: req.user._id.toString(),
+      workspaceId: importSecDoc.workspace,
+      acceptedRoles: [ADMIN, MEMBER]
+    });
+  } else {
+    // check for service token validity
+    const folders = await Folder.findOne({
+      workspace: importSecDoc.workspace,
+      environment: importSecDoc.environment
+    }).lean();
+
+    let secretPath = "/";
+    if (folders) {
+      const { folderPath } = getFolderWithPathFromId(folders, importSecDoc.folderId);
+      secretPath = folderPath;
+    }
+
+    const isValidScopeAccess = isValidScope(
+      req.authData.authPayload,
+      importSecDoc.environment,
+      secretPath
+    );
+    if (!isValidScopeAccess) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+  }
   importSecDoc.imports = importSecDoc.imports.filter(
     ({ environment, secretPath }) =>
       !(environment === secretImportEnv && secretPath === secretImportPath)
@@ -204,6 +290,29 @@ export const getSecretImports = async (req: Request, res: Response) => {
     return res.status(200).json({ secretImport: {} });
   }
 
+  if (req.authData.authPayload instanceof ServiceTokenData) {
+    // check for service token validity
+    const folders = await Folder.findOne({
+      workspace: importSecDoc.workspace,
+      environment: importSecDoc.environment
+    }).lean();
+
+    let secretPath = "/";
+    if (folders) {
+      const { folderPath } = getFolderWithPathFromId(folders, importSecDoc.folderId);
+      secretPath = folderPath;
+    }
+
+    const isValidScopeAccess = isValidScope(
+      req.authData.authPayload,
+      importSecDoc.environment,
+      secretPath
+    );
+    if (!isValidScopeAccess) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+  }
+
   return res.status(200).json({ secretImport: importSecDoc });
 };
 
@@ -221,6 +330,29 @@ export const getAllSecretsFromImport = async (req: Request, res: Response) => {
 
   if (!importSecDoc) {
     return res.status(200).json({ secrets: [] });
+  }
+
+  if (req.authData.authPayload instanceof ServiceTokenData) {
+    // check for service token validity
+    const folders = await Folder.findOne({
+      workspace: importSecDoc.workspace,
+      environment: importSecDoc.environment
+    }).lean();
+
+    let secretPath = "/";
+    if (folders) {
+      const { folderPath } = getFolderWithPathFromId(folders, importSecDoc.folderId);
+      secretPath = folderPath;
+    }
+
+    const isValidScopeAccess = isValidScope(
+      req.authData.authPayload,
+      importSecDoc.environment,
+      secretPath
+    );
+    if (!isValidScopeAccess) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
   }
 
   await EEAuditLogService.createAuditLog(
