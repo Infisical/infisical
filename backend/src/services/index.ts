@@ -7,7 +7,7 @@ import EventService from "./EventService";
 import IntegrationService from "./IntegrationService";
 import TokenService from "./TokenService";
 import SecretService from "./SecretService";
-import GithubSecretScanningService from "./GithubSecretScanningService"
+import GithubSecretScanningService from "./GithubSecretScanning/GithubSecretScanningService"
 
 export {
   TelemetryService,

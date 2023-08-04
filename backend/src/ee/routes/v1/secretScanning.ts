@@ -4,10 +4,10 @@ import {
   requireAuth,
   requireOrganizationAuth,
   validateRequest,
-} from "../../middleware";
+} from "../../../middleware";
 import { body, param } from "express-validator";
-import { createInstallationSession, getCurrentOrganizationInstallationStatus, getRisksForOrganization, linkInstallationToOrganization, updateRisksStatus } from "../../controllers/v1/secretScanningController";
-import { ACCEPTED, ADMIN, MEMBER, OWNER } from "../../variables";
+import { createInstallationSession, getCurrentOrganizationInstallationStatus, getRisksForOrganization, linkInstallationToOrganization, updateRisksStatus } from "../../../controllers/v1/secretScanningController";
+import { ACCEPTED, ADMIN, MEMBER, OWNER } from "../../../variables";
 
 router.post(
   "/create-installation-session/organization/:organizationId",

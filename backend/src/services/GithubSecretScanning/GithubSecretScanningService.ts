@@ -3,13 +3,13 @@ import { exec } from "child_process";
 import { mkdir, readFile, rm, writeFile } from "fs";
 import { tmpdir } from "os";
 import { join } from "path"
-import GitRisks from "../models/gitRisks";
-import GitAppOrganizationInstallation from "../models/gitAppOrganizationInstallation";
-import MembershipOrg from "../models/membershipOrg";
-import { ADMIN, OWNER } from "../variables";
-import User from "../models/user";
-import { sendMail } from "../helpers";
-import TelemetryService from "./TelemetryService";
+import GitRisks from "../../ee/models/gitRisks";
+import GitAppOrganizationInstallation from "../../ee/models/gitAppOrganizationInstallation";
+import MembershipOrg from "../../models/membershipOrg";
+import { ADMIN, OWNER } from "../../variables";
+import User from "../../models/user";
+import { sendMail } from "../../helpers";
+import TelemetryService from "../TelemetryService";
 
 type SecretMatch = {
   Description: string;

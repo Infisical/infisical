@@ -5,3 +5,6 @@ export * from "./log";
 export * from "./action";
 export * from "./ssoConfig";
 export * from "./trustedIp";
+export * from  "./gitRisks";
+export * from  "./gitAppOrganizationInstallation";
+export * from  "./gitAppInstallationSession";
