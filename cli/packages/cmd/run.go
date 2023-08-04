@@ -144,12 +144,14 @@ var runCmd = &cobra.Command{
 			err = executeMultipleCommandWithEnvs(command, len(secretsByKey), env)
 			if err != nil {
 				fmt.Println(err)
+				os.Exit(1)
 			}
 
 		} else {
 			err = executeSingleCommandWithEnvs(args, len(secretsByKey), env)
 			if err != nil {
 				fmt.Println(err)
+				os.Exit(1)
 			}
 		}
 	},
