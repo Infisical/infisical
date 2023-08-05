@@ -24,7 +24,6 @@ import ServiceTokenData, { IServiceTokenData } from "./serviceTokenData";
 import APIKeyData, { IAPIKeyData } from "./apiKeyData";
 import LoginSRPDetail, { ILoginSRPDetail } from "./loginSRPDetail";
 import TokenVersion, { ITokenVersion } from "./tokenVersion";
-import GitRisks, { STATUS_RESOLVED_FALSE_POSITIVE } from "./gitRisks";
 
 export {
 	AuthProvider,
@@ -79,7 +78,5 @@ export {
 	LoginSRPDetail,
 	ILoginSRPDetail,
 	TokenVersion,
-	ITokenVersion,
-	GitRisks,
-	STATUS_RESOLVED_FALSE_POSITIVE
+	ITokenVersion
 };

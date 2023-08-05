@@ -51,10 +51,10 @@ const buttonVariants = cva(
         false: ""
       },
       size: {
-        xs: ["text-xs", "py-1", "px-1"],
-        sm: ["text-sm", "py-2", "px-2"],
-        md: ["text-md", "py-2", "px-4"],
-        lg: ["text-lg", "py-2", "px-8"]
+        xs: ["text-xs", "py-1", "px-2"],
+        sm: ["text-sm", "py-2", "px-4"],
+        md: ["text-md", "py-2", "px-5"],
+        lg: ["text-lg", "py-2", "px-6"]
       }
     },
     compoundVariants: [
@@ -186,16 +186,17 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             className="absolute rounded-xl opacity-80"
           />
         )}
-        <div
-          className={twMerge(
-            "inline-flex shrink-0 cursor-pointer items-center justify-center transition-all",
-            loadingToggleClass,
-            leftIcon && "ml-2",
-            size === "xs" ? "mr-1" : "mr-2"
-          )}
-        >
-          {leftIcon}
-        </div>
+        {leftIcon && (
+          <div
+            className={twMerge(
+              "inline-flex shrink-0 cursor-pointer items-center justify-center transition-all",
+              loadingToggleClass,
+              size === "xs" ? "mr-1" : "mr-2"
+            )}
+          >
+            {leftIcon}
+          </div>
+        )}
         <span
           className={twMerge(
             "transition-all",
@@ -205,15 +206,16 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         >
           {children}
         </span>
-        <div
-          className={twMerge(
-            "inline-flex shrink-0 cursor-pointer items-center justify-center transition-all",
-            loadingToggleClass,
-            size === "xs" ? "ml-1" : "ml-2"
-          )}
-        >
-          {rightIcon}
-        </div>
+        {rightIcon && (
+          <div
+            className={twMerge(
+              "inline-flex shrink-0 cursor-pointer items-center justify-center transition-all",
+              loadingToggleClass
+            )}
+          >
+            {rightIcon}
+          </div>
+        )}
       </button>
     );
   }

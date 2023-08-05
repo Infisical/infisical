@@ -5,8 +5,8 @@ import { body, param, query } from "express-validator";
 import { secretsController } from "../../controllers/v3";
 import {
   ADMIN,
-  MEMBER,
   AuthMode,
+  MEMBER,
   PERMISSION_READ_SECRETS,
   PERMISSION_WRITE_SECRETS,
   SECRET_PERSONAL,
@@ -52,7 +52,7 @@ router.get(
     requiredPermissions: [PERMISSION_READ_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: true,
-    checkIPAllowlist: true
+    checkIPAllowlist: false
   }),
   secretsController.getSecretByNameRaw
 );
@@ -80,7 +80,7 @@ router.post(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: true,
-    checkIPAllowlist: true
+    checkIPAllowlist: false
   }),
   secretsController.createSecretRaw
 );
@@ -108,7 +108,7 @@ router.patch(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: true,
-    checkIPAllowlist: true
+    checkIPAllowlist: false
   }),
   secretsController.updateSecretByNameRaw
 );
@@ -135,7 +135,7 @@ router.delete(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: true,
-    checkIPAllowlist: true
+    checkIPAllowlist: false
   }),
   secretsController.deleteSecretByNameRaw
 );
@@ -160,7 +160,7 @@ router.get(
     requiredPermissions: [PERMISSION_READ_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: false,
-    checkIPAllowlist: true
+    checkIPAllowlist: false
   }),
   secretsController.getSecrets
 );
@@ -195,7 +195,7 @@ router.post(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: false,
-    checkIPAllowlist: true
+    checkIPAllowlist: false
   }),
   secretsController.createSecret
 );
@@ -221,7 +221,7 @@ router.get(
     locationEnvironment: "query",
     requiredPermissions: [PERMISSION_READ_SECRETS],
     requireBlindIndicesEnabled: true,
-    checkIPAllowlist: true
+    checkIPAllowlist: false
   }),
   secretsController.getSecretByName
 );
@@ -251,7 +251,7 @@ router.patch(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: false,
-    checkIPAllowlist: true
+    checkIPAllowlist: false
   }),
   secretsController.updateSecretByName
 );
@@ -278,7 +278,7 @@ router.delete(
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
     requireBlindIndicesEnabled: true,
     requireE2EEOff: false,
-    checkIPAllowlist: true
+    checkIPAllowlist: false
   }),
   secretsController.deleteSecretByName
 );

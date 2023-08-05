@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub,faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
+import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button } from "../v2";
@@ -26,7 +27,7 @@ export default function InitialSignupStep({
                     window.close();
                 }}
                 leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-2" />}
-                className="h-14 w-full mx-0"
+                className="h-12 w-full mx-0"
             >
                 {t("signup.continue-with-google")}
             </Button>
@@ -40,7 +41,7 @@ export default function InitialSignupStep({
                     window.close();
                 }}
                 leftIcon={<FontAwesomeIcon icon={faGithub} className="mr-2" />}
-                className="h-14 w-full mx-0"
+                className="h-12 w-full mx-0"
             >
                 Continue with GitHub
             </Button>
@@ -53,7 +54,7 @@ export default function InitialSignupStep({
                     setIsSignupWithEmail(true);
                 }}
                 leftIcon={<FontAwesomeIcon icon={faEnvelope} className="mr-2" />}
-                className="h-14 w-full mx-0"
+                className="h-12 w-full mx-0"
             >
                 Continue with Email
             </Button>
@@ -63,10 +64,10 @@ export default function InitialSignupStep({
                 colorSchema="primary" 
                 variant="outline_bg"
                 onClick={() => router.push("/saml-sso")} 
-                isFullWidth
-                className="h-14 w-full mx-0"
+                leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
+                className="h-12 w-full mx-0"
             > 
-                Continue with SAML SSO
+                Continue with SSO
             </Button>
         </div>
         <div className='lg:w-1/6 w-1/4 min-w-[20rem] px-8 text-center mt-6 text-xs text-bunker-400'>

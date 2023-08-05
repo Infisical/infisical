@@ -6,6 +6,7 @@ import users from "./users";
 import workspace from "./workspace";
 import action from "./action";
 import cloudProducts from "./cloudProducts";
+import secretScanning from "./secretScanning";
 
 export {
     secret,
@@ -16,4 +17,5 @@ export {
     workspace,
     action,
     cloudProducts,
+    secretScanning
 }

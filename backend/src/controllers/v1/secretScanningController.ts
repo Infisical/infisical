@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
-import GitAppInstallationSession from "../../models/gitAppInstallationSession";
+import GitAppInstallationSession from "../../ee/models/gitAppInstallationSession";
 import crypto from "crypto";
 import { Types } from "mongoose";
 import { UnauthorizedRequestError } from "../../utils/errors";
-import GitAppOrganizationInstallation from "../../models/gitAppOrganizationInstallation";
+import GitAppOrganizationInstallation from "../../ee/models/gitAppOrganizationInstallation";
 import { MembershipOrg } from "../../models";
-import GitRisks, { STATUS_RESOLVED_FALSE_POSITIVE, STATUS_RESOLVED_NOT_REVOKED, STATUS_RESOLVED_REVOKED } from "../../models/gitRisks";
+import GitRisks, { STATUS_RESOLVED_FALSE_POSITIVE, STATUS_RESOLVED_NOT_REVOKED, STATUS_RESOLVED_REVOKED } from "../../ee/models/gitRisks";
 
 export const createInstallationSession = async (req: Request, res: Response) => {
   const sessionId = crypto.randomBytes(16).toString("hex");

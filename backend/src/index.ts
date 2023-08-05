@@ -5,8 +5,8 @@ import express from "express";
 require("express-async-errors");
 import helmet from "helmet";
 import cors from "cors";
-import { DatabaseService, GithubSecretScanningService } from "./services";
-import { EELicenseService } from "./ee/services";
+import { DatabaseService } from "./services";
+import { EELicenseService, GithubSecretScanningService} from "./ee/services";
 import { setUpHealthEndpoint } from "./services/health";
 import cookieParser from "cookie-parser";
 import swaggerUi = require("swagger-ui-express");
@@ -24,6 +24,7 @@ import {
   secretSnapshot as eeSecretSnapshotRouter,
   users as eeUsersRouter,
   workspace as eeWorkspaceRouter,
+  secretScanning as v1SecretScanningRouter,
 } from "./ee/routes/v1";
 import {
   auth as v1AuthRouter,
@@ -38,7 +39,6 @@ import {
   password as v1PasswordRouter,
   secretImport as v1SecretImportRouter,
   secret as v1SecretRouter,
-  secretScanning as v1SecretScanningRouter,
   secretsFolder as v1SecretsFolder,
   serviceToken as v1ServiceTokenRouter,
   signup as v1SignupRouter,

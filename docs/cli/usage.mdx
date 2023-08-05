@@ -7,7 +7,7 @@ The CLI is designed for a variety of applications, ranging from local secret man
 The distinguishing factor, however, is the authentication method used.
 
 <Tabs>
-  <Tab title="Local development">
+  <Tab title="Local development only">
     To use the Infisical CLI in your local development environment, simply run the command below and follow the interactive guide. 
 
     ```bash 
@@ -32,7 +32,7 @@ The distinguishing factor, however, is the authentication method used.
     
   </Tab>
 
-  <Tab title="CI/CD, Production usage, etc">
+  <Tab title="Staging, production & all other use case">
     To use Infisical for non local development scenarios, please create a [service token](../documentation/platform/token). The service token will allow you to authenticate and interact with Infisical. 
     Once you have created a service token with the required permissions, you'll need to feed the token to the CLI. 
 
@@ -61,16 +61,16 @@ The distinguishing factor, however, is the authentication method used.
 <Tabs>
   <Tab title="Feed secrets to your application">
     ```bash
-    infisical run -- [your application start command]
+    infisical run --env=dev --path=/apps/firefly -- [your application start command]
 
     # example with node (nodemon)
-    infisical run --env=dev --path=/apps/firefly -- nodemon index.js
+    infisical run --env=staging --path=/apps/spotify -- nodemon index.js
 
     # example with flask
-    infisical run -- flask run
+    infisical run --env=prod --path=/apps/backend -- flask run
 
     # example with spring boot - maven
-    infisical run -- ./mvnw spring-boot:run --quiet
+    infisical run --env=dev --path=/apps/ -- ./mvnw spring-boot:run --quiet
     ```
   </Tab>
   <Tab title="Feed secrets via custom aliases (advanced)">
@@ -86,7 +86,7 @@ The distinguishing factor, however, is the authentication method used.
     To make the secrets available from Infisical to `yd`, you can run the following command:
 
     ```bash
-    infisical run --command="source custom.sh && yd"
+    infisical run --env=prod --path=/apps/reddit --command="source custom.sh && yd"
     ```
   </Tab>
 </Tabs>
