@@ -10,8 +10,8 @@ import { body, param, query } from "express-validator";
 import { secretController } from "../../controllers/v1";
 import {
 	ADMIN, 
-	AUTH_MODE_JWT,
 	MEMBER,
+	AuthMode
 } from "../../variables";
 
 // note to devs: these endpoints will be deprecated in favor of v2
@@ -19,7 +19,7 @@ import {
 router.post(
 	"/:workspaceId",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -37,7 +37,7 @@ router.post(
 router.get(
 	"/:workspaceId",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],

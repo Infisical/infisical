@@ -1,3 +1,5 @@
+// TODO: deprecate in favor of new audit logs
+
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";

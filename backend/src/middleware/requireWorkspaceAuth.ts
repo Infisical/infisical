@@ -32,6 +32,8 @@ const requireWorkspaceAuth = ({
 		const workspaceId = req[locationWorkspaceId]?.workspaceId;
 		const environment = locationEnvironment ? req[locationEnvironment]?.environment : undefined;
 		
+		console.log("workspaceId: ", workspaceId);
+		
 		// validate clients
 		const { membership, workspace } = await validateClientForWorkspace({
 			authData: req.authData,

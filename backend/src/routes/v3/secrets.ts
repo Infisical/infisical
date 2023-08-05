@@ -5,11 +5,8 @@ import { body, param, query } from "express-validator";
 import { secretsController } from "../../controllers/v3";
 import {
   ADMIN,
-  AUTH_MODE_API_KEY,
-  AUTH_MODE_JWT,
-  AUTH_MODE_SERVICE_ACCOUNT,
-  AUTH_MODE_SERVICE_TOKEN,
   MEMBER,
+  AuthMode,
   PERMISSION_READ_SECRETS,
   PERMISSION_WRITE_SECRETS,
   SECRET_PERSONAL,
@@ -25,10 +22,9 @@ router.get(
   validateRequest,
   requireAuth({
     acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN
     ]
   }),
   secretsController.getSecretsRaw
@@ -44,10 +40,9 @@ router.get(
   validateRequest,
   requireAuth({
     acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN
     ]
   }),
   requireWorkspaceAuth({
@@ -73,10 +68,9 @@ router.post(
   validateRequest,
   requireAuth({
     acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN
     ]
   }),
   requireWorkspaceAuth({
@@ -102,10 +96,9 @@ router.patch(
   validateRequest,
   requireAuth({
     acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN
     ]
   }),
   requireWorkspaceAuth({
@@ -130,10 +123,9 @@ router.delete(
   validateRequest,
   requireAuth({
     acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN
     ]
   }),
   requireWorkspaceAuth({
@@ -156,10 +148,9 @@ router.get(
   validateRequest,
   requireAuth({
     acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN
     ]
   }),
   requireWorkspaceAuth({
@@ -192,10 +183,9 @@ router.post(
   validateRequest,
   requireAuth({
     acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN
     ]
   }),
   requireWorkspaceAuth({
@@ -220,10 +210,9 @@ router.get(
   validateRequest,
   requireAuth({
     acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN
     ]
   }),
   requireWorkspaceAuth({
@@ -250,10 +239,9 @@ router.patch(
   validateRequest,
   requireAuth({
     acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN
     ]
   }),
   requireWorkspaceAuth({
@@ -278,10 +266,9 @@ router.delete(
   validateRequest,
   requireAuth({
     acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN
     ]
   }),
   requireWorkspaceAuth({

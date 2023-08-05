@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
-import { ServiceAccount, ServiceTokenData, User } from "../../models";
-import { AUTH_MODE_JWT, AUTH_MODE_SERVICE_ACCOUNT } from "../../variables";
+import { ServiceTokenData } from "../../models";
 import { getSaltRounds } from "../../config";
 import { BadRequestError } from "../../utils/errors";
+import { ActorType } from "../../ee/models";
 
 /**
  * Return service token data associated with service token on request
@@ -73,24 +73,16 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
     expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
   }
 
-  let user, serviceAccount;
-
-  if (req.authData.authMode === AUTH_MODE_JWT && req.authData.authPayload instanceof User) {
+  let user;
+  
+  if (req.authData.actor.type === ActorType.USER) {
     user = req.authData.authPayload._id;
-  }
-
-  if (
-    req.authData.authMode === AUTH_MODE_SERVICE_ACCOUNT &&
-    req.authData.authPayload instanceof ServiceAccount
-  ) {
-    serviceAccount = req.authData.authPayload._id;
   }
 
   serviceTokenData = await new ServiceTokenData({
     name,
     workspace: workspaceId,
     user,
-    serviceAccount,
     scopes,
     lastUsed: new Date(),
     expiresAt,

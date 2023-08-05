@@ -28,7 +28,8 @@ export const workspaceKeys = {
   getWorkspaceAuthorization: (workspaceId: string) => [{ workspaceId }, "workspace-authorizations"],
   getWorkspaceIntegrations: (workspaceId: string) => [{ workspaceId }, "workspace-integrations"],
   getAllUserWorkspace: ["workspaces"] as const,
-  getUserWsEnvironments: (workspaceId: string) => ["workspace-env", { workspaceId }] as const
+  getUserWsEnvironments: (workspaceId: string) => ["workspace-env", { workspaceId }] as const,
+  getWorkspaceAuditLogs: (workspaceId: string) => [{ workspaceId }] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -259,3 +260,4 @@ export const useDeleteWsEnvironment = () => {
     }
   });
 };
+

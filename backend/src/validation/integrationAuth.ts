@@ -1,27 +1,17 @@
 import { Types } from "mongoose";
 import {
-    IServiceAccount,
-    IServiceTokenData,
     IUser,
     IWorkspace,
     IntegrationAuth,
-    ServiceAccount,
-    ServiceTokenData,
-    User,
 } from "../models";
-import { 
-    AUTH_MODE_API_KEY,
-    AUTH_MODE_JWT,
-    AUTH_MODE_SERVICE_ACCOUNT,
-    AUTH_MODE_SERVICE_TOKEN,
-} from "../variables";
 import {
     IntegrationAuthNotFoundError,
     UnauthorizedRequestError,
 } from "../utils/errors";
 import { IntegrationService } from "../services";
 import { validateUserClientForWorkspace } from "./user";
-import { validateServiceAccountClientForWorkspace } from "./serviceAccount";
+import { AuthData } from "../interfaces/middleware";
+import { ActorType } from "../ee/models";
 
 /**
  * Validate authenticated clients for integration authorization with id [integrationAuthId] based
@@ -38,10 +28,7 @@ import { validateServiceAccountClientForWorkspace } from "./serviceAccount";
     acceptedRoles,
     attachAccessToken,
 }: {
-    authData: {
-		authMode: string;
-		authPayload: IUser | IServiceAccount | IServiceTokenData;
-	};
+    authData: AuthData;
     integrationAuthId: Types.ObjectId;
     acceptedRoles: Array<"admin" | "member">;
     attachAccessToken?: boolean;
@@ -66,44 +53,20 @@ import { validateServiceAccountClientForWorkspace } from "./serviceAccount";
         accessId = access.accessId;
     }
     
-    if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
-        await validateUserClientForWorkspace({
-            user: authData.authPayload,
-            workspaceId: integrationAuth.workspace._id,
-            acceptedRoles,
-        });
+    switch (authData.actor.type) {
+        case ActorType.USER:
+            await validateUserClientForWorkspace({
+                user: authData.authPayload as IUser,
+                workspaceId: integrationAuth.workspace._id,
+                acceptedRoles,
+            });
 
-        return ({ integrationAuth, accessToken, accessId });
+            return ({ integrationAuth, accessToken, accessId }); 
+        case ActorType.SERVICE:
+            throw UnauthorizedRequestError({
+                message: "Failed service token authorization for integration authorization",
+            });
     }
-    
-    if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
-        await validateServiceAccountClientForWorkspace({
-            serviceAccount: authData.authPayload,
-            workspaceId: integrationAuth.workspace._id,
-        });
-
-        return ({ integrationAuth, accessToken, accessId });
-    }
-
-    if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
-        throw UnauthorizedRequestError({
-            message: "Failed service token authorization for integration authorization",
-        });
-    }
-
-    if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
-        await validateUserClientForWorkspace({
-            user: authData.authPayload,
-            workspaceId: integrationAuth.workspace._id,
-            acceptedRoles,
-        });
-
-        return ({ integrationAuth, accessToken, accessId });
-    }
-    
-    throw UnauthorizedRequestError({
-        message: "Failed client authorization for integration authorization",
-    });
 }
 
 export {

@@ -15,7 +15,8 @@ import { authLimiter } from "../../../helpers/rateLimiter";
 import {
     ACCEPTED,
     ADMIN,
-    OWNER
+    OWNER,
+    AuthMode
 } from "../../../variables";
 
 router.get(
@@ -90,7 +91,7 @@ router.post("/saml2/:ssoIdentifier",
 router.get(
     "/config",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN],
@@ -105,7 +106,7 @@ router.get(
 router.post(
     "/config",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN],
@@ -125,7 +126,7 @@ router.post(
 router.patch(
     "/config",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN],

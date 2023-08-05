@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import { Request, Response } from "express";
 import { getLicenseServerUrl } from "../../../config";
 import { licenseServerKeyRequest } from "../../../config/request";
@@ -20,7 +21,7 @@ export const getOrganizationPlan = async (req: Request, res: Response) => {
     const { organizationId } = req.params;
     const workspaceId = req.query.workspaceId as string;
 
-    const plan = await EELicenseService.getPlan(organizationId, workspaceId);
+    const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId), new Types.ObjectId(workspaceId));
 
     return res.status(200).send({
         plan,
@@ -44,7 +45,7 @@ export const startOrganizationTrial = async (req: Request, res: Response) => {
         }
     ); 
     
-    EELicenseService.delPlan(organizationId);
+    EELicenseService.delPlan(new Types.ObjectId(organizationId));
     
     return res.status(200).send({
         url

@@ -1,22 +1,14 @@
 import { Types } from "mongoose";
 import {
   ISecret,
-  IServiceAccount,
   IServiceTokenData,
   IUser,
-  ServiceAccount,
   ServiceTokenData,
-  User
 } from "../models";
 import { ServiceTokenDataNotFoundError, UnauthorizedRequestError } from "../utils/errors";
-import {
-  AUTH_MODE_API_KEY,
-  AUTH_MODE_JWT,
-  AUTH_MODE_SERVICE_ACCOUNT,
-  AUTH_MODE_SERVICE_TOKEN
-} from "../variables";
 import { validateUserClientForWorkspace } from "./user";
-import { validateServiceAccountClientForWorkspace } from "./serviceAccount";
+import { ActorType } from "../ee/models";
+import { AuthData } from "../interfaces/middleware";
 
 /**
  * Validate authenticated clients for service token with id [serviceTokenId] based
@@ -31,10 +23,7 @@ export const validateClientForServiceTokenData = async ({
   serviceTokenDataId,
   acceptedRoles
 }: {
-  authData: {
-    authMode: string;
-    authPayload: IUser | IServiceAccount | IServiceTokenData;
-  };
+  authData: AuthData;
   serviceTokenDataId: Types.ObjectId;
   acceptedRoles: Array<"admin" | "member">;
 }) => {
@@ -42,55 +31,24 @@ export const validateClientForServiceTokenData = async ({
     .select("+encryptedKey +iv +tag")
     .populate<{ user: IUser }>("user");
 
-  if (!serviceTokenData)
-    throw ServiceTokenDataNotFoundError({
-      message: "Failed to find service token data"
-    });
-
-  if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
-    await validateUserClientForWorkspace({
-      user: authData.authPayload,
-      workspaceId: serviceTokenData.workspace,
-      acceptedRoles
-    });
-
-    return serviceTokenData;
-  }
-
-  if (
-    authData.authMode === AUTH_MODE_SERVICE_ACCOUNT &&
-    authData.authPayload instanceof ServiceAccount
-  ) {
-    await validateServiceAccountClientForWorkspace({
-      serviceAccount: authData.authPayload,
-      workspaceId: serviceTokenData.workspace
-    });
-
-    return serviceTokenData;
-  }
-
-  if (
-    authData.authMode === AUTH_MODE_SERVICE_TOKEN &&
-    authData.authPayload instanceof ServiceTokenData
-  ) {
-    throw UnauthorizedRequestError({
-      message: "Failed service token authorization for service token data"
-    });
-  }
-
-  if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
-    await validateUserClientForWorkspace({
-      user: authData.authPayload,
-      workspaceId: serviceTokenData.workspace,
-      acceptedRoles
-    });
-
-    return serviceTokenData;
-  }
-
-  throw UnauthorizedRequestError({
-    message: "Failed client authorization for service token data"
+  if (!serviceTokenData) throw ServiceTokenDataNotFoundError({
+    message: "Failed to find service token data"
   });
+  
+  switch (authData.actor.type) {
+    case ActorType.USER:
+      await validateUserClientForWorkspace({
+        user: authData.authPayload as IUser,
+        workspaceId: serviceTokenData.workspace,
+        acceptedRoles
+      });
+
+      return serviceTokenData;
+    case ActorType.SERVICE:
+      throw UnauthorizedRequestError({
+        message: "Failed service token authorization for service token data"
+      });
+  }
 };
 
 /**

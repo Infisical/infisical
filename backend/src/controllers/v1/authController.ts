@@ -15,20 +15,20 @@ import { checkUserDevice } from "../../helpers/user";
 import {
   ACTION_LOGIN,
   ACTION_LOGOUT,
-  AUTH_MODE_JWT,
 } from "../../variables";
 import { 
   BadRequestError,
   UnauthorizedRequestError,
 } from "../../utils/errors";
 import { EELogService } from "../../ee/services";
-import { getChannelFromUserAgent } from "../../utils/posthog";
+import { getUserAgentType } from "../../utils/posthog";
 import {
   getHttpsEnabled,
   getJwtAuthLifetime,
   getJwtAuthSecret,
   getJwtRefreshSecret,
 } from "../../config";
+import { ActorType } from "../../ee/models";
 
 declare module "jsonwebtoken" {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -142,7 +142,7 @@ export const login2 = async (req: Request, res: Response) => {
         loginAction && await EELogService.createLog({
           userId: user._id,
           actions: [loginAction],
-          channel: getChannelFromUserAgent(req.headers["user-agent"]),
+          channel: getUserAgentType(req.headers["user-agent"]),
           ipAddress: req.realIP,
         });
 
@@ -170,7 +170,7 @@ export const login2 = async (req: Request, res: Response) => {
  * @returns
  */
 export const logout = async (req: Request, res: Response) => {
-  if (req.authData.authMode === AUTH_MODE_JWT && req.authData.authPayload instanceof User && req.authData.tokenVersionId) {
+  if (req.authData.actor.type === ActorType.USER && req.authData.tokenVersionId) {
     await clearTokens(req.authData.tokenVersionId)
   }
 
@@ -190,7 +190,7 @@ export const logout = async (req: Request, res: Response) => {
   logoutAction && await EELogService.createLog({
     userId: req.user._id,
     actions: [logoutAction],
-    channel: getChannelFromUserAgent(req.headers["user-agent"]),
+    channel: getUserAgentType(req.headers["user-agent"]),
     ipAddress: req.realIP,
   });
 

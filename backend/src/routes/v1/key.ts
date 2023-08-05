@@ -6,13 +6,13 @@ import {
 	validateRequest,
 } from "../../middleware";
 import { body, param } from "express-validator";
-import { ADMIN, AUTH_MODE_JWT, MEMBER } from "../../variables";
+import { ADMIN, MEMBER, AuthMode } from "../../variables";
 import { keyController } from "../../controllers/v1";
 
 router.post(
 	"/:workspaceId",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -27,7 +27,7 @@ router.post(
 router.get(
 	"/:workspaceId/latest",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],

@@ -9,17 +9,15 @@ import {
 } from "../../middleware";
 import {
 	ADMIN, 
-	AUTH_MODE_API_KEY,
-	AUTH_MODE_JWT,
-	AUTH_MODE_SERVICE_TOKEN,
 	MEMBER,
+	AuthMode
 } from "../../variables";
 import { workspaceController } from "../../controllers/v2";
 
 router.post(
 	"/:workspaceId/secrets",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -37,7 +35,7 @@ router.post(
 router.get(
 	"/:workspaceId/secrets",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_SERVICE_TOKEN],
+		acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN],
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -53,7 +51,7 @@ router.get(
 router.get(
 	"/:workspaceId/encrypted-key",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+		acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -67,7 +65,7 @@ router.get(
 router.get(
 	"/:workspaceId/service-token-data",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -83,7 +81,7 @@ router.get( // new - TODO: rewire dashboard to this route
 	param("workspaceId").exists().trim(),
 	validateRequest,
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+		acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -99,7 +97,7 @@ router.patch( // TODO - rewire dashboard to this route
 	body("role").exists().isString().trim().isIn([ADMIN, MEMBER]),
 	validateRequest,
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN],
@@ -118,7 +116,7 @@ router.delete( // TODO - rewire dashboard to this route
 	param("membershipId").exists().trim(),
 	validateRequest,
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN],
@@ -134,7 +132,7 @@ router.delete( // TODO - rewire dashboard to this route
 router.patch(
 	"/:workspaceId/auto-capitalization",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT]
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],

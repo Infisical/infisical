@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { Types } from "mongoose";
 import {
   Integration,
   Membership,
@@ -30,7 +31,7 @@ export const createWorkspaceEnvironment = async (
 
   if (!workspace) throw WorkspaceNotFoundError();
 
-  const plan = await EELicenseService.getPlan(workspace.organization.toString());
+  const plan = await EELicenseService.getPlan(workspace.organization);
 
   if (plan.environmentLimit !== null) {
     // case: limit imposed on number of environments allowed
@@ -58,7 +59,7 @@ export const createWorkspaceEnvironment = async (
   });
   await workspace.save();
 
-  await EELicenseService.refreshPlan(workspace.organization.toString(), workspaceId);
+  await EELicenseService.refreshPlan(workspace.organization, new Types.ObjectId(workspaceId));
 
   return res.status(200).send({
     message: "Successfully created new environment",
@@ -215,7 +216,7 @@ export const deleteWorkspaceEnvironment = async (
     { $pull: { deniedPermissions: { environmentSlug: environmentSlug } } }
   );
 
-  await EELicenseService.refreshPlan(workspace.organization.toString(), workspaceId);
+  await EELicenseService.refreshPlan(workspace.organization, new Types.ObjectId(workspaceId));
 
   return res.status(200).send({
     message: "Successfully deleted environment",

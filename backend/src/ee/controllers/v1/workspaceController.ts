@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { PipelineStage, Types } from "mongoose";
-import { Secret } from "../../../models";
+import { Secret, Membership, User, ServiceTokenData } from "../../../models";
 import {
   FolderVersion,
   IPType,
@@ -9,7 +9,12 @@ import {
   SecretSnapshot,
   SecretVersion,
   TFolderRootVersionSchema,
-  TrustedIP
+  TrustedIP,
+  AuditLog,
+  Actor,
+  ActorType,
+  UserActor,
+  ServiceActor
 } from "../../models";
 import { EESecretService } from "../../services";
 import { getLatestSecretVersionIds } from "../../helpers/secretVersion";
@@ -598,6 +603,83 @@ export const getWorkspaceLogs = async (req: Request, res: Response) => {
  * @param req
  * @param res 
  */
+export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
+  const { workspaceId } = req.params;
+  const eventType = req.query.eventType;
+  const userAgentType = req.query.userAgentType;
+  const actor = req.query.actor as string | undefined;
+  
+  const auditLogs = await AuditLog.find({
+    workspace: new Types.ObjectId(workspaceId),
+    ...(eventType ? {
+        "event.type": eventType
+      } : {}),
+    ...(userAgentType ? {
+      userAgentType
+    } : {}),
+    ...(actor ? {
+      "actor.type": actor.split("-", 2)[0],
+      ...(actor.split("-", 2)[0] === ActorType.USER ? {
+        "actor.metadata.userId": actor.split("-", 2)[1]
+      } : {
+        "actor.metadata.serviceId": actor.split("-", 2)[1]
+      })
+    } : {})
+  })
+  .sort({ createdAt: -1 });
+    
+  return res.status(200).send({
+    auditLogs
+  });
+}
+
+/**
+ * Return trusted ips for workspace with id [workspaceId]
+ * @param req
+ * @param res 
+ */
+export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Response) => {
+  const { workspaceId } = req.params;
+  
+  const userIds = await Membership.distinct("user", {
+    workspace: new Types.ObjectId(workspaceId)
+  });
+  const userActors: UserActor[] = (await User.find({
+    _id: {
+      $in: userIds
+    }
+  })
+  .select("email"))
+  .map((user) => ({
+    type: ActorType.USER,
+    metadata: {
+      userId: user._id.toString(),
+      email: user.email
+    }
+  }));
+  
+  const serviceActors: ServiceActor[] = (await ServiceTokenData.find({
+    workspace: new Types.ObjectId(workspaceId)
+  })
+  .select("name"))
+  .map((serviceTokenData) => ({
+    type: ActorType.SERVICE,
+    metadata: {
+      serviceId: serviceTokenData._id.toString(),
+      name: serviceTokenData.name
+    }
+  }));
+
+  return res.status(200).send({
+    actors: [...userActors, ...serviceActors]
+  });
+}
+
+/**
+ * Return trusted ips for workspace with id [workspaceId]
+ * @param req
+ * @param res 
+ */
 export const getWorkspaceTrustedIps = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
 
@@ -623,7 +705,7 @@ export const addWorkspaceTrustedIp = async (req: Request, res: Response) => {
     isActive
   } = req.body;
   
-  const plan = await EELicenseService.getPlan(req.workspace.organization.toString());
+  const plan = await EELicenseService.getPlan(req.workspace.organization);
   
   if (!plan.ipAllowlisting) return res.status(400).send({
     message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
@@ -663,7 +745,7 @@ export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
     comment
   } = req.body;
 
-  const plan = await EELicenseService.getPlan(req.workspace.organization.toString());
+  const plan = await EELicenseService.getPlan(req.workspace.organization);
 
   if (!plan.ipAllowlisting) return res.status(400).send({
     message: "Failed to update IP access range due to plan restriction. Upgrade plan to update IP access range."
@@ -721,7 +803,7 @@ export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
 export const deleteWorkspaceTrustedIp = async (req: Request, res: Response) => {
   const { workspaceId, trustedIpId } = req.params;
 
-  const plan = await EELicenseService.getPlan(req.workspace.organization.toString());
+  const plan = await EELicenseService.getPlan(req.workspace.organization);
   
   if (!plan.ipAllowlisting) return res.status(400).send({
     message: "Failed to delete IP access range due to plan restriction. Upgrade plan to delete IP access range."

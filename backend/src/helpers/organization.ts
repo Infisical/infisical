@@ -115,5 +115,5 @@ export const updateSubscriptionOrgQuantity = async ({
     );
   }
 
-  await EELicenseService.refreshPlan(organizationId);
+  await EELicenseService.refreshPlan(new Types.ObjectId(organizationId));
 };

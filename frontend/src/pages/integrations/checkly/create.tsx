@@ -10,7 +10,7 @@ import {
   Input,
   Select,
   SelectItem
-} from "../../../components/v2";
+} from "@app/components/v2";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById

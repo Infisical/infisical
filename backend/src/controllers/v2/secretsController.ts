@@ -16,7 +16,7 @@ import { EventService } from "../../services";
 import { eventPushSecrets } from "../../events";
 import { EELogService, EESecretService } from "../../ee/services";
 import { SecretService, TelemetryService } from "../../services";
-import { getChannelFromUserAgent } from "../../utils/posthog";
+import { getUserAgentType } from "../../utils/posthog";
 import { PERMISSION_WRITE_SECRETS } from "../../variables";
 import {
   userHasNoAbility,
@@ -44,7 +44,7 @@ import { getAllImportedSecrets } from "../../services/SecretImportService";
  * @param res
  */
 export const batchSecrets = async (req: Request, res: Response) => {
-  const channel = getChannelFromUserAgent(req.headers["user-agent"]);
+  const channel = getUserAgentType(req.headers["user-agent"]);
   const postHogClient = await TelemetryService.getPostHogClient();
 
   const {
@@ -416,7 +416,7 @@ export const createSecrets = async (req: Request, res: Response) => {
     }   
     */
 
-  const channel = getChannelFromUserAgent(req.headers["user-agent"]);
+  const channel = getUserAgentType(req.headers["user-agent"]);
   const {
     workspaceId,
     environment,
@@ -834,7 +834,7 @@ export const getSecrets = async (req: Request, res: Response) => {
     importedSecrets = await getAllImportedSecrets(workspaceId, environment, folderId as string);
   }
 
-  const channel = getChannelFromUserAgent(req.headers["user-agent"]);
+  const channel = getUserAgentType(req.headers["user-agent"]);
 
   const readAction = await EELogService.createAction({
     name: ACTION_READ_SECRETS,
@@ -1170,7 +1170,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
     }   
     */
 
-  const channel = getChannelFromUserAgent(req.headers["user-agent"]);
+  const channel = getUserAgentType(req.headers["user-agent"]);
   const toDelete = req.secrets.map((s: any) => s._id);
 
   await Secret.deleteMany({

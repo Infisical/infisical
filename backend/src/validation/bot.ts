@@ -1,25 +1,15 @@
 import { Types } from "mongoose";
 import {
     Bot,
-    IServiceAccount,
-    IServiceTokenData,
     IUser,
-    ServiceAccount,
-    ServiceTokenData,
-    User,
 } from "../models";
-import { validateServiceAccountClientForWorkspace } from "./serviceAccount";
 import { validateUserClientForWorkspace } from "./user";
 import {
     BotNotFoundError,
     UnauthorizedRequestError,
 } from "../utils/errors";
-import {
-    AUTH_MODE_API_KEY,
-    AUTH_MODE_JWT,
-    AUTH_MODE_SERVICE_ACCOUNT,
-    AUTH_MODE_SERVICE_TOKEN,
-} from "../variables";
+import { AuthData } from "../interfaces/middleware";
+import { ActorType } from "../ee/models";
 
 /**
  * Validate authenticated clients for bot with id [botId] based
@@ -34,65 +24,24 @@ export const validateClientForBot = async ({
   botId,
   acceptedRoles,
 }: {
-  authData: {
-    authMode: string;
-    authPayload: IUser | IServiceAccount | IServiceTokenData;
-  };
+  authData: AuthData;
   botId: Types.ObjectId;
   acceptedRoles: Array<"admin" | "member">;
 }) => {
   const bot = await Bot.findById(botId);
-
   if (!bot) throw BotNotFoundError();
-
-  if (
-    authData.authMode === AUTH_MODE_JWT &&
-    authData.authPayload instanceof User
-  ) {
-    await validateUserClientForWorkspace({
-      user: authData.authPayload,
-      workspaceId: bot.workspace,
-      acceptedRoles,
-    });
-
-    return bot;
+  
+  switch (authData.actor.type) {
+    case ActorType.USER:
+      await validateUserClientForWorkspace({
+        user: authData.authPayload as IUser,
+        workspaceId: bot.workspace,
+        acceptedRoles,
+      });
+      return bot;
+    case ActorType.SERVICE:
+      throw UnauthorizedRequestError({
+        message: "Failed service token authorization for bot",
+      });
   }
-
-  if (
-    authData.authMode === AUTH_MODE_SERVICE_ACCOUNT &&
-    authData.authPayload instanceof ServiceAccount
-  ) {
-    await validateServiceAccountClientForWorkspace({
-      serviceAccount: authData.authPayload,
-      workspaceId: bot.workspace,
-    });
-
-    return bot;
-  }
-
-  if (
-    authData.authMode === AUTH_MODE_SERVICE_TOKEN &&
-    authData.authPayload instanceof ServiceTokenData
-  ) {
-    throw UnauthorizedRequestError({
-      message: "Failed service token authorization for bot",
-    });
-  }
-
-  if (
-    authData.authMode === AUTH_MODE_API_KEY &&
-    authData.authPayload instanceof User
-  ) {
-    await validateUserClientForWorkspace({
-      user: authData.authPayload,
-      workspaceId: bot.workspace,
-      acceptedRoles,
-    });
-
-    return bot;
-  }
-
-  throw BotNotFoundError({
-    message: "Failed client authorization for bot",
-  });
 };

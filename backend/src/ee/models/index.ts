@@ -5,3 +5,4 @@ export * from "./log";
 export * from "./action";
 export * from "./ssoConfig";
 export * from "./trustedIp";
+export * from "./auditLog";
