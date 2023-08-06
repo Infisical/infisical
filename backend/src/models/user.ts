@@ -44,6 +44,9 @@ const userSchema = new Schema<IUser>(
 			type: String,
 			enum: AuthProvider,
 		},
+		authProviders: [{
+			type: String,
+		}],
 		email: {
 			type: String,
 			required: true,

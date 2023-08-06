@@ -33,6 +33,10 @@ export const AuthMethodSection = () => {
     const { user } = useUser();
     const { mutateAsync, isLoading } = useUpdateUserAuthProviders();
     
+    const defaultAuthMethods = user.authProviders?.length ?
+        user.authProviders : 
+        [user?.authProvider ?? "email"];
+    
     const {
         reset,
         handleSubmit,
@@ -40,7 +44,7 @@ export const AuthMethodSection = () => {
         watch,
     } = useForm<FormData>({
         defaultValues: {
-            authMethods: [user?.authProvider ?? "email"] 
+            authMethods: defaultAuthMethods,
         },
         resolver: yupResolver(schema)
     });
@@ -50,7 +54,7 @@ export const AuthMethodSection = () => {
     useEffect(() => {
         if (user) {
             reset({
-                authMethods: [user?.authProvider ?? "email"]
+                authMethods: defaultAuthMethods,
             });
         }
     }, [user]);

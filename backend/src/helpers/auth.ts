@@ -390,8 +390,11 @@ export const validateProviderAuthToken = async ({
 		jwt.verify(providerAuthToken, await getJwtProviderAuthSecret())
 	);
 
+	const doesProviderMatch = (user.authProvider && user.authProvider === decodedToken.authProvider)
+		|| (user.authProviders && user.authProviders.includes(decodedToken.authProvider));
+
 	if (
-		decodedToken.authProvider !== user.authProvider ||
+		!doesProviderMatch ||
 		decodedToken.email !== email
 	) {
 		throw new Error("Invalid authentication credentials.")

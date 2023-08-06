@@ -119,6 +119,7 @@ const initializePassport = async () => {
             firstName: user.firstName,
             lastName: user.lastName,
             authProvider: user.authProvider,
+            authProviders: user.authProviders,
             isUserCompleted,
             ...(req.query.state ? {
               callbackPort: req.query.state as string
@@ -173,6 +174,7 @@ const initializePassport = async () => {
           firstName: user.firstName,
           lastName: user.lastName,
           authProvider: user.authProvider,
+          authProviders: user.authProviders,
           isUserCompleted,
           ...(req.query.state ? {
             callbackPort: req.query.state as string
@@ -302,6 +304,7 @@ const initializePassport = async () => {
           lastName,
           organizationName: organization?.name,
           authProvider: user.authProvider,
+          authProviders: user.authProviders,
           isUserCompleted,
           ...(req.body.RelayState ? {
             callbackPort: req.body.RelayState as string
