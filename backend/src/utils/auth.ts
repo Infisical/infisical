@@ -107,7 +107,7 @@ const initializePassport = async () => {
           }).save();
         }
 
-        let authProviders = [...(user.authProviders || []), user.authProvider];
+        const authProviders = [...(user.authProviders || []), user.authProvider];
 
         if (!authProviders.includes(AuthProvider.GOOGLE)) {
           done(InternalServerError());
@@ -163,7 +163,7 @@ const initializePassport = async () => {
         }).save();
       }
 
-      let authProviders = [...(user.authProviders || []), user.authProvider];
+      const authProviders = [...(user.authProviders || []), user.authProvider];
       
       if (!authProviders.includes(AuthProvider.GITHUB)) {
         done(InternalServerError());
