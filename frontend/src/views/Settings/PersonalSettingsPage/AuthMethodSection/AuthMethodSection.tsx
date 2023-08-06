@@ -1,17 +1,16 @@
 import { useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
     Button,
-    FormControl,
-    Select,
-    SelectItem} from "@app/components/v2";
+    Checkbox
+} from "@app/components/v2";
 import { useUser } from "@app/context";
 import {
-    useUpdateUserAuthProvider
+    useUpdateUserAuthProviders
 } from "@app/hooks/api";
 
 const authMethods = [
@@ -24,7 +23,7 @@ const authMethods = [
 ];
 
 const schema = yup.object({
-    authMethod: yup.string().required("Auth method is required")
+    authMethods: yup.array().required("Auth method is required")
 });
 
 export type FormData = yup.InferType<typeof schema>;
@@ -32,35 +31,38 @@ export type FormData = yup.InferType<typeof schema>;
 export const AuthMethodSection = () => {
     const { createNotification } = useNotificationContext();
     const { user } = useUser();
-    const { mutateAsync, isLoading } = useUpdateUserAuthProvider();
+    const { mutateAsync, isLoading } = useUpdateUserAuthProviders();
     
     const {
         reset,
-        control,
-        handleSubmit
+        handleSubmit,
+        setValue,
+        watch,
     } = useForm<FormData>({
         defaultValues: {
-            authMethod: user?.authProvider ?? "email" 
+            authMethods: [user?.authProvider ?? "email"] 
         },
         resolver: yupResolver(schema)
     });
     
+    const selectedAuthMethods = watch("authMethods");
+    
     useEffect(() => {
         if (user) {
             reset({
-                authMethod: user?.authProvider ?? "email"
+                authMethods: [user?.authProvider ?? "email"]
             });
         }
     }, [user]);
 
     const onFormSubmit = async ({
-        authMethod
+        authMethods
     }: FormData) => {
         try {
             if (
-                authMethod === "okta-saml" 
-                || authMethod === "azure-saml"
-                || authMethod === "jumpcloud-saml"
+                authMethods.includes("okta-saml")
+                || authMethods.includes("azure-saml")
+                || authMethods.includes("jumpcloud-saml")
             ) {
                 createNotification({
                     text: "SAML authentication can only be configured in your organization settings",
@@ -71,7 +73,7 @@ export const AuthMethodSection = () => {
             }
             
             await mutateAsync({
-                authProvider: authMethod
+                authProviders: authMethods
             });
             
             createNotification({
@@ -96,36 +98,29 @@ export const AuthMethodSection = () => {
                 Authentication Method
             </h2> 
             <div className="max-w-md mb-4">
-                <Controller
-                    control={control}
-                    name="authMethod"
-                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                        <FormControl
-                            className="mb-0"
-                            errorText={error?.message}
-                            isError={Boolean(error)}
-                        >
-                            <Select
-                                defaultValue={field.value}
-                                {...field}
-                                onValueChange={(e) => onChange(e)}
-                                className="w-full bg-mineshaft-800 border border-mineshaft-600"
-                            >
-                                {authMethods.map((authMethod) => {
-                                    return (
-                                        <SelectItem 
-                                            value={authMethod.value} 
-                                            key={`auth-method-${authMethod.value}`}
-                                        >
-                                            {authMethod.label}
-                                        </SelectItem>
-                                    );
-                                })}
-                        </Select>
-                        </FormControl>
-                    )}
-                />
+                {
+                    authMethods.map(authMethod => (
+                        <Checkbox 
+                            className="data-[state=checked]:bg-primary"
+                            id={`auth-method-id-${authMethod.label}`}
+                            key={`auth-method-${authMethod.label}`}
+                            isChecked={selectedAuthMethods.includes(authMethod.value)}
+                            onCheckedChange={(checked) => {
+                            if (checked) {
+                                setValue("authMethods", [
+                                    ...selectedAuthMethods,
+                                    authMethod.value
+                                ])
+                            } else {
+                                setValue("authMethods", selectedAuthMethods.filter(auth => auth !== authMethod.value))
+                            }
+                        }}>
+                            {authMethod.label}
+                        </Checkbox>
+                    ))
+                }
             </div>
+
             <Button
                 type="submit"
                 colorSchema="secondary"

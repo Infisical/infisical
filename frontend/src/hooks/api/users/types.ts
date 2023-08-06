@@ -13,6 +13,7 @@ export type User = {
   firstName?: string;
   lastName?: string;
   authProvider?: AuthProvider;
+  authProviders?: AuthProvider[];
   encryptionVersion?: number;
   protectedKey?: string;
   protectedKeyIV?: string;

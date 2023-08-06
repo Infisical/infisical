@@ -13,6 +13,7 @@ export interface IUser extends Document {
 	_id: Types.ObjectId;
 	authId?: string;
 	authProvider?: AuthProvider;
+	authProviders?: AuthProvider[];
 	email: string;
 	firstName?: string;
 	lastName?: string;

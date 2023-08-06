@@ -80,6 +80,28 @@ export const useUpdateUserAuthProvider = () => {
   });
 };
 
+
+export const useUpdateUserAuthProviders = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      authProviders
+    }: {
+      authProviders: string[];
+    }) => {
+      const { data: { user } } = await apiRequest.put("/api/v2/users/me/auth-providers", { 
+        authProviders
+      });
+      
+      return user;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(userKeys.getUser);
+    }
+  });
+};
+
 export const useGetUserAction = (action: string) =>
   useQuery({
     queryKey: userKeys.userAction,

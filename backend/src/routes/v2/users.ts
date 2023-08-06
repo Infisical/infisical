@@ -57,6 +57,24 @@ router.patch(
     usersController.updateAuthProvider
 );
 
+router.put(
+    "/me/auth-providers",
+    requireAuth({
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+    }),
+    body("authProviders").exists().isArray({
+        min: 1,
+    }).custom((authProviders: AuthProvider[]) => {
+        return authProviders.every(provider => [
+            AuthProvider.EMAIL,
+            AuthProvider.GOOGLE,
+            AuthProvider.GITHUB
+        ].includes(provider))
+    }),
+    validateRequest,
+    usersController.updateAuthProviders,
+);
+
 router.get(
     "/me/organizations",
     requireAuth({
