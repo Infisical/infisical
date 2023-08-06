@@ -117,7 +117,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 		if (!user)
 			throw new Error("Failed to complete account for non-existent user"); // ensure user is non-null
 
-		if (user.authProvider !== AuthProvider.OKTA_SAML) {
+		if (!user.authProviders?.includes(AuthProvider.OKTA_SAML)) {
 			// initialize default organization and workspace
 			await initializeDefaultOrg({
 				organizationName,
