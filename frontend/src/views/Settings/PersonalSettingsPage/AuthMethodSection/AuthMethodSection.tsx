@@ -13,7 +13,7 @@ import {
     useUpdateUserAuthProviders
 } from "@app/hooks/api";
 
-const authMethods = [
+const authMethodList = [
     { label: "Email", value: "email" },
     { label: "Google SSO", value: "google" },
     { label: "GitHub SSO", value: "github" },
@@ -103,7 +103,7 @@ export const AuthMethodSection = () => {
             </h2> 
             <div className="max-w-md mb-4">
                 {
-                    authMethods.map(authMethod => (
+                    authMethodList.map(authMethod => (
                         <Checkbox 
                             className="data-[state=checked]:bg-primary"
                             id={`auth-method-id-${authMethod.label}`}
