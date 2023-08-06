@@ -97,18 +97,20 @@ const initializePassport = async () => {
           email
         }).select("+publicKey");
         
-        if (user && user.authProvider !== AuthProvider.GOOGLE) {
-          done(InternalServerError());
-        }
-
         if (!user) {
           user = await new User({
             email,
-            authProvider: AuthProvider.GOOGLE,
+            authProviders: [AuthProvider.GOOGLE],
             authId: profile.id,
             firstName: profile.name.givenName,
             lastName: profile.name.familyName
           }).save();
+        }
+
+        let authProviders = [...(user.authProviders || []), user.authProvider];
+
+        if (!authProviders.includes(AuthProvider.GOOGLE)) {
+          done(InternalServerError());
         }
 
         const isUserCompleted = !!user.publicKey;
@@ -118,8 +120,7 @@ const initializePassport = async () => {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            authProvider: user.authProvider,
-            authProviders: user.authProviders,
+            authProvider: AuthProvider.GOOGLE,
             isUserCompleted,
             ...(req.query.state ? {
               callbackPort: req.query.state as string
@@ -151,19 +152,21 @@ const initializePassport = async () => {
       let user = await User.findOne({
         email
       }).select("+publicKey");
-      
-      if (user && user.authProvider !== AuthProvider.GITHUB) {
-        done(InternalServerError());
-      }
-      
+
       if (!user) {
         user = await new User({
           email: email,
-          authProvider: AuthProvider.GITHUB,
+          authProviders: [AuthProvider.GITHUB],
           authId: profile.id,
           firstName: profile.displayName,
           lastName: ""
         }).save();
+      }
+
+      let authProviders = [...(user.authProviders || []), user.authProvider];
+      
+      if (!authProviders.includes(AuthProvider.GITHUB)) {
+        done(InternalServerError());
       }
 
       const isUserCompleted = !!user.publicKey;
@@ -173,8 +176,7 @@ const initializePassport = async () => {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          authProvider: user.authProvider,
-          authProviders: user.authProviders,
+          authProvider: AuthProvider.GITHUB,
           isUserCompleted,
           ...(req.query.state ? {
             callbackPort: req.query.state as string
@@ -249,7 +251,7 @@ const initializePassport = async () => {
           await User.findByIdAndUpdate(
             user._id, 
             {
-              authProvider: req.ssoConfig.authProvider
+              authProviders: [req.ssoConfig.authProvider]
             },
             {
               new: true
@@ -281,7 +283,7 @@ const initializePassport = async () => {
       } else {
         user = await new User({
           email,
-          authProvider: req.ssoConfig.authProvider,
+          authProviders: [req.ssoConfig.authProvider],
           firstName,
           lastName
         }).save();
@@ -303,8 +305,7 @@ const initializePassport = async () => {
           firstName,
           lastName,
           organizationName: organization?.name,
-          authProvider: user.authProvider,
-          authProviders: user.authProviders,
+          authProvider: req.ssoConfig.authProvider,
           isUserCompleted,
           ...(req.body.RelayState ? {
             callbackPort: req.body.RelayState as string
