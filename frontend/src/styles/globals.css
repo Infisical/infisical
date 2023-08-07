@@ -1,5 +1,20 @@
 @tailwind base;
 @tailwind components;
+
+.rdp-day,
+.rdp-nav_button {
+  @apply rounded-md hover:text-mineshaft-500;
+}
+
+.rdp-button:hover:not([disabled]):not(.rdp-day_selected),
+.rdp-nav_button:hover {
+  @apply bg-primary;
+}
+
+.rdp-day_today {
+  @apply bg-primary/50 hover:bg-primary-600 text-mineshaft-500;
+}
+
 @tailwind utilities;
 
 @layer utilities {

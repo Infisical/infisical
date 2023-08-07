@@ -49,6 +49,7 @@ export type DropdownMenuItemProps<T extends ElementType> =
     icon?: ReactNode;
     as?: T;
     inputRef?: Ref<T>;
+    iconPos?: "left" | "right";
   };
 
 export const DropdownMenuItem = <T extends ElementType = "button">({
@@ -57,6 +58,7 @@ export const DropdownMenuItem = <T extends ElementType = "button">({
   className,
   icon,
   as: Item = "button",
+  iconPos = "left",
   ...props
 }: DropdownMenuItemProps<T> & ComponentPropsWithRef<T>) => (
   <DropdownMenuPrimitive.Item
@@ -67,8 +69,9 @@ export const DropdownMenuItem = <T extends ElementType = "button">({
     )}
   >
     <Item type="button" role="menuitem" className="flex w-full items-center" ref={inputRef}>
-      {icon && <span className="flex items-center mr-2">{icon}</span>}
+      {icon && iconPos === "left" && <span className="flex items-center mr-2">{icon}</span>}
       <span className="flex-grow text-left">{children}</span>
+      {icon && iconPos === "right" && <span className="flex items-center ml-2">{icon}</span>}
     </Item>
   </DropdownMenuPrimitive.Item>
 );
