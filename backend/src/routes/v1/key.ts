@@ -6,7 +6,7 @@ import {
 	validateRequest,
 } from "../../middleware";
 import { body, param } from "express-validator";
-import { ADMIN, MEMBER, AuthMode } from "../../variables";
+import { ADMIN, AuthMode, MEMBER } from "../../variables";
 import { keyController } from "../../controllers/v1";
 
 router.post(

@@ -8,7 +8,7 @@ import {
     validateRequest,
 } from "../../../middleware";
 import { param } from "express-validator";
-import { ADMIN, MEMBER, AuthMode } from "../../../variables";
+import { ADMIN, AuthMode, MEMBER } from "../../../variables";
 import { secretSnapshotController } from "../../controllers/v1";
 
 router.get(

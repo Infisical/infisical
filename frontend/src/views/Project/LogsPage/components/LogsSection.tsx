@@ -1,19 +1,11 @@
 import { useForm } from "react-hook-form";
-import { LogsFilter } from "./LogsFilter";
-import { LogsTable } from "./LogsTable";
 import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+
 import { EventType, UserAgentType } from "~/hooks/api/auditLogs/enums";
 
-const schema = yup.object({
-    eventType: yup.string()
-        .oneOf(Object.values(EventType), 'Invalid event type'),
-    actor: yup.string(),
-    userAgentType: yup.string()
-        .oneOf(Object.values(UserAgentType), 'Invalid user agent type'),
-}).required();
-
-export type AuditLogFilterFormData = yup.InferType<typeof schema>;
+import { LogsFilter } from "./LogsFilter";
+import { LogsTable } from "./LogsTable";
+import { AuditLogFilterFormData,auditLogFilterFormSchema } from "./types";
 
 export const LogsSection = () => {
     const {
@@ -21,7 +13,7 @@ export const LogsSection = () => {
         reset,
         watch,
     } = useForm<AuditLogFilterFormData>({
-        resolver: yupResolver(schema)
+        resolver: yupResolver(auditLogFilterFormSchema)
     });
 
     const eventType = watch("eventType") as EventType | undefined;
@@ -46,4 +38,4 @@ export const LogsSection = () => {
             />
         </div>
     );
-}
+ }

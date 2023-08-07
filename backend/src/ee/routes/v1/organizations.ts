@@ -8,7 +8,7 @@ import {
 import { body, param, query } from "express-validator";
 import { organizationsController } from "../../controllers/v1";
 import {
-    ACCEPTED, ADMIN, MEMBER, OWNER, AuthMode
+    ACCEPTED, ADMIN, AuthMode, MEMBER, OWNER
 } from "../../../variables";
 
 router.get(

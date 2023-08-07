@@ -12,7 +12,7 @@ import {
   getFolders,
   updateFolderById,
 } from "../../controllers/v1/secretsFolderController";
-import { ADMIN, MEMBER, AuthMode } from "../../variables";
+import { ADMIN, AuthMode, MEMBER } from "../../variables";
 
 router.post(
   "/",

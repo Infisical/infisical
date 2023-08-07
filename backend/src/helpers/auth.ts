@@ -28,8 +28,8 @@ import {
 	AuthMode
 } from "../variables";
 import {
-	UserAuthData,
-	ServiceTokenAuthData
+	ServiceTokenAuthData,
+	UserAuthData
 } from "../interfaces/middleware";
 
 import { ActorType } from "../ee/models";

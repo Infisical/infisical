@@ -1,9 +1,9 @@
 import net from "net";
 import { Types } from "mongoose";
 import {
-    SecretBlindIndexData,
-	IServiceTokenData,
+    IServiceTokenData,
 	IUser,
+	SecretBlindIndexData,
     Workspace,
 } from "../models";
 import {
@@ -78,9 +78,10 @@ export const validateClientForWorkspace = async ({
 		});
 	}
 	
+	let membership;
 	switch (authData.actor.type) {
 		case ActorType.USER:
-			const membership = await validateUserClientForWorkspace({
+			membership = await validateUserClientForWorkspace({
 				user: authData.authPayload as IUser,
 				workspaceId,
 				environment,

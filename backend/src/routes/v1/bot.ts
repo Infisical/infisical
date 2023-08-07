@@ -8,7 +8,7 @@ import {
     validateRequest,
 } from "../../middleware";
 import { botController } from "../../controllers/v1";
-import { ADMIN, MEMBER, AuthMode } from "../../variables";
+import { ADMIN, AuthMode, MEMBER } from "../../variables";
 
 router.get(
     "/:workspaceId",

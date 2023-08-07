@@ -1,3 +1,4 @@
+export * from "./auditLogs";
 export * from "./auth";
 export * from "./bots";
 export * from "./incidentContacts";
@@ -15,7 +16,6 @@ export * from "./ssoConfig";
 export * from "./subscriptions";
 export * from "./tags";
 export * from "./trustedIps";
-export * from "./auditLogs";
 export * from "./users";
 export * from "./webhooks";
 export * from "./workspace";

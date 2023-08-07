@@ -10,9 +10,9 @@ import { body, param } from "express-validator";
 import { 
     ACCEPTED, 
     ADMIN, 
+    AuthMode,
     MEMBER,
-    OWNER,
-    AuthMode
+    OWNER
 } from "../../variables";
 import { organizationsController } from "../../controllers/v2";
 

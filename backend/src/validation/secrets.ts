@@ -1,9 +1,9 @@
 import { Types } from "mongoose";
 import {
     ISecret,
-    Secret,
-    IUser,
     IServiceTokenData,
+    IUser,
+    Secret,
 } from "../models";
 import { validateUserClientForSecret, validateUserClientForSecrets } from "./user";
 import { validateServiceTokenDataClientForSecrets, validateServiceTokenDataClientForWorkspace } from "./serviceTokenData";

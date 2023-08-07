@@ -1,20 +1,19 @@
 import { Request, Response } from "express";
 import { PipelineStage, Types } from "mongoose";
-import { Secret, Membership, User, ServiceTokenData } from "../../../models";
+import { Membership, Secret, ServiceTokenData, User } from "../../../models";
 import {
+  ActorType,
+  AuditLog,
   FolderVersion,
   IPType,
   ISecretVersion,
   Log,
   SecretSnapshot,
   SecretVersion,
+  ServiceActor,
   TFolderRootVersionSchema,
   TrustedIP,
-  AuditLog,
-  Actor,
-  ActorType,
-  UserActor,
-  ServiceActor
+  UserActor
 } from "../../models";
 import { EESecretService } from "../../services";
 import { getLatestSecretVersionIds } from "../../helpers/secretVersion";
@@ -599,7 +598,7 @@ export const getWorkspaceLogs = async (req: Request, res: Response) => {
 };
 
 /**
- * Return trusted ips for workspace with id [workspaceId]
+ * Return audit logs for workspace with id [workspaceId]
  * @param req
  * @param res 
  */
@@ -608,6 +607,8 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
   const eventType = req.query.eventType;
   const userAgentType = req.query.userAgentType;
   const actor = req.query.actor as string | undefined;
+  const offset: number = parseInt(req.query.offset as string);
+  const limit: number = parseInt(req.query.limit as string);
   
   const auditLogs = await AuditLog.find({
     workspace: new Types.ObjectId(workspaceId),
@@ -626,7 +627,9 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
       })
     } : {})
   })
-  .sort({ createdAt: -1 });
+  .sort({ createdAt: -1 })
+  .skip(offset)
+  .limit(limit);
     
   return res.status(200).send({
     auditLogs
@@ -634,7 +637,7 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
 }
 
 /**
- * Return trusted ips for workspace with id [workspaceId]
+ * Return audit log actor filter options for workspace with id [workspaceId]
  * @param req
  * @param res 
  */

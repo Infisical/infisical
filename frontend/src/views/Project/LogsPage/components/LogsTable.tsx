@@ -1,4 +1,5 @@
 import { faFile } from "@fortawesome/free-solid-svg-icons";
+
 import {
     EmptyState,
     Table,
@@ -12,8 +13,10 @@ import {
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useGetAuditLogs } from "@app/hooks/api";
-import { LogsTableRow } from "./LogsTableRow";
+
 import { EventType, UserAgentType } from "~/hooks/api/auditLogs/enums";
+
+import { LogsTableRow } from "./LogsTableRow";
 
 type Props = {
     eventType: EventType | undefined;

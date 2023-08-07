@@ -9,8 +9,8 @@ import {
 } from "../../middleware";
 import {
 	ADMIN, 
-	MEMBER,
-	AuthMode
+	AuthMode,
+	MEMBER
 } from "../../variables";
 import { integrationAuthController } from "../../controllers/v1";
 

@@ -11,8 +11,8 @@ interface EventScope {
 }
 
 type ValidEventScope = 
-    | Required<Pick<EventScope, 'workspaceId'>>
-    | Required<Pick<EventScope, 'organizationId'>>
+    | Required<Pick<EventScope, "workspaceId">>
+    | Required<Pick<EventScope, "organizationId">>
     | Required<EventScope>
 
 export default class EEAuditLogService {

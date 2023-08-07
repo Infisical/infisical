@@ -8,8 +8,8 @@ import {
 } from "../../middleware";
 import {
 	ADMIN, 
-	MEMBER,
-	AuthMode
+	AuthMode,
+	MEMBER
 } from "../../variables";
 import { membershipController, workspaceController } from "../../controllers/v1";
 

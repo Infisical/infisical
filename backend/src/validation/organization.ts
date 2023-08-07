@@ -36,9 +36,10 @@ export const validateClientForOrganization = async ({
     });
   }
   
+  let membershipOrg;
   switch (authData.actor.type) {
     case ActorType.USER:
-      const membershipOrg = await validateUserClientForOrganization({
+      membershipOrg = await validateUserClientForOrganization({
         user: authData.authPayload as IUser,
         organization,
         acceptedRoles,

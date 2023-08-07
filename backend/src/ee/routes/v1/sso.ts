@@ -15,8 +15,8 @@ import { authLimiter } from "../../../helpers/rateLimiter";
 import {
     ACCEPTED,
     ADMIN,
-    OWNER,
-    AuthMode
+    AuthMode,
+    OWNER
 } from "../../../variables";
 
 router.get(

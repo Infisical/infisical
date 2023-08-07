@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+
 import { apiRequest } from "@app/config/request";
-import {
-    AuditLog,
-    Actor
-} from "./types";
+
 import { EventType, UserAgentType } from "./enums";
+import {
+    Actor,
+    AuditLog} from "./types";
 
 export const workspaceKeys = {
     getAuditLogs: (workspaceId: string, filters: {

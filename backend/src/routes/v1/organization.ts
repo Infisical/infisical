@@ -9,9 +9,9 @@ import {
 import {
 	ACCEPTED, 
 	ADMIN, 
+	AuthMode,
 	MEMBER,
-	OWNER,
-	AuthMode
+	OWNER
 } from "../../variables";
 import { organizationController } from "../../controllers/v1";
 

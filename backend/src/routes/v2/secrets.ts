@@ -12,8 +12,8 @@ import { body, query } from "express-validator";
 import { secretsController } from "../../controllers/v2";
 import {
   ADMIN,
-  MEMBER,
   AuthMode,
+  MEMBER,
   PERMISSION_READ_SECRETS,
   PERMISSION_WRITE_SECRETS,
   SECRET_PERSONAL,

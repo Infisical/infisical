@@ -1,23 +1,16 @@
 import { Types } from "mongoose";
 import {
-    IServiceAccount,
     IServiceTokenData,
     IUser,
     Membership,
-    ServiceAccount,
-    ServiceTokenData,
-    User,
 } from "../models";
-import { validateServiceAccountClientForWorkspace } from "./serviceAccount";
 import { validateUserClientForWorkspace } from "./user";
 import { validateServiceTokenDataClientForWorkspace } from "./serviceTokenData";
 import { 
     MembershipNotFoundError,
-    UnauthorizedRequestError,
 } from "../utils/errors";
 import { AuthData } from "../interfaces/middleware";
 import { ActorType } from "../ee/models";
-import { auth } from "../routes/v1";
 
 /**
  * Validate authenticated clients for membership with id [membershipId] based

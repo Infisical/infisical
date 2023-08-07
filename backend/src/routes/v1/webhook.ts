@@ -2,7 +2,7 @@ import express from "express";
 const router = express.Router();
 import { requireAuth, requireWorkspaceAuth, validateRequest } from "../../middleware";
 import { body, param, query } from "express-validator";
-import { ADMIN, MEMBER, AuthMode } from "../../variables";
+import { ADMIN, AuthMode, MEMBER } from "../../variables";
 import { webhookController } from "../../controllers/v1";
 
 router.post(

@@ -9,8 +9,8 @@ import {
 } from "../../middleware";
 import {
 	ADMIN, 
-	MEMBER,
-	AuthMode
+	AuthMode,
+	MEMBER
 } from "../../variables";
 import { workspaceController } from "../../controllers/v2";
 

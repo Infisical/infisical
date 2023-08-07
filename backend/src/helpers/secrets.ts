@@ -13,7 +13,7 @@ import {
   SecretBlindIndexData,
   ServiceTokenData,
 } from "../models";
-import { SecretVersion, EventType } from "../ee/models";
+import { EventType, SecretVersion } from "../ee/models";
 import {
   BadRequestError,
   InternalServerError,
@@ -40,7 +40,7 @@ import {
 } from "../utils/crypto";
 import { TelemetryService } from "../services";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
-import { EELogService, EESecretService, EEAuditLogService } from "../ee/services";
+import { EEAuditLogService, EELogService, EESecretService } from "../ee/services";
 import { getAuthDataPayloadIdObj, getAuthDataPayloadUserObj } from "../utils/auth";
 import { getFolderByPath, getFolderIdFromServiceToken } from "../services/FolderService";
 import picomatch from "picomatch";

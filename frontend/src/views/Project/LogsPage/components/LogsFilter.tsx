@@ -1,18 +1,20 @@
 import { Control, Controller, UseFormReset } from "react-hook-form";
-import {
-    FormControl,
-    Select,
-    SelectItem,
-    Button
-} from "@app/components/v2";
-import { eventToNameMap, userAgentTTypeoNameMap } from "~/hooks/api/auditLogs/constants";
-import { useWorkspace } from "@app/context";
-import { useGetAuditLogActorFilterOpts } from "@app/hooks/api";
-import { Actor } from "~/hooks/api/auditLogs/types";
-import { ActorType } from "~/hooks/api/auditLogs/enums";
 import { faFilterCircleXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { AuditLogFilterFormData } from "./LogsSection";
+
+import {
+    Button,
+    FormControl,
+    Select,
+    SelectItem} from "@app/components/v2";
+import { useWorkspace } from "@app/context";
+import { useGetAuditLogActorFilterOpts } from "@app/hooks/api";
+
+import { eventToNameMap, userAgentTTypeoNameMap } from "~/hooks/api/auditLogs/constants";
+import { ActorType } from "~/hooks/api/auditLogs/enums";
+import { Actor } from "~/hooks/api/auditLogs/types";
+
+import { AuditLogFilterFormData } from "./types";
 
 const eventTypes = Object.entries(eventToNameMap).map(([value, label]) => ({ label, value }));
 const userAgentTypes = Object.entries(userAgentTTypeoNameMap).map(([value, label]) => ({ label, value }));
@@ -43,7 +45,14 @@ export const LogsFilter = ({
                         {actor.metadata.name}
                     </SelectItem>
                 );
+            default:
+                return (
+                    <SelectItem value="actor-none" key="actor-none">
+                        N/A
+                    </SelectItem>
+                );
         }
+
     }
 
     return (

@@ -9,8 +9,8 @@ import {
 import { body } from "express-validator";
 import {
 	ADMIN, 
-	MEMBER,
-	AuthMode
+	AuthMode,
+	MEMBER
 } from "../../variables";
 import { serviceTokenController } from "../../controllers/v1";
 

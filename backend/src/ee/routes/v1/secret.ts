@@ -9,10 +9,10 @@ import { body, param, query } from "express-validator";
 import { secretController } from "../../controllers/v1";
 import {
 	ADMIN, 
+	AuthMode,
 	MEMBER,
 	PERMISSION_READ_SECRETS,
-	PERMISSION_WRITE_SECRETS,
-	AuthMode
+	PERMISSION_WRITE_SECRETS
 } from "../../../variables";
 
 router.get(

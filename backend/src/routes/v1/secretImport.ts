@@ -3,7 +3,7 @@ const router = express.Router();
 import { body, param, query } from "express-validator";
 import { secretImportController } from "../../controllers/v1";
 import { requireAuth, requireWorkspaceAuth, validateRequest } from "../../middleware";
-import { ADMIN, MEMBER, AuthMode } from "../../variables";
+import { ADMIN, AuthMode, MEMBER } from "../../variables";
 
 router.post(
   "/",

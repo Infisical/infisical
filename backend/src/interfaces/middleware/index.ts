@@ -4,8 +4,8 @@ import {
     IUser,
 } from "../../models";
 import { 
-    UserActor,
     ServiceActor,
+    UserActor,
     UserAgentType
 } from "../../ee/models";
 

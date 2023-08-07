@@ -8,8 +8,8 @@ import {
 } from "../../middleware";
 import {
   ADMIN,
-  MEMBER,
-  AuthMode
+  AuthMode,
+  MEMBER
 } from "../../variables";
 import { body, param } from "express-validator";
 import { integrationController } from "../../controllers/v1";

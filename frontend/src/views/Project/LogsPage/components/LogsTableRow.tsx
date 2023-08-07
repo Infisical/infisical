@@ -1,10 +1,11 @@
-import { AuditLog, Actor, Event } from "~/hooks/api/auditLogs/types";
-import { ActorType, EventType } from "~/hooks/api/auditLogs/enums";
-import { eventToNameMap, userAgentTTypeoNameMap } from "~/hooks/api/auditLogs/constants";
 import {
     Td,
     Tr
 } from "@app/components/v2";
+
+import { eventToNameMap, userAgentTTypeoNameMap } from "~/hooks/api/auditLogs/constants";
+import { ActorType, EventType } from "~/hooks/api/auditLogs/enums";
+import { Actor, AuditLog, Event } from "~/hooks/api/auditLogs/types";
 
 type Props = {
     auditLog: AuditLog
@@ -29,6 +30,10 @@ export const LogsTableRow = ({
                         <p>Service token</p>
                     </Td>
                 ); 
+            default:
+                return (
+                    <Td />
+                );
         }
     }
     
@@ -84,16 +89,16 @@ export const LogsTableRow = ({
     const formatDate = (dateToFormat: string) => {
         const date = new Date(dateToFormat);
         const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
 
         let hours = date.getHours();
-        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, "0");
 
         // convert from 24h to 12h format
-        const period = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        hours = hours ? hours : 12; // the hour '0' should be '12'
+        const period = hours >= 12 ? "PM" : "AM";
+        hours %= 12;
+        hours = hours || 12; // the hour '0' should be '12'
 
         const formattedDate = `${day}-${month}-${year} at ${hours}:${minutes} ${period}`;
         return formattedDate;

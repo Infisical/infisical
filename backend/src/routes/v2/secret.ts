@@ -8,8 +8,8 @@ import {
 import { body, param, query } from "express-validator";
 import {
   ADMIN, 
-  MEMBER,
   AuthMode,
+  MEMBER,
   PERMISSION_READ_SECRETS,
   PERMISSION_WRITE_SECRETS,
 } from "../../variables";
