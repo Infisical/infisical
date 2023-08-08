@@ -31,15 +31,19 @@ export const useGetAuditLogs = (workspaceId: string, filters: AuditLogFilters) =
                 params.append("actor", filters.actor); 
             }
 
-            if (filters.actor) {
-                params.append("actor", filters.actor); 
+            if (filters.startDate) {
+                params.append("startDate", filters.startDate.toISOString());
             }
 
-            params.append("offset ", String(filters.offset));
-            params.append("limit ", String(filters.limit));
+            if (filters.endDate) {
+                params.append("endDate", filters.endDate.toISOString());
+            }
+
+            params.append("offset", String(filters.offset));
+            params.append("limit", String(filters.limit));
             
-            const { data } = await apiRequest.get<{ auditLogs: AuditLog[] }>(`/api/v1/workspace/${workspaceId}/audit-logs`, { params });
-            return data.auditLogs;
+            const { data } = await apiRequest.get<{ auditLogs: AuditLog[], totalCount: number }>(`/api/v1/workspace/${workspaceId}/audit-logs`, { params });
+            return data;
         }
     });
 }

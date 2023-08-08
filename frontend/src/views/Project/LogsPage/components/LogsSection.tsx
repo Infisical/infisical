@@ -1,24 +1,35 @@
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 
-import { EventType, UserAgentType } from "~/hooks/api/auditLogs/enums";
+import { EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
 
 import { LogsFilter } from "./LogsFilter";
 import { LogsTable } from "./LogsTable";
-import { AuditLogFilterFormData,auditLogFilterFormSchema } from "./types";
+import { AuditLogFilterFormData, auditLogFilterFormSchema } from "./types";
 
 export const LogsSection = () => {
     const {
         control,
         reset,
         watch,
+        setValue,
     } = useForm<AuditLogFilterFormData>({
-        resolver: yupResolver(auditLogFilterFormSchema)
+        resolver: yupResolver(auditLogFilterFormSchema),
+        defaultValues: {
+            page: 1,
+            perPage: 10
+        }
     });
 
     const eventType = watch("eventType") as EventType | undefined;
     const userAgentType = watch("userAgentType") as UserAgentType | undefined;
-    const actor = watch("actor") as string | undefined;
+    const actor = watch("actor");
+
+    const startDate = watch("startDate");
+    const endDate = watch("endDate");
+
+    const page = watch("page") as number;
+    const perPage = watch("perPage") as number;
     
     return (
         <div className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600">
@@ -35,6 +46,11 @@ export const LogsSection = () => {
                 eventType={eventType}
                 userAgentType={userAgentType}
                 actor={actor}
+                startDate={startDate}
+                endDate={endDate}
+                page={page}
+                perPage={perPage}
+                setValue={setValue}
             />
         </div>
     );

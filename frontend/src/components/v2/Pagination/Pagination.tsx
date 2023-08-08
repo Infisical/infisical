@@ -21,7 +21,7 @@ export type PaginationProps = {
   perPage?: number;
   onChangePage: (pageNumber: number) => void;
   onChangePerPage: (newRows: number) => void;
-  className: string;
+  className?: string;
   perPageList?: number[];
 };
 

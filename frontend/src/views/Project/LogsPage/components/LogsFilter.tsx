@@ -1,18 +1,19 @@
+import { useState } from "react";
 import { Control, Controller, UseFormReset } from "react-hook-form";
 import { faFilterCircleXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
     Button,
+    DatePicker,
     FormControl,
     Select,
     SelectItem} from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useGetAuditLogActorFilterOpts } from "@app/hooks/api";
-
-import { eventToNameMap, userAgentTTypeoNameMap } from "~/hooks/api/auditLogs/constants";
-import { ActorType } from "~/hooks/api/auditLogs/enums";
-import { Actor } from "~/hooks/api/auditLogs/types";
+import { eventToNameMap, userAgentTTypeoNameMap } from "@app/hooks/api/auditLogs/constants";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { Actor } from "@app/hooks/api/auditLogs/types";
 
 import { AuditLogFilterFormData } from "./types";
 
@@ -28,6 +29,9 @@ export const LogsFilter = ({
     control,
     reset
 }: Props) => {
+    const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
+    const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
+
     const { currentWorkspace } = useWorkspace();
     const { data, isLoading } = useGetAuditLogActorFilterOpts(currentWorkspace?._id ?? "");
     
@@ -58,65 +62,41 @@ export const LogsFilter = ({
     return (
         <div className="flex justify-between items-center">
             <div className="flex items-center">
-                <div className="w-40 mr-4">
-                    <Controller
-                        control={control}
-                        name="eventType"
-                        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                            <FormControl
-                                label="Event"
-                                errorText={error?.message}
-                                isError={Boolean(error)}
+                <Controller
+                    control={control}
+                    name="eventType"
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                        <FormControl
+                            label="Event"
+                            errorText={error?.message}
+                            isError={Boolean(error)}
+                            className="w-40 mr-4"
+                        >
+                            <Select
+                                defaultValue={field.value}
+                                {...field}
+                                onValueChange={(e) => onChange(e)}
+                                className="w-full"
                             >
-                                <Select
-                                    defaultValue={field.value}
-                                    {...field}
-                                    onValueChange={(e) => onChange(e)}
-                                    className="w-full"
-                                >
-                                    {eventTypes.map(({ label, value }) => (
-                                        <SelectItem value={String(value || "")} key={label}>
-                                            {label}
-                                        </SelectItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        )}
-                    />
-                </div>
+                                {eventTypes.map(({ label, value }) => (
+                                    <SelectItem value={String(value || "")} key={label}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    )}
+                />
                 {!isLoading && data && data.length > 0 && (
-                    <div className="w-40 mr-4">
-                        <Controller
-                            control={control}
-                            name="actor"
-                            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                                <FormControl
-                                    label="Actor"
-                                    errorText={error?.message}
-                                    isError={Boolean(error)}
-                                >
-                                    <Select
-                                        defaultValue={field.value}
-                                        {...field}
-                                        onValueChange={(e) => onChange(e)}
-                                        className="w-full"
-                                    >
-                                        {data.map((actor) => renderActorSelectItem(actor))}
-                                    </Select>
-                                </FormControl>
-                            )}
-                        />
-                    </div>
-                )}
-                <div className="w-40">
                     <Controller
                         control={control}
-                        name="userAgentType"
+                        name="actor"
                         render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                             <FormControl
-                                label="Source"
+                                label="Actor"
                                 errorText={error?.message}
                                 isError={Boolean(error)}
+                                className="w-40 mr-4"
                             >
                                 <Select
                                     defaultValue={field.value}
@@ -124,16 +104,90 @@ export const LogsFilter = ({
                                     onValueChange={(e) => onChange(e)}
                                     className="w-full"
                                 >
-                                    {userAgentTypes.map(({ label, value }) => (
-                                        <SelectItem value={String(value || "")} key={label}>
-                                            {label}
-                                        </SelectItem>
-                                    ))}
+                                    {data.map((actor) => renderActorSelectItem(actor))}
                                 </Select>
                             </FormControl>
                         )}
                     />
-                </div>
+                )}
+                <Controller
+                    control={control}
+                    name="userAgentType"
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                        <FormControl
+                            label="Source"
+                            errorText={error?.message}
+                            isError={Boolean(error)}
+                            className="w-40 mr-4"
+                        >
+                            <Select
+                                defaultValue={field.value}
+                                {...field}
+                                onValueChange={(e) => onChange(e)}
+                                className="w-full"
+                            >
+                                {userAgentTypes.map(({ label, value }) => (
+                                    <SelectItem value={String(value || "")} key={label}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    )}
+                />
+                <Controller 
+                    name="startDate"
+                    control={control}
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => {
+                        return (
+                            <FormControl
+                                label="Start date"
+                                errorText={error?.message}
+                                isError={Boolean(error)}
+                                className="mr-4"
+                            >
+                                <DatePicker 
+                                    value={field.value || undefined}
+                                    onChange={date => {
+                                        onChange(date);
+                                        setIsStartDatePickerOpen(false);
+                                    }}
+                                    popUpProps={{ 
+                                        open: isStartDatePickerOpen,
+                                        onOpenChange: setIsStartDatePickerOpen
+                                    }}
+                                    popUpContentProps={{}}
+                                />
+                            </FormControl>
+                        );
+                    }}
+                />
+                <Controller 
+                    name="endDate"
+                    control={control}
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => {
+                        return (
+                            <FormControl
+                                label="End date"
+                                errorText={error?.message}
+                                isError={Boolean(error)}
+                            >
+                                <DatePicker 
+                                    value={field.value || undefined}
+                                    onChange={date => {
+                                        onChange(date);
+                                        setIsEndDatePickerOpen(false);
+                                    }}
+                                    popUpProps={{ 
+                                        open: isEndDatePickerOpen,
+                                        onOpenChange: setIsEndDatePickerOpen
+                                    }}
+                                    popUpContentProps={{}}
+                                />
+                            </FormControl>
+                        );
+                    }}
+                />
             </div>
             <div>
                 <Button
@@ -143,9 +197,11 @@ export const LogsFilter = ({
                     type="submit"
                     leftIcon={<FontAwesomeIcon icon={faFilterCircleXmark} className="mr-2" />}
                     onClick={() => reset({
-                        eventType: "",
+                        eventType: undefined,
                         actor: "",
-                        userAgentType: ""
+                        userAgentType: "",
+                        startDate: undefined,
+                        endDate: undefined
                     })}
                 >
                     Clear filters

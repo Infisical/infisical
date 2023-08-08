@@ -96,9 +96,11 @@ router.get(
   param("workspaceId").exists().trim(),
   query("eventType").isString().isIn(Object.values(EventType)).optional({ nullable: true }),
   query("userAgentType").isString().isIn(Object.values(UserAgentType)).optional({ nullable: true }),
-  query("actor").isString().optional({ nullable: true }),
-  query("offset").default("0"),
-  query("limit").default("20"),
+  query("actor").optional({ nullable: true }),
+  query("startDate").isISO8601().withMessage("Invalid start date format").optional({ nullable: true }),
+  query("endDate").isISO8601().withMessage("Invalid end date format").optional({ nullable: true }),
+  query("offset"),
+  query("limit"),
   validateRequest,
   workspaceController.getWorkspaceAuditLogs
 );

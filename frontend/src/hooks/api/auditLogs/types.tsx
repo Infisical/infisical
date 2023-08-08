@@ -323,4 +323,6 @@ export type AuditLogFilters = {
     actor?: string;
     offset: number;
     limit: number;
+    startDate?: Date;
+    endDate?: Date;
 }

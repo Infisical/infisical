@@ -17,8 +17,8 @@ import {
 } from "../../services/FolderService";
 import { ADMIN, MEMBER } from "../../variables";
 import { validateMembership } from "../../helpers/membership";
-import { FolderVersion, EventType } from "../../ee/models";
-import { EESecretService, EEAuditLogService } from "../../ee/services";
+import { EventType, FolderVersion } from "../../ee/models";
+import { EEAuditLogService, EESecretService } from "../../ee/services";
 
 // verify workspace id/environment
 export const createFolder = async (req: Request, res: Response) => {

@@ -4,6 +4,7 @@ import { Membership, Secret, ServiceTokenData, User } from "../../../models";
 import {
   ActorType,
   AuditLog,
+  EventType,
   FolderVersion,
   IPType,
   ISecretVersion,
@@ -13,14 +14,13 @@ import {
   ServiceActor,
   TFolderRootVersionSchema,
   TrustedIP,
-  UserActor,
-  EventType
+  UserActor
 } from "../../models";
 import { EESecretService } from "../../services";
 import { getLatestSecretVersionIds } from "../../helpers/secretVersion";
 import Folder, { TFolderSchema } from "../../../models/folder";
 import { searchByFolderId } from "../../../services/FolderService";
-import { EELicenseService, EEAuditLogService } from "../../services";
+import { EEAuditLogService, EELicenseService } from "../../services";
 import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
 
 /**
@@ -611,7 +611,10 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
   const offset: number = parseInt(req.query.offset as string);
   const limit: number = parseInt(req.query.limit as string);
   
-  const auditLogs = await AuditLog.find({
+  const startDate = req.query.startDate as string;
+  const endDate = req.query.endDate as string;
+  
+  const query = {
     workspace: new Types.ObjectId(workspaceId),
     ...(eventType ? {
         "event.type": eventType
@@ -626,14 +629,25 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
       } : {
         "actor.metadata.serviceId": actor.split("-", 2)[1]
       })
+    } : {}),
+    ...(startDate || endDate ? {
+      createdAt: {
+        ...(startDate && { $gte: new Date(startDate) }),
+        ...(endDate && { $lte: new Date(endDate) })
+      }
     } : {})
-  })
+  }
+  
+  const auditLogs = await AuditLog.find(query)
   .sort({ createdAt: -1 })
   .skip(offset)
   .limit(limit);
-    
+
+  const totalCount = await AuditLog.countDocuments(query);
+  
   return res.status(200).send({
-    auditLogs
+    auditLogs,
+    totalCount
   });
 }
 

@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import { Types } from "mongoose";
-import Folder, { TFolderSchema, TFolderRootSchema } from "../models/folder";
+import Folder, { TFolderRootSchema, TFolderSchema } from "../models/folder";
 import { ResourceNotFoundError } from "../utils/errors";
 
 type TAppendFolderDTO = {

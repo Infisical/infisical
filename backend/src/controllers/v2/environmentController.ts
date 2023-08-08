@@ -8,8 +8,8 @@ import {
   ServiceTokenData,
   Workspace,
 } from "../../models";
-import { SecretVersion, EventType } from "../../ee/models";
-import { EELicenseService, EEAuditLogService } from "../../ee/services";
+import { EventType, SecretVersion } from "../../ee/models";
+import { EEAuditLogService, EELicenseService } from "../../ee/services";
 import { BadRequestError, WorkspaceNotFoundError } from "../../utils/errors";
 import _ from "lodash";
 import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variables";

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Key, Membership, MembershipOrg, User, IUser } from "../../models";
+import { IUser, Key, Membership, MembershipOrg, User } from "../../models";
 import { EventType } from "../../ee/models";
 import { deleteMembership as deleteMember, findMembership } from "../../helpers/membership";
 import { sendMail } from "../../helpers/nodemailer";
