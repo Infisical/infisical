@@ -1,6 +1,7 @@
 export * from "./Button";
 export * from "./Card";
 export * from "./Checkbox";
+export * from "./DatePicker";
 export * from "./DeleteActionModal";
 export * from "./Drawer";
 export * from "./Dropdown";
@@ -12,6 +13,7 @@ export * from "./IconButton";
 export * from "./Input";
 export * from "./Menu";
 export * from "./Modal";
+export * from "./Pagination";
 export * from "./Popoverv2";
 export * from "./SecretInput";
 export * from "./Select";
