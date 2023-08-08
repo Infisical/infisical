@@ -1,3 +1,4 @@
+import { Request } from "express";
 import { Types } from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
@@ -5,7 +6,6 @@ import {
 	APIKeyData,
 	ITokenVersion,
 	IUser,
-	ServiceAccount,
 	ServiceTokenData,
 	TokenVersion,
 	User,
@@ -14,7 +14,6 @@ import {
 	APIKeyDataNotFoundError,
 	AccountNotFoundError,
 	BadRequestError,
-	ServiceAccountNotFoundError,
 	ServiceTokenDataNotFoundError,
 	UnauthorizedRequestError,
 } from "../utils/errors";
@@ -26,11 +25,15 @@ import {
 	getJwtRefreshSecret,
 } from "../config";
 import {
-	AUTH_MODE_API_KEY,
-	AUTH_MODE_JWT,
-	AUTH_MODE_SERVICE_ACCOUNT,
-	AUTH_MODE_SERVICE_TOKEN,
+	AuthMode
 } from "../variables";
+import {
+	ServiceTokenAuthData,
+	UserAuthData
+} from "../interfaces/middleware";
+
+import { ActorType } from "../ee/models";
+import { getUserAgentType } from "../utils/posthog";
 
 /**
  * 
@@ -42,7 +45,7 @@ export const validateAuthMode = ({
 	acceptedAuthModes,
 }: {
 	headers: { [key: string]: string | string[] | undefined },
-	acceptedAuthModes: string[]
+	acceptedAuthModes: AuthMode[]
 }) => {
 	const apiKey = headers["x-api-key"];
 	const authHeader = headers["authorization"];
@@ -55,7 +58,7 @@ export const validateAuthMode = ({
 
 	if (typeof apiKey === "string") {
 		// case: treat request authentication type as via X-API-KEY (i.e. API Key)
-		authMode = AUTH_MODE_API_KEY;
+		authMode = AuthMode.API_KEY;
 		authTokenValue = apiKey;
 	}
 
@@ -71,13 +74,10 @@ export const validateAuthMode = ({
 
 		switch (tokenValue.split(".", 1)[0]) {
 			case "st":
-				authMode = AUTH_MODE_SERVICE_TOKEN;
-				break;
-			case "sa":
-				authMode = AUTH_MODE_SERVICE_ACCOUNT;
+				authMode = AuthMode.SERVICE_TOKEN;
 				break;
 			default:
-				authMode = AUTH_MODE_JWT;
+				authMode = AuthMode.JWT;
 		}
 
 		authTokenValue = tokenValue;
@@ -100,10 +100,12 @@ export const validateAuthMode = ({
  * @returns {User} user - user corresponding to JWT token
  */
 export const getAuthUserPayload = async ({
+	req,
 	authTokenValue,
 }: {
+	req: Request,
 	authTokenValue: string;
-}) => {
+}): Promise<UserAuthData> => {
 	const decodedToken = <jwt.UserIDJwtPayload>(
 		jwt.verify(authTokenValue, await getJwtAuthSecret())
 	);
@@ -130,11 +132,25 @@ export const getAuthUserPayload = async ({
 	if (decodedToken.accessVersion !== tokenVersion.accessVersion) throw UnauthorizedRequestError({
 		message: "Failed to validate access token",
 	});
-
-	return ({
-		user,
-		tokenVersionId: tokenVersion._id,
-	});
+	
+	return {
+		actor: {
+			type: ActorType.USER,
+			metadata: {
+				userId: user._id.toString(),
+				email: user.email
+			}
+		},
+		authPayload: user,
+		ipAddress: req.realIP,
+		userAgent: req.headers["user-agent"] ?? "",
+		userAgentType: getUserAgentType(req.headers["user-agent"])
+	}
+	
+	// return ({
+	// 	user,
+	// 	tokenVersionId: tokenVersion._id, // what to do with this? // move this out
+	// });
 }
 
 /**
@@ -144,10 +160,12 @@ export const getAuthUserPayload = async ({
  * @returns {ServiceTokenData} serviceTokenData - service token data
  */
 export const getAuthSTDPayload = async ({
+	req,
 	authTokenValue,
 }: {
+	req: Request,
 	authTokenValue: string;
-}) => {
+}): Promise<ServiceTokenAuthData> => {
 	const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split(".", 3);
 
 	const serviceTokenData = await ServiceTokenData
@@ -180,36 +198,21 @@ export const getAuthSTDPayload = async ({
 
 	if (!serviceTokenDataToReturn) throw ServiceTokenDataNotFoundError({ message: "Failed to find service token data" });
 
-	return serviceTokenDataToReturn;
-}
-
-/**
- * Return service account access key payload
- * @param {Object} obj
- * @param {String} obj.authTokenValue - service account access token value
- * @returns {ServiceAccount} serviceAccount
- */
-export const getAuthSAAKPayload = async ({
-	authTokenValue,
-}: {
-	authTokenValue: string;
-}) => {
-	const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split(".", 3);
-
-	const serviceAccount = await ServiceAccount.findById(
-		Buffer.from(TOKEN_IDENTIFIER, "base64").toString("hex")
-	).select("+secretHash");
-
-	if (!serviceAccount) {
-		throw ServiceAccountNotFoundError({ message: "Failed to find service account" });
+	return {
+		actor: {
+			type: ActorType.SERVICE,
+			metadata: {
+				serviceId: serviceTokenDataToReturn._id.toString(),
+				name: serviceTokenDataToReturn.name
+			}
+		},
+		authPayload: serviceTokenDataToReturn,
+		ipAddress: req.realIP,
+		userAgent: req.headers["user-agent"] ?? "",
+		userAgentType: getUserAgentType(req.headers["user-agent"])
 	}
 
-	const result = await bcrypt.compare(TOKEN_SECRET, serviceAccount.secretHash);
-	if (!result) throw UnauthorizedRequestError({
-		message: "Failed to authenticate service account access key",
-	});
-
-	return serviceAccount;
+	// return serviceTokenDataToReturn;
 }
 
 /**
@@ -219,10 +222,12 @@ export const getAuthSAAKPayload = async ({
  * @returns {APIKeyData} apiKeyData - API key data
  */
 export const getAuthAPIKeyPayload = async ({
+	req,
 	authTokenValue,
 }: {
+	req: Request,
 	authTokenValue: string;
-}) => {
+}): Promise<UserAuthData> => {
 	const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split(".", 3);
 
 	let apiKeyData = await APIKeyData
@@ -264,7 +269,19 @@ export const getAuthAPIKeyPayload = async ({
 		});
 	}
 
-	return user;
+	return {
+		actor: {
+			type: ActorType.USER,
+			metadata: {
+				userId: user._id.toString(),
+				email: user.email
+			}
+		},
+		authPayload: user,
+		ipAddress: req.realIP,
+		userAgent: req.headers["user-agent"] ?? "",
+		userAgentType: getUserAgentType(req.headers["user-agent"])
+	}
 }
 
 /**

@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import {
 	Bot,
 	Key,
@@ -25,7 +26,7 @@ export const createWorkspace = async ({
 	organizationId,
 }: {
 	name: string;
-	organizationId: string;
+	organizationId: Types.ObjectId;
 }) => {
 	// create workspace
 	const workspace = await new Workspace({

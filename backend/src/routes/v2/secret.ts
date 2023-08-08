@@ -8,8 +8,7 @@ import {
 import { body, param, query } from "express-validator";
 import {
   ADMIN, 
-  AUTH_MODE_JWT,
-  AUTH_MODE_SERVICE_TOKEN,
+  AuthMode,
   MEMBER,
   PERMISSION_READ_SECRETS,
   PERMISSION_WRITE_SECRETS,
@@ -24,7 +23,7 @@ const router = express.Router();
 router.post(
   "/batch-create/workspace/:workspaceId/environment/:environment",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -41,7 +40,7 @@ router.post(
 router.post(
   "/workspace/:workspaceId/environment/:environment",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -60,7 +59,7 @@ router.get(
   param("workspaceId").exists().trim(),
   query("environment").exists(),
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_SERVICE_TOKEN],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -74,7 +73,7 @@ router.get(
 router.get(
   "/:secretId",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_SERVICE_TOKEN],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN],
   }),
   requireSecretAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -87,7 +86,7 @@ router.get(
 router.delete(
   "/batch/workspace/:workspaceId/environment/:environmentName",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   param("workspaceId").exists().isMongoId().trim(),
   param("environmentName").exists().trim(),
@@ -103,7 +102,7 @@ router.delete(
 router.delete(
   "/:secretId",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   requireSecretAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -117,7 +116,7 @@ router.delete(
 router.patch(
   "/batch-modify/workspace/:workspaceId/environment/:environmentName",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   body("secrets").exists().isArray().custom((secrets: ModifySecretRequestBody[]) => secrets.length > 0),
   param("workspaceId").exists().isMongoId().trim(),
@@ -133,7 +132,7 @@ router.patch(
 router.patch(
   "/workspace/:workspaceId/environment/:environmentName",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   body("secret").isObject(),
   param("workspaceId").exists().isMongoId().trim(),

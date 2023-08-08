@@ -8,13 +8,13 @@ import {
 import { body, param, query } from "express-validator";
 import { organizationsController } from "../../controllers/v1";
 import {
-    ACCEPTED, ADMIN, MEMBER, OWNER,
+    ACCEPTED, ADMIN, AuthMode, MEMBER, OWNER
 } from "../../../variables";
 
 router.get(
     "/:organizationId/plans/table",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -29,7 +29,7 @@ router.get(
 router.get(
     "/:organizationId/plan",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -44,7 +44,7 @@ router.get(
 router.post(
     "/:organizationId/session/trial",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -59,7 +59,7 @@ router.post(
 router.get(
     "/:organizationId/plan/billing",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -74,7 +74,7 @@ router.get(
 router.get(
     "/:organizationId/plan/table",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -89,7 +89,7 @@ router.get(
 router.get(
     "/:organizationId/billing-details",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -103,7 +103,7 @@ router.get(
 router.patch(
     "/:organizationId/billing-details",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -119,7 +119,7 @@ router.patch(
 router.get(
     "/:organizationId/billing-details/payment-methods",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -133,7 +133,7 @@ router.get(
 router.post(
     "/:organizationId/billing-details/payment-methods",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -149,7 +149,7 @@ router.post(
 router.delete(
     "/:organizationId/billing-details/payment-methods/:pmtMethodId",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -164,7 +164,7 @@ router.delete(
 router.get(
     "/:organizationId/billing-details/tax-ids",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -178,7 +178,7 @@ router.get(
 router.post(
     "/:organizationId/billing-details/tax-ids",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -194,7 +194,7 @@ router.post(
 router.delete(
     "/:organizationId/billing-details/tax-ids/:taxId",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -209,7 +209,7 @@ router.delete(
 router.get(
     "/:organizationId/invoices",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -223,7 +223,7 @@ router.get(
 router.get(
     "/:organizationId/licenses",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN],

@@ -2,13 +2,13 @@ import express from "express";
 const router = express.Router();
 import { requireAuth, requireWorkspaceAuth, validateRequest } from "../../middleware";
 import { body, param, query } from "express-validator";
-import { ADMIN, AUTH_MODE_JWT, MEMBER } from "../../variables";
+import { ADMIN, AuthMode, MEMBER } from "../../variables";
 import { webhookController } from "../../controllers/v1";
 
 router.post(
   "/",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -27,7 +27,7 @@ router.post(
 router.patch(
   "/:webhookId",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   param("webhookId").exists().isString().trim(),
   body("isDisabled").default(false).isBoolean(),
@@ -38,7 +38,7 @@ router.patch(
 router.post(
   "/:webhookId/test",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   param("webhookId").exists().isString().trim(),
   validateRequest,
@@ -48,7 +48,7 @@ router.post(
 router.delete(
   "/:webhookId",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   param("webhookId").exists().isString().trim(),
   validateRequest,
@@ -58,7 +58,7 @@ router.delete(
 router.get(
   "/",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],

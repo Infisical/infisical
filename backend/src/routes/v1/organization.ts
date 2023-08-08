@@ -9,16 +9,16 @@ import {
 import {
 	ACCEPTED, 
 	ADMIN, 
-	AUTH_MODE_JWT, 
+	AuthMode,
 	MEMBER,
-	OWNER,
+	OWNER
 } from "../../variables";
 import { organizationController } from "../../controllers/v1";
 
 router.get( // deprecated (moved to api/v2/users/me/organizations)
 	"/",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	organizationController.getOrganizations
 );
@@ -26,7 +26,7 @@ router.get( // deprecated (moved to api/v2/users/me/organizations)
 router.post( // not used on frontend
 	"/",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	body("organizationName").exists().trim().notEmpty(),
 	validateRequest,
@@ -36,7 +36,7 @@ router.post( // not used on frontend
 router.get(
 	"/:organizationId",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -50,7 +50,7 @@ router.get(
 router.get( // deprecated (moved to api/v2/organizations/:organizationId/memberships)
 	"/:organizationId/users",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -64,7 +64,7 @@ router.get( // deprecated (moved to api/v2/organizations/:organizationId/members
 router.get(
 	"/:organizationId/my-workspaces", // deprecated (moved to api/v2/organizations/:organizationId/workspaces)
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -78,7 +78,7 @@ router.get(
 router.patch(
 	"/:organizationId/name",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -93,7 +93,7 @@ router.patch(
 router.get(
 	"/:organizationId/incidentContactOrg",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -107,7 +107,7 @@ router.get(
 router.post(
 	"/:organizationId/incidentContactOrg",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -122,7 +122,7 @@ router.post(
 router.delete(
 	"/:organizationId/incidentContactOrg",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -137,7 +137,7 @@ router.delete(
 router.post(
 	"/:organizationId/customer-portal-session",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -151,7 +151,7 @@ router.post(
 router.get(
 	"/:organizationId/subscriptions",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -165,7 +165,7 @@ router.get(
 router.get(
 	"/:organizationId/workspace-memberships",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT]
 	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],

@@ -5,7 +5,7 @@ import * as bigintConversion from "bigint-conversion";
 import { BackupPrivateKey, LoginSRPDetail, User } from "../../models";
 import { clearTokens, createToken, sendMail } from "../../helpers";
 import { TokenService } from "../../services";
-import { AUTH_MODE_JWT, TOKEN_EMAIL_PASSWORD_RESET } from "../../variables";
+import { TOKEN_EMAIL_PASSWORD_RESET } from "../../variables";
 import { BadRequestError } from "../../utils/errors";
 import {
   getHttpsEnabled,
@@ -13,6 +13,7 @@ import {
   getJwtSignupSecret,
   getSiteURL
 } from "../../config";
+import { ActorType } from "../../ee/models";
 
 /**
  * Password reset step 1: Send email verification link to email [email]
@@ -208,8 +209,7 @@ export const changePassword = async (req: Request, res: Response) => {
         );
 
         if (
-          req.authData.authMode === AUTH_MODE_JWT &&
-          req.authData.authPayload instanceof User &&
+          req.authData.actor.type === ActorType.USER &&
           req.authData.tokenVersionId
         ) {
           await clearTokens(req.authData.tokenVersionId);

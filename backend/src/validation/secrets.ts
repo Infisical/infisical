@@ -1,26 +1,18 @@
 import { Types } from "mongoose";
 import {
     ISecret,
+    IServiceTokenData,
+    IUser,
     Secret,
-    ServiceAccount,
-    ServiceTokenData,
-    User,
 } from "../models";
-import { validateServiceAccountClientForSecrets, validateServiceAccountClientForWorkspace } from "./serviceAccount";
 import { validateUserClientForSecret, validateUserClientForSecrets } from "./user";
 import { validateServiceTokenDataClientForSecrets, validateServiceTokenDataClientForWorkspace } from "./serviceTokenData";
-import { AuthData } from "../interfaces/middleware";
 import {
     BadRequestError,
     SecretNotFoundError,
-    UnauthorizedRequestError,
 } from "../utils/errors";
-import {
-    AUTH_MODE_API_KEY,
-    AUTH_MODE_JWT,
-    AUTH_MODE_SERVICE_ACCOUNT,
-    AUTH_MODE_SERVICE_TOKEN,
-} from "../variables";
+import { AuthData } from "../interfaces/middleware";
+import { ActorType } from "../ee/models";
 
 /**
  * Validate authenticated clients for secrets with id [secretId] based
@@ -47,53 +39,26 @@ export const validateClientForSecret = async ({
     if (!secret) throw SecretNotFoundError({
         message: "Failed to find secret",
     });
+    
+    switch (authData.actor.type) {
+        case ActorType.USER:
+            await validateUserClientForSecret({
+                user: authData.authPayload as IUser,
+                secret,
+                acceptedRoles,
+                requiredPermissions,
+            });
 
-    if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
-        await validateUserClientForSecret({
-            user: authData.authPayload,
-            secret,
-            acceptedRoles,
-            requiredPermissions,
-        });
-
-        return secret;
-    }
-
-    if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
-        await validateServiceAccountClientForWorkspace({
-            serviceAccount: authData.authPayload,
-            workspaceId: secret.workspace,
-            environment: secret.environment,
-            requiredPermissions,
-        });
+            return secret;
+        case ActorType.SERVICE:
+            await validateServiceTokenDataClientForWorkspace({
+                serviceTokenData: authData.authPayload as IServiceTokenData,
+                workspaceId: secret.workspace,
+                environment: secret.environment,
+            });
         
-        return secret;
+            return secret;
     }
-
-    if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
-        await validateServiceTokenDataClientForWorkspace({
-            serviceTokenData: authData.authPayload,
-            workspaceId: secret.workspace,
-            environment: secret.environment,
-        });
-    
-        return secret;
-    }
-    
-    if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
-        await validateUserClientForSecret({
-            user: authData.authPayload,
-            secret,
-            acceptedRoles,
-            requiredPermissions,
-        });
-
-        return secret;
-    }
-    
-    throw UnauthorizedRequestError({
-        message: "Failed client authorization for secret",
-    });
 }
 
 /**
@@ -127,48 +92,23 @@ export const validateClientForSecrets = async ({
     if (secrets.length != secretIds.length) {
         throw BadRequestError({ message: "Failed to validate non-existent secrets" })
     }
-
-    if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
-        await validateUserClientForSecrets({
-            user: authData.authPayload,
-            secrets,
-            requiredPermissions,
-        });
-        
-        return secrets;
-    }
     
-    if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
-        await validateServiceAccountClientForSecrets({
-            serviceAccount: authData.authPayload,
-            secrets,
-            requiredPermissions,
-        });
-        
-        return secrets;
+    switch (authData.actor.type) {
+        case ActorType.USER:
+            await validateUserClientForSecrets({
+                user: authData.authPayload as IUser,
+                secrets,
+                requiredPermissions,
+            });
+            
+            return secrets;
+        case ActorType.SERVICE:
+            await validateServiceTokenDataClientForSecrets({
+                serviceTokenData: authData.authPayload as IServiceTokenData,
+                secrets,
+                requiredPermissions,
+            });
+            
+            return secrets;
     }
-        
-    if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
-        await validateServiceTokenDataClientForSecrets({
-            serviceTokenData: authData.authPayload,
-            secrets,
-            requiredPermissions,
-        });
-        
-        return secrets;
-    }
-
-    if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
-        await validateUserClientForSecrets({
-            user: authData.authPayload,
-            secrets,
-            requiredPermissions,
-        });
-        
-        return secrets;
-    }
-
-    throw UnauthorizedRequestError({
-        message: "Failed client authorization for secrets resource",
-    });
 }

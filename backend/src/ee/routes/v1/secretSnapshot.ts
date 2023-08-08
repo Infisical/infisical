@@ -8,13 +8,13 @@ import {
     validateRequest,
 } from "../../../middleware";
 import { param } from "express-validator";
-import { ADMIN, MEMBER } from "../../../variables";
+import { ADMIN, AuthMode, MEMBER } from "../../../variables";
 import { secretSnapshotController } from "../../controllers/v1";
 
 router.get(
     "/:secretSnapshotId",
     requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
     requireSecretSnapshotAuth({
         acceptedRoles: [ADMIN, MEMBER],

@@ -1,15 +1,31 @@
 import { Types } from "mongoose";
 import {
-    IServiceAccount,
     IServiceTokenData,
     IUser,
 } from "../../models";
+import { 
+    ServiceActor,
+    UserActor,
+    UserAgentType
+} from "../../ee/models";
 
-export interface AuthData {
-    authMode: string;
-    authPayload: IUser | IServiceAccount | IServiceTokenData;
-    authChannel: string;
-    authIP: string;
-    authUserAgent: string;
+interface BaseAuthData {
+    ipAddress: string;
+    userAgent: string;
+    userAgentType: UserAgentType;
     tokenVersionId?: Types.ObjectId;
 }
+
+export interface UserAuthData extends BaseAuthData {
+    actor: UserActor;
+    authPayload: IUser;
+}
+
+export interface ServiceTokenAuthData extends BaseAuthData {
+    actor: ServiceActor;
+    authPayload: IServiceTokenData;
+}
+
+export type AuthData =
+    | UserAuthData
+    | ServiceTokenAuthData;

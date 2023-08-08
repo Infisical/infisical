@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { Types } from "mongoose";
-import Folder, { TFolderSchema } from "../models/folder";
+import Folder, { TFolderRootSchema, TFolderSchema } from "../models/folder";
+import { ResourceNotFoundError } from "../utils/errors";
 
 type TAppendFolderDTO = {
   folderName: string;
@@ -171,6 +172,20 @@ export const searchByFolderIdWithDir = (
   }
   return;
 };
+
+export const getFolderPath = (
+  folders: TFolderRootSchema,
+  folderId: string
+  ) => {
+    const folderBySearch = searchByFolderIdWithDir(folders.nodes, folderId);
+
+    if (!folderBySearch) throw ResourceNotFoundError({
+      message: "Failed to find folder"
+    });
+    
+    const folderPath = folderBySearch.dir.map((folder) => folder.name).join("/");
+    return folderPath;
+  }
 
 // to get folder of a path given
 // Like /frontend/folder#1

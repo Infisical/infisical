@@ -9,8 +9,8 @@ import {
 import { body } from "express-validator";
 import {
 	ADMIN, 
-	AUTH_MODE_JWT,
-	MEMBER,
+	AuthMode,
+	MEMBER
 } from "../../variables";
 import { serviceTokenController } from "../../controllers/v1";
 
@@ -25,7 +25,7 @@ router.get(
 router.post(
 	"/",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],

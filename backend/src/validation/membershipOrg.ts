@@ -1,12 +1,6 @@
 import { Types } from "mongoose";
 import {
-    IServiceAccount,
-    IServiceTokenData,
-    IUser,
     MembershipOrg,
-    ServiceAccount,
-    ServiceTokenData,
-    User,
 } from "../models";
 import {
     validateMembershipOrg,
@@ -15,12 +9,8 @@ import {
     MembershipOrgNotFoundError,
     UnauthorizedRequestError,
 } from "../utils/errors";
-import {
-    AUTH_MODE_API_KEY,
-    AUTH_MODE_JWT,
-    AUTH_MODE_SERVICE_ACCOUNT,
-    AUTH_MODE_SERVICE_TOKEN,
-} from "../variables";
+import { AuthData } from "../interfaces/middleware";
+import { ActorType } from "../ee/models";
 
 /**
  * Validate authenticated clients for organization membership with id [membershipOrgId] based
@@ -37,10 +27,7 @@ export const validateClientForMembershipOrg = async ({
 	acceptedRoles,
 	acceptedStatuses,
 }: {
-	authData: {
-		authMode: string;
-		authPayload: IUser | IServiceAccount | IServiceTokenData;
-	};
+	authData: AuthData;
 	membershipOrgId: Types.ObjectId;
     acceptedRoles: Array<"owner" | "admin" | "member">;
     acceptedStatuses: Array<"invited" | "accepted">;
@@ -50,44 +37,20 @@ export const validateClientForMembershipOrg = async ({
 	if (!membershipOrg) throw MembershipOrgNotFoundError({
 		message: "Failed to find organization membership ",
 	});
-
-	if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
-		await validateMembershipOrg({
-			userId: authData.authPayload._id,
-			organizationId: membershipOrg.organization,
-			acceptedRoles,
-			acceptedStatuses,
-		});
-		
-		return membershipOrg;
-	}
-
-	if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
-		if (!authData.authPayload.organization.equals(membershipOrg.organization)) throw UnauthorizedRequestError({
-			message: "Failed service account client authorization for organization membership",
-		});
-		
-		return membershipOrg;
-	}
-
-	if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
-		throw UnauthorizedRequestError({
-			message: "Failed service account client authorization for organization membership",
-		});
-	}
 	
-	if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
-		await validateMembershipOrg({
-			userId: authData.authPayload._id,
-			organizationId: membershipOrg.organization,
-			acceptedRoles,
-			acceptedStatuses,
-		});
-		
-		return membershipOrg;
+	switch (authData.actor.type) {
+		case ActorType.USER:
+			await validateMembershipOrg({
+				userId: authData.authPayload._id,
+				organizationId: membershipOrg.organization,
+				acceptedRoles,
+				acceptedStatuses,
+			});
+			
+			return membershipOrg;	
+		case ActorType.SERVICE:
+			throw UnauthorizedRequestError({
+				message: "Failed service account client authorization for organization membership",
+			});
 	}
-	
-	throw UnauthorizedRequestError({
-		message: "Failed client authorization for organization membership",
-	});
 }

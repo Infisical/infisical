@@ -1,3 +1,4 @@
+// TODO: deprecate in favor of new audit logs
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Image from "next/image";

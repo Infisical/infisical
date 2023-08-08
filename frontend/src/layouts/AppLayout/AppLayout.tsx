@@ -483,11 +483,23 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/project/${currentWorkspace?._id}/audit-logs`} passHref>
+                      {/* <Link href={`/project/${currentWorkspace?._id}/audit-logs`} passHref>
                         <a>
                           <MenuItem
                             isSelected={
                               router.asPath === `/project/${currentWorkspace?._id}/audit-logs`
+                            }
+                            icon="system-outline-168-view-headline"
+                          >
+                            Audit Logs V2
+                          </MenuItem>
+                        </a>
+                      </Link> */}
+                      <Link href={`/project/${currentWorkspace?._id}/logs`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={
+                              router.asPath === `/project/${currentWorkspace?._id}/logs`
                             }
                             icon="system-outline-168-view-headline"
                           >

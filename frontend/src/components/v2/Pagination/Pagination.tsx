@@ -21,7 +21,7 @@ export type PaginationProps = {
   perPage?: number;
   onChangePage: (pageNumber: number) => void;
   onChangePerPage: (newRows: number) => void;
-  className: string;
+  className?: string;
   perPageList?: number[];
 };
 
@@ -44,18 +44,18 @@ export const Pagination = ({
   return (
     <div
       className={twMerge(
-        "flex items-center justify-end text-white w-full p-4 bg-mineshaft-700",
+        "flex items-center justify-end text-white w-full py-3 px-4 bg-mineshaft-800",
         className
       )}
     >
       <div className="mr-6 flex items-center space-x-2">
-        <div className="text-sm">
+        <div className="text-xs">
           {(page - 1) * perPage} - {(page - 1) * perPage + perPage} of {count}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton ariaLabel="per-page-list" variant="plain">
-              <FontAwesomeIcon icon={faCaretDown} />
+              <FontAwesomeIcon className="text-xs" icon={faCaretDown} />
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="min-w-fit">
@@ -79,7 +79,7 @@ export const Pagination = ({
           onClick={() => onChangePage(prevPageNumber)}
           isDisabled={!canGoPrev}
         >
-          <FontAwesomeIcon icon={faChevronLeft} />
+          <FontAwesomeIcon className="text-xs" icon={faChevronLeft} />
         </IconButton>
         <IconButton
           variant="plain"
@@ -87,7 +87,7 @@ export const Pagination = ({
           onClick={() => onChangePage(nextPageNumber)}
           isDisabled={!canGoNext}
         >
-          <FontAwesomeIcon icon={faChevronRight} />
+          <FontAwesomeIcon className="text-xs" icon={faChevronRight} />
         </IconButton>
       </div>
     </div>

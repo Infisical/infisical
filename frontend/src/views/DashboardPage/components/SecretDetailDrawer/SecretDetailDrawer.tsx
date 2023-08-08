@@ -27,7 +27,7 @@ type Props = {
   onEnvCompare: (secretKey: string) => void;
   secretVersion?: Array<{ id: string; createdAt: string; value: string }>;
   // to record the ids of deleted ones
-  onSecretDelete: (index: number, id?: string, overrideId?: string) => void;
+  onSecretDelete: (index: number, secretName: string, id?: string, overrideId?: string) => void;
   onSave: () => void;
 };
 
@@ -93,7 +93,8 @@ export const SecretDetailDrawer = ({
                 isDisabled={isReadOnly}
                 onClick={() => {
                   const secret = getValues(`secrets.${index}`);
-                  onSecretDelete(index, secret._id, secret.idOverride);
+                  
+                  onSecretDelete(index, secret.key, secret._id, secret.idOverride);
                 }}
               >
                 Delete

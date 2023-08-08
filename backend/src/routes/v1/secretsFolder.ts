@@ -12,12 +12,12 @@ import {
   getFolders,
   updateFolderById,
 } from "../../controllers/v1/secretsFolderController";
-import { ADMIN, MEMBER } from "../../variables";
+import { ADMIN, AuthMode, MEMBER } from "../../variables";
 
 router.post(
   "/",
   requireAuth({
-    acceptedAuthModes: ["jwt"],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -34,7 +34,7 @@ router.post(
 router.patch(
   "/:folderId",
   requireAuth({
-    acceptedAuthModes: ["jwt"],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   body("workspaceId").exists(),
   body("environment").exists(),
@@ -46,7 +46,7 @@ router.patch(
 router.delete(
   "/:folderId",
   requireAuth({
-    acceptedAuthModes: ["jwt"],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   body("workspaceId").exists(),
   body("environment").exists(),
@@ -58,7 +58,7 @@ router.delete(
 router.get(
   "/",
   requireAuth({
-    acceptedAuthModes: ["jwt"],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   query("workspaceId").exists().isString().trim(),
   query("environment").exists().isString().trim(),

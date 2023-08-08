@@ -1,6 +1,9 @@
+import { Types } from "mongoose";
 import { Request, Response } from "express";
 import { Key } from "../../models";
 import { findMembership } from "../../helpers/membership";
+import { EventType } from "../../ee/models";
+import { EEAuditLogService } from "../../ee/services";
 
 /**
  * Add (encrypted) copy of workspace key for workspace with id [workspaceId] for user with
@@ -44,7 +47,7 @@ export const uploadKey = async (req: Request, res: Response) => {
  */
 export const getLatestKey = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
-
+  
   // get latest key
   const latestKey = await Key.find({
     workspace: workspaceId,
@@ -58,6 +61,18 @@ export const getLatestKey = async (req: Request, res: Response) => {
 
 	if (latestKey.length > 0) {
 		resObj["latestKey"] = latestKey[0];
+    await EEAuditLogService.createAuditLog(
+      req.authData,
+      {
+        type: EventType.GET_WORKSPACE_KEY,
+        metadata: {
+          keyId: latestKey[0]._id.toString()
+        }
+      },
+      {
+        workspaceId: new Types.ObjectId(workspaceId)
+      }
+    );
 	}
 
 	return res.status(200).send(resObj);

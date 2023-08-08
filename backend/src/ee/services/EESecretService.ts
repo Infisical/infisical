@@ -10,7 +10,7 @@ import EELicenseService from "./EELicenseService";
 /**
  * Class to handle Enterprise Edition secret actions
  */
-class EESecretService {
+export default class EESecretService {
   /**
    * Save a secret snapshot that is a copy of the current state of secrets in workspace with id
    * [workspaceId] under a new snapshot with incremented version under the
@@ -71,5 +71,3 @@ class EESecretService {
     });
   }
 }
-
-export default EESecretService;

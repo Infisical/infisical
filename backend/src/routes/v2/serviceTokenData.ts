@@ -9,9 +9,7 @@ import {
 import { body, param } from "express-validator";
 import {
   ADMIN,
-  AUTH_MODE_JWT,
-  AUTH_MODE_SERVICE_ACCOUNT,
-  AUTH_MODE_SERVICE_TOKEN,
+  AuthMode,
   MEMBER,
   PERMISSION_WRITE_SECRETS
 } from "../../variables";
@@ -20,7 +18,7 @@ import { serviceTokenDataController } from "../../controllers/v2";
 router.get(
   "/",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.SERVICE_TOKEN]
   }),
   serviceTokenDataController.getServiceTokenData
 );
@@ -28,7 +26,7 @@ router.get(
 router.post(
   "/",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_SERVICE_ACCOUNT]
+    acceptedAuthModes: [AuthMode.JWT]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -63,7 +61,7 @@ router.post(
 router.delete(
   "/:serviceTokenDataId",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AuthMode.JWT]
   }),
   requireServiceTokenDataAuth({
     acceptedRoles: [ADMIN, MEMBER]

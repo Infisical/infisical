@@ -3,7 +3,9 @@ import { Types } from "mongoose";
 import { standardRequest } from "../../config/request";
 import { getApps, getTeams, revokeAccess } from "../../integrations";
 import { Bot, IntegrationAuth } from "../../models";
+import { EventType } from "../../ee/models";
 import { IntegrationService } from "../../services";
+import { EEAuditLogService } from "../../ee/services";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
@@ -61,6 +63,19 @@ export const oAuthExchange = async (req: Request, res: Response) => {
     code,
     environment: environments[0].slug
   });
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.AUTHORIZE_INTEGRATION,
+      metadata: {
+        integration: integrationAuth.integration
+      }
+    },
+    {
+      workspaceId: integrationAuth.workspace
+    }
+  );
 
   return res.status(200).send({
     integrationAuth
@@ -129,6 +144,19 @@ export const saveIntegrationAccessToken = async (req: Request, res: Response) =>
   });
 
   if (!integrationAuth) throw new Error("Failed to save integration access token");
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.AUTHORIZE_INTEGRATION,
+      metadata: {
+        integration: integrationAuth.integration
+      }
+    },
+    {
+      workspaceId: integrationAuth.workspace
+    }
+  );
 
   return res.status(200).send({
     integrationAuth
@@ -530,6 +558,23 @@ export const deleteIntegrationAuth = async (req: Request, res: Response) => {
     integrationAuth: req.integrationAuth,
     accessToken: req.accessToken
   });
+  
+  if (!integrationAuth) return res.status(400).send({
+    message: "Failed to find integration authorization"
+  });
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.UNAUTHORIZE_INTEGRATION,
+      metadata: {
+        integration: integrationAuth.integration
+      }
+    },
+    {
+      workspaceId: integrationAuth.workspace
+    }
+  );
 
   return res.status(200).send({
     integrationAuth

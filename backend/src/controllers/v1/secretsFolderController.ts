@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { Secret } from "../../models";
+import { Types } from "mongoose";
 import Folder from "../../models/folder";
 import { BadRequestError } from "../../utils/errors";
 import {
@@ -8,6 +9,7 @@ import {
   generateFolderId,
   getAllFolderIds,
   getFolderByPath,
+  getFolderPath,
   getParentFromFolderId,
   searchByFolderId,
   searchByFolderIdWithDir,
@@ -15,10 +17,9 @@ import {
 } from "../../services/FolderService";
 import { ADMIN, MEMBER } from "../../variables";
 import { validateMembership } from "../../helpers/membership";
-import { FolderVersion } from "../../ee/models";
-import { EESecretService } from "../../ee/services";
+import { EventType, FolderVersion } from "../../ee/models";
+import { EEAuditLogService, EESecretService } from "../../ee/services";
 
-// TODO
 // verify workspace id/environment
 export const createFolder = async (req: Request, res: Response) => {
   const { workspaceId, environment, folderName, parentFolderId } = req.body;
@@ -33,6 +34,7 @@ export const createFolder = async (req: Request, res: Response) => {
     environment,
   }).lean();
   // space has no folders initialized
+  
   if (!folders) {
     const id = generateFolderId();
     const folder = new Folder({
@@ -56,13 +58,32 @@ export const createFolder = async (req: Request, res: Response) => {
       workspaceId,
       environment,
     });
+    
+    await EEAuditLogService.createAuditLog(
+      req.authData,
+      {
+        type: EventType.CREATE_FOLDER,
+        metadata: {
+          environment,
+          folderId: id,
+          folderName,
+          folderPath: `root/${folderName}`
+        }
+      },
+      {
+        workspaceId: new Types.ObjectId(workspaceId)
+      }
+    );
+
     return res.json({ folder: { id, name: folderName } });
   }
 
   const folder = appendFolder(folders.nodes, { folderName, parentFolderId });
+  
   await Folder.findByIdAndUpdate(folders._id, folders);
 
   const parentFolder = searchByFolderId(folders.nodes, parentFolderId);
+  
   const folderVersion = new FolderVersion({
     workspace: workspaceId,
     environment,
@@ -75,6 +96,24 @@ export const createFolder = async (req: Request, res: Response) => {
     environment,
     folderId: parentFolderId,
   });
+  
+  const folderPath = await getFolderPath(folders, folder.id);
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.CREATE_FOLDER,
+      metadata: {
+        environment,
+        folderId: folder.id,
+        folderName,
+        folderPath
+      }
+    },
+    {
+      workspaceId: new Types.ObjectId(workspaceId)
+    }
+  );
 
   return res.json({ folder });
 };
@@ -87,7 +126,7 @@ export const updateFolderById = async (req: Request, res: Response) => {
   if (!folders) {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
-
+  
   // check that user is a member of the workspace
   await validateMembership({
     userId: req.user._id.toString(),
@@ -100,10 +139,12 @@ export const updateFolderById = async (req: Request, res: Response) => {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
   const folder = parentFolder.children.find(({ id }) => id === folderId);
+  
   if (!folder) {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
 
+  const oldFolderName = folder.name;
   parentFolder.version += 1;
   folder.name = name;
 
@@ -120,6 +161,25 @@ export const updateFolderById = async (req: Request, res: Response) => {
     environment,
     folderId: parentFolder.id,
   });
+
+  const folderPath = await getFolderPath(folders, folder.id);
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.UPDATE_FOLDER,
+      metadata: {
+        environment,
+        folderId: folder.id,
+        oldFolderName,
+        newFolderName: name,
+        folderPath
+      }
+    },
+    {
+      workspaceId: new Types.ObjectId(workspaceId)
+    }
+  );
 
   return res.json({
     message: "Successfully updated folder",
@@ -142,6 +202,8 @@ export const deleteFolder = async (req: Request, res: Response) => {
     workspaceId,
     acceptedRoles: [ADMIN, MEMBER],
   });
+
+  const folderPath = await getFolderPath(folders, folderId);
 
   const delOp = deleteFolderById(folders.nodes, folderId);
   if (!delOp) {
@@ -172,6 +234,22 @@ export const deleteFolder = async (req: Request, res: Response) => {
     environment,
     folderId: parentFolder.id,
   });
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.DELETE_FOLDER ,
+      metadata: {
+        environment,
+        folderId,
+        folderName: delFolder.name,
+        folderPath
+      }
+    },
+    {
+      workspaceId: new Types.ObjectId(workspaceId)
+    }
+  );
 
   res.send({ message: "successfully deleted folders", folders: delFolderIds });
 };

@@ -9,14 +9,14 @@ import {
 } from "../../middleware";
 import { 
   ADMIN, 
-  AUTH_MODE_JWT,
-  MEMBER,
+  AuthMode,
+  MEMBER
 } from "../../variables";
 
 router.get(
   "/:workspaceId/tags",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [MEMBER, ADMIN],
@@ -30,7 +30,7 @@ router.get(
 router.delete(
   "/tags/:tagId",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   param("tagId").exists().trim(),
   validateRequest,
@@ -40,7 +40,7 @@ router.delete(
 router.post(
   "/:workspaceId/tags",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [MEMBER, ADMIN],
