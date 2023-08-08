@@ -73,7 +73,8 @@ export const LogsFilter = ({
                             className="w-40 mr-4"
                         >
                             <Select
-                                {...(field.value ? { value: field.value } : { placeholder: "Select" })}
+                                placeholder="Select"
+                                // {...(field.value ? { value: field.value } : { placeholder: "Select" })}
                                 {...field}
                                 onValueChange={(e) => onChange(e)}
                                 className="w-full"
@@ -189,7 +190,7 @@ export const LogsFilter = ({
                     }}
                 />
             </div>
-            {/* <div>
+            <div>
                 <Button
                     isLoading={false}
                     colorSchema="primary"
@@ -206,7 +207,7 @@ export const LogsFilter = ({
                 >
                     Clear filters
                 </Button>
-            </div> */}
+            </div>
         </div>
     );
 }

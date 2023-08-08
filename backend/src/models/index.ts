@@ -10,6 +10,8 @@ import Membership, { IMembership } from "./membership";
 import MembershipOrg, { IMembershipOrg } from "./membershipOrg";
 import Organization, { IOrganization } from "./organization";
 import Secret, { ISecret } from "./secret";
+import Folder, { TFolderRootSchema, TFolderSchema } from "./folder";
+import SecretImport, { ISecretImports } from "./secretImports";
 import SecretBlindIndexData, { ISecretBlindIndexData } from "./secretBlindIndexData";
 import ServiceToken, { IServiceToken } from "./serviceToken";
 import ServiceAccount, { IServiceAccount } from "./serviceAccount"; // new
@@ -51,6 +53,11 @@ export {
 	IOrganization,
 	Secret,
 	ISecret,
+	Folder,
+	TFolderRootSchema,
+	TFolderSchema,
+	SecretImport,
+	ISecretImports,
 	SecretBlindIndexData,
 	ISecretBlindIndexData,
 	ServiceToken,

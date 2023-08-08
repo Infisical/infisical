@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
 import { validateMembership } from "../../helpers";
-import SecretImport from "../../models/secretImports";
+import { Folder, SecretImport } from "../../models";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
-import { BadRequestError } from "../../utils/errors";
+import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
 import { ADMIN, MEMBER } from "../../variables";
 import { EEAuditLogService } from "../../ee/services";
 import { EventType } from "../../ee/models";
+import { getFolderPath } from "../../services/FolderService";
 
 export const createSecretImport = async (req: Request, res: Response) => {
   const { workspaceId, environment, folderId, secretImport } = req.body;
@@ -14,6 +15,17 @@ export const createSecretImport = async (req: Request, res: Response) => {
     environment,
     folderId
   });
+  
+  const folders = await Folder.findOne({
+    workspace: workspaceId,
+    environment,
+  }).lean();
+  
+  if (!folders) throw ResourceNotFoundError({
+    message: "Failed to find folder"
+  });
+  
+  const importToSecretPath = await getFolderPath(folders, folderId);
 
   if (!importSecDoc) {
     const doc = new SecretImport({
@@ -29,11 +41,12 @@ export const createSecretImport = async (req: Request, res: Response) => {
       {
         type: EventType.CREATE_SECRET_IMPORT,
         metadata: {
-          environment,
           secretImportId: doc._id.toString(),
           folderId: doc.folderId.toString(),
-          importEnvironment: secretImport.environment,
-          importSecretPath: secretImport.secretPath
+          importFromEnvironment: secretImport.environment,
+          importFromSecretPath: secretImport.secretPath,
+          importToEnvironment: environment,
+          importToSecretPath
         }
       },
       {
@@ -61,11 +74,12 @@ export const createSecretImport = async (req: Request, res: Response) => {
     {
       type: EventType.CREATE_SECRET_IMPORT,
       metadata: {
-        environment,
         secretImportId: importSecDoc._id.toString(),
         folderId: importSecDoc.folderId.toString(),
-        importEnvironment: secretImport.environment,
-        importSecretPath: secretImport.secretPath
+        importFromEnvironment: secretImport.environment,
+        importFromSecretPath: secretImport.secretPath,
+        importToEnvironment: environment,
+        importToSecretPath
       }
     },
     {
@@ -91,17 +105,33 @@ export const updateSecretImport = async (req: Request, res: Response) => {
     acceptedRoles: [ADMIN, MEMBER]
   });
 
+  const orderBefore = importSecDoc.imports;
   importSecDoc.imports = secretImports;
+  
   await importSecDoc.save();
+  
+  const folders = await Folder.findOne({
+    workspace: importSecDoc.workspace,
+    environment: importSecDoc.environment,
+  }).lean();
+  
+  if (!folders) throw ResourceNotFoundError({
+    message: "Failed to find folder"
+  });
+  
+  const importToSecretPath = await getFolderPath(folders, importSecDoc.folderId);
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
       type: EventType.UPDATE_SECRET_IMPORT,
       metadata: {
-        environment: importSecDoc.environment,
+        importToEnvironment: importSecDoc.environment,
+        importToSecretPath,
         secretImportId: importSecDoc._id.toString(),
         folderId: importSecDoc.folderId.toString(),
-        numberOfImports: secretImports.length
+        orderBefore,
+        orderAfter: secretImports
       }
     },
     {
@@ -130,16 +160,28 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
   );
   await importSecDoc.save();
 
+  const folders = await Folder.findOne({
+    workspace: importSecDoc.workspace,
+    environment: importSecDoc.environment,
+  }).lean();
+  
+  if (!folders) throw ResourceNotFoundError({
+    message: "Failed to find folder"
+  });
+  
+  const importToSecretPath = await getFolderPath(folders, importSecDoc.folderId);
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
       type: EventType.DELETE_SECRET_IMPORT,
       metadata: {
-        environment: importSecDoc.environment,
         secretImportId: importSecDoc._id.toString(),
         folderId: importSecDoc.folderId.toString(),
-        importEnvironment: secretImportEnv,
-        importSecretPath: secretImportPath
+        importFromEnvironment: secretImportEnv,
+        importFromSecretPath: secretImportPath,
+        importToEnvironment: importSecDoc.environment,
+        importToSecretPath
       }
     },
     {

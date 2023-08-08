@@ -27,7 +27,7 @@ type Props = {
   onEnvCompare: (secretKey: string) => void;
   secretVersion?: Array<{ id: string; createdAt: string; value: string }>;
   // to record the ids of deleted ones
-  onSecretDelete: (index: number, id?: string, overrideId?: string) => void;
+  onSecretDelete: (index: number, secretName: string, id?: string, overrideId?: string) => void;
   onSave: () => void;
 };
 
@@ -45,6 +45,15 @@ export const SecretDetailDrawer = ({
   const [canRevealSecOverride, setCanRevealSecOverride] = useToggle();
 
   const { register, setValue, control, getValues } = useFormContext<FormData>();
+  
+  const secKey = useWatch({
+      control,
+      name: `secrets.${index}.key`,
+      disabled: false,
+      exact: true
+    });
+  
+  console.log("secKeyyy", secKey);
 
   const overrideAction = useWatch({ control, name: `secrets.${index}.overrideAction` });
   const isOverridden =

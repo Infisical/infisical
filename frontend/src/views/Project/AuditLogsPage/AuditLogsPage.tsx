@@ -2,7 +2,7 @@ import {
     LogsSection
 } from "./components";
 
-export const LogsPage = () => {
+export const AuditLogsPage = () => {
     return (
 		<div className="flex justify-center bg-bunker-800 text-white w-full h-full">
 			<div className="max-w-7xl px-6 w-full">

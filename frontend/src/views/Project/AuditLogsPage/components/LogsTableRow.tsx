@@ -2,10 +2,9 @@ import {
     Td,
     Tr
 } from "@app/components/v2";
-
-import { eventToNameMap, userAgentTTypeoNameMap } from "~/hooks/api/auditLogs/constants";
-import { ActorType, EventType } from "~/hooks/api/auditLogs/enums";
-import { Actor, AuditLog, Event } from "~/hooks/api/auditLogs/types";
+import { eventToNameMap, userAgentTTypeoNameMap } from "@app/hooks/api/auditLogs/constants";
+import { ActorType, EventType } from "@app/hooks/api/auditLogs/enums";
+import { Actor, AuditLog, Event } from "@app/hooks/api/auditLogs/types";
 
 type Props = {
     auditLog: AuditLog
@@ -258,27 +257,31 @@ export const LogsTableRow = ({
             case EventType.CREATE_SECRET_IMPORT:
                 return (
                     <Td>
-                        <p>{`Environment: ${event.metadata.environment}`}</p>
-                        <p>{`Imported path: ${event.metadata.importSecretPath}`}</p>
+                        <p>{`Import from env: ${event.metadata.importFromEnvironment}`}</p>
+                        <p>{`Import from path: ${event.metadata.importFromSecretPath}`}</p>
+                        <p>{`Import to env: ${event.metadata.importToEnvironment}`}</p>
+                        <p>{`Import to path: ${event.metadata.importToSecretPath}`}</p>
                     </Td>
                 );
             case EventType.UPDATE_SECRET_IMPORT:
                 return (
                     <Td>
-                        <p>{`Environment: ${event.metadata.environment}`}</p>
-                        <p>{`# Imported path: ${event.metadata.numberOfImports}`}</p>
+                        <p>{`Import to env: ${event.metadata.importToEnvironment}`}</p>
+                        <p>{`Import to path: ${event.metadata.importToSecretPath}`}</p>
                     </Td>
                 );
             case EventType.DELETE_SECRET_IMPORT:
                 return (
                     <Td>
-                        <p>{`Environment: ${event.metadata.environment}`}</p>
-                        <p>{`Imported path: ${event.metadata.importSecretPath}`}</p>
+                        <p>{`Import from env: ${event.metadata.importFromEnvironment}`}</p>
+                        <p>{`Import from path: ${event.metadata.importFromSecretPath}`}</p>
+                        <p>{`Import to env: ${event.metadata.importToEnvironment}`}</p>
+                        <p>{`Import to path: ${event.metadata.importToSecretPath}`}</p>
                     </Td>
                 );
             default:
                 return (
-                    <Td></Td>
+                    <Td />
                 ); 
         }
     }

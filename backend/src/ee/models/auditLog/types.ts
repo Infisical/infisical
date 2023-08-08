@@ -307,32 +307,42 @@ interface GetSecretImportsEvent {
 interface CreateSecretImportEvent {
     type: EventType.CREATE_SECRET_IMPORT,
     metadata: {
-        environment: string;
         secretImportId: string;
         folderId: string;
-        importEnvironment: string;
-        importSecretPath: string;
+        importFromEnvironment: string;
+        importFromSecretPath: string;
+        importToEnvironment: string;
+        importToSecretPath: string;
     }
 }
 
 interface UpdateSecretImportEvent {
     type: EventType.UPDATE_SECRET_IMPORT,
     metadata: {
-        environment: string;
         secretImportId: string;
         folderId: string;
-        numberOfImports: number;
+        importToEnvironment: string;
+        importToSecretPath: string;
+        orderBefore: {
+          environment: string;
+          secretPath: string;
+        }[],
+        orderAfter: {
+          environment: string;
+          secretPath: string;
+        }[]
     }
 }
 
 interface DeleteSecretImportEvent {
     type: EventType.DELETE_SECRET_IMPORT,
     metadata: {
-        environment: string;
         secretImportId: string;
         folderId: string;
-        importEnvironment: string;
-        importSecretPath: string;
+        importFromEnvironment: string;
+        importFromSecretPath: string;
+        importToEnvironment: string;
+        importToSecretPath: string;
     }
 }
 
