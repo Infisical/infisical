@@ -8,7 +8,8 @@ import {
     DatePicker,
     FormControl,
     Select,
-    SelectItem} from "@app/components/v2";
+    SelectItem
+} from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useGetAuditLogActorFilterOpts } from "@app/hooks/api";
 import { eventToNameMap, userAgentTTypeoNameMap } from "@app/hooks/api/auditLogs/constants";
@@ -77,7 +78,7 @@ export const LogsFilter = ({
                                 // {...(field.value ? { value: field.value } : { placeholder: "Select" })}
                                 {...field}
                                 onValueChange={(e) => onChange(e)}
-                                className="w-full"
+                                className="w-full bg-mineshaft-700 border border-mineshaft-500 text-mineshaft-100"
                             >
                                 {eventTypes.map(({ label, value }) => (
                                     <SelectItem value={String(value || "")} key={label}>
@@ -103,7 +104,7 @@ export const LogsFilter = ({
                                     {...(field.value ? { value: field.value } : { placeholder: "Select" })}
                                     {...field}
                                     onValueChange={(e) => onChange(e)}
-                                    className="w-full"
+                                    className="w-full bg-mineshaft-700 border border-mineshaft-500 text-mineshaft-100"
                                 >
                                     {data.map((actor) => renderActorSelectItem(actor))}
                                 </Select>
@@ -125,7 +126,7 @@ export const LogsFilter = ({
                                 {...(field.value ? { value: field.value } : { placeholder: "Select" })}
                                 {...field}
                                 onValueChange={(e) => onChange(e)}
-                                className="w-full"
+                                className="w-full bg-mineshaft-700 border border-mineshaft-500 text-mineshaft-100"
                             >
                                 {userAgentTypes.map(({ label, value }) => (
                                     <SelectItem value={String(value || "")} key={label}>

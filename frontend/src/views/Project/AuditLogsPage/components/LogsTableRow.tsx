@@ -305,7 +305,7 @@ export const LogsTableRow = ({
     }
     
     return (
-       <Tr className={`log-${auditLog._id} h-10`}>
+       <Tr className={`log-${auditLog._id} h-10 border-b border-x-0 border-t-0`}>
             <Td>{formatDate(auditLog.createdAt)}</Td>
             <Td>{`${eventToNameMap[auditLog.event.type]}`}</Td>
             {renderActor(auditLog.actor)}
