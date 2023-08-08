@@ -1,7 +1,7 @@
 import { nanoid } from "nanoid";
 import { Types } from "mongoose";
-import Folder, { TFolderRootSchema, TFolderSchema } from "../models/folder";
-import { ResourceNotFoundError } from "../utils/errors";
+import Folder, { TFolderSchema } from "../models/folder";
+import path from "path";
 
 type TAppendFolderDTO = {
   folderName: string;
@@ -59,7 +59,7 @@ const appendChild = (folders: TFolderSchema, folderName: string) => {
     id,
     name: folderName,
     children: [],
-    version: 1,
+    version: 1
   });
   return { id, name: folderName };
 };
@@ -109,10 +109,7 @@ export const deleteFolderById = (folders: TFolderSchema, folderId: string) => {
 };
 
 // bfs but return parent of the folderID
-export const getParentFromFolderId = (
-  folders: TFolderSchema,
-  folderId: string
-) => {
+export const getParentFromFolderId = (folders: TFolderSchema, folderId: string) => {
   const queue = [folders];
   while (queue.length) {
     const folder = queue.pop() as TFolderSchema;
@@ -141,10 +138,7 @@ export const getAllFolderIds = (folders: TFolderSchema) => {
 // We then record the number of childs of each root node
 // When we reach leaf node or when all childs of a root node are visited
 // We remove it from path recorded by using the total child record
-export const searchByFolderIdWithDir = (
-  folders: TFolderSchema,
-  folderId: string
-) => {
+export const searchByFolderIdWithDir = (folders: TFolderSchema, folderId: string) => {
   const stack = [folders];
   const dir: Array<{ id: string; name: string }> = [];
   const hits: Record<string, number> = {};
@@ -173,19 +167,19 @@ export const searchByFolderIdWithDir = (
   return;
 };
 
-export const getFolderPath = (
-  folders: TFolderRootSchema,
-  folderId: string
-  ) => {
-    const folderBySearch = searchByFolderIdWithDir(folders.nodes, folderId);
-
-    if (!folderBySearch) throw ResourceNotFoundError({
-      message: "Failed to find folder"
-    });
-    
-    const folderPath = folderBySearch.dir.map((folder) => folder.name).join("/");
-    return folderPath;
+// used for get folder path from id
+export const getFolderWithPathFromId = (folders: TFolderSchema, parentFolderId: string) => {
+  const search = searchByFolderIdWithDir(folders, parentFolderId);
+  if (!search) {
+    throw { message: "Folder permission denied" };
   }
+  const { folder, dir } = search;
+  const folderPath = path.join(
+    "/",
+    ...dir.filter(({ name }) => name !== "root").map(({ name }) => name)
+  );
+  return { folder, folderPath, dir };
+};
 
 // to get folder of a path given
 // Like /frontend/folder#1
@@ -216,7 +210,7 @@ export const getFolderIdFromServiceToken = async (
 ) => {
   const folders = await Folder.findOne({
     workspace: workspaceId,
-    environment,
+    environment
   });
 
   if (!folders) {
