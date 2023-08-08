@@ -2,10 +2,9 @@ import {
     Td,
     Tr
 } from "@app/components/v2";
-
-import { eventToNameMap, userAgentTTypeoNameMap } from "~/hooks/api/auditLogs/constants";
-import { ActorType, EventType } from "~/hooks/api/auditLogs/enums";
-import { Actor, AuditLog, Event } from "~/hooks/api/auditLogs/types";
+import { eventToNameMap, userAgentTTypeoNameMap } from "@app/hooks/api/auditLogs/constants";
+import { ActorType, EventType } from "@app/hooks/api/auditLogs/enums";
+import { Actor, AuditLog, Event } from "@app/hooks/api/auditLogs/types";
 
 type Props = {
     auditLog: AuditLog
@@ -278,7 +277,7 @@ export const LogsTableRow = ({
                 );
             default:
                 return (
-                    <Td></Td>
+                    <Td/>
                 ); 
         }
     }
@@ -302,7 +301,7 @@ export const LogsTableRow = ({
     }
     
     return (
-       <Tr className={`log-${auditLog._id} h-10`}>
+       <Tr className={`log-${auditLog._id} h-10 border-b border-x-0 border-t-0`}>
             <Td>{formatDate(auditLog.createdAt)}</Td>
             <Td>{`${eventToNameMap[auditLog.event.type]}`}</Td>
             {renderActor(auditLog.actor)}

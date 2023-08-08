@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { Control, Controller, UseFormReset } from "react-hook-form";
-import { faFilterCircleXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
-    Button,
     DatePicker,
     FormControl,
     Select,
@@ -76,7 +73,7 @@ export const LogsFilter = ({
                                 {...(field.value ? { value: field.value } : { placeholder: "Select" })}
                                 {...field}
                                 onValueChange={(e) => onChange(e)}
-                                className="w-full"
+                                className="w-full bg-mineshaft-700 border border-mineshaft-500 text-mineshaft-100"
                             >
                                 {eventTypes.map(({ label, value }) => (
                                     <SelectItem value={String(value || "")} key={label}>
@@ -102,7 +99,7 @@ export const LogsFilter = ({
                                     {...(field.value ? { value: field.value } : { placeholder: "Select" })}
                                     {...field}
                                     onValueChange={(e) => onChange(e)}
-                                    className="w-full"
+                                    className="w-full bg-mineshaft-700 border border-mineshaft-500 text-mineshaft-100"
                                 >
                                     {data.map((actor) => renderActorSelectItem(actor))}
                                 </Select>
@@ -124,7 +121,7 @@ export const LogsFilter = ({
                                 {...(field.value ? { value: field.value } : { placeholder: "Select" })}
                                 {...field}
                                 onValueChange={(e) => onChange(e)}
-                                className="w-full"
+                                className="w-full bg-mineshaft-700 border border-mineshaft-500 text-mineshaft-100"
                             >
                                 {userAgentTypes.map(({ label, value }) => (
                                     <SelectItem value={String(value || "")} key={label}>
