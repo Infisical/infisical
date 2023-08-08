@@ -32,12 +32,14 @@ export const LogsSection = () => {
     const perPage = watch("perPage") as number;
     
     return (
-        <div className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600">
-            <div className="flex items-center mb-8">
+        <div 
+            // className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
+        >
+            {/* <div className="flex items-center mb-8">
                 <h2 className="text-xl font-semibold flex-1 text-white">
                     Audit Logs
                 </h2>
-            </div>
+            </div> */}
             <LogsFilter 
                 control={control} 
                 reset={reset}

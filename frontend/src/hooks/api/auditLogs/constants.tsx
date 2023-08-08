@@ -1,11 +1,12 @@
 import { EventType, UserAgentType } from "./enums";
 
 export const eventToNameMap: { [K in EventType]: string } = {
-    [EventType.GET_SECRETS]: "Get secrets",
-    [EventType.GET_SECRET]: "Get secret",
+    [EventType.GET_SECRETS]: "List secrets",
+    [EventType.GET_SECRET]: "Read secret",
     [EventType.CREATE_SECRET]: "Create secret",
     [EventType.UPDATE_SECRET]: "Update secret",
     [EventType.DELETE_SECRET]: "Delete secret",
+    [EventType.GET_WORKSPACE_KEY]: "Read project key",
     [EventType.AUTHORIZE_INTEGRATION]: "Authorize integration",
     [EventType.UNAUTHORIZE_INTEGRATION]: "Unauthorize integration",
     [EventType.CREATE_INTEGRATION]: "Create integration",
@@ -26,6 +27,11 @@ export const eventToNameMap: { [K in EventType]: string } = {
     [EventType.CREATE_WEBHOOK]: "Create webhook",
     [EventType.UPDATE_WEBHOOK_STATUS]: "Update webhook status",
     [EventType.DELETE_WEBHOOK]: "Delete webhook",
+    [EventType.GET_SECRET_IMPORTS]: "List secret imports",
+    [EventType.CREATE_SECRET_IMPORT]: "Create secret import",
+    [EventType.UPDATE_SECRET_IMPORT]: "Update secret import",
+    [EventType.DELETE_SECRET_IMPORT]: "Delete secret import",
+    
 };
 
 export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {

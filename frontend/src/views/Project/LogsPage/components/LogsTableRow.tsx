@@ -100,6 +100,9 @@ export const LogsTableRow = ({
                         {event.metadata.app && (
                             <p>{`Target app: ${event.metadata.app}`}</p>
                         )}
+                        {event.metadata.appId && (
+                            <p>{`Target app: ${event.metadata.appId}`}</p>
+                        )}
                         {event.metadata.targetEnvironment && (
                             <p>{`Target environment: ${event.metadata.targetEnvironment}`}</p>
                         )}
@@ -116,6 +119,9 @@ export const LogsTableRow = ({
                         <p>{`Path: ${event.metadata.secretPath}`}</p>
                         {event.metadata.app && (
                             <p>{`Target App: ${event.metadata.app}`}</p>
+                        )}
+                        {event.metadata.appId && (
+                            <p>{`Target app: ${event.metadata.appId}`}</p>
                         )}
                         {event.metadata.targetEnvironment && (
                             <p>{`Target environment: ${event.metadata.targetEnvironment}`}</p>
@@ -219,7 +225,7 @@ export const LogsTableRow = ({
                 return (
                     <Td>
                         <p>{`Environment: ${event.metadata.environment}`}</p>
-                        <p>{`Secret Path: ${event.metadata.secretPath}`}</p>
+                        <p>{`Secret path: ${event.metadata.secretPath}`}</p>
                         <p>{`Webhook URL: ${event.metadata.webhookUrl}`}</p>
                         <p>{`Disabled: ${event.metadata.isDisabled}`}</p>
                     </Td>
@@ -228,7 +234,7 @@ export const LogsTableRow = ({
                 return (
                     <Td>
                         <p>{`Environment: ${event.metadata.environment}`}</p>
-                        <p>{`Secret Path: ${event.metadata.secretPath}`}</p>
+                        <p>{`Secret path: ${event.metadata.secretPath}`}</p>
                         <p>{`Webhook URL: ${event.metadata.webhookUrl}`}</p>
                         <p>{`Disabled: ${event.metadata.isDisabled}`}</p>
                     </Td>
@@ -237,14 +243,42 @@ export const LogsTableRow = ({
                 return (
                     <Td>
                         <p>{`Environment: ${event.metadata.environment}`}</p>
-                        <p>{`Secret Path: ${event.metadata.secretPath}`}</p>
+                        <p>{`Secret path: ${event.metadata.secretPath}`}</p>
                         <p>{`Webhook URL: ${event.metadata.webhookUrl}`}</p>
                         <p>{`Disabled: ${event.metadata.isDisabled}`}</p>
                     </Td>
                 );
+            case EventType.GET_SECRET_IMPORTS:
+                return (
+                    <Td>
+                        <p>{`Environment: ${event.metadata.environment}`}</p>
+                        <p>{`# Imported paths: ${event.metadata.numberOfImports}`}</p>
+                    </Td>
+                );
+            case EventType.CREATE_SECRET_IMPORT:
+                return (
+                    <Td>
+                        <p>{`Environment: ${event.metadata.environment}`}</p>
+                        <p>{`Imported path: ${event.metadata.importSecretPath}`}</p>
+                    </Td>
+                );
+            case EventType.UPDATE_SECRET_IMPORT:
+                return (
+                    <Td>
+                        <p>{`Environment: ${event.metadata.environment}`}</p>
+                        <p>{`# Imported path: ${event.metadata.numberOfImports}`}</p>
+                    </Td>
+                );
+            case EventType.DELETE_SECRET_IMPORT:
+                return (
+                    <Td>
+                        <p>{`Environment: ${event.metadata.environment}`}</p>
+                        <p>{`Imported path: ${event.metadata.importSecretPath}`}</p>
+                    </Td>
+                );
             default:
                 return (
-                    <Td>Test</Td>
+                    <Td></Td>
                 ); 
         }
     }

@@ -17,6 +17,7 @@ export enum EventType {
     CREATE_SECRET = "create-secret",
     UPDATE_SECRET = "update-secret",
     DELETE_SECRET = "delete-secret",
+    GET_WORKSPACE_KEY = "get-workspace-key",
     AUTHORIZE_INTEGRATION = "authorize-integration",
     UNAUTHORIZE_INTEGRATION = "unauthorize-integration",
     CREATE_INTEGRATION = "create-integration",
@@ -36,5 +37,9 @@ export enum EventType {
     DELETE_FOLDER = "delete-folder",
     CREATE_WEBHOOK = "create-webhook",
     UPDATE_WEBHOOK_STATUS = "update-webhook-status",
-    DELETE_WEBHOOK = "delete-webhook"
+    DELETE_WEBHOOK = "delete-webhook",
+    GET_SECRET_IMPORTS = "get-secret-imports",
+    CREATE_SECRET_IMPORT = "create-secret-import",
+    UPDATE_SECRET_IMPORT = "update-secret-import",
+    DELETE_SECRET_IMPORT = "delete-secret-import",
 }

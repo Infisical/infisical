@@ -80,17 +80,24 @@ interface DeleteSecretEvent {
     }
 }
 
+interface GetWorkspaceKeyEvent {
+    type: EventType.GET_WORKSPACE_KEY,
+    metadata: {
+        keyId: string;
+    }
+}
+
 interface AuthorizeIntegrationEvent {
     type: EventType.AUTHORIZE_INTEGRATION;
     metadata: {
-        integration: string; // TODO: fix type
+        integration: string;
     }
 }
 
 interface UnauthorizeIntegrationEvent {
     type: EventType.UNAUTHORIZE_INTEGRATION;
     metadata: {
-        integration: string; // TODO: fix type
+        integration: string;
     }
 }
 
@@ -101,9 +108,15 @@ interface CreateIntegrationEvent {
         integration: string; // TODO: fix type
         environment: string;
         secretPath: string;
+        url?: string;
         app?: string;
+        appId?: string;
         targetEnvironment?: string;
-        targetEnvironmentId?: string; // TODO: consider adding other vars
+        targetEnvironmentId?: string;
+        targetService?: string;
+        targetServiceId?: string;
+        path?: string;
+        region?: string;
     }
 }
 
@@ -114,9 +127,15 @@ interface DeleteIntegrationEvent {
         integration: string; // TODO: fix type
         environment: string;
         secretPath: string;
+        url?: string;
         app?: string;
+        appId?: string;
         targetEnvironment?: string;
         targetEnvironmentId?: string;
+        targetService?: string;
+        targetServiceId?: string;
+        path?: string;
+        region?: string;
     }
 }
 
@@ -275,12 +294,55 @@ interface DeleteWebhookEvent {
     }
 }
 
+interface GetSecretImportsEvent {
+    type: EventType.GET_SECRET_IMPORTS,
+    metadata: {
+        environment: string;
+        secretImportId: string;
+        folderId: string;
+        numberOfImports: number;
+    }
+}
+
+interface CreateSecretImportEvent {
+    type: EventType.CREATE_SECRET_IMPORT,
+    metadata: {
+        environment: string;
+        secretImportId: string;
+        folderId: string;
+        importEnvironment: string;
+        importSecretPath: string;
+    }
+}
+
+interface UpdateSecretImportEvent {
+    type: EventType.UPDATE_SECRET_IMPORT,
+    metadata: {
+        environment: string;
+        secretImportId: string;
+        folderId: string;
+        numberOfImports: number;
+    }
+}
+
+interface DeleteSecretImportEvent {
+    type: EventType.DELETE_SECRET_IMPORT,
+    metadata: {
+        environment: string;
+        secretImportId: string;
+        folderId: string;
+        importEnvironment: string;
+        importSecretPath: string;
+    }
+}
+
 export type Event = 
     | GetSecretsEvent
     | GetSecretEvent
     | CreateSecretEvent
     | UpdateSecretEvent
     | DeleteSecretEvent
+    | GetWorkspaceKeyEvent
     | AuthorizeIntegrationEvent
     | UnauthorizeIntegrationEvent
     | CreateIntegrationEvent
@@ -300,4 +362,8 @@ export type Event =
     | DeleteFolderEvent
     | CreateWebhookEvent
     | UpdateWebhookStatusEvent
-    | DeleteWebhookEvent;
+    | DeleteWebhookEvent
+    | GetSecretImportsEvent
+    | CreateSecretImportEvent
+    | UpdateSecretImportEvent
+    | DeleteSecretImportEvent;

@@ -86,9 +86,15 @@ export const createIntegration = async (req: Request, res: Response) => {
         integration: integration.integration,
         environment: integration.environment,
         secretPath,
+        url: integration.url,
         app: integration.app,
+        appId: integration.appId,
         targetEnvironment: integration.targetEnvironment,
-        targetEnvironmentId: integration.targetEnvironmentId
+        targetEnvironmentId: integration.targetEnvironmentId,
+        targetService: integration.targetService,
+        targetServiceId: integration.targetServiceId,
+        path: integration.path,
+        region: integration.region
       }
     },
     {
@@ -192,9 +198,15 @@ export const deleteIntegration = async (req: Request, res: Response) => {
         integration: integration.integration,
         environment: integration.environment,
         secretPath: integration.secretPath,
+        url: integration.url,
         app: integration.app,
+        appId: integration.appId,
         targetEnvironment: integration.targetEnvironment,
-        targetEnvironmentId: integration.targetEnvironmentId
+        targetEnvironmentId: integration.targetEnvironmentId,
+        targetService: integration.targetService,
+        targetServiceId: integration.targetServiceId,
+        path: integration.path,
+        region: integration.region
       }
     },
     {

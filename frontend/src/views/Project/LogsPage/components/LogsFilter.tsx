@@ -73,7 +73,7 @@ export const LogsFilter = ({
                             className="w-40 mr-4"
                         >
                             <Select
-                                defaultValue={field.value}
+                                {...(field.value ? { value: field.value } : { placeholder: "Select" })}
                                 {...field}
                                 onValueChange={(e) => onChange(e)}
                                 className="w-full"
@@ -99,7 +99,7 @@ export const LogsFilter = ({
                                 className="w-40 mr-4"
                             >
                                 <Select
-                                    defaultValue={field.value}
+                                    {...(field.value ? { value: field.value } : { placeholder: "Select" })}
                                     {...field}
                                     onValueChange={(e) => onChange(e)}
                                     className="w-full"
@@ -121,7 +121,7 @@ export const LogsFilter = ({
                             className="w-40 mr-4"
                         >
                             <Select
-                                defaultValue={field.value}
+                                {...(field.value ? { value: field.value } : { placeholder: "Select" })}
                                 {...field}
                                 onValueChange={(e) => onChange(e)}
                                 className="w-full"
@@ -189,7 +189,7 @@ export const LogsFilter = ({
                     }}
                 />
             </div>
-            <div>
+            {/* <div>
                 <Button
                     isLoading={false}
                     colorSchema="primary"
@@ -198,15 +198,15 @@ export const LogsFilter = ({
                     leftIcon={<FontAwesomeIcon icon={faFilterCircleXmark} className="mr-2" />}
                     onClick={() => reset({
                         eventType: undefined,
-                        actor: "",
-                        userAgentType: "",
+                        actor: undefined,
+                        userAgentType: undefined,
                         startDate: undefined,
                         endDate: undefined
                     })}
                 >
                     Clear filters
                 </Button>
-            </div>
+            </div> */}
         </div>
     );
 }

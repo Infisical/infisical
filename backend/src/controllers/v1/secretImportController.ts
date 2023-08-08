@@ -4,6 +4,8 @@ import SecretImport from "../../models/secretImports";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
 import { BadRequestError } from "../../utils/errors";
 import { ADMIN, MEMBER } from "../../variables";
+import { EEAuditLogService } from "../../ee/services";
+import { EventType } from "../../ee/models";
 
 export const createSecretImport = async (req: Request, res: Response) => {
   const { workspaceId, environment, folderId, secretImport } = req.body;
@@ -20,7 +22,24 @@ export const createSecretImport = async (req: Request, res: Response) => {
       folderId,
       imports: [{ environment: secretImport.environment, secretPath: secretImport.secretPath }]
     });
+    
     await doc.save();
+    await EEAuditLogService.createAuditLog(
+      req.authData,
+      {
+        type: EventType.CREATE_SECRET_IMPORT,
+        metadata: {
+          environment,
+          secretImportId: doc._id.toString(),
+          folderId: doc.folderId.toString(),
+          importEnvironment: secretImport.environment,
+          importSecretPath: secretImport.secretPath
+        }
+      },
+      {
+        workspaceId: doc.workspace
+      }
+    );
     return res.status(200).json({ message: "successfully created secret import" });
   }
 
@@ -30,11 +49,29 @@ export const createSecretImport = async (req: Request, res: Response) => {
   if (doesImportExist) {
     throw BadRequestError({ message: "Secret import already exist" });
   }
+
   importSecDoc.imports.push({
     environment: secretImport.environment,
     secretPath: secretImport.secretPath
   });
   await importSecDoc.save();
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.CREATE_SECRET_IMPORT,
+      metadata: {
+        environment,
+        secretImportId: importSecDoc._id.toString(),
+        folderId: importSecDoc.folderId.toString(),
+        importEnvironment: secretImport.environment,
+        importSecretPath: secretImport.secretPath
+      }
+    },
+    {
+      workspaceId: importSecDoc.workspace
+    }
+  );
   return res.status(200).json({ message: "successfully created secret import" });
 };
 
@@ -56,6 +93,21 @@ export const updateSecretImport = async (req: Request, res: Response) => {
 
   importSecDoc.imports = secretImports;
   await importSecDoc.save();
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.UPDATE_SECRET_IMPORT,
+      metadata: {
+        environment: importSecDoc.environment,
+        secretImportId: importSecDoc._id.toString(),
+        folderId: importSecDoc.folderId.toString(),
+        numberOfImports: secretImports.length
+      }
+    },
+    {
+      workspaceId: importSecDoc.workspace
+    }
+  );
   return res.status(200).json({ message: "successfully updated secret import" });
 };
 
@@ -77,6 +129,24 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
       !(environment === secretImportEnv && secretPath === secretImportPath)
   );
   await importSecDoc.save();
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.DELETE_SECRET_IMPORT,
+      metadata: {
+        environment: importSecDoc.environment,
+        secretImportId: importSecDoc._id.toString(),
+        folderId: importSecDoc.folderId.toString(),
+        importEnvironment: secretImportEnv,
+        importSecretPath: secretImportPath
+      }
+    },
+    {
+      workspaceId: importSecDoc.workspace
+    }
+  );
+
   return res.status(200).json({ message: "successfully delete secret import" });
 };
 
@@ -110,6 +180,22 @@ export const getAllSecretsFromImport = async (req: Request, res: Response) => {
   if (!importSecDoc) {
     return res.status(200).json({ secrets: [] });
   }
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.GET_SECRET_IMPORTS,
+      metadata: {
+        environment,
+        secretImportId: importSecDoc._id.toString(),
+        folderId,
+        numberOfImports: importSecDoc.imports.length
+      }
+    },
+    {
+      workspaceId: importSecDoc.workspace
+    }
+  );
 
   const secrets = await getAllImportedSecrets(workspaceId, environment, folderId);
   return res.status(200).json({ secrets });

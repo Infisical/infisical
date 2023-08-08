@@ -149,7 +149,7 @@ export const DashboardPage = () => {
   const [snapshotId, setSnaphotId] = useState<string | null>(null);
   const [selectedEnv, setSelectedEnv] = useState<WorkspaceEnv | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const deletedSecretIds = useRef<string[]>([]);
+  const deletedSecretIds = useRef<{ id: string; secretName: string; }[]>([]);
   const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({ initialValue: false });
 
   const folderId = router.query.folderId as string;
@@ -498,9 +498,15 @@ export const DashboardPage = () => {
 
   // record all deleted ids
   // This will make final deletion easier
-  const onSecretDelete = useCallback((index: number, id?: string, overrideId?: string) => {
-    if (id) deletedSecretIds.current.push(id);
-    if (overrideId) deletedSecretIds.current.push(overrideId);
+  const onSecretDelete = useCallback((index: number, secretName: string, id?: string, overrideId?: string) => {
+    if (id) deletedSecretIds.current.push({
+      id,
+      secretName
+    });
+    if (overrideId) deletedSecretIds.current.push({
+      id: overrideId,
+      secretName
+    });
     remove(index);
     // just the case if this is called from drawer
     handlePopUpClose("secretDetails");

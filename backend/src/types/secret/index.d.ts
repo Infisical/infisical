@@ -30,6 +30,7 @@ export interface BatchSecretRequest {
 export interface BatchSecret {
   _id: string;
   type: "shared" | "personal";
+  secretName: string;
   secretBlindIndex: string;
   secretKeyCiphertext: string;
   secretKeyIV: string;

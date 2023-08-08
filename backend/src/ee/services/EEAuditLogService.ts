@@ -16,7 +16,7 @@ type ValidEventScope =
     | Required<EventScope>
 
 export default class EEAuditLogService {
-    static async createAuditLog(authData: AuthData, event: Event, eventScope: ValidEventScope) {
+    static async createAuditLog(authData: AuthData, event: Event, eventScope: ValidEventScope, shouldSave: boolean = true) {
         
         const MS_IN_DAY = 24 * 60 * 60 * 1000;
         
@@ -39,7 +39,11 @@ export default class EEAuditLogService {
             userAgent: authData.userAgent,
             userAgentType: authData.userAgentType,
             expiresAt: new Date(Date.now() + ttl)
-        }).save();
+        });
+        
+        if (shouldSave) {
+            await auditLog.save();
+        }
         
         return auditLog;
     }
