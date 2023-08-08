@@ -45,15 +45,6 @@ export const SecretDetailDrawer = ({
   const [canRevealSecOverride, setCanRevealSecOverride] = useToggle();
 
   const { register, setValue, control, getValues } = useFormContext<FormData>();
-  
-  const secKey = useWatch({
-      control,
-      name: `secrets.${index}.key`,
-      disabled: false,
-      exact: true
-    });
-  
-  console.log("secKeyyy", secKey);
 
   const overrideAction = useWatch({ control, name: `secrets.${index}.overrideAction` });
   const isOverridden =
@@ -102,7 +93,8 @@ export const SecretDetailDrawer = ({
                 isDisabled={isReadOnly}
                 onClick={() => {
                   const secret = getValues(`secrets.${index}`);
-                  onSecretDelete(index, secret._id, secret.idOverride);
+                  
+                  onSecretDelete(index, secret.key, secret._id, secret.idOverride);
                 }}
               >
                 Delete

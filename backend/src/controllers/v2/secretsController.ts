@@ -943,6 +943,21 @@ export const getSecrets = async (req: Request, res: Response) => {
       channel,
       ipAddress: req.realIP
     }));
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.GET_SECRETS,
+      metadata: {
+        environment,
+        secretPath: secretPath as string,
+        numberOfSecrets: secrets.length
+      }
+    },
+    {
+      workspaceId: new Types.ObjectId(workspaceId as string)
+    }
+  );
 
   const postHogClient = await TelemetryService.getPostHogClient();
   if (postHogClient) {
