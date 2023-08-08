@@ -697,10 +697,16 @@ export const getSecrets = async (req: Request, res: Response) => {
   const environment = req.query.environment as string;
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
-  if ((!folders && folderId && folderId !== "root") || (!folders && secretPath)) {
+
+  if (
+    // if no folders and asking for a non root folder id or non root secret path
+    (!folders && folderId && folderId !== "root") ||
+    (!folders && secretPath && secretPath !== "/")
+  ) {
     res.send({ secrets: [] });
     return;
   }
+
   if (folders && folderId !== "root") {
     const folder = searchByFolderId(folders.nodes, folderId as string);
     if (!folder) {
