@@ -79,6 +79,169 @@ export const LogsTableRow = ({
                         <p>{`Secret: ${event.metadata.secretKey}`}</p>
                     </Td>
                 );
+            case EventType.AUTHORIZE_INTEGRATION:
+                return (
+                    <Td>
+                        <p>{`Integration: ${event.metadata.integration}`}</p>
+                    </Td>
+                );
+            case EventType.UNAUTHORIZE_INTEGRATION:
+                return (
+                    <Td>
+                        <p>{`Integration: ${event.metadata.integration}`}</p>
+                    </Td>
+                );
+            case EventType.CREATE_INTEGRATION:
+                return (
+                    <Td>
+                        <p>{`Integration: ${event.metadata.integration}`}</p>
+                        <p>{`Environment: ${event.metadata.environment}`}</p>
+                        <p>{`Path: ${event.metadata.secretPath}`}</p>
+                        {event.metadata.app && (
+                            <p>{`Target app: ${event.metadata.app}`}</p>
+                        )}
+                        {event.metadata.targetEnvironment && (
+                            <p>{`Target environment: ${event.metadata.targetEnvironment}`}</p>
+                        )}
+                        {event.metadata.targetEnvironmentId && (
+                            <p>{`Target environment ID: ${event.metadata.targetEnvironmentId}`}</p>
+                        )}
+                    </Td>
+                );
+            case EventType.DELETE_INTEGRATION:
+                return (
+                    <Td>
+                        <p>{`Integration: ${event.metadata.integration}`}</p>
+                        <p>{`Environment: ${event.metadata.environment}`}</p>
+                        <p>{`Path: ${event.metadata.secretPath}`}</p>
+                        {event.metadata.app && (
+                            <p>{`Target App: ${event.metadata.app}`}</p>
+                        )}
+                        {event.metadata.targetEnvironment && (
+                            <p>{`Target environment: ${event.metadata.targetEnvironment}`}</p>
+                        )}
+                        {event.metadata.targetEnvironmentId && (
+                            <p>{`Target environment ID: ${event.metadata.targetEnvironmentId}`}</p>
+                        )}
+                    </Td>
+                );
+            case EventType.ADD_TRUSTED_IP:
+                return (
+                    <Td>
+                        <p>{`IP: ${event.metadata.ipAddress}${event.metadata.prefix !== undefined ? `/${event.metadata.prefix}` : ""}`}</p>
+                    </Td>
+                );
+            case EventType.UPDATE_TRUSTED_IP:
+                return (
+                    <Td>
+                        <p>{`IP: ${event.metadata.ipAddress}${event.metadata.prefix !== undefined ? `/${event.metadata.prefix}` : ""}`}</p>
+                    </Td>
+                );
+            case EventType.DELETE_TRUSTED_IP:
+                return (
+                    <Td>
+                        <p>{`IP: ${event.metadata.ipAddress}${event.metadata.prefix !== undefined ? `/${event.metadata.prefix}` : ""}`}</p>
+                    </Td>
+                );
+            case EventType.CREATE_SERVICE_TOKEN:
+                return (
+                    <Td>
+                        <p>{`Name: ${event.metadata.name}`}</p>
+                    </Td>
+                );
+            case EventType.DELETE_SERVICE_TOKEN:
+                return (
+                    <Td>
+                        <p>{`Name: ${event.metadata.name}`}</p>
+                    </Td>
+                );
+            case EventType.CREATE_ENVIRONMENT:
+                return (
+                    <Td>
+                        <p>{`Name: ${event.metadata.name}`}</p>
+                        <p>{`Slug: ${event.metadata.slug}`}</p>
+                    </Td>
+                );
+            case EventType.UPDATE_ENVIRONMENT:
+                return (
+                    <Td>
+                        <p>{`Old name: ${event.metadata.oldName}`}</p>
+                        <p>{`New name: ${event.metadata.newName}`}</p>
+                        <p>{`Old slug: ${event.metadata.oldSlug}`}</p>
+                        <p>{`New slug: ${event.metadata.newSlug}`}</p>
+                    </Td>
+                );
+            case EventType.DELETE_ENVIRONMENT:
+                return (
+                    <Td>
+                        <p>{`Name: ${event.metadata.name}`}</p>
+                        <p>{`Slug: ${event.metadata.slug}`}</p>
+                    </Td>
+                );
+            case EventType.ADD_WORKSPACE_MEMBER:
+                return (
+                    <Td>
+                        <p>{`Email: ${event.metadata.email}`}</p>
+                    </Td>
+                );
+            case EventType.REMOVE_WORKSPACE_MEMBER:
+                return (
+                    <Td>
+                        <p>{`Email: ${event.metadata.email}`}</p>
+                    </Td>
+                );
+            case EventType.CREATE_FOLDER:
+                return (
+                    <Td>
+                        <p>{`Environment: ${event.metadata.environment}`}</p>
+                        <p>{`Path: ${event.metadata.folderPath}`}</p>
+                        <p>{`Folder: ${event.metadata.folderName}`}</p>
+                    </Td>
+                );
+            case EventType.UPDATE_FOLDER:
+                return (
+                    <Td>
+                        <p>{`Environment: ${event.metadata.environment}`}</p>
+                        <p>{`Path: ${event.metadata.folderPath}`}</p>
+                        <p>{`Old folder: ${event.metadata.oldFolderName}`}</p>
+                        <p>{`New folder: ${event.metadata.newFolderName}`}</p>
+                    </Td>
+                );
+            case EventType.DELETE_FOLDER:
+                return (
+                    <Td>
+                        <p>{`Environment: ${event.metadata.environment}`}</p>
+                        <p>{`Path: ${event.metadata.folderPath}`}</p>
+                        <p>{`Folder: ${event.metadata.folderName}`}</p>
+                    </Td>
+                );
+            case EventType.CREATE_WEBHOOK:
+                return (
+                    <Td>
+                        <p>{`Environment: ${event.metadata.environment}`}</p>
+                        <p>{`Secret Path: ${event.metadata.secretPath}`}</p>
+                        <p>{`Webhook URL: ${event.metadata.webhookUrl}`}</p>
+                        <p>{`Disabled: ${event.metadata.isDisabled}`}</p>
+                    </Td>
+                );
+            case EventType.UPDATE_WEBHOOK_STATUS:
+                return (
+                    <Td>
+                        <p>{`Environment: ${event.metadata.environment}`}</p>
+                        <p>{`Secret Path: ${event.metadata.secretPath}`}</p>
+                        <p>{`Webhook URL: ${event.metadata.webhookUrl}`}</p>
+                        <p>{`Disabled: ${event.metadata.isDisabled}`}</p>
+                    </Td>
+                );
+            case EventType.DELETE_WEBHOOK:
+                return (
+                    <Td>
+                        <p>{`Environment: ${event.metadata.environment}`}</p>
+                        <p>{`Secret Path: ${event.metadata.secretPath}`}</p>
+                        <p>{`Webhook URL: ${event.metadata.webhookUrl}`}</p>
+                        <p>{`Disabled: ${event.metadata.isDisabled}`}</p>
+                    </Td>
+                );
             default:
                 return (
                     <Td>Test</Td>

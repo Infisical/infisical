@@ -97,8 +97,8 @@ router.get(
   query("eventType").isString().isIn(Object.values(EventType)).optional({ nullable: true }),
   query("userAgentType").isString().isIn(Object.values(UserAgentType)).optional({ nullable: true }),
   query("actor").isString().optional({ nullable: true }),
-  query("offset").isString().default("0"),
-  query("limit").isString().default("20"),
+  query("offset").default("0"),
+  query("limit").default("20"),
   validateRequest,
   workspaceController.getWorkspaceAuditLogs
 );

@@ -13,13 +13,14 @@ import {
   ServiceActor,
   TFolderRootVersionSchema,
   TrustedIP,
-  UserActor
+  UserActor,
+  EventType
 } from "../../models";
 import { EESecretService } from "../../services";
 import { getLatestSecretVersionIds } from "../../helpers/secretVersion";
 import Folder, { TFolderSchema } from "../../../models/folder";
 import { searchByFolderId } from "../../../services/FolderService";
-import { EELicenseService } from "../../services";
+import { EELicenseService, EEAuditLogService } from "../../services";
 import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
 
 /**
@@ -730,6 +731,21 @@ export const addWorkspaceTrustedIp = async (req: Request, res: Response) => {
     isActive,
     comment,
   }).save();
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.ADD_TRUSTED_IP,
+      metadata: {
+        trustedIpId: trustedIp._id.toString(),
+        ipAddress: trustedIp.ipAddress,
+        prefix: trustedIp.prefix
+      }
+    },
+    {
+      workspaceId: trustedIp.workspace
+    }
+  );
 
   return res.status(200).send({
     trustedIp
@@ -793,6 +809,25 @@ export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
     }
   );
   
+  if (!trustedIp) return res.status(400).send({
+    message: "Failed to update trusted IP"
+  });
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.UPDATE_TRUSTED_IP,
+      metadata: {
+        trustedIpId: trustedIp._id.toString(),
+        ipAddress: trustedIp.ipAddress,
+        prefix: trustedIp.prefix
+      }
+    },
+    {
+      workspaceId: trustedIp.workspace
+    }
+  );
+  
   return res.status(200).send({
     trustedIp
   });
@@ -816,6 +851,25 @@ export const deleteWorkspaceTrustedIp = async (req: Request, res: Response) => {
     _id: new Types.ObjectId(trustedIpId),
     workspace: new Types.ObjectId(workspaceId)
   });
+  
+  if (!trustedIp) return res.status(400).send({
+    message: "Failed to delete trusted IP"
+  });
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.DELETE_TRUSTED_IP,
+      metadata: {
+        trustedIpId: trustedIp._id.toString(),
+        ipAddress: trustedIp.ipAddress,
+        prefix: trustedIp.prefix
+      }
+    },
+    {
+      workspaceId: trustedIp.workspace
+    }
+  );
 
   return res.status(200).send({
     trustedIp

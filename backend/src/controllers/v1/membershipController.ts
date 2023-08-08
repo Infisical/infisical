@@ -1,9 +1,12 @@
 import { Request, Response } from "express";
-import { Key, Membership, MembershipOrg, User } from "../../models";
+import { Types } from "mongoose";
+import { Key, Membership, MembershipOrg, User, IUser } from "../../models";
+import { EventType } from "../../ee/models";
 import { deleteMembership as deleteMember, findMembership } from "../../helpers/membership";
 import { sendMail } from "../../helpers/nodemailer";
 import { ACCEPTED, ADMIN, MEMBER } from "../../variables";
 import { getSiteURL } from "../../config";
+import { EEAuditLogService } from "../../ee/services";
 
 /**
  * Check that user is a member of workspace with id [workspaceId]
@@ -36,11 +39,11 @@ export const validateMembership = async (req: Request, res: Response) => {
  */
 export const deleteMembership = async (req: Request, res: Response) => {
   const { membershipId } = req.params;
-
+  
   // check if membership to delete exists
   const membershipToDelete = await Membership.findOne({
     _id: membershipId
-  }).populate("user");
+  }).populate<{ user: IUser }>("user");
 
   if (!membershipToDelete) {
     throw new Error("Failed to delete workspace membership that doesn't exist");
@@ -66,6 +69,20 @@ export const deleteMembership = async (req: Request, res: Response) => {
   const deletedMembership = await deleteMember({
     membershipId: membershipToDelete._id.toString()
   });
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.REMOVE_WORKSPACE_MEMBER,
+      metadata: {
+        userId: membershipToDelete.user._id.toString(),
+        email: membershipToDelete.user.email
+      }
+    },
+    {
+      workspaceId: membership.workspace
+    }
+  );
 
   return res.status(200).send({
     deletedMembership
@@ -140,7 +157,7 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
   const inviteeMembership = await Membership.findOne({
     user: invitee._id,
     workspace: workspaceId
-  });
+  }).populate<{ user: IUser }>("user");
 
   if (inviteeMembership) throw new Error("Failed to add existing member of workspace");
 
@@ -180,6 +197,20 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
       callback_url: (await getSiteURL()) + "/login"
     }
   });
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.ADD_WORKSPACE_MEMBER,
+      metadata: {
+        userId: invitee._id.toString(),
+        email: invitee.email
+      }
+    },
+    {
+      workspaceId: new Types.ObjectId(workspaceId)
+    }
+  );
 
   return res.status(200).send({
     invitee,

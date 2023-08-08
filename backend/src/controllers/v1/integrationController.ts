@@ -6,6 +6,8 @@ import { eventStartIntegration } from "../../events";
 import Folder from "../../models/folder";
 import { getFolderByPath } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
+import { EEAuditLogService } from "../../ee/services";
+import { EventType } from "../../ee/models";
 
 /**
  * Create/initialize an (empty) integration for integration authorization
@@ -74,6 +76,25 @@ export const createIntegration = async (req: Request, res: Response) => {
       })
     });
   }
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.CREATE_INTEGRATION,
+      metadata: {
+        integrationId: integration._id.toString(),
+        integration: integration.integration,
+        environment: integration.environment,
+        secretPath,
+        app: integration.app,
+        targetEnvironment: integration.targetEnvironment,
+        targetEnvironmentId: integration.targetEnvironmentId
+      }
+    },
+    {
+      workspaceId: integration.workspace
+    }
+  );
 
   return res.status(200).send({
     integration
@@ -148,8 +169,7 @@ export const updateIntegration = async (req: Request, res: Response) => {
 };
 
 /**
- * Delete integration with id [integrationId] and deactivate bot if there are
- * no integrations left
+ * Delete integration with id [integrationId]
  * @param req
  * @param res
  * @returns
@@ -162,6 +182,25 @@ export const deleteIntegration = async (req: Request, res: Response) => {
   });
 
   if (!integration) throw new Error("Failed to find integration");
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.DELETE_INTEGRATION,
+      metadata: {
+        integrationId: integration._id.toString(),
+        integration: integration.integration,
+        environment: integration.environment,
+        secretPath: integration.secretPath,
+        app: integration.app,
+        targetEnvironment: integration.targetEnvironment,
+        targetEnvironmentId: integration.targetEnvironmentId
+      }
+    },
+    {
+      workspaceId: integration.workspace
+    }
+  );
 
   return res.status(200).send({
     integration

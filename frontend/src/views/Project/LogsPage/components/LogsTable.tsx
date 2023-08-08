@@ -33,7 +33,9 @@ export const LogsTable = ({
     const { data, isLoading } = useGetAuditLogs(currentWorkspace?._id ?? "", {
         eventType,
         userAgentType,
-        actor
+        actor,
+        offset: 0, // TODO: update with pagination
+        limit: 20 // TODO: update with pagination
     });
     
     return (

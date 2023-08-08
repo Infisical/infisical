@@ -4,7 +4,8 @@ import bcrypt from "bcrypt";
 import { ServiceTokenData } from "../../models";
 import { getSaltRounds } from "../../config";
 import { BadRequestError } from "../../utils/errors";
-import { ActorType } from "../../ee/models";
+import { ActorType, EventType } from "../../ee/models";
+import { EEAuditLogService } from "../../ee/services";
 
 /**
  * Return service token data associated with service token on request
@@ -99,6 +100,20 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
   if (!serviceTokenData) throw new Error("Failed to find service token data");
 
   const serviceToken = `st.${serviceTokenData._id.toString()}.${secret}`;
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.CREATE_SERVICE_TOKEN,
+      metadata: {
+        name,
+        scopes
+      }
+    },
+    {
+      workspaceId
+    }
+  );
 
   return res.status(200).send({
     serviceToken,
@@ -116,6 +131,24 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
   const { serviceTokenDataId } = req.params;
 
   const serviceTokenData = await ServiceTokenData.findByIdAndDelete(serviceTokenDataId);
+  
+  if (!serviceTokenData) return res.status(200).send({
+    message: "Failed to delete service token"
+  });
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.DELETE_SERVICE_TOKEN,
+      metadata: {
+        name: serviceTokenData.name,
+        scopes: serviceTokenData?.scopes
+      }
+    },
+    {
+      workspaceId: serviceTokenData.workspace
+    }
+  );
 
   return res.status(200).send({
     serviceTokenData

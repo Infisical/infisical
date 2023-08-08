@@ -8,8 +8,8 @@ import {
   ServiceTokenData,
   Workspace,
 } from "../../models";
-import { SecretVersion } from "../../ee/models";
-import { EELicenseService } from "../../ee/services";
+import { SecretVersion, EventType } from "../../ee/models";
+import { EELicenseService, EEAuditLogService } from "../../ee/services";
 import { BadRequestError, WorkspaceNotFoundError } from "../../utils/errors";
 import _ from "lodash";
 import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variables";
@@ -61,6 +61,20 @@ export const createWorkspaceEnvironment = async (
 
   await EELicenseService.refreshPlan(workspace.organization, new Types.ObjectId(workspaceId));
 
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.CREATE_ENVIRONMENT,
+      metadata: {
+        name: environmentName,
+        slug: environmentSlug
+      }
+    },
+    {
+      workspaceId: workspace._id
+    }
+  );
+
   return res.status(200).send({
     message: "Successfully created new environment",
     workspace: workspaceId,
@@ -110,6 +124,8 @@ export const renameWorkspaceEnvironment = async (
   if (envIndex === -1) {
     throw new Error("Invalid environment given");
   }
+  
+  const oldEnvironment = workspace.environments[envIndex];
 
   workspace.environments[envIndex].name = environmentName;
   workspace.environments[envIndex].slug = environmentSlug.toLowerCase();
@@ -142,8 +158,23 @@ export const renameWorkspaceEnvironment = async (
     },
     { $set: { "deniedPermissions.$[element].environmentSlug": environmentSlug } },
     { arrayFilters: [{ "element.environmentSlug": oldEnvironmentSlug }] }
-  )
-
+  );
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.UPDATE_ENVIRONMENT,
+      metadata: {
+        oldName: oldEnvironment.name,
+        newName: environmentName,
+        oldSlug: oldEnvironment.slug,
+        newSlug: environmentSlug.toLowerCase()
+      }
+    },
+    {
+      workspaceId: workspace._id
+    }
+  );
 
   return res.status(200).send({
     message: "Successfully update environment",
@@ -179,6 +210,8 @@ export const deleteWorkspaceEnvironment = async (
   if (envIndex === -1) {
     throw new Error("Invalid environment given");
   }
+  
+  const oldEnvironment = workspace.environments[envIndex];
 
   workspace.environments.splice(envIndex, 1);
   await workspace.save();
@@ -217,6 +250,20 @@ export const deleteWorkspaceEnvironment = async (
   );
 
   await EELicenseService.refreshPlan(workspace.organization, new Types.ObjectId(workspaceId));
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.DELETE_ENVIRONMENT,
+      metadata: {
+        name: oldEnvironment.name,
+        slug: oldEnvironment.slug
+      }
+    },
+    {
+      workspaceId: workspace._id
+    }
+  );
 
   return res.status(200).send({
     message: "Successfully deleted environment",
