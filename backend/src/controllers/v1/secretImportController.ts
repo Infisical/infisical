@@ -1,29 +1,14 @@
 import { Request, Response } from "express";
-import path from "path";
 import { isValidScope, validateMembership } from "../../helpers";
 import { ServiceTokenData } from "../../models";
-import Folder, { TFolderRootSchema } from "../../models/folder";
+import Folder from "../../models/folder";
 import SecretImport from "../../models/secretImports";
-import { searchByFolderIdWithDir } from "../../services/FolderService";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
+import { getFolderWithPathFromId } from "../../services/FolderService";
 import { BadRequestError, ResourceNotFoundError,UnauthorizedRequestError } from "../../utils/errors";
 import { ADMIN, MEMBER } from "../../variables";
 import { EEAuditLogService } from "../../ee/services";
 import { EventType } from "../../ee/models";
-import { getFolderPath } from "../../services/FolderService";
-
-const getFolderWithPathFromId = (folders: TFolderRootSchema, parentFolderId: string) => {
-  const search = searchByFolderIdWithDir(folders.nodes, parentFolderId);
-  if (!search) {
-    throw { message: "Folder permission denied" };
-  }
-  const { folder, dir } = search;
-  const folderPath = path.join(
-    "/",
-    ...dir.filter(({ name }) => name !== "root").map(({ name }) => name)
-  );
-  return { folder, folderPath, dir };
-};
 
 export const createSecretImport = async (req: Request, res: Response) => {
   const { workspaceId, environment, folderId, secretImport } = req.body;
@@ -34,12 +19,14 @@ export const createSecretImport = async (req: Request, res: Response) => {
   }).lean();
 
   if (!folders && folderId !== "root") {
-    throw BadRequestError({ message: "Folder doesn't exist" });
+    throw ResourceNotFoundError({
+      message: "Failed to find folder"
+    });
   }
 
   let secretPath = "/";
   if (folders) {
-    const { folderPath } = getFolderWithPathFromId(folders, folderId);
+    const { folderPath } = getFolderWithPathFromId(folders.nodes, folderId);
     secretPath = folderPath;
   }
   if (req.authData.authPayload instanceof ServiceTokenData) {
@@ -56,16 +43,7 @@ export const createSecretImport = async (req: Request, res: Response) => {
     folderId
   });
   
-  const folders = await Folder.findOne({
-    workspace: workspaceId,
-    environment,
-  }).lean();
-  
-  if (!folders) throw ResourceNotFoundError({
-    message: "Failed to find folder"
-  });
-  
-  const importToSecretPath = await getFolderPath(folders, folderId);
+  const importToSecretPath = folders?getFolderWithPathFromId(folders.nodes, folderId).folderPath:"/";
 
   if (!importSecDoc) {
     const doc = new SecretImport({
@@ -154,7 +132,7 @@ export const updateSecretImport = async (req: Request, res: Response) => {
 
     let secretPath = "/";
     if (folders) {
-      const { folderPath } = getFolderWithPathFromId(folders, importSecDoc.folderId);
+      const { folderPath } = getFolderWithPathFromId(folders.nodes, importSecDoc.folderId);
       secretPath = folderPath;
     }
 
@@ -182,7 +160,7 @@ export const updateSecretImport = async (req: Request, res: Response) => {
     message: "Failed to find folder"
   });
   
-  const importToSecretPath = await getFolderPath(folders, importSecDoc.folderId);
+  const importToSecretPath = folders?getFolderWithPathFromId(folders.nodes, importSecDoc.folderId).folderPath:"/";
 
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -227,7 +205,7 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
 
     let secretPath = "/";
     if (folders) {
-      const { folderPath } = getFolderWithPathFromId(folders, importSecDoc.folderId);
+      const { folderPath } = getFolderWithPathFromId(folders.nodes, importSecDoc.folderId);
       secretPath = folderPath;
     }
 
@@ -255,7 +233,7 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
     message: "Failed to find folder"
   });
   
-  const importToSecretPath = await getFolderPath(folders, importSecDoc.folderId);
+  const importToSecretPath = folders?getFolderWithPathFromId(folders.nodes, importSecDoc.folderId).folderPath:"/";
 
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -299,7 +277,7 @@ export const getSecretImports = async (req: Request, res: Response) => {
 
     let secretPath = "/";
     if (folders) {
-      const { folderPath } = getFolderWithPathFromId(folders, importSecDoc.folderId);
+      const { folderPath } = getFolderWithPathFromId(folders.nodes, importSecDoc.folderId);
       secretPath = folderPath;
     }
 
@@ -341,7 +319,7 @@ export const getAllSecretsFromImport = async (req: Request, res: Response) => {
 
     let secretPath = "/";
     if (folders) {
-      const { folderPath } = getFolderWithPathFromId(folders, importSecDoc.folderId);
+      const { folderPath } = getFolderWithPathFromId(folders.nodes, importSecDoc.folderId);
       secretPath = folderPath;
     }
 

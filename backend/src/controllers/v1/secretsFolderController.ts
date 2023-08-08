@@ -1,38 +1,23 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import path from "path";
 import { EventType, FolderVersion } from "../../ee/models";
 import { EEAuditLogService, EESecretService } from "../../ee/services";
 import { validateMembership } from "../../helpers/membership";
 import { isValidScope } from "../../helpers/secrets";
 import { Secret, ServiceTokenData } from "../../models";
-import Folder, { TFolderRootSchema } from "../../models/folder";
+import Folder from "../../models/folder";
 import {
   appendFolder,
   deleteFolderById,
   generateFolderId,
   getAllFolderIds,
   getFolderByPath,
-  getFolderPath,
+  getFolderWithPathFromId,
   getParentFromFolderId,
-  searchByFolderIdWithDir,
   validateFolderName
 } from "../../services/FolderService";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import { ADMIN, MEMBER } from "../../variables";
-
-const getFolderWithPathFromId = (folders: TFolderRootSchema, parentFolderId: string) => {
-  const search = searchByFolderIdWithDir(folders.nodes, parentFolderId);
-  if (!search) {
-    throw { message: "Folder permission denied" };
-  }
-  const { folder, dir } = search;
-  const folderPath = path.join(
-    "/",
-    ...dir.filter(({ name }) => name !== "root").map(({ name }) => name)
-  );
-  return { folder, folderPath, dir };
-};
 
 // verify workspace id/environment
 export const createFolder = async (req: Request, res: Response) => {
@@ -106,7 +91,7 @@ export const createFolder = async (req: Request, res: Response) => {
   await Folder.findByIdAndUpdate(folders._id, folders);
   
   const { folder: parentFolder, folderPath: parentFolderPath } = getFolderWithPathFromId(
-    folders,
+    folders.nodes,
     parentFolderId || "root"
   );
 
@@ -137,7 +122,7 @@ export const createFolder = async (req: Request, res: Response) => {
     folderId: parentFolderId
   });
   
-  const folderPath = await getFolderPath(folders, folder.id);
+  const {folderPath} = getFolderWithPathFromId(folders.nodes, folder.id);
   
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -192,7 +177,7 @@ export const updateFolderById = async (req: Request, res: Response) => {
   }
 
   if (req.authData.authPayload instanceof ServiceTokenData) {
-    const { folderPath: secretPath } = getFolderWithPathFromId(folders, parentFolder.id);
+    const { folderPath: secretPath } = getFolderWithPathFromId(folders.nodes, parentFolder.id);
     // root check
     const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, secretPath);
     if (!isValidScopeAccess) {
@@ -200,6 +185,7 @@ export const updateFolderById = async (req: Request, res: Response) => {
     }
   }
 
+  const oldFolderName = folder.name;
   parentFolder.version += 1;
   folder.name = name;
 
@@ -217,7 +203,7 @@ export const updateFolderById = async (req: Request, res: Response) => {
     folderId: parentFolder.id
   });
 
-  const folderPath = await getFolderPath(folders, folder.id);
+  const {folderPath} = getFolderWithPathFromId(folders.nodes, folder.id);
   
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -260,7 +246,7 @@ export const deleteFolder = async (req: Request, res: Response) => {
     });
   }
 
-  const folderPath = await getFolderPath(folders, folderId);
+  const {folderPath} = getFolderWithPathFromId(folders.nodes, folderId);
 
   const delOp = deleteFolderById(folders.nodes, folderId);
   if (!delOp) {
@@ -269,7 +255,7 @@ export const deleteFolder = async (req: Request, res: Response) => {
   const { deletedNode: delFolder, parent: parentFolder } = delOp;
 
   if (req.authData.authPayload instanceof ServiceTokenData) {
-    const { folderPath: secretPath } = getFolderWithPathFromId(folders, parentFolder.id);
+    const { folderPath: secretPath } = getFolderWithPathFromId(folders.nodes, parentFolder.id);
     const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, secretPath);
     if (!isValidScopeAccess) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
@@ -384,7 +370,7 @@ export const getFolders = async (req: Request, res: Response) => {
     return;
   }
 
-  const { folder, folderPath, dir } = getFolderWithPathFromId(folders, parentFolderId);
+  const { folder, folderPath, dir } = getFolderWithPathFromId(folders.nodes, parentFolderId);
   if (req.authData.authPayload instanceof ServiceTokenData) {
     const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, folderPath);
     if (!isValidScopeAccess) {
