@@ -28,6 +28,7 @@ import { queryClient } from "@app/reactQuery";
 
 import "nprogress/nprogress.css";
 import "@fortawesome/fontawesome-svg-core/styles.css";
+import "react-day-picker/dist/style.css";
 import "../styles/globals.css";
 
 import "@app/i18n";
