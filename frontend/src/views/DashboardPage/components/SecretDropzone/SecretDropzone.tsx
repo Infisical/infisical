@@ -115,7 +115,9 @@ export const SecretDropzone = ({
     workspaceId,
     env: selectedEnvSlug,
     secretPath: debouncedSecretPath,
-    isPaused: !(Boolean(workspaceId) && Boolean(selectedEnvSlug) && Boolean(debouncedSecretPath)),
+    isPaused:
+      !(Boolean(workspaceId) && Boolean(selectedEnvSlug) && Boolean(debouncedSecretPath)) &&
+      !popUp.importSecEnv.isOpen,
     decryptFileKey
   });
 
