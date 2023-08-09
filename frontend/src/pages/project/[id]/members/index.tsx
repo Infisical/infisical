@@ -11,14 +11,13 @@ import AddProjectMemberDialog from "@app/components/basic/dialog/AddProjectMembe
 import ProjectUsersTable from "@app/components/basic/table/ProjectUsersTable";
 import guidGenerator from "@app/components/utilities/randomId";
 import { Input } from "@app/components/v2";
+import { useGetUser } from "@app/hooks/api";
 
 import {
   decryptAssymmetric,
   encryptAssymmetric
 } from "../../../../components/utilities/cryptography/crypto";
 import getOrganizationUsers from "../../../api/organization/GetOrgUsers";
-import getUser from "../../../api/user/getUser";
-// import DeleteUserDialog from '@app/components/basic/dialog/DeleteUserDialog';
 import addUserToWorkspace from "../../../api/workspace/addUserToWorkspace";
 import getWorkspaceUsers from "../../../api/workspace/getWorkspaceUsers";
 import uploadKeys from "../../../api/workspace/uploadKeys";
@@ -43,6 +42,7 @@ interface MembershipProps {
 // #TODO: Update all the workspaceIds
 
 export default function Users() {
+  const { data: user } = useGetUser();
   const [isAddOpen, setIsAddOpen] = useState(false);
   // let [isDeleteOpen, setIsDeleteOpen] = useState(false);
   // let [userIdToBeDeleted, setUserIdToBeDeleted] = useState(false);
@@ -60,46 +60,47 @@ export default function Users() {
   const [orgUserList, setOrgUserList] = useState<any[]>([]);
 
   useEffect(() => {
-    (async () => {
-      const user = await getUser();
-      setPersonalEmail(user.email);
+    if (user) {
+      (async () => {
+        setPersonalEmail(user.email);
 
-      // This part quiries the current users of a project
-      const workspaceUsers = await getWorkspaceUsers({
-        workspaceId
-      });
-      const tempUserList = workspaceUsers.map((membership: MembershipProps) => ({
-        key: guidGenerator(),
-        firstName: membership.user?.firstName,
-        lastName: membership.user?.lastName,
-        email: membership.user?.email === null ? membership.inviteEmail : membership.user?.email,
-        role: membership?.role,
-        status: membership?.status,
-        userId: membership.user?._id,
-        membershipId: membership._id,
-        deniedPermissions: membership.deniedPermissions,
-        publicKey: membership.user?.publicKey
-      }));
-      setUserList(tempUserList);
+        // This part quiries the current users of a project
+        const workspaceUsers = await getWorkspaceUsers({
+          workspaceId
+        });
+        const tempUserList = workspaceUsers.map((membership: MembershipProps) => ({
+          key: guidGenerator(),
+          firstName: membership.user?.firstName,
+          lastName: membership.user?.lastName,
+          email: membership.user?.email === null ? membership.inviteEmail : membership.user?.email,
+          role: membership?.role,
+          status: membership?.status,
+          userId: membership.user?._id,
+          membershipId: membership._id,
+          deniedPermissions: membership.deniedPermissions,
+          publicKey: membership.user?.publicKey
+        }));
+        setUserList(tempUserList);
 
-      setIsUserListLoading(false);
+        setIsUserListLoading(false);
 
-      // This is needed to know wha users from an org (if any), we are able to add to a certain project
-      const orgUsers = await getOrganizationUsers({
-        orgId: String(localStorage.getItem("orgData.id"))
-      });
-      setOrgUserList(orgUsers);
-      setEmail(
-        orgUsers
-          ?.filter((membership: MembershipProps) => membership.status === "accepted")
-          .map((membership: MembershipProps) => membership.user.email)
-          .filter(
-            (usEmail: string) =>
-              !tempUserList?.map((user1: UserProps) => user1.email).includes(usEmail)
-          )[0]
-      );
-    })();
-  }, []);
+        // This is needed to know wha users from an org (if any), we are able to add to a certain project
+        const orgUsers = await getOrganizationUsers({
+          orgId: String(localStorage.getItem("orgData.id"))
+        });
+        setOrgUserList(orgUsers);
+        setEmail(
+          orgUsers
+            ?.filter((membership: MembershipProps) => membership.status === "accepted")
+            .map((membership: MembershipProps) => membership.user.email)
+            .filter(
+              (usEmail: string) =>
+                !tempUserList?.map((user1: UserProps) => user1.email).includes(usEmail)
+            )[0]
+        );
+      })();
+    }
+  }, [user]);
 
   const closeAddModal = () => {
     setIsAddOpen(false);

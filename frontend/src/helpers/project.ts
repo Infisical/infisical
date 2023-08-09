@@ -3,8 +3,8 @@ import crypto from "crypto";
 import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import encryptSecrets from "@app/components/utilities/secrets/encryptSecrets";
 import { createSecret } from "@app/hooks/api/secrets/queries";
+import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { createWorkspace } from "@app/hooks/api/workspace/queries";
-import getUser from "@app/pages/api/user/getUser";
 import uploadKeys from "@app/pages/api/workspace/uploadKeys";
 
 const secretsToBeAdded = [
@@ -108,7 +108,7 @@ const initProjectHelper = async ({
         
         if (!PRIVATE_KEY) throw new Error("Failed to find private key");
 
-        const user = await getUser();
+        const user = await fetchUserDetails();
 
         const { ciphertext, nonce } = encryptAssymmetric({
             plaintext: randomBytes,

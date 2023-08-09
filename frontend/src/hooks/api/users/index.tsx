@@ -3,8 +3,10 @@ export {
   useAddUserToOrg,
   useAddUserToWs,
   useCreateAPIKey,
+  useCreateMyAction,
   useDeleteAPIKey,
   useDeleteOrgMembership,
+  useGetMyActions,
   useGetMyAPIKeys,
   useGetMyIp,
   useGetMySessions,
@@ -14,6 +16,6 @@ export {
   useLogoutUser,
   useRegisterUserAction,
   useRevokeMySessions,
+  useUpdateMfaEnabled,
   useUpdateOrgUserRole,
-  useUpdateUserAuthProvider
-} from "./queries";
+  useUpdateUserAuthProvider} from "./queries";

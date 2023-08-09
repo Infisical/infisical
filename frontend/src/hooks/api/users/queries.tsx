@@ -19,7 +19,8 @@ import {
   RenameUserDTO,
   TokenVersion,
   UpdateOrgUserRoleDTO,
-  User} from "./types";
+  User
+} from "./types";
 
 const userKeys = {
   getUser: ["user"] as const,
@@ -27,7 +28,7 @@ const userKeys = {
   getOrgUsers: (orgId: string) => [{ orgId }, "user"],
   myIp: ["ip"] as const,
   myAPIKeys: ["api-keys"] as const,
-  mySessions: ["sessions"] as const
+  mySessions: ["sessions"] as const,
 };
 
 export const fetchUserDetails = async () => {
@@ -38,7 +39,7 @@ export const fetchUserDetails = async () => {
 
 export const useGetUser = () => useQuery(userKeys.getUser, fetchUserDetails);
 
-const fetchUserAction = async (action: string) => {
+export const fetchUserAction = async (action: string) => {
   const { data } = await apiRequest.get<{ userAction: string }>("/api/v1/user-action", {
     params: {
       action
@@ -301,6 +302,29 @@ export const useRevokeMySessions = () => {
     },
     onSuccess() {
       queryClient.invalidateQueries(userKeys.mySessions);
+    }
+  });
+}
+
+export const useUpdateMfaEnabled = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      isMfaEnabled
+    }: {
+      isMfaEnabled: boolean;
+    }) => {
+      const { data: { user } } = await apiRequest.patch(
+        "/api/v2/users/me/mfa",
+        {
+          isMfaEnabled
+        }
+      );
+
+      return user;
+    },
+    onSuccess() {
+      queryClient.invalidateQueries(userKeys.getUser);
     }
   });
 }

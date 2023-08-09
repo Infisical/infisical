@@ -4,12 +4,11 @@ import { faEye, faEyeSlash, faPenToSquare, faPlus, faX } from "@fortawesome/free
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Select, SelectItem } from "@app/components/v2";
-import { useSubscription } from "@app/context";
+import { useSubscription, useWorkspace } from "@app/context";
 import updateUserProjectPermission from "@app/ee/api/memberships/UpdateUserProjectPermission";
 import changeUserRoleInWorkspace from "@app/pages/api/workspace/changeUserRoleInWorkspace";
 import deleteUserFromWorkspace from "@app/pages/api/workspace/deleteUserFromWorkspace";
 import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
-import getProjectInfo from "@app/pages/api/workspace/getProjectInfo";
 import uploadKeys from "@app/pages/api/workspace/uploadKeys";
 
 import { decryptAssymmetric, encryptAssymmetric } from "../../utilities/cryptography/crypto";
@@ -39,6 +38,7 @@ type EnvironmentProps = {
  * @returns
  */
 const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoading }: Props) => {
+  const { currentWorkspace } = useWorkspace();
   const { subscription } = useSubscription();
   const [roleSelected, setRoleSelected] = useState(
     Array(userData?.length).fill(userData.map((user) => user.role))
@@ -163,10 +163,11 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
   useEffect(() => {
     setMyRole(userData.filter((user) => user.email === myUser)[0]?.role);
     (async () => {
-      const result = await getProjectInfo({ projectId: workspaceId });
-      setWorkspaceEnvs(result.environments);
+      if (currentWorkspace) {
+        setWorkspaceEnvs(currentWorkspace.environments);
+      }
     })();
-  }, [userData, myUser]);
+  }, [userData, myUser, currentWorkspace]);
 
   const grantAccess = async (id: string, publicKey: string) => {
     const result = await getLatestFileKey({ workspaceId });
