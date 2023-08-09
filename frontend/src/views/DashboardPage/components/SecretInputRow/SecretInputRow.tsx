@@ -199,6 +199,15 @@ export const SecretInputRow = memo(
 
     const isCreatedSecret = !secId;
     const shouldBeBlockedInAddOnly = !isCreatedSecret && isAddOnly;
+    
+    const hasEqualSign = (str:string) => str.includes("=");
+  
+    const splitKeyValue = (str:string) => {
+      const [key, ...rest] = str.split("=");
+      const value = rest.join("=");
+      setEditorRef(value);
+      return key;
+    };
 
     // Why this instead of filter in parent
     // Because rhf field.map has default values so basically
@@ -227,7 +236,7 @@ export const SecretInputRow = memo(
           control={control}
           defaultValue=""
           name={`secrets.${index}.key`}
-          render={({ field }) => (
+          render={({ field:{onChange,...field}}) => (
             <HoverCard openDelay={0} open={isKeyError ? undefined : false}>
               <HoverCardTrigger asChild>
                 <td className={cx(isKeyError ? "rounded ring ring-red/50" : null)}>
@@ -244,6 +253,9 @@ export const SecretInputRow = memo(
                       onBlur={() => {
                         isKeySubDisabled.current = false;
                         field.onBlur();
+                      }}
+                      onChange={(val)=>{
+                        onChange(hasEqualSign(val.target.value)?splitKeyValue(val.target.value):val);
                       }}
                       autoCapitalization={autoCapitalization}
                     />
