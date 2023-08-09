@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useContext, useMemo } from "react";
 
-import { useGetOrganization } from "@app/hooks/api";
+import { useGetOrganizations } from "@app/hooks/api";
 import { Organization } from "@app/hooks/api/types";
 
 
@@ -17,8 +17,8 @@ type Props = {
 };
 
 export const OrgProvider = ({ children }: Props): JSX.Element => {
-  const { data: userOrgs, isLoading } = useGetOrganization();
-
+  const { data: userOrgs, isLoading } = useGetOrganizations();
+  
   // const currentWsOrgID = currentWorkspace?.organization;
   const currentWsOrgID = localStorage.getItem("orgData.id");
 

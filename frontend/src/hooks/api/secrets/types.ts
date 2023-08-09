@@ -147,3 +147,22 @@ export type TDeleteSecretsV3DTO = {
   secretPath: string;
   secretName: string;
 };
+
+// --- v3
+
+export type CreateSecretDTO = {
+  workspaceId: string;
+  environment: string;
+  type: "shared" | "personal";
+  secretKey: string;
+  secretKeyCiphertext: string;
+  secretKeyIV: string;
+  secretKeyTag: string;
+  secretValueCiphertext: string;
+  secretValueIV: string;
+  secretValueTag: string;
+  secretCommentCiphertext: string;
+  secretCommentIV: string;
+  secretCommentTag: string;
+  secretPath: string;
+}

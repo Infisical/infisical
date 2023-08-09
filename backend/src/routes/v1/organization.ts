@@ -149,20 +149,6 @@ router.post(
 );
 
 router.get(
-	"/:organizationId/subscriptions", // TODO endpoint: deprecate
-	requireAuth({
-		acceptedAuthModes: [AuthMode.JWT],
-	}),
-	requireOrganizationAuth({
-		acceptedRoles: [OWNER, ADMIN, MEMBER],
-		acceptedStatuses: [ACCEPTED],
-	}),
-	param("organizationId").exists().trim(),
-	validateRequest,
-	organizationController.getOrganizationSubscriptions
-);
-
-router.get(
 	"/:organizationId/workspace-memberships",
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT]

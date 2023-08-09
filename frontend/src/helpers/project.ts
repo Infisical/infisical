@@ -2,9 +2,9 @@ import crypto from "crypto";
 
 import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import encryptSecrets from "@app/components/utilities/secrets/encryptSecrets";
-import addSecrets from "@app/pages/api/files/AddSecrets";
+import { createSecret } from "@app/hooks/api/secrets/queries";
+import { createWorkspace } from "@app/hooks/api/workspace/queries";
 import getUser from "@app/pages/api/user/getUser";
-import createWorkspace from "@app/pages/api/workspace/createWorkspace";
 import uploadKeys from "@app/pages/api/workspace/uploadKeys";
 
 const secretsToBeAdded = [
@@ -95,10 +95,12 @@ const initProjectHelper = async ({
     try {
 
         // create new project
-        project = await createWorkspace({
+        const { data: { workspace } } = await createWorkspace({
             workspaceName: projectName,
             organizationId
         });
+        
+        project = workspace;
 
         // create and upload new (encrypted) project key
         const randomBytes = crypto.randomBytes(16).toString("hex");
@@ -116,19 +118,33 @@ const initProjectHelper = async ({
 
         await uploadKeys(project._id, user._id, ciphertext, nonce);
 
+        const workspaceId = project._id;
+
         // encrypt and upload secrets to new project
         const secrets = await encryptSecrets({
             secretsToEncrypt: secretsToBeAdded,
-            workspaceId: project._id,
+            workspaceId,
             env: "dev"
         });
-
-        await addSecrets({
-            secrets: secrets ?? [],
-            env: "dev",
-            workspaceId: project._id
+        
+        secrets?.forEach((secret) => {
+          createSecret({
+            workspaceId,
+            environment: secret.environment,
+            type: secret.type,
+            secretKey: secret.secretName,
+            secretKeyCiphertext: secret.secretKeyCiphertext,
+            secretKeyIV: secret.secretKeyIV,
+            secretKeyTag: secret.secretKeyTag,
+            secretValueCiphertext: secret.secretValueCiphertext,
+            secretValueIV: secret.secretValueIV,
+            secretValueTag: secret.secretValueTag,
+            secretCommentCiphertext: secret.secretCommentCiphertext,
+            secretCommentIV: secret.secretCommentIV,
+            secretCommentTag: secret.secretCommentTag,
+            secretPath: "/"
+          });
         });
-
     } catch (err) {
         console.error("Failed to init project in organization", err);
     }
