@@ -7,6 +7,7 @@ import { membershipController as EEMembershipControllers } from "../../ee/contro
 import { AuthMode } from "../../variables";
 
 // note: ALL DEPRECIATED (moved to api/v2/workspace/:workspaceId/memberships/:membershipId)
+// TODO endpoint: consider moving these endpoints to be under /workspace to be more RESTful
 
 router.get( // used for old CLI (deprecate)
 	"/:workspaceId/connect",
@@ -18,7 +19,7 @@ router.get( // used for old CLI (deprecate)
 	membershipController.validateMembership
 );
 
-router.delete(
+router.delete( // TODO endpoint: check dashboard
 	"/:membershipId",
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT],
@@ -28,7 +29,7 @@ router.delete(
 	membershipController.deleteMembership
 );
 
-router.post(
+router.post( // TODO endpoint: check dashboard
 	"/:membershipId/change-role",
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT],
@@ -38,7 +39,7 @@ router.post(
 	membershipController.changeMembershipRole
 );
 
-router.post(
+router.post( // TODO endpoint: check dashboard
 	"/:membershipId/deny-permissions",
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT],

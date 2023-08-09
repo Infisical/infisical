@@ -85,7 +85,7 @@ router.get(
     organizationsController.getOrganizationWorkspaces
 );
 
-router.get(
+router.get( // TODO endpoint: deprecate service accounts
     "/:organizationId/service-accounts",
     param("organizationId").exists().trim(),
     validateRequest,

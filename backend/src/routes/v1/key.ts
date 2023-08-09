@@ -9,6 +9,8 @@ import { body, param } from "express-validator";
 import { ADMIN, AuthMode, MEMBER } from "../../variables";
 import { keyController } from "../../controllers/v1";
 
+// TODO endpoint: consider moving these endpoints to be under /workspaces to be more RESTful
+
 router.post(
 	"/:workspaceId",
 	requireAuth({

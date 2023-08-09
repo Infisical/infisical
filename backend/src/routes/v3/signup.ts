@@ -6,7 +6,7 @@ import { authLimiter } from "../../helpers/rateLimiter";
 import { validateRequest } from "../../middleware";
 
 router.post(
-    "/complete-account/signup",
+    "/complete-account/signup", // TODO: consider moving endpoint to v3/users/new/complete-account/signup
     authLimiter,
     body("email").exists().isString().trim().notEmpty().isEmail(),
 	body("firstName").exists().isString().trim().notEmpty(),
