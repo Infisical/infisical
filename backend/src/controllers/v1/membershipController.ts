@@ -104,9 +104,9 @@ export const changeMembershipRole = async (req: Request, res: Response) => {
   }
 
   // validate target membership
-  const membershipToChangeRole = await findMembership({
-    _id: membershipId
-  });
+  const membershipToChangeRole = await Membership
+    .findById(membershipId)
+    .populate<{ user: IUser }>("user");
 
   if (!membershipToChangeRole) {
     throw new Error("Failed to find membership to change role");
@@ -127,9 +127,27 @@ export const changeMembershipRole = async (req: Request, res: Response) => {
     // user is not an admin member of the workspace
     throw new Error("Insufficient role for changing member roles");
   }
+  
+  const oldRole = membershipToChangeRole.role;
 
   membershipToChangeRole.role = role;
   await membershipToChangeRole.save();
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.UPDATE_USER_WORKSPACE_ROLE,
+      metadata: {
+        userId: membershipToChangeRole.user._id.toString(),
+        email: membershipToChangeRole.user.email,
+        oldRole,
+        newRole: membershipToChangeRole.role
+      }
+    },
+    {
+      workspaceId: membershipToChangeRole.workspace
+    }
+  );
 
   return res.status(200).send({
     membership: membershipToChangeRole

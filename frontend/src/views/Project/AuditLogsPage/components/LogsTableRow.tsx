@@ -279,6 +279,27 @@ export const LogsTableRow = ({
                         <p>{`Import to path: ${event.metadata.importToSecretPath}`}</p>
                     </Td>
                 );
+            case EventType.UPDATE_USER_WORKSPACE_ROLE:
+                return (
+                    <Td>
+                        <p>{`Email: ${event.metadata.email}`}</p>
+                        <p>{`Old role: ${event.metadata.oldRole}`}</p>
+                        <p>{`New role: ${event.metadata.newRole}`}</p>
+                    </Td>
+                );
+            case EventType.UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS:
+                return (
+                    <Td>
+                        <p>{`Email: ${event.metadata.email}`}</p>
+                        {event.metadata.deniedPermissions.map((permission) => {
+                            return (
+                                <p key={`audit-log-denied-permission-${event.metadata.userId}-${permission.environmentSlug}-${permission.ability}`}>
+                                    {`Denied env-ability: ${permission.environmentSlug}-${permission.ability}`}
+                                </p>
+                            );
+                        })}
+                    </Td>
+                );
             default:
                 return (
                     <Td />
