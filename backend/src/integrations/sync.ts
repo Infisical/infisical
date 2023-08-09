@@ -245,7 +245,7 @@ const syncSecrets = async ({
         integrationAuth,
         integration,
         secrets,
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_BITBUCKET:
@@ -1661,7 +1661,8 @@ const syncSecretsGitLab = async ({
     const gitLabApiUrl = `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integrationAppId}/variables`;
     const headers = {
       Authorization: `Bearer ${accessToken}`,
-      "Accept-Encoding": "application/json"
+      "Accept-Encoding": "application/json",
+      "Content-Type": "application/json"
     };
 
     let allEnvVariables: GitLabSecret[] = [];
@@ -1794,7 +1795,16 @@ const syncSecretsSupabase = async ({
 
   const secretsToDelete: any = [];
   getSecretsRes?.forEach((secretObj: any) => {
-    if (!(secretObj.name in secrets)) {
+    if (
+      !(secretObj.name in secrets) &&
+      // supbase reserved secret ref: https://supabase.com/docs/guides/functions/secrets#default-secrets
+      ![
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_DB_URL",
+        "SUPABASE_URL"
+      ].includes(secretObj.name)
+    ) {
       secretsToDelete.push(secretObj.name);
     }
   });
@@ -2019,7 +2029,7 @@ const syncSecretsTeamCity = async ({
   integrationAuth,
   integration,
   secrets,
-  accessToken,
+  accessToken
 }: {
   integrationAuth: IIntegrationAuth;
   integration: IIntegration;
@@ -2034,26 +2044,21 @@ const syncSecretsTeamCity = async ({
   // get secrets from Teamcity
   const res = (
     await standardRequest.get(
-      `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`, 
+      `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
-    })
-  )
-  .data
-  .property
-  .reduce(
-    (obj: any, secret: TeamCitySecret) => {
-      const secretName = secret.name.replace(/^env\./, "");  
-      return ({
-        ...obj,
-        [secretName]: secret.value
-      })
-    },
-    {}
-  );
+          Accept: "application/json"
+        }
+      }
+    )
+  ).data.property.reduce((obj: any, secret: TeamCitySecret) => {
+    const secretName = secret.name.replace(/^env\./, "");
+    return {
+      ...obj,
+      [secretName]: secret.value
+    };
+  }, {});
 
   for await (const key of Object.keys(secrets)) {
     if (!(key in res) || (key in res && secrets[key] !== res[key])) {
