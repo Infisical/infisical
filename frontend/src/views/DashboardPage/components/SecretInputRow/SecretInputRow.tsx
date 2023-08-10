@@ -200,8 +200,6 @@ export const SecretInputRow = memo(
     const isCreatedSecret = !secId;
     const shouldBeBlockedInAddOnly = !isCreatedSecret && isAddOnly;
     
-    const hasEqualSign = (str:string) => str.includes("=");
-  
     const splitKeyValue = (str:string) => {
       const [key, ...rest] = str.split("=");
       const value = rest.join("=");
@@ -227,6 +225,15 @@ export const SecretInputRow = memo(
       return <></>;
     }
 
+    let isPasted = false; 
+    
+    const handlePaste = () => {
+      isPasted = true; 
+      setTimeout(() => {
+        isPasted = false; 
+      }, 0);
+    };
+
     return (
       <tr className="group flex flex-row" key={index}>
         <td className="flex h-10 w-10 items-center justify-center border-none px-4">
@@ -246,6 +253,7 @@ export const SecretInputRow = memo(
                       onFocus={() => {
                         isKeySubDisabled.current = true;
                       }}
+                      onPaste={handlePaste} // Handle paste event to set the flag
                       variant="plain"
                       isDisabled={isReadOnly || shouldBeBlockedInAddOnly || isRollbackMode}
                       className="w-full focus:text-bunker-100 focus:ring-transparent"
@@ -254,8 +262,14 @@ export const SecretInputRow = memo(
                         isKeySubDisabled.current = false;
                         field.onBlur();
                       }}
-                      onChange={(val)=>{
-                        onChange(hasEqualSign(val.target.value)?splitKeyValue(val.target.value):val);
+                      onChange={(event)=>{
+                        const newValue = event.target.value;
+                  if (isPasted && newValue.includes("=")) {
+                    const newKey = splitKeyValue(newValue);
+                    onChange(newKey);
+                  } else {
+                    onChange(newValue);
+                  }
                       }}
                       autoCapitalization={autoCapitalization}
                     />
@@ -293,7 +307,11 @@ export const SecretInputRow = memo(
                     value={editorRef}
                     isVisible={!isSecretValueHidden}
                     onChange={(val, html) => {
-                      onChange(val);
+                      if(editorRef){
+                        onChange(editorRef);
+                      }else{
+                        onChange(val);
+                      }
                       setEditorRef(html);
                     }}
                     onBlur={(html) => {
