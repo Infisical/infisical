@@ -1,4 +1,5 @@
 export {
+  useAuthorizeIntegration,
   useDeleteIntegrationAuth,
   useGetIntegrationAuthApps,
   useGetIntegrationAuthBitBucketWorkspaces,
@@ -7,4 +8,6 @@ export {
   useGetIntegrationAuthRailwayEnvironments,
   useGetIntegrationAuthRailwayServices,
   useGetIntegrationAuthTeams,
-  useGetIntegrationAuthVercelBranches} from "./queries";
+  useGetIntegrationAuthVercelBranches,
+  useSaveIntegrationAccessToken
+} from "./queries";

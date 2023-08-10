@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 
+import {
+  useSaveIntegrationAccessToken
+} from "@app/hooks/api";
+
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
-import saveIntegrationAccessToken from "../../api/integrations/saveIntegrationAccessToken";
 
 export default function LaravelForgeCreateIntegrationPage() {
   const router = useRouter();
+  const { mutateAsync } = useSaveIntegrationAccessToken();
+
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [serverId, setServerId] = useState("");
@@ -29,7 +34,7 @@ export default function LaravelForgeCreateIntegrationPage() {
 
       setIsLoading(true);
 
-      const integrationAuth = await saveIntegrationAccessToken({
+      const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "laravel-forge",
         accessId: serverId,

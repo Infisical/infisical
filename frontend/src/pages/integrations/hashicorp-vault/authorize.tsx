@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 
+import {
+  useSaveIntegrationAccessToken
+} from "@app/hooks/api";
+
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
-import saveIntegrationAccessToken from "../../api/integrations/saveIntegrationAccessToken";
 
 export default function HashiCorpVaultAuthorizeIntegrationPage() {
   const router = useRouter();
+  const { mutateAsync } = useSaveIntegrationAccessToken();
 
   const [vaultURL, setVaultURL] = useState("");
   const [vaultURLErrorText, setVaultURLErrorText] = useState("");
@@ -57,7 +61,7 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
 
       setIsLoading(true);
 
-      const integrationAuth = await saveIntegrationAccessToken({
+      const integrationAuth = await mutateAsync({
           workspaceId: localStorage.getItem("projectData.id"),
           integration: "hashicorp-vault",
           accessId: vaultRoleID,
