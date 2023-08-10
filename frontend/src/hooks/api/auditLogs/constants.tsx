@@ -31,7 +31,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
     [EventType.CREATE_SECRET_IMPORT]: "Create secret import",
     [EventType.UPDATE_SECRET_IMPORT]: "Update secret import",
     [EventType.DELETE_SECRET_IMPORT]: "Delete secret import",
-    
+    [EventType.UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS]: "Update denied permissions",
+    [EventType.UPDATE_USER_WORKSPACE_ROLE]: "Update user role"
 };
 
 export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {

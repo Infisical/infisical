@@ -61,10 +61,11 @@ type Props = {
   importedSecrets?: TImportedSecrets;
   onSecretImportDelete: (env: string, secPath: string) => void;
   items: { id: string; environment: string; secretPath: string }[];
+  searchTerm: string;
 };
 
 export const SecretImportSection = memo(
-  ({ secrets = [], importedSecrets = [], onSecretImportDelete, items = [] }: Props) => {
+  ({ secrets = [], importedSecrets = [], onSecretImportDelete, items = [], searchTerm = "" }: Props) => {
     const { currentWorkspace } = useWorkspace();
     const environments = currentWorkspace?.environments || [];
 
@@ -83,6 +84,7 @@ export const SecretImportSection = memo(
             )}
             onDelete={onSecretImportDelete}
             importedSecPath={impSecPath}
+            searchTerm={searchTerm}
           />
         ))}
       </SortableContext>

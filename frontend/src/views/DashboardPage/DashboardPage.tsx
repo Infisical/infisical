@@ -950,6 +950,7 @@ export const DashboardPage = () => {
                       secrets={secrets?.secrets}
                       importedSecrets={importedSecrets}
                       items={items}
+                      searchTerm={searchFilter}
                     />
                     <FolderSection
                       onFolderOpen={handleFolderOpen}
