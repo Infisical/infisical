@@ -348,6 +348,29 @@ interface DeleteSecretImportEvent {
     }
 }
 
+interface UpdateUserRole {
+    type: EventType.UPDATE_USER_WORKSPACE_ROLE,
+    metadata: {
+        userId: string;
+        email: string;
+        oldRole: string;
+        newRole: string;
+    }
+}
+
+interface UpdateUserDeniedPermissions {
+    type: EventType.UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS,
+    metadata: {
+        userId: string;
+        email: string;
+        deniedPermissions: {
+            environmentSlug: string;
+            ability: string;
+        }[]
+    }
+}
+
+
 export type Event = 
     | GetSecretsEvent
     | GetSecretEvent
@@ -378,7 +401,9 @@ export type Event =
     | GetSecretImportsEvent
     | CreateSecretImportEvent
     | UpdateSecretImportEvent
-    | DeleteSecretImportEvent;
+    | DeleteSecretImportEvent
+    | UpdateUserRole
+    | UpdateUserDeniedPermissions;
 
 export type AuditLog = {
   _id: string;

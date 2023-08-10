@@ -42,4 +42,6 @@ export enum EventType {
     CREATE_SECRET_IMPORT = "create-secret-import",
     UPDATE_SECRET_IMPORT = "update-secret-import",
     DELETE_SECRET_IMPORT = "delete-secret-import",
+    UPDATE_USER_WORKSPACE_ROLE = "update-user-workspace-role",
+    UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS = "update-user-workspace-denied-permissions"
 }

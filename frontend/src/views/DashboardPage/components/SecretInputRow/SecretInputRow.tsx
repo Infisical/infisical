@@ -235,7 +235,7 @@ export const SecretInputRow = memo(
     };
 
     return (
-      <tr className="group flex flex-row" key={index}>
+      <tr className="group flex flex-row hover:bg-mineshaft-700" key={index}>
         <td className="flex h-10 w-10 items-center justify-center border-none px-4">
           <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div>
         </td>
