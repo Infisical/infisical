@@ -158,8 +158,9 @@ export const useDeleteOrgMembership = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, DeletOrgMembershipDTO>({
-    mutationFn: ({ membershipId, orgId }) =>
-      apiRequest.delete(`/api/v2/organizations/${orgId}/memberships/${membershipId}`),
+    mutationFn: ({ membershipId, orgId }) => {
+      return apiRequest.delete(`/api/v2/organizations/${orgId}/memberships/${membershipId}`)
+    },
     onSuccess: (_, { orgId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(orgId));
     }
@@ -170,10 +171,11 @@ export const useUpdateOrgUserRole = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, UpdateOrgUserRoleDTO>({
-    mutationFn: ({ organizationId, membershipId, role }) =>
-      apiRequest.patch(`/api/v2/organizations/${organizationId}/memberships/${membershipId}`, {
+    mutationFn: ({ organizationId, membershipId, role }) => {
+      return apiRequest.patch(`/api/v2/organizations/${organizationId}/memberships/${membershipId}`, {
         role
-      }),
+      });
+    },
     onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
     },

@@ -41,8 +41,10 @@ export const useRenameOrg = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, RenameOrgDTO>({
-    mutationFn: ({ newOrgName, orgId }) =>
-      apiRequest.patch(`/api/v1/organization/${orgId}/name`, { name: newOrgName }),
+    mutationFn: ({ newOrgName, orgId }) => {
+      console.log("useRenameOrg");
+      return apiRequest.patch(`/api/v1/organization/${orgId}/name`, { name: newOrgName });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
     }

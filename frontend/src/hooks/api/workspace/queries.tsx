@@ -29,7 +29,8 @@ export const workspaceKeys = {
   getWorkspaceIntegrations: (workspaceId: string) => [{ workspaceId }, "workspace-integrations"],
   getAllUserWorkspace: ["workspaces"] as const,
   getUserWsEnvironments: (workspaceId: string) => ["workspace-env", { workspaceId }] as const,
-  getWorkspaceAuditLogs: (workspaceId: string) => [{ workspaceId }] as const
+  getWorkspaceAuditLogs: (workspaceId: string) => [{ workspaceId }] as const,
+  getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -218,7 +219,9 @@ export const useDeleteWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, DeleteWorkspaceDTO>({
-    mutationFn: ({ workspaceID }) => apiRequest.delete(`/api/v1/workspace/${workspaceID}`),
+    mutationFn: ({ workspaceID }) => {
+      return apiRequest.delete(`/api/v1/workspace/${workspaceID}`);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }
@@ -273,3 +276,74 @@ export const useDeleteWsEnvironment = () => {
   });
 };
 
+export const useGetWorkspaceUsers = (workspaceId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceUsers(workspaceId),
+    queryFn: async () => {
+      const { data: { users } } = await apiRequest.get(
+        `/api/v1/workspace/${workspaceId}/users`
+      );
+      return users;
+    },
+    enabled: true
+  });
+}
+
+export const useAddUserToWorkspace = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      email,
+      workspaceId
+    }: {
+      email: string;
+      workspaceId: string;
+    }) => {
+      const { data: { invitee, latestKey } } = await apiRequest.post(`/api/v1/workspace/${workspaceId}/invite-signup`, { email });
+      
+      return ({
+        invitee,
+        latestKey
+      });
+    },
+    onSuccess: (_, dto) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(dto.workspaceId));
+    }
+  });
+};
+
+export const useDeleteUserFromWorkspace = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (membershipId: string) => {
+      const { data: { deletedMembership } } = await apiRequest.delete(`/api/v1/membership/${membershipId}`);
+      return deletedMembership;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(res.workspace));
+    }
+  });
+};
+
+export const useUpdateUserWorkspaceRole = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      membershipId,
+      role
+    }: {
+      membershipId: string;
+      role: string;
+    }) => {
+      const { data: { membership } } = await apiRequest.post(`/api/v1/membership/${membershipId}/change-role`, {
+        role
+      });
+      return membership;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(res.workspace));
+    }
+  });
+};

@@ -11,15 +11,13 @@ import AddProjectMemberDialog from "@app/components/basic/dialog/AddProjectMembe
 import ProjectUsersTable from "@app/components/basic/table/ProjectUsersTable";
 import guidGenerator from "@app/components/utilities/randomId";
 import { Input } from "@app/components/v2";
-import { useGetUser } from "@app/hooks/api";
+import { useAddUserToWorkspace,useGetUser , useGetWorkspaceUsers } from "@app/hooks/api";
 
 import {
   decryptAssymmetric,
   encryptAssymmetric
 } from "../../../../components/utilities/cryptography/crypto";
 import getOrganizationUsers from "../../../api/organization/GetOrgUsers";
-import addUserToWorkspace from "../../../api/workspace/addUserToWorkspace";
-import getWorkspaceUsers from "../../../api/workspace/getWorkspaceUsers";
 import uploadKeys from "../../../api/workspace/uploadKeys";
 
 interface UserProps {
@@ -42,7 +40,13 @@ interface MembershipProps {
 // #TODO: Update all the workspaceIds
 
 export default function Users() {
+  const router = useRouter();
+  const workspaceId = router.query.id as string;
+  
   const { data: user } = useGetUser();
+  const { data: workspaceUsers } = useGetWorkspaceUsers(workspaceId);
+  const { mutateAsync: addUserToWorkspaceMutateAsync } = useAddUserToWorkspace();
+  
   const [isAddOpen, setIsAddOpen] = useState(false);
   // let [isDeleteOpen, setIsDeleteOpen] = useState(false);
   // let [userIdToBeDeleted, setUserIdToBeDeleted] = useState(false);
@@ -52,22 +56,16 @@ export default function Users() {
 
   const { t } = useTranslation();
 
-  const router = useRouter();
-  const workspaceId = router.query.id as string;
 
   const [userList, setUserList] = useState<any[]>([]);
   const [isUserListLoading, setIsUserListLoading] = useState(true);
   const [orgUserList, setOrgUserList] = useState<any[]>([]);
 
   useEffect(() => {
-    if (user) {
+    if (user && workspaceUsers) {
       (async () => {
         setPersonalEmail(user.email);
-
-        // This part quiries the current users of a project
-        const workspaceUsers = await getWorkspaceUsers({
-          workspaceId
-        });
+        
         const tempUserList = workspaceUsers.map((membership: MembershipProps) => ({
           key: guidGenerator(),
           firstName: membership.user?.firstName,
@@ -100,7 +98,7 @@ export default function Users() {
         );
       })();
     }
-  }, [user]);
+  }, [user, workspaceUsers]);
 
   const closeAddModal = () => {
     setIsAddOpen(false);
@@ -123,7 +121,11 @@ export default function Users() {
   // }
 
   const submitAddModal = async () => {
-    const result = await addUserToWorkspace(email, workspaceId);
+    const result = await addUserToWorkspaceMutateAsync({
+      email,
+      workspaceId
+    });
+    
     if (result?.invitee && result?.latestKey) {
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
@@ -145,7 +147,6 @@ export default function Users() {
     }
     setEmail("");
     setIsAddOpen(false);
-    router.reload();
   };
 
   return userList ? (

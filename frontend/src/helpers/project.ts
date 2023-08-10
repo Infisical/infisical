@@ -91,65 +91,55 @@ const initProjectHelper = async ({
     organizationId: string;
     projectName: string;
 }) => {
-    let project;
-    try {
+  // create new project
+  const { data: { workspace } } = await createWorkspace({
+      workspaceName: projectName,
+      organizationId
+  });
+  
+  // create and upload new (encrypted) project key
+  const randomBytes = crypto.randomBytes(16).toString("hex");
+  const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
+  
+  if (!PRIVATE_KEY) throw new Error("Failed to find private key");
 
-        // create new project
-        const { data: { workspace } } = await createWorkspace({
-            workspaceName: projectName,
-            organizationId
-        });
-        
-        project = workspace;
+  const user = await fetchUserDetails();
 
-        // create and upload new (encrypted) project key
-        const randomBytes = crypto.randomBytes(16).toString("hex");
-        const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
-        
-        if (!PRIVATE_KEY) throw new Error("Failed to find private key");
+  const { ciphertext, nonce } = encryptAssymmetric({
+      plaintext: randomBytes,
+      publicKey: user.publicKey,
+      privateKey: PRIVATE_KEY
+  });
 
-        const user = await fetchUserDetails();
+  await uploadKeys(workspace._id, user._id, ciphertext, nonce);
 
-        const { ciphertext, nonce } = encryptAssymmetric({
-            plaintext: randomBytes,
-            publicKey: user.publicKey,
-            privateKey: PRIVATE_KEY
-        });
-
-        await uploadKeys(project._id, user._id, ciphertext, nonce);
-
-        const workspaceId = project._id;
-
-        // encrypt and upload secrets to new project
-        const secrets = await encryptSecrets({
-            secretsToEncrypt: secretsToBeAdded,
-            workspaceId,
-            env: "dev"
-        });
-        
-        secrets?.forEach((secret) => {
-          createSecret({
-            workspaceId,
-            environment: secret.environment,
-            type: secret.type,
-            secretKey: secret.secretName,
-            secretKeyCiphertext: secret.secretKeyCiphertext,
-            secretKeyIV: secret.secretKeyIV,
-            secretKeyTag: secret.secretKeyTag,
-            secretValueCiphertext: secret.secretValueCiphertext,
-            secretValueIV: secret.secretValueIV,
-            secretValueTag: secret.secretValueTag,
-            secretCommentCiphertext: secret.secretCommentCiphertext,
-            secretCommentIV: secret.secretCommentIV,
-            secretCommentTag: secret.secretCommentTag,
-            secretPath: "/"
-          });
-        });
-    } catch (err) {
-        console.error("Failed to init project in organization", err);
-    }
-    
-    return project;
+  // encrypt and upload secrets to new project
+  const secrets = await encryptSecrets({
+      secretsToEncrypt: secretsToBeAdded,
+      workspaceId: workspace._id,
+      env: "dev"
+  });
+  
+  secrets?.forEach((secret) => {
+    createSecret({
+      workspaceId: workspace._id,
+      environment: secret.environment,
+      type: secret.type,
+      secretKey: secret.secretName,
+      secretKeyCiphertext: secret.secretKeyCiphertext,
+      secretKeyIV: secret.secretKeyIV,
+      secretKeyTag: secret.secretKeyTag,
+      secretValueCiphertext: secret.secretValueCiphertext,
+      secretValueIV: secret.secretValueIV,
+      secretValueTag: secret.secretValueTag,
+      secretCommentCiphertext: secret.secretCommentCiphertext,
+      secretCommentIV: secret.secretCommentIV,
+      secretCommentTag: secret.secretCommentTag,
+      secretPath: "/"
+    });
+  });
+  
+  return workspace;
 }
 
 export {

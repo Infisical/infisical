@@ -8,18 +8,16 @@ const incidentContactKeys = {
   getAllContact: (orgId: string) => ["org-incident-contacts", { orgId }] as const
 };
 
-const fetchOrgIncidentContacts = async (orgId: string) => {
-  const { data } = await apiRequest.get<{ incidentContactsOrg: IncidentContact[] }>(
-    `/api/v1/organization/${orgId}/incidentContactOrg`
-  );
-
-  return data.incidentContactsOrg;
-};
-
 export const useGetOrgIncidentContact = (orgId: string) =>
   useQuery({
     queryKey: incidentContactKeys.getAllContact(orgId),
-    queryFn: () => fetchOrgIncidentContacts(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ incidentContactsOrg: IncidentContact[] }>(
+        `/api/v1/organization/${orgId}/incidentContactOrg`
+      );
+
+      return data.incidentContactsOrg;
+    },
     enabled: Boolean(orgId)
   });
 
