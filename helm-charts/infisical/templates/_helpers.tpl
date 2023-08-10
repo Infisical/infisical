@@ -128,3 +128,31 @@ Create the mongodb connection string.
 {{- end -}}
 {{- printf "%s" $connectionString -}}
 {{- end -}}
+
+
+{{/*
+Create a fully qualified redis name.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+*/}}
+{{- define "infisical.redis.fullname" -}}
+{{- if .Values.redis.fullnameOverride -}}
+{{- .Values.redis.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Chart.Name .Values.nameOverride -}}
+{{- if contains $name .Release.Name -}}
+{{- printf "%s-%s" .Release.Name .Values.redis.name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s-%s" .Release.Name $name .Values.redis.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create the redis connection string.
+*/}}
+{{- define "infisical.redis.connectionString" -}}
+{{- $host := include "infisical.redis.fullname" . -}}
+{{- $pass := .Values.redis.auth.password | default "root" -}}
+{{- $connectionString := printf "redis://redis:%s@%s:6379" $pass $host -}}
+{{- printf "%s" $connectionString -}}
+{{- end -}}

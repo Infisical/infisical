@@ -169,6 +169,9 @@ backendEnvironmentVariables:
   ##
   MONGO_URL: ""
 
+  ## @param backendEnvironmentVariables.REDIS_URL
+  REDIS_URL: ""
+
 ## @section MongoDB(&reg;) parameters
 ## Documentation : https://github.com/bitnami/charts/blob/main/bitnami/mongodb/values.yaml
 ##
@@ -419,3 +422,12 @@ mailhog:
         paths:
           - path: "/"
             pathType: Prefix
+redis:
+  name: "redis"
+  fullnameOverride: "redis"
+  usePassword: true
+  enabled: true
+  cluster:
+    enabled: false
+  auth:
+    password: "mysecretpassword"

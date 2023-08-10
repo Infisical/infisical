@@ -1062,6 +1062,7 @@ export const expandSecrets = async (
 
   Object.keys(secrets).forEach((key) => {
     if (secrets[key].value.match(INTERPOLATION_SYNTAX_REG)) {
+      console.log("KEY that matches ====>", key)
       interpolatedSec[key] = secrets[key].value;
     } else {
       expandedSec[key] = secrets[key].value;

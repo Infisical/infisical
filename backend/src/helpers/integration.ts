@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
-import { Bot, Integration, IntegrationAuth } from "../models";
-import { exchangeCode, exchangeRefresh, syncSecrets } from "../integrations";
+import { Bot, IntegrationAuth } from "../models";
+import { exchangeCode, exchangeRefresh } from "../integrations";
 import { BotService } from "../services";
 import {
   ALGORITHM_AES_256_GCM,
@@ -9,7 +9,7 @@ import {
   INTEGRATION_VERCEL
 } from "../variables";
 import { UnauthorizedRequestError } from "../utils/errors";
-import * as Sentry from "@sentry/node";
+import { syncSecretsToActiveIntegrationsQueue } from "../queues/integrations/syncSecretsToThirdPartyServices"
 
 interface Update {
   workspace: string;
@@ -101,69 +101,6 @@ export const handleOAuthExchangeHelper = async ({
   }
 
   return integrationAuth;
-};
-/**
- * Sync/push environment variables in workspace with id [workspaceId] to
- * all active integrations for that workspace
- * @param {Object} obj
- * @param {Object} obj.workspaceId - id of workspace
- */
-export const syncIntegrationsHelper = async ({
-  workspaceId,
-  environment
-}: {
-  workspaceId: Types.ObjectId;
-  environment?: string;
-}) => {
-  try {
-    const integrations = await Integration.find({
-      workspace: workspaceId,
-      ...(environment
-        ? {
-            environment
-          }
-        : {}),
-      isActive: true,
-      app: { $ne: null }
-    });
-
-    // for each workspace integration, sync/push secrets
-    // to that integration
-    for await (const integration of integrations) {
-      // get workspace, environment (shared) secrets
-      const secrets = await BotService.getSecrets({
-        workspaceId: integration.workspace,
-        environment: integration.environment,
-        secretPath: integration.secretPath
-      });
-
-      const integrationAuth = await IntegrationAuth.findById(integration.integrationAuth);
-
-      if (!integrationAuth) throw new Error("Failed to find integration auth");
-
-      // get integration auth access token
-      const access = await getIntegrationAuthAccessHelper({
-        integrationAuthId: integration.integrationAuth
-      });
-
-      // sync secrets to integration
-      await syncSecrets({
-        integration,
-        integrationAuth,
-        secrets,
-        accessId: access.accessId === undefined ? null : access.accessId,
-        accessToken: access.accessToken
-      });
-    }
-  } catch (err) {
-    Sentry.captureException(err);
-    // eslint-disable-next-line
-    console.log(
-      `syncIntegrationsHelper: failed with [workspaceId=${workspaceId}] [environment=${environment}]`,
-      err
-    ); // eslint-disable-line no-use-before-define
-    throw err;
-  }
 };
 
 /**

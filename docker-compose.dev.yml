@@ -21,6 +21,7 @@ services:
     depends_on:
       - mongo
       - smtp-server
+      - redis
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -99,8 +100,35 @@ services:
     networks:
       - infisical-dev
 
+  redis:
+    image: redis
+    container_name: infisical-dev-redis
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - 6379:6379
+    volumes:
+        - redis_data:/data
+    networks:
+      - infisical-dev
+
+  redis-commander:
+    container_name: infisical-dev-redis-commander
+    image: rediscommander/redis-commander
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8085:8081"
+    networks:
+      - infisical-dev
+
 volumes:
   mongo-data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:
