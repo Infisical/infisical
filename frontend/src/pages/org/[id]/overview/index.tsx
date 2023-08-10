@@ -404,7 +404,7 @@ export default function Organization() {
                     localStorage.setItem("projectData.id", workspace._id);
                   }}
                 >
-                  <div className="group ml-auto w-max cursor-default rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
+                  <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
                     Explore{" "}
                     <FontAwesomeIcon
                       icon={faArrowRight}
