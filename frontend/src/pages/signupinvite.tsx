@@ -26,8 +26,7 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   useGetCommonPasswords
 } from "@app/hooks/api";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
-import getOrganizationUserProjects from "@app/pages/api/organization/GetOrgUserProjects";
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 
 import completeAccountInformationSignupInvite from "./api/auth/CompleteAccountInformationSignupInvite";
 import verifySignupInvite from "./api/auth/VerifySignupInvite";
@@ -169,7 +168,7 @@ export default function SignupInvite() {
                   privateKey
               });
 
-              const userOrgs = await getOrganizations(); 
+              const userOrgs = await fetchOrganizations(); 
 
               const orgId = userOrgs[0]._id;
               localStorage.setItem("orgData.id", orgId);

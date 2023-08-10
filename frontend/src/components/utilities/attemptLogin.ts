@@ -1,10 +1,10 @@
 /* eslint-disable prefer-destructuring */
 import jsrp from "jsrp";
 
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { fetchMyOrganizationProjects } from "@app/hooks/api/users/queries";
 import login1 from "@app/pages/api/auth/Login1";
 import login2 from "@app/pages/api/auth/Login2";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
-import getOrganizationUserProjects from "@app/pages/api/organization/GetOrgUserProjects";
 import KeyService from "@app/services/KeyService";
 
 import Telemetry from "./telemetry/Telemetry";
@@ -36,7 +36,6 @@ const attemptLogin = async (
     providerAuthToken?: string;
   }
 ): Promise<IsLoginSuccessful> => {
-
   const telemetry = new Telemetry().getInstance();
   return new Promise((resolve, reject) => {
     client.init(
@@ -124,14 +123,12 @@ const attemptLogin = async (
             // TODO: in the future - move this logic elsewhere
             // because this function is about logging the user in
             // and not initializing the login details
-            const userOrgs = await getOrganizations(); 
+            const userOrgs = await fetchOrganizations(); 
             
             const orgId = userOrgs[0]._id;
             localStorage.setItem("orgData.id", orgId);
             
-            const orgUserProjects = await getOrganizationUserProjects({
-              orgId
-            });
+            const orgUserProjects = await fetchMyOrganizationProjects(orgId);
             
             if (orgUserProjects.length > 0) {
               localStorage.setItem("projectData.id", orgUserProjects[0]._id);

@@ -29,6 +29,7 @@ const userKeys = {
   myIp: ["ip"] as const,
   myAPIKeys: ["api-keys"] as const,
   mySessions: ["sessions"] as const,
+  myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const
 };
 
 export const fetchUserDetails = async () => {
@@ -147,7 +148,9 @@ export const useAddUserToOrg = () => {
   }
 
   return useMutation<Response, {}, AddUserToOrgDTO>({
-    mutationFn: (dto) => apiRequest.post("/api/v1/invite-org/signup", dto),
+    mutationFn: (dto) => {
+      return apiRequest.post("/api/v1/invite-org/signup", dto);
+    },
     onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
     }
@@ -328,5 +331,23 @@ export const useUpdateMfaEnabled = () => {
     onSuccess() {
       queryClient.invalidateQueries(userKeys.getUser);
     }
+  });
+}
+
+export const fetchMyOrganizationProjects = async (orgId: string) => {
+  const { data: { workspaces } } = await apiRequest.get(
+    `/api/v1/organization/${orgId}/my-workspaces`
+  );
+
+  return workspaces;
+}
+
+export const useGetMyOrganizationProjects = (orgId: string) => {
+  return useQuery({
+    queryKey: userKeys.myOrganizationProjects(orgId),
+    queryFn: async () => {
+      return fetchMyOrganizationProjects(orgId);
+    },
+    enabled: true
   });
 }

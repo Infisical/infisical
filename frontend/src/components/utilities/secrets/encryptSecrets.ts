@@ -2,7 +2,7 @@ import crypto from "crypto";
 
 import { SecretDataProps, Tag } from "public/data/frequentInterfaces";
 
-import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
+import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
 
 import { decryptAssymmetric, encryptSymmetric } from "../cryptography/crypto";
 
@@ -42,19 +42,21 @@ const encryptSecrets = async ({
 }) => {
   let secrets;
   try {
-    const sharedKey = await getLatestFileKey({ workspaceId });
+    // const sharedKey = await getLatestFileKey({ workspaceId });
+    const wsKey = await fetchUserWsKey(workspaceId);
 
     const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
     let randomBytes: string;
-    if (Object.keys(sharedKey).length > 0) {
+    if (wsKey) {
       // case: a (shared) key exists for the workspace
       randomBytes = decryptAssymmetric({
-        ciphertext: sharedKey.latestKey.encryptedKey,
-        nonce: sharedKey.latestKey.nonce,
-        publicKey: sharedKey.latestKey.sender.publicKey,
+        ciphertext: wsKey.encryptedKey,
+        nonce: wsKey.nonce,
+        publicKey: wsKey.sender.publicKey,
         privateKey: PRIVATE_KEY
       });
+      
     } else {
       // case: a (shared) key does not exist for the workspace
       randomBytes = crypto.randomBytes(16).toString("hex");
@@ -114,6 +116,7 @@ const encryptSecrets = async ({
 
       return result;
     });
+    
   } catch (error) {
     console.log("Error while encrypting secrets");
   }

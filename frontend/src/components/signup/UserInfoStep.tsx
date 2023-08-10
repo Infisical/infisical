@@ -9,8 +9,8 @@ import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
 
 import { useGetCommonPasswords } from "@app/hooks/api";
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import completeAccountInformationSignup from "@app/pages/api/auth/CompleteAccountInformationSignup";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
 import ProjectService from "@app/services/ProjectService";
 
 import InputField from "../basic/InputField";
@@ -190,7 +190,8 @@ export default function UserInfoStep({
                 privateKey
               });
 
-              const userOrgs = await getOrganizations();
+              const userOrgs = await fetchOrganizations();
+            
               const orgId = userOrgs[0]?._id;
               const project = await ProjectService.initProject({
                 organizationId: orgId,

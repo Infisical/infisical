@@ -1,5 +1,4 @@
-import { fetchUserAction } from "@app/hooks/api/users/queries";
-import getOrganizationUsers from "@app/pages/api/organization/GetOrgUsers";
+import { fetchOrgUsers,fetchUserAction  } from "@app/hooks/api/users/queries";
 
 interface OnboardingCheckProps {
   setTotalOnboardingActionsDone?: (value: number) => void;
@@ -43,9 +42,8 @@ const onboardingCheck = async ({
   if (setHasUserClickedIntro) setHasUserClickedIntro(!!userActionIntro);
 
   const orgId = localStorage.getItem("orgData.id");
-  const orgUsers = await getOrganizationUsers({
-    orgId: orgId || ""
-  });
+  const orgUsers = await fetchOrgUsers(orgId || "");
+  
   if (orgUsers.length > 1) {
     countActions += 1;
   }

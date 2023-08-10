@@ -27,12 +27,16 @@ const organizationKeys = {
   getOrgLicenses: (orgId: string) => [{ orgId }, "organization-licenses"] as const
 };
 
+export const fetchOrganizations = async () => {
+  const { data: { organizations } } = await apiRequest.get<{ organizations: Organization[] }>("/api/v1/organization");
+  return organizations;
+}
+
 export const useGetOrganizations = () => {
   return useQuery({ 
     queryKey: organizationKeys.getUserOrganizations, 
     queryFn: async () => {
-      const { data: { organizations } } = await apiRequest.get<{ organizations: Organization[] }>("/api/v1/organization");
-      return organizations;
+      return fetchOrganizations();
     }
   });
 }
@@ -42,7 +46,6 @@ export const useRenameOrg = () => {
 
   return useMutation<{}, {}, RenameOrgDTO>({
     mutationFn: ({ newOrgName, orgId }) => {
-      console.log("useRenameOrg");
       return apiRequest.patch(`/api/v1/organization/${orgId}/name`, { name: newOrgName });
     },
     onSuccess: () => {

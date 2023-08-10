@@ -7,6 +7,7 @@ export {
   useDeleteOrgMembership,
   useGetMyAPIKeys,
   useGetMyIp,
+  useGetMyOrganizationProjects,
   useGetMySessions,
   useGetOrgUsers,
   useGetUser,

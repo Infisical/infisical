@@ -17,8 +17,8 @@ import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLo
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input } from "@app/components/v2";
 import { useGetCommonPasswords } from "@app/hooks/api";
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import completeAccountInformationSignup from "@app/pages/api/auth/CompleteAccountInformationSignup";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
 import ProjectService from "@app/services/ProjectService";
 
 // eslint-disable-next-line new-cap
@@ -188,7 +188,7 @@ export const UserInfoSSOStep = ({
                 privateKey
               });
 
-              const userOrgs = await getOrganizations();
+              const userOrgs = await fetchOrganizations();
               const orgId = userOrgs[0]?._id;
               const project = await ProjectService.initProject({
                 organizationId: orgId,

@@ -12,9 +12,9 @@ import InitialSignupStep from "@app/components/signup/InitialSignupStep";
 import TeamInviteStep from "@app/components/signup/TeamInviteStep";
 import UserInfoStep from "@app/components/signup/UserInfoStep";
 import SecurityClient from "@app/components/utilities/SecurityClient";
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import checkEmailVerificationCode from "@app/pages/api/auth/CheckEmailVerificationCode";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
 
 /**
  * @returns the signup page
@@ -37,7 +37,7 @@ export default function SignUp() {
   useEffect(() => {
     const tryAuth = async () => {
       try {
-        const userOrgs = await getOrganizations();
+        const userOrgs = await fetchOrganizations();
         router.push(`/org/${userOrgs[0]._id}/overview`);
       } catch (error) {
         console.log("Error - Not logged in yet");

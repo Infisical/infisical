@@ -8,10 +8,9 @@ import { useSubscription, useWorkspace } from "@app/context";
 import updateUserProjectPermission from "@app/ee/api/memberships/UpdateUserProjectPermission";
 import {
   useDeleteUserFromWorkspace,
-  useUpdateUserWorkspaceRole
-} from "@app/hooks/api";
-import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
-import uploadKeys from "@app/pages/api/workspace/uploadKeys";
+  useGetUserWsKey,
+  useUpdateUserWorkspaceRole,
+  useUploadWsKey} from "@app/hooks/api";
 
 import { decryptAssymmetric, encryptAssymmetric } from "../../utilities/cryptography/crypto";
 import guidGenerator from "../../utilities/randomId";
@@ -42,7 +41,10 @@ type EnvironmentProps = {
 const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoading }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const { subscription } = useSubscription();
+  const { data: wsKey } = useGetUserWsKey(currentWorkspace?._id ?? "");
+
   const { mutateAsync: deleteUserFromWorkspaceMutateAsync } = useDeleteUserFromWorkspace();
+  const { mutateAsync: uploadWsKeyMutateAsync } = useUploadWsKey();
   const { mutateAsync: updateUserWorkspaceRoleMutateAsync } = useUpdateUserWorkspaceRole();
   // const [roleSelected, setRoleSelected] = useState(
   //   Array(userData?.length).fill(userData.map((user) => user.role))
@@ -151,26 +153,31 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
   }, [userData, myUser, currentWorkspace]);
 
   const grantAccess = async (id: string, publicKey: string) => {
-    const result = await getLatestFileKey({ workspaceId });
+    if (wsKey) {
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
-    const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
+      // assymmetrically decrypt symmetric key with local private key
+      const key = decryptAssymmetric({
+        ciphertext: wsKey.encryptedKey,
+        nonce: wsKey.nonce,
+        publicKey: wsKey.sender.publicKey,
+        privateKey: PRIVATE_KEY
+      });
 
-    // assymmetrically decrypt symmetric key with local private key
-    const key = decryptAssymmetric({
-      ciphertext: result.latestKey.encryptedKey,
-      nonce: result.latestKey.nonce,
-      publicKey: result.latestKey.sender.publicKey,
-      privateKey: PRIVATE_KEY
-    });
+      const { ciphertext, nonce } = encryptAssymmetric({
+        plaintext: key,
+        publicKey,
+        privateKey: PRIVATE_KEY
+      });
 
-    const { ciphertext, nonce } = encryptAssymmetric({
-      plaintext: key,
-      publicKey,
-      privateKey: PRIVATE_KEY
-    });
-
-    uploadKeys(workspaceId, id, ciphertext, nonce);
-    router.reload();
+      await uploadWsKeyMutateAsync({
+        workspaceId,
+        userId: id,
+        encryptedKey: ciphertext,
+        nonce
+      });
+      router.reload();
+    }
   };
 
   const closeUpgradeModal = () => {

@@ -8,7 +8,7 @@ const encKeyKeys = {
   getUserWorkspaceKey: (workspaceID: string) => ["workspace-key-pair", { workspaceID }] as const
 };
 
-const fetchUserWsKey = async (workspaceID: string) => {
+export const fetchUserWsKey = async (workspaceID: string) => {
   const { data } = await apiRequest.get<{ latestKey: UserWsKeyPair }>(
     `/api/v1/key/${workspaceID}/latest`
   );
@@ -24,8 +24,23 @@ export const useGetUserWsKey = (workspaceID: string) =>
   });
 
 // mutations
+export const uploadWsKey = async ({
+  workspaceId,
+  userId,
+  encryptedKey,
+  nonce
+}: UploadWsKeyDTO) => {
+  return apiRequest.post(`/api/v1/key/${workspaceId}`, { key: { userId, encryptedKey, nonce } })
+}
+
 export const useUploadWsKey = () =>
   useMutation<{}, {}, UploadWsKeyDTO>({
-    mutationFn: ({ encryptedKey, nonce, userId, workspaceId }) =>
-      apiRequest.post(`/api/v1/key/${workspaceId}`, { key: { userId, encryptedKey, nonce } })
+    mutationFn: async ({ encryptedKey, nonce, userId, workspaceId }) => {
+      return uploadWsKey({
+        workspaceId,
+        userId,
+        encryptedKey,
+        nonce
+      });
+    }
   });

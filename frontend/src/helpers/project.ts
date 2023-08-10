@@ -2,10 +2,10 @@ import crypto from "crypto";
 
 import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import encryptSecrets from "@app/components/utilities/secrets/encryptSecrets";
+import { uploadWsKey } from "@app/hooks/api/keys/queries";
 import { createSecret } from "@app/hooks/api/secrets/queries";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { createWorkspace } from "@app/hooks/api/workspace/queries";
-import uploadKeys from "@app/pages/api/workspace/uploadKeys";
 
 const secretsToBeAdded = [
     {
@@ -111,7 +111,12 @@ const initProjectHelper = async ({
       privateKey: PRIVATE_KEY
   });
 
-  await uploadKeys(workspace._id, user._id, ciphertext, nonce);
+  await uploadWsKey({
+    workspaceId: workspace._id,
+    userId: user._id,
+    encryptedKey: ciphertext,
+    nonce
+  });
 
   // encrypt and upload secrets to new project
   const secrets = await encryptSecrets({

@@ -11,14 +11,18 @@ import AddProjectMemberDialog from "@app/components/basic/dialog/AddProjectMembe
 import ProjectUsersTable from "@app/components/basic/table/ProjectUsersTable";
 import guidGenerator from "@app/components/utilities/randomId";
 import { Input } from "@app/components/v2";
-import { useAddUserToWorkspace,useGetUser , useGetWorkspaceUsers } from "@app/hooks/api";
+import { useOrganization } from "@app/context";
+import { 
+  useAddUserToWorkspace,
+  useGetOrgUsers,
+  useGetUser, 
+  useGetWorkspaceUsers} from "@app/hooks/api";
+import { uploadWsKey } from "@app/hooks/api/keys/queries";
 
 import {
   decryptAssymmetric,
   encryptAssymmetric
 } from "../../../../components/utilities/cryptography/crypto";
-import getOrganizationUsers from "../../../api/organization/GetOrgUsers";
-import uploadKeys from "../../../api/workspace/uploadKeys";
 
 interface UserProps {
   firstName: string;
@@ -44,6 +48,9 @@ export default function Users() {
   const workspaceId = router.query.id as string;
   
   const { data: user } = useGetUser();
+  const { currentOrg } = useOrganization();
+  const { data: orgUsers } = useGetOrgUsers(currentOrg?._id ?? "");
+  
   const { data: workspaceUsers } = useGetWorkspaceUsers(workspaceId);
   const { mutateAsync: addUserToWorkspaceMutateAsync } = useAddUserToWorkspace();
   
@@ -62,7 +69,7 @@ export default function Users() {
   const [orgUserList, setOrgUserList] = useState<any[]>([]);
 
   useEffect(() => {
-    if (user && workspaceUsers) {
+    if (user && workspaceUsers && orgUsers) {
       (async () => {
         setPersonalEmail(user.email);
         
@@ -82,10 +89,6 @@ export default function Users() {
 
         setIsUserListLoading(false);
 
-        // This is needed to know wha users from an org (if any), we are able to add to a certain project
-        const orgUsers = await getOrganizationUsers({
-          orgId: String(localStorage.getItem("orgData.id"))
-        });
         setOrgUserList(orgUsers);
         setEmail(
           orgUsers
@@ -98,7 +101,7 @@ export default function Users() {
         );
       })();
     }
-  }, [user, workspaceUsers]);
+  }, [user, workspaceUsers, orgUsers]);
 
   const closeAddModal = () => {
     setIsAddOpen(false);
@@ -143,7 +146,12 @@ export default function Users() {
         privateKey: PRIVATE_KEY
       });
 
-      uploadKeys(workspaceId, result.invitee._id, ciphertext, nonce);
+      await uploadWsKey({
+        workspaceId,
+        userId: result.invitee._id,
+        encryptedKey: ciphertext,
+        nonce
+      });
     }
     setEmail("");
     setIsAddOpen(false);
