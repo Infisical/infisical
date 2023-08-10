@@ -18,7 +18,7 @@ import {
   backfillServiceTokenMultiScope,
   backfillTrustedIps
 } from "./backfillData";
-import { 
+import {
   reencryptBotOrgKeys,
   reencryptBotPrivateKeys,
   reencryptSecretBlindIndexDataSalts
@@ -26,6 +26,7 @@ import {
 import {
   getMongoURL,
   getNodeEnv,
+  getRedisUrl,
   getSentryDSN
 } from "../../config";
 import { initializePassport } from "../auth";
@@ -41,6 +42,10 @@ import { initializePassport } from "../auth";
  * - Re-encrypting data
  */
 export const setup = async () => {
+  if (await getRedisUrl() === undefined || await getRedisUrl() === "") {
+    console.error("WARNING: Redis is not yet configured. Infisical may not function as expected without it.")
+  }
+
   await validateEncryptionKeysConfig();
   await TelemetryService.logTelemetryMessage();
 

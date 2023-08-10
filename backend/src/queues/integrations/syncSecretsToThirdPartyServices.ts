@@ -11,7 +11,7 @@ type TSyncSecretsToThirdPartyServices = {
   environment?: string
 }
 
-const syncSecretsToThirdPartyServices = new Queue('sync-secrets-to-third-party-services', process.env.REDIS_URL as string);
+export const syncSecretsToThirdPartyServices = new Queue('sync-secrets-to-third-party-services', process.env.REDIS_URL as string);
 
 syncSecretsToThirdPartyServices.process(async (job: Job) => {
   const { workspaceId, environment }: TSyncSecretsToThirdPartyServices = job.data

@@ -2,6 +2,8 @@ import { Server } from "http";
 import main from "../src";
 import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
 import request from "supertest";
+import { githubPushEventSecretScan } from "../src/queues/secret-scanning/githubScanPushEvent";
+import { syncSecretsToThirdPartyServices } from "../src/queues/integrations/syncSecretsToThirdPartyServices";
 
 let server: Server;
 
@@ -11,6 +13,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   server.close();
+  githubPushEventSecretScan.close()
+  syncSecretsToThirdPartyServices.close()
 });
 
 describe("Healthcheck endpoint", () => {

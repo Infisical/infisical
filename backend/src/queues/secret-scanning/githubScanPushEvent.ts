@@ -10,7 +10,7 @@ import { convertKeysToLowercase, scanContentAndGetFindings } from "../../ee/serv
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
 import { SecretMatch } from "../../ee/services/GithubSecretScanning/types";
 
-const githubPushEventSecretScan = new Queue('github-push-event-secret-scanning', 'redis://redis:6379');
+export const githubPushEventSecretScan = new Queue('github-push-event-secret-scanning', 'redis://redis:6379');
 
 type TScanPushEventQueueDetails = {
   organizationId: string,
