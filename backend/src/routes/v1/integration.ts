@@ -8,9 +8,8 @@ import {
 } from "../../middleware";
 import {
   ADMIN,
-  AUTH_MODE_API_KEY,
-  AUTH_MODE_JWT,
-  MEMBER,
+  AuthMode,
+  MEMBER
 } from "../../variables";
 import { body, param } from "express-validator";
 import { integrationController } from "../../controllers/v1";
@@ -18,7 +17,7 @@ import { integrationController } from "../../controllers/v1";
 router.post(
   "/",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
   }),
   requireIntegrationAuthorizationAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -44,7 +43,7 @@ router.post(
 router.patch(
   "/:integrationId",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT]
   }),
   requireIntegrationAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -64,7 +63,7 @@ router.patch(
 router.delete(
   "/:integrationId",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT]
   }),
   requireIntegrationAuth({
     acceptedRoles: [ADMIN, MEMBER],

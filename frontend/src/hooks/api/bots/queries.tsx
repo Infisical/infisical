@@ -8,29 +8,26 @@ const queryKeys = {
   getBot: (workspaceId: string) => [{ workspaceId }, "bot"] as const
 };
 
-const fetchWorkspaceBot = async (workspaceId: string) => {
-  const { data } = await apiRequest.get<{ bot: TBot }>(`/api/v1/bot/${workspaceId}`);
-  return data.bot;
-};
-
 export const useGetWorkspaceBot = (workspaceId: string) =>
   useQuery({
     queryKey: queryKeys.getBot(workspaceId),
-    queryFn: () => fetchWorkspaceBot(workspaceId),
+    queryFn: async () => {
+      const { data: { bot } } = await apiRequest.get<{ bot: TBot }>(`/api/v1/bot/${workspaceId}`);
+      return bot;
+    },
     enabled: Boolean(workspaceId)
   });
-
-// mutation
 
 export const useUpdateBotActiveStatus = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TSetBotActiveStatusDto>({
-    mutationFn: ({ botId, isActive, botKey }) =>
-      apiRequest.patch(`/api/v1/bot/${botId}/active`, {
+    mutationFn: ({ botId, isActive, botKey }) => {
+      return apiRequest.patch(`/api/v1/bot/${botId}/active`, {
         isActive,
         botKey
-      }),
+      });
+    },
     onSuccess: (_, { workspaceId }) => {
       queryClient.invalidateQueries(queryKeys.getBot(workspaceId));
     }

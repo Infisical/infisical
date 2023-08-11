@@ -3,6 +3,10 @@ import { useRouter } from "next/router";
 import queryString from "query-string";
 
 import {
+  useCreateIntegration
+} from "@app/hooks/api";
+
+import {
   Button,
   Card,
   CardTitle,
@@ -13,7 +17,6 @@ import {
 } from "../../../components/v2";
 import { useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
-import createIntegration from "../../api/integrations/createIntegration";
 
 const awsRegions = [
   { name: "US East (Ohio)", slug: "us-east-2" },
@@ -49,6 +52,7 @@ const awsRegions = [
 
 export default function AWSSecretManagerCreateIntegrationPage() {
   const router = useRouter();
+  const { mutateAsync } = useCreateIntegration();
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
@@ -89,7 +93,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
 
       setIsLoading(true);
 
-      await createIntegration({
+      await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: targetSecretName.trim(),

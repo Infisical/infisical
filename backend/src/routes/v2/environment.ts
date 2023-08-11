@@ -9,14 +9,14 @@ import {
 } from "../../middleware";
 import {
   ADMIN, 
-  AUTH_MODE_JWT,
-  MEMBER,
+  AuthMode,
+  MEMBER
 } from "../../variables";
 
 router.post(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -32,7 +32,7 @@ router.post(
 router.put(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -49,7 +49,7 @@ router.put(
 router.delete(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN],
@@ -64,7 +64,7 @@ router.delete(
 router.get(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [MEMBER, ADMIN],

@@ -11,13 +11,13 @@ import { apiRequest } from "@app/config/request";
 import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import {
   BatchSecretDTO,
+  CreateSecretDTO,
   DecryptedSecret,
   EncryptedSecret,
   EncryptedSecretVersion,
   GetProjectSecretsDTO,
   GetSecretVersionsDTO,
-  TGetProjectSecretsAllEnvDTO
-} from "./types";
+  TGetProjectSecretsAllEnvDTO} from "./types";
 
 export const secretKeys = {
   // this is also used in secretSnapshot part
@@ -320,6 +320,27 @@ export const useBatchSecretsOp = () => {
       );
       queryClient.invalidateQueries(
         secretSnapshotKeys.count(dto.workspaceId, dto.environment, dto?.folderId)
+      );
+    }
+  });
+};
+
+export const createSecret = async (dto: CreateSecretDTO) => {
+  const { data } = await apiRequest.post(`/api/v3/secrets/${dto.secretKey}`, dto);
+  return data;
+}
+
+export const useCreateSecret = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, CreateSecretDTO>({
+    mutationFn: async (dto) => {
+      const data = createSecret(dto);
+      return data;
+    },
+    onSuccess: (_, dto) => {
+      queryClient.invalidateQueries(
+        secretKeys.getProjectSecret(dto.workspaceId, dto.environment)
       );
     }
   });

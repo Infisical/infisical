@@ -3,6 +3,7 @@ export type SubscriptionPlan = {
   membersUsed: number;
   memberLimit: number;
   auditLogs: boolean;
+  auditLogsRetentionDays: number;
   customAlerts: boolean;
   customRateLimits: boolean;
   pitRecovery: boolean;

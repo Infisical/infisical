@@ -15,7 +15,7 @@ import {
     ACTION_LOGIN,
     TOKEN_EMAIL_MFA,
 } from "../../variables";
-import { getChannelFromUserAgent } from "../../utils/posthog"; // TODO: move this
+import { getUserAgentType } from "../../utils/posthog"; // TODO: move this
 import {
     getHttpsEnabled,
     getJwtMfaLifetime,
@@ -247,7 +247,7 @@ export const login2 = async (req: Request, res: Response) => {
                     loginAction && await EELogService.createLog({
                         userId: user._id,
                         actions: [loginAction],
-                        channel: getChannelFromUserAgent(req.headers["user-agent"]),
+                        channel: getUserAgentType(req.headers["user-agent"]),
                         ipAddress: req.realIP,
                     });
 

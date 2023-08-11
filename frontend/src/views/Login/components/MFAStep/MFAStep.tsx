@@ -10,7 +10,7 @@ import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa"
 import attemptLoginMfa from "@app/components/utilities/attemptLoginMfa";
 import { Button } from "@app/components/v2";    
 import { useSendMfaToken } from "@app/hooks/api/auth";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 
 // The style for the verification code input
 const props = {
@@ -110,7 +110,7 @@ export const MFAStep = ({
   
         if (isLoginSuccessful) {
           setIsLoading(false);
-          const userOrgs = await getOrganizations();
+          const userOrgs = await fetchOrganizations();
           const userOrg = userOrgs[0] && userOrgs[0]._id;
 
           // case: login does not require MFA step

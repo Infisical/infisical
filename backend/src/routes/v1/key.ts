@@ -6,13 +6,15 @@ import {
 	validateRequest,
 } from "../../middleware";
 import { body, param } from "express-validator";
-import { ADMIN, AUTH_MODE_JWT, MEMBER } from "../../variables";
+import { ADMIN, AuthMode, MEMBER } from "../../variables";
 import { keyController } from "../../controllers/v1";
+
+// TODO endpoint: consider moving these endpoints to be under /workspaces to be more RESTful
 
 router.post(
 	"/:workspaceId",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -24,10 +26,10 @@ router.post(
 	keyController.uploadKey
 );
 
-router.get(
+router.get( // TODO endpoint: deprecate (note: move frontend to v2/workspace/key or something)
 	"/:workspaceId/latest",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],

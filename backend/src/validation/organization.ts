@@ -1,25 +1,15 @@
 import { Types } from "mongoose";
 import {
-    IServiceAccount,
-    IServiceTokenData,
     IUser,
     Organization,
-    ServiceAccount,
-    ServiceTokenData,
-    User,
 } from "../models";
-import {
-    AUTH_MODE_API_KEY,
-    AUTH_MODE_JWT,
-    AUTH_MODE_SERVICE_ACCOUNT,
-    AUTH_MODE_SERVICE_TOKEN,
-} from "../variables";
 import {
     OrganizationNotFoundError,
     UnauthorizedRequestError,
 } from "../utils/errors";
 import { validateUserClientForOrganization } from "./user";
-import { validateServiceAccountClientForOrganization } from "./serviceAccount";
+import { AuthData } from "../interfaces/middleware";
+import { ActorType } from "../ee/models";
 
 /**
  * Validate accepted clients for organization with id [organizationId]
@@ -33,10 +23,7 @@ export const validateClientForOrganization = async ({
   acceptedRoles,
   acceptedStatuses,
 }: {
-  authData: {
-    authMode: string;
-    authPayload: IUser | IServiceAccount | IServiceTokenData;
-  };
+  authData: AuthData;
   organizationId: Types.ObjectId;
   acceptedRoles: Array<"owner" | "admin" | "member">;
   acceptedStatuses: Array<"invited" | "accepted">;
@@ -48,57 +35,21 @@ export const validateClientForOrganization = async ({
       message: "Failed to find organization",
     });
   }
+  
+  let membershipOrg;
+  switch (authData.actor.type) {
+    case ActorType.USER:
+      membershipOrg = await validateUserClientForOrganization({
+        user: authData.authPayload as IUser,
+        organization,
+        acceptedRoles,
+        acceptedStatuses,
+      });
 
-  if (
-    authData.authMode === AUTH_MODE_JWT &&
-    authData.authPayload instanceof User
-  ) {
-    const membershipOrg = await validateUserClientForOrganization({
-      user: authData.authPayload,
-      organization,
-      acceptedRoles,
-      acceptedStatuses,
-    });
-
-    return { organization, membershipOrg };
+      return { organization, membershipOrg }; 
+    case ActorType.SERVICE:
+      throw UnauthorizedRequestError({
+        message: "Failed service token authorization for organization",
+      });
   }
-
-  if (
-    authData.authMode === AUTH_MODE_SERVICE_ACCOUNT &&
-    authData.authPayload instanceof ServiceAccount
-  ) {
-    await validateServiceAccountClientForOrganization({
-      serviceAccount: authData.authPayload,
-      organization,
-    });
-
-    return { organization };
-  }
-
-  if (
-    authData.authMode === AUTH_MODE_SERVICE_TOKEN &&
-    authData.authPayload instanceof ServiceTokenData
-  ) {
-    throw UnauthorizedRequestError({
-      message: "Failed service token authorization for organization",
-    });
-  }
-
-  if (
-    authData.authMode === AUTH_MODE_API_KEY &&
-    authData.authPayload instanceof User
-  ) {
-    const membershipOrg = await validateUserClientForOrganization({
-      user: authData.authPayload,
-      organization,
-      acceptedRoles,
-      acceptedStatuses,
-    });
-
-    return { organization, membershipOrg };
-  }
-
-  throw UnauthorizedRequestError({
-    message: "Failed client authorization for organization",
-  });
 };

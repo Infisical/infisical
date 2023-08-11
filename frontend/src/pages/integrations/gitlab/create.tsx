@@ -3,6 +3,10 @@ import { useRouter } from "next/router";
 import queryString from "query-string";
 
 import {
+  useCreateIntegration
+} from "@app/hooks/api";
+
+import {
   Button,
   Card,
   CardTitle,
@@ -17,7 +21,6 @@ import {
   useGetIntegrationAuthTeams
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
-import createIntegration from "../../api/integrations/createIntegration";
 
 const gitLabEntities = [
   { name: "Individual", value: "individual" },
@@ -26,6 +29,7 @@ const gitLabEntities = [
 
 export default function GitLabCreateIntegrationPage() {
   const router = useRouter();
+  const { mutateAsync } = useCreateIntegration();
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
@@ -87,7 +91,7 @@ export default function GitLabCreateIntegrationPage() {
       setIsLoading(true);
       if (!integrationAuth?._id) return;
 
-      await createIntegration({
+      await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app:

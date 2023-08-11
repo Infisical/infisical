@@ -67,7 +67,7 @@ type Props = {
   isSecretValueHidden: boolean;
   searchTerm: string;
   // to record the ids of deleted ones
-  onSecretDelete: (index: number, id?: string, overrideId?: string) => void;
+  onSecretDelete: (index: number, secretName: string, id?: string, overrideId?: string) => void;
   // sidebar control props
   onRowExpand: (secId: string | undefined, index: number) => void;
   // tag props
@@ -219,7 +219,7 @@ export const SecretInputRow = memo(
     }
 
     return (
-      <tr className="group flex flex-row" key={index}>
+      <tr className="group flex flex-row hover:bg-mineshaft-700" key={index}>
         <td className="flex h-10 w-10 items-center justify-center border-none px-4">
           <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div>
         </td>
@@ -495,7 +495,9 @@ export const SecretInputRow = memo(
                     colorSchema="danger"
                     ariaLabel="delete"
                     isDisabled={isReadOnly || isRollbackMode}
-                    onClick={() => onSecretDelete(index, secId, idOverride)}
+                    onClick={() => {
+                      onSecretDelete(index, secKey, secId, idOverride);
+                    }}
                   >
                     <FontAwesomeIcon icon={faXmark} />
                   </IconButton>

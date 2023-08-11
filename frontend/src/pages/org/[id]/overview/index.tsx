@@ -36,11 +36,10 @@ import {
 } from "@app/components/v2";
 import { TabsObject } from "@app/components/v2/Tabs";
 import { useSubscription, useUser, useWorkspace } from "@app/context";
-import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useUploadWsKey } from "@app/hooks/api";
+import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useRegisterUserAction,useUploadWsKey } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { encryptAssymmetric } from "../../../../components/utilities/cryptography/crypto";
-import registerUserAction from "../../../api/userActions/registerUserAction";
 
 const features = [
   {
@@ -70,6 +69,7 @@ const LearningItem = ({
   userAction,
   link
 }: ItemProps): JSX.Element => {
+  const registerUserAction = useRegisterUserAction();
   if (link) {
     return (
       <a
@@ -89,9 +89,9 @@ const LearningItem = ({
             tabIndex={0}
             onClick={async () => {
               if (userAction && userAction !== "first_time_secrets_pushed") {
-                await registerUserAction({
-                  action: userAction
-                });
+                await registerUserAction.mutateAsync(
+                  userAction
+                );
               }
             }}
             className={`group relative flex h-[5.5rem] w-full items-center justify-between overflow-hidden rounded-md border ${
@@ -130,9 +130,7 @@ const LearningItem = ({
       tabIndex={0}
       onClick={async () => {
         if (userAction) {
-          await registerUserAction({
-            action: userAction
-          });
+          await registerUserAction.mutateAsync(userAction);
         }
       }}
       className="relative my-1.5 flex h-[5.5rem] w-full cursor-pointer items-center justify-between overflow-hidden rounded-md border border-dashed border-bunker-400 bg-bunker-700 py-2 pl-2 pr-6 shadow-xl duration-200 hover:bg-bunker-500"
@@ -169,6 +167,7 @@ const LearningItemSquare = ({
   userAction,
   link
 }: ItemProps): JSX.Element => {
+  const registerUserAction = useRegisterUserAction();
   return (
     <a
       target={`${link?.includes("https") ? "_blank" : "_self"}`}
@@ -187,9 +186,7 @@ const LearningItemSquare = ({
           tabIndex={0}
           onClick={async () => {
             if (userAction && userAction !== "first_time_secrets_pushed") {
-              await registerUserAction({
-                action: userAction
-              });
+              await registerUserAction.mutateAsync(userAction);
             }
           }}
           className={`group relative flex w-full items-center justify-between overflow-hidden rounded-md border ${
@@ -404,7 +401,7 @@ export default function Organization() {
                     localStorage.setItem("projectData.id", workspace._id);
                   }}
                 >
-                  <div className="group ml-auto w-max cursor-default rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
+                  <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
                     Explore{" "}
                     <FontAwesomeIcon
                       icon={faArrowRight}

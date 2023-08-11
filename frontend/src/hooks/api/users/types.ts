@@ -9,7 +9,7 @@ export enum AuthProvider {
 export type User = {
   createdAt: Date;
   updatedAt: Date;
-  email?: string;
+  email: string;
   firstName?: string;
   lastName?: string;
   authProvider?: AuthProvider;

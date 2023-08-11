@@ -5,7 +5,9 @@ import { validateRequest } from "../../middleware";
 import { signupController } from "../../controllers/v1";
 import { authLimiter } from "../../helpers/rateLimiter";
 
-router.post(
+// TODO: consider moving to users/v3/signup
+
+router.post( // TODO endpoint: consider moving to v3/users/signup/mail
 	"/email/signup",
 	authLimiter,
 	body("email").exists().trim().notEmpty().isEmail(),
@@ -14,7 +16,7 @@ router.post(
 );
 
 router.post(
-	"/email/verify",
+	"/email/verify", // TODO endpoint: consider moving to v3/users/signup/verify
 	authLimiter,
 	body("email").exists().trim().notEmpty().isEmail(),
 	body("code").exists().trim().notEmpty(),

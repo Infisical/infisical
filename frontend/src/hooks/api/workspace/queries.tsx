@@ -28,7 +28,9 @@ export const workspaceKeys = {
   getWorkspaceAuthorization: (workspaceId: string) => [{ workspaceId }, "workspace-authorizations"],
   getWorkspaceIntegrations: (workspaceId: string) => [{ workspaceId }, "workspace-integrations"],
   getAllUserWorkspace: ["workspaces"] as const,
-  getUserWsEnvironments: (workspaceId: string) => ["workspace-env", { workspaceId }] as const
+  getUserWsEnvironments: (workspaceId: string) => ["workspace-env", { workspaceId }] as const,
+  getWorkspaceAuditLogs: (workspaceId: string) => [{ workspaceId }] as const,
+  getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -165,13 +167,21 @@ export const useGetWorkspaceIntegrations = (workspaceId: string) =>
     enabled: Boolean(workspaceId)
   });
 
-// mutation
+export const createWorkspace = ({
+  organizationId,
+  workspaceName
+}: CreateWorkspaceDTO): Promise<{ data: { workspace: Workspace } }> => {
+  return apiRequest.post("/api/v1/workspace", { workspaceName, organizationId });
+}
+
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{ data: { workspace: Workspace } }, {}, CreateWorkspaceDTO>({
-    mutationFn: async ({ organizationId, workspaceName }) =>
-      apiRequest.post("/api/v1/workspace", { workspaceName, organizationId }),
+    mutationFn: async ({ organizationId, workspaceName }) => createWorkspace({
+      organizationId,
+      workspaceName
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }
@@ -182,8 +192,9 @@ export const useRenameWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, RenameWorkspaceDTO>({
-    mutationFn: ({ workspaceID, newWorkspaceName }) =>
-      apiRequest.post(`/api/v1/workspace/${workspaceID}/name`, { name: newWorkspaceName }),
+    mutationFn: ({ workspaceID, newWorkspaceName }) => {
+      return apiRequest.post(`/api/v1/workspace/${workspaceID}/name`, { name: newWorkspaceName });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }
@@ -208,7 +219,9 @@ export const useDeleteWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, DeleteWorkspaceDTO>({
-    mutationFn: ({ workspaceID }) => apiRequest.delete(`/api/v1/workspace/${workspaceID}`),
+    mutationFn: ({ workspaceID }) => {
+      return apiRequest.delete(`/api/v1/workspace/${workspaceID}`);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }
@@ -219,11 +232,12 @@ export const useCreateWsEnvironment = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, CreateEnvironmentDTO>({
-    mutationFn: ({ workspaceID, environmentName, environmentSlug }) =>
-      apiRequest.post(`/api/v2/workspace/${workspaceID}/environments`, {
+    mutationFn: ({ workspaceID, environmentName, environmentSlug }) => {
+      return apiRequest.post(`/api/v2/workspace/${workspaceID}/environments`, {
         environmentName,
         environmentSlug
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }
@@ -234,12 +248,13 @@ export const useUpdateWsEnvironment = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, UpdateEnvironmentDTO>({
-    mutationFn: ({ workspaceID, environmentName, environmentSlug, oldEnvironmentSlug }) =>
-      apiRequest.put(`/api/v2/workspace/${workspaceID}/environments`, {
+    mutationFn: ({ workspaceID, environmentName, environmentSlug, oldEnvironmentSlug }) => {
+      return apiRequest.put(`/api/v2/workspace/${workspaceID}/environments`, {
         environmentName,
         environmentSlug,
         oldEnvironmentSlug
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }
@@ -250,12 +265,85 @@ export const useDeleteWsEnvironment = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, DeleteEnvironmentDTO>({
-    mutationFn: ({ workspaceID, environmentSlug }) =>
-      apiRequest.delete(`/api/v2/workspace/${workspaceID}/environments`, {
+    mutationFn: ({ workspaceID, environmentSlug }) => {
+      return apiRequest.delete(`/api/v2/workspace/${workspaceID}/environments`, {
         data: { environmentSlug }
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
+    }
+  });
+};
+
+export const useGetWorkspaceUsers = (workspaceId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceUsers(workspaceId),
+    queryFn: async () => {
+      const { data: { users } } = await apiRequest.get(
+        `/api/v1/workspace/${workspaceId}/users`
+      );
+      return users;
+    },
+    enabled: true
+  });
+}
+
+export const useAddUserToWorkspace = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      email,
+      workspaceId
+    }: {
+      email: string;
+      workspaceId: string;
+    }) => {
+      const { data: { invitee, latestKey } } = await apiRequest.post(`/api/v1/workspace/${workspaceId}/invite-signup`, { email });
+      
+      return ({
+        invitee,
+        latestKey
+      });
+    },
+    onSuccess: (_, dto) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(dto.workspaceId));
+    }
+  });
+};
+
+export const useDeleteUserFromWorkspace = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (membershipId: string) => {
+      const { data: { deletedMembership } } = await apiRequest.delete(`/api/v1/membership/${membershipId}`);
+      return deletedMembership;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(res.workspace));
+    }
+  });
+};
+
+export const useUpdateUserWorkspaceRole = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      membershipId,
+      role
+    }: {
+      membershipId: string;
+      role: string;
+    }) => {
+      const { data: { membership } } = await apiRequest.post(`/api/v1/membership/${membershipId}/change-role`, {
+        role
+      });
+      return membership;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(res.workspace));
     }
   });
 };

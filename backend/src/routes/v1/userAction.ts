@@ -3,13 +3,13 @@ const router = express.Router();
 import { requireAuth, validateRequest } from "../../middleware";
 import { body, query } from "express-validator";
 import { userActionController } from "../../controllers/v1";
-import { AUTH_MODE_JWT } from "../../variables";
+import { AuthMode } from "../../variables";
 
 // note: [userAction] will be deprecated in /v2 in favor of [action]
-router.post(
+router.post( // TODO endpoint: move this into /users/me
 	"/",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	body("action"),
 	validateRequest,
@@ -19,7 +19,7 @@ router.post(
 router.get(
 	"/",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	query("action"),
 	validateRequest,

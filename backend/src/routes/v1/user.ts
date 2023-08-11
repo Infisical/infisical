@@ -2,14 +2,12 @@ import express from "express";
 const router = express.Router();
 import { requireAuth } from "../../middleware";
 import { userController } from "../../controllers/v1";
-import {
-    AUTH_MODE_JWT,
-} from "../../variables";
+import { AuthMode } from "../../variables";
 
-router.get(
+router.get( // TODO endpoint: deprecate (moved to v2/users/me)
     "/", 
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }), 
     userController.getUser
 );

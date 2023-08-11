@@ -3,12 +3,14 @@ const router = express.Router();
 import { body } from "express-validator";
 import { requireAuth, validateRequest } from "../../middleware";
 import { membershipOrgController } from "../../controllers/v1";
-import { AUTH_MODE_JWT } from "../../variables";
+import { AuthMode } from "../../variables";
+
+// TODO endpoint: consider moving these endpoints to be under /organization to be more RESTful
 
 router.post(
 	"/signup",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
 	body("inviteeEmail").exists().trim().notEmpty().isEmail(),
 	body("organizationId").exists().trim().notEmpty(),

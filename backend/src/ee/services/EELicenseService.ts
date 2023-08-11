@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import * as Sentry from "@sentry/node";
 import NodeCache from "node-cache";
 import { 
@@ -31,6 +32,7 @@ interface FeatureSet {
     customRateLimits: boolean;
     customAlerts: boolean;
     auditLogs: boolean;
+    auditLogsRetentionDays: number;
     samlSSO: boolean;
     status: "incomplete" | "incomplete_expired" | "trialing" | "active" | "past_due" | "canceled" | "unpaid" | null;
     trial_end: number | null;
@@ -63,9 +65,10 @@ class EELicenseService {
         pitRecovery: false,
         ipAllowlisting: false,
         rbac: true,
-        customRateLimits: true,
-        customAlerts: true,
+        customRateLimits: false,
+        customAlerts: false,
         auditLogs: false,
+        auditLogsRetentionDays: 0,
         samlSSO: false,
         status: null,
         trial_end: null,
@@ -81,10 +84,10 @@ class EELicenseService {
         });
     }
     
-    public async getPlan(organizationId: string, workspaceId?: string): Promise<FeatureSet> {
+    public async getPlan(organizationId: Types.ObjectId, workspaceId?: Types.ObjectId): Promise<FeatureSet> {
         try {
             if (this.instanceType === "cloud") {
-                const cachedPlan = this.localFeatureSet.get<FeatureSet>(`${organizationId}-${workspaceId ?? ""}`);
+                const cachedPlan = this.localFeatureSet.get<FeatureSet>(`${organizationId.toString()}-${workspaceId?.toString() ?? ""}`);
                 if (cachedPlan) {
                     return cachedPlan;
                 }
@@ -101,7 +104,7 @@ class EELicenseService {
                 const { data: { currentPlan } } = await licenseServerKeyRequest.get(url);
 
                 // cache fetched plan for organization
-                this.localFeatureSet.set(`${organizationId}-${workspaceId ?? ""}`, currentPlan);
+                this.localFeatureSet.set(`${organizationId.toString()}-${workspaceId?.toString() ?? ""}`, currentPlan);
 
                 return currentPlan;
             }
@@ -112,16 +115,16 @@ class EELicenseService {
         return this.globalFeatureSet;
     }
     
-    public async refreshPlan(organizationId: string, workspaceId?: string) {
+    public async refreshPlan(organizationId: Types.ObjectId, workspaceId?: Types.ObjectId) {
         if (this.instanceType === "cloud") {
-            this.localFeatureSet.del(`${organizationId}-${workspaceId ?? ""}`);
+            this.localFeatureSet.del(`${organizationId.toString()}-${workspaceId?.toString() ?? ""}`);
             await this.getPlan(organizationId, workspaceId);
         }
     }
     
-    public async delPlan(organizationId: string) {
+    public async delPlan(organizationId: Types.ObjectId) {
         if (this.instanceType === "cloud") {
-            this.localFeatureSet.del(`${organizationId}-`);
+            this.localFeatureSet.del(`${organizationId.toString()}-`);
         }
     }
 

@@ -3,8 +3,9 @@ import crypto from "crypto";
 
 import jsrp from "jsrp";
 
-import changePassword2 from "@app/pages/api/auth/ChangePassword2";
-import SRP1 from "@app/pages/api/auth/SRP1";
+import {
+changePassword,
+    srp1} from "@app/hooks/api/auth/queries";
 
 import Aes256Gcm from "./cryptography/aes-256-gcm";
 import { deriveArgonKey } from "./cryptography/crypto";
@@ -27,7 +28,7 @@ const attemptChangePassword = ({ email, currentPassword, newPassword }: Params):
             try {
                 const clientPublicKey = clientOldPassword.getPublicKey();
 
-                const res = await SRP1({ clientPublicKey });
+                const res = await srp1({ clientPublicKey });
 
                 serverPublicKey = res.serverPublicKey;
                 salt = res.salt;
@@ -71,7 +72,7 @@ const attemptChangePassword = ({ email, currentPassword, newPassword }: Params):
                                 secret: Buffer.from(derivedKey.hash)
                             });
 
-                            await changePassword2({
+                            await changePassword({
                                 clientProof,
                                 protectedKey,
                                 protectedKeyIV,

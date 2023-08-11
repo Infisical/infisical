@@ -1,10 +1,10 @@
 /* eslint-disable prefer-destructuring */
 import jsrp from "jsrp";
 
-import login1 from "@app/pages/api/auth/Login1";
-import verifyMfaToken from "@app/pages/api/auth/verifyMfaToken";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
-import getOrganizationUserProjects from "@app/pages/api/organization/GetOrgUserProjects";
+import { login1 , verifyMfaToken } from "@app/hooks/api/auth/queries";
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { fetchMyOrganizationProjects } from "@app/hooks/api/users/queries";
+// import verifyMfaToken from "@app/pages/api/auth/verifyMfaToken";
 import KeyService from "@app/services/KeyService";
 
 import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
@@ -65,7 +65,7 @@ const attemptLoginMfa = async ({
                     tag
                 } = await verifyMfaToken({
                     email,
-                    mfaToken
+                    mfaCode: mfaToken
                 });
 
                 // unset temporary (MFA) JWT token and set JWT token
@@ -96,13 +96,11 @@ const attemptLoginMfa = async ({
                 // TODO: in the future - move this logic elsewhere
                 // because this function is about logging the user in
                 // and not initializing the login details
-                const userOrgs = await getOrganizations();
+                const userOrgs = await fetchOrganizations();
                 const orgId = userOrgs[0]._id;
                 localStorage.setItem("orgData.id", orgId);
 
-                const orgUserProjects = await getOrganizationUserProjects({
-                    orgId
-                });
+                const orgUserProjects = await fetchMyOrganizationProjects(orgId);
                 localStorage.setItem("projectData.id", orgUserProjects[0]._id);
 
                 resolve({

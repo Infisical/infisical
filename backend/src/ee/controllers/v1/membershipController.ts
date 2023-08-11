@@ -1,10 +1,12 @@
 import { Request, Response } from "express";
-import { Membership, Workspace } from "../../../models";
+import { IUser, Membership, Workspace } from "../../../models";
+import { EventType } from "../../../ee/models";
 import { IMembershipPermission } from "../../../models/membership";
 import { BadRequestError, UnauthorizedRequestError } from "../../../utils/errors";
 import { ADMIN, MEMBER } from "../../../variables/organization";
 import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../../variables";
 import _ from "lodash";
+import { EEAuditLogService } from "../../services";
 
 export const denyMembershipPermissions = async (req: Request, res: Response) => {
   const { membershipId } = req.params;
@@ -51,11 +53,32 @@ export const denyMembershipPermissions = async (req: Request, res: Response) => 
     { _id: membershipToModify._id },
     { $set: { deniedPermissions: sanitizedMembershipPermissionsUnique } },
     { new: true }
-  )
+  ).populate<{ user: IUser }>("user");
 
   if (!updatedMembershipWithPermissions) {
     throw BadRequestError({ message: "The resource has been removed before it can be modified" })
   }
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS,
+      metadata: {
+        userId: updatedMembershipWithPermissions.user._id.toString(),
+        email: updatedMembershipWithPermissions.user.email,
+        deniedPermissions: updatedMembershipWithPermissions.deniedPermissions.map(({
+          environmentSlug,
+          ability
+        }) => ({
+          environmentSlug,
+          ability
+        }))
+      }
+    },
+    {
+      workspaceId: updatedMembershipWithPermissions.workspace
+    }
+  );
 
   res.send({
     permissionsDenied: updatedMembershipWithPermissions.deniedPermissions,

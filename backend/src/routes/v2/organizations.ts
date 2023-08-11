@@ -10,10 +10,9 @@ import { body, param } from "express-validator";
 import { 
     ACCEPTED, 
     ADMIN, 
-    AUTH_MODE_API_KEY, 
-    AUTH_MODE_JWT,
+    AuthMode,
     MEMBER,
-    OWNER,
+    OWNER
 } from "../../variables";
 import { organizationsController } from "../../controllers/v2";
 
@@ -24,7 +23,7 @@ router.get(
     param("organizationId").exists().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
     }),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -40,7 +39,7 @@ router.patch(
     body("role").exists().isString().trim().isIn([OWNER, ADMIN, MEMBER]),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
     }),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN],
@@ -59,7 +58,7 @@ router.delete(
     param("membershipId").exists().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
     }),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN],
@@ -77,7 +76,7 @@ router.get(
     param("organizationId").exists().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
     }),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN],
@@ -86,12 +85,12 @@ router.get(
     organizationsController.getOrganizationWorkspaces
 );
 
-router.get(
+router.get( // TODO endpoint: deprecate service accounts
     "/:organizationId/service-accounts",
     param("organizationId").exists().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT]
     }),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN],

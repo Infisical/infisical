@@ -4,12 +4,9 @@ import {
 	IOrganization,
 	ISecret,
 	IServiceAccount,
-    IServiceTokenData,
 	IUser,
 	ServiceAccount,
 	ServiceAccountWorkspacePermission,
-	ServiceTokenData,
-	User,
 } from "../models";
 import { validateUserClientForServiceAccount } from "./user";
 import { 
@@ -18,23 +15,18 @@ import {
 	UnauthorizedRequestError,
 } from "../utils/errors";
 import {
-	AUTH_MODE_API_KEY,
-	AUTH_MODE_JWT,
-	AUTH_MODE_SERVICE_ACCOUNT,
-	AUTH_MODE_SERVICE_TOKEN,
 	PERMISSION_READ_SECRETS,
 	PERMISSION_WRITE_SECRETS,
 } from "../variables";
+import { AuthData } from "../interfaces/middleware";
+import { ActorType } from "../ee/models";
 
 export const validateClientForServiceAccount = async ({
 	authData,
 	serviceAccountId,
 	requiredPermissions,
 }: {
-	authData: {
-		authMode: string;
-		authPayload: IUser | IServiceAccount | IServiceTokenData;
-	},
+	authData: AuthData;
 	serviceAccountId: Types.ObjectId;
 	requiredPermissions?: string[];
 }) => {
@@ -46,45 +38,20 @@ export const validateClientForServiceAccount = async ({
 		});
 	}
 	
-	if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
-		await validateUserClientForServiceAccount({
-			user: authData.authPayload,
-			serviceAccount,
-			requiredPermissions,
-		});
-		
-		return serviceAccount;
+	switch (authData.actor.type) {
+		case ActorType.USER:
+			await validateUserClientForServiceAccount({
+				user: authData.authPayload as IUser,
+				serviceAccount,
+				requiredPermissions,
+			});
+			
+			return serviceAccount;
+		case ActorType.SERVICE:
+			throw UnauthorizedRequestError({
+				message: "Failed service token authorization for service account resource",
+			});
 	}
-
-	if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
-		await validateServiceAccountClientForServiceAccount({
-			serviceAccount: authData.authPayload,
-			targetServiceAccount: serviceAccount,
-			requiredPermissions,
-		});
-
-		return serviceAccount;
-	}
-
-	if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
-		throw UnauthorizedRequestError({
-			message: "Failed service token authorization for service account resource",
-		});
-	}
-
-	if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
-		await validateUserClientForServiceAccount({
-			user: authData.authPayload,
-			serviceAccount,
-			requiredPermissions,
-		});
-		
-		return serviceAccount;
-	}
-	
-	throw UnauthorizedRequestError({
-		message: "Failed client authorization for service account resource",
-	});
 }
 
 /**

@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 
+import {
+  useSaveIntegrationAccessToken
+} from "@app/hooks/api";
+
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
-import saveIntegrationAccessToken from "../../api/integrations/saveIntegrationAccessToken";
 
 export default function ChecklyCreateIntegrationPage() {
   const router = useRouter();
+  const { mutateAsync } = useSaveIntegrationAccessToken();
+
   const [accessToken, setAccessToken] = useState("");
   const [accessTokenErrorText, setAccessTokenErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +25,7 @@ export default function ChecklyCreateIntegrationPage() {
 
       setIsLoading(true);
 
-      const integrationAuth = await saveIntegrationAccessToken({
+      const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "checkly",
         accessId: null,

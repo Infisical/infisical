@@ -10,16 +10,16 @@ import { body, param, query } from "express-validator";
 import { secretController } from "../../controllers/v1";
 import {
 	ADMIN, 
-	AUTH_MODE_JWT,
-	MEMBER,
+	AuthMode,
+	MEMBER
 } from "../../variables";
 
-// note to devs: these endpoints will be deprecated in favor of v2
+// note: endpoints deprecated in favor of v3/secrets
 
-router.post(
+router.post( // TODO endpoint: deprecate (moved to POST api/v3/secrets)
 	"/:workspaceId",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -34,10 +34,10 @@ router.post(
 	secretController.pushSecrets
 );
 
-router.get(
+router.get( // TODO endpoint: deprecate (moved to GET api/v3/secrets)
 	"/:workspaceId",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -50,7 +50,7 @@ router.get(
 	secretController.pullSecrets
 );
 
-router.get(
+router.get( // TODO endpoint: deprecate (moved to GET api/v3/secrets)
 	"/:workspaceId/service-token",
 	requireServiceTokenAuth,
 	query("environment").exists().trim(),

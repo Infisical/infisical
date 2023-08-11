@@ -3,13 +3,12 @@ const router = express.Router();
 import { param } from "express-validator";
 import { requireAuth, validateRequest } from "../../middleware";
 import { membershipOrgController } from "../../controllers/v1";
-import { AUTH_MODE_JWT } from "../../variables";
+import { AuthMode } from "../../variables";
 
-router.post(
-	// TODO
+router.post( // TODO endpoint: check dashboard
 	"/membershipOrg/:membershipOrgId/change-role",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	param("membershipOrgId"),
 	validateRequest,
@@ -17,9 +16,9 @@ router.post(
 );
 
 router.delete(
-	"/:membershipOrgId",
+	"/:membershipOrgId", // TODO endpoint: check dashboard
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	param("membershipOrgId").exists().trim(),
 	validateRequest,

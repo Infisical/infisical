@@ -18,6 +18,7 @@ type Props = {
   importedEnv: string;
   importedSecPath: string;
   importedSecrets: { key: string; value: string; overriden: { env: string; secretPath: string } }[];
+  searchTerm: string;
 };
 
 // to show the environment and folder icon
@@ -37,7 +38,8 @@ export const SecretImportItem = ({
   importedEnv,
   importedSecPath,
   onDelete,
-  importedSecrets = []
+  importedSecrets = [],
+  searchTerm = ""
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle();
   const { attributes, listeners, transform, transition, setNodeRef, isDragging } = useSortable({
@@ -45,6 +47,17 @@ export const SecretImportItem = ({
   });
   const { currentWorkspace } = useWorkspace();
   const rowEnv = currentWorkspace?.environments?.find(({ slug }) => slug === importedEnv);
+
+  useEffect(() => {
+    const filteredSecrets = importedSecrets.filter(secret => secret.key.toUpperCase().includes(searchTerm.toUpperCase()))
+
+    if (filteredSecrets.length > 0 && searchTerm) {
+      setIsExpanded.on();
+    } else {
+      setIsExpanded.off();
+    }
+  }, [searchTerm]);
+
 
   useEffect(() => {
     if (isDragging) {
@@ -65,8 +78,10 @@ export const SecretImportItem = ({
         className="group flex cursor-default flex-row items-center hover:bg-mineshaft-700"
         onClick={() => setIsExpanded.toggle()}
       >
-        <td className="ml-0.5 flex h-10 w-10 items-center justify-center border-none px-4">
-          <FontAwesomeIcon icon={faFileImport} className="text-green-700" />
+        <td className={`ml-0.5 flex h-10 w-10 items-center justify-center border-none px-4 ${isExpanded && "border-t-2 border-mineshaft-500"}`}>
+          <Tooltip content="Secret Import" className="capitalize">
+            <FontAwesomeIcon icon={faFileImport} className="text-green-700" />
+          </Tooltip>
         </td>
         <td
           colSpan={2}
@@ -112,9 +127,8 @@ export const SecretImportItem = ({
       </tr>
       <tr>
         {isExpanded && !isDragging && (
-          <td colSpan={3}>
-            <div className="rounded-md bg-bunker-700 p-4 pb-6">
-              <div className="mb-2 text-lg font-medium">Secrets Imported</div>
+          <td colSpan={3} className={`bg-bunker-800 ${isExpanded && "border-b-2 border-mineshaft-500"}`}>
+            <div className="rounded-md bg-bunker-700 p-1">
               <TableContainer>
                 <table className="secret-table">
                   <thead>
@@ -132,7 +146,7 @@ export const SecretImportItem = ({
                         </td>
                       </tr>
                     )}
-                    {importedSecrets.map(({ key, value, overriden }, index) => (
+                    {importedSecrets.filter(secret => secret.key.toUpperCase().includes(searchTerm.toUpperCase())).map(({ key, value, overriden }, index) => (
                       <tr key={`${importedEnv}-${importedSecPath}-${key}-${index + 1}`}>
                         <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
                           {key}

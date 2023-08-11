@@ -8,6 +8,6 @@ import { Request, Response } from "express";
  */
 export const getMyIp = (req: Request, res: Response) => {
     return res.status(200).send({
-        ip: req.authData.authIP
+        ip: req.authData.ipAddress
     });
 }

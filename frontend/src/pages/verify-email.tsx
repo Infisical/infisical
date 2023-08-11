@@ -7,9 +7,8 @@ import Button from "@app/components/basic/buttons/Button";
 import InputField from "@app/components/basic/InputField";
 import { EmailServiceSetupModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
+import { useSendPasswordResetEmail } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
-
-import SendEmailOnPasswordReset from "./api/auth/SendEmailOnPasswordReset";
 
 export default function VerifyEmail() {
   const [loading, setLoading] = useState(false);
@@ -18,12 +17,14 @@ export default function VerifyEmail() {
   const { data: serverDetails } = useFetchServerStatus();
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
 
+  const { mutateAsync } = useSendPasswordResetEmail();
+
   /**
    * This function sends the verification email and forwards a user to the next step.
    */
   const sendVerificationEmail = async () => {
     if (email) {
-      await SendEmailOnPasswordReset({ email });
+      await mutateAsync({ email });
       setStep(2);
     }
   };

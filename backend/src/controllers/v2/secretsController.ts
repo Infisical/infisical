@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 import { Request, Response } from "express";
 import { ISecret, Secret, ServiceTokenData } from "../../models";
-import { IAction, SecretVersion } from "../../ee/models";
+import { AuditLog, EventType, IAction, SecretVersion } from "../../ee/models";
 import {
   ACTION_ADD_SECRETS,
   ACTION_DELETE_SECRETS,
@@ -14,9 +14,9 @@ import {
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import { EventService } from "../../services";
 import { eventPushSecrets } from "../../events";
-import { EELogService, EESecretService } from "../../ee/services";
+import { EEAuditLogService, EELogService, EESecretService } from "../../ee/services";
 import { SecretService, TelemetryService } from "../../services";
-import { getChannelFromUserAgent } from "../../utils/posthog";
+import { getUserAgentType } from "../../utils/posthog";
 import { PERMISSION_WRITE_SECRETS } from "../../variables";
 import {
   userHasNoAbility,
@@ -44,7 +44,7 @@ import { getAllImportedSecrets } from "../../services/SecretImportService";
  * @param res
  */
 export const batchSecrets = async (req: Request, res: Response) => {
-  const channel = getChannelFromUserAgent(req.headers["user-agent"]);
+  const channel = getUserAgentType(req.headers["user-agent"]);
   const postHogClient = await TelemetryService.getPostHogClient();
 
   const {
@@ -56,12 +56,13 @@ export const batchSecrets = async (req: Request, res: Response) => {
     environment: string;
     requests: BatchSecretRequest[];
   } = req.body;
+
   let secretPath = req.body.secretPath as string;
   let folderId = req.body.folderId as string;
-
+  
   const createSecrets: BatchSecret[] = [];
   const updateSecrets: BatchSecret[] = [];
-  const deleteSecrets: Types.ObjectId[] = [];
+  const deleteSecrets: { _id: Types.ObjectId, secretName: string; }[] = [];
   const actions: IAction[] = [];
 
   // get secret blind index salt
@@ -133,7 +134,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
         });
         break;
       case "DELETE":
-        deleteSecrets.push(new Types.ObjectId(request.secret._id));
+        deleteSecrets.push({ _id: new Types.ObjectId(request.secret._id), secretName: request.secret.secretName });
         break;
     }
   }
@@ -153,7 +154,31 @@ export const batchSecrets = async (req: Request, res: Response) => {
         };
       })
     });
+    
+    const auditLogs = await Promise.all(
+      createdSecrets.map((secret, index) => {
+        return EEAuditLogService.createAuditLog(
+          req.authData,
+          {
+            type: EventType.CREATE_SECRET,
+            metadata: {
+              environment: secret.environment,
+              secretPath: secretPath ?? "/",
+              secretId: secret._id.toString(),
+              secretKey: createSecrets[index].secretName,
+              secretVersion: secret.version
+            }
+          },
+          {
+            workspaceId: secret.workspace
+          },
+          false
+        );
+      })
+    );
 
+    await AuditLog.insertMany(auditLogs);
+    
     const addAction = (await EELogService.createAction({
       name: ACTION_ADD_SECRETS,
       userId: req.user?._id,
@@ -252,6 +277,30 @@ export const batchSecrets = async (req: Request, res: Response) => {
         $in: updateSecrets.map((u) => new Types.ObjectId(u._id))
       }
     });
+    
+    const auditLogs = await Promise.all(
+      updateSecrets.map((secret) => {
+        return EEAuditLogService.createAuditLog(
+          req.authData,
+          {
+            type: EventType.UPDATE_SECRET,
+            metadata: {
+              environment,
+              secretPath: secretPath ?? "/",
+              secretId: secret._id.toString(),
+              secretKey: secret.secretName,
+              secretVersion: listedSecretsObj[secret._id.toString()].version
+            }
+          },
+          {
+            workspaceId: new Types.ObjectId(workspaceId)
+          },
+          false
+        );
+      })
+    );
+
+    await AuditLog.insertMany(auditLogs);
 
     const updateAction = (await EELogService.createAction({
       name: ACTION_UPDATE_SECRETS,
@@ -279,21 +328,60 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
   // handle delete secrets
   if (deleteSecrets.length > 0) {
+    const deleteSecretIds: Types.ObjectId[] = deleteSecrets.map((s) => s._id);
+    
+    const deletedSecretsObj = (await Secret.find({
+      _id: {
+        $in: deleteSecretIds
+      }
+    }))
+    .reduce(
+      (obj: any, secret: ISecret) => ({
+        ...obj,
+        [secret._id.toString()]: secret
+      }),
+      {}
+    );
+    
     await Secret.deleteMany({
       _id: {
-        $in: deleteSecrets
+        $in: deleteSecretIds
       }
     });
-
+    
     await EESecretService.markDeletedSecretVersions({
-      secretIds: deleteSecrets
+      secretIds: deleteSecretIds
     });
+
+    const auditLogs = await Promise.all(
+      deleteSecrets.map((secret) => {
+        return EEAuditLogService.createAuditLog(
+          req.authData,
+          {
+            type: EventType.DELETE_SECRET,
+            metadata: {
+              environment,
+              secretPath: secretPath ?? "/",
+              secretId: secret._id.toString(),
+              secretKey: secret.secretName,
+              secretVersion: deletedSecretsObj[secret._id.toString()].version
+            }
+          },
+          {
+            workspaceId: new Types.ObjectId(workspaceId)
+          },
+          false
+        );
+      })
+    );
+
+    await AuditLog.insertMany(auditLogs);
 
     const deleteAction = (await EELogService.createAction({
       name: ACTION_DELETE_SECRETS,
       userId: req.user._id,
       workspaceId: new Types.ObjectId(workspaceId),
-      secretIds: deleteSecrets
+      secretIds: deleteSecretIds
     })) as IAction;
     actions.push(deleteAction);
 
@@ -351,7 +439,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
   }
 
   if (deleteSecrets.length > 0) {
-    resObj["deletedSecrets"] = deleteSecrets.map((d) => d.toString());
+    resObj["deletedSecrets"] = deleteSecrets.map((d) => d._id.toString());
   }
 
   return res.status(200).send(resObj);
@@ -416,7 +504,7 @@ export const createSecrets = async (req: Request, res: Response) => {
     }   
     */
 
-  const channel = getChannelFromUserAgent(req.headers["user-agent"]);
+  const channel = getUserAgentType(req.headers["user-agent"]);
   const {
     workspaceId,
     environment,
@@ -697,10 +785,16 @@ export const getSecrets = async (req: Request, res: Response) => {
   const environment = req.query.environment as string;
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
-  if ((!folders && folderId && folderId !== "root") || (!folders && secretPath)) {
+
+  if (
+    // if no folders and asking for a non root folder id or non root secret path
+    (!folders && folderId && folderId !== "root") ||
+    (!folders && secretPath && secretPath !== "/")
+  ) {
     res.send({ secrets: [] });
     return;
   }
+
   if (folders && folderId !== "root") {
     const folder = searchByFolderId(folders.nodes, folderId as string);
     if (!folder) {
@@ -834,7 +928,7 @@ export const getSecrets = async (req: Request, res: Response) => {
     importedSecrets = await getAllImportedSecrets(workspaceId, environment, folderId as string);
   }
 
-  const channel = getChannelFromUserAgent(req.headers["user-agent"]);
+  const channel = getUserAgentType(req.headers["user-agent"]);
 
   const readAction = await EELogService.createAction({
     name: ACTION_READ_SECRETS,
@@ -855,6 +949,21 @@ export const getSecrets = async (req: Request, res: Response) => {
       channel,
       ipAddress: req.realIP
     }));
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.GET_SECRETS,
+      metadata: {
+        environment,
+        secretPath: secretPath as string,
+        numberOfSecrets: secrets.length
+      }
+    },
+    {
+      workspaceId: new Types.ObjectId(workspaceId as string)
+    }
+  );
 
   const postHogClient = await TelemetryService.getPostHogClient();
   if (postHogClient) {
@@ -1170,7 +1279,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
     }   
     */
 
-  const channel = getChannelFromUserAgent(req.headers["user-agent"]);
+  const channel = getUserAgentType(req.headers["user-agent"]);
   const toDelete = req.secrets.map((s: any) => s._id);
 
   await Secret.deleteMany({

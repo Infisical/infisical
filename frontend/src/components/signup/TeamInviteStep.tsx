@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 
+import { useAddUserToOrg } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
-import addUserToOrg from "@app/pages/api/organization/addUserToOrg";
 
 import { Button, EmailServiceSetupModal } from "../v2";
 
@@ -12,10 +12,12 @@ import { Button, EmailServiceSetupModal } from "../v2";
  * This is the last step of the signup flow. People can optionally invite their teammates here.
  */
 export default function TeamInviteStep(): JSX.Element {
-  const [emails, setEmails] = useState("");
   const { t } = useTranslation();
   const router = useRouter();
+  const [emails, setEmails] = useState("");
   const { data: serverDetails } = useFetchServerStatus();
+  
+  const { mutateAsync } = useAddUserToOrg();
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
 
   // Redirect user to the getting started page
@@ -27,7 +29,12 @@ export default function TeamInviteStep(): JSX.Element {
     inviteEmails
       .split(",")
       .map((email) => email.trim())
-      .map(async (email) => addUserToOrg(email, String(localStorage.getItem("orgData.id"))));
+      .map(async (email) => {
+        mutateAsync({
+          inviteeEmail: email,
+          organizationId: String(localStorage.getItem("orgData.id"))
+        });
+      });
 
     await redirectToHome();
   };

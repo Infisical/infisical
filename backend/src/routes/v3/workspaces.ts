@@ -8,7 +8,7 @@ import {
 import { workspacesController } from "../../controllers/v3";
 import {
     ADMIN,
-    AUTH_MODE_JWT,
+    AuthMode
 } from "../../variables";
 import { body, param } from "express-validator";
 
@@ -19,7 +19,7 @@ router.get(
     param("workspaceId").exists().isString().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN],
@@ -33,7 +33,7 @@ router.get( // allow admins to get all workspace secrets (part of blind indices 
     param("workspaceId").exists().isString().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN],
@@ -65,7 +65,7 @@ router.post( // allow admins to name all workspace secrets (part of blind indice
         .withMessage("secretId must be a string"),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN],

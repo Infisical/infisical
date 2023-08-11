@@ -9,23 +9,23 @@ import {
 import { body } from "express-validator";
 import {
 	ADMIN, 
-	AUTH_MODE_JWT,
-	MEMBER,
+	AuthMode,
+	MEMBER
 } from "../../variables";
 import { serviceTokenController } from "../../controllers/v1";
 
 // note: deprecate service-token routes in favor of service-token data routes/structure
 
-router.get(
+router.get( // TODO endpoint: deprecate
 	"/",
 	requireServiceTokenAuth,
 	serviceTokenController.getServiceToken
 );
 
-router.post(
+router.post( // TODO endpoint: deprecate
 	"/",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],

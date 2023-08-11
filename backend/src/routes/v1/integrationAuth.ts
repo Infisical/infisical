@@ -9,16 +9,15 @@ import {
 } from "../../middleware";
 import {
 	ADMIN, 
-	AUTH_MODE_API_KEY,
-	AUTH_MODE_JWT,
-	MEMBER,
+	AuthMode,
+	MEMBER
 } from "../../variables";
 import { integrationAuthController } from "../../controllers/v1";
 
 router.get(
 	"/integration-options",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
 	integrationAuthController.getIntegrationOptions
 );
@@ -26,7 +25,7 @@ router.get(
 router.get(
 	"/:integrationAuthId",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -39,7 +38,7 @@ router.get(
 router.post(
 	"/oauth-token",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -62,7 +61,7 @@ router.post(
 	body("integration").exists().trim().notEmpty(),
 	validateRequest,
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -74,7 +73,7 @@ router.post(
 router.get(
 	"/:integrationAuthId/apps",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -89,7 +88,7 @@ router.get(
 router.get(
 	"/:integrationAuthId/teams",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -102,7 +101,7 @@ router.get(
 router.get(
 	"/:integrationAuthId/vercel/branches",
 	requireAuth({
-        acceptedAuthModes: ["jwt"],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -117,7 +116,7 @@ router.get(
 router.get(
 	"/:integrationAuthId/railway/environments",
 	requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -131,7 +130,7 @@ router.get(
 router.get(
 	"/:integrationAuthId/railway/services",
 	requireAuth({
-		acceptedAuthModes: ["jwt"],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -145,7 +144,7 @@ router.get(
 router.get(
 	"/:integrationAuthId/bitbucket/workspaces",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -158,7 +157,7 @@ router.get(
 router.get(
 	"/:integrationAuthId/northflank/secret-groups",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -172,7 +171,7 @@ router.get(
 router.delete(
 	"/:integrationAuthId",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT],
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],

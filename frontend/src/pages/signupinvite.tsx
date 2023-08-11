@@ -7,7 +7,7 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faCheck, faWarning, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faWarning, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import jsrp from "jsrp";
 import queryString from "query-string";
@@ -16,7 +16,6 @@ import { encodeBase64 } from "tweetnacl-util";
 
 import Button from "@app/components/basic/buttons/Button";
 import InputField from "@app/components/basic/InputField";
-import attemptLogin from "@app/components/utilities/attemptLogin";
 import checkPassword from "@app/components/utilities/checks/checkPassword";
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
 import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
@@ -26,11 +25,11 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   useGetCommonPasswords
 } from "@app/hooks/api";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
-import getOrganizationUserProjects from "@app/pages/api/organization/GetOrgUserProjects";
-
-import completeAccountInformationSignupInvite from "./api/auth/CompleteAccountInformationSignupInvite";
-import verifySignupInvite from "./api/auth/VerifySignupInvite";
+import {
+  completeAccountSignupInvite,
+  verifySignupInvite
+} from "@app/hooks/api/auth/queries";
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -142,7 +141,7 @@ export default function SignupInvite() {
               
               const {
                 token: jwtToken
-              } = await completeAccountInformationSignupInvite({
+              } = await completeAccountSignupInvite({
                 email,
                 firstName,
                 lastName,
@@ -169,7 +168,7 @@ export default function SignupInvite() {
                   privateKey
               });
 
-              const userOrgs = await getOrganizations(); 
+              const userOrgs = await fetchOrganizations(); 
 
               const orgId = userOrgs[0]._id;
               localStorage.setItem("orgData.id", orgId);
@@ -198,25 +197,27 @@ export default function SignupInvite() {
         <Button
           text="Confirm Email"
           onButtonPressed={async () => {
-            const response = await verifySignupInvite({
-              email,
-              code: token,
-              organizationId
-            });
-            if (response.status === 200) {
-              const res = await response.json();
-              // user will have temp token if doesn't have an account
-              // then continue with account setup workflow
-              if (res?.token) {
-                SecurityClient.setSignupToken(res.token);
-                setStep(2);
-              } else {
-                // user will be redirected to dashboard
-                // if not logged in gets kicked out to login
-                router.push(`/org/${organizationId}/overview`);
+            try {
+              const response = await verifySignupInvite({
+                email,
+                code: token,
+                organizationId
+              });
+
+              if (response) {
+                // user will have temp token if doesn't have an account
+                // then continue with account setup workflow
+                if (response?.token) {
+                  SecurityClient.setSignupToken(response.token);
+                  setStep(2);
+                } else {
+                  // user will be redirected to dashboard
+                  // if not logged in gets kicked out to login
+                  router.push(`/org/${organizationId}/overview`);
+                }
               }
-            } else {
-              console.log("ERROR", response);
+            } catch (err) {
+              console.error(err);
               router.push("/requestnewinvite");
             }
           }}

@@ -1,14 +1,14 @@
 import express from "express";
-const router = express.Router();
 import { body, param, query } from "express-validator";
 import { secretImportController } from "../../controllers/v1";
 import { requireAuth, requireWorkspaceAuth, validateRequest } from "../../middleware";
-import { ADMIN, AUTH_MODE_JWT, MEMBER } from "../../variables";
+import { ADMIN, AuthMode, MEMBER } from "../../variables";
+const router = express.Router();
 
 router.post(
   "/",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -27,7 +27,7 @@ router.post(
 router.put(
   "/:id",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
   }),
   param("id").exists().isString().trim(),
   body("secretImports").exists().isArray(),
@@ -40,7 +40,7 @@ router.put(
 router.delete(
   "/:id",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
   }),
   param("id").exists().isString().trim(),
   body("secretImportPath").isString().exists().trim(),
@@ -52,7 +52,7 @@ router.delete(
 router.get(
   "/",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -68,7 +68,7 @@ router.get(
 router.get(
   "/secrets",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],

@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 
+import {
+  useSaveIntegrationAccessToken
+} from "@app/hooks/api";
+
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
-import saveIntegrationAccessToken from "../../api/integrations/saveIntegrationAccessToken";
 
 export default function AWSParameterStoreAuthorizeIntegrationPage() {
   const router = useRouter();
+  const { mutateAsync } = useSaveIntegrationAccessToken();
+  
   const [isLoading, setIsLoading] = useState(false);
 
   const [accessKey, setAccessKey] = useState("");
@@ -30,7 +35,7 @@ export default function AWSParameterStoreAuthorizeIntegrationPage() {
 
       setIsLoading(true);
 
-      const integrationAuth = await saveIntegrationAccessToken({
+      const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "aws-parameter-store",
         accessId: accessKey,

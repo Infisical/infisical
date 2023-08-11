@@ -261,22 +261,6 @@ export const createOrganizationPortalSession = async (
 };
 
 /**
- * Return organization subscriptions
- * @param req
- * @param res
- * @returns
- */
-export const getOrganizationSubscriptions = async (
-	req: Request,
-	res: Response
-) => {
-	return res.status(200).send({
-		subscriptions: []
-	});
-};
-
-
-/**
  * Given a org id, return the projects each member of the org belongs to
  * @param req
  * @param res

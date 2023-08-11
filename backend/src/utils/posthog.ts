@@ -1,15 +1,15 @@
-const CLI_USER_AGENT_NAME = "cli"
-const K8_OPERATOR_AGENT_NAME = "k8-operator"
-export const getChannelFromUserAgent = function (userAgent: string | undefined) {
+import { UserAgentType } from "../ee/models"
+
+export const getUserAgentType = function (userAgent: string | undefined) {
   if (userAgent == undefined) {
-    return "other"
-  } else if (userAgent == CLI_USER_AGENT_NAME) {
-    return "cli"
-  } else if (userAgent == K8_OPERATOR_AGENT_NAME) {
-    return "k8-operator"
+    return UserAgentType.OTHER;
+  } else if (userAgent == UserAgentType.CLI) {
+    return UserAgentType.CLI;
+  } else if (userAgent == UserAgentType.K8_OPERATOR) {
+    return UserAgentType.K8_OPERATOR;
   } else if (userAgent.toLowerCase().includes("mozilla")) {
-    return "web"
+    return UserAgentType.WEB;
   } else {
-    return "other"
+    return UserAgentType.OTHER;
   }
 } 

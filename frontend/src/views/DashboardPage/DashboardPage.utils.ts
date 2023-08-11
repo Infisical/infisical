@@ -182,15 +182,18 @@ const deepCompareSecrets = (lhs: DecryptedSecret, rhs: any) =>
   JSON.stringify(lhs.tags) === JSON.stringify(rhs.tags);
 
 export const transformSecretsToBatchSecretReq = (
-  deletedSecretIds: string[],
+  deletedSecretIds: { id: string; secretName: string; }[],
   latestFileKey: any,
   secrets: FormData["secrets"],
   intialValues: DecryptedSecret[] = []
 ) => {
   // deleted secrets
-  const secretsToBeDeleted: BatchSecretDTO["requests"] = deletedSecretIds.map((id) => ({
+  const secretsToBeDeleted: BatchSecretDTO["requests"] = deletedSecretIds.map(({ id, secretName }) => ({
     method: "DELETE",
-    secret: { _id: id }
+    secret: { 
+      _id: id,
+      secretName
+    }
   }));
 
   const secretsToBeUpdated: BatchSecretDTO["requests"] = [];
@@ -261,7 +264,7 @@ export const transformSecretsToBatchSecretReq = (
     if (idOverride) {
       // if action is deleted meaning override has been removed but id is kept to collect at this point
       if (overrideAction === SecretActionType.Deleted) {
-        secretsToBeDeleted.push({ method: "DELETE", secret: { _id: idOverride } });
+        secretsToBeDeleted.push({ method: "DELETE", secret: { _id: idOverride, secretName: key } });
       } else {
         // if not deleted action then as id is there its an updated
         const initialSecretValue = intialValues?.find(({ _id: secId }) => secId === _id)!;

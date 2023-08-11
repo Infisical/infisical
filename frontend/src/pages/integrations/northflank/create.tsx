@@ -3,6 +3,10 @@ import { useRouter } from "next/router";
 import queryString from "query-string";
 
 import {
+  useCreateIntegration
+} from "@app/hooks/api";
+
+import {
   Button,
   Card,
   CardTitle,
@@ -17,10 +21,10 @@ import {
   useGetIntegrationAuthNorthflankSecretGroups
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
-import createIntegration from "../../api/integrations/createIntegration";
 
 export default function NorthflankCreateIntegrationPage() {
   const router = useRouter();
+  const { mutateAsync } = useCreateIntegration();
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
@@ -78,7 +82,7 @@ export default function NorthflankCreateIntegrationPage() {
 
       setIsLoading(true);
 
-      await createIntegration({
+      await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: integrationAuthApps?.find(

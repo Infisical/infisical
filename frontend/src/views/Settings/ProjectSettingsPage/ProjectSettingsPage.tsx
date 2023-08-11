@@ -17,7 +17,7 @@ const tabs = [
 export const ProjectSettingsPage = () => {
   const { t } = useTranslation();
   return (
-    <div className="flex h-full w-full justify-center bg-bunker-800 px-6 text-white">
+    <div className="flex w-full justify-center bg-bunker-800 px-6 text-white">
       <div className="w-full max-w-screen-lg">
         <div className="relative right-5 ml-4">
           <NavHeader pageName={t("settings.project.title")} isProjectRelated />

@@ -1,3 +1,4 @@
+// TODO: deprecate in favor of new audit logs
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Image from "next/image";
@@ -7,7 +8,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import getActionData from "@app/ee/api/secrets/GetActionData";
 import patienceDiff from "@app/ee/utilities/findTextDifferences";
-import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
+import {
+  useGetUserWsKey
+} from "@app/hooks/api";
 
 import {
   decryptAssymmetric,
@@ -58,25 +61,24 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
   const [actionData, setActionData] = useState<DecryptedSecretProps[]>();
   const [actionMetaData, setActionMetaData] = useState<ActionProps>();
   const [isLoading, setIsLoading] = useState(false);
+  const { data: wsKey } = useGetUserWsKey(String(router.query.id));
 
   useEffect(() => {
     const getLogData = async () => {
       setIsLoading(true);
       const tempActionData = await getActionData({ actionId: currentAction });
-      const latestKey = await getLatestFileKey({ workspaceId: String(router.query.id) });
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
 
       // #TODO: make this a separate function and reuse across the app
       let decryptedLatestKey: string;
-      if (latestKey) {
+      if (wsKey) {
         // assymmetrically decrypt symmetric key with local private key
         decryptedLatestKey = decryptAssymmetric({
-          ciphertext: latestKey.latestKey.encryptedKey,
-          nonce: latestKey.latestKey.nonce,
-          publicKey: latestKey.latestKey.sender.publicKey,
+          ciphertext: wsKey.encryptedKey,
+          nonce: wsKey.nonce,
+          publicKey: wsKey.sender.publicKey,
           privateKey: String(PRIVATE_KEY)
         });
-      }
 
       const decryptedSecretVersions = tempActionData.payload.secretVersions.map(
         (encryptedSecretVersion: {
@@ -121,9 +123,10 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
       setActionData(decryptedSecretVersions);
       setActionMetaData({ name: tempActionData.name });
       setIsLoading(false);
+      }
     };
     getLogData();
-  }, [currentAction]);
+  }, [currentAction, wsKey]);
 
   return (
     <div

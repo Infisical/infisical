@@ -1,8 +1,6 @@
 import { Types } from "mongoose";
-
-
 import {
-	AuthData,
+	AuthData
 } from "../../interfaces/middleware";
 
 declare module "express" {

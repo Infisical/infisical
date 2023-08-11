@@ -6,10 +6,7 @@ import {
 } from "../../middleware";
 import { body, param } from "express-validator";
 import { usersController } from "../../controllers/v2";
-import {
-    AUTH_MODE_API_KEY,
-    AUTH_MODE_JWT,
-} from "../../variables";
+import { AuthMode } from "../../variables";
 import {
     AuthProvider
 } from "../../models";
@@ -17,7 +14,7 @@ import {
 router.get(
     "/me",
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
     }),
     usersController.getMe
 );
@@ -25,7 +22,7 @@ router.get(
 router.patch(
     "/me/mfa",
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
     }),
     body("isMfaEnabled").exists().isBoolean(),
     validateRequest,
@@ -35,7 +32,7 @@ router.patch(
 router.patch(
     "/me/name",
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
     }),
     body("firstName").exists().isString(),
     body("lastName").isString(),
@@ -46,7 +43,7 @@ router.patch(
 router.patch(
     "/me/auth-provider",
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
     }),
     body("authProvider").exists().isString().isIn([
         AuthProvider.EMAIL,
@@ -78,7 +75,7 @@ router.put(
 router.get(
     "/me/organizations",
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
     }),
     usersController.getMyOrganizations
 );
@@ -86,7 +83,7 @@ router.get(
 router.get(
     "/me/api-keys",
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT]
     }),
     usersController.getMyAPIKeys
 );
@@ -94,7 +91,7 @@ router.get(
 router.post(
     "/me/api-keys",
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT]
     }),
     body("name").exists().isString().trim(),
     body("expiresIn").isNumeric(),
@@ -105,7 +102,7 @@ router.post(
 router.delete(
     "/me/api-keys/:apiKeyDataId",
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT]
     }),
     param("apiKeyDataId").exists().trim(),
     validateRequest,
@@ -115,7 +112,7 @@ router.delete(
 router.get(
     "/me/sessions",
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT]
     }), 
     usersController.getMySessions
 );
@@ -123,7 +120,7 @@ router.get(
 router.delete(
     "/me/sessions",
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT],
+        acceptedAuthModes: [AuthMode.JWT]
     }), 
     usersController.deleteMySessions
 );

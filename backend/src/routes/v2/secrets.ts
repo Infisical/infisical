@@ -12,10 +12,7 @@ import { body, query } from "express-validator";
 import { secretsController } from "../../controllers/v2";
 import {
   ADMIN,
-  AUTH_MODE_API_KEY,
-  AUTH_MODE_JWT,
-  AUTH_MODE_SERVICE_ACCOUNT,
-  AUTH_MODE_SERVICE_TOKEN,
+  AuthMode,
   MEMBER,
   PERMISSION_READ_SECRETS,
   PERMISSION_WRITE_SECRETS,
@@ -24,10 +21,10 @@ import {
 } from "../../variables";
 import { BatchSecretRequest } from "../../types/secret";
 
-router.post(
+router.post( // TODO endpoint: strongly consider deprecation in favor of a single operation experience on dashboard
   "/batch",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -59,7 +56,7 @@ router.post(
   secretsController.batchSecrets
 );
 
-router.post(
+router.post( // TODO endpoint: deprecate (moved to POST api/v3/secrets)
   "/",
   body("workspaceId").exists().isString().trim(),
   body("environment").exists().isString().trim(),
@@ -109,7 +106,7 @@ router.post(
     }),
   validateRequest,
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -120,7 +117,7 @@ router.post(
   secretsController.createSecrets
 );
 
-router.get(
+router.get( // TODO endpoint: deprecate (moved to GET api/v3/secrets)
   "/",
   query("workspaceId").exists().trim(),
   query("environment").exists().trim(),
@@ -130,12 +127,7 @@ router.get(
   query("include_imports").optional().default(false).isBoolean(),
   validateRequest,
   requireAuth({
-    acceptedAuthModes: [
-      AUTH_MODE_JWT,
-      AUTH_MODE_API_KEY,
-      AUTH_MODE_SERVICE_TOKEN,
-      AUTH_MODE_SERVICE_ACCOUNT
-    ]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -146,7 +138,7 @@ router.get(
   secretsController.getSecrets
 );
 
-router.patch(
+router.patch( // TODO endpoint: deprecate (moved to PATCH api/v3/secrets)
   "/",
   body("secrets")
     .exists()
@@ -172,7 +164,7 @@ router.patch(
     }),
   validateRequest,
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   requireSecretsAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -181,7 +173,7 @@ router.patch(
   secretsController.updateSecrets
 );
 
-router.delete(
+router.delete( // TODO endpoint: deprecate (moved to DELETE api/v3/secrets)
   "/",
   body("secretIds")
     .exists()
@@ -201,7 +193,7 @@ router.delete(
     .isEmpty(),
   validateRequest,
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   requireSecretsAuth({
     acceptedRoles: [ADMIN, MEMBER],

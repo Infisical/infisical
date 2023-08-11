@@ -60,7 +60,7 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
         cert,
     } = req.body;
 
-    const plan = await EELicenseService.getPlan(organizationId);
+    const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
     
     if (!plan.samlSSO) return res.status(400).send({
         message: "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
@@ -199,7 +199,7 @@ export const createSSOConfig = async (req: Request, res: Response) => {
         cert
     } = req.body;
 
-    const plan = await EELicenseService.getPlan(organizationId);
+    const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
     
     if (!plan.samlSSO) return res.status(400).send({
         message: "Failed to create SAML SSO configuration due to plan restriction. Upgrade plan to add SSO configuration."
