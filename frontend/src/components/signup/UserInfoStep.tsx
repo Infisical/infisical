@@ -9,8 +9,8 @@ import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
 
 import { useGetCommonPasswords } from "@app/hooks/api";
+import { completeAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
-import completeAccountInformationSignup from "@app/pages/api/auth/CompleteAccountInformationSignup";
 import ProjectService from "@app/services/ProjectService";
 
 import InputField from "../basic/InputField";
@@ -159,7 +159,7 @@ export default function UserInfoStep({
                 secret: Buffer.from(derivedKey.hash)
               });
 
-              const response = await completeAccountInformationSignup({
+              const response = await completeAccountSignup({
                 email,
                 firstName: name.split(" ")[0],
                 lastName: name.split(" ").slice(1).join(" "),

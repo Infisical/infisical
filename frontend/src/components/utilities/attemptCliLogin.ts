@@ -1,10 +1,9 @@
 /* eslint-disable prefer-destructuring */
 import jsrp from "jsrp";
 
+import { login1, login2 } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchMyOrganizationProjects } from "@app/hooks/api/users/queries";
-import login1 from "@app/pages/api/auth/Login1";
-import login2 from "@app/pages/api/auth/Login2";
 import KeyService from "@app/services/KeyService";
 
 import Telemetry from "./telemetry/Telemetry";

@@ -1,10 +1,9 @@
 /* eslint-disable prefer-destructuring */
 import jsrp from "jsrp";
 
+import { login1 , verifyMfaToken } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchMyOrganizationProjects } from "@app/hooks/api/users/queries";
-import login1 from "@app/pages/api/auth/Login1";
-import verifyMfaToken from "@app/pages/api/auth/verifyMfaToken";
 import KeyService from "@app/services/KeyService";
 
 import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
@@ -56,7 +55,7 @@ const attemptLoginMfa = async ({
                     tag
                 } = await verifyMfaToken({
                     email,
-                    mfaToken
+                    mfaCode: mfaToken
                 });
 
                 // unset temporary (MFA) JWT token and set JWT token

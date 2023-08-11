@@ -26,7 +26,7 @@ router.post(
 	keyController.uploadKey
 );
 
-router.get(
+router.get( // TODO endpoint: deprecate (note: move frontend to v2/workspace/key or something)
 	"/:workspaceId/latest",
 	requireAuth({
         acceptedAuthModes: [AuthMode.JWT],

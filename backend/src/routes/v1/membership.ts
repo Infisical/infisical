@@ -9,7 +9,7 @@ import { AuthMode } from "../../variables";
 // note: ALL DEPRECIATED (moved to api/v2/workspace/:workspaceId/memberships/:membershipId)
 // TODO endpoint: consider moving these endpoints to be under /workspace to be more RESTful
 
-router.get( // used for old CLI (deprecate)
+router.get( // TODO endpoint: deprecate - used for old CLI (deprecate)
 	"/:workspaceId/connect",
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT],

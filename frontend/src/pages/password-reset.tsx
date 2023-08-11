@@ -12,11 +12,10 @@ import Button from "@app/components/basic/buttons/Button";
 import InputField from "@app/components/basic/InputField";
 import passwordCheck from "@app/components/utilities/checks/PasswordCheck";
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
+import { useResetPassword,useVerifyPasswordResetCode } from "@app/hooks/api";
+import { getBackupEncryptedPrivateKey } from "@app/hooks/api/auth/queries";
 
 import { deriveArgonKey } from "../components/utilities/cryptography/crypto";
-import EmailVerifyOnPasswordReset from "./api/auth/EmailVerifyOnPasswordReset";
-import getBackupEncryptedPrivateKey from "./api/auth/getBackupEncryptedPrivateKey";
-import resetPasswordOnAccountRecovery from "./api/auth/resetPasswordOnAccountRecovery";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -34,6 +33,10 @@ export default function PasswordReset() {
   const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
 
   const router = useRouter();
+
+  const { mutateAsync: verifyPasswordResetCodeMutateAsync } = useVerifyPasswordResetCode();
+  const { mutateAsync: resetPasswordMutateAsync } = useResetPassword();
+  
   const parsedUrl = queryString.parse(router.asPath.split("?")[1]);
   const token = parsedUrl.token as string;
   const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
@@ -43,7 +46,7 @@ export default function PasswordReset() {
     e.preventDefault();
     try {
       const result = await getBackupEncryptedPrivateKey({ verificationToken });
-
+      
       setPrivateKey(
         Aes256Gcm.decrypt({
           ciphertext: result.encryptedPrivateKey,
@@ -53,7 +56,8 @@ export default function PasswordReset() {
         })
       );
       setStep(3);
-    } catch {
+    } catch(err) {
+      console.error(err);
       setBackupKeyError(true);
     }
   };
@@ -112,7 +116,7 @@ export default function PasswordReset() {
               secret: Buffer.from(derivedKey.hash)
             });
 
-            const response = await resetPasswordOnAccountRecovery({
+            await resetPasswordMutateAsync({
               protectedKey,
               protectedKeyIV,
               protectedKeyTag,
@@ -123,11 +127,9 @@ export default function PasswordReset() {
               verifier: result.verifier,
               verificationToken
             });
+            
+            router.push("/login");
 
-            // if everything works, go the main dashboard page.
-            if (response?.status === 200) {
-              router.push("/login");
-            }
             setLoading(false)
           });
         }
@@ -146,15 +148,16 @@ export default function PasswordReset() {
         <Button
           text="Confirm Email"
           onButtonPressed={async () => {
-            const response = await EmailVerifyOnPasswordReset({
-              email,
-              code: token
-            });
-            if (response.status === 200) {
-              setVerificationToken((await response.json()).token);
+            try {
+              const response = await verifyPasswordResetCodeMutateAsync({
+                email,
+                code: token
+              });
+
+              setVerificationToken(response.token);
               setStep(2);
-            } else {
-              console.log("ERROR", response);
+            } catch (err) {
+              console.log("ERROR", err);
               router.push("/email-not-verified");
             }
           }}

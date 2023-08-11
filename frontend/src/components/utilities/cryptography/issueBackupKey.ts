@@ -3,8 +3,9 @@ import crypto from "crypto";
 
 import jsrp from "jsrp";
 
-import issueBackupPrivateKey from "@app/pages/api/auth/IssueBackupPrivateKey";
-import SRP1 from "@app/pages/api/auth/SRP1";
+import { issueBackupPrivateKey ,
+  srp1
+} from "@app/hooks/api/auth/queries";
 
 import generateBackupPDF from "../generateBackupPDF";
 import Aes256Gcm from "./aes-256-gcm";
@@ -51,7 +52,7 @@ const issueBackupKey = async ({
         let serverPublicKey;
         let salt;
         try {
-          const res = await SRP1({
+          const res = await srp1({
             clientPublicKey
           });
           serverPublicKey = res.serverPublicKey;
@@ -61,8 +62,8 @@ const issueBackupKey = async ({
           console.log("Wrong current password", err, 1);
         }
 
-        clientPassword.setSalt(salt);
-        clientPassword.setServerPublicKey(serverPublicKey);
+        clientPassword.setSalt(salt as string);
+        clientPassword.setServerPublicKey(serverPublicKey as string);
         const clientProof = clientPassword.getProof(); // called M1
 
         const generatedKey = crypto.randomBytes(16).toString("hex");
@@ -80,24 +81,25 @@ const issueBackupKey = async ({
                   secret: generatedKey
                 });
 
-                const res = await issueBackupPrivateKey({
-                  encryptedPrivateKey: ciphertext,
-                  iv,
-                  tag,
-                  salt: result.salt,
-                  verifier: result.verifier,
-                  clientProof
-                });
+                try {
+                  await issueBackupPrivateKey({
+                    encryptedPrivateKey: ciphertext,
+                    iv,
+                    tag,
+                    salt: result.salt,
+                    verifier: result.verifier,
+                    clientProof
+                  });
 
-                if (res?.status === 400) {
-                  setBackupKeyError(true);
-                } else if (res?.status === 200) {
                   generateBackupPDF({
                     personalName,
                     personalEmail: email,
                     generatedKey
                   });
                   setBackupKeyIssued(true);
+              
+                } catch {
+                  setBackupKeyError(true);
                 }
               }
             );

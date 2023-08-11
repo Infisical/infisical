@@ -1,10 +1,9 @@
 /* eslint-disable prefer-destructuring */
 import jsrp from "jsrp";
 
+import { login1, login2 } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchMyOrganizationProjects } from "@app/hooks/api/users/queries";
-import login1 from "@app/pages/api/auth/Login1";
-import login2 from "@app/pages/api/auth/Login2";
 import KeyService from "@app/services/KeyService";
 
 import Telemetry from "./telemetry/Telemetry";
@@ -46,12 +45,13 @@ const attemptLogin = async (
       async () => {
         try {
           const clientPublicKey = client.getPublicKey();
+          
           const { serverPublicKey, salt } = await login1({
             email,
             clientPublicKey,
             providerAuthToken,
           });
-
+          
           client.setSalt(salt);
           client.setServerPublicKey(serverPublicKey);
           const clientProof = client.getProof(); // called M1

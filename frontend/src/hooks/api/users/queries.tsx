@@ -201,7 +201,9 @@ export const useRegisterUserAction = () => {
 
 export const useLogoutUser = () =>
   useMutation({
-    mutationFn: () => apiRequest.post("/api/v1/auth/logout"),
+    mutationFn: async () => {
+      await apiRequest.post("/api/v1/auth/logout");
+    },
     onSuccess: () => {
       setAuthToken("");
       // Delete the cookie by not setting a value; Alternatively clear the local storage
