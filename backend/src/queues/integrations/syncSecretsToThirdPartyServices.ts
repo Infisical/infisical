@@ -56,6 +56,10 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
   }
 })
 
+syncSecretsToThirdPartyServices.on("error", (error) => {
+  console.log("QUEUE ERROR:", error)
+})
+
 export const syncSecretsToActiveIntegrationsQueue = (jobDetails: TSyncSecretsToThirdPartyServices) => {
   syncSecretsToThirdPartyServices.add(jobDetails, {
     attempts: 5,
