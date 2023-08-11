@@ -12,10 +12,11 @@ import {
   PmtMethod,
   ProductsTable,
   RenameOrgDTO,
-  TaxID} from "./types";
+  TaxID
+} from "./types";
 
 const organizationKeys = {
-  getUserOrganization: ["organization"] as const,
+  getUserOrganizations: ["organization"] as const,
   getOrgPlanBillingInfo: (orgId: string) => [{ orgId }, "organization-plan-billing"] as const,
   getOrgPlanTable: (orgId: string) => [{ orgId }, "organization-plan-table"] as const,
   getOrgPlansTable: (orgId: string, billingCycle: "monthly" | "yearly") => [{ orgId, billingCycle }, "organization-plans-table"] as const,
@@ -26,13 +27,16 @@ const organizationKeys = {
   getOrgLicenses: (orgId: string) => [{ orgId }, "organization-licenses"] as const
 };
 
-export const useGetOrganization = () => {
-  return useQuery({ 
-    queryKey: organizationKeys.getUserOrganization, 
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ organizations: Organization[] }>("/api/v1/organization");
+export const fetchOrganizations = async () => {
+  const { data: { organizations } } = await apiRequest.get<{ organizations: Organization[] }>("/api/v1/organization");
+  return organizations;
+}
 
-      return data.organizations;
+export const useGetOrganizations = () => {
+  return useQuery({ 
+    queryKey: organizationKeys.getUserOrganizations, 
+    queryFn: async () => {
+      return fetchOrganizations();
     }
   });
 }
@@ -41,10 +45,11 @@ export const useRenameOrg = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, RenameOrgDTO>({
-    mutationFn: ({ newOrgName, orgId }) =>
-      apiRequest.patch(`/api/v1/organization/${orgId}/name`, { name: newOrgName }),
+    mutationFn: ({ newOrgName, orgId }) => {
+      return apiRequest.patch(`/api/v1/organization/${orgId}/name`, { name: newOrgName });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries(organizationKeys.getUserOrganization);
+      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
     }
   });
 };

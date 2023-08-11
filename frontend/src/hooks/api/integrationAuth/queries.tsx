@@ -312,6 +312,69 @@ export const useGetIntegrationAuthNorthflankSecretGroups = ({
   });
 };
 
+export const useAuthorizeIntegration = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      workspaceId,
+      code,
+      integration
+    }: {
+      workspaceId: string;
+      code: string;
+      integration: string;
+    }) => {
+      const { data: { integrationAuth } } = await apiRequest.post("/api/v1/integration-auth/oauth-token", {
+        workspaceId,
+        code,
+        integration
+      });
+
+      return integrationAuth;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(res.workspace));
+    }
+  });
+};
+
+export const useSaveIntegrationAccessToken = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      workspaceId,
+      integration,
+      accessId,
+      accessToken,
+      url,
+      namespace
+    }: {
+      workspaceId: string | null;
+      integration: string | undefined;
+      accessId: string | null;
+      accessToken: string;
+      url: string | null;
+      namespace: string | null;
+    }) => {
+      const { data: { integrationAuth } } = await apiRequest.post("/api/v1/integration-auth/access-token", {
+        workspaceId,
+        integration,
+        accessId,
+        accessToken,
+        url,
+        namespace
+      });
+
+      return integrationAuth;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(res.workspace));
+    }
+  });
+};
+
 export const useDeleteIntegrationAuth = () => {
   const queryClient = useQueryClient();
 

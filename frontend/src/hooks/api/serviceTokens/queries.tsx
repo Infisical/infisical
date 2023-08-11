@@ -23,12 +23,13 @@ const fetchWorkspaceServiceTokens = async (workspaceID: string) => {
 
 type UseGetWorkspaceServiceTokensProps = { workspaceID: string };
 
-export const useGetUserWsServiceTokens = ({ workspaceID }: UseGetWorkspaceServiceTokensProps) =>
-  useQuery({
+export const useGetUserWsServiceTokens = ({ workspaceID }: UseGetWorkspaceServiceTokensProps) => {
+  return useQuery({
     queryKey: serviceTokenKeys.getAllWorkspaceServiceToken(workspaceID),
     queryFn: () => fetchWorkspaceServiceTokens(workspaceID),
     enabled: Boolean(workspaceID)
   });
+}
 
 // mutation
 export const useCreateServiceToken = () => {
@@ -36,6 +37,7 @@ export const useCreateServiceToken = () => {
 
   return useMutation<CreateServiceTokenRes, {}, CreateServiceTokenDTO>({
     mutationFn: async (body) => {
+      console.log("useCreateServiceToken");
       const { data } = await apiRequest.post("/api/v2/service-token/", body);
       data.serviceToken += `.${body.randomBytes}`;
       return data;
@@ -51,6 +53,7 @@ export const useDeleteServiceToken = () => {
 
   return useMutation<DeleteServiceTokenRes, {}, string>({
     mutationFn: async (serviceTokenId) => {
+      console.log("useDeleteServiceToken");
       const { data } = await apiRequest.delete(`/api/v2/service-token/${serviceTokenId}`);
       return data;
     },

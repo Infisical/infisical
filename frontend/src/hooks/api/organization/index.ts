@@ -4,7 +4,7 @@ export {
     useCreateCustomerPortalSession,
     useDeleteOrgPmtMethod,
     useDeleteOrgTaxId,
-    useGetOrganization, 
+    useGetOrganizations, 
     useGetOrgBillingDetails,
     useGetOrgInvoices,
     useGetOrgLicenses,

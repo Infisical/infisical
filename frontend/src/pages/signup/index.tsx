@@ -12,9 +12,9 @@ import InitialSignupStep from "@app/components/signup/InitialSignupStep";
 import TeamInviteStep from "@app/components/signup/TeamInviteStep";
 import UserInfoStep from "@app/components/signup/UserInfoStep";
 import SecurityClient from "@app/components/utilities/SecurityClient";
+import { useVerifyEmailVerificationCode } from "@app/hooks/api";
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
-import checkEmailVerificationCode from "@app/pages/api/auth/CheckEmailVerificationCode";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
 
 /**
  * @returns the signup page
@@ -33,11 +33,12 @@ export default function SignUp() {
   const [isSignupWithEmail, setIsSignupWithEmail] = useState(false);
   const [isCodeInputCheckLoading, setIsCodeInputCheckLoading] = useState(false);
   const { t } = useTranslation();
+  const { mutateAsync } = useVerifyEmailVerificationCode();
 
   useEffect(() => {
     const tryAuth = async () => {
       try {
-        const userOrgs = await getOrganizations();
+        const userOrgs = await fetchOrganizations();
         router.push(`/org/${userOrgs[0]._id}/overview`);
       } catch (error) {
         console.log("Error - Not logged in yet");
@@ -60,12 +61,12 @@ export default function SignUp() {
     } else if (step === 2) {
       setIsCodeInputCheckLoading(true);
       // Checking if the code matches the email.
-      const response = await checkEmailVerificationCode({ email, code });
-      if (response.status === 200) {
-        const { token } = await response.json();
+      try {
+        const { token } = await mutateAsync({ email, code });
         SecurityClient.setSignupToken(token);
         setStep(3);
-      } else {
+      } catch(err) {
+        console.error(err);
         setCodeError(true);
       }
       setIsCodeInputCheckLoading(false);
@@ -74,15 +75,16 @@ export default function SignUp() {
 
   // when email service is not configured, skip step 2 and 5
   useEffect(() => {
-    if (!serverDetails?.emailConfigured && step === 2) {
-      incrementStep();
-    }
+    (async () => {
+      if (!serverDetails?.emailConfigured && step === 2) {
+        incrementStep();
+      }
 
-    if (!serverDetails?.emailConfigured && step === 5) {
-      getOrganizations().then((userOrgs) => {
+      if (!serverDetails?.emailConfigured && step === 5) {
+        const userOrgs = await fetchOrganizations();
         router.push(`/org/${userOrgs[0]._id}/overview`);
-      });
-    }
+      }
+    })();
   }, [step]);
 
   const renderView = (registerStep: number) => {

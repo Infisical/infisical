@@ -16,7 +16,7 @@ type ValidEventScope =
     | Required<EventScope>
 
 export default class EEAuditLogService {
-    static async createAuditLog(authData: AuthData, event: Event, eventScope: ValidEventScope, shouldSave: boolean = true) {
+    static async createAuditLog(authData: AuthData, event: Event, eventScope: ValidEventScope, shouldSave = true) {
         
         const MS_IN_DAY = 24 * 60 * 60 * 1000;
         

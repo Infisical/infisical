@@ -4,13 +4,13 @@ import { faEye, faEyeSlash, faPenToSquare, faPlus, faX } from "@fortawesome/free
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Select, SelectItem } from "@app/components/v2";
-import { useSubscription } from "@app/context";
+import { useSubscription, useWorkspace } from "@app/context";
 import updateUserProjectPermission from "@app/ee/api/memberships/UpdateUserProjectPermission";
-import changeUserRoleInWorkspace from "@app/pages/api/workspace/changeUserRoleInWorkspace";
-import deleteUserFromWorkspace from "@app/pages/api/workspace/deleteUserFromWorkspace";
-import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
-import getProjectInfo from "@app/pages/api/workspace/getProjectInfo";
-import uploadKeys from "@app/pages/api/workspace/uploadKeys";
+import {
+  useDeleteUserFromWorkspace,
+  useGetUserWsKey,
+  useUpdateUserWorkspaceRole,
+  useUploadWsKey} from "@app/hooks/api";
 
 import { decryptAssymmetric, encryptAssymmetric } from "../../utilities/cryptography/crypto";
 import guidGenerator from "../../utilities/randomId";
@@ -39,10 +39,16 @@ type EnvironmentProps = {
  * @returns
  */
 const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoading }: Props) => {
+  const { currentWorkspace } = useWorkspace();
   const { subscription } = useSubscription();
-  const [roleSelected, setRoleSelected] = useState(
-    Array(userData?.length).fill(userData.map((user) => user.role))
-  );
+  const { data: wsKey } = useGetUserWsKey(currentWorkspace?._id ?? "");
+
+  const { mutateAsync: deleteUserFromWorkspaceMutateAsync } = useDeleteUserFromWorkspace();
+  const { mutateAsync: uploadWsKeyMutateAsync } = useUploadWsKey();
+  const { mutateAsync: updateUserWorkspaceRoleMutateAsync } = useUpdateUserWorkspaceRole();
+  // const [roleSelected, setRoleSelected] = useState(
+  //   Array(userData?.length).fill(userData.map((user) => user.role))
+  // );
   const router = useRouter();
   const [myRole, setMyRole] = useState("member");
   const [workspaceEnvs, setWorkspaceEnvs] = useState<EnvironmentProps[]>([]);
@@ -52,38 +58,15 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
   const workspaceId = router.query.id as string;
   // Delete the row in the table (e.g. a user)
   // #TODO: Add a pop-up that warns you that the user is going to be deleted.
-  const handleDelete = (membershipId: string, index: number) => {
-    // setUserIdToBeDeleted(userId);
-    // onClick();
-    deleteUserFromWorkspace(membershipId);
-    changeData(userData.filter((v, i) => i !== index));
-    setRoleSelected([
-      ...roleSelected.slice(0, index),
-      ...roleSelected.slice(index + 1, userData?.length)
-    ]);
+  const handleDelete = async (membershipId: string) => {
+    await deleteUserFromWorkspaceMutateAsync(membershipId);
   };
 
-  // Update the rold of a certain user
-  const handleRoleUpdate = (index: number, e: string) => {
-    changeUserRoleInWorkspace(userData[index].membershipId, e.toLowerCase());
-    changeData([
-      ...userData.slice(0, index),
-      ...[
-        {
-          key: userData[index].key,
-          firstName: userData[index].firstName,
-          lastName: userData[index].lastName,
-          email: userData[index].email,
-          role: e.toLocaleLowerCase(),
-          status: userData[index].status,
-          userId: userData[index].userId,
-          membershipId: userData[index].membershipId,
-          publicKey: userData[index].publicKey,
-          deniedPermissions: userData[index].deniedPermissions
-        }
-      ],
-      ...userData.slice(index + 1, userData?.length)
-    ]);
+  const handleRoleUpdate = async (index: number, e: string) => {
+    await updateUserWorkspaceRoleMutateAsync({
+      membershipId: userData[index].membershipId, 
+      role: e.toLowerCase()
+    });
     createNotification({
       text: "Successfully changed user role.",
       type: "success"
@@ -163,32 +146,38 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
   useEffect(() => {
     setMyRole(userData.filter((user) => user.email === myUser)[0]?.role);
     (async () => {
-      const result = await getProjectInfo({ projectId: workspaceId });
-      setWorkspaceEnvs(result.environments);
+      if (currentWorkspace) {
+        setWorkspaceEnvs(currentWorkspace.environments);
+      }
     })();
-  }, [userData, myUser]);
+  }, [userData, myUser, currentWorkspace]);
 
   const grantAccess = async (id: string, publicKey: string) => {
-    const result = await getLatestFileKey({ workspaceId });
+    if (wsKey) {
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
-    const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
+      // assymmetrically decrypt symmetric key with local private key
+      const key = decryptAssymmetric({
+        ciphertext: wsKey.encryptedKey,
+        nonce: wsKey.nonce,
+        publicKey: wsKey.sender.publicKey,
+        privateKey: PRIVATE_KEY
+      });
 
-    // assymmetrically decrypt symmetric key with local private key
-    const key = decryptAssymmetric({
-      ciphertext: result.latestKey.encryptedKey,
-      nonce: result.latestKey.nonce,
-      publicKey: result.latestKey.sender.publicKey,
-      privateKey: PRIVATE_KEY
-    });
+      const { ciphertext, nonce } = encryptAssymmetric({
+        plaintext: key,
+        publicKey,
+        privateKey: PRIVATE_KEY
+      });
 
-    const { ciphertext, nonce } = encryptAssymmetric({
-      plaintext: key,
-      publicKey,
-      privateKey: PRIVATE_KEY
-    });
-
-    uploadKeys(workspaceId, id, ciphertext, nonce);
-    router.reload();
+      await uploadWsKeyMutateAsync({
+        workspaceId,
+        userId: id,
+        encryptedKey: ciphertext,
+        nonce
+      });
+      router.reload();
+    }
   };
 
   const closeUpgradeModal = () => {
@@ -372,7 +361,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
                     myRole !== "member" ? (
                       <div className="mt-0.5 flex items-center opacity-50 hover:opacity-100">
                         <Button
-                          onButtonPressed={() => handleDelete(row.membershipId, index)}
+                          onButtonPressed={() => handleDelete(row.membershipId)}
                           color="red"
                           size="icon-sm"
                           icon={faX}

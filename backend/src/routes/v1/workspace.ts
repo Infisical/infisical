@@ -147,7 +147,7 @@ router.get(
 );
 
 router.get(
-	"/:workspaceId/service-tokens", // deprecate
+	"/:workspaceId/service-tokens", // TODO endpoint: deprecate
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT],
 	}),

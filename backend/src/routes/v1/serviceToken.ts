@@ -16,13 +16,13 @@ import { serviceTokenController } from "../../controllers/v1";
 
 // note: deprecate service-token routes in favor of service-token data routes/structure
 
-router.get(
+router.get( // TODO endpoint: deprecate
 	"/",
 	requireServiceTokenAuth,
 	serviceTokenController.getServiceToken
 );
 
-router.post(
+router.post( // TODO endpoint: deprecate
 	"/",
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT],

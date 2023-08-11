@@ -8,7 +8,7 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import { Button, Input } from "@app/components/v2";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 
 type Props = { 
     providerAuthToken: string;
@@ -83,14 +83,14 @@ export const PasswordStep = ({
                     }
 
                     // case: login does not require MFA step
-                    const userOrgs = await getOrganizations();
+                    const userOrgs = await fetchOrganizations();
                     const userOrg = userOrgs[0]._id;
                     setIsLoading(false);
                     createNotification({
                         text: "Successfully logged in",
                         type: "success"
                     });
-                    router.push(`/org/${userOrg?._id}/overview`);
+                    router.push(`/org/${userOrg}/overview`);
                 }
             }
         } catch (err) {

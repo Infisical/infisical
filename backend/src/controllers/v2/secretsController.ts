@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 import { Request, Response } from "express";
 import { ISecret, Secret, ServiceTokenData } from "../../models";
-import { IAction, SecretVersion, EventType, AuditLog } from "../../ee/models";
+import { AuditLog, EventType, IAction, SecretVersion } from "../../ee/models";
 import {
   ACTION_ADD_SECRETS,
   ACTION_DELETE_SECRETS,
@@ -14,7 +14,7 @@ import {
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import { EventService } from "../../services";
 import { eventPushSecrets } from "../../events";
-import { EELogService, EESecretService, EEAuditLogService } from "../../ee/services";
+import { EEAuditLogService, EELogService, EESecretService } from "../../ee/services";
 import { SecretService, TelemetryService } from "../../services";
 import { getUserAgentType } from "../../utils/posthog";
 import { PERMISSION_WRITE_SECRETS } from "../../variables";

@@ -2,10 +2,12 @@ import { useEffect,useState } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
+import {
+    useCreateIntegration
+, useGetWorkspaceById } from "@app/hooks/api";
+
 import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "../../../components/v2";
-import { useGetWorkspaceById } from "../../../hooks/api";
 import { useGetIntegrationAuthApps, useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
-import createIntegration from "../../api/integrations/createIntegration";
 
 const cloudflareEnvironments = [
     { name: "Production", slug: "production" },
@@ -14,6 +16,7 @@ const cloudflareEnvironments = [
 
 export default function CloudflarePagesIntegrationPage() {
     const router = useRouter();
+    const { mutateAsync } = useCreateIntegration();
 
     const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
     const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
@@ -54,7 +57,7 @@ export default function CloudflarePagesIntegrationPage() {
 
             setIsLoading(true);
 
-            await createIntegration({
+            await mutateAsync({
                 integrationAuthId: integrationAuth?._id,
                 isActive: true,
                 app: targetApp,

@@ -1,10 +1,9 @@
 /* eslint-disable prefer-destructuring */
 import jsrp from "jsrp";
 
-import login1 from "@app/pages/api/auth/Login1";
-import login2 from "@app/pages/api/auth/Login2";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
-import getOrganizationUserProjects from "@app/pages/api/organization/GetOrgUserProjects";
+import { login1, login2 } from "@app/hooks/api/auth/queries";
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { fetchMyOrganizationProjects } from "@app/hooks/api/users/queries";
 import KeyService from "@app/services/KeyService";
 
 import Telemetry from "./telemetry/Telemetry";
@@ -125,13 +124,11 @@ const attemptLogin = async (
                             privateKey
                           });
 
-                        const userOrgs = await getOrganizations();
+                        const userOrgs = await fetchOrganizations();
                         const orgId = userOrgs[0]._id;
                         localStorage.setItem("orgData.id", orgId);
 
-                        const orgUserProjects = await getOrganizationUserProjects({
-                            orgId
-                        });
+                        const orgUserProjects = await fetchMyOrganizationProjects(orgId);
 
                         if (orgUserProjects.length > 0) {
                             localStorage.setItem("projectData.id", orgUserProjects[0]._id);

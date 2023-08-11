@@ -10,7 +10,6 @@ import {
   UserWsTags
 } from "./types";
 
-
 const workspaceTags = {
   getWsTags: (workspaceID: string) => ["workspace-tags", { workspaceID }] as const
 };
@@ -23,12 +22,13 @@ const fetchWsTag = async (workspaceID: string) => {
   return data.workspaceTags;
 };
 
-export const useGetWsTags = (workspaceID: string) =>
-  useQuery({
+export const useGetWsTags = (workspaceID: string) => {
+  return useQuery({
     queryKey: workspaceTags.getWsTags(workspaceID),
     queryFn: () => fetchWsTag(workspaceID),
     enabled: Boolean(workspaceID)
   });
+}
 
 export const useCreateWsTag = () => {
   const queryClient = useQueryClient();

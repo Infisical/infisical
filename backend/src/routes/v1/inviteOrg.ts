@@ -5,6 +5,8 @@ import { requireAuth, validateRequest } from "../../middleware";
 import { membershipOrgController } from "../../controllers/v1";
 import { AuthMode } from "../../variables";
 
+// TODO endpoint: consider moving these endpoints to be under /organization to be more RESTful
+
 router.post(
 	"/signup",
 	requireAuth({

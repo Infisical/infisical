@@ -14,7 +14,7 @@ import {
 } from "../../variables";
 import { workspaceController } from "../../controllers/v2";
 
-router.post(
+router.post( // TODO endpoint: deprecate (moved to POST v3/secrets)
 	"/:workspaceId/secrets",
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT],
@@ -32,7 +32,7 @@ router.post(
 	workspaceController.pushWorkspaceSecrets
 );
 
-router.get(
+router.get( // TODO endpoint: deprecate (moved to GET v3/secrets)
 	"/:workspaceId/secrets",
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN],
@@ -48,7 +48,7 @@ router.get(
 	workspaceController.pullSecrets
 );
 
-router.get(
+router.get( // TODO endpoint: consider moving to v3/users/me/workspaces/:workspaceId/key
 	"/:workspaceId/encrypted-key",
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],

@@ -15,7 +15,7 @@ import {
 } from "../../variables";
 import { organizationController } from "../../controllers/v1";
 
-router.get( // deprecated (moved to api/v2/users/me/organizations)
+router.get( // TODO endpoint: deprecate (moved to api/v2/users/me/organizations)
 	"/",
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT],
@@ -47,7 +47,7 @@ router.get(
 	organizationController.getOrganization
 );
 
-router.get( // deprecated (moved to api/v2/organizations/:organizationId/memberships)
+router.get( // TODO endpoint: deprecate (moved to api/v2/organizations/:organizationId/memberships)
 	"/:organizationId/users",
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT],
@@ -61,7 +61,7 @@ router.get( // deprecated (moved to api/v2/organizations/:organizationId/members
 	organizationController.getOrganizationMembers
 );
 
-router.get(
+router.get( // TODO endpoint: move to /v2/users/me/organizations/:organizationId/workspaces
 	"/:organizationId/my-workspaces", // deprecated (moved to api/v2/organizations/:organizationId/workspaces)
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT],
@@ -135,7 +135,7 @@ router.delete(
 );
 
 router.post(
-	"/:organizationId/customer-portal-session",
+	"/:organizationId/customer-portal-session", // TODO endpoint: move to EE
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT],
 	}),
@@ -146,20 +146,6 @@ router.post(
 	param("organizationId").exists().trim(),
 	validateRequest,
 	organizationController.createOrganizationPortalSession
-);
-
-router.get(
-	"/:organizationId/subscriptions",
-	requireAuth({
-		acceptedAuthModes: [AuthMode.JWT],
-	}),
-	requireOrganizationAuth({
-		acceptedRoles: [OWNER, ADMIN, MEMBER],
-		acceptedStatuses: [ACCEPTED],
-	}),
-	param("organizationId").exists().trim(),
-	validateRequest,
-	organizationController.getOrganizationSubscriptions
 );
 
 router.get(

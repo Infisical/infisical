@@ -1,5 +1,8 @@
 import express from "express";
 const router = express.Router();
+
+// TODO endpoint: deprecate all
+
 // import {
 //     requireAuth,
 //     requireOrganizationAuth,

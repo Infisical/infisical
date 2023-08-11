@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 
-import sendVerificationEmail from "@app/pages/api/auth/SendVerificationEmail";
+import { useSendVerificationEmail } from "@app/hooks/api";
 
 import { Button, Input } from "../v2";
 
@@ -25,13 +25,14 @@ export default function EnterEmailStep({
   setEmail,
   incrementStep
 }: DownloadBackupPDFStepProps): JSX.Element {
+  const { mutateAsync } = useSendVerificationEmail();
   const [emailError, setEmailError] = useState(false);
   const { t } = useTranslation();
 
   /**
    * Verifies if the entered email "looks" correct
    */
-  const emailCheck = () => {
+  const emailCheck = async () => {
     let emailCheckBool = false;
     if (!email) {
       setEmailError(true);
@@ -45,7 +46,7 @@ export default function EnterEmailStep({
 
     // If everything is correct, go to the next step
     if (!emailCheckBool) {
-      sendVerificationEmail(email);
+      await mutateAsync({ email });
       incrementStep();
     }
   };

@@ -11,16 +11,19 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import {
+  useCreateIntegration
+} from "@app/hooks/api";
 
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
-import createIntegration from "../../api/integrations/createIntegration";
 
 export default function ChecklyCreateIntegrationPage() {
   const router = useRouter();
+  const { mutateAsync } = useCreateIntegration();
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
@@ -62,7 +65,7 @@ export default function ChecklyCreateIntegrationPage() {
 
       setIsLoading(true);
 
-      await createIntegration({
+      await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: targetApp,

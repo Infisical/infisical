@@ -14,9 +14,9 @@ import {
 	MEMBER
 } from "../../variables";
 
-// note to devs: these endpoints will be deprecated in favor of v2
+// note: endpoints deprecated in favor of v3/secrets
 
-router.post(
+router.post( // TODO endpoint: deprecate (moved to POST api/v3/secrets)
 	"/:workspaceId",
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT],
@@ -34,7 +34,7 @@ router.post(
 	secretController.pushSecrets
 );
 
-router.get(
+router.get( // TODO endpoint: deprecate (moved to GET api/v3/secrets)
 	"/:workspaceId",
 	requireAuth({
 		acceptedAuthModes: [AuthMode.JWT],
@@ -50,7 +50,7 @@ router.get(
 	secretController.pullSecrets
 );
 
-router.get(
+router.get( // TODO endpoint: deprecate (moved to GET api/v3/secrets)
 	"/:workspaceId/service-token",
 	requireServiceTokenAuth,
 	query("environment").exists().trim(),

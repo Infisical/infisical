@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import axios from "axios"
 
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
 import { getAuthToken, isLoggedIn } from "@app/reactQuery";
 
 import { 
@@ -24,7 +24,7 @@ export const Login = () => {
     // TODO(akhilmhdh): workspace will be controlled by a workspace context
     const redirectToDashboard = async () => {
       try {
-        const userOrgs = await getOrganizations();
+        const userOrgs = await fetchOrganizations();
         // userWorkspace = userWorkspaces[0] && userWorkspaces[0]._id;
         const userOrg = userOrgs[0] && userOrgs[0]._id;
 

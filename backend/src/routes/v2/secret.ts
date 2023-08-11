@@ -1,4 +1,5 @@
 import express from "express";
+const router = express.Router();
 import { 
   requireAuth, 
   requireSecretAuth,
@@ -16,11 +17,9 @@ import {
 import { CreateSecretRequestBody, ModifySecretRequestBody } from "../../types/secret";
 import { secretController } from "../../controllers/v2";
 
-// note to devs: stop supporting these routes [deprecated]
+// note: endpoints deprecated in favor of v3/secrets
 
-const router = express.Router();
-
-router.post(
+router.post( // TODO endpoint: deprecate (moved to POST api/v3/secrets)
   "/batch-create/workspace/:workspaceId/environment/:environment",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT],
@@ -38,7 +37,7 @@ router.post(
 );
 
 router.post(
-  "/workspace/:workspaceId/environment/:environment",
+  "/workspace/:workspaceId/environment/:environment", // TODO endpoint: deprecate (moved to POST api/v3/secrets)
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT],
   }),
@@ -54,7 +53,7 @@ router.post(
   secretController.createSecret
 );
 
-router.get(
+router.get( // TODO endpoint: deprecate (moved to GET api/v3/secrets)
   "/workspace/:workspaceId",
   param("workspaceId").exists().trim(),
   query("environment").exists(),
@@ -70,7 +69,7 @@ router.get(
   secretController.getSecrets
 );
 
-router.get(
+router.get( // TODO endpoint: deprecate (moved to POST api/v3/secrets)
   "/:secretId",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN],
@@ -83,7 +82,7 @@ router.get(
   secretController.getSecret
 );
 
-router.delete(
+router.delete( // TODO endpoint: deprecate (moved to DELETE api/v3/secrets)
   "/batch/workspace/:workspaceId/environment/:environmentName",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT],
@@ -99,7 +98,7 @@ router.delete(
   secretController.deleteSecrets
 );
 
-router.delete(
+router.delete( // TODO endpoint: deprecate (moved to DELETE api/v3/secrets)
   "/:secretId",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT],
@@ -113,7 +112,7 @@ router.delete(
   secretController.deleteSecret
 );
 
-router.patch(
+router.patch( // TODO endpoint: deprecate (moved to PATCH api/v3/secrets)
   "/batch-modify/workspace/:workspaceId/environment/:environmentName",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT],
@@ -129,7 +128,7 @@ router.patch(
   secretController.updateSecrets
 );
 
-router.patch(
+router.patch( // TODO endpoint: deprecate (moved to PATCH api/v3/secrets)
   "/workspace/:workspaceId/environment/:environmentName",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT],
