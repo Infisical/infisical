@@ -407,10 +407,8 @@ export const validateProviderAuthToken = async ({
 		jwt.verify(providerAuthToken, await getJwtProviderAuthSecret())
 	);
 
-	let authProviders = [...(user.authProviders || []), user.authProvider];
-
 	if (
-		!authProviders.includes(decodedToken.authProvider) ||
+		!user.authMethods.includes(decodedToken.authProvider) ||
 		decodedToken.email !== email
 	) {
 		throw new Error("Invalid authentication credentials.")

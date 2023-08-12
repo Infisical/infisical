@@ -3,7 +3,7 @@ import passport from "passport";
 import { Types } from "mongoose";
 import { AuthData } from "../interfaces/middleware";
 import {
-  AuthProvider,
+  AuthMethod,
   MembershipOrg,
   Organization,
   ServiceAccount,
@@ -100,16 +100,13 @@ const initializePassport = async () => {
         if (!user) {
           user = await new User({
             email,
-            authProviders: [AuthProvider.GOOGLE],
-            authId: profile.id,
+            authMethods: [AuthMethod.GOOGLE],
             firstName: profile.name.givenName,
             lastName: profile.name.familyName
           }).save();
         }
 
-        const authProviders = [...(user.authProviders || []), user.authProvider];
-
-        if (!authProviders.includes(AuthProvider.GOOGLE)) {
+        if (!user.authMethods.includes(AuthMethod.GOOGLE)) {
           done(InternalServerError());
         }
 
@@ -120,7 +117,7 @@ const initializePassport = async () => {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            authProvider: AuthProvider.GOOGLE,
+            authMethod: AuthMethod.GOOGLE,
             isUserCompleted,
             ...(req.query.state ? {
               callbackPort: req.query.state as string
@@ -156,16 +153,13 @@ const initializePassport = async () => {
       if (!user) {
         user = await new User({
           email: email,
-          authProviders: [AuthProvider.GITHUB],
-          authId: profile.id,
+          authMethods: [AuthMethod.GITHUB],
           firstName: profile.displayName,
           lastName: ""
         }).save();
       }
-
-      const authProviders = [...(user.authProviders || []), user.authProvider];
       
-      if (!authProviders.includes(AuthProvider.GITHUB)) {
+      if (!user.authMethods.includes(AuthMethod.GITHUB)) {
         done(InternalServerError());
       }
 
@@ -176,7 +170,7 @@ const initializePassport = async () => {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          authProvider: AuthProvider.GITHUB,
+          authMethod: AuthMethod.GITHUB,
           isUserCompleted,
           ...(req.query.state ? {
             callbackPort: req.query.state as string
@@ -222,7 +216,7 @@ const initializePassport = async () => {
           audience: await getSiteURL()
         });
         
-        if (ssoConfig.authProvider === AuthProvider.JUMPCLOUD_SAML) {
+        if (ssoConfig.authProvider.toString() === AuthMethod.JUMPCLOUD_SAML.toString()) {
           samlConfig.wantAuthnResponseSigned = false;
         }
         
@@ -247,11 +241,21 @@ const initializePassport = async () => {
       }).select("+publicKey");
       
       if (user) {
-        if (!user.authProvider || user.authProvider === AuthProvider.EMAIL || user.authProvider === AuthProvider.GOOGLE) {
+        // if user does not have SAML enabled then update 
+        const hasSamlEnabled = user.authMethods
+          .some(
+            (authMethod: AuthMethod) => [
+                AuthMethod.OKTA_SAML,
+                AuthMethod.AZURE_SAML,
+                AuthMethod.JUMPCLOUD_SAML
+            ].includes(authMethod)
+          );
+        
+        if (!hasSamlEnabled) {
           await User.findByIdAndUpdate(
             user._id, 
             {
-              authProviders: [req.ssoConfig.authProvider]
+              authMethods: [req.ssoConfig.authProvider]
             },
             {
               new: true
@@ -283,7 +287,7 @@ const initializePassport = async () => {
       } else {
         user = await new User({
           email,
-          authProviders: [req.ssoConfig.authProvider],
+          authMethods: [req.ssoConfig.authProvider],
           firstName,
           lastName
         }).save();
@@ -305,7 +309,7 @@ const initializePassport = async () => {
           firstName,
           lastName,
           organizationName: organization?.name,
-          authProvider: req.ssoConfig.authProvider,
+          authMethod: req.ssoConfig.authProvider,
           isUserCompleted,
           ...(req.body.RelayState ? {
             callbackPort: req.body.RelayState as string

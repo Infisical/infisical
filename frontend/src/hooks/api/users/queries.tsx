@@ -13,14 +13,14 @@ import {
   AddUserToWsDTO,
   AddUserToWsRes,
   APIKeyData,
+  AuthMethod,
   CreateAPIKeyRes,
   DeletOrgMembershipDTO,
   OrgUser,
   RenameUserDTO,
   TokenVersion,
   UpdateOrgUserRoleDTO,
-  User
-} from "./types";
+  User} from "./types";
 
 const userKeys = {
   getUser: ["user"] as const,
@@ -61,39 +61,18 @@ export const useRenameUser = () => {
   });
 };
 
-export const useUpdateUserAuthProvider = () => {
+
+export const useUpdateUserAuthMethods = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
-      authProvider
+      authMethods
     }: {
-      authProvider: string;
+      authMethods: AuthMethod[];
     }) => {
-      const { data: { user } } = await apiRequest.patch("/api/v2/users/me/auth-provider", { 
-        authProvider
-      });
-      
-      return user;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(userKeys.getUser);
-    }
-  });
-};
-
-
-export const useUpdateUserAuthProviders = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      authProviders
-    }: {
-      authProviders: string[];
-    }) => {
-      const { data: { user } } = await apiRequest.put("/api/v2/users/me/auth-providers", { 
-        authProviders
+      const { data: { user } } = await apiRequest.put("/api/v2/users/me/auth-methods", { 
+        authMethods
       });
       
       return user;

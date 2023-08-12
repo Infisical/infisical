@@ -1,9 +1,12 @@
 import { UserWsKeyPair } from "../keys/types";
 
-export enum AuthProvider {
+export enum AuthMethod {
 	EMAIL = "email",
 	GOOGLE = "google",
-	OKTA_SAML = "okta-saml"
+  GITHUB = "github",
+	OKTA_SAML = "okta-saml",
+	AZURE_SAML = "azure-saml",
+	JUMPCLOUD_SAML = "jumpcloud-saml"
 }
 
 export type User = {
@@ -12,8 +15,8 @@ export type User = {
   email: string;
   firstName?: string;
   lastName?: string;
-  authProvider?: AuthProvider;
-  authProviders?: AuthProvider[];
+  authProvider?: AuthMethod;
+  authMethods: AuthMethod[];
   encryptionVersion?: number;
   protectedKey?: string;
   protectedKeyIV?: string;
