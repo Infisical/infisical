@@ -127,6 +127,7 @@ export const PasswordStep = ({
             </div>
             <div className='lg:w-1/6 w-1/4 w-full mx-auto flex items-center justify-center min-w-[22rem] text-center rounded-md mt-4'>
                 <Button
+                    type="submit"
                     colorSchema="primary" 
                     variant="outline_bg"
                     onClick={async () => handleLogin()} 
