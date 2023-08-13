@@ -16,8 +16,7 @@ export const LoginSSO = ({ providerAuthToken }: Props) => {
 
     const {
         email,
-        isUserCompleted,
-        callbackPort
+        isUserCompleted
     } = jwt_decode(providerAuthToken) as any;
     
     useEffect(() => {
@@ -36,7 +35,6 @@ export const LoginSSO = ({ providerAuthToken }: Props) => {
                 return (
                     <PasswordStep 
                         providerAuthToken={providerAuthToken}
-                        callbackPort={callbackPort}
                         email={email}
                         password={password}
                         setPassword={setPassword}
@@ -47,7 +45,6 @@ export const LoginSSO = ({ providerAuthToken }: Props) => {
                 return (
                     <MFAStep 
                         providerAuthToken={providerAuthToken}
-                        callbackPort={callbackPort}
                         email={email}
                         password={password}
                     />

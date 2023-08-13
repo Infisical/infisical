@@ -20,7 +20,8 @@ import {
   RenameUserDTO,
   TokenVersion,
   UpdateOrgUserRoleDTO,
-  User} from "./types";
+  User
+} from "./types";
 
 const userKeys = {
   getUser: ["user"] as const,

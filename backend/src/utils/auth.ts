@@ -106,8 +106,9 @@ const initializePassport = async () => {
           }).save();
         }
 
+        let isLinkingRequired = false;
         if (!user.authMethods.includes(AuthMethod.GOOGLE)) {
-          done(InternalServerError());
+          isLinkingRequired = true;
         }
 
         const isUserCompleted = !!user.publicKey;
@@ -119,6 +120,7 @@ const initializePassport = async () => {
             lastName: user.lastName,
             authMethod: AuthMethod.GOOGLE,
             isUserCompleted,
+            isLinkingRequired,
             ...(req.query.state ? {
               callbackPort: req.query.state as string
             } : {})
@@ -159,8 +161,9 @@ const initializePassport = async () => {
         }).save();
       }
       
+      let isLinkingRequired = false;
       if (!user.authMethods.includes(AuthMethod.GITHUB)) {
-        done(InternalServerError());
+        isLinkingRequired = true;
       }
 
       const isUserCompleted = !!user.publicKey;
@@ -172,6 +175,7 @@ const initializePassport = async () => {
           lastName: user.lastName,
           authMethod: AuthMethod.GITHUB,
           isUserCompleted,
+          isLinkingRequired,
           ...(req.query.state ? {
             callbackPort: req.query.state as string
           } : {})
