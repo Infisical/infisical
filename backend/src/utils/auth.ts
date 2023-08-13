@@ -3,7 +3,7 @@ import passport from "passport";
 import { Types } from "mongoose";
 import { AuthData } from "../interfaces/middleware";
 import {
-  AuthProvider,
+  AuthMethod,
   MembershipOrg,
   Organization,
   ServiceAccount,
@@ -97,18 +97,17 @@ const initializePassport = async () => {
           email
         }).select("+publicKey");
         
-        if (user && user.authProvider !== AuthProvider.GOOGLE) {
-          done(InternalServerError());
-        }
-
         if (!user) {
           user = await new User({
             email,
-            authProvider: AuthProvider.GOOGLE,
-            authId: profile.id,
+            authMethods: [AuthMethod.GOOGLE],
             firstName: profile.name.givenName,
             lastName: profile.name.familyName
           }).save();
+        }
+
+        if (!user.authMethods.includes(AuthMethod.GOOGLE)) {
+          done(InternalServerError());
         }
 
         const isUserCompleted = !!user.publicKey;
@@ -118,7 +117,7 @@ const initializePassport = async () => {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            authProvider: user.authProvider,
+            authMethod: AuthMethod.GOOGLE,
             isUserCompleted,
             ...(req.query.state ? {
               callbackPort: req.query.state as string
@@ -150,19 +149,18 @@ const initializePassport = async () => {
       let user = await User.findOne({
         email
       }).select("+publicKey");
-      
-      if (user && user.authProvider !== AuthProvider.GITHUB) {
-        done(InternalServerError());
-      }
-      
+
       if (!user) {
         user = await new User({
           email: email,
-          authProvider: AuthProvider.GITHUB,
-          authId: profile.id,
+          authMethods: [AuthMethod.GITHUB],
           firstName: profile.displayName,
           lastName: ""
         }).save();
+      }
+      
+      if (!user.authMethods.includes(AuthMethod.GITHUB)) {
+        done(InternalServerError());
       }
 
       const isUserCompleted = !!user.publicKey;
@@ -172,7 +170,7 @@ const initializePassport = async () => {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          authProvider: user.authProvider,
+          authMethod: AuthMethod.GITHUB,
           isUserCompleted,
           ...(req.query.state ? {
             callbackPort: req.query.state as string
@@ -218,7 +216,7 @@ const initializePassport = async () => {
           audience: await getSiteURL()
         });
         
-        if (ssoConfig.authProvider === AuthProvider.JUMPCLOUD_SAML) {
+        if (ssoConfig.authProvider.toString() === AuthMethod.JUMPCLOUD_SAML.toString()) {
           samlConfig.wantAuthnResponseSigned = false;
         }
         
@@ -243,11 +241,21 @@ const initializePassport = async () => {
       }).select("+publicKey");
       
       if (user) {
-        if (!user.authProvider || user.authProvider === AuthProvider.EMAIL || user.authProvider === AuthProvider.GOOGLE) {
+        // if user does not have SAML enabled then update 
+        const hasSamlEnabled = user.authMethods
+          .some(
+            (authMethod: AuthMethod) => [
+                AuthMethod.OKTA_SAML,
+                AuthMethod.AZURE_SAML,
+                AuthMethod.JUMPCLOUD_SAML
+            ].includes(authMethod)
+          );
+        
+        if (!hasSamlEnabled) {
           await User.findByIdAndUpdate(
             user._id, 
             {
-              authProvider: req.ssoConfig.authProvider
+              authMethods: [req.ssoConfig.authProvider]
             },
             {
               new: true
@@ -279,7 +287,7 @@ const initializePassport = async () => {
       } else {
         user = await new User({
           email,
-          authProvider: req.ssoConfig.authProvider,
+          authMethods: [req.ssoConfig.authProvider],
           firstName,
           lastName
         }).save();
@@ -301,7 +309,7 @@ const initializePassport = async () => {
           firstName,
           lastName,
           organizationName: organization?.name,
-          authProvider: user.authProvider,
+          authMethod: req.ssoConfig.authProvider,
           isUserCompleted,
           ...(req.body.RelayState ? {
             callbackPort: req.body.RelayState as string

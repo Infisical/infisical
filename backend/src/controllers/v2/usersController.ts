@@ -4,7 +4,7 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 import {
     APIKeyData,
-    AuthProvider,
+    AuthMethod,
     MembershipOrg,
     TokenVersion,
     User
@@ -113,21 +113,26 @@ export const updateName = async (req: Request, res: Response) => {
 }
 
 /**
- * Update auth provider of the current user to [authProvider]
+ * Update auth method of the current user to [authMethods]
  * @param req 
  * @param res 
  * @returns 
  */
-export const updateAuthProvider = async (req: Request, res: Response) => {
+ export const updateAuthMethods = async (req: Request, res: Response) => {
     const {
-        authProvider
+        authMethods
     } = req.body;
     
-    if (
-        req.user?.authProvider === AuthProvider.OKTA_SAML
-        || req.user?.authProvider === AuthProvider.AZURE_SAML
-        || req.user?.authProvider === AuthProvider.JUMPCLOUD_SAML
-    ) {
+    const hasSamlEnabled = req.user.authMethods
+        .some(
+            (authMethod: AuthMethod) => [
+                AuthMethod.OKTA_SAML,
+                AuthMethod.AZURE_SAML,
+                AuthMethod.JUMPCLOUD_SAML
+            ].includes(authMethod)
+        );
+
+    if (hasSamlEnabled) {
         return res.status(400).send({
             message: "Failed to update user authentication method because SAML SSO is enforced"
         });
@@ -136,7 +141,7 @@ export const updateAuthProvider = async (req: Request, res: Response) => {
     const user = await User.findByIdAndUpdate(
         req.user._id.toString(),
         {
-            authProvider
+            authMethods
         },
         {
             new: true
@@ -147,6 +152,7 @@ export const updateAuthProvider = async (req: Request, res: Response) => {
         user
     });
 }
+
 
 /**
  * Return organizations that the current user is part of.

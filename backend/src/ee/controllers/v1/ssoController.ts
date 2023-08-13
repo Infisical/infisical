@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 import { BotOrgService } from "../../../services";
 import { SSOConfig } from "../../models";
 import { 
+    AuthMethod,
     MembershipOrg,
     User
 } from "../../../models";
@@ -156,7 +157,7 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
                     }
                 },
                 {
-                    authProvider: ssoConfig.authProvider
+                    authMethods: [ssoConfig.authProvider],
                 }
             );
         } else {
@@ -167,9 +168,7 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
                     }
                 },
                 {
-                    $unset: {
-                        authProvider: 1
-                    }
+                    authMethods: [AuthMethod.EMAIL],
                 }
             );
         }

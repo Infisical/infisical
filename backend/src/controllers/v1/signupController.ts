@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { User } from "../../models";
+import { AuthMethod, User } from "../../models";
 import { checkEmailVerification, sendEmailVerification } from "../../helpers/signup";
 import { createToken } from "../../helpers/auth";
 import { BadRequestError } from "../../utils/errors";
@@ -81,7 +81,8 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
 
   if (!user) {
     user = await new User({
-      email
+      email,
+      authMethods: [AuthMethod.EMAIL]
     }).save();
   }
 

@@ -8,7 +8,7 @@ import { body, param } from "express-validator";
 import { usersController } from "../../controllers/v2";
 import { AuthMode } from "../../variables";
 import {
-    AuthProvider
+    AuthMethod
 } from "../../models";
 
 router.get(
@@ -40,18 +40,22 @@ router.patch(
     usersController.updateName
 );
 
-router.patch(
-    "/me/auth-provider",
+router.put(
+    "/me/auth-methods",
     requireAuth({
         acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
     }),
-    body("authProvider").exists().isString().isIn([
-        AuthProvider.EMAIL,
-        AuthProvider.GOOGLE,
-        AuthProvider.GITHUB
-    ]),
+    body("authMethods").exists().isArray({
+        min: 1,
+    }).custom((authMethods: AuthMethod[]) => {
+        return authMethods.every(provider => [
+            AuthMethod.EMAIL,
+            AuthMethod.GOOGLE,
+            AuthMethod.GITHUB
+        ].includes(provider))
+    }),
     validateRequest,
-    usersController.updateAuthProvider
+    usersController.updateAuthMethods,
 );
 
 router.get(

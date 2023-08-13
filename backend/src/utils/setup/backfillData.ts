@@ -11,6 +11,7 @@ import {
   TrustedIP
 } from "../../ee/models";
 import {
+  AuthMethod,
   BackupPrivateKey,
   Bot,
   BotOrg,
@@ -21,6 +22,7 @@ import {
   Secret,
   SecretBlindIndexData,
   ServiceTokenData,
+  User,
   Workspace
 } from "../../models";
 import { generateKeyPair } from "../../utils/crypto";
@@ -630,4 +632,41 @@ export const backfillTrustedIps = async () => {
     await TrustedIP.bulkWrite(operations);
     console.log("Backfill: Trusted IPs complete");
   }
+}
+
+export const backfillUserAuthMethods = async () => {
+  await User.updateMany(
+    {
+      authProvider: {
+        $exists: false
+      },
+      authMethods: {
+        $exists: false
+      }
+    },
+    {
+      authMethods: [AuthMethod.EMAIL]
+    }
+  );
+
+  await User.updateMany(
+  {
+    authProvider: {
+      $exists: true
+    },
+    authMethods: {
+      $exists: false
+    }
+  },
+  [
+    {
+      $set: {
+        authMethods: ["$authProvider"]
+      }
+    },
+    {
+      $unset: ["authProvider", "authId"]
+    }
+  ]
+);
 }

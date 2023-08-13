@@ -19,7 +19,7 @@ import ServiceAccountKey, { IServiceAccountKey } from "./serviceAccountKey"; // 
 import ServiceAccountOrganizationPermission, { IServiceAccountOrganizationPermission } from "./serviceAccountOrganizationPermission"; // new
 import ServiceAccountWorkspacePermission, { IServiceAccountWorkspacePermission } from "./serviceAccountWorkspacePermission"; // new
 import TokenData, { ITokenData } from "./tokenData";
-import User, { AuthProvider, IUser } from "./user";
+import User, { AuthMethod, IUser } from "./user";
 import UserAction, { IUserAction } from "./userAction";
 import Workspace, { IWorkspace } from "./workspace";
 import ServiceTokenData, { IServiceTokenData } from "./serviceTokenData";
@@ -28,7 +28,7 @@ import LoginSRPDetail, { ILoginSRPDetail } from "./loginSRPDetail";
 import TokenVersion, { ITokenVersion } from "./tokenVersion";
 
 export {
-	AuthProvider,
+	AuthMethod,
 	BackupPrivateKey,
 	IBackupPrivateKey,
 	Bot,

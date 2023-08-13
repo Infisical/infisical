@@ -17,4 +17,5 @@ export {
   useRevokeMySessions,
   useUpdateMfaEnabled,
   useUpdateOrgUserRole,
-  useUpdateUserAuthProvider} from "./queries";
+  useUpdateUserAuthMethods
+} from "./queries";

@@ -16,6 +16,7 @@ type Props = {
   position?: "item-aligned" | "popper";
   isDisabled?: boolean;
   icon?: IconProp;
+  isMulti?: boolean;
 };
 
 export type SelectProps = Omit<SelectPrimitive.SelectProps, "disabled"> & Props;

@@ -12,7 +12,7 @@ import { standardRequest } from "../../config/request";
 import { getHttpsEnabled, getJwtSignupSecret, getLoopsApiKey } from "../../config";
 import { BadRequestError } from "../../utils/errors";
 import { TelemetryService } from "../../services";
-import { AuthProvider } from "../../models";
+import { AuthMethod } from "../../models";
 
 /**
  * Complete setting up user by adding their personal and auth information as part of the
@@ -117,7 +117,17 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 		if (!user)
 			throw new Error("Failed to complete account for non-existent user"); // ensure user is non-null
 
-		if (user.authProvider !== AuthProvider.OKTA_SAML) {
+		const hasSamlEnabled = user.authMethods
+			.some(
+				(authMethod: AuthMethod) => 
+					[
+				AuthMethod.OKTA_SAML,
+				AuthMethod.AZURE_SAML,
+				AuthMethod.JUMPCLOUD_SAML
+				].includes(authMethod)
+		);
+		  
+		if (!hasSamlEnabled) { // TODO: modify this part
 			// initialize default organization and workspace
 			await initializeDefaultOrg({
 				organizationName,
