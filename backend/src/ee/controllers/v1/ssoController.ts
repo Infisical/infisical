@@ -157,10 +157,7 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
                     }
                 },
                 {
-                    authProviders: [ssoConfig.authProvider],
-                    $unset: {
-                        authProvider: 1
-                    }
+                    authMethods: [ssoConfig.authProvider],
                 }
             );
         } else {
@@ -171,10 +168,7 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
                     }
                 },
                 {
-                    authProviders: [AuthMethod.EMAIL],
-                    $unset: {
-                        authProvider: 1,
-                    }
+                    authMethods: [AuthMethod.EMAIL],
                 }
             );
         }
