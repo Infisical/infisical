@@ -119,15 +119,16 @@ export const AuthMethodSection = () => {
                 {user && authMethodOpts.map((authMethodOpt) => {
                     return (
                         <div className="flex p-4 items-center" key={`auth-method-${authMethodOpt.value}`}>
-                            <div className="flex items-center w-20 mr-4">
+                            <div className="flex items-center">
                                 <FontAwesomeIcon icon={authMethodOpt.icon} className="mr-4" />
-                                <p>{authMethodOpt.label}</p>
                             </div>
                             <Switch
                                 id={`enable-${authMethodOpt.value}-auth`}
                                 onCheckedChange={(value) => onAuthMethodToggle(value, authMethodOpt)}
                                 isChecked={authMethods?.includes(authMethodOpt.value) ?? false}
-                             />
+                            >
+                                <p className="w-12 mr-4">{authMethodOpt.label}</p>
+                            </Switch>
                         </div>
                     ); 
                 })}
