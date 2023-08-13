@@ -408,7 +408,7 @@ export const validateProviderAuthToken = async ({
 	);
 
 	if (
-		!user.authMethods.includes(decodedToken.authProvider) ||
+		!user.authMethods.includes(decodedToken.authMethod) ||
 		decodedToken.email !== email
 	) {
 		throw new Error("Invalid authentication credentials.")
