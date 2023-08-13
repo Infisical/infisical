@@ -32,7 +32,8 @@ export const PasswordStep = ({
     const { t } = useTranslation();
     const router = useRouter();
     
-    const handleLogin = async () => {
+    const handleLogin = async (e:React.FormEvent) => {
+        e.preventDefault()
         try {
             setIsLoading(true);
             
@@ -102,10 +103,12 @@ export const PasswordStep = ({
             console.error(err);
         }
     };
+
+
     
     return (
         <form 
-            onSubmit={(e) => e.preventDefault()}
+            onSubmit={handleLogin}
             className="h-full mx-auto w-full max-w-md px-6 pt-8"
         >
             <p className="mx-auto mb-6 flex w-max justify-center text-xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 text-center mb-8">
@@ -130,7 +133,6 @@ export const PasswordStep = ({
                     type="submit"
                     colorSchema="primary" 
                     variant="outline_bg"
-                    onClick={async () => handleLogin()} 
                     isFullWidth
                     isLoading={isLoading}
                     className="h-14"
