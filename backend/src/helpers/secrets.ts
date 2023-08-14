@@ -326,7 +326,8 @@ export const createSecretHelper = async ({
   secretCommentCiphertext,
   secretCommentIV,
   secretCommentTag,
-  secretPath = "/"
+  secretPath = "/",
+  source
 }: CreateSecretParams) => {
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
@@ -463,7 +464,7 @@ export const createSecretHelper = async ({
 
   const postHogClient = await TelemetryService.getPostHogClient();
 
-  if (postHogClient) {
+  if (postHogClient && source !== "signup") {
     postHogClient.capture({
       event: "secrets added",
       distinctId: await TelemetryService.getDistinctId({
