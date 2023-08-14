@@ -1,21 +1,19 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { 
-    Membership,
-    MembershipOrg,
-    ServiceAccount,
-    Workspace,
-} from "../../models";
+import { Membership, MembershipOrg, ServiceAccount, Workspace } from "../../models";
 import { deleteMembershipOrg } from "../../helpers/membershipOrg";
 import { updateSubscriptionOrgQuantity } from "../../helpers/organization";
+import Role from "../../models/role";
+import { BadRequestError } from "../../utils/errors";
+import { CUSTOM } from "../../variables";
 
 /**
  * Return memberships for organization with id [organizationId]
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
 export const getOrganizationMemberships = async (req: Request, res: Response) => {
-    /* 
+  /* 
     #swagger.summary = 'Return organization memberships'
     #swagger.description = 'Return organization memberships'
     
@@ -48,24 +46,24 @@ export const getOrganizationMemberships = async (req: Request, res: Response) =>
         }
     }   
     */
-    const { organizationId } = req.params;
+  const { organizationId } = req.params;
 
-		const memberships = await MembershipOrg.find({
-			organization: organizationId,
-		}).populate("user", "+publicKey");
-    
-    return res.status(200).send({
-        memberships,
-    });
-}
+  const memberships = await MembershipOrg.find({
+    organization: organizationId
+  }).populate("user", "+publicKey");
+
+  return res.status(200).send({
+    memberships
+  });
+};
 
 /**
  * Update role of membership with id [membershipId] to role [role]
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
 export const updateOrganizationMembership = async (req: Request, res: Response) => {
-    /* 
+  /* 
     #swagger.summary = 'Update organization membership'
     #swagger.description = 'Update organization membership'
     
@@ -118,31 +116,46 @@ export const updateOrganizationMembership = async (req: Request, res: Response) 
         }
     }   
     */
-    const { membershipId } = req.params;
-    const { role } = req.body;
-    
-    const membership = await MembershipOrg.findByIdAndUpdate(
-        membershipId,
-        {
-            role,
-        }, {
-            new: true,
-        }
-    );
-    
-    return res.status(200).send({
-        membership,
+  const { membershipId } = req.params;
+  const { role } = req.body;
+
+  const isCustomRole = !["admin", "member", "owner"].includes(role);
+  if (isCustomRole) {
+    const orgRole = await Role.findOne({ slug: role, isOrgRole: true });
+    if (!orgRole) throw BadRequestError({ message: "Role not found" });
+
+    const membership = await MembershipOrg.findByIdAndUpdate(membershipId, {
+      role: CUSTOM,
+      customRole: orgRole
     });
-}
+    return res.status(200).send({
+      membership
+    });
+  }
+
+  const membership = await MembershipOrg.findByIdAndUpdate(
+    membershipId,
+    {
+      role
+    },
+    {
+      new: true
+    }
+  );
+
+  return res.status(200).send({
+    membership
+  });
+};
 
 /**
  * Delete organization membership with id [membershipId]
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const deleteOrganizationMembership = async (req: Request, res: Response) => {
-    /* 
+  /* 
     #swagger.summary = 'Delete organization membership'
     #swagger.description = 'Delete organization membership'
     
@@ -178,30 +191,30 @@ export const deleteOrganizationMembership = async (req: Request, res: Response) 
         }
     }   
     */
-    const { membershipId } = req.params;
-    
-    // delete organization membership
-    const membership = await deleteMembershipOrg({
-        membershipOrgId: membershipId,
-    });
+  const { membershipId } = req.params;
 
-    await updateSubscriptionOrgQuantity({
-			organizationId: membership.organization.toString(),
-		});
+  // delete organization membership
+  const membership = await deleteMembershipOrg({
+    membershipOrgId: membershipId
+  });
 
-    return res.status(200).send({
-        membership,
-    });
-}
+  await updateSubscriptionOrgQuantity({
+    organizationId: membership.organization.toString()
+  });
+
+  return res.status(200).send({
+    membership
+  });
+};
 
 /**
  * Return workspaces for organization with id [organizationId] that user has
  * access to
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
 export const getOrganizationWorkspaces = async (req: Request, res: Response) => {
-    /* 
+  /* 
     #swagger.summary = 'Return projects in organization that user is part of'
     #swagger.description = 'Return projects in organization that user is part of'
     
@@ -234,45 +247,45 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
         }
     }   
     */
-    const { organizationId } = req.params;
+  const { organizationId } = req.params;
 
-    const workspacesSet = new Set(
-        (
-            await Workspace.find(
-                {
-                    organization: organizationId,
-                },
-                "_id"
-            )
-        ).map((w) => w._id.toString())
-    );
+  const workspacesSet = new Set(
+    (
+      await Workspace.find(
+        {
+          organization: organizationId
+        },
+        "_id"
+      )
+    ).map((w) => w._id.toString())
+  );
 
-    const workspaces = (
-        await Membership.find({
-            user: req.user._id,
-        }).populate("workspace")
-    )
+  const workspaces = (
+    await Membership.find({
+      user: req.user._id
+    }).populate("workspace")
+  )
     .filter((m) => workspacesSet.has(m.workspace._id.toString()))
     .map((m) => m.workspace);
 
-return res.status(200).send({
-        workspaces,
-    });
-}
+  return res.status(200).send({
+    workspaces
+  });
+};
 
 /**
  * Return service accounts for organization with id [organizationId]
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
 export const getOrganizationServiceAccounts = async (req: Request, res: Response) => {
-    const { organizationId } = req.params;
-    
-    const serviceAccounts = await ServiceAccount.find({
-        organization: new Types.ObjectId(organizationId),
-    });
-    
-    return res.status(200).send({
-        serviceAccounts,
-    });
-}
+  const { organizationId } = req.params;
+
+  const serviceAccounts = await ServiceAccount.find({
+    organization: new Types.ObjectId(organizationId)
+  });
+
+  return res.status(200).send({
+    serviceAccounts
+  });
+};
