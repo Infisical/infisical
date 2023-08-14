@@ -180,6 +180,8 @@ router.post(
   body("secretCommentIV").optional().isString().trim(),
   body("secretCommentTag").optional().isString().trim(),
   body("secretPath").default("/").isString().trim(),
+  body("metadata").optional().isObject().withMessage("Metadata should be an object"),
+  body("metadata.source").optional().isString().withMessage("Source should be a string"),
   validateRequest,
   requireAuth({
     acceptedAuthModes: [

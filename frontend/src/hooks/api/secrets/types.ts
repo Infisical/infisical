@@ -165,4 +165,7 @@ export type CreateSecretDTO = {
   secretCommentIV: string;
   secretCommentTag: string;
   secretPath: string;
+  metadata?: {
+    source?: string;
+  }
 }

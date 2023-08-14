@@ -140,7 +140,10 @@ const initProjectHelper = async ({
       secretCommentCiphertext: secret.secretCommentCiphertext,
       secretCommentIV: secret.secretCommentIV,
       secretCommentTag: secret.secretCommentTag,
-      secretPath: "/"
+      secretPath: "/",
+      metadata: {
+        source: "signup"
+      }
     });
   });
   
