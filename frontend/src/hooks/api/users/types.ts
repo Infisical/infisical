@@ -42,9 +42,10 @@ export type OrgUser = {
   };
   inviteEmail: string;
   organization: string;
-  role: "owner" | "admin" | "member";
+  role: "owner" | "admin" | "member" | "custom";
   status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];
+  customRole: string;
 };
 
 export type AddUserToWsDTO = {
@@ -76,7 +77,7 @@ export type AddUserToOrgDTO = {
 export type CreateAPIKeyRes = {
   apiKey: string;
   apiKeyData: APIKeyData;
-}
+};
 
 export type RenameUserDTO = {
   newName: string;
@@ -89,7 +90,7 @@ export type APIKeyData = {
   lastUsed: string;
   createdAt: string;
   expiresAt: string;
-}
+};
 
 export type TokenVersion = {
   _id: string;
@@ -99,4 +100,4 @@ export type TokenVersion = {
   lastUsed: string;
   createdAt: string;
   updatedAt: string;
-}
+};

@@ -13,6 +13,8 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@casl/ability": "^6.5.0",
+    "@casl/react": "^3.1.0",
     "@dnd-kit/core": "^6.0.8",
     "@dnd-kit/modifiers": "^6.0.1",
     "@dnd-kit/sortable": "^7.0.2",
@@ -27,7 +29,7 @@
     "@headlessui/react": "^1.7.7",
     "@hookform/resolvers": "^2.9.10",
     "@octokit/rest": "^19.0.7",
-    "@radix-ui/react-accordion": "^1.1.0",
+    "@radix-ui/react-accordion": "^1.1.2",
     "@radix-ui/react-alert-dialog": "^1.0.2",
     "@radix-ui/react-checkbox": "^1.0.1",
     "@radix-ui/react-dialog": "^1.0.2",
