@@ -363,7 +363,7 @@ export const createSecret = async (req: Request, res: Response) => {
     secretCommentIV,
     secretCommentTag,
     secretPath = "/",
-    source
+    metadata
   } = req.body;
 
   const secret = await SecretService.createSecret({
@@ -382,7 +382,7 @@ export const createSecret = async (req: Request, res: Response) => {
     secretCommentCiphertext,
     secretCommentIV,
     secretCommentTag,
-    source
+    metadata
   });
 
   await EventService.handleEvent({

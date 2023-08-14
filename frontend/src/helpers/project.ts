@@ -141,7 +141,9 @@ const initProjectHelper = async ({
       secretCommentIV: secret.secretCommentIV,
       secretCommentTag: secret.secretCommentTag,
       secretPath: "/",
-      source: "signup"
+      metadata: {
+        source: "signup"
+      }
     });
   });
   

@@ -17,7 +17,9 @@ export interface CreateSecretParams {
   secretCommentIV?: string;
   secretCommentTag?: string;
   secretPath: string;
-  source?: string;
+  metadata?: {
+    source?: string;
+  }
 }
 
 export interface GetSecretsParams {
