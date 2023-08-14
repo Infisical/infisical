@@ -46,6 +46,10 @@ Add the required environment variables listed below to your docker run command. 
   Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
 </ParamField>
 
+<ParamField query="REDIS_URL" type="string" default="none" required>
+  Redis connection string
+</ParamField>
+
 <ParamField query="MONGO_URL" type="string" default="none" required>
   *TLS based connection string is not yet supported
 </ParamField>
