@@ -11,7 +11,7 @@ type TSyncSecretsToThirdPartyServices = {
   environment?: string
 }
 
-export const syncSecretsToThirdPartyServices = new Queue('sync-secrets-to-third-party-services', process.env.REDIS_URL as string);
+export const syncSecretsToThirdPartyServices = new Queue("sync-secrets-to-third-party-services", process.env.REDIS_URL as string);
 
 syncSecretsToThirdPartyServices.process(async (job: Job) => {
   const { workspaceId, environment }: TSyncSecretsToThirdPartyServices = job.data
@@ -57,7 +57,7 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
 })
 
 syncSecretsToThirdPartyServices.on("error", (error) => {
-  console.log("QUEUE ERROR:", error)
+  console.log("QUEUE ERROR:", error) // eslint-disable-line
 })
 
 export const syncSecretsToActiveIntegrationsQueue = (jobDetails: TSyncSecretsToThirdPartyServices) => {
@@ -65,7 +65,7 @@ export const syncSecretsToActiveIntegrationsQueue = (jobDetails: TSyncSecretsToT
     attempts: 5,
     backoff: {
       type: "exponential",
-      delay: 1000
+      delay: 3000
     },
     removeOnComplete: true,
     removeOnFail: {
