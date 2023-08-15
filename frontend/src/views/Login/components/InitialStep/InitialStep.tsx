@@ -45,13 +45,15 @@ export const InitialStep = ({
                 return;
             }
 
+            const sanitizedEmail = email.toLowerCase();
+
             setIsLoading(true);
             if (queryParams && queryParams.get("callback_port")) {
                 const callbackPort = queryParams.get("callback_port")
 
                 // attemptCliLogin
                 const isCliLoginSuccessful = await attemptCliLogin({
-                    email,
+                    email: sanitizedEmail,
                     password,
                 })
 
@@ -78,7 +80,7 @@ export const InitialStep = ({
                 }
             } else {
                 const isLoginSuccessful = await attemptLogin({
-                    email,
+                    email: sanitizedEmail,
                     password,
                 });
                 if (isLoginSuccessful && isLoginSuccessful.success) {
