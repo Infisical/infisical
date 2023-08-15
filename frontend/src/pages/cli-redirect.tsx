@@ -5,7 +5,7 @@ export default function CliRedirect() {
   return (
     <div className='bg-bunker-800 md:h-screen flex flex-col justify-between'>
       <Head>
-        <title>Infisical Cli | Login Successful!</title>
+        <title>Infisical CLI | Login Successful!</title>
         <link rel='icon' href='/infisical.ico' />
       </Head>
       <div className='flex flex-col items-center justify-center text-gray-200 h-screen w-screen'>
