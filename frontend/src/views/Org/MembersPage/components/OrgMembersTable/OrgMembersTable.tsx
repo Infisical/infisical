@@ -60,7 +60,7 @@ type Props = {
 };
 
 const addMemberFormSchema = yup.object({
-  email: yup.string().email().required().label("Email").trim()
+  email: yup.string().email().required().label("Email").trim().lowercase()
 });
 
 type TAddMemberForm = yup.InferType<typeof addMemberFormSchema>;
@@ -108,6 +108,8 @@ export const OrgMembersTable = ({
   } = useForm<TAddMemberForm>({ resolver: yupResolver(addMemberFormSchema) });
 
   const onAddMember = async ({ email }: TAddMemberForm) => {
+    console.log("onAddMember", email);
+
     await onInviteMember(email);
     if (serverDetails?.emailConfigured) {
       handlePopUpClose("addMember");
