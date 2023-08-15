@@ -110,7 +110,7 @@ export const SecretInputRow = memo(
       append
     } = useFieldArray({ control, name: `secrets.${index}.tags` });
 
-    const colorByTagId = new Map((wsTags || []).map((wsTag, i) => [wsTag._id, tagColors[i % tagColors.length]]))
+    const tagColorByTagId = new Map((wsTags || []).map((wsTag, i) => [wsTag._id, tagColors[i % tagColors.length]]))
 
     // display the tags in alphabetical order
     secretTags.sort((a, b) => a.name.localeCompare(b.name))
@@ -328,7 +328,7 @@ export const SecretInputRow = memo(
           <div className="flex h-8 items-center pl-2">
             {secretTags.map(({ id, _id, slug }, i) => {
               // This map lookup shouldn't ever fail, but if it does we default to the first color
-              const tagColor = colorByTagId.get(_id) || tagColors[0]
+              const tagColor = tagColorByTagId.get(_id) || tagColors[0]
               return (
                 <Tag
                   className={cx(
@@ -395,9 +395,9 @@ export const SecretInputRow = memo(
                               className="mr-0 data-[state=checked]:bg-primary"
                               id="autoCapitalization"
                               isChecked={selectedTagIds?.[wsTag.slug]}
-                              onCheckedChange={() => { }}
+                              onCheckedChange={() => {}}
                             >
-                              { }
+                              {}
                             </Checkbox>
                           }
                           key={wsTag._id}
