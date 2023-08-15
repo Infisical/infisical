@@ -49,7 +49,10 @@ export const login1 = async (req: Request, res: Response) => {
     } = req.body;
 
     const user = await User.findOne({
-        email,
+        email:{
+            $regex:new RegExp("^"+email+"$"),
+            $options:"i"
+        }
     }).select("+salt +verifier");
 
     if (!user) throw new Error("Failed to find user");
@@ -101,7 +104,10 @@ export const login2 = async (req: Request, res: Response) => {
     const { email, clientProof, providerAuthToken } = req.body;
 
     const user = await User.findOne({
-        email,
+        email:{
+            $regex:new RegExp("^"+email+"$"),
+            $options:"i"
+        }
     }).select("+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag +devices");
 
     if (!user) throw new Error("Failed to find user");
