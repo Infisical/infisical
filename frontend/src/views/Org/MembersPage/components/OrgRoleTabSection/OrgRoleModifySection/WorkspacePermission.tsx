@@ -3,6 +3,7 @@ import { Control, Controller, UseFormSetValue, useWatch } from "react-hook-form"
 import { faClipboardList } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
+import { twMerge } from "tailwind-merge";
 
 import {
   Checkbox,
@@ -26,14 +27,14 @@ type Props = {
   control: Control<TFormSchema>;
 };
 
-enum WorkspacePermission {
+enum Permission {
   NoAccess = "no-access",
   ReadOnly = "read-only",
   FullAccess = "full-acess",
   Custom = "custom"
 }
 
-export const OrgRoleWorkspacePermission = ({ isNonEditable, setValue, control }: Props) => {
+export const WorkspacePermission = ({ isNonEditable, setValue, control }: Props) => {
   const { workspaces } = useWorkspace();
 
   const customWorkspaceRule = useWatch({
@@ -43,26 +44,26 @@ export const OrgRoleWorkspacePermission = ({ isNonEditable, setValue, control }:
   const isCustom = Boolean(customWorkspaceRule);
   const allWorkspaceRule = useWatch({ control, name: "permissions.workspace.all" });
 
-  const selectedWsTopVal = useMemo(() => {
+  const selectedPermissionCategory = useMemo(() => {
     const { read, delete: del, edit, create } = allWorkspaceRule || {};
-    if (read && del && edit && create) return WorkspacePermission.FullAccess;
-    if (read) return WorkspacePermission.ReadOnly;
-    return WorkspacePermission.NoAccess;
+    if (read && del && edit && create) return Permission.FullAccess;
+    if (read) return Permission.ReadOnly;
+    return Permission.NoAccess;
   }, [allWorkspaceRule]);
 
-  const handleTopLevelPermissionChange = (val: WorkspacePermission) => {
+  const handlePermissionChange = (val: Permission) => {
     switch (val) {
-      case WorkspacePermission.NoAccess:
+      case Permission.NoAccess:
         setValue("permissions.workspace", {}, { shouldDirty: true });
         break;
-      case WorkspacePermission.FullAccess:
+      case Permission.FullAccess:
         setValue(
           "permissions.workspace",
           { all: { read: true, edit: true, create: true, delete: true } },
           { shouldDirty: true }
         );
         break;
-      case WorkspacePermission.ReadOnly:
+      case Permission.ReadOnly:
         setValue(
           "permissions.workspace",
           { all: { read: true, edit: false, create: false, delete: false } },
@@ -80,7 +81,13 @@ export const OrgRoleWorkspacePermission = ({ isNonEditable, setValue, control }:
   };
 
   return (
-    <div className="px-10 py-6 bg-mineshaft-800 rounded-md">
+    <div
+      className={twMerge(
+        "px-10 py-6 bg-mineshaft-800 rounded-md",
+        (selectedPermissionCategory !== Permission.NoAccess || isCustom) &&
+          "border-l-2 border-primary-600"
+      )}
+    >
       <div className="flex items-center space-x-4">
         <div>
           <FontAwesomeIcon icon={faClipboardList} className="text-4xl" />
@@ -91,15 +98,15 @@ export const OrgRoleWorkspacePermission = ({ isNonEditable, setValue, control }:
         </div>
         <div>
           <Select
-            defaultValue={WorkspacePermission.NoAccess}
+            defaultValue={Permission.NoAccess}
             isDisabled={isNonEditable}
-            value={isCustom ? WorkspacePermission.Custom : selectedWsTopVal}
-            onValueChange={handleTopLevelPermissionChange}
+            value={isCustom ? Permission.Custom : selectedPermissionCategory}
+            onValueChange={handlePermissionChange}
           >
-            <SelectItem value={WorkspacePermission.NoAccess}>No Access</SelectItem>
-            <SelectItem value={WorkspacePermission.ReadOnly}>Read Only</SelectItem>
-            <SelectItem value={WorkspacePermission.FullAccess}>Full Access</SelectItem>
-            <SelectItem value={WorkspacePermission.Custom}>Custom</SelectItem>
+            <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
+            <SelectItem value={Permission.ReadOnly}>Read Only</SelectItem>
+            <SelectItem value={Permission.FullAccess}>Full Access</SelectItem>
+            <SelectItem value={Permission.Custom}>Custom</SelectItem>
           </Select>
         </div>
       </div>

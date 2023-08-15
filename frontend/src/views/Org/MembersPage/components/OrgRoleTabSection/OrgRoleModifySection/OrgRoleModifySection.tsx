@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { faArrowLeft, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { yupResolver } from "@hookform/resolvers/yup";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, FormControl, Input } from "@app/components/v2";
@@ -10,13 +10,20 @@ import { useOrganization } from "@app/context";
 import { useCreateRole, useUpdateRole } from "@app/hooks/api";
 import { TRole } from "@app/hooks/api/roles/types";
 
+import { BillingPermission } from "./BillingPermission";
+import { IncidentContactPermission } from "./IncidentContactPermission";
+import { MemberPermission } from "./MemberPermission";
 import {
   formRolePermission2API,
   formSchema,
   rolePermission2Form,
   TFormSchema
 } from "./OrgRoleModifySection.utils";
-import { OrgRoleWorkspacePermission } from "./OrgRoleWorkspacePermission";
+import { RolePermission } from "./RolePermission";
+import { ServiceAccountPermission } from "./ServiceAccountPermission";
+import { SettingsPermission } from "./SettingsPermission";
+import { SsoPermission } from "./SsoPermission";
+import { WorkspacePermission } from "./WorkspacePermission";
 
 type Props = {
   role?: TRole;
@@ -40,7 +47,7 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
     control
   } = useForm<TFormSchema>({
     defaultValues: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : {},
-    resolver: yupResolver(formSchema)
+    resolver: zodResolver(formSchema)
   });
 
   const { mutateAsync: createRole } = useCreateRole();
@@ -142,7 +149,44 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
             </div>
           </div>
           <div className="flex flex-col space-y-4">
-            <OrgRoleWorkspacePermission
+            <WorkspacePermission
+              isNonEditable={isNonEditable}
+              control={control}
+              setValue={setValue}
+            />
+          </div>
+          <div className="flex flex-col space-y-4">
+            <MemberPermission isNonEditable={isNonEditable} control={control} setValue={setValue} />
+          </div>
+          <div className="flex flex-col space-y-4">
+            <BillingPermission
+              isNonEditable={isNonEditable}
+              control={control}
+              setValue={setValue}
+            />
+          </div>
+          <div className="flex flex-col space-y-4">
+            <RolePermission isNonEditable={isNonEditable} control={control} setValue={setValue} />
+          </div>
+          <div className="flex flex-col space-y-4">
+            <IncidentContactPermission
+              isNonEditable={isNonEditable}
+              control={control}
+              setValue={setValue}
+            />
+          </div>
+          <div className="flex flex-col space-y-4">
+            <SettingsPermission
+              isNonEditable={isNonEditable}
+              control={control}
+              setValue={setValue}
+            />
+          </div>
+          <div className="flex flex-col space-y-4">
+            <SsoPermission isNonEditable={isNonEditable} control={control} setValue={setValue} />
+          </div>
+          <div className="flex flex-col space-y-4">
+            <ServiceAccountPermission
               isNonEditable={isNonEditable}
               control={control}
               setValue={setValue}

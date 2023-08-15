@@ -12,12 +12,24 @@ export enum GeneralPermissionActions {
 
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
-  Role = "role"
+  Role = "role",
+  Member = "member",
+  Settings = "settings",
+  ServiceAccount = "service-account",
+  IncidentAccount = "incident-contact",
+  Sso = "sso",
+  Billing = "billing"
 }
 
 export type OrgPermissionSet =
   | [GeneralPermissionActions, OrgPermissionSubjects.Workspace]
-  | [GeneralPermissionActions, OrgPermissionSubjects.Role];
+  | [GeneralPermissionActions, OrgPermissionSubjects.Role]
+  | [GeneralPermissionActions, OrgPermissionSubjects.Member]
+  | [GeneralPermissionActions, OrgPermissionSubjects.Settings]
+  | [GeneralPermissionActions, OrgPermissionSubjects.ServiceAccount]
+  | [GeneralPermissionActions, OrgPermissionSubjects.IncidentAccount]
+  | [GeneralPermissionActions, OrgPermissionSubjects.Sso]
+  | [GeneralPermissionActions, OrgPermissionSubjects.Billing];
 
 const buildAdminPermission = () => {
   const { can, build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
@@ -32,6 +44,36 @@ const buildAdminPermission = () => {
   can(GeneralPermissionActions.Edit, OrgPermissionSubjects.Role);
   can(GeneralPermissionActions.Delete, OrgPermissionSubjects.Role);
 
+  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Member);
+  can(GeneralPermissionActions.Create, OrgPermissionSubjects.Member);
+  can(GeneralPermissionActions.Edit, OrgPermissionSubjects.Member);
+  can(GeneralPermissionActions.Delete, OrgPermissionSubjects.Member);
+
+  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Settings);
+  can(GeneralPermissionActions.Create, OrgPermissionSubjects.Settings);
+  can(GeneralPermissionActions.Edit, OrgPermissionSubjects.Settings);
+  can(GeneralPermissionActions.Delete, OrgPermissionSubjects.Settings);
+
+  can(GeneralPermissionActions.Read, OrgPermissionSubjects.ServiceAccount);
+  can(GeneralPermissionActions.Create, OrgPermissionSubjects.ServiceAccount);
+  can(GeneralPermissionActions.Edit, OrgPermissionSubjects.ServiceAccount);
+  can(GeneralPermissionActions.Delete, OrgPermissionSubjects.ServiceAccount);
+
+  can(GeneralPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
+  can(GeneralPermissionActions.Create, OrgPermissionSubjects.IncidentAccount);
+  can(GeneralPermissionActions.Edit, OrgPermissionSubjects.IncidentAccount);
+  can(GeneralPermissionActions.Delete, OrgPermissionSubjects.IncidentAccount);
+
+  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Sso);
+  can(GeneralPermissionActions.Create, OrgPermissionSubjects.Sso);
+  can(GeneralPermissionActions.Edit, OrgPermissionSubjects.Sso);
+  can(GeneralPermissionActions.Delete, OrgPermissionSubjects.Sso);
+
+  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Billing);
+  can(GeneralPermissionActions.Create, OrgPermissionSubjects.Billing);
+  can(GeneralPermissionActions.Edit, OrgPermissionSubjects.Billing);
+  can(GeneralPermissionActions.Delete, OrgPermissionSubjects.Billing);
+
   return build();
 };
 
@@ -40,9 +82,14 @@ export const adminPermissions = buildAdminPermission();
 const buildMemberPermission = () => {
   const { can, build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
 
-  // ws permissions
   can(GeneralPermissionActions.Read, OrgPermissionSubjects.Workspace);
+  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Member);
   can(GeneralPermissionActions.Read, OrgPermissionSubjects.Role);
+  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Settings);
+  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Billing);
+  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Sso);
+  can(GeneralPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
+  can(GeneralPermissionActions.Read, OrgPermissionSubjects.ServiceAccount);
 
   return build();
 };

@@ -135,18 +135,21 @@ export const getRoles = async (req: Request, res: Response) => {
     data: {
       roles: [
         {
+          _id: "owner",
           name: "Owner",
           slug: "owner",
           description: "Complete administration access over the organization.",
           permissions: adminPermissions.rules
         },
         {
+          _id: "admin",
           name: "Admin",
           slug: "admin",
           description: "Complete administration access over the organization",
           permissions: adminPermissions.rules
         },
         {
+          _id: "member",
           name: "Member",
           slug: "member",
           description: "Non-administrative role in an organization",

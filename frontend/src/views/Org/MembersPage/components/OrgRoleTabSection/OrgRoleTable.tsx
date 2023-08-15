@@ -88,7 +88,7 @@ export const OrgRoleTable = ({ isRolesLoading, roles = [], onSelectRole }: Props
                 const isNonMutatable = ["owner", "admin", "member"].includes(slug);
 
                 return (
-                  <Tr key={id}>
+                  <Tr key={`role-list-${id}`}>
                     <Td>{name}</Td>
                     <Td>{slug}</Td>
                     <Td>

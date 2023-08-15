@@ -1,34 +1,34 @@
 /* eslint-disable no-param-reassign */
-import * as yup from "yup";
+import { z } from "zod";
 
 import { TPermission } from "@app/hooks/api/roles/types";
 
 const PERMISSION_ACTIONS = ["read", "create", "edit", "delete"] as const;
 
-export const formSchema = yup.object({
-  name: yup.string().required().label("Name"),
-  description: yup.string(),
-  slug: yup.string().required().label("Slug"),
-  permissions: yup.object({
-    workspace: yup.lazy((val) =>
-      yup.object(
-        Object.fromEntries(
-          Object.entries(val || {}).map(([k]) => [
-            k,
-            yup.object({
-              read: yup.bool(),
-              edit: yup.bool(),
-              delete: yup.bool(),
-              create: yup.bool()
-            })
-          ])
-        )
-      )
-    )
+const generalPermissionSchema = z.object({
+  read: z.boolean().optional(),
+  edit: z.boolean().optional(),
+  delete: z.boolean().optional(),
+  create: z.boolean().optional()
+});
+
+export const formSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  slug: z.string(),
+  permissions: z.object({
+    workspace: z.record(generalPermissionSchema),
+    member: generalPermissionSchema,
+    role: generalPermissionSchema,
+    settings: generalPermissionSchema,
+    "service-account": generalPermissionSchema,
+    "incident-contact": generalPermissionSchema,
+    sso: generalPermissionSchema,
+    billing: generalPermissionSchema
   })
 });
 
-export type TFormSchema = yup.InferType<typeof formSchema>;
+export type TFormSchema = z.infer<typeof formSchema>;
 
 const api2FormWorkspace = (
   formVal: TFormSchema["permissions"]["workspace"],
@@ -36,24 +36,43 @@ const api2FormWorkspace = (
 ) => {
   if (permission.subject !== "workspace") return;
   const isCustomRule = Boolean(permission?.condition?.id);
+  // full access
   if (isCustomRule && !formVal?.custom) {
     formVal.custom = { read: true, edit: true, delete: true, create: true };
   }
 
   const workspaceId = permission?.condition?.id || "all";
-  if (!formVal?.[workspaceId])
+  // initalize
+  if (!formVal?.[workspaceId]) {
     formVal[workspaceId] = { read: false, edit: false, create: false, delete: false };
+  }
   formVal[workspaceId][permission.action] = true;
 };
 
 // convert role permission to form compatiable  data structure
 export const rolePermission2Form = (permissions: TPermission[] = []) => {
   const formVal: TFormSchema["permissions"] = {
-    workspace: {}
+    workspace: {},
+    billing: {},
+    settings: {},
+    role: {},
+    sso: {},
+    member: {},
+    "service-account": {},
+    "incident-contact": {}
   };
 
   permissions.forEach((permission) => {
-    api2FormWorkspace(formVal?.workspace, permission);
+    switch (permission.subject) {
+      case "workspace":
+        api2FormWorkspace(formVal?.workspace, permission);
+        break;
+      default:
+        // everything else follows same pattern
+        // formVal[settings][read | write] = true
+        formVal[permission.subject as keyof TFormSchema["permissions"]][permission.action] = true;
+        break;
+    }
   });
 
   return formVal;
@@ -64,7 +83,7 @@ const form2ApiWorkspace = (
   workspace: TFormSchema["permissions"]["workspace"]
 ) => {
   const isFullAccess = PERMISSION_ACTIONS.every((action) => workspace?.all?.[action]);
-
+  // if any of them is set in all push it without any  condition
   PERMISSION_ACTIONS.forEach((action) => {
     if (workspace?.all?.[action]) permissions.push({ action, subject: "workspace" });
   });
@@ -86,8 +105,24 @@ const form2ApiWorkspace = (
 
 export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   const permissions: TPermission[] = [];
-  // easy deep copy
-  if (formVal?.workspace)
+  if (formVal?.workspace) {
+    // easy deep copy
     form2ApiWorkspace(permissions, JSON.parse(JSON.stringify(formVal.workspace)));
+  }
+  // other than workspace everything else follows same
+  // if in future there is a different follow the above on how workspace is done
+  const { workspace, ...rules } = formVal;
+  (Object.keys(rules) as Array<keyof typeof rules>).forEach((rule) => {
+    // all these type annotations are due to Object.keys of ts cannot infer and put it just a string[]
+    // quite annoying i know
+    const actions = Object.keys(rules[rule]) as Array<
+      keyof z.infer<typeof generalPermissionSchema>
+    >;
+    actions.forEach((action) => {
+      if (rules[rule][action]) {
+        permissions.push({ action, subject: rule });
+      }
+    });
+  });
   return permissions;
 };

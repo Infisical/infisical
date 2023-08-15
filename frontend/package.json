@@ -98,7 +98,8 @@
     "uuid": "^8.3.2",
     "uuidv4": "^6.2.13",
     "yaml": "^2.2.2",
-    "yup": "^0.32.11"
+    "yup": "^0.32.11",
+    "zod": "^3.22.0"
   },
   "devDependencies": {
     "@storybook/addon-essentials": "^7.0.23",
