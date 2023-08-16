@@ -161,6 +161,7 @@ export const renameWorkspaceEnvironment = async (
   if (envIndex === -1) {
     throw new Error("Invalid environment given");
   }
+
   const oldEnvironment = workspace.environments[envIndex];
 
   workspace.environments[envIndex].name = environmentName;
@@ -195,6 +196,7 @@ export const renameWorkspaceEnvironment = async (
     { $set: { "deniedPermissions.$[element].environmentSlug": environmentSlug } },
     { arrayFilters: [{ "element.environmentSlug": oldEnvironmentSlug }] }
   );
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -245,6 +247,7 @@ export const deleteWorkspaceEnvironment = async (
   if (envIndex === -1) {
     throw new Error("Invalid environment given");
   }
+
   const oldEnvironment = workspace.environments[envIndex];
 
   workspace.environments.splice(envIndex, 1);
