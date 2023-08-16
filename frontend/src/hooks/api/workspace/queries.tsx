@@ -13,6 +13,7 @@ import {
   GetWsEnvironmentDTO,
   NameWorkspaceSecretsDTO,
   RenameWorkspaceDTO,
+  ReorderEnvironmentsDTO,
   ToggleAutoCapitalizationDTO,
   UpdateEnvironmentDTO,
   Workspace,
@@ -236,6 +237,21 @@ export const useCreateWsEnvironment = () => {
       return apiRequest.post(`/api/v2/workspace/${workspaceID}/environments`, {
         environmentName,
         environmentSlug
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
+    }
+  });
+};
+
+export const useReorderWsEnvironment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, ReorderEnvironmentsDTO>({
+    mutationFn: ({ workspaceID, environmentSlug, environmentName, otherEnvironmentSlug, otherEnvironmentName}) => {
+      return apiRequest.patch(`/api/v2/workspace/${workspaceID}/environments`, {
+        environmentSlug, environmentName, otherEnvironmentSlug, otherEnvironmentName
       });
     },
     onSuccess: () => {

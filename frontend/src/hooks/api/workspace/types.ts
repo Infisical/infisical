@@ -46,6 +46,15 @@ export type CreateEnvironmentDTO = {
   environmentName: string;
 };
 
+export type ReorderEnvironmentsDTO = {
+  workspaceID: string;
+  environmentSlug: string;
+  environmentName: string;
+  otherEnvironmentSlug: string;
+  otherEnvironmentName: string;
+
+};
+
 export type UpdateEnvironmentDTO = {
   workspaceID: string;
   oldEnvironmentSlug: string;

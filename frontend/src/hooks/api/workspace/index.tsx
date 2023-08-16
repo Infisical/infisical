@@ -16,6 +16,7 @@ export {
   useGetWorkspaceUsers,
   useNameWorkspaceSecrets,
   useRenameWorkspace,
+  useReorderWsEnvironment,
   useToggleAutoCapitalization,
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment} from "./queries";
