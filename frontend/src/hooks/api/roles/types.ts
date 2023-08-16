@@ -49,3 +49,7 @@ export type TDeleteRoleDTO = {
   id: string;
   workspaceId?: string;
 };
+
+export type TGetUserOrgPermissionsDTO = {
+  orgId: string;
+};

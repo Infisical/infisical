@@ -40,13 +40,19 @@ export const UpdateRoleSchema = z.object({
 
 export const DeleteRoleSchema = z.object({
   params: z.object({
-    id: z.string()
+    id: z.string().trim()
   })
 });
 
 export const GetRoleSchema = z.object({
   query: z.object({
-    workspaceId: z.string().optional(),
-    orgId: z.string()
+    workspaceId: z.string().trim().optional(),
+    orgId: z.string().trim()
+  })
+});
+
+export const GetUserPermission = z.object({
+  params: z.object({
+    orgId: z.string().trim()
   })
 });

@@ -13,8 +13,10 @@ import {
   CreateRoleSchema,
   DeleteRoleSchema,
   GetRoleSchema,
+  GetUserPermission,
   UpdateRoleSchema
 } from "../../validation";
+import { packRules } from "@casl/ability/extra";
 
 export const createRole = async (req: Request, res: Response) => {
   const {
@@ -157,6 +159,19 @@ export const getRoles = async (req: Request, res: Response) => {
         },
         ...roles
       ]
+    }
+  });
+};
+
+export const getUserPermissions = async (req: Request, res: Response) => {
+  const {
+    params: { orgId }
+  } = await validateRequest(GetUserPermission, req);
+  const { permission } = await getUserOrgPermissions(req.user.id, orgId);
+
+  res.status(200).json({
+    data: {
+      permissions: packRules(permission.rules)
     }
   });
 };

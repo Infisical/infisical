@@ -17,4 +17,11 @@ router.delete(
 
 router.get("/", requireAuth({ acceptedAuthModes: [AuthMode.JWT] }), roleController.getRoles);
 
+// get a user permissions in an org
+router.get(
+  "/:orgId/permissions",
+  requireAuth({ acceptedAuthModes: [AuthMode.JWT] }),
+  roleController.getUserPermissions
+);
+
 export default router;
