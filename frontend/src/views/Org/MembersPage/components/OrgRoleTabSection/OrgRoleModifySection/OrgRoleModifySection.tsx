@@ -20,7 +20,7 @@ import {
   TFormSchema
 } from "./OrgRoleModifySection.utils";
 import { RolePermission } from "./RolePermission";
-import { ServiceAccountPermission } from "./ServiceAccountPermission";
+import { SecretScannigPermission } from "./SecretScanningPermission";
 import { SettingsPermission } from "./SettingsPermission";
 import { SsoPermission } from "./SsoPermission";
 import { WorkspacePermission } from "./WorkspacePermission";
@@ -183,14 +183,14 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
             />
           </div>
           <div className="flex flex-col space-y-4">
-            <SsoPermission isNonEditable={isNonEditable} control={control} setValue={setValue} />
-          </div>
-          <div className="flex flex-col space-y-4">
-            <ServiceAccountPermission
+            <SecretScannigPermission
               isNonEditable={isNonEditable}
               control={control}
               setValue={setValue}
             />
+          </div>
+          <div className="flex flex-col space-y-4">
+            <SsoPermission isNonEditable={isNonEditable} control={control} setValue={setValue} />
           </div>
         </div>
         <div className="flex items-center space-x-4 mt-12">

@@ -1,23 +1,12 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Control, Controller, UseFormSetValue, useWatch } from "react-hook-form";
-import { faClipboardList } from "@fortawesome/free-solid-svg-icons";
+import { faMoneyBill } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
-import {
-  Checkbox,
-  Select,
-  SelectItem,
-  Table,
-  TableContainer,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { Checkbox, Select, SelectItem } from "@app/components/v2";
+import { useToggle } from "@app/hooks";
 
 import { TFormSchema } from "./OrgRoleModifySection.utils";
 
@@ -34,48 +23,50 @@ enum Permission {
   Custom = "custom"
 }
 
-export const WorkspacePermission = ({ isNonEditable, setValue, control }: Props) => {
-  const { workspaces } = useWorkspace();
+const PERMISSIONS = [
+  { action: "read", label: "Read" },
+  { action: "create", label: "Create" }
+] as const;
 
-  const customWorkspaceRule = useWatch({
+export const WorkspacePermission = ({ isNonEditable, setValue, control }: Props) => {
+  const rule = useWatch({
     control,
-    name: "permissions.workspace.custom"
+    name: "permissions.workspace"
   });
-  const isCustom = Boolean(customWorkspaceRule);
-  const allWorkspaceRule = useWatch({ control, name: "permissions.workspace.all" });
+  const [isCustom, setIsCustom] = useToggle();
 
   const selectedPermissionCategory = useMemo(() => {
-    const { read, delete: del, edit, create } = allWorkspaceRule || {};
-    if (read && del && edit && create) return Permission.FullAccess;
-    if (read) return Permission.ReadOnly;
-    return Permission.NoAccess;
-  }, [allWorkspaceRule]);
+    let score = 0;
+    const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
+    const totalActions = PERMISSIONS.length;
+    actions.forEach((key) => (score += rule[key] ? 1 : 0));
+
+    if (isCustom) return Permission.Custom;
+    if (score === 0) return Permission.NoAccess;
+    if (score === totalActions) return Permission.FullAccess;
+    if (score === 1 && rule.read) return Permission.ReadOnly;
+
+    return Permission.Custom;
+  }, [rule, isCustom]);
+
+  useEffect(() => {
+    selectedPermissionCategory === Permission.Custom ? setIsCustom.on() : setIsCustom.off();
+  }, [selectedPermissionCategory]);
 
   const handlePermissionChange = (val: Permission) => {
+    val === Permission.Custom ? setIsCustom.on() : setIsCustom.off();
     switch (val) {
       case Permission.NoAccess:
-        setValue("permissions.workspace", {}, { shouldDirty: true });
+        setValue("permissions.workspace", { read: false, create: false }, { shouldDirty: true });
         break;
       case Permission.FullAccess:
-        setValue(
-          "permissions.workspace",
-          { all: { read: true, edit: true, create: true, delete: true } },
-          { shouldDirty: true }
-        );
+        setValue("permissions.workspace", { read: true, create: true }, { shouldDirty: true });
         break;
       case Permission.ReadOnly:
-        setValue(
-          "permissions.workspace",
-          { all: { read: true, edit: false, create: false, delete: false } },
-          { shouldDirty: true }
-        );
+        setValue("permissions.workspace", { read: true, create: false }, { shouldDirty: true });
         break;
       default:
-        setValue(
-          "permissions.workspace",
-          { custom: { read: false, edit: false, create: false, delete: false } },
-          { shouldDirty: true }
-        );
+        setValue("permissions.workspace", { read: false, create: false }, { shouldDirty: true });
         break;
     }
   };
@@ -84,23 +75,22 @@ export const WorkspacePermission = ({ isNonEditable, setValue, control }: Props)
     <div
       className={twMerge(
         "px-10 py-6 bg-mineshaft-800 rounded-md",
-        (selectedPermissionCategory !== Permission.NoAccess || isCustom) &&
-          "border-l-2 border-primary-600"
+        selectedPermissionCategory !== Permission.NoAccess && "border-l-2 border-primary-600"
       )}
     >
       <div className="flex items-center space-x-4">
         <div>
-          <FontAwesomeIcon icon={faClipboardList} className="text-4xl" />
+          <FontAwesomeIcon icon={faMoneyBill} className="text-4xl" />
         </div>
         <div className="flex-grow flex flex-col">
-          <div className="font-medium mb-1 text-lg">Projects</div>
-          <div className="text-xs font-light">User project access control</div>
+          <div className="font-medium mb-1 text-lg">Project</div>
+          <div className="text-xs font-light">Project management control</div>
         </div>
         <div>
           <Select
             defaultValue={Permission.NoAccess}
             isDisabled={isNonEditable}
-            value={isCustom ? Permission.Custom : selectedPermissionCategory}
+            value={selectedPermissionCategory}
             onValueChange={handlePermissionChange}
           >
             <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
@@ -112,100 +102,27 @@ export const WorkspacePermission = ({ isNonEditable, setValue, control }: Props)
       </div>
       <motion.div
         initial={false}
-        animate={{ height: isCustom ? "auto" : 0 }}
-        className="overflow-hidden"
+        animate={{ height: isCustom ? "2.5rem" : 0, paddingTop: isCustom ? "1rem" : 0 }}
+        className="overflow-hidden grid gap-8 grid-flow-col auto-cols-min"
       >
-        <TableContainer className="border-mineshaft-500 mt-6">
-          <Table>
-            <THead>
-              <Tr>
-                <Th />
-                <Th className="text-center">Read</Th>
-                <Th className="text-center">Create</Th>
-                <Th className="text-center">Edit</Th>
-                <Th className="text-center">Delete</Th>
-              </Tr>
-            </THead>
-            <TBody>
-              {isCustom &&
-                workspaces?.map(({ name, _id: id }) => (
-                  <Tr key={`custom-role-ws-${name}`}>
-                    <Td>{name}</Td>
-                    <Td>
-                      <Controller
-                        name={`permissions.workspace.${id}.read`}
-                        control={control}
-                        defaultValue={false}
-                        render={({ field }) => (
-                          <div className="flex items-center justify-center">
-                            <Checkbox
-                              isChecked={field.value}
-                              onCheckedChange={field.onChange}
-                              id={`permissions.workspace.${id}.read`}
-                              isDisabled={isNonEditable}
-                            />
-                          </div>
-                        )}
-                      />
-                    </Td>
-                    <Td>
-                      <Controller
-                        name={`permissions.workspace.${id}.create`}
-                        control={control}
-                        defaultValue={false}
-                        render={({ field }) => (
-                          <div className="flex items-center justify-center">
-                            <Checkbox
-                              isChecked={field.value}
-                              onCheckedChange={field.onChange}
-                              onBlur={field.onBlur}
-                              id={`permissions.workspace.${id}.modify`}
-                              isDisabled={isNonEditable}
-                            />
-                          </div>
-                        )}
-                      />
-                    </Td>
-                    <Td>
-                      <Controller
-                        name={`permissions.workspace.${id}.edit`}
-                        control={control}
-                        defaultValue={false}
-                        render={({ field }) => (
-                          <div className="flex items-center justify-center">
-                            <Checkbox
-                              isChecked={field.value}
-                              onCheckedChange={field.onChange}
-                              onBlur={field.onBlur}
-                              id={`permissions.workspace.${id}.modify`}
-                              isDisabled={isNonEditable}
-                            />
-                          </div>
-                        )}
-                      />
-                    </Td>
-                    <Td>
-                      <Controller
-                        defaultValue={false}
-                        name={`permissions.workspace.${id}.delete`}
-                        control={control}
-                        render={({ field }) => (
-                          <div className="flex items-center justify-center">
-                            <Checkbox
-                              isChecked={field.value}
-                              onCheckedChange={field.onChange}
-                              id={`permissions.workspace.${id}.delete`}
-                              isDisabled={isNonEditable}
-                            />
-                          </div>
-                        )}
-                      />
-                    </Td>
-                  </Tr>
-                ))}
-            </TBody>
-          </Table>
-        </TableContainer>
+        {isCustom &&
+          PERMISSIONS.map(({ action, label }) => (
+            <Controller
+              name={`permissions.workspace.${action}`}
+              key={`permissions.workspace.${action}`}
+              control={control}
+              render={({ field }) => (
+                <Checkbox
+                  isChecked={field.value}
+                  onCheckedChange={field.onChange}
+                  id={`permissions.workspace.${action}`}
+                  isDisabled={isNonEditable}
+                >
+                  {label}
+                </Checkbox>
+              )}
+            />
+          ))}
       </motion.div>
     </div>
   );

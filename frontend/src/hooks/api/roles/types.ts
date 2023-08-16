@@ -15,10 +15,18 @@ export type TRole = {
   updatedAt: string;
 };
 
-export type TPermission = {
+export type TPermission = TWorkspacePermission | TGeneralPermission;
+
+type TGeneralPermission = {
   condition?: Record<string, any>;
   action: "read" | "edit" | "create" | "delete";
-  subject: string;
+  subject: "member" | "role" | "incident-contact" | "sso" | "billing" | "settings";
+};
+
+type TWorkspacePermission = {
+  condition?: Record<string, any>;
+  action: "read" | "create";
+  subject: "workspace";
 };
 
 export type TCreateRoleDTO = {

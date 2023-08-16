@@ -5,17 +5,21 @@ import {
   Integration,
   IntegrationAuth,
   Membership,
-  MembershipOrg,
+  Organization,
   ServiceToken,
-  Workspace,
+  Workspace
 } from "../../models";
-import {
-  createWorkspace as create,
-  deleteWorkspace as deleteWork,
-} from "../../helpers/workspace";
+import { createWorkspace as create, deleteWorkspace as deleteWork } from "../../helpers/workspace";
 import { EELicenseService } from "../../ee/services";
 import { addMemberships } from "../../helpers/membership";
 import { ADMIN } from "../../variables";
+import { OrganizationNotFoundError } from "../../utils/errors";
+import {
+  OrgPermissionSubjects,
+  WorkspacePermissionActions,
+  getUserOrgPermissions
+} from "../../services/RoleService";
+import { ForbiddenError } from "@casl/ability";
 
 /**
  * Return public keys of members of workspace with id [workspaceId]
@@ -28,17 +32,17 @@ export const getWorkspacePublicKeys = async (req: Request, res: Response) => {
 
   const publicKeys = (
     await Membership.find({
-      workspace: workspaceId,
+      workspace: workspaceId
     }).populate<{ user: IUser }>("user", "publicKey")
   ).map((member) => {
     return {
       publicKey: member.user.publicKey,
-      userId: member.user._id,
+      userId: member.user._id
     };
   });
 
   return res.status(200).send({
-    publicKeys,
+    publicKeys
   });
 };
 
@@ -52,11 +56,11 @@ export const getWorkspaceMemberships = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
 
   const users = await Membership.find({
-    workspace: workspaceId,
+    workspace: workspaceId
   }).populate("user", "+publicKey");
 
   return res.status(200).send({
-    users,
+    users
   });
 };
 
@@ -69,12 +73,12 @@ export const getWorkspaceMemberships = async (req: Request, res: Response) => {
 export const getWorkspaces = async (req: Request, res: Response) => {
   const workspaces = (
     await Membership.find({
-      user: req.user._id,
+      user: req.user._id
     }).populate("workspace")
   ).map((m) => m.workspace);
 
   return res.status(200).send({
-    workspaces,
+    workspaces
   });
 };
 
@@ -88,11 +92,11 @@ export const getWorkspace = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
 
   const workspace = await Workspace.findOne({
-    _id: workspaceId,
+    _id: workspaceId
   });
 
   return res.status(200).send({
-    workspace,
+    workspace
   });
 };
 
@@ -106,24 +110,28 @@ export const getWorkspace = async (req: Request, res: Response) => {
 export const createWorkspace = async (req: Request, res: Response) => {
   const { workspaceName, organizationId } = req.body;
 
-  // validate organization membership
-  const membershipOrg = await MembershipOrg.findOne({
-    user: req.user._id,
-    organization: new Types.ObjectId(organizationId),
-  });
-
-  if (!membershipOrg) {
-    throw new Error("Failed to validate organization membership");
+  const organization = await Organization.findById(organizationId);
+  if (!organization) {
+    throw OrganizationNotFoundError({
+      message: "Failed to find organization"
+    });
   }
 
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    WorkspacePermissionActions.Create,
+    OrgPermissionSubjects.Workspace
+  );
+
   const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
-  
+
   if (plan.workspaceLimit !== null) {
     // case: limit imposed on number of workspaces allowed
     if (plan.workspacesUsed >= plan.workspaceLimit) {
       // case: number of workspaces used exceeds the number of workspaces allowed
       return res.status(400).send({
-        message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces.",
+        message:
+          "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
       });
     }
   }
@@ -135,17 +143,17 @@ export const createWorkspace = async (req: Request, res: Response) => {
   // create workspace and add user as member
   const workspace = await create({
     name: workspaceName,
-    organizationId: new Types.ObjectId(organizationId),
+    organizationId: new Types.ObjectId(organizationId)
   });
 
   await addMemberships({
     userIds: [req.user._id],
     workspaceId: workspace._id.toString(),
-    roles: [ADMIN],
+    roles: [ADMIN]
   });
 
   return res.status(200).send({
-    workspace,
+    workspace
   });
 };
 
@@ -160,11 +168,11 @@ export const deleteWorkspace = async (req: Request, res: Response) => {
 
   // delete workspace
   await deleteWork({
-    id: workspaceId,
+    id: workspaceId
   });
 
   return res.status(200).send({
-    message: "Successfully deleted workspace",
+    message: "Successfully deleted workspace"
   });
 };
 
@@ -180,19 +188,19 @@ export const changeWorkspaceName = async (req: Request, res: Response) => {
 
   const workspace = await Workspace.findOneAndUpdate(
     {
-      _id: workspaceId,
+      _id: workspaceId
     },
     {
-      name,
+      name
     },
     {
-      new: true,
+      new: true
     }
   );
 
   return res.status(200).send({
     message: "Successfully changed workspace name",
-    workspace,
+    workspace
   });
 };
 
@@ -206,11 +214,11 @@ export const getWorkspaceIntegrations = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
 
   const integrations = await Integration.find({
-    workspace: workspaceId,
+    workspace: workspaceId
   });
 
   return res.status(200).send({
-    integrations,
+    integrations
   });
 };
 
@@ -220,18 +228,15 @@ export const getWorkspaceIntegrations = async (req: Request, res: Response) => {
  * @param res
  * @returns
  */
-export const getWorkspaceIntegrationAuthorizations = async (
-  req: Request,
-  res: Response
-) => {
+export const getWorkspaceIntegrationAuthorizations = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
 
   const authorizations = await IntegrationAuth.find({
-    workspace: workspaceId,
+    workspace: workspaceId
   });
 
   return res.status(200).send({
-    authorizations,
+    authorizations
   });
 };
 
@@ -241,18 +246,15 @@ export const getWorkspaceIntegrationAuthorizations = async (
  * @param res
  * @returns
  */
-export const getWorkspaceServiceTokens = async (
-  req: Request,
-  res: Response
-) => {
+export const getWorkspaceServiceTokens = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
   // ?? FIX.
   const serviceTokens = await ServiceToken.find({
     user: req.user._id,
-    workspace: workspaceId,
+    workspace: workspaceId
   });
 
   return res.status(200).send({
-    serviceTokens,
+    serviceTokens
   });
 };

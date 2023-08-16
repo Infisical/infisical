@@ -6,6 +6,15 @@ import { updateSubscriptionOrgQuantity } from "../../helpers/organization";
 import Role from "../../models/role";
 import { BadRequestError } from "../../utils/errors";
 import { CUSTOM } from "../../variables";
+import * as reqValidator from "../../validation/organization";
+import { validateRequest } from "../../helpers/validation";
+import {
+  GeneralPermissionActions,
+  OrgPermissionSubjects,
+  WorkspacePermissionActions,
+  getUserOrgPermissions
+} from "../../services/RoleService";
+import { ForbiddenError } from "@casl/ability";
 
 /**
  * Return memberships for organization with id [organizationId]
@@ -46,7 +55,15 @@ export const getOrganizationMemberships = async (req: Request, res: Response) =>
         }
     }   
     */
-  const { organizationId } = req.params;
+  const {
+    params: { organizationId }
+  } = await validateRequest(reqValidator.GetOrgMembersv2, req);
+
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    GeneralPermissionActions.Read,
+    OrgPermissionSubjects.Member
+  );
 
   const memberships = await MembershipOrg.find({
     organization: organizationId
@@ -116,8 +133,15 @@ export const updateOrganizationMembership = async (req: Request, res: Response) 
         }
     }   
     */
-  const { membershipId } = req.params;
-  const { role } = req.body;
+  const {
+    params: { organizationId, membershipId },
+    body: { role }
+  } = await validateRequest(reqValidator.UpdateOrgMemberv2, req);
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    GeneralPermissionActions.Edit,
+    OrgPermissionSubjects.Member
+  );
 
   const isCustomRole = !["admin", "member", "owner"].includes(role);
   if (isCustomRole) {
@@ -191,7 +215,14 @@ export const deleteOrganizationMembership = async (req: Request, res: Response) 
         }
     }   
     */
-  const { membershipId } = req.params;
+  const {
+    params: { organizationId, membershipId }
+  } = await validateRequest(reqValidator.DeleteOrgMemberv2, req);
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    GeneralPermissionActions.Delete,
+    OrgPermissionSubjects.Member
+  );
 
   // delete organization membership
   const membership = await deleteMembershipOrg({
@@ -247,7 +278,15 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
         }
     }   
     */
-  const { organizationId } = req.params;
+  const {
+    params: { organizationId }
+  } = await validateRequest(reqValidator.GetOrgWorkspacesv2, req);
+
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    WorkspacePermissionActions.Read,
+    OrgPermissionSubjects.Workspace
+  );
 
   const workspacesSet = new Set(
     (

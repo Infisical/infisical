@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Control, Controller, UseFormSetValue, useWatch } from "react-hook-form";
-import { faLaptopCode } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
@@ -30,10 +30,10 @@ const PERMISSIONS = [
   { action: "delete", label: "Remove" }
 ] as const;
 
-export const ServiceAccountPermission = ({ isNonEditable, setValue, control }: Props) => {
+export const SecretScannigPermission = ({ isNonEditable, setValue, control }: Props) => {
   const rule = useWatch({
     control,
-    name: "permissions.service-account"
+    name: "permissions.secret-scanning"
   });
   const [isCustom, setIsCustom] = useToggle();
 
@@ -60,7 +60,7 @@ export const ServiceAccountPermission = ({ isNonEditable, setValue, control }: P
       case Permission.NoAccess:
         setIsCustom.off();
         setValue(
-          "permissions.service-account",
+          "permissions.secret-scanning",
           { read: false, edit: false, create: false, delete: false },
           { shouldDirty: true }
         );
@@ -68,7 +68,7 @@ export const ServiceAccountPermission = ({ isNonEditable, setValue, control }: P
       case Permission.FullAccess:
         setIsCustom.off();
         setValue(
-          "permissions.service-account",
+          "permissions.secret-scanning",
           { read: true, edit: true, create: true, delete: true },
           { shouldDirty: true }
         );
@@ -76,7 +76,7 @@ export const ServiceAccountPermission = ({ isNonEditable, setValue, control }: P
       case Permission.ReadOnly:
         setIsCustom.off();
         setValue(
-          "permissions.service-account",
+          "permissions.secret-scanning",
           { read: true, edit: false, create: false, delete: false },
           { shouldDirty: true }
         );
@@ -84,7 +84,7 @@ export const ServiceAccountPermission = ({ isNonEditable, setValue, control }: P
       default:
         setIsCustom.on();
         setValue(
-          "permissions.service-account",
+          "permissions.secret-scanning",
           { read: false, edit: false, create: false, delete: false },
           { shouldDirty: true }
         );
@@ -101,11 +101,11 @@ export const ServiceAccountPermission = ({ isNonEditable, setValue, control }: P
     >
       <div className="flex items-center space-x-4">
         <div>
-          <FontAwesomeIcon icon={faLaptopCode} className="text-4xl" />
+          <FontAwesomeIcon icon={faMagnifyingGlass} className="text-4xl" />
         </div>
         <div className="flex-grow flex flex-col">
-          <div className="font-medium mb-1 text-lg">Service Accounts</div>
-          <div className="text-xs font-light">Service Account management control</div>
+          <div className="font-medium mb-1 text-lg">Secret Scanning</div>
+          <div className="text-xs font-light">Secret scanning management control</div>
         </div>
         <div>
           <Select
@@ -129,14 +129,14 @@ export const ServiceAccountPermission = ({ isNonEditable, setValue, control }: P
         {isCustom &&
           PERMISSIONS.map(({ action, label }) => (
             <Controller
-              name={`permissions.service-account.${action}`}
-              key={`permissions.service-account.${action}`}
+              name={`permissions.role.${action}`}
+              key={`permissions.role.${action}`}
               control={control}
               render={({ field }) => (
                 <Checkbox
                   isChecked={field.value}
                   onCheckedChange={field.onChange}
-                  id={`permissions.service-account.${action}`}
+                  id={`permissions.role.${action}`}
                   isDisabled={isNonEditable}
                 >
                   {label}
