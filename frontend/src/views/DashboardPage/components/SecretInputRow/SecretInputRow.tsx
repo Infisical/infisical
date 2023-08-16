@@ -110,6 +110,11 @@ export const SecretInputRow = memo(
       append
     } = useFieldArray({ control, name: `secrets.${index}.tags` });
 
+    const tagColorByTagId = new Map((wsTags || []).map((wsTag, i) => [wsTag._id, tagColors[i % tagColors.length]]))
+
+    // display the tags in alphabetical order
+    secretTags.sort((a, b) => a.name.localeCompare(b.name))
+
     // to get details on a secret
     const overrideAction = useWatch({
       control,
@@ -321,19 +326,22 @@ export const SecretInputRow = memo(
         </td>
         <td className="min-w-sm flex">
           <div className="flex h-8 items-center pl-2">
-            {secretTags.map(({ id, slug }, i) => (
-              <Tag
-                className={cx(
-                  tagColors[i % tagColors.length].bg,
-                  tagColors[i % tagColors.length].text
-                )}
-                isDisabled={isReadOnly || isAddOnly || isRollbackMode}
-                onClose={() => remove(i)}
-                key={id}
-              >
-                {slug}
-              </Tag>
-            ))}
+            {secretTags.map(({ id, _id, slug }, i) => {
+              // This map lookup shouldn't ever fail, but if it does we default to the first color
+              const tagColor = tagColorByTagId.get(_id) || tagColors[0]
+              return (
+                <Tag
+                  className={cx(
+                    tagColor.bg,
+                    tagColor.text
+                  )}
+                  isDisabled={isReadOnly || isAddOnly || isRollbackMode}
+                  onClose={() => remove(i)}
+                  key={id}
+                >
+                  {slug}
+                </Tag>)
+            })}
             <div className="w-0 overflow-hidden group-hover:w-6">
               <Tooltip content="Copy value">
                 <IconButton
