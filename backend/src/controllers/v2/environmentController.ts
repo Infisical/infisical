@@ -86,7 +86,7 @@ export const createWorkspaceEnvironment = async (
 };
 
 /**
- * Swaps the ordering of two environments in the database. This is purely for asthetic purposes.
+ * Swaps the ordering of two environments in the database. This is purely for aesthetic purposes.
  * @param req
  * @param res
  * @returns
