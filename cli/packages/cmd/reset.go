@@ -18,6 +18,12 @@ var resetCmd = &cobra.Command{
 	Example:               "infisical reset",
 	Args:                  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
+		// delete keyring item of current logged in user
+		configFile, _ := util.GetConfigFile()
+
+		// delete from keyring
+		util.DeleteValueInKeyring(configFile.LoggedInUserEmail)
+
 		// delete config
 		_, pathToDir, err := util.GetFullConfigFilePath()
 		if err != nil {
