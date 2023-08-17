@@ -107,7 +107,7 @@ var loginCmd = &cobra.Command{
 
 		//call browser login function
 		if !interactiveLogin {
-			fmt.Printf("\nLogging in via browser... Hit '%s' to cancel\n", QUIT_BROWSER_LOGIN)
+			fmt.Println("Logging in via browser... To login via interactive mode run [infisical login -i]")
 			userCredentialsToBeStored, err = browserCliLogin()
 			if err != nil {
 				//default to cli login on error
@@ -540,7 +540,12 @@ func browserCliLogin() (models.UserCredentials, error) {
 	quit := make(chan bool)
 
 	//terminal state
-	var oldState term.State
+	oldState, err := term.GetState(int(os.Stdin.Fd()))
+	if err != nil {
+		return models.UserCredentials{}, err
+	}
+
+	defer restoreTerminal(oldState)
 
 	//create handler
 	c := cors.New(cors.Options{
@@ -553,29 +558,25 @@ func browserCliLogin() (models.UserCredentials, error) {
 	corsHandler := c.Handler(browserLoginHandler(success, failure))
 
 	log.Debug().Msgf("Callback server listening on port %d", callbackPort)
-	go quitBrowserLogin(quit, &oldState)
+
 	go http.Serve(listener, corsHandler)
 
 	for {
 		select {
 		case loginResponse := <-success:
-			err = closeListener(&listener)
-			restoreTerminal(&oldState)
+			_ = closeListener(&listener)
 			return loginResponse, nil
 
-		case err = <-failure:
+		case <-failure:
 			err = closeListener(&listener)
-			restoreTerminal(&oldState)
 			return models.UserCredentials{}, err
 
-		case _ = <-timeout:
-			err = closeListener(&listener)
-			restoreTerminal(&oldState)
+		case <-timeout:
+			_ = closeListener(&listener)
 			return models.UserCredentials{}, errors.New("server timeout")
 
-		case _ = <-quit:
+		case <-quit:
 			return models.UserCredentials{}, errors.New("quitting browser login, defaulting to cli...")
-
 		}
 	}
 }
@@ -584,25 +585,24 @@ func restoreTerminal(oldState *term.State) {
 	term.Restore(int(os.Stdin.Fd()), oldState)
 }
 
-// listens to 'q' input on terminal and
-// sends 'true' to 'quit' channel
-func quitBrowserLogin(quit chan bool, oState *term.State) {
-	//
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		return
-	}
-	*oState = *oldState
-	defer restoreTerminal(oldState)
-	b := make([]byte, 1)
-	for {
-		_, _ = os.Stdin.Read(b)
-		if string(b) == QUIT_BROWSER_LOGIN {
-			quit <- true
-			break
-		}
-	}
-}
+// // listens to 'q' input on terminal and
+// // sends 'true' to 'quit' channel
+// func quitBrowserLogin(quit chan bool, oState *term.State) {
+// 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+// 	if err != nil {
+// 		return
+// 	}
+// 	*oState = *oldState
+// 	defer restoreTerminal(oldState)
+// 	b := make([]byte, 1)
+// 	for {
+// 		_, _ = os.Stdin.Read(b)
+// 		if string(b) == QUIT_BROWSER_LOGIN {
+// 			quit <- true
+// 			break
+// 		}
+// 	}
+// }
 
 func closeListener(listener *net.Listener) error {
 	err := (*listener).Close()
