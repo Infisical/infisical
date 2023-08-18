@@ -38,18 +38,18 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
   const { createNotification } = useNotificationContext();
   const reorderWsEnvironment = useReorderWsEnvironment();
 
-  const reorderEnvs = async (moveUp: boolean, name: string, slug: string) => {
+  const handleReorderEnv= async (shouldMoveUp: boolean, name: string, slug: string) => {
     try {
       if (!currentWorkspace?._id) return;
 
       const indexOfEnv = currentWorkspace.environments.findIndex((env) => env.name === name && env.slug === slug);
 
       // check that this reordering is possible
-      if (indexOfEnv === 0 && moveUp || indexOfEnv === currentWorkspace.environments.length - 1 && !moveUp) {
+      if (indexOfEnv === 0 && shouldMoveUp || indexOfEnv === currentWorkspace.environments.length - 1 && !shouldMoveUp) {
         return
       }
 
-      const indexToSwap = moveUp ? indexOfEnv - 1 : indexOfEnv + 1
+      const indexToSwap = shouldMoveUp ? indexOfEnv - 1 : indexOfEnv + 1
 
       await reorderWsEnvironment.mutateAsync({
         workspaceID: currentWorkspace._id,
@@ -94,7 +94,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                   <IconButton
                     className="mr-3 py-2"
                     onClick={() => {
-                      reorderEnvs(false, name, slug)
+                      handleReorderEnv(false, name, slug)
                     }}
                     colorSchema="primary"
                     variant="plain"
@@ -106,7 +106,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                   <IconButton
                     className="mr-3 py-2"
                     onClick={() => {
-                      reorderEnvs(true, name, slug)
+                      handleReorderEnv(true, name, slug)
                     }}
                     colorSchema="primary"
                     variant="plain"

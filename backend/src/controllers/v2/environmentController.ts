@@ -101,14 +101,14 @@ export const reorderWorkspaceEnvironments = async (
   // atomic update the env to avoid conflict
   const workspace = await Workspace.findById(workspaceId).exec();
   if (!workspace) {
-    throw new Error("Failed to create workspace environment");
+    throw BadRequestError({message: "Couldn't load workspace"});
   }
 
   const environmentIndex = workspace.environments.findIndex((env) => env.name === environmentName && env.slug === environmentSlug)
   const otherEnvironmentIndex = workspace.environments.findIndex((env) => env.name === otherEnvironmentName && env.slug === otherEnvironmentSlug)
 
-  if (environmentIndex === undefined || otherEnvironmentIndex === undefined) {
-    throw new Error("environment or otherEnvironment couldn't be found")
+  if (environmentIndex === -1 || otherEnvironmentIndex === -1) {
+    throw BadRequestError({message: "environment or otherEnvironment couldn't be found"})
   }
 
   // swap the order of the environments
