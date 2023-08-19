@@ -144,13 +144,12 @@
             "self-hosting/deployment-options/aws-ec2",
             "self-hosting/deployment-options/docker-compose",
             "self-hosting/deployment-options/standalone-infisical",
-            "self-hosting/deployment-options/fly.io",
-            "self-hosting/deployment-options/render",
             "self-hosting/deployment-options/digital-ocean-marketplace"
           ]
         },
         "self-hosting/configuration/envars",
         "self-hosting/configuration/email",
+        "self-hosting/configuration/redis",
         "self-hosting/faq"
       ]
     },
