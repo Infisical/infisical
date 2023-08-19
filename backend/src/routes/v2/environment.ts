@@ -46,6 +46,24 @@ router.put(
   environmentController.renameWorkspaceEnvironment
 );
 
+router.patch(
+  "/:workspaceId/environments",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT],
+  }),
+  requireWorkspaceAuth({
+    acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: "params",
+  }),
+  param("workspaceId").exists().trim(),
+  body("environmentSlug").exists().isString().trim(),
+  body("environmentName").exists().isString().trim(),
+  body("otherEnvironmentSlug").exists().isString().trim(),
+  body("otherEnvironmentName").exists().isString().trim(),
+  validateRequest,
+  environmentController.reorderWorkspaceEnvironments
+);
+
 router.delete(
   "/:workspaceId/environments",
   requireAuth({

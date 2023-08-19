@@ -86,6 +86,43 @@ export const createWorkspaceEnvironment = async (
 };
 
 /**
+ * Swaps the ordering of two environments in the database. This is purely for aesthetic purposes.
+ * @param req
+ * @param res
+ * @returns
+ */
+export const reorderWorkspaceEnvironments = async (
+  req: Request,
+  res: Response
+) => {
+  const { workspaceId } = req.params;
+  const { environmentSlug, environmentName, otherEnvironmentSlug, otherEnvironmentName } = req.body;
+
+  // atomic update the env to avoid conflict
+  const workspace = await Workspace.findById(workspaceId).exec();
+  if (!workspace) {
+    throw BadRequestError({message: "Couldn't load workspace"});
+  }
+
+  const environmentIndex = workspace.environments.findIndex((env) => env.name === environmentName && env.slug === environmentSlug)
+  const otherEnvironmentIndex = workspace.environments.findIndex((env) => env.name === otherEnvironmentName && env.slug === otherEnvironmentSlug)
+
+  if (environmentIndex === -1 || otherEnvironmentIndex === -1) {
+    throw BadRequestError({message: "environment or otherEnvironment couldn't be found"})
+  }
+
+  // swap the order of the environments
+  [workspace.environments[environmentIndex], workspace.environments[otherEnvironmentIndex]] = [workspace.environments[otherEnvironmentIndex], workspace.environments[environmentIndex]]
+
+  await workspace.save()
+
+  return res.status(200).send({
+    message: "Successfully reordered environments",
+    workspace: workspaceId,
+  });
+};
+
+/**
  * Rename workspace environment with new name and slug of a workspace with [workspaceId]
  * Old slug [oldEnvironmentSlug] must be provided
  * @param req
@@ -124,7 +161,7 @@ export const renameWorkspaceEnvironment = async (
   if (envIndex === -1) {
     throw new Error("Invalid environment given");
   }
-  
+
   const oldEnvironment = workspace.environments[envIndex];
 
   workspace.environments[envIndex].name = environmentName;
@@ -159,7 +196,7 @@ export const renameWorkspaceEnvironment = async (
     { $set: { "deniedPermissions.$[element].environmentSlug": environmentSlug } },
     { arrayFilters: [{ "element.environmentSlug": oldEnvironmentSlug }] }
   );
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -210,7 +247,7 @@ export const deleteWorkspaceEnvironment = async (
   if (envIndex === -1) {
     throw new Error("Invalid environment given");
   }
-  
+
   const oldEnvironment = workspace.environments[envIndex];
 
   workspace.environments.splice(envIndex, 1);

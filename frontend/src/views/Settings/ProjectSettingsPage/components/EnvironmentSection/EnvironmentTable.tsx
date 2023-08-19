@@ -1,6 +1,7 @@
-import { faPencil, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faArrowDown,faArrowUp, faPencil, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
   EmptyState,
   IconButton,
@@ -14,6 +15,9 @@ import {
   Tr
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import {
+  useReorderWsEnvironment
+} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -31,6 +35,43 @@ type Props = {
 
 export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace, isLoading } = useWorkspace();
+  const { createNotification } = useNotificationContext();
+  const reorderWsEnvironment = useReorderWsEnvironment();
+
+  const handleReorderEnv= async (shouldMoveUp: boolean, name: string, slug: string) => {
+    try {
+      if (!currentWorkspace?._id) return;
+
+      const indexOfEnv = currentWorkspace.environments.findIndex((env) => env.name === name && env.slug === slug);
+
+      // check that this reordering is possible
+      if (indexOfEnv === 0 && shouldMoveUp || indexOfEnv === currentWorkspace.environments.length - 1 && !shouldMoveUp) {
+        return
+      }
+
+      const indexToSwap = shouldMoveUp ? indexOfEnv - 1 : indexOfEnv + 1
+
+      await reorderWsEnvironment.mutateAsync({
+        workspaceID: currentWorkspace._id,
+        environmentSlug: slug,
+        environmentName: name,
+        otherEnvironmentSlug: currentWorkspace.environments[indexToSwap].slug,
+        otherEnvironmentName: currentWorkspace.environments[indexToSwap].name
+      });
+
+      createNotification({
+        text: "Successfully re-ordered environments",
+        type: "success"
+      });
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to re-order environments",
+        type: "error"
+      });
+    }
+  };
+
   return (
     <TableContainer>
       <Table>
@@ -45,11 +86,35 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
           {isLoading && <TableSkeleton columns={3} innerKey="project-envs" />}
           {!isLoading &&
             currentWorkspace &&
-            currentWorkspace.environments.map(({ name, slug }) => (
+            currentWorkspace.environments.map(({ name, slug }, pos) => (
               <Tr key={name}>
                 <Td>{name}</Td>
                 <Td>{slug}</Td>
                 <Td className="flex items-center justify-end">
+                  <IconButton
+                    className="mr-3 py-2"
+                    onClick={() => {
+                      handleReorderEnv(false, name, slug)
+                    }}
+                    colorSchema="primary"
+                    variant="plain"
+                    ariaLabel="update"
+                    isDisabled={pos === currentWorkspace.environments.length - 1}
+                  >
+                    <FontAwesomeIcon icon={faArrowDown} />
+                  </IconButton>
+                  <IconButton
+                    className="mr-3 py-2"
+                    onClick={() => {
+                      handleReorderEnv(true, name, slug)
+                    }}
+                    colorSchema="primary"
+                    variant="plain"
+                    ariaLabel="update"
+                    isDisabled={pos === 0}
+                  >
+                    <FontAwesomeIcon icon={faArrowUp} />
+                  </IconButton>
                   <IconButton
                     className="mr-3 py-2"
                     onClick={() => {
