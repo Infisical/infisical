@@ -69,7 +69,7 @@ export const getSecretScanningGitAppId = async () => (await client.getSecret("SE
 export const getSecretScanningPrivateKey = async () => (await client.getSecret("SECRET_SCANNING_PRIVATE_KEY")).secretValue;
 
 export const getCreateAdminUser = async () => (await client.getSecret("CREATE_ADMIN_USER").secretValue || false;
-export const getAdminUserEmail = async () => (await client.getSecret("ADMIN_USER_EMAIL").secretValue;
+export const getAdminEmail = async () => (await client.getSecret("ADMIN_EMAIL").secretValue;
 export const getAdminPassword = async () => (await client.getSecret("ADMIN_PASSWORD").secretValue;
 
 export const getLicenseKey = async () => {

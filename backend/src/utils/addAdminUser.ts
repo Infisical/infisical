@@ -7,9 +7,9 @@
 import { Key, Membership, MembershipOrg, Organization, User, Workspace } from "../models";
 import { SecretService } from "../services";
 import { Types } from "mongoose";
-import { getCreateAdminUser, getAdminUserEmail, getAdminPassword } from "../config";
+import { getCreateAdminUser, getAdminEmail, getAdminPassword } from "../config";
 
-export const adminUserEmail = await getAdminUserEmail()
+export const adminUserEmail = await getAdminEmail()
 export const adminUserPassword = await getAdminPassword()
 export const adminUserId = "63cefa6ec8d3175601cfa980"
 export const adminWorkspaceId = "63cefb15c8d3175601cfa989"

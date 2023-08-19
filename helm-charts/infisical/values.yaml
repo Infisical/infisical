@@ -168,6 +168,10 @@ backendEnvironmentVariables:
   ## e.g. "mongodb://<user>:<pass>@<host>:<port>/<database-name>"
   ##
   MONGO_URL: ""
+  ##
+  CREATE_ADMIN_USER: false
+  ADMIN_EMAIL: ""
+  ADMIN_PASSWORD: ""
 
 ## @section MongoDB(&reg;) parameters
 ## Documentation : https://github.com/bitnami/charts/blob/main/bitnami/mongodb/values.yaml
