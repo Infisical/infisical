@@ -9,8 +9,8 @@ import { SecretService } from "../services";
 import { Types } from "mongoose";
 import { getCreateAdminUser, getAdminEmail, getAdminPassword } from "../config";
 
-export const adminUserEmail = await getAdminEmail()
-export const adminUserPassword = await getAdminPassword()
+export const adminUserEmail = getAdminEmail();
+export const adminUserPassword = getAdminPassword();
 export const adminUserId = "63cefa6ec8d3175601cfa980"
 export const adminWorkspaceId = "63cefb15c8d3175601cfa989"
 export const adminOrgId = "63cefb15c8d3175601cfa985"
@@ -134,6 +134,10 @@ export const createInitialAdminUser = async () => {
         await Key.create(adminWorkspaceKey)
       }
 
+    } catch (e) {
+      /* eslint-disable no-console */
+      console.error(`Unable to create admin user while booting up [err=${e}]`)
+      /* eslint-enable no-console */
     }
   }
 }
