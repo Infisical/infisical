@@ -352,8 +352,8 @@ export default function Organization() {
           <p className="mr-4 mb-4 font-semibold text-white">Announcements</p>
           <div className="w-full border border-blue-400/70 rounded-md bg-blue-900/70 p-2 text-base text-mineshaft-100 flex items-center">
             <FontAwesomeIcon icon={faExclamationCircle} className="text-2xl mr-4 p-4 text-mineshaft-50"/>
-            Attention: New versions of Infisical require setting up Redis to function properly. Learn how to configure it 
-            <Link href="/">
+            Attention: Updated versions of Infisical now require Redis for full functionality. Learn how to configure it 
+            <Link href="https://infisical.com/docs/self-hosting/configuration/redis" target="_blank">
               <span className="pl-1 text-white underline underline-offset-2 hover:decoration-blue-400 hover:text-blue-200 duration-100 cursor-pointer">
                 here
               </span>
