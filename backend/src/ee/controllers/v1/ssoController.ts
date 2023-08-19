@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 import { BotOrgService } from "../../../services";
 import { SSOConfig } from "../../models";
 import { 
+    AuthMethod,
     MembershipOrg,
     User
 } from "../../../models";
@@ -59,7 +60,7 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
         cert,
     } = req.body;
 
-    const plan = await EELicenseService.getPlan(organizationId);
+    const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
     
     if (!plan.samlSSO) return res.status(400).send({
         message: "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
@@ -156,7 +157,7 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
                     }
                 },
                 {
-                    authProvider: ssoConfig.authProvider
+                    authMethods: [ssoConfig.authProvider],
                 }
             );
         } else {
@@ -167,9 +168,7 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
                     }
                 },
                 {
-                    $unset: {
-                        authProvider: 1
-                    }
+                    authMethods: [AuthMethod.EMAIL],
                 }
             );
         }
@@ -194,7 +193,7 @@ export const createSSOConfig = async (req: Request, res: Response) => {
         cert
     } = req.body;
 
-    const plan = await EELicenseService.getPlan(organizationId);
+    const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
     
     if (!plan.samlSSO) return res.status(400).send({
         message: "Failed to create SAML SSO configuration due to plan restriction. Upgrade plan to add SSO configuration."

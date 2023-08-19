@@ -34,7 +34,7 @@
     <img src="https://img.shields.io/github/commit-activity/m/infisical/infisical" alt="git commit activity" />
   </a>
   <a href="https://cloudsmith.io/~infisical/repos/">
-    <img src="https://img.shields.io/badge/Downloads-395.8k-orange" alt="Cloudsmith downloads" />
+    <img src="https://img.shields.io/badge/Downloads-821.8k-orange" alt="Cloudsmith downloads" />
   </a>
   <a href="https://infisical.com/slack">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
@@ -116,7 +116,7 @@ Lean about Infisical's code scanning feature [here](https://infisical.com/docs/c
 
 This repo available under the [MIT expat license](https://github.com/Infisical/infisical/blob/main/LICENSE), with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license.
 
-If you are interested in managed Infisical Cloud of self-hosted Enterprise Offering, take a look at [our webiste](https://infisical.com/) or [book a meeting with us](https://cal.com/vmatsiiako/infisical-demo):
+If you are interested in managed Infisical Cloud of self-hosted Enterprise Offering, take a look at [our website](https://infisical.com/) or [book a meeting with us](https://cal.com/vmatsiiako/infisical-demo):
 
 <a href="https://cal.com/vmatsiiako/infisical-demo"><img alt="Schedule a meeting" src="https://cal.com/book-with-cal-dark.svg" /></a>
 

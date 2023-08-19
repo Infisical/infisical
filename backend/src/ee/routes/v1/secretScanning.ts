@@ -7,12 +7,12 @@ import {
 } from "../../../middleware";
 import { body, param } from "express-validator";
 import { createInstallationSession, getCurrentOrganizationInstallationStatus, getRisksForOrganization, linkInstallationToOrganization, updateRisksStatus } from "../../../controllers/v1/secretScanningController";
-import { ACCEPTED, ADMIN, MEMBER, OWNER } from "../../../variables";
+import { ACCEPTED, ADMIN, AuthMode, MEMBER, OWNER } from "../../../variables";
 
 router.post(
   "/create-installation-session/organization/:organizationId",
   requireAuth({
-    acceptedAuthModes: ["jwt"],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   param("organizationId").exists().trim(),
   requireOrganizationAuth({
@@ -26,7 +26,7 @@ router.post(
 router.post(
   "/link-installation",
   requireAuth({
-    acceptedAuthModes: ["jwt"],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   body("installationId").exists().trim(),
   body("sessionId").exists().trim(),
@@ -37,7 +37,7 @@ router.post(
 router.get(
   "/installation-status/organization/:organizationId",
   requireAuth({
-    acceptedAuthModes: ["jwt"],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   param("organizationId").exists().trim(),
   requireOrganizationAuth({
@@ -51,7 +51,7 @@ router.get(
 router.get(
   "/organization/:organizationId/risks",
   requireAuth({
-    acceptedAuthModes: ["jwt"],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   param("organizationId").exists().trim(),
   requireOrganizationAuth({
@@ -65,7 +65,7 @@ router.get(
 router.post(
   "/organization/:organizationId/risks/:riskId/status",
   requireAuth({
-    acceptedAuthModes: ["jwt"],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   param("organizationId").exists().trim(),
   param("riskId").exists().trim(),

@@ -26,9 +26,9 @@ const updateUserProjectPermission = async ({
       permissions: denials
     })
   }).then(async (res) => {
-    console.log({
-      permissions: denials
-    }, res)
+    // console.log({
+    //   permissions: denials
+    // }, res)
     if (res && res.status === 200) {
       return res.json();
     }

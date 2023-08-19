@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	keyringwrapper "github.com/Infisical/infisical-merge/internal"
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
@@ -26,7 +25,7 @@ func StoreUserCredsInKeyRing(userCred *models.UserCredentials) error {
 		return fmt.Errorf("StoreUserCredsInKeyRing: something went wrong when marshalling user creds [err=%s]", err)
 	}
 
-	err = keyringwrapper.Set(userCred.Email, string(userCredMarshalled))
+	err = SetValueInKeyring(userCred.Email, string(userCredMarshalled))
 	if err != nil {
 		return fmt.Errorf("StoreUserCredsInKeyRing: unable to store user credentials because [err=%s]", err)
 	}
@@ -35,7 +34,7 @@ func StoreUserCredsInKeyRing(userCred *models.UserCredentials) error {
 }
 
 func GetUserCredsFromKeyRing(userEmail string) (credentials models.UserCredentials, err error) {
-	credentialsValue, err := keyringwrapper.Get(userEmail)
+	credentialsValue, err := GetValueInKeyring(userEmail)
 	if err != nil {
 		if err == keyring.ErrUnsupportedPlatform {
 			return models.UserCredentials{}, errors.New("your OS does not support keyring. Consider using a service token https://infisical.com/docs/documentation/platform/token")

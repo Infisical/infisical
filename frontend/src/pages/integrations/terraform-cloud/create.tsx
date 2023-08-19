@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
+import { useCreateIntegration } from "@app/hooks/api";
+
 import {
   Button,
   Card,
@@ -16,7 +18,6 @@ import {
   useGetIntegrationAuthById
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
-import createIntegration from "../../api/integrations/createIntegration";
 
 const variableTypes = [
   { name: "env" },
@@ -25,6 +26,7 @@ const variableTypes = [
 
 export default function TerraformCloudCreateIntegrationPage() {
   const router = useRouter();
+  const { mutateAsync } = useCreateIntegration();
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
@@ -70,7 +72,7 @@ export default function TerraformCloudCreateIntegrationPage() {
 
       setIsLoading(true);
 
-      await createIntegration({
+      await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: targetApp,

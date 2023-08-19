@@ -4,14 +4,12 @@ import { body } from "express-validator";
 import { requireAuth, requireSignupAuth, validateRequest } from "../../middleware";
 import { passwordController } from "../../controllers/v1";
 import { passwordLimiter } from "../../helpers/rateLimiter";
-import {
-	AUTH_MODE_JWT,
-} from "../../variables";
+import { AuthMode } from "../../variables";
 
 router.post(
 	"/srp1",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	body("clientPublicKey").exists().isString().trim().notEmpty(),
 	validateRequest,
@@ -22,7 +20,7 @@ router.post(
 	"/change-password",
 	passwordLimiter,
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	body("clientProof").exists().trim().notEmpty(),
 	body("protectedKey").exists().isString().trim().notEmpty(),
@@ -65,7 +63,7 @@ router.post(
 	"/backup-private-key",
 	passwordLimiter,
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AuthMode.JWT],
 	}),
 	body("clientProof").exists().isString().trim().notEmpty(),
 	body("encryptedPrivateKey").exists().isString().trim().notEmpty(), // (backup) private key encrypted under a strong key

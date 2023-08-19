@@ -6,7 +6,7 @@ import { signupController } from "../../controllers/v2";
 import { authLimiter } from "../../helpers/rateLimiter";
 
 router.post(
-    "/complete-account/signup",
+    "/complete-account/signup", // TODO endpoint: deprecate (moved to v3/signup/complete/account-signup)
     authLimiter,
     requireSignupAuth,
     body("email").exists().isString().trim().notEmpty().isEmail(),
@@ -27,7 +27,7 @@ router.post(
 );
 
 router.post(
-	"/complete-account/invite",
+	"/complete-account/invite", // TODO: consider moving to v3/users/new/complete-account/invite
 	authLimiter,
 	requireSignupAuth,
 	body("email").exists().isString().trim().notEmpty().isEmail(),

@@ -16,6 +16,7 @@ type Props = {
   position?: "item-aligned" | "popper";
   isDisabled?: boolean;
   icon?: IconProp;
+  isMulti?: boolean;
 };
 
 export type SelectProps = Omit<SelectPrimitive.SelectProps, "disabled"> & Props;
@@ -40,7 +41,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           ref={ref}
           className={twMerge(
             `inline-flex items-center justify-between rounded-md
-            bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-gray-500`,
+            bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200`,
             className
           )}
         >

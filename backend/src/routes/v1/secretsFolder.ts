@@ -1,27 +1,23 @@
 import express from "express";
-const router = express.Router();
-import {
-  requireAuth,
-  requireWorkspaceAuth,
-  validateRequest,
-} from "../../middleware";
 import { body, param, query } from "express-validator";
 import {
   createFolder,
   deleteFolder,
   getFolders,
-  updateFolderById,
+  updateFolderById
 } from "../../controllers/v1/secretsFolderController";
-import { ADMIN, MEMBER } from "../../variables";
+import { requireAuth, requireWorkspaceAuth, validateRequest } from "../../middleware";
+import { ADMIN, AuthMode, MEMBER } from "../../variables";
+const router = express.Router();
 
 router.post(
   "/",
   requireAuth({
-    acceptedAuthModes: ["jwt"],
+    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "body",
+    locationWorkspaceId: "body"
   }),
   body("workspaceId").exists(),
   body("environment").exists(),
@@ -34,7 +30,7 @@ router.post(
 router.patch(
   "/:folderId",
   requireAuth({
-    acceptedAuthModes: ["jwt"],
+    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
   }),
   body("workspaceId").exists(),
   body("environment").exists(),
@@ -46,7 +42,7 @@ router.patch(
 router.delete(
   "/:folderId",
   requireAuth({
-    acceptedAuthModes: ["jwt"],
+    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
   }),
   body("workspaceId").exists(),
   body("environment").exists(),
@@ -58,7 +54,7 @@ router.delete(
 router.get(
   "/",
   requireAuth({
-    acceptedAuthModes: ["jwt"],
+    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
   }),
   query("workspaceId").exists().isString().trim(),
   query("environment").exists().isString().trim(),

@@ -11,9 +11,9 @@ import {
   IServiceTokenData,
   Secret,
   SecretBlindIndexData,
-  ServiceTokenData
+  ServiceTokenData,
 } from "../models";
-import { SecretVersion } from "../ee/models";
+import { EventType, SecretVersion } from "../ee/models";
 import {
   BadRequestError,
   InternalServerError,
@@ -40,7 +40,7 @@ import {
 } from "../utils/crypto";
 import { TelemetryService } from "../services";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
-import { EELogService, EESecretService } from "../ee/services";
+import { EEAuditLogService, EELogService, EESecretService } from "../ee/services";
 import { getAuthDataPayloadIdObj, getAuthDataPayloadUserObj } from "../utils/auth";
 import { getFolderByPath, getFolderIdFromServiceToken } from "../services/FolderService";
 import picomatch from "picomatch";
@@ -326,7 +326,8 @@ export const createSecretHelper = async ({
   secretCommentCiphertext,
   secretCommentIV,
   secretCommentTag,
-  secretPath = "/"
+  secretPath = "/",
+  metadata
 }: CreateSecretParams) => {
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
@@ -433,9 +434,26 @@ export const createSecretHelper = async ({
       ...getAuthDataPayloadIdObj(authData),
       workspaceId,
       actions: [action],
-      channel: authData.authChannel,
-      ipAddress: authData.authIP
+      channel: authData.userAgentType,
+      ipAddress: authData.ipAddress
     }));
+
+  await EEAuditLogService.createAuditLog(
+    authData,
+    {
+      type: EventType.CREATE_SECRET,
+      metadata: {
+        environment,
+        secretPath,
+        secretId: secret._id.toString(),
+        secretKey: secretName,
+        secretVersion: secret.version
+      }
+    },
+    {
+      workspaceId
+    }
+  );
 
   // (EE) take a secret snapshot
   await EESecretService.takeSecretSnapshot({
@@ -445,8 +463,8 @@ export const createSecretHelper = async ({
   });
 
   const postHogClient = await TelemetryService.getPostHogClient();
-
-  if (postHogClient) {
+  
+  if (postHogClient && (metadata?.source !== "signup")) {
     postHogClient.capture({
       event: "secrets added",
       distinctId: await TelemetryService.getDistinctId({
@@ -457,8 +475,8 @@ export const createSecretHelper = async ({
         environment,
         workspaceId,
         folderId,
-        channel: authData.authChannel,
-        userAgent: authData.authUserAgent
+        channel: authData.userAgentType,
+        userAgent: authData.userAgent
       }
     });
   }
@@ -528,9 +546,24 @@ export const getSecretsHelper = async ({
       ...getAuthDataPayloadIdObj(authData),
       workspaceId,
       actions: [action],
-      channel: authData.authChannel,
-      ipAddress: authData.authIP
+      channel: authData.userAgentType,
+      ipAddress: authData.ipAddress
     }));
+  
+  await EEAuditLogService.createAuditLog(
+    authData,
+    {
+      type: EventType.GET_SECRETS,
+      metadata: {
+        environment,
+        secretPath,
+        numberOfSecrets: secrets.length
+      }
+    },
+    {
+      workspaceId
+    }
+  );
 
   const postHogClient = await TelemetryService.getPostHogClient();
 
@@ -545,8 +578,8 @@ export const getSecretsHelper = async ({
         environment,
         workspaceId,
         folderId,
-        channel: authData.authChannel,
-        userAgent: authData.authUserAgent
+        channel: authData.userAgentType,
+        userAgent: authData.userAgent
       }
     });
   }
@@ -622,9 +655,26 @@ export const getSecretHelper = async ({
       ...getAuthDataPayloadIdObj(authData),
       workspaceId,
       actions: [action],
-      channel: authData.authChannel,
-      ipAddress: authData.authIP
+      channel: authData.userAgentType,
+      ipAddress: authData.ipAddress
     }));
+
+    await EEAuditLogService.createAuditLog(
+    authData,
+    {
+      type: EventType.GET_SECRET,
+      metadata: {
+        environment,
+        secretPath,
+        secretId: secret._id.toString(),
+        secretKey: secretName,
+        secretVersion: secret.version
+      }
+    },
+    {
+      workspaceId
+    }
+  );
 
   const postHogClient = await TelemetryService.getPostHogClient();
 
@@ -639,8 +689,8 @@ export const getSecretHelper = async ({
         environment,
         workspaceId,
         folderId,
-        channel: authData.authChannel,
-        userAgent: authData.authUserAgent
+        channel: authData.userAgentType,
+        userAgent: authData.userAgent
       }
     });
   }
@@ -771,9 +821,26 @@ export const updateSecretHelper = async ({
       ...getAuthDataPayloadIdObj(authData),
       workspaceId,
       actions: [action],
-      channel: authData.authChannel,
-      ipAddress: authData.authIP
+      channel: authData.userAgentType,
+      ipAddress: authData.ipAddress
     }));
+  
+    await EEAuditLogService.createAuditLog(
+    authData,
+    {
+      type: EventType.UPDATE_SECRET,
+      metadata: {
+        environment,
+        secretPath,
+        secretId: secret._id.toString(),
+        secretKey: secretName,
+        secretVersion: secret.version
+      }
+    },
+    {
+      workspaceId
+    }
+  );
 
   // (EE) take a secret snapshot
   await EESecretService.takeSecretSnapshot({
@@ -795,8 +862,8 @@ export const updateSecretHelper = async ({
         environment,
         workspaceId,
         folderId,
-        channel: authData.authChannel,
-        userAgent: authData.authUserAgent
+        channel: authData.userAgentType,
+        userAgent: authData.userAgent
       }
     });
   }
@@ -894,9 +961,26 @@ export const deleteSecretHelper = async ({
       ...getAuthDataPayloadIdObj(authData),
       workspaceId,
       actions: [action],
-      channel: authData.authChannel,
-      ipAddress: authData.authIP
+      channel: authData.userAgentType,
+      ipAddress: authData.ipAddress
     }));
+
+  await EEAuditLogService.createAuditLog(
+    authData,
+    {
+      type: EventType.DELETE_SECRET,
+      metadata: {
+        environment,
+        secretPath,
+        secretId: secret._id.toString(),
+        secretKey: secretName,
+        secretVersion: secret.version
+      }
+    },
+    {
+      workspaceId
+    }
+  );
 
   // (EE) take a secret snapshot
   await EESecretService.takeSecretSnapshot({
@@ -918,8 +1002,8 @@ export const deleteSecretHelper = async ({
         environment,
         workspaceId,
         folderId,
-        channel: authData.authChannel,
-        userAgent: authData.authUserAgent
+        channel: authData.userAgentType,
+        userAgent: authData.userAgent
       }
     });
   }

@@ -1,25 +1,13 @@
 import jwt from "jsonwebtoken";
-import { Types } from "mongoose";
 import { NextFunction, Request, Response } from "express";
 import {
 	getAuthAPIKeyPayload,
-	getAuthSAAKPayload,
 	getAuthSTDPayload,
 	getAuthUserPayload,
 	validateAuthMode,
 } from "../helpers/auth";
-import {
-	IServiceAccount,
-	IServiceTokenData,
-	IUser,
-} from "../models";
-import {
-	AUTH_MODE_API_KEY,
-	AUTH_MODE_JWT,
-	AUTH_MODE_SERVICE_ACCOUNT,
-	AUTH_MODE_SERVICE_TOKEN,
-} from "../variables";
-import { getChannelFromUserAgent } from "../utils/posthog";
+import { AuthMode } from "../variables";
+import { AuthData } from "../interfaces/middleware";
 
 declare module "jsonwebtoken" {
 	export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -38,9 +26,9 @@ declare module "jsonwebtoken" {
  * @returns
  */
 const requireAuth = ({
-	acceptedAuthModes = [AUTH_MODE_JWT],
+	acceptedAuthModes = [AuthMode.JWT],
 }: {
-	acceptedAuthModes: string[];
+	acceptedAuthModes: AuthMode[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
 
@@ -50,55 +38,36 @@ const requireAuth = ({
 			headers: req.headers,
 			acceptedAuthModes,
 		});
-
-		let authPayload: IUser | IServiceAccount | IServiceTokenData;
-		let authUserPayload: {
-			user: IUser;
-			tokenVersionId: Types.ObjectId;
-		};
+		
+		let authData: AuthData;
+		
 		switch (authMode) {
-			case AUTH_MODE_SERVICE_ACCOUNT:
-				authPayload = await getAuthSAAKPayload({
+			case AuthMode.SERVICE_TOKEN:
+				authData = await getAuthSTDPayload({
+					req,
 					authTokenValue,
 				});
-				req.serviceAccount = authPayload;
+				req.serviceTokenData = authData.authPayload;
 				break;
-			case AUTH_MODE_SERVICE_TOKEN:
-				authPayload = await getAuthSTDPayload({
-					authTokenValue,
+			case AuthMode.API_KEY:
+				authData = await getAuthAPIKeyPayload({
+					req,
+					authTokenValue
 				});
-				req.serviceTokenData = authPayload;
+				req.user = authData.authPayload;
 				break;
-			case AUTH_MODE_API_KEY:
-				authPayload = await getAuthAPIKeyPayload({
-					authTokenValue,
+			case AuthMode.JWT:
+				authData = await getAuthUserPayload({
+					req,
+					authTokenValue
 				});
-				req.user = authPayload;
-				break;
-			default:
-				authUserPayload = await getAuthUserPayload({
-					authTokenValue,
-				});
-				authPayload = authUserPayload.user;
-				req.user = authUserPayload.user;
-				req.tokenVersionId = authUserPayload.tokenVersionId;
+				// authPayload = authUserPayload.user;
+				req.user = authData.authPayload;
+				// req.tokenVersionId = authUserPayload.tokenVersionId; // TODO
 				break;
 		}
-
-		req.requestData = {
-			...req.params,
-			...req.query,
-			...req.body,
-		}
-
-		req.authData = {
-			authMode,
-			authPayload, // User, ServiceAccount, ServiceTokenData
-			authChannel: getChannelFromUserAgent(req.headers["user-agent"]),
-			authIP: req.realIP,
-			authUserAgent: req.headers["user-agent"] ?? "other",
-			tokenVersionId: req.tokenVersionId,
-		}
+		
+		req.authData = authData;
 
 		return next();
 	}

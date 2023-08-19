@@ -288,8 +288,14 @@ export const SecretOverviewPage = () => {
                       className="min-table-row min-w-[11rem] border-b-0 p-0 text-center"
                       key={`secret-overview-${name}-${index + 1}`}
                     >
-                      <div className="flex items-center justify-center border-b border-mineshaft-600 px-5 pt-4 pb-3.5">
-                        {name}
+                      <div className="flex items-center justify-center border-b border-mineshaft-600 px-5 pt-3.5 pb-3">
+                        <button
+                          type="button"
+                          className="font-medium hover:text-mineshaft-100 duration-100 text-sm"
+                          onClick={() => handleExploreEnvClick(slug)}
+                        >
+                          {name}
+                        </button>
                         {missingKeyCount > 0 && (
                           <Tooltip
                             className="max-w-none lowercase"

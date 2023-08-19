@@ -8,16 +8,16 @@ import {
 import { body, param, query } from "express-validator";
 import {
   ADMIN, 
-  AUTH_MODE_API_KEY,
-  AUTH_MODE_JWT,
+  AuthMode,
   MEMBER
 } from "../../../variables";
 import { workspaceController } from "../../controllers/v1";
+import { EventType, UserAgentType } from "../../models";
 
 router.get(
   "/:workspaceId/secret-snapshots",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -35,7 +35,7 @@ router.get(
 router.get(
   "/:workspaceId/secret-snapshots/count",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT],
+    acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -51,7 +51,7 @@ router.get(
 router.post(
   "/:workspaceId/secret-snapshots/rollback",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -68,7 +68,7 @@ router.post(
 router.get(
   "/:workspaceId/logs",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -85,10 +85,45 @@ router.get(
 );
 
 router.get(
+  "/:workspaceId/audit-logs",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
+  }),
+  requireWorkspaceAuth({
+    acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: "params",
+  }),
+  param("workspaceId").exists().trim(),
+  query("eventType").isString().isIn(Object.values(EventType)).optional({ nullable: true }),
+  query("userAgentType").isString().isIn(Object.values(UserAgentType)).optional({ nullable: true }),
+  query("actor").optional({ nullable: true }),
+  query("startDate").isISO8601().withMessage("Invalid start date format").optional({ nullable: true }),
+  query("endDate").isISO8601().withMessage("Invalid end date format").optional({ nullable: true }),
+  query("offset"),
+  query("limit"),
+  validateRequest,
+  workspaceController.getWorkspaceAuditLogs
+);
+
+router.get(
+  "/:workspaceId/audit-logs/filters/actors",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
+  }),
+  requireWorkspaceAuth({
+    acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: "params",
+  }),
+  param("workspaceId").exists().trim(),
+  validateRequest,
+  workspaceController.getWorkspaceAuditLogActorFilterOpts
+);
+
+router.get(
   "/:workspaceId/trusted-ips",
   param("workspaceId").exists().isString().trim(),
   requireAuth({
-      acceptedAuthModes: [AUTH_MODE_JWT],
+      acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
       acceptedRoles: [ADMIN, MEMBER],
@@ -105,7 +140,7 @@ router.post(
   body("isActive").exists().isBoolean(),
   validateRequest,
   requireAuth({
-      acceptedAuthModes: [AUTH_MODE_JWT],
+      acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
       acceptedRoles: [ADMIN],
@@ -122,7 +157,7 @@ router.patch(
   body("comment").default("").isString().trim(),
   validateRequest,
   requireAuth({
-      acceptedAuthModes: [AUTH_MODE_JWT],
+      acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
       acceptedRoles: [ADMIN],
@@ -137,7 +172,7 @@ router.delete(
   param("trustedIpId").exists().isString().trim(),
   validateRequest,
   requireAuth({
-      acceptedAuthModes: [AUTH_MODE_JWT],
+      acceptedAuthModes: [AuthMode.JWT],
   }),
   requireWorkspaceAuth({
       acceptedRoles: [ADMIN],

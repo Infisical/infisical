@@ -103,14 +103,14 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
   // validate membership
   const membershipOrg = await MembershipOrg.findOne({
     user: req.user._id,
-    organization: organizationId
+    organization: new Types.ObjectId(organizationId)
   });
 
   if (!membershipOrg) {
     throw new Error("Failed to validate organization membership");
   }
 
-  const plan = await EELicenseService.getPlan(organizationId);
+  const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
   
   const ssoConfig = await SSOConfig.findOne({
     organization: new Types.ObjectId(organizationId)

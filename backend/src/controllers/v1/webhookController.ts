@@ -4,7 +4,9 @@ import { client, getRootEncryptionKey } from "../../config";
 import { validateMembership } from "../../helpers";
 import Webhook from "../../models/webhooks";
 import { getWebhookPayload, triggerWebhookRequest } from "../../services/WebhookService";
-import { BadRequestError } from "../../utils/errors";
+import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
+import { EEAuditLogService } from "../../ee/services";
+import { EventType } from "../../ee/models";
 import { ADMIN, ALGORITHM_AES_256_GCM, ENCODING_SCHEME_BASE64, MEMBER } from "../../variables";
 
 export const createWebhook = async (req: Request, res: Response) => {
@@ -27,6 +29,23 @@ export const createWebhook = async (req: Request, res: Response) => {
   }
 
   await webhook.save();
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.CREATE_WEBHOOK,
+      metadata: {
+        webhookId: webhook._id.toString(),
+        environment,
+        secretPath,
+        webhookUrl,
+        isDisabled: false
+      }
+    },
+    {
+      workspaceId
+    }
+  );
 
   return res.status(200).send({
     webhook,
@@ -54,6 +73,23 @@ export const updateWebhook = async (req: Request, res: Response) => {
   }
   await webhook.save();
 
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.UPDATE_WEBHOOK_STATUS,
+      metadata: {
+        webhookId: webhook._id.toString(),
+        environment: webhook.environment,
+        secretPath: webhook.secretPath,
+        webhookUrl: webhook.url,
+        isDisabled
+      }
+    },
+    {
+      workspaceId: webhook.workspace
+    }
+  );
+
   return res.status(200).send({
     webhook,
     message: "successfully updated webhook"
@@ -62,9 +98,10 @@ export const updateWebhook = async (req: Request, res: Response) => {
 
 export const deleteWebhook = async (req: Request, res: Response) => {
   const { webhookId } = req.params;
-  const webhook = await Webhook.findById(webhookId);
+  let webhook = await Webhook.findById(webhookId);
+
   if (!webhook) {
-    throw BadRequestError({ message: "Webhook not found!!" });
+    throw ResourceNotFoundError({ message: "Webhook not found!!" });
   }
 
   await validateMembership({
@@ -72,8 +109,29 @@ export const deleteWebhook = async (req: Request, res: Response) => {
     workspaceId: webhook.workspace,
     acceptedRoles: [ADMIN, MEMBER]
   });
+  
+  webhook = await Webhook.findByIdAndDelete(webhookId);
 
-  await webhook.deleteOne();
+  if (!webhook) {
+    throw ResourceNotFoundError({ message: "Webhook not found!!" });
+  }
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.DELETE_WEBHOOK,
+      metadata: {
+        webhookId: webhook._id.toString(),
+        environment: webhook.environment,
+        secretPath: webhook.secretPath,
+        webhookUrl: webhook.url,
+        isDisabled: webhook.isDisabled
+      }
+    },
+    {
+      workspaceId: webhook.workspace
+    }
+  );
 
   return res.status(200).send({
     message: "successfully removed webhook"

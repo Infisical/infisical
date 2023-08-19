@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 
+import {
+  useSaveIntegrationAccessToken
+} from "@app/hooks/api";
+
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
-import saveIntegrationAccessToken from "../../api/integrations/saveIntegrationAccessToken";
 
 export default function SupabaseCreateIntegrationPage() {
   const router = useRouter();
+  const { mutateAsync } = useSaveIntegrationAccessToken();
+
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +25,7 @@ export default function SupabaseCreateIntegrationPage() {
 
       setIsLoading(true);
 
-      const integrationAuth = await saveIntegrationAccessToken({
+      const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "supabase",
         accessToken: apiKey,

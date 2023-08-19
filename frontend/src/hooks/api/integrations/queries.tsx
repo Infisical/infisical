@@ -23,6 +23,63 @@ export const useGetCloudIntegrations = () =>
     queryFn: () => fetchIntegrations()
   });
 
+export const useCreateIntegration = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      integrationAuthId,
+      isActive,
+      app,
+      appId,
+      sourceEnvironment,
+      targetEnvironment,
+      targetEnvironmentId,
+      targetService,
+      targetServiceId,
+      owner,
+      path,
+      region,
+      secretPath
+    }: {
+      integrationAuthId: string;
+      isActive: boolean;
+      secretPath: string;
+      app: string | null;
+      appId: string | null;
+      sourceEnvironment: string;
+      targetEnvironment: string | null;
+      targetEnvironmentId: string | null;
+      targetService: string | null;
+      targetServiceId: string | null;
+      owner: string | null;
+      path: string | null;
+      region: string | null;
+    }) => {
+      const { data: { integration } } = await apiRequest.post("/api/v1/integration", {
+        integrationAuthId,
+        isActive,
+        app,
+        appId,
+        sourceEnvironment,
+        targetEnvironment,
+        targetEnvironmentId,
+        targetService,
+        targetServiceId,
+        owner,
+        path,
+        region,
+        secretPath
+      });
+
+      return integration;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(res.workspace));
+    }
+  });
+};
+
 export const useDeleteIntegration = () => {
   const queryClient = useQueryClient();
 

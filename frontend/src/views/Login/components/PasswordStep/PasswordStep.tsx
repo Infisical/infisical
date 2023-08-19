@@ -3,16 +3,18 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router"
 import axios from "axios"
+import jwt_decode from "jwt-decode";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import { Button, Input } from "@app/components/v2";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
+import { useUpdateUserAuthMethods } from "@app/hooks/api";
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { fetchUserDetails } from "@app/hooks/api/users/queries";
 
 type Props = { 
     providerAuthToken: string;
-    callbackPort?: string;
     email: string;
     password: string;
     setPassword: (password: string) => void;
@@ -21,16 +23,22 @@ type Props = {
 
 export const PasswordStep = ({
     providerAuthToken,
-    callbackPort,
     email,
     password,
     setPassword,
-    setStep
+    setStep,
 }: Props) => {
     const { createNotification } = useNotificationContext();
     const [isLoading, setIsLoading] = useState(false);
     const { t } = useTranslation();
     const router = useRouter();
+    const { mutateAsync } = useUpdateUserAuthMethods();
+    
+    const {
+        callbackPort,
+        isLinkingRequired,
+        authMethod
+    } = jwt_decode(providerAuthToken) as any;
     
     const handleLogin = async () => {
         try {
@@ -83,14 +91,23 @@ export const PasswordStep = ({
                     }
 
                     // case: login does not require MFA step
-                    const userOrgs = await getOrganizations();
+                    const userOrgs = await fetchOrganizations();
                     const userOrg = userOrgs[0]._id;
                     setIsLoading(false);
                     createNotification({
                         text: "Successfully logged in",
                         type: "success"
                     });
-                    router.push(`/org/${userOrg?._id}/overview`);
+                    
+                    if (isLinkingRequired) {
+                    const user = await fetchUserDetails();
+                        const newAuthMethods = [...user.authMethods, authMethod] 
+                        await mutateAsync({
+                            authMethods: newAuthMethods
+                        });
+                    }
+
+                    router.push(`/org/${userOrg}/overview`);
                 }
             }
         } catch (err) {
@@ -108,9 +125,18 @@ export const PasswordStep = ({
             onSubmit={(e) => e.preventDefault()}
             className="h-full mx-auto w-full max-w-md px-6 pt-8"
         >
-            <p className="mx-auto mb-6 flex w-max justify-center text-xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 text-center mb-8">
-                What’s your Infisical Password?
-            </p>
+            <div className="mb-8">
+                <p className="mx-auto flex w-max justify-center text-xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 text-center mb-4">
+                    {isLinkingRequired ? "Link your account" : "What's your Infisical password?"}
+                </p>
+                {isLinkingRequired && (
+                    <div className="text-bunker-400 text-xs flex flex-col items-center w-max mx-auto">
+                        <span className='duration-200 max-w-sm text-center px-4'>
+                            An existing account without this SSO authentication method enabled was found under the same email. Login with your password to link the account.
+                        </span>
+                    </div>
+                )}
+            </div>
             <div className="relative flex items-center justify-center lg:w-1/6 w-1/4 min-w-[22rem] mx-auto w-full rounded-lg max-h-24 md:max-h-28">
                 <div className="flex items-center justify-center w-full rounded-lg max-h-24 md:max-h-28">
                     <Input

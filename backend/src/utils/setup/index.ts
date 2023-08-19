@@ -16,7 +16,8 @@ import {
   backfillSecretVersions,
   backfillServiceToken,
   backfillServiceTokenMultiScope,
-  backfillTrustedIps
+  backfillTrustedIps,
+  backfillUserAuthMethods
 } from "./backfillData";
 import {
   reencryptBotOrgKeys,
@@ -84,6 +85,7 @@ export const setup = async () => {
   await backfillIntegration();
   await backfillServiceTokenMultiScope();
   await backfillTrustedIps();
+  await backfillUserAuthMethods();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY

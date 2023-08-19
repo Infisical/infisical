@@ -3,7 +3,9 @@ import React, { useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 
-import sendVerificationEmail from "@app/pages/api/auth/SendVerificationEmail";
+import {
+  useSendVerificationEmail
+} from "@app/hooks/api";
 
 import Error from "../basic/Error";
 import { Button } from "../v2";
@@ -70,6 +72,7 @@ export default function CodeInputStep({
   codeError,
   isCodeInputCheckLoading
 }: CodeInputStepProps): JSX.Element {
+  const { mutateAsync } = useSendVerificationEmail();
   const [isLoading, setIsLoading] = useState(false);
   const [isResendingVerificationEmail, setIsResendingVerificationEmail] = useState(false);
   const { t } = useTranslation();
@@ -77,7 +80,7 @@ export default function CodeInputStep({
   const resendVerificationEmail = async () => {
     setIsResendingVerificationEmail(true);
     setIsLoading(true);
-    sendVerificationEmail(email);
+    await mutateAsync({ email });
     setTimeout(() => {
       setIsLoading(false);
       setIsResendingVerificationEmail(false);

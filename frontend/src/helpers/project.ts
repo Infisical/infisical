@@ -2,10 +2,10 @@ import crypto from "crypto";
 
 import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import encryptSecrets from "@app/components/utilities/secrets/encryptSecrets";
-import addSecrets from "@app/pages/api/files/AddSecrets";
-import getUser from "@app/pages/api/user/getUser";
-import createWorkspace from "@app/pages/api/workspace/createWorkspace";
-import uploadKeys from "@app/pages/api/workspace/uploadKeys";
+import { uploadWsKey } from "@app/hooks/api/keys/queries";
+import { createSecret } from "@app/hooks/api/secrets/queries";
+import { fetchUserDetails } from "@app/hooks/api/users/queries";
+import { createWorkspace } from "@app/hooks/api/workspace/queries";
 
 const secretsToBeAdded = [
     {
@@ -91,49 +91,63 @@ const initProjectHelper = async ({
     organizationId: string;
     projectName: string;
 }) => {
-    let project;
-    try {
+  // create new project
+  const { data: { workspace } } = await createWorkspace({
+      workspaceName: projectName,
+      organizationId
+  });
+  
+  // create and upload new (encrypted) project key
+  const randomBytes = crypto.randomBytes(16).toString("hex");
+  const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
+  
+  if (!PRIVATE_KEY) throw new Error("Failed to find private key");
 
-        // create new project
-        project = await createWorkspace({
-            workspaceName: projectName,
-            organizationId
-        });
+  const user = await fetchUserDetails();
 
-        // create and upload new (encrypted) project key
-        const randomBytes = crypto.randomBytes(16).toString("hex");
-        const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
-        
-        if (!PRIVATE_KEY) throw new Error("Failed to find private key");
+  const { ciphertext, nonce } = encryptAssymmetric({
+      plaintext: randomBytes,
+      publicKey: user.publicKey,
+      privateKey: PRIVATE_KEY
+  });
 
-        const user = await getUser();
+  await uploadWsKey({
+    workspaceId: workspace._id,
+    userId: user._id,
+    encryptedKey: ciphertext,
+    nonce
+  });
 
-        const { ciphertext, nonce } = encryptAssymmetric({
-            plaintext: randomBytes,
-            publicKey: user.publicKey,
-            privateKey: PRIVATE_KEY
-        });
-
-        await uploadKeys(project._id, user._id, ciphertext, nonce);
-
-        // encrypt and upload secrets to new project
-        const secrets = await encryptSecrets({
-            secretsToEncrypt: secretsToBeAdded,
-            workspaceId: project._id,
-            env: "dev"
-        });
-
-        await addSecrets({
-            secrets: secrets ?? [],
-            env: "dev",
-            workspaceId: project._id
-        });
-
-    } catch (err) {
-        console.error("Failed to init project in organization", err);
-    }
-    
-    return project;
+  // encrypt and upload secrets to new project
+  const secrets = await encryptSecrets({
+      secretsToEncrypt: secretsToBeAdded,
+      workspaceId: workspace._id,
+      env: "dev"
+  });
+  
+  secrets?.forEach((secret) => {
+    createSecret({
+      workspaceId: workspace._id,
+      environment: secret.environment,
+      type: secret.type,
+      secretKey: secret.secretName,
+      secretKeyCiphertext: secret.secretKeyCiphertext,
+      secretKeyIV: secret.secretKeyIV,
+      secretKeyTag: secret.secretKeyTag,
+      secretValueCiphertext: secret.secretValueCiphertext,
+      secretValueIV: secret.secretValueIV,
+      secretValueTag: secret.secretValueTag,
+      secretCommentCiphertext: secret.secretCommentCiphertext,
+      secretCommentIV: secret.secretCommentIV,
+      secretCommentTag: secret.secretCommentTag,
+      secretPath: "/",
+      metadata: {
+        source: "signup"
+      }
+    });
+  });
+  
+  return workspace;
 }
 
 export {

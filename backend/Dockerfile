@@ -14,6 +14,8 @@ FROM node:16-alpine
 
 WORKDIR /app
 
+ENV npm_config_cache /home/node/.npm
+
 COPY package*.json ./
 RUN npm ci --only-production
 

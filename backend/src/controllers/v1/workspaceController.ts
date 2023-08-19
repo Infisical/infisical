@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import { Request, Response } from "express";
 import {
   IUser,
@@ -108,14 +109,14 @@ export const createWorkspace = async (req: Request, res: Response) => {
   // validate organization membership
   const membershipOrg = await MembershipOrg.findOne({
     user: req.user._id,
-    organization: organizationId,
+    organization: new Types.ObjectId(organizationId),
   });
 
   if (!membershipOrg) {
     throw new Error("Failed to validate organization membership");
   }
 
-  const plan = await EELicenseService.getPlan(organizationId);
+  const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
   
   if (plan.workspaceLimit !== null) {
     // case: limit imposed on number of workspaces allowed
@@ -134,7 +135,7 @@ export const createWorkspace = async (req: Request, res: Response) => {
   // create workspace and add user as member
   const workspace = await create({
     name: workspaceName,
-    organizationId,
+    organizationId: new Types.ObjectId(organizationId),
   });
 
   await addMemberships({

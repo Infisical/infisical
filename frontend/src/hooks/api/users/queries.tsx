@@ -13,13 +13,15 @@ import {
   AddUserToWsDTO,
   AddUserToWsRes,
   APIKeyData,
+  AuthMethod,
   CreateAPIKeyRes,
   DeletOrgMembershipDTO,
   OrgUser,
   RenameUserDTO,
   TokenVersion,
   UpdateOrgUserRoleDTO,
-  User} from "./types";
+  User
+} from "./types";
 
 const userKeys = {
   getUser: ["user"] as const,
@@ -27,7 +29,8 @@ const userKeys = {
   getOrgUsers: (orgId: string) => [{ orgId }, "user"],
   myIp: ["ip"] as const,
   myAPIKeys: ["api-keys"] as const,
-  mySessions: ["sessions"] as const
+  mySessions: ["sessions"] as const,
+  myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const
 };
 
 export const fetchUserDetails = async () => {
@@ -38,7 +41,7 @@ export const fetchUserDetails = async () => {
 
 export const useGetUser = () => useQuery(userKeys.getUser, fetchUserDetails);
 
-const fetchUserAction = async (action: string) => {
+export const fetchUserAction = async (action: string) => {
   const { data } = await apiRequest.get<{ userAction: string }>("/api/v1/user-action", {
     params: {
       action
@@ -59,17 +62,18 @@ export const useRenameUser = () => {
   });
 };
 
-export const useUpdateUserAuthProvider = () => {
+
+export const useUpdateUserAuthMethods = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
-      authProvider
+      authMethods
     }: {
-      authProvider: string;
+      authMethods: AuthMethod[];
     }) => {
-      const { data: { user } } = await apiRequest.patch("/api/v2/users/me/auth-provider", { 
-        authProvider
+      const { data: { user } } = await apiRequest.put("/api/v2/users/me/auth-methods", { 
+        authMethods
       });
       
       return user;
@@ -146,7 +150,9 @@ export const useAddUserToOrg = () => {
   }
 
   return useMutation<Response, {}, AddUserToOrgDTO>({
-    mutationFn: (dto) => apiRequest.post("/api/v1/invite-org/signup", dto),
+    mutationFn: (dto) => {
+      return apiRequest.post("/api/v1/invite-org/signup", dto);
+    },
     onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
     }
@@ -157,8 +163,9 @@ export const useDeleteOrgMembership = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, DeletOrgMembershipDTO>({
-    mutationFn: ({ membershipId, orgId }) =>
-      apiRequest.delete(`/api/v2/organizations/${orgId}/memberships/${membershipId}`),
+    mutationFn: ({ membershipId, orgId }) => {
+      return apiRequest.delete(`/api/v2/organizations/${orgId}/memberships/${membershipId}`)
+    },
     onSuccess: (_, { orgId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(orgId));
     }
@@ -169,10 +176,11 @@ export const useUpdateOrgUserRole = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, UpdateOrgUserRoleDTO>({
-    mutationFn: ({ organizationId, membershipId, role }) =>
-      apiRequest.patch(`/api/v2/organizations/${organizationId}/memberships/${membershipId}`, {
+    mutationFn: ({ organizationId, membershipId, role }) => {
+      return apiRequest.patch(`/api/v2/organizations/${organizationId}/memberships/${membershipId}`, {
         role
-      }),
+      });
+    },
     onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
     },
@@ -195,7 +203,9 @@ export const useRegisterUserAction = () => {
 
 export const useLogoutUser = () =>
   useMutation({
-    mutationFn: () => apiRequest.post("/api/v1/auth/logout"),
+    mutationFn: async () => {
+      await apiRequest.post("/api/v1/auth/logout");
+    },
     onSuccess: () => {
       setAuthToken("");
       // Delete the cookie by not setting a value; Alternatively clear the local storage
@@ -302,5 +312,46 @@ export const useRevokeMySessions = () => {
     onSuccess() {
       queryClient.invalidateQueries(userKeys.mySessions);
     }
+  });
+}
+
+export const useUpdateMfaEnabled = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      isMfaEnabled
+    }: {
+      isMfaEnabled: boolean;
+    }) => {
+      const { data: { user } } = await apiRequest.patch(
+        "/api/v2/users/me/mfa",
+        {
+          isMfaEnabled
+        }
+      );
+
+      return user;
+    },
+    onSuccess() {
+      queryClient.invalidateQueries(userKeys.getUser);
+    }
+  });
+}
+
+export const fetchMyOrganizationProjects = async (orgId: string) => {
+  const { data: { workspaces } } = await apiRequest.get(
+    `/api/v1/organization/${orgId}/my-workspaces`
+  );
+
+  return workspaces;
+}
+
+export const useGetMyOrganizationProjects = (orgId: string) => {
+  return useQuery({
+    queryKey: userKeys.myOrganizationProjects(orgId),
+    queryFn: async () => {
+      return fetchMyOrganizationProjects(orgId);
+    },
+    enabled: true
   });
 }

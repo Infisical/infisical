@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { faInfoCircle, faPlug, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import dayjs from "dayjs";
+import { format } from "date-fns";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
@@ -196,7 +196,8 @@ export const WebhooksTab = () => {
                               content={
                                 <div className="text-xs">
                                   <div>
-                                    Updated At: {dayjs(updatedAt).format("YYYY-MM-DD, hh:mm A")}
+                                    Updated At:{" "}
+                                    {format(new Date(updatedAt), "YYYY-MM-DD, hh:mm aaa")}
                                   </div>
                                   {lastRunErrorMessage && (
                                     <div className="mt-2 text-red">

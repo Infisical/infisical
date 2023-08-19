@@ -1,16 +1,15 @@
 import net from "net";
 import { Types } from "mongoose";
 import {
-    SecretBlindIndexData,
-    ServiceAccount,
-    ServiceTokenData,
-    User,
+    IServiceTokenData,
+	IUser,
+	SecretBlindIndexData,
     Workspace,
 } from "../models";
 import {
+	ActorType,
 	TrustedIP
 } from "../ee/models";
-import { validateServiceAccountClientForWorkspace } from "./serviceAccount";
 import { validateUserClientForWorkspace } from "./user";
 import { validateServiceTokenDataClientForWorkspace } from "./serviceTokenData";
 import { 
@@ -18,12 +17,6 @@ import {
     UnauthorizedRequestError,
     WorkspaceNotFoundError, 
 } from "../utils/errors";
-import {
-    AUTH_MODE_API_KEY,
-    AUTH_MODE_JWT,
-    AUTH_MODE_SERVICE_ACCOUNT,
-    AUTH_MODE_SERVICE_TOKEN,
-} from "../variables";
 import { BotService } from "../services";
 import { AuthData } from "../interfaces/middleware";
 import { extractIPDetails } from "../utils/ip";
@@ -85,89 +78,60 @@ export const validateClientForWorkspace = async ({
 		});
 	}
 	
-	
+	let membership;
+	switch (authData.actor.type) {
+		case ActorType.USER:
+			membership = await validateUserClientForWorkspace({
+				user: authData.authPayload as IUser,
+				workspaceId,
+				environment,
+				acceptedRoles,
+				requiredPermissions,
+			});	
+			
+			return ({ membership, workspace });
+		case ActorType.SERVICE:
+			if (checkIPAllowlist) {
+				const trustedIps = await TrustedIP.find({
+					workspace: workspaceId
+				});
+				
+				if (trustedIps.length > 0) {
+					// case: check the IP address of the inbound request against trusted IPs
 
-	if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
-		const membership = await validateUserClientForWorkspace({
-			user: authData.authPayload,
-			workspaceId,
-			environment,
-			acceptedRoles,
-			requiredPermissions,
-		});
+					const blockList = new net.BlockList();
 		
-		return ({ membership, workspace });
-	}
+					for (const trustedIp of trustedIps) {
+						if (trustedIp.prefix !== undefined) {
+							blockList.addSubnet(
+								trustedIp.ipAddress, 
+								trustedIp.prefix, 
+								trustedIp.type
+							);
+						} else {
+							blockList.addAddress(
+								trustedIp.ipAddress, 
+								trustedIp.type
+							);
+						}
+					}
+					
+					const { type } = extractIPDetails(authData.ipAddress);
+					const check = blockList.check(authData.ipAddress, type);
+					
+					if (!check) throw UnauthorizedRequestError({
+						message: "Failed workspace authorization"
+					});
+				}
+			}
 
-	if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
-		await validateServiceAccountClientForWorkspace({
-			serviceAccount: authData.authPayload,
-			workspaceId,
-			environment,
-			requiredPermissions,
-		});
-		
-		return {};
-	}
-	
-	if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
-		if (checkIPAllowlist) {
-			const trustedIps = await TrustedIP.find({
-				workspace: workspaceId
+			await validateServiceTokenDataClientForWorkspace({
+				serviceTokenData: authData.authPayload as IServiceTokenData,
+				workspaceId,
+				environment,
+				requiredPermissions,
 			});
 			
-			if (trustedIps.length > 0) {
-				// case: check the IP address of the inbound request against trusted IPs
-
-				const blockList = new net.BlockList();
-	
-				for (const trustedIp of trustedIps) {
-					if (trustedIp.prefix !== undefined) {
-						blockList.addSubnet(
-							trustedIp.ipAddress, 
-							trustedIp.prefix, 
-							trustedIp.type
-						);
-					} else {
-						blockList.addAddress(
-							trustedIp.ipAddress, 
-							trustedIp.type
-						);
-					}
-				}
-				
-				const { type } = extractIPDetails(authData.authIP);
-				const check = blockList.check(authData.authIP, type);
-				
-				if (!check) throw UnauthorizedRequestError({
-					message: "Failed workspace authorization"
-				});
-			}
-		}
-
-		await validateServiceTokenDataClientForWorkspace({
-			serviceTokenData: authData.authPayload,
-			workspaceId,
-			environment,
-			requiredPermissions,
-		});
-
-		return {};
+			return {};
 	}
-
-	if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
-		const membership = await validateUserClientForWorkspace({
-			user: authData.authPayload,
-			workspaceId,
-			environment,
-			acceptedRoles,
-			requiredPermissions,
-		});
-		
-		return ({ membership, workspace });
-	}
-	
-	throw UnauthorizedRequestError({
-		message: "Failed client authorization for workspace",
-	});
 }

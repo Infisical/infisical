@@ -1,30 +1,16 @@
-import { useEffect, useState } from "react";
-
 import {
     decryptAssymmetric,
     encryptAssymmetric
 } from "@app/components/utilities/cryptography/crypto";
 import { Checkbox } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-
-import getBot from "../../../../../pages/api/bot/getBot";
-import setBotActiveStatus from "../../../../../pages/api/bot/setBotActiveStatus";
-import getLatestFileKey from "../../../../../pages/api/workspace/getLatestFileKey";
+import { useGetUserWsKey,useGetWorkspaceBot, useUpdateBotActiveStatus } from "@app/hooks/api";
 
 export const E2EESection = () => {
     const { currentWorkspace } = useWorkspace();
-    const [bot, setBot] = useState<any>(null);
-
-    useEffect(() => {
-        (async () => {
-            if (currentWorkspace) {
-                // get project bot
-                setBot(await getBot({ 
-                    workspaceId: currentWorkspace._id
-                })); 
-            }
-        })();
-    }, [currentWorkspace]);
+    const { data: bot } = useGetWorkspaceBot(currentWorkspace?._id ?? "");
+    const { mutateAsync: updateBotActiveStatus } = useUpdateBotActiveStatus();
+    const { data: wsKey } = useGetUserWsKey(currentWorkspace?._id ?? "");
 
     /**
    * Activate bot for project by performing the following steps:
@@ -38,14 +24,12 @@ export const E2EESection = () => {
         try {
             if (!currentWorkspace?._id) return;
 
-            if (bot) {
+            if (bot && wsKey) {
                 // case: there is a bot
                 
                 if (!bot.isActive) {
                     // bot is not active -> activate bot
-                    const key = await getLatestFileKey({ 
-                        workspaceId: currentWorkspace._id
-                    });
+                    
                     const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
 
                     if (!PRIVATE_KEY) {
@@ -53,9 +37,9 @@ export const E2EESection = () => {
                     }
 
                     const WORKSPACE_KEY = decryptAssymmetric({
-                        ciphertext: key.latestKey.encryptedKey,
-                        nonce: key.latestKey.nonce,
-                        publicKey: key.latestKey.sender.publicKey,
+                        ciphertext: wsKey.encryptedKey,
+                        nonce: wsKey.nonce,
+                        publicKey: wsKey.sender.publicKey,
                         privateKey: PRIVATE_KEY
                     });
 
@@ -69,22 +53,20 @@ export const E2EESection = () => {
                         encryptedKey: ciphertext,
                         nonce
                     };
-
-                    const botx = await setBotActiveStatus({
-                        botId: bot._id,
+                    
+                    await updateBotActiveStatus({
+                        workspaceId: currentWorkspace._id,
+                        botKey,
                         isActive: true,
-                        botKey
+                        botId: bot._id
                     });
-
-                    setBot(botx.bot);
                 } else {
                     // bot is active -> deactivate bot
-                    const botx = await setBotActiveStatus({
+                    await updateBotActiveStatus({
+                        isActive: false,
                         botId: bot._id,
-                        isActive: false
+                        workspaceId: currentWorkspace._id
                     });
-
-                    setBot(botx.bot);
                 }
             }
         } catch (err) {

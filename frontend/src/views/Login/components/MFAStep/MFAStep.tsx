@@ -3,14 +3,19 @@ import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 import axios from "axios"
+import jwt_decode from "jwt-decode";
 
 import Error from "@app/components/basic/Error"; // which to notification
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa"
 import attemptLoginMfa from "@app/components/utilities/attemptLoginMfa";
 import { Button } from "@app/components/v2";    
+import { useUpdateUserAuthMethods } from "@app/hooks/api";
 import { useSendMfaToken } from "@app/hooks/api/auth";
-import getOrganizations from "@app/pages/api/organization/getOrgs";
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { fetchUserDetails } from "@app/hooks/api/users/queries";
+import { AuthMethod } from "@app/hooks/api/users/types";
+
 
 // The style for the verification code input
 const props = {
@@ -54,8 +59,7 @@ interface VerifyMfaTokenError {
 export const MFAStep = ({
   email,
   password,
-  providerAuthToken,
-  callbackPort
+  providerAuthToken
 }: Props) => {
   const { createNotification } = useNotificationContext();
   const router = useRouter();
@@ -67,9 +71,22 @@ export const MFAStep = ({
   const { t } = useTranslation();
 
   const sendMfaToken = useSendMfaToken();
+    const { mutateAsync: updateUserAuthMethodsMutateAsync } = useUpdateUserAuthMethods();
 
   const handleLoginMfa = async () => {
     try {
+      let isLinkingRequired: undefined | boolean;
+      let callbackPort: undefined | string;
+      let authMethod: undefined | AuthMethod;
+      
+      if (providerAuthToken) {
+        const decodedToken = jwt_decode(providerAuthToken) as any;
+        
+        isLinkingRequired = decodedToken.isLinkingRequired;
+        callbackPort = decodedToken.callbackPort;
+        authMethod = decodedToken.authMethod;
+      }
+      
       if (mfaCode.length !== 6) {
         createNotification({
           text: "Please enter a 6-digit MFA code and try again",
@@ -79,7 +96,7 @@ export const MFAStep = ({
       }
 
       setIsLoading(true);
-      if (callbackPort){
+      if (callbackPort) {
 
         // attemptCliLogin
         const isCliLoginSuccessful = await attemptCliLoginMfa({
@@ -110,7 +127,7 @@ export const MFAStep = ({
   
         if (isLoginSuccessful) {
           setIsLoading(false);
-          const userOrgs = await getOrganizations();
+          const userOrgs = await fetchOrganizations();
           const userOrg = userOrgs[0] && userOrgs[0]._id;
 
           // case: login does not require MFA step
@@ -118,6 +135,15 @@ export const MFAStep = ({
               text: "Successfully logged in",
               type: "success"
           });
+
+          if (isLinkingRequired && authMethod) {
+            const user = await fetchUserDetails();
+            const newAuthMethods = [...user.authMethods, authMethod] 
+            await updateUserAuthMethodsMutateAsync({
+                authMethods: newAuthMethods
+            });
+          }
+          
           router.push(`/org/${userOrg}/overview`);
         } else {
           createNotification({

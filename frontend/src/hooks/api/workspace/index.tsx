@@ -1,6 +1,8 @@
 export {
+  useAddUserToWorkspace,
   useCreateWorkspace,
   useCreateWsEnvironment,
+  useDeleteUserFromWorkspace,
   useDeleteWorkspace,
   useDeleteWsEnvironment,
   useGetUserWorkspaceMemberships,
@@ -11,8 +13,10 @@ export {
   useGetWorkspaceIndexStatus,
   useGetWorkspaceIntegrations,
   useGetWorkspaceSecrets,
+  useGetWorkspaceUsers,
   useNameWorkspaceSecrets,
   useRenameWorkspace,
+  useReorderWsEnvironment,
   useToggleAutoCapitalization,
-  useUpdateWsEnvironment
-} from "./queries";
+  useUpdateUserWorkspaceRole,
+  useUpdateWsEnvironment} from "./queries";

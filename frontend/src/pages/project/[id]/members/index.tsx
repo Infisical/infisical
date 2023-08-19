@@ -11,17 +11,18 @@ import AddProjectMemberDialog from "@app/components/basic/dialog/AddProjectMembe
 import ProjectUsersTable from "@app/components/basic/table/ProjectUsersTable";
 import guidGenerator from "@app/components/utilities/randomId";
 import { Input } from "@app/components/v2";
+import { useOrganization } from "@app/context";
+import { 
+  useAddUserToWorkspace,
+  useGetOrgUsers,
+  useGetUser, 
+  useGetWorkspaceUsers} from "@app/hooks/api";
+import { uploadWsKey } from "@app/hooks/api/keys/queries";
 
 import {
   decryptAssymmetric,
   encryptAssymmetric
 } from "../../../../components/utilities/cryptography/crypto";
-import getOrganizationUsers from "../../../api/organization/GetOrgUsers";
-import getUser from "../../../api/user/getUser";
-// import DeleteUserDialog from '@app/components/basic/dialog/DeleteUserDialog';
-import addUserToWorkspace from "../../../api/workspace/addUserToWorkspace";
-import getWorkspaceUsers from "../../../api/workspace/getWorkspaceUsers";
-import uploadKeys from "../../../api/workspace/uploadKeys";
 
 interface UserProps {
   firstName: string;
@@ -43,6 +44,16 @@ interface MembershipProps {
 // #TODO: Update all the workspaceIds
 
 export default function Users() {
+  const router = useRouter();
+  const workspaceId = router.query.id as string;
+  
+  const { data: user } = useGetUser();
+  const { currentOrg } = useOrganization();
+  const { data: orgUsers } = useGetOrgUsers(currentOrg?._id ?? "");
+  
+  const { data: workspaceUsers } = useGetWorkspaceUsers(workspaceId);
+  const { mutateAsync: addUserToWorkspaceMutateAsync } = useAddUserToWorkspace();
+  
   const [isAddOpen, setIsAddOpen] = useState(false);
   // let [isDeleteOpen, setIsDeleteOpen] = useState(false);
   // let [userIdToBeDeleted, setUserIdToBeDeleted] = useState(false);
@@ -52,54 +63,45 @@ export default function Users() {
 
   const { t } = useTranslation();
 
-  const router = useRouter();
-  const workspaceId = router.query.id as string;
 
   const [userList, setUserList] = useState<any[]>([]);
   const [isUserListLoading, setIsUserListLoading] = useState(true);
   const [orgUserList, setOrgUserList] = useState<any[]>([]);
 
   useEffect(() => {
-    (async () => {
-      const user = await getUser();
-      setPersonalEmail(user.email);
+    if (user && workspaceUsers && orgUsers) {
+      (async () => {
+        setPersonalEmail(user.email);
+        
+        const tempUserList = workspaceUsers.map((membership: MembershipProps) => ({
+          key: guidGenerator(),
+          firstName: membership.user?.firstName,
+          lastName: membership.user?.lastName,
+          email: membership.user?.email === null ? membership.inviteEmail : membership.user?.email,
+          role: membership?.role,
+          status: membership?.status,
+          userId: membership.user?._id,
+          membershipId: membership._id,
+          deniedPermissions: membership.deniedPermissions,
+          publicKey: membership.user?.publicKey
+        }));
+        setUserList(tempUserList);
 
-      // This part quiries the current users of a project
-      const workspaceUsers = await getWorkspaceUsers({
-        workspaceId
-      });
-      const tempUserList = workspaceUsers.map((membership: MembershipProps) => ({
-        key: guidGenerator(),
-        firstName: membership.user?.firstName,
-        lastName: membership.user?.lastName,
-        email: membership.user?.email === null ? membership.inviteEmail : membership.user?.email,
-        role: membership?.role,
-        status: membership?.status,
-        userId: membership.user?._id,
-        membershipId: membership._id,
-        deniedPermissions: membership.deniedPermissions,
-        publicKey: membership.user?.publicKey
-      }));
-      setUserList(tempUserList);
+        setIsUserListLoading(false);
 
-      setIsUserListLoading(false);
-
-      // This is needed to know wha users from an org (if any), we are able to add to a certain project
-      const orgUsers = await getOrganizationUsers({
-        orgId: String(localStorage.getItem("orgData.id"))
-      });
-      setOrgUserList(orgUsers);
-      setEmail(
-        orgUsers
-          ?.filter((membership: MembershipProps) => membership.status === "accepted")
-          .map((membership: MembershipProps) => membership.user.email)
-          .filter(
-            (usEmail: string) =>
-              !tempUserList?.map((user1: UserProps) => user1.email).includes(usEmail)
-          )[0]
-      );
-    })();
-  }, []);
+        setOrgUserList(orgUsers);
+        setEmail(
+          orgUsers
+            ?.filter((membership: MembershipProps) => membership.status === "accepted")
+            .map((membership: MembershipProps) => membership.user.email)
+            .filter(
+              (usEmail: string) =>
+                !tempUserList?.map((user1: UserProps) => user1.email).includes(usEmail)
+            )[0]
+        );
+      })();
+    }
+  }, [user, workspaceUsers, orgUsers]);
 
   const closeAddModal = () => {
     setIsAddOpen(false);
@@ -122,7 +124,11 @@ export default function Users() {
   // }
 
   const submitAddModal = async () => {
-    const result = await addUserToWorkspace(email, workspaceId);
+    const result = await addUserToWorkspaceMutateAsync({
+      email,
+      workspaceId
+    });
+    
     if (result?.invitee && result?.latestKey) {
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
@@ -140,11 +146,15 @@ export default function Users() {
         privateKey: PRIVATE_KEY
       });
 
-      uploadKeys(workspaceId, result.invitee._id, ciphertext, nonce);
+      await uploadWsKey({
+        workspaceId,
+        userId: result.invitee._id,
+        encryptedKey: ciphertext,
+        nonce
+      });
     }
     setEmail("");
     setIsAddOpen(false);
-    router.reload();
   };
 
   return userList ? (

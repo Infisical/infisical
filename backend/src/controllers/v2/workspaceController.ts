@@ -9,6 +9,8 @@ import {
 import { pushKeys } from "../../helpers/key";
 import { EventService, TelemetryService } from "../../services";
 import { eventPushSecrets } from "../../events";
+import { EEAuditLogService } from "../../ee/services";
+import { EventType } from "../../ee/models";
 
 interface V2PushSecret {
   type: string; // personal or shared
@@ -180,16 +182,30 @@ export const getWorkspaceKey = async (req: Request, res: Response) => {
     }   
     */
   const { workspaceId } = req.params;
-
+  
   const key = await Key.findOne({
     workspace: workspaceId,
     receiver: req.user._id
   }).populate("sender", "+publicKey");
 
   if (!key) throw new Error("Failed to find workspace key");
+  
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.GET_WORKSPACE_KEY,
+      metadata: {
+        keyId: key._id.toString()
+      }
+    },
+    {
+      workspaceId: new Types.ObjectId(workspaceId)
+    }
+  );
 
   return res.status(200).json(key);
 };
+
 export const getWorkspaceServiceTokenData = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
 

@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { Types } from "mongoose";
 import {
   Integration,
   Membership,
@@ -7,8 +8,8 @@ import {
   ServiceTokenData,
   Workspace,
 } from "../../models";
-import { SecretVersion } from "../../ee/models";
-import { EELicenseService } from "../../ee/services";
+import { EventType, SecretVersion } from "../../ee/models";
+import { EEAuditLogService, EELicenseService } from "../../ee/services";
 import { BadRequestError, WorkspaceNotFoundError } from "../../utils/errors";
 import _ from "lodash";
 import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variables";
@@ -30,7 +31,7 @@ export const createWorkspaceEnvironment = async (
 
   if (!workspace) throw WorkspaceNotFoundError();
 
-  const plan = await EELicenseService.getPlan(workspace.organization.toString());
+  const plan = await EELicenseService.getPlan(workspace.organization);
 
   if (plan.environmentLimit !== null) {
     // case: limit imposed on number of environments allowed
@@ -58,7 +59,21 @@ export const createWorkspaceEnvironment = async (
   });
   await workspace.save();
 
-  await EELicenseService.refreshPlan(workspace.organization.toString(), workspaceId);
+  await EELicenseService.refreshPlan(workspace.organization, new Types.ObjectId(workspaceId));
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.CREATE_ENVIRONMENT,
+      metadata: {
+        name: environmentName,
+        slug: environmentSlug
+      }
+    },
+    {
+      workspaceId: workspace._id
+    }
+  );
 
   return res.status(200).send({
     message: "Successfully created new environment",
@@ -67,6 +82,43 @@ export const createWorkspaceEnvironment = async (
       name: environmentName,
       slug: environmentSlug,
     },
+  });
+};
+
+/**
+ * Swaps the ordering of two environments in the database. This is purely for aesthetic purposes.
+ * @param req
+ * @param res
+ * @returns
+ */
+export const reorderWorkspaceEnvironments = async (
+  req: Request,
+  res: Response
+) => {
+  const { workspaceId } = req.params;
+  const { environmentSlug, environmentName, otherEnvironmentSlug, otherEnvironmentName } = req.body;
+
+  // atomic update the env to avoid conflict
+  const workspace = await Workspace.findById(workspaceId).exec();
+  if (!workspace) {
+    throw BadRequestError({message: "Couldn't load workspace"});
+  }
+
+  const environmentIndex = workspace.environments.findIndex((env) => env.name === environmentName && env.slug === environmentSlug)
+  const otherEnvironmentIndex = workspace.environments.findIndex((env) => env.name === otherEnvironmentName && env.slug === otherEnvironmentSlug)
+
+  if (environmentIndex === -1 || otherEnvironmentIndex === -1) {
+    throw BadRequestError({message: "environment or otherEnvironment couldn't be found"})
+  }
+
+  // swap the order of the environments
+  [workspace.environments[environmentIndex], workspace.environments[otherEnvironmentIndex]] = [workspace.environments[otherEnvironmentIndex], workspace.environments[environmentIndex]]
+
+  await workspace.save()
+
+  return res.status(200).send({
+    message: "Successfully reordered environments",
+    workspace: workspaceId,
   });
 };
 
@@ -110,6 +162,8 @@ export const renameWorkspaceEnvironment = async (
     throw new Error("Invalid environment given");
   }
 
+  const oldEnvironment = workspace.environments[envIndex];
+
   workspace.environments[envIndex].name = environmentName;
   workspace.environments[envIndex].slug = environmentSlug.toLowerCase();
 
@@ -141,8 +195,23 @@ export const renameWorkspaceEnvironment = async (
     },
     { $set: { "deniedPermissions.$[element].environmentSlug": environmentSlug } },
     { arrayFilters: [{ "element.environmentSlug": oldEnvironmentSlug }] }
-  )
+  );
 
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.UPDATE_ENVIRONMENT,
+      metadata: {
+        oldName: oldEnvironment.name,
+        newName: environmentName,
+        oldSlug: oldEnvironment.slug,
+        newSlug: environmentSlug.toLowerCase()
+      }
+    },
+    {
+      workspaceId: workspace._id
+    }
+  );
 
   return res.status(200).send({
     message: "Successfully update environment",
@@ -178,6 +247,8 @@ export const deleteWorkspaceEnvironment = async (
   if (envIndex === -1) {
     throw new Error("Invalid environment given");
   }
+
+  const oldEnvironment = workspace.environments[envIndex];
 
   workspace.environments.splice(envIndex, 1);
   await workspace.save();
@@ -215,7 +286,21 @@ export const deleteWorkspaceEnvironment = async (
     { $pull: { deniedPermissions: { environmentSlug: environmentSlug } } }
   );
 
-  await EELicenseService.refreshPlan(workspace.organization.toString(), workspaceId);
+  await EELicenseService.refreshPlan(workspace.organization, new Types.ObjectId(workspaceId));
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.DELETE_ENVIRONMENT,
+      metadata: {
+        name: oldEnvironment.name,
+        slug: oldEnvironment.slug
+      }
+    },
+    {
+      workspaceId: workspace._id
+    }
+  );
 
   return res.status(200).send({
     message: "Successfully deleted environment",

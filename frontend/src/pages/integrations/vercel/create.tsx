@@ -3,6 +3,10 @@ import { useRouter } from "next/router";
 import queryString from "query-string";
 
 import {
+  useCreateIntegration
+} from "@app/hooks/api";
+
+import {
   Button,
   Card,
   CardTitle,
@@ -17,7 +21,6 @@ import {
   useGetIntegrationAuthVercelBranches
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
-import createIntegration from "../../api/integrations/createIntegration";
 
 const vercelEnvironments = [
   { name: "Development", slug: "development" },
@@ -27,6 +30,7 @@ const vercelEnvironments = [
 
 export default function VercelCreateIntegrationPage() {
   const router = useRouter();
+  const { mutateAsync } = useCreateIntegration();
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
@@ -81,7 +85,7 @@ export default function VercelCreateIntegrationPage() {
 
       const path = targetEnvironment === "preview" && targetBranch !== "" ? targetBranch : null;
 
-      await createIntegration({
+      await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: targetApp.name,
