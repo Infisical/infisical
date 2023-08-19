@@ -83,6 +83,7 @@ stringData:
                             "JWT_SERVICE_SECRET" (randAlphaNum 32 | lower)
                             "JWT_MFA_SECRET" (randAlphaNum 32 | lower)
                             "JWT_PROVIDER_AUTH_SECRET" (randAlphaNum 32 | lower)
+                            "REDIS_URL" (include "infisical.redis.connectionString" .)
                             "MONGO_URL" (include "infisical.mongodb.connectionString" .) }}
   {{- $secretObj := (lookup "v1" "Secret" .Release.Namespace (include "infisical.backend.fullname" .)) | default dict }}
   {{- $secretData := (get $secretObj "data") | default dict }}

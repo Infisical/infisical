@@ -7,6 +7,7 @@ This is the Infisical application Helm chart. This chart includes the following 
 | `frontend` | Infisical's Web UI                  |
 | `backend`  | Infisical's API                     |
 | `mongodb`  | Infisical's database                |
+| `redis`    | Infisical's cache service           |
 | `mailhog`  | Infisical's development SMTP server |
 
 ## Installation
@@ -58,7 +59,6 @@ kubectl get secrets -n <namespace> <secret-name> \
 | `nameOverride`     | Override release name     | `""`  |
 | `fullnameOverride` | Override release fullname | `""`  |
 
-
 ### Infisical frontend parameters
 
 | Name                                    | Description                                                                                                                                                   | Value                |
@@ -78,41 +78,41 @@ kubectl get secrets -n <namespace> <secret-name> \
 | `frontend.service.nodePort`             | Backend service nodePort (used if above type is `NodePort`)                                                                                                   | `""`                 |
 | `frontendEnvironmentVariables.SITE_URL` | Absolute URL including the protocol (e.g. https://app.infisical.com)                                                                                          | `infisical.local`    |
 
-
 ### Infisical backend parameters
 
-| Name                                             | Description                                                                                                                                                                                                                   | Value               |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| `backend.enabled`                                | Enable backend                                                                                                                                                                                                                | `true`              |
-| `backend.name`                                   | Backend name                                                                                                                                                                                                                  | `backend`           |
-| `backend.fullnameOverride`                       | Backend fullnameOverride                                                                                                                                                                                                      | `""`                |
-| `backend.podAnnotations`                         | Backend pod annotations                                                                                                                                                                                                       | `{}`                |
-| `backend.deploymentAnnotations`                  | Backend deployment annotations                                                                                                                                                                                                | `{}`                |
-| `backend.replicaCount`                           | Backend replica count                                                                                                                                                                                                         | `2`                 |
-| `backend.image.repository`                       | Backend image repository                                                                                                                                                                                                      | `infisical/backend` |
-| `backend.image.tag`                              | Backend image tag                                                                                                                                                                                                             | `latest`            |
-| `backend.image.pullPolicy`                       | Backend image pullPolicy                                                                                                                                                                                                      | `IfNotPresent`      |
-| `backend.kubeSecretRef`                          | Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))                                                                  | `""`                |
-| `backend.service.annotations`                    | Backend service annotations                                                                                                                                                                                                   | `{}`                |
-| `backend.service.type`                           | Backend service type                                                                                                                                                                                                          | `ClusterIP`         |
-| `backend.service.nodePort`                       | Backend service nodePort (used if above type is `NodePort`)                                                                                                                                                                   | `""`                |
-| `backendEnvironmentVariables.ENCRYPTION_KEY`     | **Required** Backend encryption key (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)     | `""`                |
-| `backendEnvironmentVariables.JWT_SIGNUP_SECRET`  | **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret) | `""`                |
-| `backendEnvironmentVariables.JWT_REFRESH_SECRET` | **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret) | `""`                |
-| `backendEnvironmentVariables.JWT_AUTH_SECRET`    | **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret) | `""`                |
-| `backendEnvironmentVariables.JWT_SERVICE_SECRET` | **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret) | `""`                |
-| `backendEnvironmentVariables.JWT_MFA_SECRET`     | **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret) | `""`                |
-| `backendEnvironmentVariables.SMTP_HOST`          | **Required** Hostname to connect to for establishing SMTP connections                                                                                                                                                         | `""`                |
-| `backendEnvironmentVariables.SMTP_PORT`          | Port to connect to for establishing SMTP connections                                                                                                                                                                          | `587`               |
-| `backendEnvironmentVariables.SMTP_SECURE`        | If true, use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported                                                                                                                                 | `false`             |
-| `backendEnvironmentVariables.SMTP_FROM_NAME`     | Name label to be used in From field (e.g. Infisical)                                                                                                                                                                          | `Infisical`         |
-| `backendEnvironmentVariables.SMTP_FROM_ADDRESS`  | **Required** Email address to be used for sending emails (e.g. dev@infisical.com)                                                                                                                                             | `""`                |
-| `backendEnvironmentVariables.SMTP_USERNAME`      | **Required** Credential to connect to host (e.g. team@infisical.com)                                                                                                                                                          | `""`                |
-| `backendEnvironmentVariables.SMTP_PASSWORD`      | **Required** Credential to connect to host                                                                                                                                                                                    | `""`                |
-| `backendEnvironmentVariables.SITE_URL`           | Absolute URL including the protocol (e.g. https://app.infisical.com)                                                                                                                                                          | `infisical.local`   |
-| `backendEnvironmentVariables.INVITE_ONLY_SIGNUP` | To disable account creation from the login page (invites only)                                                                                                                                                                | `false`             |
-| `backendEnvironmentVariables.MONGO_URL`          | MongoDB connection string (external or internal)</br>Leave it empty for auto-generated connection string                                                                                                                      | `""`                |
-
+| Name                                                   | Description                                                                                                                                                                                                                         | Value                       |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| `backend.enabled`                                      | Enable backend                                                                                                                                                                                                                      | `true`                      |
+| `backend.name`                                         | Backend name                                                                                                                                                                                                                        | `backend`                   |
+| `backend.fullnameOverride`                             | Backend fullnameOverride                                                                                                                                                                                                            | `""`                        |
+| `backend.podAnnotations`                               | Backend pod annotations                                                                                                                                                                                                             | `{}`                        |
+| `backend.deploymentAnnotations`                        | Backend deployment annotations                                                                                                                                                                                                      | `{}`                        |
+| `backend.replicaCount`                                 | Backend replica count                                                                                                                                                                                                               | `2`                         |
+| `backend.image.repository`                             | Backend image repository                                                                                                                                                                                                            | `infisical/backend`         |
+| `backend.image.tag`                                    | Backend image tag                                                                                                                                                                                                                   | `latest`                    |
+| `backend.image.pullPolicy`                             | Backend image pullPolicy                                                                                                                                                                                                            | `IfNotPresent`              |
+| `backend.kubeSecretRef`                                | Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))                                                                        | `""`                        |
+| `backend.service.annotations`                          | Backend service annotations                                                                                                                                                                                                         | `{}`                        |
+| `backend.service.type`                                 | Backend service type                                                                                                                                                                                                                | `ClusterIP`                 |
+| `backend.service.nodePort`                             | Backend service nodePort (used if above type is `NodePort`)                                                                                                                                                                         | `""`                        |
+| `backendEnvironmentVariables.ENCRYPTION_KEY`           | **Required** Backend encryption key (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)           | `""`                        |
+| `backendEnvironmentVariables.JWT_SIGNUP_SECRET`        | **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)       | `""`                        |
+| `backendEnvironmentVariables.JWT_REFRESH_SECRET`       | **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)       | `""`                        |
+| `backendEnvironmentVariables.JWT_AUTH_SECRET`          | **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)       | `""`                        |
+| `backendEnvironmentVariables.JWT_SERVICE_SECRET`       | **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)       | `""`                        |
+| `backendEnvironmentVariables.JWT_MFA_SECRET`           | **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)       | `""`                        |
+| `backendEnvironmentVariables.JWT_PROVIDER_AUTH_SECRET` | **Required** Secrets to sign JWT OAuth tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret) | `""`                        |
+| `backendEnvironmentVariables.SMTP_HOST`                | **Required** Hostname to connect to for establishing SMTP connections                                                                                                                                                               | `""`                        |
+| `backendEnvironmentVariables.SMTP_PORT`                | Port to connect to for establishing SMTP connections                                                                                                                                                                                | `587`                       |
+| `backendEnvironmentVariables.SMTP_SECURE`              | If true, use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported                                                                                                                                       | `false`                     |
+| `backendEnvironmentVariables.SMTP_FROM_NAME`           | Name label to be used in From field (e.g. Infisical)                                                                                                                                                                                | `Infisical`                 |
+| `backendEnvironmentVariables.SMTP_FROM_ADDRESS`        | **Required** Email address to be used for sending emails (e.g. dev@infisical.com)                                                                                                                                                   | `""`                        |
+| `backendEnvironmentVariables.SMTP_USERNAME`            | **Required** Credential to connect to host (e.g. team@infisical.com)                                                                                                                                                                | `""`                        |
+| `backendEnvironmentVariables.SMTP_PASSWORD`            | **Required** Credential to connect to host                                                                                                                                                                                          | `""`                        |
+| `backendEnvironmentVariables.SITE_URL`                 | Absolute URL including the protocol (e.g. https://app.infisical.com)                                                                                                                                                                | `infisical.local`           |
+| `backendEnvironmentVariables.INVITE_ONLY_SIGNUP`       | To disable account creation from the login page (invites only)                                                                                                                                                                      | `false`                     |
+| `backendEnvironmentVariables.MONGO_URL`                | MongoDB connection string (external or internal)</br>Leave it empty for auto-generated connection string                                                                                                                            | `""`                        |
+| `backendEnvironmentVariables.REDIS_URL`                |                                                                                                                                                                                                                                     | `redis://redis-master:6379` |
 
 ### MongoDB(&reg;) parameters
 
@@ -154,17 +154,16 @@ kubectl get secrets -n <namespace> <secret-name> \
 | `mongodb.persistence.size`                          | Persistent storage request size                                                                                                                                                           | `8Gi`                |
 | `mongodbConnection.externalMongoDBConnectionString` | Deprecated :warning: External MongoDB connection string</br>Use backendEnvironmentVariables.MONGO_URL instead                                                                             | `""`                 |
 
-
 ### Ingress parameters
 
 | Name                       | Description                                                              | Value   |
 | -------------------------- | ------------------------------------------------------------------------ | ------- |
 | `ingress.enabled`          | Enable ingress                                                           | `true`  |
 | `ingress.ingressClassName` | Ingress class name                                                       | `nginx` |
+| `ingress.nginx.enabled`    | Ingress controller                                                       | `false` |
 | `ingress.annotations`      | Ingress annotations                                                      | `{}`    |
 | `ingress.hostName`         | Ingress hostname (your custom domain name, e.g. `infisical.example.org`) | `""`    |
 | `ingress.tls`              | Ingress TLS hosts (matching above hostName)                              | `[]`    |
-
 
 ### Mailhog parameters
 
@@ -183,6 +182,10 @@ kubectl get secrets -n <namespace> <secret-name> \
 | `mailhog.ingress.annotations`      | Ingress annotations        | `{}`                      |
 | `mailhog.ingress.labels`           | Ingress labels             | `{}`                      |
 | `mailhog.ingress.hosts[0].host`    | Mailhog host               | `mailhog.infisical.local` |
+
+### Redis parameters
+
+
 
 
 

@@ -41,19 +41,17 @@ services:
     networks:
       - infisical
 
-  # secret-scanning-git-app:
-  #   container_name: infisical-secret-scanning-git-app
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - backend
-  #     - frontend
-  #     - mongo
-  #   ports:
-  #     - "3000:3001"
-  #   image: infisical/staging_deployment_secret-scanning-git-app
-  #   env_file: .env
-  #   networks:
-  #     - infisical
+  redis:
+    image: redis
+    container_name: infisical-dev-redis
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - 6379:6379
+    networks:
+      - infisical
+    volumes:
+      - redis_data:/data
 
   mongo:
     container_name: infisical-mongo
@@ -70,6 +68,8 @@ services:
 
 volumes:
   mongo-data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:

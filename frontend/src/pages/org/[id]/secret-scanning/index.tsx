@@ -41,7 +41,7 @@ export default function SecretScanning() {
 
   const generateNewIntegrationSession = async () => {
     const session = await createNewIntegrationSession(String(localStorage.getItem("orgData.id")))
-    router.push(`https://github.com/apps/infisical-radar/installations/new?state=${session.sessionId}`)
+    router.push(`https://github.com/apps/infisical-radar-dev/installations/new?state=${session.sessionId}`)
   }
 
   return (

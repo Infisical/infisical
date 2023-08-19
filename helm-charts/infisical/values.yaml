@@ -169,6 +169,10 @@ backendEnvironmentVariables:
   ##
   MONGO_URL: ""
 
+  ## @param backendEnvironmentVariables.REDIS_URL
+  ## By default, the backend will use the Redis that is auto deployed along with Infisical
+  REDIS_URL: "redis://redis-master:6379"
+
 ## @section MongoDB(&reg;) parameters
 ## Documentation : https://github.com/bitnami/charts/blob/main/bitnami/mongodb/values.yaml
 ##
@@ -419,3 +423,16 @@ mailhog:
         paths:
           - path: "/"
             pathType: Prefix
+
+## @section Redis parameters
+## Documentation : https://github.com/bitnami/charts/tree/main/bitnami/redis#parameters
+##
+## @skip redis
+##
+redis:
+  name: "redis"
+  fullnameOverride: "redis"
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false

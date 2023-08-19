@@ -49,10 +49,15 @@ Other environment variables are listed below to increase the functionality of yo
   16`
 </ParamField>
 
-  <ParamField query="MONGO_URL" type="string" default="none" required>
-    *TLS based connection string is not yet supported
-  </ParamField>
-  </Tab>
+<ParamField query="MONGO_URL" type="string" default="none" required>
+  *TLS based connection string is not yet supported
+</ParamField>
+
+<ParamField query="REDIS_URL" type="string" default="none" required>
+  Redis connection string
+</ParamField>
+
+</Tab>
   <Tab title="Email service">
     <Info>When email service is not configured, Infisical will have limited functionality</Info>
 

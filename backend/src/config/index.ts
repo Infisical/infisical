@@ -68,6 +68,8 @@ export const getSecretScanningWebhookSecret = async () => (await client.getSecre
 export const getSecretScanningGitAppId = async () => (await client.getSecret("SECRET_SCANNING_GIT_APP_ID")).secretValue;
 export const getSecretScanningPrivateKey = async () => (await client.getSecret("SECRET_SCANNING_PRIVATE_KEY")).secretValue;
 
+export const getRedisUrl = async () => (await client.getSecret("REDIS_URL")).secretValue;
+
 export const getLicenseKey = async () => {
   const secretValue = (await client.getSecret("LICENSE_KEY")).secretValue;
   return secretValue === "" ? undefined : secretValue;
