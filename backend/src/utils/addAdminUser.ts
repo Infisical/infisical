@@ -134,6 +134,10 @@ export const createInitialAdminUser = async () => {
         await Key.create(adminWorkspaceKey)
       }
 
+      /* eslint-disable no-console */
+      console.info(`Success, Admin user has been created.`)
+      /* eslint-enable no-console */
+
     } catch (e) {
       /* eslint-disable no-console */
       console.error(`Unable to create admin user while booting up [err=${e}]`)
