@@ -19,7 +19,7 @@ router.get(
       message: "Ok",
       emailConfigured: await getSmtpConfigured(),
       inviteOnlySignup: await getInviteOnlySignup(),
-      redisConfigured: await getRedisUrl() !== "" && await getRedisUrl() !== undefined
+      redisConfigured: await getRedisUrl() !== "" && await getRedisUrl() !== undefined,
       secretScanningConfigured: secretScanningConfigured,
     })
   }
