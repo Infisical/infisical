@@ -20,7 +20,7 @@ export const adminWorkspaceKeyId = "63cf48f0225e6955acec5eff"
 export const plainTextWorkspaceKey = "543fef8224813a46230b0a50a46c5fb2"
 
 export const createInitialAdminUser = async () => {
-  if (( await getCreateAdminUser()) === "true") {
+  if (( await getCreateAdminUser()) === "True") {
     const adminUser = {
       _id: adminUserId,
       email: adminUserEmail,
