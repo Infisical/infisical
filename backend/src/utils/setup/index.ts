@@ -4,6 +4,7 @@ import { setTransporter } from "../../helpers/nodemailer";
 import { EELicenseService } from "../../ee/services";
 import { initSmtp } from "../../services/smtp";
 import { createTestUserForDevelopment } from "../addDevelopmentUser";
+import { createInitialAdminUser } from "../addAdminUser";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import { validateEncryptionKeysConfig } from "./validateConfig";
 import {
@@ -97,4 +98,6 @@ export const setup = async () => {
   });
 
   await createTestUserForDevelopment();
+
+  await createInitialAdminUser();
 };
