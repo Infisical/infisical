@@ -1,6 +1,6 @@
 ---
 title: "Configure Redis"
-description: "How to add Redis to your self-hosted Infisical."
+description: "Learn to configure Redis with your self hosted Infisical"
 ---
 
 ## Why Redis?
@@ -8,7 +8,7 @@ As the features and use case of Infisical have grown, the need for a fast and re
 By adding Redis to Infisical, we can now support more complex workflows such as queuing system to run long running asynchronous tasks, cron jobs, and access reliable cache to speed up frequently used resources. 
 
 <Info>
-  Starting with Infisical version v0.XX.X, Redis will be required to fully use Infisical
+  Starting with Infisical version v0.31.0, Redis will be required to fully use Infisical
 </Info>
 
 ### Adding Redis to your self hosted instance of Infisical
@@ -51,8 +51,12 @@ To add Redis to your self hosted instance, follow the instructions for the deplo
     ```
     wget -O docker-compose.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.yml
     ```
+    2. Add Redis environment variable to your .env file
+    ```.env .env
+      REDIS_URL=redis://redis:6379
+    ```
 
-    2. Restart your docker compose services 
+    3. Restart your docker compose services 
   </Tab>
   <Tab title="Standalone Docker image">
     This standalone version of Infisical does not have an internal Redis service. To configure Redis with your Infisical instance, you must connect to a external Redis service by setting the connection string as an environment variable.
@@ -74,3 +78,6 @@ To add Redis to your self hosted instance, follow the instructions for the deplo
     Redis environment variable name: `REDIS_URL`
   </Tab>
 </Tabs>
+
+## Support 
+If you have questions or need support, please join our [slack channel](https://infisical-users.slack.com) and one of our teammates will be happy to guide you.
