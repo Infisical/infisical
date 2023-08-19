@@ -1,6 +1,7 @@
 import { faFileInvoice, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   EmptyState,
   IconButton,
@@ -13,7 +14,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { OrgGeneralPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteOrgTaxId, useGetOrgTaxIds } from "@app/hooks/api";
 
 const taxIDTypeLabelMap: { [key: string]: string } = {
@@ -101,17 +102,25 @@ export const TaxIDTable = () => {
                 <Td>{taxIDTypeLabelMap[type]}</Td>
                 <Td>{value}</Td>
                 <Td>
-                  <IconButton
-                    onClick={async () => {
-                      await handleDeleteTaxIdBtnClick(_id);
-                    }}
-                    size="lg"
-                    colorSchema="danger"
-                    variant="plain"
-                    ariaLabel="update"
+                  <OrgPermissionCan
+                    I={OrgGeneralPermissionActions.Delete}
+                    a={OrgPermissionSubjects.Billing}
                   >
-                    <FontAwesomeIcon icon={faXmark} />
-                  </IconButton>
+                    {(isAllowed) => (
+                      <IconButton
+                        onClick={async () => {
+                          await handleDeleteTaxIdBtnClick(_id);
+                        }}
+                        size="lg"
+                        colorSchema="danger"
+                        variant="plain"
+                        ariaLabel="update"
+                        isDisabled={!isAllowed}
+                      >
+                        <FontAwesomeIcon icon={faXmark} />
+                      </IconButton>
+                    )}
+                  </OrgPermissionCan>
                 </Td>
               </Tr>
             ))}

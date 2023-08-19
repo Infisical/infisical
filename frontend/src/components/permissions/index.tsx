@@ -1,0 +1,1 @@
+export { OrgPermissionCan } from "./OrgPermissionCan";

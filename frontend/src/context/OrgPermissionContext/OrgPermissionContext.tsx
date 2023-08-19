@@ -3,13 +3,13 @@ import { createContext, ReactNode, useContext } from "react";
 import { useGetUserOrgPermissions } from "@app/hooks/api";
 
 import { useOrganization } from "../OrganizationContext";
-import { TPermission } from "./types";
+import { TOrgPermission } from "./types";
 
 type Props = {
   children: ReactNode;
 };
 
-const PermissionContext = createContext<null | TPermission>(null);
+const OrgPermissionContext = createContext<null | TOrgPermission>(null);
 
 export const OrgPermissionProvider = ({ children }: Props): JSX.Element => {
   const { currentOrg } = useOrganization();
@@ -37,11 +37,13 @@ export const OrgPermissionProvider = ({ children }: Props): JSX.Element => {
     );
   }
 
-  return <PermissionContext.Provider value={permission}>{children}</PermissionContext.Provider>;
+  return (
+    <OrgPermissionContext.Provider value={permission}>{children}</OrgPermissionContext.Provider>
+  );
 };
 
 export const useOrgPermission = () => {
-  const ctx = useContext(PermissionContext);
+  const ctx = useContext(OrgPermissionContext);
   if (!ctx) {
     throw new Error("useOrgPermission to be used within <OrgPermissionProvider>");
   }

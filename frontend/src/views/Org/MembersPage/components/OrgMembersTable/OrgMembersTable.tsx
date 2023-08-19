@@ -14,6 +14,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   decryptAssymmetric,
   encryptAssymmetric
@@ -41,7 +42,14 @@ import {
   Tr,
   UpgradePlanModal
 } from "@app/components/v2";
-import { useOrganization, useSubscription, useUser, useWorkspace } from "@app/context";
+import {
+  OrgGeneralPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription,
+  useUser,
+  useWorkspace
+} from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
   useAddUserToOrg,
@@ -297,27 +305,32 @@ export const OrgMembersTable = ({ roles = [] }: Props) => {
             placeholder="Search members..."
           />
         </div>
-        <Button
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          onClick={() => {
-            if (!isLoadingSSOConfig && ssoConfig && ssoConfig.isActive) {
-              createNotification({
-                text: "You cannot invite users when SAML SSO is configured for your organization",
-                type: "error"
-              });
+        <OrgPermissionCan I={OrgGeneralPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+          {(isAllowed) => (
+            <Button
+              isDisabled={!isAllowed}
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() => {
+                if (!isLoadingSSOConfig && ssoConfig && ssoConfig.isActive) {
+                  createNotification({
+                    text: "You cannot invite users when SAML SSO is configured for your organization",
+                    type: "error"
+                  });
 
-              return;
-            }
+                  return;
+                }
 
-            if (isMoreUsersNotAllowed) {
-              handlePopUpOpen("upgradePlan");
-            } else {
-              handlePopUpOpen("addMember");
-            }
-          }}
-        >
-          Add Member
-        </Button>
+                if (isMoreUsersNotAllowed) {
+                  handlePopUpOpen("upgradePlan");
+                } else {
+                  handlePopUpOpen("addMember");
+                }
+              }}
+            >
+              Add Member
+            </Button>
+          )}
+        </OrgPermissionCan>
       </div>
       <div>
         <TableContainer>
@@ -345,48 +358,59 @@ export const OrgMembersTable = ({ roles = [] }: Props) => {
                         <Td>{name}</Td>
                         <Td>{email}</Td>
                         <Td>
-                          {status === "accepted" && (
-                            <Select
-                              defaultValue={
-                                role === "custom" ? findRoleFromId(customRole)?.slug : role
-                              }
-                              isDisabled={userId === u?._id}
-                              className="w-40 bg-mineshaft-600"
-                              dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
-                              onValueChange={(selectedRole) =>
-                                onRoleChange(orgMembershipId, selectedRole)
-                              }
-                            >
-                              {roles
-                                .filter(({ slug }) =>
-                                  slug === "owner" ? isIamOwner || role === "owner" : true
-                                )
-                                .map(({ slug, name: roleName }) => (
-                                  <SelectItem value={slug} key={`owner-option-${slug}`}>
-                                    {roleName}
-                                  </SelectItem>
-                                ))}
-                            </Select>
-                          )}
-                          {(status === "invited" || status === "verified") &&
-                            serverDetails?.emailConfigured && (
-                              <Button
-                                className="w-40"
-                                colorSchema="primary"
-                                variant="outline_bg"
-                                onClick={() => onAddUserToOrg(email)}
-                              >
-                                Resend Invite
-                              </Button>
+                          <OrgPermissionCan
+                            I={OrgGeneralPermissionActions.Edit}
+                            a={OrgPermissionSubjects.Member}
+                          >
+                            {(isAllowed) => (
+                              <>
+                                {status === "accepted" && (
+                                  <Select
+                                    defaultValue={
+                                      role === "custom" ? findRoleFromId(customRole)?.slug : role
+                                    }
+                                    isDisabled={userId === u?._id || !isAllowed}
+                                    className="w-40 bg-mineshaft-600"
+                                    dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
+                                    onValueChange={(selectedRole) =>
+                                      onRoleChange(orgMembershipId, selectedRole)
+                                    }
+                                  >
+                                    {roles
+                                      .filter(({ slug }) =>
+                                        slug === "owner" ? isIamOwner || role === "owner" : true
+                                      )
+                                      .map(({ slug, name: roleName }) => (
+                                        <SelectItem value={slug} key={`owner-option-${slug}`}>
+                                          {roleName}
+                                        </SelectItem>
+                                      ))}
+                                  </Select>
+                                )}
+                                {(status === "invited" || status === "verified") &&
+                                  serverDetails?.emailConfigured && (
+                                    <Button
+                                      isDisabled={!isAllowed}
+                                      className="w-40"
+                                      colorSchema="primary"
+                                      variant="outline_bg"
+                                      onClick={() => onAddUserToOrg(email)}
+                                    >
+                                      Resend Invite
+                                    </Button>
+                                  )}
+                                {status === "completed" && (
+                                  <Button
+                                    colorSchema="secondary"
+                                    isDisabled={!isAllowed}
+                                    onClick={() => onGrantAccess(u?._id, u?.publicKey)}
+                                  >
+                                    Grant Access
+                                  </Button>
+                                )}
+                              </>
                             )}
-                          {status === "completed" && (
-                            <Button
-                              colorSchema="secondary"
-                              onClick={() => onGrantAccess(u?._id, u?.publicKey)}
-                            >
-                              Grant Access
-                            </Button>
-                          )}
+                          </OrgPermissionCan>
                         </Td>
                         <Td>
                           {userWs ? (
@@ -428,16 +452,23 @@ export const OrgMembersTable = ({ roles = [] }: Props) => {
                         </Td>
                         <Td>
                           {userId !== u?._id && (
-                            <IconButton
-                              ariaLabel="delete"
-                              colorSchema="danger"
-                              isDisabled={userId === u?._id}
-                              onClick={() =>
-                                handlePopUpOpen("removeMember", { id: orgMembershipId })
-                              }
+                            <OrgPermissionCan
+                              I={OrgGeneralPermissionActions.Delete}
+                              a={OrgPermissionSubjects.Member}
                             >
-                              <FontAwesomeIcon icon={faTrash} />
-                            </IconButton>
+                              {(isAllowed) => (
+                                <IconButton
+                                  ariaLabel="delete"
+                                  colorSchema="danger"
+                                  isDisabled={userId === u?._id || !isAllowed}
+                                  onClick={() =>
+                                    handlePopUpOpen("removeMember", { id: orgMembershipId })
+                                  }
+                                >
+                                  <FontAwesomeIcon icon={faTrash} />
+                                </IconButton>
+                              )}
+                            </OrgPermissionCan>
                           )}
                         </Td>
                       </Tr>

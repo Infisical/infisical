@@ -38,10 +38,9 @@ export const SsoPermission = ({ isNonEditable, setValue, control }: Props) => {
   const [isCustom, setIsCustom] = useToggle();
 
   const selectedPermissionCategory = useMemo(() => {
-    let score = 0;
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
     const totalActions = PERMISSIONS.length;
-    actions.forEach((key) => (score += rule[key] ? 1 : 0));
+    const score = actions.map((key) => (rule[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (isCustom) return Permission.Custom;
     if (score === 0) return Permission.NoAccess;
@@ -52,13 +51,16 @@ export const SsoPermission = ({ isNonEditable, setValue, control }: Props) => {
   }, [rule, isCustom]);
 
   useEffect(() => {
-    selectedPermissionCategory === Permission.Custom ? setIsCustom.on() : setIsCustom.off();
+    if (selectedPermissionCategory === Permission.Custom) setIsCustom.on();
+    else setIsCustom.off();
   }, [selectedPermissionCategory]);
 
   const handlePermissionChange = (val: Permission) => {
+    if (val === Permission.Custom) setIsCustom.on();
+    else setIsCustom.off();
+
     switch (val) {
       case Permission.NoAccess:
-        setIsCustom.off();
         setValue(
           "permissions.sso",
           { read: false, edit: false, create: false, delete: false },
@@ -66,7 +68,6 @@ export const SsoPermission = ({ isNonEditable, setValue, control }: Props) => {
         );
         break;
       case Permission.FullAccess:
-        setIsCustom.off();
         setValue(
           "permissions.sso",
           { read: true, edit: true, create: true, delete: true },
@@ -74,7 +75,6 @@ export const SsoPermission = ({ isNonEditable, setValue, control }: Props) => {
         );
         break;
       case Permission.ReadOnly:
-        setIsCustom.off();
         setValue(
           "permissions.sso",
           { read: true, edit: false, create: false, delete: false },
@@ -82,7 +82,6 @@ export const SsoPermission = ({ isNonEditable, setValue, control }: Props) => {
         );
         break;
       default:
-        setIsCustom.on();
         setValue(
           "permissions.sso",
           { read: false, edit: false, create: false, delete: false },

@@ -36,10 +36,9 @@ export const WorkspacePermission = ({ isNonEditable, setValue, control }: Props)
   const [isCustom, setIsCustom] = useToggle();
 
   const selectedPermissionCategory = useMemo(() => {
-    let score = 0;
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
     const totalActions = PERMISSIONS.length;
-    actions.forEach((key) => (score += rule[key] ? 1 : 0));
+    const score = actions.map((key) => (rule[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (isCustom) return Permission.Custom;
     if (score === 0) return Permission.NoAccess;
@@ -50,11 +49,14 @@ export const WorkspacePermission = ({ isNonEditable, setValue, control }: Props)
   }, [rule, isCustom]);
 
   useEffect(() => {
-    selectedPermissionCategory === Permission.Custom ? setIsCustom.on() : setIsCustom.off();
+    if (selectedPermissionCategory === Permission.Custom) setIsCustom.on();
+    else setIsCustom.off();
   }, [selectedPermissionCategory]);
 
   const handlePermissionChange = (val: Permission) => {
-    val === Permission.Custom ? setIsCustom.on() : setIsCustom.off();
+    if (val === Permission.Custom) setIsCustom.on();
+    else setIsCustom.off();
+
     switch (val) {
       case Permission.NoAccess:
         setValue("permissions.workspace", { read: false, create: false }, { shouldDirty: true });

@@ -3,6 +3,7 @@ import { faContactBook, faMagnifyingGlass, faTrash } from "@fortawesome/free-sol
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   DeleteActionModal,
   EmptyState,
@@ -17,7 +18,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { OrgGeneralPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteIncidentContact, useGetOrgIncidentContact } from "@app/hooks/api";
 
@@ -83,13 +84,21 @@ export const OrgIncidentContactsTable = () => {
               <Tr key={email}>
                 <Td className="w-full">{email}</Td>
                 <Td className="mr-4">
-                  <IconButton
-                    ariaLabel="delete"
-                    colorSchema="danger"
-                    onClick={() => handlePopUpOpen("removeContact", { email })}
+                  <OrgPermissionCan
+                    I={OrgGeneralPermissionActions.Delete}
+                    an={OrgPermissionSubjects.IncidentAccount}
                   >
-                    <FontAwesomeIcon icon={faTrash} />
-                  </IconButton>
+                    {(isAllowed) => (
+                      <IconButton
+                        ariaLabel="delete"
+                        colorSchema="danger"
+                        onClick={() => handlePopUpOpen("removeContact", { email })}
+                        isDisabled={!isAllowed}
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                      </IconButton>
+                    )}
+                  </OrgPermissionCan>
                 </Td>
               </Tr>
             ))}

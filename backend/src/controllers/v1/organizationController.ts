@@ -292,7 +292,7 @@ export const createOrganizationPortalSession = async (req: Request, res: Respons
 
   const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
   ForbiddenError.from(permission).throwUnlessCan(
-    GeneralPermissionActions.Create,
+    GeneralPermissionActions.Edit,
     OrgPermissionSubjects.Billing
   );
 

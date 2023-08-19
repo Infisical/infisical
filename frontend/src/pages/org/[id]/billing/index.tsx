@@ -1,21 +1,28 @@
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
 
+import { OrgGeneralPermissionActions, OrgPermissionSubjects, TOrgPermission } from "@app/context";
+import { withPermission } from "@app/hoc";
 import { BillingSettingsPage } from "@app/views/Settings/BillingSettingsPage";
 
-export default function SettingsBilling() {
-  const { t } = useTranslation();
+const SettingsBilling = withPermission<{}, TOrgPermission>(
+  () => {
+    const { t } = useTranslation();
 
-  return (
-    <div className="h-full bg-bunker-800">
-      <Head>
-        <title>{t("common.head-title", { title: t("billing.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-      </Head>
-      <BillingSettingsPage />
-    </div>
-  );
-}
+    return (
+      <div className="h-full bg-bunker-800">
+        <Head>
+          <title>{t("common.head-title", { title: t("billing.title") })}</title>
+          <link rel="icon" href="/infisical.ico" />
+          <meta property="og:image" content="/images/message.png" />
+        </Head>
+        <BillingSettingsPage />
+      </div>
+    );
+  },
+  { action: OrgGeneralPermissionActions.Delete, subject: OrgPermissionSubjects.Billing }
+);
 
-SettingsBilling.requireAuth = true;
+Object.assign(SettingsBilling, { requireAuth: true });
+
+export default SettingsBilling;

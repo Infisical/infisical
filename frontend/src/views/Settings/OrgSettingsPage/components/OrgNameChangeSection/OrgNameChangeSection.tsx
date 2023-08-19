@@ -4,8 +4,10 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { OrgGeneralPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { withPermission } from "@app/hoc";
 import { useRenameOrg } from "@app/hooks/api";
 
 const formSchema = yup.object({
@@ -14,49 +16,46 @@ const formSchema = yup.object({
 
 type FormData = yup.InferType<typeof formSchema>;
 
-export const OrgNameChangeSection = (): JSX.Element => {
-  const { currentOrg } = useOrganization();
-  const { createNotification } = useNotificationContext();
-  const {
-    handleSubmit,
-    control,
-    reset
-  } = useForm<FormData>({ resolver: yupResolver(formSchema) });
-  const { mutateAsync, isLoading } = useRenameOrg();
+export const OrgNameChangeSection = withPermission(
+  (): JSX.Element => {
+    const { currentOrg } = useOrganization();
+    const { createNotification } = useNotificationContext();
+    const { handleSubmit, control, reset } = useForm<FormData>({
+      resolver: yupResolver(formSchema)
+    });
+    const { mutateAsync, isLoading } = useRenameOrg();
 
-  useEffect(() => {
-    if (currentOrg) {
-      reset({ name: currentOrg.name });
-    }
-  }, [currentOrg]);
+    useEffect(() => {
+      if (currentOrg) {
+        reset({ name: currentOrg.name });
+      }
+    }, [currentOrg]);
 
-  const onFormSubmit = async ({ name }: FormData) => {
-    try {
-      if (!currentOrg?._id) return;
-      if (name === "") return;
+    const onFormSubmit = async ({ name }: FormData) => {
+      try {
+        if (!currentOrg?._id) return;
+        if (name === "") return;
 
-      await mutateAsync({ orgId: currentOrg?._id, newOrgName: name });
-      createNotification({
-        text: "Successfully renamed organization",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to rename organization",
-        type: "error"
-      });
-    }
-  };
+        await mutateAsync({ orgId: currentOrg?._id, newOrgName: name });
+        createNotification({
+          text: "Successfully renamed organization",
+          type: "success"
+        });
+      } catch (error) {
+        console.error(error);
+        createNotification({
+          text: "Failed to rename organization",
+          type: "error"
+        });
+      }
+    };
 
-  return (
-    <form 
-      onSubmit={handleSubmit(onFormSubmit)}
-      className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
-    >
-        <p className="text-xl font-semibold text-mineshaft-100 mb-4">
-          Organization name
-        </p>
+    return (
+      <form
+        onSubmit={handleSubmit(onFormSubmit)}
+        className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
+      >
+        <p className="text-xl font-semibold text-mineshaft-100 mb-4">Organization name</p>
         <div className="mb-2 max-w-md">
           <Controller
             defaultValue=""
@@ -69,14 +68,25 @@ export const OrgNameChangeSection = (): JSX.Element => {
             name="name"
           />
         </div>
-        <Button
-          isLoading={isLoading}
-          colorSchema="primary"
-          variant="outline_bg"
-          type="submit"
-        >
-          Save
-        </Button>
-    </form>
-  );
-};
+        <OrgPermissionCan I={OrgGeneralPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+          {(isAllowed) => (
+            <Button
+              isLoading={isLoading}
+              isDisabled={!isAllowed}
+              colorSchema="primary"
+              variant="outline_bg"
+              type="submit"
+            >
+              Save
+            </Button>
+          )}
+        </OrgPermissionCan>
+      </form>
+    );
+  },
+  {
+    action: OrgGeneralPermissionActions.Read,
+    subject: OrgPermissionSubjects.Settings,
+    containerClassName: "mb-4"
+  }
+);

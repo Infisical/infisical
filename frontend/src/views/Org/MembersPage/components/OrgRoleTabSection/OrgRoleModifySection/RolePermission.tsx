@@ -31,34 +31,36 @@ const PERMISSIONS = [
 ] as const;
 
 export const RolePermission = ({ isNonEditable, setValue, control }: Props) => {
-  const roleRule = useWatch({
+  const rule = useWatch({
     control,
     name: "permissions.role"
   });
   const [isCustom, setIsCustom] = useToggle();
 
   const selectedPermissionCategory = useMemo(() => {
-    let score = 0;
-    const actions = Object.keys(roleRule || {}) as Array<keyof typeof roleRule>;
+    const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
     const totalActions = PERMISSIONS.length;
-    actions.forEach((key) => (score += roleRule[key] ? 1 : 0));
+    const score = actions.map((key) => (rule[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (isCustom) return Permission.Custom;
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
-    if (score === 1 && roleRule.read) return Permission.ReadOnly;
+    if (score === 1 && rule.read) return Permission.ReadOnly;
 
     return Permission.Custom;
-  }, [roleRule, isCustom]);
+  }, [rule, isCustom]);
 
   useEffect(() => {
-    selectedPermissionCategory === Permission.Custom ? setIsCustom.on() : setIsCustom.off();
+    if (selectedPermissionCategory === Permission.Custom) setIsCustom.on();
+    else setIsCustom.off();
   }, [selectedPermissionCategory]);
 
   const handlePermissionChange = (val: Permission) => {
+    if (val === Permission.Custom) setIsCustom.on();
+    else setIsCustom.off();
+
     switch (val) {
       case Permission.NoAccess:
-        setIsCustom.off();
         setValue(
           "permissions.role",
           { read: false, edit: false, create: false, delete: false },
@@ -66,7 +68,6 @@ export const RolePermission = ({ isNonEditable, setValue, control }: Props) => {
         );
         break;
       case Permission.FullAccess:
-        setIsCustom.off();
         setValue(
           "permissions.role",
           { read: true, edit: true, create: true, delete: true },
@@ -74,7 +75,6 @@ export const RolePermission = ({ isNonEditable, setValue, control }: Props) => {
         );
         break;
       case Permission.ReadOnly:
-        setIsCustom.off();
         setValue(
           "permissions.role",
           { read: true, edit: false, create: false, delete: false },
@@ -82,7 +82,6 @@ export const RolePermission = ({ isNonEditable, setValue, control }: Props) => {
         );
         break;
       default:
-        setIsCustom.on();
         setValue(
           "permissions.role",
           { read: false, edit: false, create: false, delete: false },

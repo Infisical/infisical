@@ -31,31 +31,34 @@ const PERMISSIONS = [
 ] as const;
 
 export const MemberPermission = ({ isNonEditable, setValue, control }: Props) => {
-  const memberRule = useWatch({
+  const rule = useWatch({
     control,
     name: "permissions.member"
   });
   const [isCustom, setIsCustom] = useToggle();
 
   const selectedPermissionCategory = useMemo(() => {
-    let score = 0;
-    const actions = Object.keys(memberRule || {}) as Array<keyof typeof memberRule>;
+    const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
     const totalActions = PERMISSIONS.length;
-    actions.forEach((key) => (score += memberRule[key] ? 1 : 0));
+    const score = actions.map((key) => (rule[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (isCustom) return Permission.Custom;
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
-    if (score === 1 && memberRule.read) return Permission.ReadOnly;
+    if (score === 1 && rule.read) return Permission.ReadOnly;
 
     return Permission.Custom;
-  }, [memberRule, isCustom]);
+  }, [rule, isCustom]);
 
   useEffect(() => {
-    selectedPermissionCategory === Permission.Custom ? setIsCustom.on() : setIsCustom.off();
+    if (selectedPermissionCategory === Permission.Custom) setIsCustom.on();
+    else setIsCustom.off();
   }, [selectedPermissionCategory]);
 
   const handlePermissionChange = (val: Permission) => {
+    if (val === Permission.Custom) setIsCustom.on();
+    else setIsCustom.off();
+
     switch (val) {
       case Permission.NoAccess:
         setValue(
