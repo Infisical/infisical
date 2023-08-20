@@ -7,7 +7,30 @@ import { useToggle } from "@app/hooks";
 
 const REGEX = /\${([^}]+)}/g;
 const stripSpanTags = (str: string) => str.replace(/<\/?span[^>]*>/g, "");
+
+const entitiesToReplace = {
+  '<': '&lt;',
+  '>': '&gt;',
+}
+
+const escapeEntitiesFromString = (htmlString: string) => {
+  for (const [key, value] of Object.entries(entitiesToReplace)) {
+    htmlString = htmlString.replaceAll(key, value)
+  }
+
+  return htmlString;
+}
+
+const convertEscapedEntitiesToHTML = (value: string) => {
+  for (const [key, val] of Object.entries(entitiesToReplace)) {
+    value = value.replaceAll(val, key)
+  }
+
+  return value;
+}
+
 const replaceContentWithDot = (str: string) => {
+  str = convertEscapedEntitiesToHTML(str)
   let finalStr = "";
   let isHtml = false;
   for (let i = 0; i < str.length; i += 1) {
@@ -36,7 +59,7 @@ const syntaxHighlight = (orgContent?: string | null, isVisible?: boolean) => {
       `<span class="ph-no-capture text-yellow">&#36;&#123;<span class="ph-no-capture text-yello-200/80">${b}</span>&#125;</span>`
   );
 
-  return newContent;
+  return escapeEntitiesFromString(content);
 };
 
 const sanitizeConf = {
@@ -60,6 +83,7 @@ export const SecretInput = ({
   ...props
 }: Props) => {
   const [isSecretFocused, setIsSecretFocused] = useToggle();
+  const html = syntaxHighlight(value, isVisible || isSecretFocused)
 
   return (
     <div
@@ -68,7 +92,7 @@ export const SecretInput = ({
     >
       <div
         dangerouslySetInnerHTML={{
-          __html: syntaxHighlight(value, isVisible || isSecretFocused)
+          __html: html,
         }}
         className={`absolute top-0 left-0 z-0 h-full w-full text-ellipsis whitespace-pre-line break-all ${
           !value && value !== "" && "italic text-red-600/70"
@@ -87,7 +111,7 @@ export const SecretInput = ({
           if (onBlur) onBlur(sanitizeHtml(evt.currentTarget.innerHTML || "", sanitizeConf));
           setIsSecretFocused.off();
         }}
-        html={isVisible || isSecretFocused ? value || "" : syntaxHighlight(value, false)}
+        html={html}
         {...props}
       />
     </div>
