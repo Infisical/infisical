@@ -9,6 +9,7 @@ type Props = {
   className?: string;
   onClose?: () => void;
   color?: string;
+  styles?: Record<string, string>
   isDisabled?: boolean;
 } & VariantProps<typeof tagVariants>;
 
@@ -35,11 +36,12 @@ export const Tag = ({
   color,
   isDisabled,
   size = "sm",
-  onClose
+  onClose,
+  styles = {}
 }: Props) => (
   <div
     className={twMerge(tagVariants({ colorSchema, className, size }))}
-    style={{ backgroundColor: color }}
+    style={{ backgroundColor: color, ...styles }}
   >
     {children}
     {onClose && (

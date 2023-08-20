@@ -37,3 +37,16 @@ export type DeleteWsTagRes = {
   user: string;
   _id: string;
 };
+
+export type TagDesign  = {
+  tagBackground: string;
+  tagLabel: string
+}
+
+export type SecretTags = { 
+  id: string;  
+  _id: string;
+  slug: string; 
+  tagBackground: string; 
+  tagLabel: string 
+}

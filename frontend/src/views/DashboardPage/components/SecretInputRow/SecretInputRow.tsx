@@ -38,12 +38,17 @@ import {
   SecretInput,
   Tag,
   TextArea,
-  Tooltip
+  Tooltip,
+  Modal,
+  ModalContent,
 } from "@app/components/v2";
-import { useToggle } from "@app/hooks";
+
 import { WsTag } from "@app/hooks/api/types";
 
 import { FormData, SecretActionType } from "../../DashboardPage.utils";
+import { SecretTags, TagDesign } from "~/hooks/api/tags/types";
+import { DesignTagModal } from "../../components/DesignTagModal";
+import { useLeaveConfirm, usePopUp, useToggle } from "@app/hooks";
 
 const tagColors = [
   { bg: "bg-[#f1c40f]/40", text: "text-[#fcf0c3]/70" },
@@ -73,6 +78,7 @@ type Props = {
   // tag props
   wsTags?: WsTag[];
   onCreateTagOpen: () => void;
+  onDesignTagOpen: (selectedTag: WsTag, selectedFieldIndex: number) => void;
   // rhf specific functions, dont put this using useFormContext. This is passed as props to avoid re-rendering
   control: Control<FormData>;
   register: UseFormRegister<FormData>;
@@ -80,6 +86,9 @@ type Props = {
   isKeyError?: boolean;
   keyError?: string;
   autoCapitalization?: boolean;
+  designObj: TagDesign & WsTag;
+  updateDesign: boolean;
+  selectedFieldIndex: number
 };
 
 export const SecretInputRow = memo(
@@ -92,6 +101,8 @@ export const SecretInputRow = memo(
     isAddOnly,
     wsTags,
     onCreateTagOpen,
+    onDesignTagOpen,
+    designObj,
     onSecretDelete,
     searchTerm,
     control,
@@ -100,7 +111,9 @@ export const SecretInputRow = memo(
     isKeyError,
     keyError,
     secUniqId,
-    autoCapitalization
+    autoCapitalization,
+    updateDesign,
+    selectedFieldIndex
   }: Props): JSX.Element => {
     const isKeySubDisabled = useRef<boolean>(false);
     // comment management in a row
@@ -113,7 +126,7 @@ export const SecretInputRow = memo(
     const tagColorByTagId = new Map((wsTags || []).map((wsTag, i) => [wsTag._id, tagColors[i % tagColors.length]]))
 
     // display the tags in alphabetical order
-    secretTags.sort((a, b) => a.name.localeCompare(b.name))
+    secretTags.sort((a, b) => a?.name?.localeCompare(b?.name))
 
     // to get details on a secret
     const overrideAction = useWatch({
@@ -145,7 +158,10 @@ export const SecretInputRow = memo(
     // when secret is override by personal values
     const isOverridden =
       overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
+
     const [editorRef, setEditorRef] = useState(isOverridden ? secValueOverride : secValue);
+    const [tagDesignObj, setTagDesignObj] = useState<TagDesign & WsTag>({})
+    const [selectedTag, setSelectedTag] = useState<WsTag>({})
 
     const secId = useWatch({ control, name: `secrets.${index}._id`, exact: true });
     const tags =
@@ -174,6 +190,20 @@ export const SecretInputRow = memo(
       setInviteLinkCopied.on();
     };
 
+    const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
+      "secretDetails",
+      "addTag",
+      "secretSnapshots",
+      "uploadedSecOpts",
+      "compareSecrets",
+      "folderForm",
+      "deleteFolder",
+      "upgradePlan",
+      "addSecretImport",
+      "deleteSecretImport",
+      "designTag"
+    ] as const);
+
     const onSecretOverride = () => {
       if (isOverridden) {
         // when user created a new override but then removes
@@ -193,14 +223,22 @@ export const SecretInputRow = memo(
     };
 
     const onSelectTag = (selectedTag: WsTag) => {
+      const checkBoxSelected = !selectedTagIds[selectedTag.slug]
+      checkBoxSelected && handlePopUpOpen('designTag')
+      setSelectedTag(selectedTag)
+    };
+
+    const onDesignWsTag = (_tagDesignObj: TagDesign) => {
+      setTagDesignObj(() => (_tagDesignObj))
+      handlePopUpClose("designTag");
       const shouldAppend = !selectedTagIds[selectedTag.slug];
       if (shouldAppend) {
-        append(selectedTag);
+        append({...selectedTag, ..._tagDesignObj});
       } else {
-        const pos = tags.findIndex(({ slug }) => selectedTag.slug === slug);
+        const pos = tags.findIndex(({ slug }: {slug: string}) => selectedTag.slug === slug);
         remove(pos);
       }
-    };
+    }
 
     const isCreatedSecret = !secId;
     const shouldBeBlockedInAddOnly = !isCreatedSecret && isAddOnly;
@@ -223,11 +261,28 @@ export const SecretInputRow = memo(
       return <></>;
     }
 
+  
+
     return (
       <tr className="group flex flex-row hover:bg-mineshaft-700" key={index}>
         <td className="flex h-10 w-10 items-center justify-center border-none px-4">
           <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div>
         </td>
+        {/* Add a custom design to new tag to make visible */}
+        <Modal
+          isOpen={popUp?.designTag?.isOpen}
+          onOpenChange={(open: boolean) => {
+            handlePopUpToggle("designTag", open);
+          }}
+        >
+          <ModalContent
+            title={`Customise design for ${selectedTag.slug}`}
+            subTitle="Choose custom background and label text colors for the tag."
+          >
+            <DesignTagModal selectedTag={selectedTag} onDesignTag={onDesignWsTag} />
+          </ModalContent>
+        </Modal>
+
         <Controller
           control={control}
           defaultValue=""
@@ -326,7 +381,7 @@ export const SecretInputRow = memo(
         </td>
         <td className="min-w-sm flex">
           <div className="flex h-8 items-center pl-2">
-            {secretTags.map(({ id, _id, slug }, i) => {
+            {secretTags.map(({ id, _id, slug, tagBackground, tagLabel }: SecretTags, i: number) => {
               // This map lookup shouldn't ever fail, but if it does we default to the first color
               const tagColor = tagColorByTagId.get(_id) || tagColors[0]
               return (
@@ -335,6 +390,10 @@ export const SecretInputRow = memo(
                     tagColor.bg,
                     tagColor.text
                   )}
+                  styles={{
+                    backgroundColor: tagBackground,
+                    color: tagLabel
+                  }}
                   isDisabled={isReadOnly || isAddOnly || isRollbackMode}
                   onClose={() => remove(i)}
                   key={id}
@@ -395,9 +454,8 @@ export const SecretInputRow = memo(
                               className="mr-0 data-[state=checked]:bg-primary"
                               id="autoCapitalization"
                               isChecked={selectedTagIds?.[wsTag.slug]}
-                              onCheckedChange={() => {}}
                             >
-                              {}
+                              { }
                             </Checkbox>
                           }
                           key={wsTag._id}
