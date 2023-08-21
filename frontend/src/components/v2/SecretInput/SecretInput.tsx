@@ -59,7 +59,7 @@ const syntaxHighlight = (orgContent?: string | null, isVisible?: boolean) => {
       `<span class="ph-no-capture text-yellow">&#36;&#123;<span class="ph-no-capture text-yello-200/80">${b}</span>&#125;</span>`
   );
 
-  return escapeEntitiesFromString(content);
+  return escapeEntitiesFromString(newContent);
 };
 
 const sanitizeConf = {
