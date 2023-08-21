@@ -395,7 +395,7 @@ export const createSecretHelper = async ({
     algorithm: ALGORITHM_AES_256_GCM,
     keyEncoding: ENCODING_SCHEME_UTF8
   }).save();
-
+  
   const secretVersion = new SecretVersion({
     secret: secret._id,
     version: secret.version,
@@ -908,14 +908,14 @@ export const deleteSecretHelper = async ({
   if (type === SECRET_SHARED) {
     secrets = await Secret.find({
       secretBlindIndex,
-      workspaceId: new Types.ObjectId(workspaceId),
+      workspace: new Types.ObjectId(workspaceId),
       environment,
       folder: folderId
     }).lean();
 
     secret = await Secret.findOneAndDelete({
       secretBlindIndex,
-      workspaceId: new Types.ObjectId(workspaceId),
+      workspace: new Types.ObjectId(workspaceId),
       environment,
       type,
       folder: folderId
@@ -931,7 +931,7 @@ export const deleteSecretHelper = async ({
     secret = await Secret.findOneAndDelete({
       secretBlindIndex,
       folder: folderId,
-      workspaceId: new Types.ObjectId(workspaceId),
+      workspace: new Types.ObjectId(workspaceId),
       environment,
       type,
       ...getAuthDataPayloadUserObj(authData)
