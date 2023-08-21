@@ -1,5 +1,5 @@
 /* eslint-disable react/no-danger */
-import { HTMLAttributes } from "react";
+import { HTMLAttributes, useMemo } from "react";
 import ContentEditable from "react-contenteditable";
 import sanitizeHtml from "sanitize-html";
 
@@ -53,13 +53,14 @@ const syntaxHighlight = (orgContent?: string | null, isVisible?: boolean) => {
   if (!orgContent) return "missing";
   if (!isVisible) return replaceContentWithDot(orgContent);
   const content = stripSpanTags(orgContent);
-  const newContent = content.replace(
+  const escapedContent = escapeEntitiesFromString(content)
+  const newContent = escapedContent.replace(
     REGEX,
     (_a, b) =>
       `<span class="ph-no-capture text-yellow">&#36;&#123;<span class="ph-no-capture text-yello-200/80">${b}</span>&#125;</span>`
   );
 
-  return escapeEntitiesFromString(newContent);
+  return newContent;
 };
 
 const sanitizeConf = {
@@ -83,7 +84,10 @@ export const SecretInput = ({
   ...props
 }: Props) => {
   const [isSecretFocused, setIsSecretFocused] = useToggle();
-  const html = syntaxHighlight(value, isVisible || isSecretFocused)
+  
+  const hiddenValue = useMemo(() => syntaxHighlight(value, false), [value])
+  const originalValue = useMemo(() => syntaxHighlight(value, true), [value])
+  const html = isVisible || isSecretFocused ? originalValue : hiddenValue
 
   return (
     <div
