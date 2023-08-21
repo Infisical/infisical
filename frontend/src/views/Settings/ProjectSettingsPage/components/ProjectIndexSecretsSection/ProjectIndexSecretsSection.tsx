@@ -11,16 +11,13 @@ import {
     useNameWorkspaceSecrets
 } from "@app/hooks/api";
 
-// TODO: add check so that this only shows up if user is
-// an admin in the workspace
-
 export const ProjectIndexSecretsSection = () => {
     const { currentWorkspace } = useWorkspace();
     const { data: isBlindIndexed, isLoading: isBlindIndexedLoading } = useGetWorkspaceIndexStatus(currentWorkspace?._id ?? "");
     const { data: latestFileKey } = useGetUserWsKey(currentWorkspace?._id ?? "");
     const { data: encryptedSecrets } = useGetWorkspaceSecrets(currentWorkspace?._id ?? "");
     const nameWorkspaceSecrets = useNameWorkspaceSecrets();
-
+    
     const onEnableBlindIndices = async () => {
     if (!currentWorkspace?._id) return;
     if (!encryptedSecrets) return;
@@ -53,7 +50,7 @@ export const ProjectIndexSecretsSection = () => {
     });
   };
 
-    return (!isBlindIndexedLoading && !isBlindIndexed) ? (
+    return (!isBlindIndexedLoading && (isBlindIndexed === false)) ? (
         <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
             <p className="mb-3 text-xl font-semibold">Blind Indices</p>
             <p className="text-gray-400 mb-8">
