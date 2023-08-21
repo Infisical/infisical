@@ -57,7 +57,8 @@ COPY --chown=nextjs:nodejs --chmod=555 scripts ./scripts
 COPY --from=builder /app/public ./public
 RUN chown nextjs:nodejs ./public/data
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs --chmod=777 /app/.next/static ./.next/static
+RUN chmod -R 777 /app/.next/server
 
 USER nextjs
 
