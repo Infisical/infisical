@@ -11,7 +11,7 @@ import {
   IServiceTokenData,
   Secret,
   SecretBlindIndexData,
-  ServiceTokenData,
+  ServiceTokenData
 } from "../models";
 import { EventType, SecretVersion } from "../ee/models";
 import {
@@ -395,7 +395,7 @@ export const createSecretHelper = async ({
     algorithm: ALGORITHM_AES_256_GCM,
     keyEncoding: ENCODING_SCHEME_UTF8
   }).save();
-  
+
   const secretVersion = new SecretVersion({
     secret: secret._id,
     version: secret.version,
@@ -463,8 +463,8 @@ export const createSecretHelper = async ({
   });
 
   const postHogClient = await TelemetryService.getPostHogClient();
-  
-  if (postHogClient && (metadata?.source !== "signup")) {
+
+  if (postHogClient && metadata?.source !== "signup") {
     postHogClient.capture({
       event: "secrets added",
       distinctId: await TelemetryService.getDistinctId({
@@ -549,7 +549,7 @@ export const getSecretsHelper = async ({
       channel: authData.userAgentType,
       ipAddress: authData.ipAddress
     }));
-  
+
   await EEAuditLogService.createAuditLog(
     authData,
     {
@@ -659,7 +659,7 @@ export const getSecretHelper = async ({
       ipAddress: authData.ipAddress
     }));
 
-    await EEAuditLogService.createAuditLog(
+  await EEAuditLogService.createAuditLog(
     authData,
     {
       type: EventType.GET_SECRET,
@@ -824,8 +824,8 @@ export const updateSecretHelper = async ({
       channel: authData.userAgentType,
       ipAddress: authData.ipAddress
     }));
-  
-    await EEAuditLogService.createAuditLog(
+
+  await EEAuditLogService.createAuditLog(
     authData,
     {
       type: EventType.UPDATE_SECRET,
@@ -1088,7 +1088,8 @@ const recursivelyExpandSecret = async (
 
   let interpolatedValue = interpolatedSec[key];
   if (!interpolatedValue) {
-    throw new Error(`Couldn't find referenced value - ${key}`);
+    console.error(`Couldn't find referenced value - ${key}`);
+    return "";
   }
 
   const refs = interpolatedValue.match(INTERPOLATION_SYNTAX_REG);
