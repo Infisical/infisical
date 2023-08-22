@@ -6,12 +6,15 @@ import crypto from "crypto";
 export const checkIsPasswordBreached = async (password: string) => {
   const dataBreachCheckAPIBaseURL = "https://api.pwnedpasswords.com/range/";
   try {
+
+    console.log("password:", password); // delete later!!!
+
     const textEncoder = new TextEncoder();
 
     const encodedPwd = textEncoder.encode(password);
     console.log("encodedPwd:", encodedPwd); // delete later!!!
 
-    const hashBuffer = await crypto.subtle.digest("SHA-1", encodedPwd);
+    const hashBuffer = crypto.subtle.digest("SHA-1", encodedPwd); // removed async
     console.log("hashBuffer:", hashBuffer); // delete later!!!
 
     const hashedPwd = Array.from(new Uint8Array(hashBuffer))
