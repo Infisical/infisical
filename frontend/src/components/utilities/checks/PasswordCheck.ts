@@ -70,7 +70,11 @@ const passwordCheck = async ({
   }
 
   // specialChar
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+  if (
+    !/[!@#$%^&*(),.?":{}|<>\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\p{Script=Arabic}\p{Script=Cyrillic}\p{Script=Cyrillic_Supplement}\p{Script=Cyrillic_Extended_A}\p{Script=Cyrillic_Extended_B}\p{Script=Cyrillic_Extended_C}\p{Script=Cyrillic_Extended_D}\p{Script=Ukrainian}\p{Script=Farsi}\p{Emoji}]/u.test(
+      password
+    )
+  ) {
     setPasswordErrorSpecialChar(true);
     errorCheck = true;
   } else {

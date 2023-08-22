@@ -43,7 +43,7 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
     errors.tooShort = "at least 14 characters";
   }
 
-  // toolong
+  // tooLong
   if (password.length > 100) {
     errors.tooLong = "at most 100 characters";
   }
@@ -64,8 +64,13 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
   }
 
   // specialChar
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    errors.specialChar = "at least 1 special character (!@#$%^&*(),.?)";
+  if (
+    !/[!@#$%^&*(),.?":{}|<>\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\p{Script=Arabic}\p{Script=Cyrillic}\p{Script=Cyrillic_Supplement}\p{Script=Cyrillic_Extended_A}\p{Script=Cyrillic_Extended_B}\p{Script=Cyrillic_Extended_C}\p{Script=Cyrillic_Extended_D}\p{Script=Ukrainian}\p{Script=Farsi}\p{Emoji}]/u.test(
+      password
+    )
+  ) {
+    errors.specialChar =
+      'at least 1 special character (!@#$%^&*(),.?":{}|<>), Japanese, Korean, Arabic, Cyrillic, Ukrainian, Farsi, or an emoji';
   }
 
   // repeatedChar
@@ -76,7 +81,7 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
   // breachedPassword
   if (await checkIsPasswordBreached(password)) {
     errors.isBreachedPassword =
-      "The password you provided is in a list of passwords commonly used on other websites. Please try again with a stronger password.";
+      "The provided password is in a list of passwords commonly used on other websites. Please try again with a stronger password.";
   }
 
   setErrors(errors);
