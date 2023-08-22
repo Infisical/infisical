@@ -15,7 +15,6 @@ import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input } from "@app/components/v2";
-import { useGetCommonPasswords } from "@app/hooks/api";
 import { completeAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import ProjectService from "@app/services/ProjectService";
@@ -42,7 +41,6 @@ type Errors = {
   specialChar?: string;
   repeatedChar?: string;
   isBeachedPassword?: string;
-  isCommonPassword?: string;
 };
 
 /**
@@ -67,7 +65,6 @@ export const UserInfoSSOStep = ({
   setStep,
   providerAuthToken
 }: Props) => {
-  const { data: commonPasswords } = useGetCommonPasswords();
   const [nameError, setNameError] = useState(false);
   const [organizationName, setOrganizationName] = useState("");
   const [organizationNameError, setOrganizationNameError] = useState(false);
@@ -102,7 +99,6 @@ export const UserInfoSSOStep = ({
 
     errorCheck = await checkPassword({
       password,
-      commonPasswords,
       setErrors
     });
 
@@ -277,7 +273,6 @@ export const UserInfoSSOStep = ({
               setPassword(pass);
               await checkPassword({
                 password: pass,
-                commonPasswords,
                 setErrors
               });
             }}

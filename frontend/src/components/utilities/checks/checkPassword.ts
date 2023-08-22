@@ -9,12 +9,10 @@ type Errors = {
   specialChar?: string;
   repeatedChar?: string;
   isBreachedPassword?: string;
-  isCommonPassword?: string;
 };
 
 interface CheckPasswordParams {
   password: string;
-  commonPasswords: string[];
   setErrors: (value: Errors) => void;
 }
 
@@ -28,7 +26,6 @@ interface CheckPasswordParams {
  * - Contains at least 1 special character
  * - Does not contain 3 repeat, consecutive characters
  * - Is not in a database of breached passwords
- * - Is not in a list of common passwords
  *
  * The function returns whether or not the password [password]
  * passes the minimum requirements above. It sets errors on
@@ -38,11 +35,7 @@ interface CheckPasswordParams {
  * @param {String} obj.password - the password to check
  * @param {Function} obj.setErrors - set state function to set error object
  */
-const checkPassword = async ({
-  password,
-  commonPasswords,
-  setErrors
-}: CheckPasswordParams): Promise<boolean> => {
+const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Promise<boolean> => {
   const errors: Errors = {};
 
   // tooShort
@@ -84,11 +77,6 @@ const checkPassword = async ({
   if (await checkIsPasswordBreached(password)) {
     errors.isBreachedPassword =
       "The password you provided is in a list of passwords commonly used on other websites. Please try again with a stronger password.";
-  }
-
-  // commonPassword
-  if (commonPasswords.includes(password)) {
-    errors.isCommonPassword = "No common passwords";
   }
 
   setErrors(errors);

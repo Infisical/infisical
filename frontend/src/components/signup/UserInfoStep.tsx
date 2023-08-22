@@ -8,7 +8,6 @@ import jsrp from "jsrp";
 import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
 
-import { useGetCommonPasswords } from "@app/hooks/api";
 import { completeAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import ProjectService from "@app/services/ProjectService";
@@ -47,7 +46,6 @@ type Errors = {
   specialChar?: string;
   repeatedChar?: string;
   isBeachedPassword?: string;
-  isCommonPassword?: string;
 };
 
 /**
@@ -76,7 +74,6 @@ export default function UserInfoStep({
   setAttributionSource,
   providerAuthToken
 }: UserInfoStepProps): JSX.Element {
-  const { data: commonPasswords } = useGetCommonPasswords();
   const [nameError, setNameError] = useState(false);
   const [organizationNameError, setOrganizationNameError] = useState(false);
 
@@ -105,7 +102,6 @@ export default function UserInfoStep({
 
     errorCheck = await checkPassword({
       password,
-      commonPasswords,
       setErrors
     });
 
@@ -272,11 +268,10 @@ export default function UserInfoStep({
         <div className="mt-2 flex max-h-60 w-1/4 w-full min-w-[20rem] flex-col items-center justify-center rounded-lg py-2 lg:w-1/6">
           <InputField
             label={t("section.password.password")}
-            onChangeHandler={(pass: string) => {
+            onChangeHandler={async (pass: string) => {
               setPassword(pass);
-              checkPassword({
+              await checkPassword({
                 password: pass,
-                commonPasswords,
                 setErrors
               });
             }}

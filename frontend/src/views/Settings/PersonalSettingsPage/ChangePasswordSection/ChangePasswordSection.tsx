@@ -11,7 +11,6 @@ import attemptChangePassword from "@app/components/utilities/attemptChangePasswo
 import checkPassword from "@app/components/utilities/checks/checkPassword";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useUser } from "@app/context";
-import { useGetCommonPasswords } from "@app/hooks/api";
 
 type Errors = {
   tooShort?: string;
@@ -22,7 +21,6 @@ type Errors = {
   specialChar?: string;
   repeatedChar?: string;
   isBreachedPassword?: string;
-  isCommonPassword?: string;
 };
 
 const schema = yup
@@ -38,7 +36,6 @@ export const ChangePasswordSection = () => {
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
   const { user } = useUser();
-  const { data: commonPasswords } = useGetCommonPasswords();
   const { reset, control, handleSubmit } = useForm({
     defaultValues: {
       oldPassword: "",
@@ -52,11 +49,9 @@ export const ChangePasswordSection = () => {
   const onFormSubmit = async ({ oldPassword, newPassword }: FormData) => {
     try {
       if (!user?.email) return;
-      if (!commonPasswords) return;
 
       const errorCheck = await checkPassword({
         password: newPassword,
-        commonPasswords,
         setErrors
       });
 
