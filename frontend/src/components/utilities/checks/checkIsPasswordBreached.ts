@@ -1,27 +1,17 @@
 import axios from "axios";
 import crypto from "crypto"; // added types from @types/node
 
-///// REMINDER: ensure all logs are deleted!!! /////
-
 export const checkIsPasswordBreached = async (password: string) => {
   const dataBreachCheckAPIBaseURL = "https://api.pwnedpasswords.com/range/";
   try {
-    console.log("password:", password); // delete later!!!
-
     const textEncoder = new TextEncoder();
-
     const encodedPwd = textEncoder.encode(password);
-    console.log("encodedPwd:", encodedPwd); // delete later!!!
-
     const hash = crypto.createHash("sha1").update(encodedPwd).digest();
-    console.log("hash:", hash); // delete later!!!
 
     const hashedPwd = Array.from(new Uint8Array(hash))
       .map((byte) => byte.toString(16).padStart(2, "0"))
       .join("")
       .toUpperCase();
-
-    console.log("hashedPwd:", hashedPwd); // delete later!!!
 
     const response = await axios.get(`${dataBreachCheckAPIBaseURL}${hashedPwd.slice(0, 5)}`);
     console.log("response:", response); // delete later!!!
