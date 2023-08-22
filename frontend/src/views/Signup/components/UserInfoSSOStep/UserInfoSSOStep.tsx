@@ -35,7 +35,8 @@ type Props = {
 }
 
 type Errors = {
-  length?: string,
+  tooShort?: string,
+  tooLong?: string,
   upperCase?: string,
   lowerCase?: string,
   number?: string,
