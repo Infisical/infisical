@@ -214,7 +214,8 @@
       "validate-too-short": "pelo menos 14 caracteres",
       "validate-too-long": "no máximo 100 caracteres",
       "validate-number": "pelo menos 1 número",
-      "validate-case": "pelo menos 1 caractere minúsculo"
+      "validate-case": "pelo menos 1 caractere minúsculo",
+      "validate-breached": "A senha que você forneceu está em uma lista de senhas comumente usadas em outros sites. Tente novamente com uma senha mais forte."
     },
     "token": {
       "service-tokens": "Tokens de Serviço",

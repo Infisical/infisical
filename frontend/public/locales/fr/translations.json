@@ -219,7 +219,8 @@
       "validate-too-short": "au moins 14 caractères",
       "validate-too-long": "au maximum 100 caractères",
       "validate-number": "au moins 1 chiffre",
-      "validate-case": "au moins 1 caractère miniscule"
+      "validate-case": "au moins 1 caractère miniscule",
+      "validate-breached": "Le mot de passe que vous avez fourni figure dans une liste de mots de passe couramment utilisés sur d'autres sites Web. Veuillez réessayer avec un mot de passe plus fort."
     },
     "token": {
       "service-tokens": "Jetons de service",

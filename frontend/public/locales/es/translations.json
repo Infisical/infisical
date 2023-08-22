@@ -232,7 +232,8 @@
       "validate-too-short": "como mínimo 14 caracteres",
       "validate-too-long": "como máximo 100 caracteres",
       "validate-number": "como mínimo 1 número",
-      "validate-case": "como mínimo 1 letra en minúsculas"
+      "validate-case": "como mínimo 1 letra en minúsculas",
+      "validate-breached": "La contraseña que proporcionó se encuentra en una lista de contraseñas comúnmente utilizadas en otros sitios web. Inténtelo de nuevo con una contraseña más segura."
     },
     "token": {
       "service-tokens": "Tokens de servicio",

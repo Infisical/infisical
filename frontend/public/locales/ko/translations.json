@@ -186,7 +186,8 @@
       "validate-too-short": "14 글자 이상",
       "validate-too-long": "100 자 이하",
       "validate-number": "1개 이상의 숫자",
-      "validate-case": "1개 이상의 소문자"
+      "validate-case": "1개 이상의 소문자",
+      "validate-breached": "귀하가 제공한 비밀번호는 다른 웹사이트에서 일반적으로 사용되는 비밀번호 목록에 포함되어 있습니다. 더 강력한 비밀번호로 다시 시도해 주세요."
     },
     "token": {
       "add-dialog": {
