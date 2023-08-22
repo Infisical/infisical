@@ -210,10 +210,11 @@
       "current": "Senha atual",
       "current-wrong": "A senha atual pode estar errada",
       "new": "Nova Senha",
-      "validate-base": "A senha deve conter pelo menos:",
-      "validate-length": "14 caracteres",
-      "validate-case": "1 caractere minúsculo",
-      "validate-number": "1 número"
+      "validate-base": "A senha deve conter:",
+      "validate-too-short": "pelo menos 14 caracteres",
+      "validate-too-long": "no máximo 100 caracteres",
+      "validate-case": "pelo menos 1 caractere minúsculo",
+      "validate-number": "pelo menos 1 número"
     },
     "token": {
       "service-tokens": "Tokens de Serviço",
