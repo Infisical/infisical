@@ -132,16 +132,7 @@ const main = async () => {
     // in production
     app.disable("x-powered-by");
     app.use(apiLimiter);
-    app.use(
-      helmet.contentSecurityPolicy({
-        useDefaults: true,
-        directives: {
-          defaultSrc: ["'self'"],
-          imgSrc: ["*", "data:"],
-          connectSrc: ["'self'", "https://api.pwnedpasswords.com/range/"]
-        }
-      })
-    );
+    app.use(helmet());
   }
 
   app.use((req, res, next) => {
