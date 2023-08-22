@@ -65,12 +65,12 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
 
   // specialChar
   if (
-    !/[!@#$%^&*(),.?":{}|<>\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\p{Script=Arabic}\p{Script=Cyrillic}\p{Script=Cyrillic_Supplement}\p{Script=Cyrillic_Extended_A}\p{Script=Cyrillic_Extended_B}\p{Script=Cyrillic_Extended_C}\p{Script=Cyrillic_Extended_D}\p{Script=Ukrainian}\p{Script=Farsi}\p{Emoji}]/u.test(
+    !/[!@#$%^&*(),.?":{}|<>\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u0600-\u06FF\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F\u05B0-\u05FF\u0980-\u09FF\u1F00-\u1FFF\u0130\u015E\u011E\u00D6\u00C7\u00FC\u00FB\u00F6\u00EB\u00E7\u00C7\p{Emoji}]/u.test(
       password
     )
   ) {
     errors.specialChar =
-      'at least 1 special character (!@#$%^&*(),.?":{}|<>), Japanese, Korean, Arabic, Cyrillic, Ukrainian, Farsi, or an emoji';
+      'at least 1 special character (!@#$%^&*(),.?":{}|<>), Japanese, Korean, Arabic, Cyrillic, Greek, Devanagari, Turkish, or an emoji';
   }
 
   // repeatedChar
