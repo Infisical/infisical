@@ -28,7 +28,7 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
 
   // for each workspace integration, sync/push secrets
   // to that integration
-  for await (const integration of integrations) {
+  for (const integration of integrations) {
     // get workspace, environment (shared) secrets
     const secrets = await BotService.getSecrets({
       workspaceId: integration.workspace,
@@ -46,7 +46,7 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
     });
 
     // sync secrets to integration
-    return await syncSecrets({
+    await syncSecrets({
       integration,
       integrationAuth,
       secrets,
