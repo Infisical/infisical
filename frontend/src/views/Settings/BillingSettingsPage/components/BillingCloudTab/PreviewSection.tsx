@@ -1,7 +1,7 @@
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
 import {
-  OrgGeneralPermissionActions,
+  GeneralPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
   useSubscription
@@ -81,10 +81,7 @@ export const PreviewSection = () => {
                 Unlimited members, projects, RBAC, smart alerts, and so much more
               </p>
             </div>
-            <OrgPermissionCan
-              I={OrgGeneralPermissionActions.Create}
-              a={OrgPermissionSubjects.Billing}
-            >
+            <OrgPermissionCan I={GeneralPermissionActions.Create} a={OrgPermissionSubjects.Billing}>
               {(isAllowed) => (
                 <Button
                   onClick={() => handleUpgradeBtnClick()}
@@ -106,10 +103,7 @@ export const PreviewSection = () => {
                 subscription.status === "trialing" ? "(Trial)" : ""
               }`}
             </p>
-            <OrgPermissionCan
-              I={OrgGeneralPermissionActions.Edit}
-              a={OrgPermissionSubjects.Billing}
-            >
+            <OrgPermissionCan I={GeneralPermissionActions.Edit} a={OrgPermissionSubjects.Billing}>
               {(isAllowed) => (
                 <button
                   type="button"

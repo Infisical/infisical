@@ -17,7 +17,7 @@ export const validateMembership = async ({
 }: {
   userId: Types.ObjectId | string;
   workspaceId: Types.ObjectId | string;
-  acceptedRoles?: Array<"admin" | "member" | "custom">;
+  acceptedRoles?: Array<"admin" | "member" | "custom" | "viewer">;
 }) => {
   const membership = await Membership.findOne({
     user: userId,

@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
 
-import { OrgGeneralPermissionActions, OrgPermissionSubjects, TOrgPermission } from "@app/context";
+import { GeneralPermissionActions, OrgPermissionSubjects, TOrgPermission } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { BillingSettingsPage } from "@app/views/Settings/BillingSettingsPage";
 
@@ -20,7 +20,7 @@ const SettingsBilling = withPermission<{}, TOrgPermission>(
       </div>
     );
   },
-  { action: OrgGeneralPermissionActions.Delete, subject: OrgPermissionSubjects.Billing }
+  { action: GeneralPermissionActions.Delete, subject: OrgPermissionSubjects.Billing }
 );
 
 Object.assign(SettingsBilling, { requireAuth: true });

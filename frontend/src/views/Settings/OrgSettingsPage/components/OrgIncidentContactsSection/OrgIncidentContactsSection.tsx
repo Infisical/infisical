@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
-import { OrgGeneralPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { GeneralPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 
@@ -25,7 +25,7 @@ export const OrgIncidentContactsSection = withPermission(
             {t("section.incident.incident-contacts")}
           </p>
           <OrgPermissionCan
-            I={OrgGeneralPermissionActions.Create}
+            I={GeneralPermissionActions.Create}
             a={OrgPermissionSubjects.IncidentAccount}
           >
             {(isAllowed) => (
@@ -50,5 +50,5 @@ export const OrgIncidentContactsSection = withPermission(
       </div>
     );
   },
-  { action: OrgGeneralPermissionActions.Read, subject: OrgPermissionSubjects.IncidentAccount }
+  { action: GeneralPermissionActions.Read, subject: OrgPermissionSubjects.IncidentAccount }
 );

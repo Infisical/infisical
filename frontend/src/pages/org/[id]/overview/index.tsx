@@ -45,8 +45,8 @@ import {
 } from "@app/components/v2";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import {
+  GeneralPermissionActions,
   OrgPermissionSubjects,
-  OrgWorkspacePermissionActions,
   useSubscription,
   useUser,
   useWorkspace
@@ -590,7 +590,7 @@ const OrganizationPage = withPermission(
               leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
             />
             <OrgPermissionCan
-              I={OrgWorkspacePermissionActions.Create}
+              I={GeneralPermissionActions.Create}
               an={OrgPermissionSubjects.Workspace}
             >
               {(isAllowed) => (
@@ -877,7 +877,7 @@ const OrganizationPage = withPermission(
     );
   },
   {
-    action: OrgWorkspacePermissionActions.Read,
+    action: GeneralPermissionActions.Read,
     subject: OrgPermissionSubjects.Workspace
   }
 );

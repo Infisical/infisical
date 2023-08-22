@@ -3,14 +3,14 @@ export type TGetRolesDTO = {
   workspaceId?: string;
 };
 
-export type TRole = {
+export type TRole<T extends string | undefined> = {
   _id: string;
   organization: string;
-  workspace: string;
+  workspace: T;
   name: string;
   description: string;
   slug: string;
-  permissions: TPermission[];
+  permissions: T extends string ? TProjectPermission[] : TPermission[];
   createdAt: string;
   updatedAt: string;
 };
@@ -29,20 +29,42 @@ type TWorkspacePermission = {
   subject: "workspace";
 };
 
-export type TCreateRoleDTO = {
+export type TProjectPermission = TProjectGeneralPermission | TProjectWorkspacePermission;
+
+type TProjectGeneralPermission = {
+  condition?: Record<string, any>;
+  action: "read" | "edit" | "create" | "delete";
+  subject:
+    | "member"
+    | "role"
+    | "settings"
+    | "secrets"
+    | "environments"
+    | "folders"
+    | "secret-imports"
+    | "service-tokens";
+};
+
+type TProjectWorkspacePermission = {
+  condition?: Record<string, any>;
+  action: "delete" | "edit";
+  subject: "workspace";
+};
+
+export type TCreateRoleDTO<T extends string | undefined> = {
   orgId: string;
-  workspaceId?: string;
+  workspaceId?: T;
   name: string;
   description?: string;
   slug: string;
-  permissions: TPermission[];
+  permissions: T extends string ? TProjectPermission[] : TPermission[];
 };
 
-export type TUpdateRoleDTO = {
+export type TUpdateRoleDTO<T extends string | undefined> = {
   orgId: string;
   id: string;
-  workspaceId?: string;
-} & Partial<Omit<TCreateRoleDTO, "orgId" | "workspaceId">>;
+  workspaceId?: T;
+} & Partial<Omit<TCreateRoleDTO<T>, "orgId" | "workspaceId">>;
 
 export type TDeleteRoleDTO = {
   orgId: string;
@@ -52,4 +74,8 @@ export type TDeleteRoleDTO = {
 
 export type TGetUserOrgPermissionsDTO = {
   orgId: string;
+};
+
+export type TGetUserProjectPermissionDTO = {
+  workspaceId: string;
 };

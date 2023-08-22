@@ -26,7 +26,7 @@ import { SsoPermission } from "./SsoPermission";
 import { WorkspacePermission } from "./WorkspacePermission";
 
 type Props = {
-  role?: TRole;
+  role?: TRole<undefined>;
   onGoBack: VoidFunction;
 };
 

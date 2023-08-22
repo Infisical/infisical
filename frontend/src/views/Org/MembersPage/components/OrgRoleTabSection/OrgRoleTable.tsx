@@ -3,6 +3,7 @@ import { faEdit, faMagnifyingGlass, faPlus, faTrash } from "@fortawesome/free-so
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
   Button,
   DeleteActionModal,
@@ -19,16 +20,14 @@ import {
   Tr
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
+import { usePopUp } from "@app/hooks";
 import { useDeleteRole } from "@app/hooks/api";
 import { TRole } from "@app/hooks/api/roles/types";
 
-import { useNotificationContext } from "~/components/context/Notifications/NotificationProvider";
-import { usePopUp } from "~/hooks/usePopUp";
-
 type Props = {
   isRolesLoading?: boolean;
-  roles?: TRole[];
-  onSelectRole: (role?: TRole) => void;
+  roles?: TRole<undefined>[];
+  onSelectRole: (role?: TRole<undefined>) => void;
 };
 
 export const OrgRoleTable = ({ isRolesLoading, roles = [], onSelectRole }: Props) => {
@@ -41,7 +40,7 @@ export const OrgRoleTable = ({ isRolesLoading, roles = [], onSelectRole }: Props
   const { mutateAsync: deleteRole } = useDeleteRole();
 
   const handleRoleDelete = async () => {
-    const { _id: id } = popUp?.deleteRole?.data as TRole;
+    const { _id: id } = popUp?.deleteRole?.data as TRole<undefined>;
     try {
       await deleteRole({
         orgId,
@@ -129,9 +128,9 @@ export const OrgRoleTable = ({ isRolesLoading, roles = [], onSelectRole }: Props
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}
         title={`Are you sure want to delete ${
-          (popUp?.deleteRole?.data as TRole)?.name || " "
+          (popUp?.deleteRole?.data as TRole<undefined>)?.name || " "
         } role?`}
-        deleteKey={(popUp?.deleteRole?.data as TRole)?.slug || ""}
+        deleteKey={(popUp?.deleteRole?.data as TRole<undefined>)?.slug || ""}
         onClose={() => handlePopUpClose("deleteRole")}
         onDeleteApproved={handleRoleDelete}
       />

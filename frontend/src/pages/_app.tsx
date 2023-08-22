@@ -19,6 +19,7 @@ import {
   AuthProvider,
   OrgPermissionProvider,
   OrgProvider,
+  ProjectPermissionProvider,
   SubscriptionProvider,
   UserProvider,
   WorkspaceProvider
@@ -98,15 +99,17 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
           <OrgProvider>
             <OrgPermissionProvider>
               <WorkspaceProvider>
-                <SubscriptionProvider>
-                  <UserProvider>
-                    <NotificationProvider>
+                <ProjectPermissionProvider>
+                  <SubscriptionProvider>
+                    <UserProvider>
+                      <NotificationProvider>
                         <AppLayout>
                           <Component {...pageProps} />
                         </AppLayout>
-                    </NotificationProvider>
-                  </UserProvider>
-                </SubscriptionProvider>
+                      </NotificationProvider>
+                    </UserProvider>
+                  </SubscriptionProvider>
+                </ProjectPermissionProvider>
               </WorkspaceProvider>
             </OrgPermissionProvider>
           </OrgProvider>

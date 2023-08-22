@@ -1,12 +1,12 @@
 import { UserWsKeyPair } from "../keys/types";
 
 export enum AuthMethod {
-	EMAIL = "email",
-	GOOGLE = "google",
+  EMAIL = "email",
+  GOOGLE = "google",
   GITHUB = "github",
-	OKTA_SAML = "okta-saml",
-	AZURE_SAML = "azure-saml",
-	JUMPCLOUD_SAML = "jumpcloud-saml"
+  OKTA_SAML = "okta-saml",
+  AZURE_SAML = "azure-saml",
+  JUMPCLOUD_SAML = "jumpcloud-saml"
 }
 
 export type User = {
@@ -47,6 +47,8 @@ export type OrgUser = {
   deniedPermissions: any[];
   customRole: string;
 };
+
+export type TWorkspaceUser = OrgUser;
 
 export type AddUserToWsDTO = {
   workspaceId: string;

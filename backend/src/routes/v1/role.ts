@@ -19,9 +19,15 @@ router.get("/", requireAuth({ acceptedAuthModes: [AuthMode.JWT] }), roleControll
 
 // get a user permissions in an org
 router.get(
-  "/:orgId/permissions",
+  "/organization/:orgId/permissions",
   requireAuth({ acceptedAuthModes: [AuthMode.JWT] }),
   roleController.getUserPermissions
+);
+
+router.get(
+  "/workspace/:workspaceId/permissions",
+  requireAuth({ acceptedAuthModes: [AuthMode.JWT] }),
+  roleController.getUserWorkspacePermissions
 );
 
 export default router;

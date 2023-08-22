@@ -14,9 +14,15 @@ import {
   DeleteRoleSchema,
   GetRoleSchema,
   GetUserPermission,
+  GetUserProjectPermission,
   UpdateRoleSchema
 } from "../../validation";
 import { packRules } from "@casl/ability/extra";
+import {
+  adminProjectPermissions,
+  getUserProjectPermissions,
+  viewerProjectPermission
+} from "../../services/ProjectRoleService";
 
 export const createRole = async (req: Request, res: Response) => {
   const {
@@ -130,35 +136,45 @@ export const getRoles = async (req: Request, res: Response) => {
     throw BadRequestError({ message: "User doesn't have the permission." });
   }
 
-  const roles = await Role.find({ organization: orgId, isOrgRole, workspace: workspaceId });
+  const customRoles = await Role.find({ organization: orgId, isOrgRole, workspace: workspaceId });
+  const roles = [
+    {
+      _id: "admin",
+      name: "Admin",
+      slug: "admin",
+      description: "Complete administration access over the organization",
+      permissions: isOrgRole ? adminPermissions.rules : adminProjectPermissions.rules
+    },
+    {
+      _id: "member",
+      name: "Member",
+      slug: "member",
+      description: "Non-administrative role in an organization",
+      permissions: isOrgRole ? memberPermissions.rules : adminProjectPermissions.rules
+    },
+    {
+      _id: "viewer",
+      name: "Viewer",
+      slug: "viewer",
+      description: "Non-administrative role in an organization",
+      permissions: isOrgRole ? viewerProjectPermission.rules : viewerProjectPermission.rules
+    },
+    ...customRoles
+  ];
+  if (isOrgRole) {
+    roles.unshift({
+      _id: "owner",
+      name: "Owner",
+      slug: "owner",
+      description: "Complete administration access over the organization.",
+      permissions: adminPermissions.rules
+    });
+  }
 
   res.status(200).json({
     message: "Successfully fetched role list",
     data: {
-      roles: [
-        {
-          _id: "owner",
-          name: "Owner",
-          slug: "owner",
-          description: "Complete administration access over the organization.",
-          permissions: adminPermissions.rules
-        },
-        {
-          _id: "admin",
-          name: "Admin",
-          slug: "admin",
-          description: "Complete administration access over the organization",
-          permissions: adminPermissions.rules
-        },
-        {
-          _id: "member",
-          name: "Member",
-          slug: "member",
-          description: "Non-administrative role in an organization",
-          permissions: memberPermissions.rules
-        },
-        ...roles
-      ]
+      roles
     }
   });
 };
@@ -168,6 +184,19 @@ export const getUserPermissions = async (req: Request, res: Response) => {
     params: { orgId }
   } = await validateRequest(GetUserPermission, req);
   const { permission } = await getUserOrgPermissions(req.user.id, orgId);
+
+  res.status(200).json({
+    data: {
+      permissions: packRules(permission.rules)
+    }
+  });
+};
+
+export const getUserWorkspacePermissions = async (req: Request, res: Response) => {
+  const {
+    params: { workspaceId }
+  } = await validateRequest(GetUserProjectPermission, req);
+  const { permission } = await getUserProjectPermissions(req.user.id, workspaceId);
 
   res.status(200).json({
     data: {

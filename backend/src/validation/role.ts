@@ -56,3 +56,9 @@ export const GetUserPermission = z.object({
     orgId: z.string().trim()
   })
 });
+
+export const GetUserProjectPermission = z.object({
+  params: z.object({
+    workspaceId: z.string().trim()
+  })
+});

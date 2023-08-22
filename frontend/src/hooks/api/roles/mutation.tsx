@@ -5,22 +5,22 @@ import { apiRequest } from "@app/config/request";
 import { roleQueryKeys } from "./queries";
 import { TCreateRoleDTO, TDeleteRoleDTO, TUpdateRoleDTO } from "./types";
 
-export const useCreateRole = () => {
+export const useCreateRole = <T extends string | undefined>() => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (dto: TCreateRoleDTO) => apiRequest.post("/api/v1/roles", dto),
+    mutationFn: (dto: TCreateRoleDTO<T>) => apiRequest.post("/api/v1/roles", dto),
     onSuccess: (_, { orgId, workspaceId }) => {
       queryClient.invalidateQueries(roleQueryKeys.getRoles({ orgId, workspaceId }));
     }
   });
 };
 
-export const useUpdateRole = () => {
+export const useUpdateRole = <T extends string | undefined>() => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...dto }: TUpdateRoleDTO) => apiRequest.patch(`/api/v1/roles/${id}`, dto),
+    mutationFn: ({ id, ...dto }: TUpdateRoleDTO<T>) => apiRequest.patch(`/api/v1/roles/${id}`, dto),
     onSuccess: (_, { orgId, workspaceId }) => {
       queryClient.invalidateQueries(roleQueryKeys.getRoles({ orgId, workspaceId }));
     }

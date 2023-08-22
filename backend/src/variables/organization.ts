@@ -2,6 +2,7 @@
 export const OWNER = "owner";
 export const ADMIN = "admin";
 export const MEMBER = "member";
+export const VIEWER = "viewer";
 export const CUSTOM = "custom";
 
 // membership statuses

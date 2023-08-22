@@ -3,9 +3,10 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { OrgGeneralPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { GeneralPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { useGetRoles } from "@app/hooks/api";
+import { TRole } from "@app/hooks/api/roles/types";
 
 import { OrgMembersTable } from "./components/OrgMembersTable";
 import { OrgRoleTabSection } from "./components/OrgRoleTabSection";
@@ -47,16 +48,16 @@ export const MembersPage = withPermission(
                 animate={{ opacity: 1, translateX: 0 }}
                 exit={{ opacity: 0, translateX: 30 }}
               >
-                <OrgMembersTable roles={roles} />
+                <OrgMembersTable roles={roles as TRole<undefined>[]} />
               </motion.div>
             </TabPanel>
             <TabPanel value={TabSections.Roles}>
-              <OrgRoleTabSection roles={roles} />
+              <OrgRoleTabSection roles={roles as TRole<undefined>[]} />
             </TabPanel>
           </Tabs>
         </div>
       </div>
     );
   },
-  { action: OrgGeneralPermissionActions.Read, subject: OrgPermissionSubjects.Member }
+  { action: GeneralPermissionActions.Read, subject: OrgPermissionSubjects.Member }
 );

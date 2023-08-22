@@ -1,12 +1,7 @@
 import { FunctionComponent, ReactNode } from "react";
 import { BoundCanProps, Can } from "@casl/react";
 
-import {
-  OrgPermissionSubjects,
-  OrgWorkspacePermissionActions,
-  TOrgPermission,
-  useOrgPermission
-} from "@app/context/OrgPermissionContext";
+import { TOrgPermission, useOrgPermission } from "@app/context/OrgPermissionContext";
 
 import { Tooltip } from "../v2";
 
@@ -23,13 +18,7 @@ export const OrgPermissionCan: FunctionComponent<Props> = ({
   const permission = useOrgPermission();
 
   return (
-    <Can
-      {...props}
-      passThrough={passThrough}
-      ability={props?.ability || permission}
-      I={OrgWorkspacePermissionActions.Read}
-      a={OrgPermissionSubjects.Sso}
-    >
+    <Can {...props} passThrough={passThrough} ability={props?.ability || permission}>
       {(isAllowed, ability) => {
         // akhilmhdh: This is set as type due to error in casl react type.
         const finalChild =

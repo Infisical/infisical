@@ -43,7 +43,7 @@ import {
   UpgradePlanModal
 } from "@app/components/v2";
 import {
-  OrgGeneralPermissionActions,
+  GeneralPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
   useSubscription,
@@ -65,7 +65,7 @@ import { TRole } from "@app/hooks/api/roles/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 
 type Props = {
-  roles?: TRole[];
+  roles?: TRole<undefined>[];
 };
 
 const addMemberFormSchema = yup.object({
@@ -305,7 +305,7 @@ export const OrgMembersTable = ({ roles = [] }: Props) => {
             placeholder="Search members..."
           />
         </div>
-        <OrgPermissionCan I={OrgGeneralPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+        <OrgPermissionCan I={GeneralPermissionActions.Create} a={OrgPermissionSubjects.Member}>
           {(isAllowed) => (
             <Button
               isDisabled={!isAllowed}
@@ -359,7 +359,7 @@ export const OrgMembersTable = ({ roles = [] }: Props) => {
                         <Td>{email}</Td>
                         <Td>
                           <OrgPermissionCan
-                            I={OrgGeneralPermissionActions.Edit}
+                            I={GeneralPermissionActions.Edit}
                             a={OrgPermissionSubjects.Member}
                           >
                             {(isAllowed) => (
@@ -453,7 +453,7 @@ export const OrgMembersTable = ({ roles = [] }: Props) => {
                         <Td>
                           {userId !== u?._id && (
                             <OrgPermissionCan
-                              I={OrgGeneralPermissionActions.Delete}
+                              I={GeneralPermissionActions.Delete}
                               a={OrgPermissionSubjects.Member}
                             >
                               {(isAllowed) => (

@@ -1,4 +1,4 @@
-import { OrgGeneralPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { GeneralPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
 
 import { OrgSSOSection } from "./OrgSSOSection";
@@ -11,5 +11,5 @@ export const OrgAuthTab = withPermission(
       </div>
     );
   },
-  { action: OrgGeneralPermissionActions.Read, subject: OrgPermissionSubjects.Sso }
+  { action: GeneralPermissionActions.Read, subject: OrgPermissionSubjects.Sso }
 );

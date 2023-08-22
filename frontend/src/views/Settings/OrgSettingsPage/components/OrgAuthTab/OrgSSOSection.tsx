@@ -5,7 +5,7 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, Switch, UpgradePlanModal } from "@app/components/v2";
 import {
-  OrgGeneralPermissionActions,
+  GeneralPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
   useSubscription
@@ -86,7 +86,7 @@ export const OrgSSOSection = (): JSX.Element => {
       <div className="flex items-center mb-8">
         <h2 className="text-xl font-semibold flex-1 text-white">SAML SSO Configuration</h2>
         {!isLoading && (
-          <OrgPermissionCan I={OrgGeneralPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
+          <OrgPermissionCan I={GeneralPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
             {(isAllowed) => (
               <Button
                 onClick={addSSOBtnClick}
@@ -102,7 +102,7 @@ export const OrgSSOSection = (): JSX.Element => {
       </div>
       {data && (
         <div className="mb-4">
-          <OrgPermissionCan I={OrgGeneralPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+          <OrgPermissionCan I={GeneralPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
             {(isAllowed) => (
               <Switch
                 id="enable-saml-sso"

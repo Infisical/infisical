@@ -1,15 +1,10 @@
 import { MongoAbility } from "@casl/ability";
 
-export enum OrgGeneralPermissionActions {
+export enum GeneralPermissionActions {
   Read = "read",
   Create = "create",
   Edit = "edit",
   Delete = "delete"
-}
-
-export enum OrgWorkspacePermissionActions {
-  Read = "read",
-  Create = "create"
 }
 
 export enum OrgPermissionSubjects {
@@ -24,13 +19,14 @@ export enum OrgPermissionSubjects {
 }
 
 export type OrgPermissionSet =
-  | [OrgWorkspacePermissionActions, OrgPermissionSubjects.Workspace]
-  | [OrgGeneralPermissionActions, OrgPermissionSubjects.Role]
-  | [OrgGeneralPermissionActions, OrgPermissionSubjects.Member]
-  | [OrgGeneralPermissionActions, OrgPermissionSubjects.Settings]
-  | [OrgGeneralPermissionActions, OrgPermissionSubjects.IncidentAccount]
-  | [OrgGeneralPermissionActions, OrgPermissionSubjects.Sso]
-  | [OrgGeneralPermissionActions, OrgPermissionSubjects.SecretScanning]
-  | [OrgGeneralPermissionActions, OrgPermissionSubjects.Billing];
+  | [GeneralPermissionActions.Create, OrgPermissionSubjects.Workspace]
+  | [GeneralPermissionActions.Read, OrgPermissionSubjects.Workspace]
+  | [GeneralPermissionActions, OrgPermissionSubjects.Role]
+  | [GeneralPermissionActions, OrgPermissionSubjects.Member]
+  | [GeneralPermissionActions, OrgPermissionSubjects.Settings]
+  | [GeneralPermissionActions, OrgPermissionSubjects.IncidentAccount]
+  | [GeneralPermissionActions, OrgPermissionSubjects.Sso]
+  | [GeneralPermissionActions, OrgPermissionSubjects.SecretScanning]
+  | [GeneralPermissionActions, OrgPermissionSubjects.Billing];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;
