@@ -46,9 +46,8 @@ import {
 import { WsTag } from "@app/hooks/api/types";
 
 import { FormData, SecretActionType } from "../../DashboardPage.utils";
-import { SecretTags, TagDesign } from "~/hooks/api/tags/types";
-import { DesignTagModal } from "../../components/DesignTagModal";
-import { useLeaveConfirm, usePopUp, useToggle } from "@app/hooks";
+import { SecretTags } from "~/hooks/api/tags/types";
+import { useToggle } from "@app/hooks";
 
 const tagColors = [
   { bg: "bg-[#f1c40f]/40", text: "text-[#fcf0c3]/70" },
@@ -86,9 +85,6 @@ type Props = {
   isKeyError?: boolean;
   keyError?: string;
   autoCapitalization?: boolean;
-  designObj: TagDesign & WsTag;
-  updateDesign: boolean;
-  selectedFieldIndex: number
 };
 
 export const SecretInputRow = memo(
@@ -102,7 +98,6 @@ export const SecretInputRow = memo(
     wsTags,
     onCreateTagOpen,
     onDesignTagOpen,
-    designObj,
     onSecretDelete,
     searchTerm,
     control,
@@ -112,8 +107,6 @@ export const SecretInputRow = memo(
     keyError,
     secUniqId,
     autoCapitalization,
-    updateDesign,
-    selectedFieldIndex
   }: Props): JSX.Element => {
     const isKeySubDisabled = useRef<boolean>(false);
     // comment management in a row
@@ -160,12 +153,10 @@ export const SecretInputRow = memo(
       overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
 
     const [editorRef, setEditorRef] = useState(isOverridden ? secValueOverride : secValue);
-    const [tagDesignObj, setTagDesignObj] = useState<TagDesign & WsTag>({})
-    const [selectedTag, setSelectedTag] = useState<WsTag>({})
 
     const secId = useWatch({ control, name: `secrets.${index}._id`, exact: true });
-    const tags =
-      useWatch({ control, name: `secrets.${index}.tags`, exact: true, defaultValue: [] }) || [];
+    const tags = useWatch({ control, name: `secrets.${index}.tags`, exact: true, defaultValue: [] }) || [];
+
     const selectedTagIds = tags.reduce<Record<string, boolean>>(
       (prev, curr) => ({ ...prev, [curr.slug]: true }),
       {}
@@ -190,20 +181,6 @@ export const SecretInputRow = memo(
       setInviteLinkCopied.on();
     };
 
-    const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
-      "secretDetails",
-      "addTag",
-      "secretSnapshots",
-      "uploadedSecOpts",
-      "compareSecrets",
-      "folderForm",
-      "deleteFolder",
-      "upgradePlan",
-      "addSecretImport",
-      "deleteSecretImport",
-      "designTag"
-    ] as const);
-
     const onSecretOverride = () => {
       if (isOverridden) {
         // when user created a new override but then removes
@@ -223,23 +200,14 @@ export const SecretInputRow = memo(
     };
 
     const onSelectTag = (selectedTag: WsTag) => {
-      const checkBoxSelected = !selectedTagIds[selectedTag.slug]
-      checkBoxSelected && handlePopUpOpen('designTag')
-      setSelectedTag(selectedTag)
-    };
-
-    const onDesignWsTag = (_tagDesignObj: TagDesign) => {
-      setTagDesignObj(() => (_tagDesignObj))
-      handlePopUpClose("designTag");
       const shouldAppend = !selectedTagIds[selectedTag.slug];
       if (shouldAppend) {
-        append({...selectedTag, ..._tagDesignObj});
+        append(selectedTag);
       } else {
-        const pos = tags.findIndex(({ slug }: {slug: string}) => selectedTag.slug === slug);
+        const pos = tags.findIndex(({ slug }: { slug: string }) => selectedTag.slug === slug);
         remove(pos);
       }
-    }
-
+    };
     const isCreatedSecret = !secId;
     const shouldBeBlockedInAddOnly = !isCreatedSecret && isAddOnly;
 
@@ -261,27 +229,13 @@ export const SecretInputRow = memo(
       return <></>;
     }
 
-  
+
 
     return (
       <tr className="group flex flex-row hover:bg-mineshaft-700" key={index}>
         <td className="flex h-10 w-10 items-center justify-center border-none px-4">
           <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div>
         </td>
-        {/* Add a custom design to new tag to make visible */}
-        <Modal
-          isOpen={popUp?.designTag?.isOpen}
-          onOpenChange={(open: boolean) => {
-            handlePopUpToggle("designTag", open);
-          }}
-        >
-          <ModalContent
-            title={`Customise design for ${selectedTag.slug}`}
-            subTitle="Choose custom background and label text colors for the tag."
-          >
-            <DesignTagModal selectedTag={selectedTag} onDesignTag={onDesignWsTag} />
-          </ModalContent>
-        </Modal>
 
         <Controller
           control={control}
@@ -381,25 +335,68 @@ export const SecretInputRow = memo(
         </td>
         <td className="min-w-sm flex">
           <div className="flex h-8 items-center pl-2">
-            {secretTags.map(({ id, _id, slug, tagBackground, tagLabel }: SecretTags, i: number) => {
-              // This map lookup shouldn't ever fail, but if it does we default to the first color
-              const tagColor = tagColorByTagId.get(_id) || tagColors[0]
+            {secretTags.map(({ id, _id, slug, tagColor }: SecretTags, i: number) => {
               return (
-                <Tag
-                  className={cx(
-                    tagColor.bg,
-                    tagColor.text
-                  )}
-                  styles={{
-                    backgroundColor: tagBackground,
-                    color: tagLabel
-                  }}
-                  isDisabled={isReadOnly || isAddOnly || isRollbackMode}
-                  onClose={() => remove(i)}
-                  key={id}
-                >
-                  {slug}
-                </Tag>)
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <div>
+                      <Tag
+                        isDisabled={isReadOnly || isAddOnly || isRollbackMode}
+                        onClose={() => remove(i)}
+                        key={id}
+                        className="cursor-pointer"
+                      >
+                        <div className="rounded-md  rounded-full border-mineshaft-500 bg-transparent flex items-center  gap-1.5 justify-around">
+                          <div className="w-[10px] h-[10px] rounded-full" style={{ background: tagColor ? tagColor : "#bec2c8" }}></div>
+                          {slug}
+                        </div>
+
+                      </Tag>
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    side="left"
+                    className="max-h-96 w-auto min-w-[200px] p-2 overflow-y-auto overflow-x-hidden border border-mineshaft-600 bg-mineshaft-800 text-bunker-200"
+                    hideCloseBtn
+                  >
+                    <div className=" text-center text-sm font-medium text-bunker-200">
+                      Add tags to {secKey || "this secret"}
+                    </div>
+                    <div className="flex flex-col space-y-2.5">
+                      {wsTags?.map((wsTag) => (
+                        <Button
+                          variant="star"
+                          size="md"
+                          className={`mt-4 justify-start  px-1 hover:bg-mineshaft-600 hover:border-mineshaft-500 hover:text-bunker-200 ${selectedTagIds?.[wsTag.slug] && "text-primary hover:text-primary"}`}
+                          onClick={() => onSelectTag(wsTag)}
+                          leftIcon={
+                            <Checkbox
+                              className="mr-0 data-[state=checked]:bg-primary border-mineshaft-500 border"
+                              id="autoCapitalization"
+                              isChecked={selectedTagIds?.[wsTag.slug]}
+                            >
+                              { }
+                            </Checkbox>
+                          }
+                          key={wsTag._id}
+                        >
+                          {wsTag.slug}
+                        </Button>
+                      ))}
+                      <Button
+                        variant="star"
+                        size="md"
+                        className="mt-4 justify-start  px-1 hover:bg-mineshaft-600 hover:border-mineshaft-500 hover:text-bunker-200"
+                        onClick={onCreateTagOpen}
+                        leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                      >
+                        Add new tag
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+              )
             })}
             <div className="w-0 overflow-hidden group-hover:w-6">
               <Tooltip content="Copy value">
@@ -433,25 +430,22 @@ export const SecretInputRow = memo(
                   </PopoverTrigger>
                   <PopoverContent
                     side="left"
-                    className="max-h-96 w-auto min-w-[200px] overflow-y-auto overflow-x-hidden border border-mineshaft-600 bg-mineshaft-800 p-2 text-bunker-200"
+                    className="max-h-96 w-auto min-w-[200px] p-2 overflow-y-auto overflow-x-hidden border border-mineshaft-600 bg-mineshaft-800 text-bunker-200"
                     hideCloseBtn
                   >
-                    <div className="mb-2 px-2 text-center text-sm font-medium text-bunker-200">
+                    <div className=" text-center text-sm font-medium text-bunker-200">
                       Add tags to {secKey || "this secret"}
                     </div>
-                    <div className="flex flex-col space-y-1">
+                    <div className="flex flex-col space-y-2.5">
                       {wsTags?.map((wsTag) => (
                         <Button
-                          variant="plain"
-                          size="sm"
-                          className={twMerge(
-                            "justify-start bg-mineshaft-600 text-bunker-100 hover:bg-mineshaft-500",
-                            selectedTagIds?.[wsTag.slug] && "text-primary"
-                          )}
+                          variant="star"
+                          size="md"
+                          className={`mt-4 justify-start  px-1 hover:bg-mineshaft-600 hover:border-mineshaft-500 hover:text-bunker-200 ${selectedTagIds?.[wsTag.slug] && "text-primary hover:text-primary"}`}
                           onClick={() => onSelectTag(wsTag)}
                           leftIcon={
                             <Checkbox
-                              className="mr-0 data-[state=checked]:bg-primary"
+                              className="mr-0 data-[state=checked]:bg-primary border-mineshaft-500"
                               id="autoCapitalization"
                               isChecked={selectedTagIds?.[wsTag.slug]}
                             >
@@ -465,9 +459,8 @@ export const SecretInputRow = memo(
                       ))}
                       <Button
                         variant="star"
-                        color="primary"
-                        size="sm"
-                        className="mt-4 h-7 justify-start bg-mineshaft-600 px-1"
+                        size="md"
+                        className="mt-4 justify-start  px-1 hover:bg-mineshaft-600 hover:border-mineshaft-500 hover:text-bunker-200"
                         onClick={onCreateTagOpen}
                         leftIcon={<FontAwesomeIcon icon={faPlus} />}
                       >

@@ -11,10 +11,11 @@ type Props = {
   color?: string;
   styles?: Record<string, string>
   isDisabled?: boolean;
+  tagColor: string;
 } & VariantProps<typeof tagVariants>;
 
 const tagVariants = cva(
-  "inline-flex items-center whitespace-nowrap text-sm rounded-sm mr-1.5 text-bunker-200",
+  "inline-flex items-center whitespace-nowrap text-sm rounded-sm mr-1.5 text-bunker-200 rounded-[30px] text-gray-400 ",
   {
     variants: {
       colorSchema: {
@@ -41,18 +42,7 @@ export const Tag = ({
 }: Props) => (
   <div
     className={twMerge(tagVariants({ colorSchema, className, size }))}
-    style={{ backgroundColor: color, ...styles }}
   >
     {children}
-    {onClose && (
-      <button
-        type="button"
-        onClick={onClose}
-        disabled={isDisabled}
-        className="ml-2 flex items-center justify-center"
-      >
-        <FontAwesomeIcon icon={faClose} />
-      </button>
-    )}
   </div>
 );

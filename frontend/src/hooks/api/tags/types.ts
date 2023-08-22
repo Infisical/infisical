@@ -38,15 +38,24 @@ export type DeleteWsTagRes = {
   _id: string;
 };
 
-export type TagDesign  = {
-  tagBackground: string;
-  tagLabel: string
-}
-
 export type SecretTags = { 
   id: string;  
   _id: string;
   slug: string; 
-  tagBackground: string; 
-  tagLabel: string 
+  tagColor: string;
+}
+
+export type TagColor  =  {
+  id: number;
+  hex: string
+  rgba: string
+  name: string
+  selected: boolean
+}
+
+export type QueryTag =  {
+  workspaceID: string; 
+  tagName: string; 
+  tagColor: string;
+  tagSlug: string
 }
