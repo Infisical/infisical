@@ -13,10 +13,10 @@ export const checkIsPasswordBreached = async (password: string) => {
     const encodedPwd = textEncoder.encode(password);
     console.log("encodedPwd:", encodedPwd); // delete later!!!
 
-    const hashBuffer = await crypto.subtle.digest("SHA-1", encodedPwd); // returns promise
-    console.log("hashBuffer:", hashBuffer); // delete later!!!
+    const hash = crypto.createHash("sha1").update(encodedPwd).digest();
+    console.log("hash:", hash); // delete later!!!
 
-    const hashedPwd = Array.from(new Uint8Array(hashBuffer))
+    const hashedPwd = Array.from(new Uint8Array(hash))
       .map((byte) => byte.toString(16).padStart(2, "0"))
       .join("")
       .toUpperCase();
@@ -33,7 +33,8 @@ export const checkIsPasswordBreached = async (password: string) => {
     console.log("isBreachedPassword:", isBreachedPassword); // delete later!!!
 
     // Clear the hashed password from memory
-    crypto.subtle.digest("SHA-1", encodedPwd);
+    const zeroBuffer = new Uint8Array(encodedPwd.length);
+    encodedPwd.set(zeroBuffer);
 
     return isBreachedPassword;
   } catch (err: any) {
