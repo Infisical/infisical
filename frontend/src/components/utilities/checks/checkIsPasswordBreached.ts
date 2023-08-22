@@ -1,12 +1,11 @@
 import axios from "axios";
-import crypto from "crypto";
+import crypto from "crypto"; // added types from @types/node
 
 ///// REMINDER: ensure all logs are deleted!!! /////
 
 export const checkIsPasswordBreached = async (password: string) => {
   const dataBreachCheckAPIBaseURL = "https://api.pwnedpasswords.com/range/";
   try {
-
     console.log("password:", password); // delete later!!!
 
     const textEncoder = new TextEncoder();
@@ -14,7 +13,7 @@ export const checkIsPasswordBreached = async (password: string) => {
     const encodedPwd = textEncoder.encode(password);
     console.log("encodedPwd:", encodedPwd); // delete later!!!
 
-    const hashBuffer = crypto.subtle.digest("SHA-1", encodedPwd); // removed async
+    const hashBuffer = await crypto.subtle.digest("SHA-1", encodedPwd); // returns promise
     console.log("hashBuffer:", hashBuffer); // delete later!!!
 
     const hashedPwd = Array.from(new Uint8Array(hashBuffer))
@@ -24,9 +23,7 @@ export const checkIsPasswordBreached = async (password: string) => {
 
     console.log("hashedPwd:", hashedPwd); // delete later!!!
 
-    const response = await axios.get(
-      `${dataBreachCheckAPIBaseURL}${hashedPwd.slice(0, 5)}`
-    );
+    const response = await axios.get(`${dataBreachCheckAPIBaseURL}${hashedPwd.slice(0, 5)}`);
     console.log("response:", response); // delete later!!!
 
     const responseData = response.data.toUpperCase();
@@ -40,11 +37,7 @@ export const checkIsPasswordBreached = async (password: string) => {
 
     return isBreachedPassword;
   } catch (err: any) {
-    if (
-      axios.isAxiosError(err) &&
-      err.response &&
-      err.response.status === 429
-    ) {
+    if (axios.isAxiosError(err) && err.response && err.response.status === 429) {
       console.error("Received a 429 response from the Pwnd Passwords API");
       // Handle the 429 error here
     } else {
