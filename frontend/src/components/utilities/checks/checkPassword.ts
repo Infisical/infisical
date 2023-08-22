@@ -78,8 +78,7 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
       password
     )
   ) {
-    errors.specialChar =
-      "at least 1 special character (emojis and many langauge scripts supported)";
+    errors.specialChar = "at least 1 special character (emojis, symbols & non-Latin languages)";
   }
 
   // repeatedChar
