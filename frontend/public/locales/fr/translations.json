@@ -218,8 +218,8 @@
       "validate-base": "Le mot de passe doit contenir:",
       "validate-too-short": "au moins 14 caractères",
       "validate-too-long": "au maximum 100 caractères",
-      "validate-case": "au moins 1 caractère miniscule",
-      "validate-number": "au moins 1 chiffre"
+      "validate-number": "au moins 1 chiffre",
+      "validate-case": "au moins 1 caractère miniscule"
     },
     "token": {
       "service-tokens": "Jetons de service",

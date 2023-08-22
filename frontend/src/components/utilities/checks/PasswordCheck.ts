@@ -1,3 +1,5 @@
+import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
+
 /* eslint-disable no-param-reassign */
 interface PasswordCheckProps {
   password: string;
@@ -6,17 +8,19 @@ interface PasswordCheckProps {
   setPasswordErrorTooLong: (value: boolean) => void;
   setPasswordErrorNumber: (value: boolean) => void;
   setPasswordErrorLowerCase: (value: boolean) => void;
+  setPasswordErrorIsBreached: (value: boolean) => void;
 }
 
 /**
  * This function checks a user password with respect to some criteria.
  */
-const passwordCheck = ({
+const passwordCheck = async ({
   password,
   setPasswordErrorTooShort,
   setPasswordErrorTooLong,
   setPasswordErrorNumber,
   setPasswordErrorLowerCase,
+  setPasswordErrorIsBreached,
   errorCheck
 }: PasswordCheckProps) => {
   if (!password || password.length < 14) {
@@ -55,6 +59,13 @@ const passwordCheck = ({
     // 	errorCheck = true;
   } else {
     setPasswordErrorLowerCase(false);
+  }
+
+  if (await checkIsPasswordBreached(password)) {
+    setPasswordErrorIsBreached(true);
+    errorCheck = true;
+  } else {
+    setPasswordErrorIsBreached(false);
   }
 
   // if (!/[A-Z]/.test(password)) {

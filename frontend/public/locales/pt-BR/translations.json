@@ -213,8 +213,8 @@
       "validate-base": "A senha deve conter:",
       "validate-too-short": "pelo menos 14 caracteres",
       "validate-too-long": "no máximo 100 caracteres",
-      "validate-case": "pelo menos 1 caractere minúsculo",
-      "validate-number": "pelo menos 1 número"
+      "validate-number": "pelo menos 1 número",
+      "validate-case": "pelo menos 1 caractere minúsculo"
     },
     "token": {
       "service-tokens": "Tokens de Serviço",

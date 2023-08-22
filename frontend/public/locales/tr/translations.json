@@ -231,8 +231,8 @@
       "validate-base": "Şifre kısıtlamaları:",
       "validate-too-short": "en az 14 karakter",
       "validate-too-long": "en fazla 100 karakter",
-      "validate-case": "en az 1 küçük harf",
-      "validate-number": "en az 1 rakam"
+      "validate-number": "en az 1 rakam",
+      "validate-case": "en az 1 küçük harf"
     },
     "token": {
       "service-tokens": "Servis Belirteçleri",
