@@ -12,7 +12,7 @@ import Button from "@app/components/basic/buttons/Button";
 import InputField from "@app/components/basic/InputField";
 import passwordCheck from "@app/components/utilities/checks/PasswordCheck";
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
-import { useResetPassword,useVerifyPasswordResetCode } from "@app/hooks/api";
+import { useResetPassword, useVerifyPasswordResetCode } from "@app/hooks/api";
 import { getBackupEncryptedPrivateKey } from "@app/hooks/api/auth/queries";
 
 import { deriveArgonKey } from "../components/utilities/cryptography/crypto";
@@ -32,12 +32,13 @@ export default function PasswordReset() {
   const [passwordErrorTooLong, setPasswordErrorTooLong] = useState(false);
   const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
   const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
+  const [passwordErrorIsBreached, setPasswordErrorIsBreached] = useState(false);
 
   const router = useRouter();
 
   const { mutateAsync: verifyPasswordResetCodeMutateAsync } = useVerifyPasswordResetCode();
   const { mutateAsync: resetPasswordMutateAsync } = useResetPassword();
-  
+
   const parsedUrl = queryString.parse(router.asPath.split("?")[1]);
   const token = parsedUrl.token as string;
   const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
@@ -47,7 +48,7 @@ export default function PasswordReset() {
     e.preventDefault();
     try {
       const result = await getBackupEncryptedPrivateKey({ verificationToken });
-      
+
       setPrivateKey(
         Aes256Gcm.decrypt({
           ciphertext: result.encryptedPrivateKey,
@@ -57,7 +58,7 @@ export default function PasswordReset() {
         })
       );
       setStep(3);
-    } catch(err) {
+    } catch (err) {
       console.error(err);
       setBackupKeyError(true);
     }
@@ -66,12 +67,13 @@ export default function PasswordReset() {
   // If everything is correct, reset the password
   const resetPasswordHandler = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const errorCheck = passwordCheck({
+    const errorCheck = await passwordCheck({
       password: newPassword,
       setPasswordErrorTooShort,
       setPasswordErrorTooLong,
       setPasswordErrorNumber,
       setPasswordErrorLowerCase,
+      setPasswordErrorIsBreached,
       errorCheck: false
     });
 
@@ -129,10 +131,10 @@ export default function PasswordReset() {
               verifier: result.verifier,
               verificationToken
             });
-            
+
             router.push("/login");
 
-            setLoading(false)
+            setLoading(false);
           });
         }
       );
@@ -171,13 +173,17 @@ export default function PasswordReset() {
 
   // Input backup key
   const stepInputBackupKey = (
-    <form onSubmit={getEncryptedKeyHandler} className="my-32 mx-1 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker px-4 pt-6 pb-3 drop-shadow-xl md:max-w-lg md:px-6">
+    <form
+      onSubmit={getEncryptedKeyHandler}
+      className="my-32 mx-1 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker px-4 pt-6 pb-3 drop-shadow-xl md:max-w-lg md:px-6"
+    >
       <p className="mx-auto mb-4 flex w-max justify-center text-2xl font-semibold text-bunker-100 md:text-3xl">
         Enter your backup key
       </p>
-      <div className="flex flex-row items-center justify-center md:pb-4 mt-4 md:mx-2">
-        <p className="text-sm flex justify-center text-gray-400 w-max max-w-md">
-          You can find it in your emergency kit. You had to download the emergency kit during signup.
+      <div className="mt-4 flex flex-row items-center justify-center md:mx-2 md:pb-4">
+        <p className="flex w-max max-w-md justify-center text-sm text-gray-400">
+          You can find it in your emergency kit. You had to download the emergency kit during
+          signup.
         </p>
       </div>
       <div className="mt-4 flex max-h-24 w-full items-center justify-center rounded-lg md:mt-0 md:max-h-28 md:p-2">
@@ -194,12 +200,7 @@ export default function PasswordReset() {
       </div>
       <div className="mx-auto mt-4 flex max-h-20 w-full max-w-md flex-col items-center justify-center text-sm md:p-2">
         <div className="text-l m-8 mt-6 px-8 py-3 text-lg">
-          <Button
-            type="submit"
-            text="Submit Backup Key"
-            onButtonPressed={() => {}}
-            size="lg"
-          />
+          <Button type="submit" text="Submit Backup Key" onButtonPressed={() => {}} size="lg" />
         </div>
       </div>
     </form>
@@ -207,7 +208,10 @@ export default function PasswordReset() {
 
   // Enter new password
   const stepEnterNewPassword = (
-    <form onSubmit={resetPasswordHandler} className="my-32 mx-1 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker px-4 pt-6 pb-3 drop-shadow-xl md:max-w-lg md:px-6">
+    <form
+      onSubmit={resetPasswordHandler}
+      className="my-32 mx-1 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker px-4 pt-6 pb-3 drop-shadow-xl md:max-w-lg md:px-6"
+    >
       <p className="mx-auto flex w-max justify-center text-2xl font-semibold text-bunker-100 md:text-3xl">
         Enter new password
       </p>
@@ -227,18 +231,29 @@ export default function PasswordReset() {
               setPasswordErrorTooLong,
               setPasswordErrorNumber,
               setPasswordErrorLowerCase,
+              setPasswordErrorIsBreached,
               errorCheck: false
             });
           }}
           type="password"
           value={newPassword}
           isRequired
-          error={passwordErrorTooShort && passwordErrorTooLong && passwordErrorLowerCase && passwordErrorNumber}
+          error={
+            passwordErrorTooShort &&
+            passwordErrorTooLong &&
+            passwordErrorNumber &&
+            passwordErrorLowerCase &&
+            passwordErrorIsBreached
+          }
           autoComplete="new-password"
           id="new-password"
         />
       </div>
-      {passwordErrorTooShort || passwordErrorTooLong || passwordErrorLowerCase || passwordErrorNumber ? (
+      {passwordErrorTooShort ||
+      passwordErrorTooLong ||
+      passwordErrorNumber ||
+      passwordErrorLowerCase ||
+      passwordErrorIsBreached ? (
         <div className="mx-2 mt-3 mb-2 flex w-full max-w-md flex-col items-start rounded-md bg-white/5 px-2 py-2">
           <div className="mb-1 text-sm text-gray-400">Password should contain:</div>
           <div className="ml-1 flex flex-row items-center justify-start">
@@ -262,6 +277,16 @@ export default function PasswordReset() {
             </div>
           </div>
           <div className="ml-1 flex flex-row items-center justify-start">
+            {passwordErrorNumber ? (
+              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+            ) : (
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+            )}
+            <div className={`${passwordErrorNumber ? "text-gray-400" : "text-gray-600"} text-sm`}>
+              at least 1 number
+            </div>
+          </div>
+          <div className="ml-1 flex flex-row items-center justify-start">
             {passwordErrorLowerCase ? (
               <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
             ) : (
@@ -272,15 +297,18 @@ export default function PasswordReset() {
             >
               at least 1 lowercase character
             </div>
-          </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
-            {passwordErrorNumber ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-            ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-            )}
-            <div className={`${passwordErrorNumber ? "text-gray-400" : "text-gray-600"} text-sm`}>
-              at least 1 number
+            <div className="ml-1 flex flex-row items-center justify-start">
+              {passwordErrorIsBreached ? (
+                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              ) : (
+                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              )}
+              <div
+                className={`${passwordErrorIsBreached ? "text-gray-400" : "text-gray-600"} text-sm`}
+              >
+                The password you provided is in a list of passwords commonly used on other websites.
+                Please try again with a stronger password.
+              </div>
             </div>
           </div>
         </div>
