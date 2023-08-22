@@ -6,9 +6,12 @@ interface PasswordCheckProps {
   errorCheck: boolean;
   setPasswordErrorTooShort: (value: boolean) => void;
   setPasswordErrorTooLong: (value: boolean) => void;
-  setPasswordErrorNumber: (value: boolean) => void;
+  setPasswordErrorUpperCase: (value: boolean) => void;
   setPasswordErrorLowerCase: (value: boolean) => void;
-  setPasswordErrorIsBreached: (value: boolean) => void;
+  setPasswordErrorNumber: (value: boolean) => void;
+  setPasswordErrorSpecialChar: (value: boolean) => void;
+  setPasswordErrorRepeatedChar: (value: boolean) => void;
+  setPasswordErrorIsBreachedPassword: (value: boolean) => void;
 }
 
 /**
@@ -18,11 +21,15 @@ const passwordCheck = async ({
   password,
   setPasswordErrorTooShort,
   setPasswordErrorTooLong,
-  setPasswordErrorNumber,
+  setPasswordErrorUpperCase,
   setPasswordErrorLowerCase,
-  setPasswordErrorIsBreached,
+  setPasswordErrorNumber,
+  setPasswordErrorSpecialChar,
+  setPasswordErrorRepeatedChar,
+  setPasswordErrorIsBreachedPassword,
   errorCheck
 }: PasswordCheckProps) => {
+  // tooShort
   if (!password || password.length < 14) {
     setPasswordErrorTooShort(true);
     errorCheck = true;
@@ -30,6 +37,7 @@ const passwordCheck = async ({
     setPasswordErrorTooShort(false);
   }
 
+  // tooLong
   if (password.length > 100) {
     setPasswordErrorTooLong(true);
     errorCheck = true;
@@ -37,51 +45,54 @@ const passwordCheck = async ({
     setPasswordErrorTooLong(false);
   }
 
-  if (!/\d/.test(password)) {
+  // upperCase
+  if (!/[A-Z]/.test(password)) {
+    setPasswordErrorUpperCase(true);
+    errorCheck = true;
+  } else {
+    setPasswordErrorUpperCase(false);
+  }
+
+  // lowerCase
+  if (!/[a-z]/.test(password)) {
+    setPasswordErrorLowerCase(true);
+    errorCheck = true;
+  } else {
+    setPasswordErrorLowerCase(false);
+  }
+
+  // number
+  if (!/[0-9]/.test(password)) {
     setPasswordErrorNumber(true);
     errorCheck = true;
   } else {
     setPasswordErrorNumber(false);
   }
 
-  if (!/[a-z]/.test(password)) {
-    setPasswordErrorLowerCase(true);
+  // specialChar
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    setPasswordErrorSpecialChar(true);
     errorCheck = true;
-    // } else if (/(.)(?:(?!\1).){1,2}/.test(password)) {
-    // 	console.log(111)
-    // 	setPasswordError(true);
-    // 	setPasswordErrorMessage("Password should not contain repeating characters.");
-    // 	errorCheck = true;
-    // } else if (RegExp(`[${email}]`).test(password)) {
-    // 	console.log(222)
-    // 	setPasswordError(true);
-    // 	setPasswordErrorMessage("Password should not contain your email.");
-    // 	errorCheck = true;
   } else {
-    setPasswordErrorLowerCase(false);
+    setPasswordErrorSpecialChar(false);
   }
 
+  // repeatedChar
+  if (/([A-Za-z0-9])\1\1\1/.test(password)) {
+    setPasswordErrorRepeatedChar(true);
+    errorCheck = true;
+  } else {
+    setPasswordErrorRepeatedChar(false);
+  }
+
+  // breachedPassword
   if (await checkIsPasswordBreached(password)) {
-    setPasswordErrorIsBreached(true);
+    setPasswordErrorIsBreachedPassword(true);
     errorCheck = true;
   } else {
-    setPasswordErrorIsBreached(false);
+    setPasswordErrorIsBreachedPassword(false);
   }
 
-  // if (!/[A-Z]/.test(password)) {
-  // 	setPasswordErrorUpperCase(true);
-  // 	errorCheck = true;
-  // } else {
-  // 	setPasswordErrorUpperCase(false);
-  // }
-
-  // if (!/(?=.*[!@#$%^&*])/.test(password)) {
-  // 	setPasswordErrorSpecialChar(true);
-  // 		// "Please add at least 1 special character (*, !, #, %)."
-  // 	errorCheck = true;
-  // } else {
-  // 	setPasswordErrorSpecialChar(false);
-  // }
   return errorCheck;
 };
 

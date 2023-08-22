@@ -231,8 +231,11 @@
       "validate-base": "Şifre kısıtlamaları:",
       "validate-too-short": "en az 14 karakter",
       "validate-too-long": "en fazla 100 karakter",
-      "validate-number": "en az 1 rakam",
-      "validate-case": "en az 1 küçük harf",
+      "validate-uppercase": "en az 1 büyük harf karakter",
+      "validate-lowercase": "en az 1 küçük harf karakter",
+      "validate-number": "en az 1 sayı",
+      "validate-special-char": "en az 1 özel karakter",
+      "validate-repeated-char": "veya artı 2 karakter ardışık tekrar",
       "validate-breached": "Sağladığınız şifre, diğer web sitelerinde yaygın olarak kullanılan şifreler listesinde yer almaktadır. Lütfen daha güçlü bir şifre ile tekrar deneyiniz."
     },
     "token": {

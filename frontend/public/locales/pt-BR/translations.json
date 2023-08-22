@@ -213,8 +213,11 @@
       "validate-base": "A senha deve conter:",
       "validate-too-short": "pelo menos 14 caracteres",
       "validate-too-long": "no máximo 100 caracteres",
+      "validate-uppercase": "pelo menos 1 caractere maiúsculo",
+      "validate-lowercase": "pelo menos 1 caractere minúsculo",
       "validate-number": "pelo menos 1 número",
-      "validate-case": "pelo menos 1 caractere minúsculo",
+      "validate-special-char": "pelo menos 1 caractere especial",
+      "validate-repeated-char": "au plus 2 caractères consécutifs répétés",
       "validate-breached": "A senha que você forneceu está em uma lista de senhas comumente usadas em outros sites. Tente novamente com uma senha mais forte."
     },
     "token": {

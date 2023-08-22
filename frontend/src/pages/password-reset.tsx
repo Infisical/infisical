@@ -30,9 +30,12 @@ export default function PasswordReset() {
   const [backupKeyError, setBackupKeyError] = useState(false);
   const [passwordErrorTooShort, setPasswordErrorTooShort] = useState(false);
   const [passwordErrorTooLong, setPasswordErrorTooLong] = useState(false);
-  const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
+  const [passwordErrorUpperCase, setPasswordErrorUpperCase] = useState(false);
   const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
-  const [passwordErrorIsBreached, setPasswordErrorIsBreached] = useState(false);
+  const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
+  const [passwordErrorSpecialChar, setPasswordErrorSpecialChar] = useState(false);
+  const [passwordErrorRepeatedChar, setPasswordErrorRepeatedChar] = useState(false);
+  const [passwordErrorIsBreachedPassword, setPasswordErrorIsBreachedPassword] = useState(false);
 
   const router = useRouter();
 
@@ -43,7 +46,7 @@ export default function PasswordReset() {
   const token = parsedUrl.token as string;
   const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
 
-  // Unencrypt the private key with a backup key
+  // Decrypt the private key with a backup key
   const getEncryptedKeyHandler = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
@@ -71,9 +74,12 @@ export default function PasswordReset() {
       password: newPassword,
       setPasswordErrorTooShort,
       setPasswordErrorTooLong,
-      setPasswordErrorNumber,
+      setPasswordErrorUpperCase,
       setPasswordErrorLowerCase,
-      setPasswordErrorIsBreached,
+      setPasswordErrorNumber,
+      setPasswordErrorSpecialChar,
+      setPasswordErrorRepeatedChar,
+      setPasswordErrorIsBreachedPassword,
       errorCheck: false
     });
 
@@ -229,9 +235,12 @@ export default function PasswordReset() {
               password,
               setPasswordErrorTooShort,
               setPasswordErrorTooLong,
-              setPasswordErrorNumber,
+              setPasswordErrorUpperCase,
               setPasswordErrorLowerCase,
-              setPasswordErrorIsBreached,
+              setPasswordErrorNumber,
+              setPasswordErrorSpecialChar,
+              setPasswordErrorRepeatedChar,
+              setPasswordErrorIsBreachedPassword,
               errorCheck: false
             });
           }}
@@ -241,9 +250,12 @@ export default function PasswordReset() {
           error={
             passwordErrorTooShort &&
             passwordErrorTooLong &&
-            passwordErrorNumber &&
+            passwordErrorUpperCase &&
             passwordErrorLowerCase &&
-            passwordErrorIsBreached
+            passwordErrorNumber &&
+            passwordErrorSpecialChar &&
+            passwordErrorRepeatedChar &&
+            passwordErrorIsBreachedPassword
           }
           autoComplete="new-password"
           id="new-password"
@@ -251,9 +263,12 @@ export default function PasswordReset() {
       </div>
       {passwordErrorTooShort ||
       passwordErrorTooLong ||
-      passwordErrorNumber ||
+      passwordErrorUpperCase ||
       passwordErrorLowerCase ||
-      passwordErrorIsBreached ? (
+      passwordErrorNumber ||
+      passwordErrorSpecialChar ||
+      passwordErrorRepeatedChar ||
+      passwordErrorIsBreachedPassword ? (
         <div className="mx-2 mt-3 mb-2 flex w-full max-w-md flex-col items-start rounded-md bg-white/5 px-2 py-2">
           <div className="mb-1 text-sm text-gray-400">Password should contain:</div>
           <div className="ml-1 flex flex-row items-center justify-start">
@@ -277,13 +292,15 @@ export default function PasswordReset() {
             </div>
           </div>
           <div className="ml-1 flex flex-row items-center justify-start">
-            {passwordErrorNumber ? (
+            {passwordErrorUpperCase ? (
               <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
             ) : (
               <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
             )}
-            <div className={`${passwordErrorNumber ? "text-gray-400" : "text-gray-600"} text-sm`}>
-              at least 1 number
+            <div
+              className={`${passwordErrorUpperCase ? "text-gray-400" : "text-gray-600"} text-sm`}
+            >
+              at least 1 uppercase character
             </div>
           </div>
           <div className="ml-1 flex flex-row items-center justify-start">
@@ -297,14 +314,54 @@ export default function PasswordReset() {
             >
               at least 1 lowercase character
             </div>
+          </div>
+          <div className="ml-1 flex flex-row items-center justify-start">
+            {passwordErrorNumber ? (
+              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+            ) : (
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+            )}
+            <div className={`${passwordErrorNumber ? "text-gray-400" : "text-gray-600"} text-sm`}>
+              at least 1 number
+            </div>
             <div className="ml-1 flex flex-row items-center justify-start">
-              {passwordErrorIsBreached ? (
+              {passwordErrorSpecialChar ? (
                 <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
               ) : (
                 <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
               )}
               <div
-                className={`${passwordErrorIsBreached ? "text-gray-400" : "text-gray-600"} text-sm`}
+                className={`${
+                  passwordErrorSpecialChar ? "text-gray-400" : "text-gray-600"
+                } text-sm`}
+              >
+                at least 1 special character
+              </div>
+            </div>
+            <div className="ml-1 flex flex-row items-center justify-start">
+              {passwordErrorRepeatedChar ? (
+                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              ) : (
+                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              )}
+              <div
+                className={`${
+                  passwordErrorRepeatedChar ? "text-gray-400" : "text-gray-600"
+                } text-sm`}
+              >
+                at most 2 repeated characters
+              </div>
+            </div>
+            <div className="ml-1 flex flex-row items-center justify-start">
+              {passwordErrorIsBreachedPassword ? (
+                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              ) : (
+                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              )}
+              <div
+                className={`${
+                  passwordErrorIsBreachedPassword ? "text-gray-400" : "text-gray-600"
+                } text-sm`}
               >
                 The password you provided is in a list of passwords commonly used on other websites.
                 Please try again with a stronger password.

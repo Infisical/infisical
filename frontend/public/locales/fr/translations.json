@@ -218,9 +218,12 @@
       "validate-base": "Le mot de passe doit contenir:",
       "validate-too-short": "au moins 14 caractères",
       "validate-too-long": "au maximum 100 caractères",
+      "validate-uppercase": "au moins 1 caractère miniscule",
+      "validate-lowercase": "au moins 1 caractère majuscule",
       "validate-number": "au moins 1 chiffre",
-      "validate-case": "au moins 1 caractère miniscule",
-      "validate-breached": "Le mot de passe que vous avez fourni figure dans une liste de mots de passe couramment utilisés sur d'autres sites Web. Veuillez réessayer avec un mot de passe plus fort."
+      "validate-special-char": "au moins 1 caractère spécial",
+      "validate-repeated-char": "au plus 2 caractères consécutifs répétés",
+      "validate-is-breached": "Le mot de passe que vous avez fourni figure dans une liste de mots de passe couramment utilisés sur d'autres sites Web. Veuillez réessayer avec un mot de passe plus fort."
     },
     "token": {
       "service-tokens": "Jetons de service",

@@ -21,8 +21,8 @@ type Errors = {
   number?: string;
   specialChar?: string;
   repeatedChar?: string;
-  commonPassword?: string;
-  breachedPassword?: string;
+  isBreachedPassword?: string;
+  isCommonPassword?: string;
 };
 
 const schema = yup
