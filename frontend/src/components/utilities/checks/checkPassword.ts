@@ -1,3 +1,4 @@
+import isEmail from "validator/lib/isEmail";
 import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
 
 type Errors = {
@@ -8,6 +9,7 @@ type Errors = {
   number?: string;
   specialChar?: string;
   repeatedChar?: string;
+  isEmail?: string;
   isBreachedPassword?: string;
 };
 
@@ -25,6 +27,7 @@ interface CheckPasswordParams {
  * - Contains at least 1 number (0-9)
  * - Contains at least 1 special character
  * - Does not contain 3 repeat, consecutive characters
+ * - Is not an email address
  * - Is not in a database of breached passwords
  *
  * The function returns whether or not the password [password]
@@ -64,7 +67,7 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
 
   // number
   if (!/[0-9]/.test(password)) {
-    errors.number = "at least 1 number (0-9)";
+    errors.number = "at least 1 number";
   }
 
   // specialChar
@@ -76,7 +79,7 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
     )
   ) {
     errors.specialChar =
-      'at least 1 special character from !@#$%^&*(),.?":{}|<> or many languages including Korean, Devanagari, Cyrillic, Turkish and emojis.';
+      "at least 1 special character (emojis and many langauge scripts supported)";
   }
 
   // repeatedChar
@@ -87,7 +90,12 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
       password
     )
   ) {
-    errors.repeatedChar = "At most 2 repeated, consecutive characters";
+    errors.repeatedChar = "at most 2 repeated, consecutive characters";
+  }
+
+  // isEmail
+  if (isEmail(password)) {
+    errors.isEmail = "The password cannot be an email address";
   }
 
   // breachedPassword

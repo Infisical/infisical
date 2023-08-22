@@ -217,7 +217,8 @@
       "validate-lowercase": "pelo menos 1 caractere minúsculo",
       "validate-number": "pelo menos 1 número",
       "validate-special-char": "pelo menos 1 caractere especial",
-      "validate-repeated-char": "au plus 2 caractères consécutifs répétés",
+      "validate-repeated-char": "no máximo 2 caracteres repetidos e consecutivos",
+      "validate-is-email": "A senha não pode ser um endereço de e-mail.",
       "validate-breached": "A nova senha está em uma lista de senhas comumente usadas em outros sites. Tente novamente com uma senha mais forte."
     },
     "token": {

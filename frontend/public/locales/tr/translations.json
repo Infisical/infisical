@@ -235,7 +235,8 @@
       "validate-lowercase": "en az 1 küçük harf karakter",
       "validate-number": "en az 1 sayı",
       "validate-special-char": "en az 1 özel karakter",
-      "validate-repeated-char": "veya artı 2 karakter ardışık tekrar",
+      "validate-repeated-char": "en fazla 2 tekrarlanan, ardışık karakter",
+      "validate-is-email": "Şifre bir e-posta adresi olamaz.",
       "validate-breached": "Yeni şifre, diğer web sitelerinde yaygın olarak kullanılan şifrelerin listesinde yer almaktadır. Lütfen daha güçlü bir şifre ile tekrar deneyiniz."
     },
     "token": {

@@ -235,7 +235,8 @@
       "validate-lowercase": "al menos 1 carácter en minúsculas",
       "validate-number": "al menos 1 número",
       "validate-special-char": "al menos 1 carácter especial",
-      "validate-repeated-char": "au plus 2 caracteres consecutivos repetidos",
+      "validate-repeated-char": "como máximo 2 caracteres repetidos y consecutivos",
+      "validate-is-email": "La contraseña no puede ser una dirección de correo electrónico.",
       "validate-breached": "La nueva contraseña se encuentra en una lista de contraseñas comúnmente utilizadas en otros sitios web. Vuelva a intentarlo con una contraseña más segura."
     },
     "token": {

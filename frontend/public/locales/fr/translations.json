@@ -222,7 +222,8 @@
       "validate-lowercase": "au moins 1 caractère majuscule",
       "validate-number": "au moins 1 chiffre",
       "validate-special-char": "au moins 1 caractère spécial",
-      "validate-repeated-char": "au plus 2 caractères consécutifs répétés",
+      "validate-repeated-char": "au plus 2 caractères répétés et consécutifs",
+      "validate-is-email": "Le mot de passe ne peut pas être une adresse e-mail.",
       "validate-is-breached": "Le nouveau mot de passe se trouve dans une liste de mots de passe couramment utilisés sur d'autres sites Web. Veuillez réessayer avec un mot de passe plus fort."
     },
     "token": {

@@ -189,7 +189,8 @@
       "validate-lowercase": "최소 1개의 소문자",
       "validate-number": "숫자 1개 이상",
       "validate-special-char": "특수 문자 1개 이상",
-      "validate-repeated-char": "최대 2개의 반복되는 연속 문자",
+      "validate-repeated-char": "최대 2개의 반복된 연속 문자",
+      "validate-is-email": "비밀번호는 이메일 주소가 될 수 없습니다.",
       "validate-breached": "새 비밀번호는 다른 웹사이트에서 일반적으로 사용되는 비밀번호 목록에 있습니다. 더 강력한 비밀번호로 다시 시도해 주세요."
     },
     "token": {

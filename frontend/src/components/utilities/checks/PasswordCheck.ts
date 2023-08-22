@@ -1,3 +1,4 @@
+import isEmail from "validator/lib/isEmail";
 import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
 
 /* eslint-disable no-param-reassign */
@@ -11,6 +12,7 @@ interface PasswordCheckProps {
   setPasswordErrorNumber: (value: boolean) => void;
   setPasswordErrorSpecialChar: (value: boolean) => void;
   setPasswordErrorRepeatedChar: (value: boolean) => void;
+  setPasswordErrorIsEmail: (value: boolean) => void;
   setPasswordErrorIsBreachedPassword: (value: boolean) => void;
 }
 
@@ -26,6 +28,7 @@ const passwordCheck = async ({
   setPasswordErrorNumber,
   setPasswordErrorSpecialChar,
   setPasswordErrorRepeatedChar,
+  setPasswordErrorIsEmail,
   setPasswordErrorIsBreachedPassword,
   errorCheck
 }: PasswordCheckProps) => {
@@ -91,6 +94,14 @@ const passwordCheck = async ({
     errorCheck = true;
   } else {
     setPasswordErrorRepeatedChar(false);
+  }
+
+  // isEmail
+  if (isEmail(password)) {
+    setPasswordErrorIsEmail(true);
+    errorCheck = true;
+  } else {
+    setPasswordErrorIsEmail(false);
   }
 
   // breachedPassword

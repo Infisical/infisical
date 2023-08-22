@@ -45,6 +45,7 @@ type Errors = {
   number?: string;
   specialChar?: string;
   repeatedChar?: string;
+  isEmail?: string;
   isBeachedPassword?: string;
 };
 
