@@ -1,3 +1,5 @@
+import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
+
 type Errors = {
     tooShort?: string,
     tooLong?: string,
@@ -6,7 +8,8 @@ type Errors = {
     number?: string,
     specialChar?: string,
     repeatedChar?: string,
-    commonPassword?: string
+    commonPassword?: string,
+    breachedPassword?: string
   };
 
 interface CheckPasswordParams {
@@ -32,13 +35,15 @@ interface CheckPasswordParams {
  * @param {String} obj.password - the password to check
  * @param {Function} obj.setErrors - set state function to set error object
  */
-const checkPassword = ({
+const checkPassword = async ({
     password,
     commonPasswords,
     setErrors
-}: CheckPasswordParams): boolean => {
+}: CheckPasswordParams): Promise<boolean> => {
     const errors: Errors = {}; 
-    
+
+    const isBreachedPassword = await checkIsPasswordBreached(password)
+  
     if (password.length < 14) {
         errors.tooShort = "at least 14 characters";
     }
@@ -69,6 +74,10 @@ const checkPassword = ({
     
     if (commonPasswords.includes(password)) {
         errors.commonPassword = "No common passwords"; 
+    }
+
+    if (isBreachedPassword) {
+        errors.breachedPassword = "The password you provided is in a list of passwords commonly used on other websites. Please try again with a stronger password."; 
     }
     
     setErrors(errors);

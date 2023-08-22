@@ -42,6 +42,7 @@ type Errors = {
   number?: string,
   specialChar?: string,
   repeatedChar?: string,
+  breachedPassword?: string
 };
 
 /**
@@ -99,7 +100,7 @@ export const UserInfoSSOStep = ({
       setOrganizationNameError(false);
     }
     
-    errorCheck = checkPassword({
+    errorCheck = await checkPassword({
       password,
       commonPasswords,
       setErrors

@@ -46,6 +46,7 @@ type Errors = {
   number?: string,
   specialChar?: string,
   repeatedChar?: string,
+  breachedPassword?: string
 };
 
 /**
@@ -101,7 +102,7 @@ export default function UserInfoStep({
       setOrganizationNameError(false);
     }
     
-    errorCheck = checkPassword({
+    errorCheck = await checkPassword({
       password,
       commonPasswords,
       setErrors

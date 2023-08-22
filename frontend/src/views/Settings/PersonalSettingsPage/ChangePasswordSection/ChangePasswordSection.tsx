@@ -25,6 +25,7 @@ type Errors = {
   number?: string,
   specialChar?: string,
   repeatedChar?: string,
+  breachedPassword?: string
 };
 
 const schema = yup.object({
@@ -53,8 +54,8 @@ export const ChangePasswordSection = () => {
         try {
             if (!user?.email) return;
             if (!commonPasswords) return;
-            
-            const errorCheck = checkPassword({
+
+            const errorCheck = await checkPassword({
                 password: newPassword,
                 commonPasswords,
                 setErrors

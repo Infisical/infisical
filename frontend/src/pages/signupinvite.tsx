@@ -41,6 +41,7 @@ type Errors = {
   number?: string,
   specialChar?: string,
   repeatedChar?: string,
+  breachedPassword?: string
 };
 
 export default function SignupInvite() {
@@ -80,7 +81,7 @@ export default function SignupInvite() {
       setLastNameError(false);
     }
   
-    errorCheck = checkPassword({
+    errorCheck = await checkPassword({
       password,
       commonPasswords,
       setErrors
