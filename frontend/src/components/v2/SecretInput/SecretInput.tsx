@@ -8,26 +8,18 @@ import { useToggle } from "@app/hooks";
 const REGEX = /\${([^}]+)}/g;
 const stripSpanTags = (str: string) => str.replace(/<\/?span[^>]*>/g, "");
 
-const entitiesToReplace = {
-  '<': '&lt;',
-  '>': '&gt;',
-}
-
-const escapeEntitiesFromString = (htmlString: string) => {
-  for (const [key, value] of Object.entries(entitiesToReplace)) {
-    htmlString = htmlString.replaceAll(key, value)
-  }
-
-  return htmlString;
-}
-
 const convertEscapedEntitiesToHTML = (value: string) => {
+  const entitiesToReplace = {
+    '&lt;': "-",
+    '&gt;': "-",
+  }
   for (const [key, val] of Object.entries(entitiesToReplace)) {
-    value = value.replaceAll(val, key)
+    value = value.replaceAll(key, val)
   }
 
   return value;
 }
+
 
 const replaceContentWithDot = (str: string) => {
   str = convertEscapedEntitiesToHTML(str)
