@@ -14,12 +14,11 @@ interface PasswordCheckProps {
 const passwordCheck = ({
   password,
   setPasswordErrorTooShort,
+  setPasswordErrorTooLong,
   setPasswordErrorNumber,
   setPasswordErrorLowerCase,
-  setPasswordErrorTooLong,
   errorCheck
 }: PasswordCheckProps) => {
-  
   if (!password || password.length < 14) {
     setPasswordErrorTooShort(true);
     errorCheck = true;
@@ -27,7 +26,7 @@ const passwordCheck = ({
     setPasswordErrorTooShort(false);
   }
 
-    if (password.length > 100) {
+  if (password.length > 100) {
     setPasswordErrorTooLong(true);
     errorCheck = true;
   } else {
