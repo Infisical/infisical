@@ -1,5 +1,6 @@
 type Errors = {
-    length?: string,
+    tooShort?: string,
+    tooLong?: string,
     upperCase?: string,
     lowerCase?: string,
     number?: string,
@@ -15,11 +16,12 @@ interface CheckPasswordParams {
 }
 
 /**
- * Validate that the password [password] is at least:
- * - 8 characters long
- * - Contains 1 uppercase character (A-Z)
- * - Contains 1 lowercase character (a-z)
- * - Contains 1 number (0-9)
+ * Validate that the password [password]:
+ * - Contains at least 14 characters long
+ * - Contains at most 100 characters long
+ * - Contains at least 1 uppercase character (A-Z)
+ * - Contains at least 1 lowercase character (a-z)
+ * - Contains at least 1 number (0-9)
  * - Does not contain 3 repeat, consecutive characters
  * 
  * The function returns whether or not the password [password]
@@ -37,24 +39,28 @@ const checkPassword = ({
 }: CheckPasswordParams): boolean => {
     const errors: Errors = {}; 
     
-    if (password.length < 8) {
-        errors.length = "8 characters";
+    if (password.length < 14) {
+        errors.tooShort = "at least 14 characters";
+    }
+
+    if (password.length > 100) {
+        errors.tooLong = "at most 100 characters";
     }
 
     if (!/[A-Z]/.test(password)) {
-        errors.upperCase = "1 uppercase character (A-Z)";
+        errors.upperCase = "at least 1 uppercase character (A-Z)";
     }
 
     if (!/[a-z]/.test(password)) {
-        errors.lowerCase = "1 lowercase character (a-z)";
+        errors.lowerCase = "at least 1 lowercase character (a-z)";
     }
 
     if (!/[0-9]/.test(password)) {
-        errors.number = "1 number (0-9)";
+        errors.number = "at least 1 number (0-9)";
     }
 
     if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-        errors.specialChar = "1 special character (!@#$%^&*(),.?)";
+        errors.specialChar = "at least 1 special character (!@#$%^&*(),.?)";
     }
 
     if (/([A-Za-z0-9])\1\1\1/.test(password)) {

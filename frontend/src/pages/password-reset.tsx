@@ -28,7 +28,8 @@ export default function PasswordReset() {
   const [privateKey, setPrivateKey] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [backupKeyError, setBackupKeyError] = useState(false);
-  const [passwordErrorLength, setPasswordErrorLength] = useState(false);
+  const [passwordErrorTooShort, setPasswordErrorTooShort] = useState(false);
+  const [passwordErrorTooLong, setPasswordErrorTooLong] = useState(false);
   const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
   const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
 
@@ -67,7 +68,8 @@ export default function PasswordReset() {
     e.preventDefault();
     const errorCheck = passwordCheck({
       password: newPassword,
-      setPasswordErrorLength,
+      setPasswordErrorTooShort,
+      setPasswordErrorTooLong,
       setPasswordErrorNumber,
       setPasswordErrorLowerCase,
       errorCheck: false
@@ -221,7 +223,8 @@ export default function PasswordReset() {
             setNewPassword(password);
             passwordCheck({
               password,
-              setPasswordErrorLength,
+              setPasswordErrorTooShort,
+              setPasswordErrorTooLong,
               setPasswordErrorNumber,
               setPasswordErrorLowerCase,
               errorCheck: false
@@ -230,22 +233,32 @@ export default function PasswordReset() {
           type="password"
           value={newPassword}
           isRequired
-          error={passwordErrorLength && passwordErrorLowerCase && passwordErrorNumber}
+          error={passwordErrorTooShort && passwordErrorTooLong && passwordErrorLowerCase && passwordErrorNumber}
           autoComplete="new-password"
           id="new-password"
         />
       </div>
-      {passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber ? (
+      {passwordErrorTooShort || passwordErrorTooLong || passwordErrorLowerCase || passwordErrorNumber ? (
         <div className="mx-2 mt-3 mb-2 flex w-full max-w-md flex-col items-start rounded-md bg-white/5 px-2 py-2">
-          <div className="mb-1 text-sm text-gray-400">Password should contain at least:</div>
+          <div className="mb-1 text-sm text-gray-400">Password should contain:</div>
           <div className="ml-1 flex flex-row items-center justify-start">
-            {passwordErrorLength ? (
+            {passwordErrorTooShort ? (
               <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
             ) : (
               <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
             )}
-            <div className={`${passwordErrorLength ? "text-gray-400" : "text-gray-600"} text-sm`}>
-              14 characters
+            <div className={`${passwordErrorTooShort ? "text-gray-400" : "text-gray-600"} text-sm`}>
+              at least 14 characters
+            </div>
+          </div>
+          <div className="ml-1 flex flex-row items-center justify-start">
+            {passwordErrorTooLong ? (
+              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+            ) : (
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+            )}
+            <div className={`${passwordErrorTooLong ? "text-gray-400" : "text-gray-600"} text-sm`}>
+              at most 100 characters
             </div>
           </div>
           <div className="ml-1 flex flex-row items-center justify-start">
@@ -257,7 +270,7 @@ export default function PasswordReset() {
             <div
               className={`${passwordErrorLowerCase ? "text-gray-400" : "text-gray-600"} text-sm`}
             >
-              1 lowercase character
+              at least 1 lowercase character
             </div>
           </div>
           <div className="ml-1 flex flex-row items-center justify-start">
@@ -267,7 +280,7 @@ export default function PasswordReset() {
               <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
             )}
             <div className={`${passwordErrorNumber ? "text-gray-400" : "text-gray-600"} text-sm`}>
-              1 number
+              at least 1 number
             </div>
           </div>
         </div>

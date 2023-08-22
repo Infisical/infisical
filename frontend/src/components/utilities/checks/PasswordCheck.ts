@@ -2,7 +2,8 @@
 interface PasswordCheckProps {
   password: string;
   errorCheck: boolean;
-  setPasswordErrorLength: (value: boolean) => void;
+  setPasswordErrorTooShort: (value: boolean) => void;
+  setPasswordErrorTooLong: (value: boolean) => void;
   setPasswordErrorNumber: (value: boolean) => void;
   setPasswordErrorLowerCase: (value: boolean) => void;
 }
@@ -12,17 +13,25 @@ interface PasswordCheckProps {
  */
 const passwordCheck = ({
   password,
-  setPasswordErrorLength,
+  setPasswordErrorTooShort,
   setPasswordErrorNumber,
   setPasswordErrorLowerCase,
+  setPasswordErrorTooLong,
   errorCheck
 }: PasswordCheckProps) => {
   
   if (!password || password.length < 14) {
-    setPasswordErrorLength(true);
+    setPasswordErrorTooShort(true);
     errorCheck = true;
   } else {
-    setPasswordErrorLength(false);
+    setPasswordErrorTooShort(false);
+  }
+
+    if (password.length > 100) {
+    setPasswordErrorTooLong(true);
+    errorCheck = true;
+  } else {
+    setPasswordErrorTooLong(false);
   }
 
   if (!/\d/.test(password)) {

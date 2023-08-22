@@ -231,10 +231,11 @@
       "current": "Current password",
       "current-wrong": "The current password may be wrong",
       "new": "New password",
-      "validate-base": "Password should contain at least:",
-      "validate-length": "14 characters",
-      "validate-case": "1 lowercase character",
-      "validate-number": "1 number"
+      "validate-base": "Password should contain:",
+      "validate-too-short": "at least 14 characters",
+      "validate-too-long": "at most 100 characters",
+      "validate-case": "at least 1 lowercase character",
+      "validate-number": "at least 1 number"
     },
     "token": {
       "service-tokens": "Service Tokens",

@@ -18,7 +18,8 @@ import { useUser } from "@app/context";
 import { useGetCommonPasswords } from "@app/hooks/api";
 
 type Errors = {
-  length?: string,
+  tooShort?: string,
+  tooLong?: string,
   upperCase?: string,
   lowerCase?: string,
   number?: string,
