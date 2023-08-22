@@ -1,5 +1,5 @@
 import axios from "axios";
-import crypto from "crypto"; // added types from @types/node
+import { createHash } from "crypto"; // added types from @types/node
 
 export const checkIsPasswordBreached = async (password: string) => {
   // see API details here: https://haveibeenpwned.com/API/v3#SearchingPwnedPasswordsByRange
@@ -14,7 +14,7 @@ export const checkIsPasswordBreached = async (password: string) => {
   try {
     const textEncoder = new TextEncoder();
     const encodedPwd = textEncoder.encode(password);
-    const hash = crypto.createHash("sha1").update(encodedPwd).digest();
+    const hash = createHash("sha1").update(encodedPwd).digest();
 
     const hashedPwd = Array.from(new Uint8Array(hash))
       .map((byte) => byte.toString(16).padStart(2, "0"))
