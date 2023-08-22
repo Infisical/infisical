@@ -46,7 +46,7 @@ const passwordCheck = async ({
   }
 
   // upperCase
-  if (!/[A-Z]/.test(password)) {
+  if (!/[A-Z\u0041-\u005A\u00C0-\u00D6\u00D8-\u00DE]/.test(password)) {
     setPasswordErrorUpperCase(true);
     errorCheck = true;
   } else {
@@ -54,7 +54,7 @@ const passwordCheck = async ({
   }
 
   // lowerCase
-  if (!/[a-z]/.test(password)) {
+  if (!/[a-z\u0061-\u007A\u00DF-\u00F6\u00F8-\u00FF]/.test(password)) {
     setPasswordErrorLowerCase(true);
     errorCheck = true;
   } else {
@@ -82,7 +82,11 @@ const passwordCheck = async ({
   }
 
   // repeatedChar
-  if (/([A-Za-z0-9])\1\1\1/.test(password)) {
+  if (
+    /([!@#$%^&*(),.?":{}|<>0-9A-Za-z\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u0600-\u06FF\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F\u05B0-\u05FF\u0980-\u09FF\u1F00-\u1FFF\u0130\u015E\u011E\u00D6\u00C7\u00FC\u00FB\u00F6\u00EB\u00E7\u00C7\u003a-\u003f\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF\p{Emoji}])\1\1/.test(
+      password
+    )
+  ) {
     setPasswordErrorRepeatedChar(true);
     errorCheck = true;
   } else {

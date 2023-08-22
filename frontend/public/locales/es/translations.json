@@ -236,7 +236,7 @@
       "validate-number": "al menos 1 número",
       "validate-special-char": "al menos 1 carácter especial",
       "validate-repeated-char": "au plus 2 caracteres consecutivos repetidos",
-      "validate-breached": "La contraseña que proporcionó se encuentra en una lista de contraseñas comúnmente utilizadas en otros sitios web. Vuelva a intentarlo con una contraseña más segura."
+      "validate-breached": "La nueva contraseña se encuentra en una lista de contraseñas comúnmente utilizadas en otros sitios web. Vuelva a intentarlo con una contraseña más segura."
     },
     "token": {
       "service-tokens": "Tokens de servicio",

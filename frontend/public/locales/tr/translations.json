@@ -236,7 +236,7 @@
       "validate-number": "en az 1 sayı",
       "validate-special-char": "en az 1 özel karakter",
       "validate-repeated-char": "veya artı 2 karakter ardışık tekrar",
-      "validate-breached": "Sağladığınız şifre, diğer web sitelerinde yaygın olarak kullanılan şifreler listesinde yer almaktadır. Lütfen daha güçlü bir şifre ile tekrar deneyiniz."
+      "validate-breached": "Yeni şifre, diğer web sitelerinde yaygın olarak kullanılan şifrelerin listesinde yer almaktadır. Lütfen daha güçlü bir şifre ile tekrar deneyiniz."
     },
     "token": {
       "service-tokens": "Servis Belirteçleri",
