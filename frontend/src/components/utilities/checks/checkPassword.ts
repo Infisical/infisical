@@ -70,13 +70,13 @@ const checkPassword = async ({
     errors.repeatedChar = "No 3 repeat, consecutive characters";
   }
 
-  if (commonPasswords.includes(password)) {
-    errors.commonPassword = "No common passwords";
-  }
-
   if (await checkIsPasswordBreached(password)) {
     errors.breachedPassword =
       "The password you provided is in a list of passwords commonly used on other websites. Please try again with a stronger password.";
+  }
+
+  if (commonPasswords.includes(password)) {
+    errors.commonPassword = "No common passwords";
   }
 
   setErrors(errors);

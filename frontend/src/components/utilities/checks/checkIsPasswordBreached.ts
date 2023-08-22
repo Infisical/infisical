@@ -15,21 +15,26 @@ export const checkIsPasswordBreached = async (password: string) => {
     const textEncoder = new TextEncoder();
     const encodedPwd = textEncoder.encode(password);
     const hash = crypto.createHash("sha1").update(encodedPwd).digest();
-    let hashedPwd = Array.from(new Uint8Array(hash))
+
+    const hashedPwd = Array.from(new Uint8Array(hash))
       .map((byte) => byte.toString(16).padStart(2, "0"))
       .join("")
       .toUpperCase();
-    hashedPwd = hashedPwd.slice(0, 5); // ONLY the first five SHA-1 hash chars are sent over HTTPS (the whole string can be sent but that's not very secure due to SHA-1 flaws)
 
-    const response = await axios.get(`${dataBreachCheckAPIBaseURL}${hashedPwd}`);
+    const hashedPwdToSend = hashedPwd.slice(0, 5); // ONLY the first five SHA-1 hash chars are sent over HTTPS (the whole string can be sent but that's not very secure due to SHA-1 flaws)
+
+    const response = await axios.get(`${dataBreachCheckAPIBaseURL}${hashedPwdToSend}`);
     const responseData = response.data.toUpperCase();
+
     const isBreachedPassword = responseData.includes(hashedPwd.slice(5, 40)); // compare against the API's ranged db's hash table
 
+    console.log("isBreachedPassword:", isBreachedPassword); // remove log later
     // Clear the hashed password from memory
+
     const zeroBuffer = new Uint8Array(encodedPwd.length);
     encodedPwd.set(zeroBuffer);
 
-    return isBreachedPassword; // boolean: true === "password has been involved in a data breach"
+    return isBreachedPassword; // boolean: true indicates the password has been involved in a data breach
   } catch (err: any) {
     if (axios.isAxiosError(err) && err.response && err.response.status === 429) {
       console.error("Received a 429 response from the Pwnd Passwords API");
