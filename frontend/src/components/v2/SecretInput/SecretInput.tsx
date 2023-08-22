@@ -53,7 +53,10 @@ const syntaxHighlight = (orgContent?: string | null, isVisible?: boolean) => {
   if (!orgContent) return "missing";
   if (!isVisible) return replaceContentWithDot(orgContent);
   const content = stripSpanTags(orgContent);
-  const escapedContent = escapeEntitiesFromString(content)
+  const escapedContent = sanitizeHtml(content, {
+    ...sanitizeConf,
+    disallowedTagsMode: 'escape',
+  });
   const newContent = escapedContent.replace(
     REGEX,
     (_a, b) =>
