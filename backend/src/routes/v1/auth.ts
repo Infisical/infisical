@@ -11,7 +11,7 @@ router.post("/token", validateRequest, authController.getNewToken);
 router.post( // TODO endpoint: deprecate (moved to api/v3/auth/login1)
   "/login1",
   authLimiter,
-  body("email").exists().trim().notEmpty(),
+  body("email").exists().trim().notEmpty().toLowerCase(),
   body("clientPublicKey").exists().trim().notEmpty(),
   validateRequest,
   authController.login1
@@ -20,7 +20,7 @@ router.post( // TODO endpoint: deprecate (moved to api/v3/auth/login1)
 router.post( // TODO endpoint: deprecate (moved to api/v3/auth/login2)
   "/login2",
   authLimiter,
-  body("email").exists().trim().notEmpty(),
+  body("email").exists().trim().notEmpty().toLowerCase(),
   body("clientProof").exists().trim().notEmpty(),
   validateRequest,
   authController.login2

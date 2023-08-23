@@ -8,7 +8,7 @@ import { authLimiter } from "../../helpers/rateLimiter";
 router.post( // TODO: deprecate (moved to api/v3/auth/login1)
   "/login1",
   authLimiter,
-  body("email").isString().trim().notEmpty(),
+  body("email").isString().trim().notEmpty().toLowerCase(),
   body("clientPublicKey").isString().trim().notEmpty(),
   validateRequest,
   authController.login1
@@ -17,7 +17,7 @@ router.post( // TODO: deprecate (moved to api/v3/auth/login1)
 router.post( // TODO: deprecate (moved to api/v3/auth/login1)
   "/login2",
   authLimiter,
-  body("email").isString().trim().notEmpty(),
+  body("email").isString().trim().notEmpty().toLowerCase(),
   body("clientProof").isString().trim().notEmpty(),
   validateRequest,
   authController.login2
