@@ -60,7 +60,7 @@ type Props = {
 };
 
 const addMemberFormSchema = yup.object({
-  email: yup.string().email().required().label("Email").trim()
+  email: yup.string().email().required().label("Email").trim().lowercase()
 });
 
 type TAddMemberForm = yup.InferType<typeof addMemberFormSchema>;

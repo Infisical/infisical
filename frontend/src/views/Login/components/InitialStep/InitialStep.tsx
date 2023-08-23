@@ -51,7 +51,7 @@ export const InitialStep = ({
 
                 // attemptCliLogin
                 const isCliLoginSuccessful = await attemptCliLogin({
-                    email,
+                    email: email.toLowerCase(),
                     password,
                 })
 
@@ -78,7 +78,7 @@ export const InitialStep = ({
                 }
             } else {
                 const isLoginSuccessful = await attemptLogin({
-                    email,
+                    email: email.toLowerCase(),
                     password,
                 });
                 if (isLoginSuccessful && isLoginSuccessful.success) {

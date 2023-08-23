@@ -9,7 +9,7 @@ const router = express.Router();
 router.post(
     "/login1",
     authLimiter,
-    body("email").isString().trim(),
+    body("email").isString().trim().toLowerCase(),
     body("providerAuthToken").isString().trim().optional({nullable: true}),
     body("clientPublicKey").isString().trim().notEmpty(),
     validateRequest,
@@ -19,7 +19,7 @@ router.post(
 router.post(
     "/login2",
     authLimiter,
-    body("email").isString().trim(),
+    body("email").isString().trim().toLowerCase(),
     body("providerAuthToken").isString().trim().optional({nullable: true}),
     body("clientProof").isString().trim().notEmpty(),
     validateRequest,
