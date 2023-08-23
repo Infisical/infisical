@@ -568,15 +568,17 @@ export const getSecretsHelper = async ({
   );
 
   const postHogClient = await TelemetryService.getPostHogClient();
+  
+  const numberOfSignupSecrets = (secrets.filter((secret) => secret?.metadata?.source === "signup")).length;
 
-  if (postHogClient) {
+  if (postHogClient && (secrets.length - numberOfSignupSecrets > 0)) {
     postHogClient.capture({
       event: "secrets pulled",
       distinctId: await TelemetryService.getDistinctId({
         authData
       }),
       properties: {
-        numberOfSecrets: secrets.length,
+        numberOfSecrets: secrets.length - numberOfSignupSecrets,
         environment,
         workspaceId,
         folderId,

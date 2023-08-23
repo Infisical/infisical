@@ -234,6 +234,9 @@ export const batchSecrets = async (req: Request, res: Response) => {
           $inc: {
             version: 1
           },
+          $unset: {
+            'metadata.source': true as true
+          },
           ...u,
           _id: new Types.ObjectId(u._id)
         }
@@ -739,7 +742,6 @@ export const createSecrets = async (req: Request, res: Response) => {
  * @returns
  */
 export const getSecrets = async (req: Request, res: Response) => {
-  console.log("getSecrets");
   /* 
     #swagger.summary = 'Read secrets'
     #swagger.description = 'Read secrets from a project and environment'
@@ -968,12 +970,8 @@ export const getSecrets = async (req: Request, res: Response) => {
 
   const postHogClient = await TelemetryService.getPostHogClient();
   
-  console.log("the fetched secrets: ", secrets);
-  console.log("postHogClient: ", postHogClient);
-  
   if (postHogClient) {
-    console.log("should capture!");
-    const test = postHogClient.capture({
+    postHogClient.capture({
       event: "secrets pulled",
       distinctId: await TelemetryService.getDistinctId({
         authData: req.authData
@@ -987,8 +985,6 @@ export const getSecrets = async (req: Request, res: Response) => {
         userAgent: req.headers?.["user-agent"]
       }
     });
-    
-    console.log("test: ", test);
   }
 
   return res.status(200).send({
