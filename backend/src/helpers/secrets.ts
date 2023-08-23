@@ -393,9 +393,10 @@ export const createSecretHelper = async ({
     secretCommentTag,
     folder: folderId,
     algorithm: ALGORITHM_AES_256_GCM,
-    keyEncoding: ENCODING_SCHEME_UTF8
+    keyEncoding: ENCODING_SCHEME_UTF8,
+    metadata
   }).save();
-
+  
   const secretVersion = new SecretVersion({
     secret: secret._id,
     version: secret.version,
@@ -413,9 +414,10 @@ export const createSecretHelper = async ({
     secretValueIV,
     secretValueTag,
     algorithm: ALGORITHM_AES_256_GCM,
-    keyEncoding: ENCODING_SCHEME_UTF8
+    keyEncoding: ENCODING_SCHEME_UTF8,
+    metadata
   });
-
+  
   // (EE) add version for new secret
   await EESecretService.addSecretVersions({
     secretVersions: [secretVersion]

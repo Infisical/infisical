@@ -739,6 +739,7 @@ export const createSecrets = async (req: Request, res: Response) => {
  * @returns
  */
 export const getSecrets = async (req: Request, res: Response) => {
+  console.log("getSecrets");
   /* 
     #swagger.summary = 'Read secrets'
     #swagger.description = 'Read secrets from a project and environment'
@@ -966,8 +967,13 @@ export const getSecrets = async (req: Request, res: Response) => {
   );
 
   const postHogClient = await TelemetryService.getPostHogClient();
+  
+  console.log("the fetched secrets: ", secrets);
+  console.log("postHogClient: ", postHogClient);
+  
   if (postHogClient) {
-    postHogClient.capture({
+    console.log("should capture!");
+    const test = postHogClient.capture({
       event: "secrets pulled",
       distinctId: await TelemetryService.getDistinctId({
         authData: req.authData
@@ -981,6 +987,8 @@ export const getSecrets = async (req: Request, res: Response) => {
         userAgent: req.headers?.["user-agent"]
       }
     });
+    
+    console.log("test: ", test);
   }
 
   return res.status(200).send({

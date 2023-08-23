@@ -28,6 +28,9 @@ export interface ISecretVersion {
   createdAt: string;
   folder?: string;
   tags?: string[];
+  metadata?: {
+    [key: string]: string;
+  }
 }
 
 const secretVersionSchema = new Schema<ISecretVersion>(
@@ -118,6 +121,9 @@ const secretVersionSchema = new Schema<ISecretVersion>(
       type: [Schema.Types.ObjectId],
       default: [],
     },
+    metadata: {
+      type: Schema.Types.Mixed
+    }
   },
   {
     timestamps: true,
