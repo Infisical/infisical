@@ -297,7 +297,6 @@ export const DashboardPage = () => {
     resolver: yupResolver(schema)
   });
 
-  console.log("300 => secrets", secrets)
 
   const {
     register,
