@@ -52,7 +52,7 @@ export const SecretOverviewTableRow = ({
               <div className="text-blue-300/70">
                 <FontAwesomeIcon icon={isFormExpanded ? faAngleDown : faKey} />
               </div>
-              <div>{secretKey}</div>
+              <div title={secretKey}>{secretKey}</div>
             </div>
           </div>
         </Td>
@@ -73,7 +73,9 @@ export const SecretOverviewTableRow = ({
             >
               <div className="h-full w-full border-r border-mineshaft-600 py-[0.85rem] px-5">
                 <div className="flex justify-center">
-                  {!isSecretEmpty && <FontAwesomeIcon icon={isSecretPresent ? faCheck : faXmark} />}
+                  {!isSecretEmpty &&  <Tooltip content={isSecretPresent ? "Present secret" : "Missing secret"}>
+                    <FontAwesomeIcon icon={isSecretPresent ? faCheck : faXmark} />
+                  </Tooltip>}
                   {isSecretEmpty && (
                     <Tooltip content="Empty value">
                       <FontAwesomeIcon icon={faCircle} />

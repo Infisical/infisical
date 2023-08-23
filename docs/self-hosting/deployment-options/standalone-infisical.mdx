@@ -46,6 +46,10 @@ Add the required environment variables listed below to your docker run command. 
   Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
 </ParamField>
 
+<ParamField query="REDIS_URL" type="string" default="none" required>
+  Redis connection string
+</ParamField>
+
 <ParamField query="MONGO_URL" type="string" default="none" required>
   *TLS based connection string is not yet supported
 </ParamField>
@@ -61,6 +65,7 @@ docker run -p 80:80  \
 -e JWT_AUTH_SECRET=5239fea3a4720c0e524f814a540e14a2 \
 -e JWT_SERVICE_SECRET=8509fb8b90c9b53e9e61d1e35826dcb5  \
 -e MONGO_URL="<>" \
+-e REDIS_URL="<>" \
 infisical/infisical:latest
 ```
 

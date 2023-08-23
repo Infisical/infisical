@@ -57,14 +57,14 @@ func CallLogin1V2(httpClient *resty.Client, request GetLoginOneV2Request) (GetLo
 		SetResult(&loginOneV2Response).
 		SetHeader("User-Agent", USER_AGENT).
 		SetBody(request).
-		Post(fmt.Sprintf("%v/v2/auth/login1", config.INFISICAL_URL))
+		Post(fmt.Sprintf("%v/v3/auth/login1", config.INFISICAL_URL))
 
 	if err != nil {
-		return GetLoginOneV2Response{}, fmt.Errorf("CallLogin1V2: Unable to complete api request [err=%s]", err)
+		return GetLoginOneV2Response{}, fmt.Errorf("CallLogin1V3: Unable to complete api request [err=%s]", err)
 	}
 
 	if response.IsError() {
-		return GetLoginOneV2Response{}, fmt.Errorf("CallLogin1V2: Unsuccessful response: [response=%s]", response)
+		return GetLoginOneV2Response{}, fmt.Errorf("CallLogin1V3: Unsuccessful response: [response=%s]", response)
 	}
 
 	return loginOneV2Response, nil
@@ -115,7 +115,7 @@ func CallLogin2V2(httpClient *resty.Client, request GetLoginTwoV2Request) (GetLo
 		SetResult(&loginTwoV2Response).
 		SetHeader("User-Agent", USER_AGENT).
 		SetBody(request).
-		Post(fmt.Sprintf("%v/v2/auth/login2", config.INFISICAL_URL))
+		Post(fmt.Sprintf("%v/v3/auth/login2", config.INFISICAL_URL))
 
 	cookies := response.Cookies()
 	// Find a cookie by name
@@ -134,11 +134,11 @@ func CallLogin2V2(httpClient *resty.Client, request GetLoginTwoV2Request) (GetLo
 	}
 
 	if err != nil {
-		return GetLoginTwoV2Response{}, fmt.Errorf("CallLogin2V2: Unable to complete api request [err=%s]", err)
+		return GetLoginTwoV2Response{}, fmt.Errorf("CallLogin2V3: Unable to complete api request [err=%s]", err)
 	}
 
 	if response.IsError() {
-		return GetLoginTwoV2Response{}, fmt.Errorf("CallLogin2V2: Unsuccessful response: [response=%s]", response)
+		return GetLoginTwoV2Response{}, fmt.Errorf("CallLogin2V3: Unsuccessful response: [response=%s]", response)
 	}
 
 	return loginTwoV2Response, nil

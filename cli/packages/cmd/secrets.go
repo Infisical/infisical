@@ -64,9 +64,20 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		secretOverriding, err := cmd.Flags().GetBool("secret-overriding")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports})
 		if err != nil {
 			util.HandleError(err)
+		}
+
+		if secretOverriding {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
+		} else {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
 		}
 
 		if shouldExpandSecrets {
@@ -641,6 +652,7 @@ func init() {
 	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	secretsCmd.AddCommand(secretsGetCmd)
 
+	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
 	secretsSetCmd.Flags().String("path", "/", "get secrets within a folder path")
 

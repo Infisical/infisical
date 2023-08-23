@@ -74,8 +74,7 @@ export const LogsFilter = ({
                             className="w-40 mr-4"
                         >
                             <Select
-                                placeholder="Select"
-                                // {...(field.value ? { value: field.value } : { placeholder: "Select" })}
+                                {...(field.value ? { value: field.value } : { placeholder: "Select" })}
                                 {...field}
                                 onValueChange={(e) => onChange(e)}
                                 className="w-full bg-mineshaft-700 border border-mineshaft-500 text-mineshaft-100"

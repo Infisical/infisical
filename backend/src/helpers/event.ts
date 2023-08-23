@@ -32,7 +32,7 @@ export const handleEventHelper = async ({ event }: { event: Event }) => {
   switch (event.name) {
     case EVENT_PUSH_SECRETS:
       if (bot) {
-        await IntegrationService.syncIntegrations({
+        IntegrationService.syncIntegrations({
           workspaceId,
           environment
         });

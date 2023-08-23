@@ -392,11 +392,9 @@ export const createToken = ({
 
 export const validateProviderAuthToken = async ({
 	email,
-	user,
 	providerAuthToken,
 }: {
 	email: string;
-	user: IUser,
 	providerAuthToken?: string;
 }) => {
 	if (!providerAuthToken) {
@@ -407,10 +405,7 @@ export const validateProviderAuthToken = async ({
 		jwt.verify(providerAuthToken, await getJwtProviderAuthSecret())
 	);
 
-	if (
-		!user.authMethods.includes(decodedToken.authMethod) ||
-		decodedToken.email !== email
-	) {
+	if (decodedToken.email !== email) {
 		throw new Error("Invalid authentication credentials.")
 	}
 }

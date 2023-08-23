@@ -47,17 +47,16 @@ export const login1 = async (req: Request, res: Response) => {
         clientPublicKey: string,
         providerAuthToken?: string;
     } = req.body;
-
+    
     const user = await User.findOne({
         email,
     }).select("+salt +verifier");
 
     if (!user) throw new Error("Failed to find user");
-
+    
     if (!user.authMethods.includes(AuthMethod.EMAIL)) {
         await validateProviderAuthToken({
             email,
-            user,
             providerAuthToken,
         });
     }
@@ -109,7 +108,6 @@ export const login2 = async (req: Request, res: Response) => {
     if (!user.authMethods.includes(AuthMethod.EMAIL)) {
         await validateProviderAuthToken({
             email,
-            user,
             providerAuthToken,
         })
     }

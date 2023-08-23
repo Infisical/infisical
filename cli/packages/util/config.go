@@ -53,6 +53,7 @@ func WriteInitalConfig(userCredentials *models.UserCredentials) error {
 		LoggedInUserEmail:  userCredentials.Email,
 		LoggedInUserDomain: config.INFISICAL_URL,
 		LoggedInUsers:      existingConfigFile.LoggedInUsers,
+		VaultBackendType:   existingConfigFile.VaultBackendType,
 	}
 
 	configFileMarshalled, err := json.Marshal(configFile)

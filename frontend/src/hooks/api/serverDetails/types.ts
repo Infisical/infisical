@@ -4,4 +4,5 @@ export type ServerStatus = {
   emailConfigured: boolean;
   inviteOnlySignup: boolean;
   secretScanningConfigured: boolean
+  redisConfigured: boolean
 };

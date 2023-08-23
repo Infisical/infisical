@@ -6,7 +6,7 @@ require("express-async-errors");
 import helmet from "helmet";
 import cors from "cors";
 import { DatabaseService } from "./services";
-import { EELicenseService, GithubSecretScanningService} from "./ee/services";
+import { EELicenseService, GithubSecretScanningService } from "./ee/services";
 import { setUpHealthEndpoint } from "./services/health";
 import cookieParser from "cookie-parser";
 import swaggerUi = require("swagger-ui-express");
@@ -72,6 +72,8 @@ import { RouteNotFoundError } from "./utils/errors";
 import { requestErrorHandler } from "./middleware/requestErrorHandler";
 import { getNodeEnv, getPort, getSecretScanningGitAppId, getSecretScanningPrivateKey, getSecretScanningWebhookProxy, getSecretScanningWebhookSecret, getSiteURL } from "./config";
 import { setup } from "./utils/setup";
+import { syncSecretsToThirdPartyServices } from "./queues/integrations/syncSecretsToThirdPartyServices";
+import { githubPushEventSecretScan } from "./queues/secret-scanning/githubScanPushEvent";
 const SmeeClient = require('smee-client') // eslint-disable-line
 
 const main = async () => {
@@ -205,6 +207,8 @@ const main = async () => {
 
   server.on("close", async () => {
     await DatabaseService.closeDatabase();
+    syncSecretsToThirdPartyServices.close()
+    githubPushEventSecretScan.close()
   });
 
   return server;

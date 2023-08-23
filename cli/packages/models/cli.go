@@ -12,6 +12,7 @@ type ConfigFile struct {
 	LoggedInUserEmail  string         `json:"loggedInUserEmail"`
 	LoggedInUserDomain string         `json:"LoggedInUserDomain,omitempty"`
 	LoggedInUsers      []LoggedInUser `json:"loggedInUsers,omitempty"`
+	VaultBackendType   string         `json:"vaultBackendType,omitempty"`
 }
 
 type LoggedInUser struct {

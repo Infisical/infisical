@@ -1,18 +1,18 @@
 import { Types } from "mongoose";
-import { 
+import {
     getIntegrationAuthAccessHelper,
     getIntegrationAuthRefreshHelper,
     handleOAuthExchangeHelper,
     setIntegrationAuthAccessHelper,
     setIntegrationAuthRefreshHelper,
-    syncIntegrationsHelper,
 } from "../helpers/integration";
+import { syncSecretsToActiveIntegrationsQueue } from "../queues/integrations/syncSecretsToThirdPartyServices";
 
 /**
  * Class to handle integrations
  */
 class IntegrationService {
-    
+
     /**
      * Perform OAuth2 code-token exchange for workspace with id [workspaceId] and integration
      * named [integration]
@@ -26,12 +26,12 @@ class IntegrationService {
      * @param {String} obj1.code - code
      * @returns {IntegrationAuth} integrationAuth - integration authorization after OAuth2 code-token exchange
      */
-    static async handleOAuthExchange({ 
+    static async handleOAuthExchange({
         workspaceId,
         integration,
         code,
         environment,
-    }: { 
+    }: {
         workspaceId: string;
         integration: string;
         code: string;
@@ -44,25 +44,23 @@ class IntegrationService {
             environment,
         });
     }
-    
+
     /**
      * Sync/push environment variables in workspace with id [workspaceId] to
      * all associated integrations
      * @param {Object} obj
      * @param {Object} obj.workspaceId - id of workspace
      */
-    static async syncIntegrations({
+    static syncIntegrations({
         workspaceId,
         environment,
     }: {
         workspaceId: Types.ObjectId;
         environment?: string;
     }) {
-        return await syncIntegrationsHelper({
-            workspaceId,
-        });
+        syncSecretsToActiveIntegrationsQueue({ workspaceId: workspaceId.toString(), environment: environment })
     }
-    
+
     /**
      * Return decrypted refresh token for integration auth
      * with id [integrationAuthId]
@@ -70,12 +68,12 @@ class IntegrationService {
      * @param {String} obj.integrationAuthId - id of integration auth
      * @param {String} refreshToken - decrypted refresh token
      */
-    static async getIntegrationAuthRefresh({ integrationAuthId }: { integrationAuthId: Types.ObjectId}) {
+    static async getIntegrationAuthRefresh({ integrationAuthId }: { integrationAuthId: Types.ObjectId }) {
         return await getIntegrationAuthRefreshHelper({
             integrationAuthId,
         });
     }
-    
+
     /**
      * Return decrypted access token for integration auth
      * with id [integrationAuthId]
@@ -98,11 +96,11 @@ class IntegrationService {
      * @param {String} obj.refreshToken - refresh token
      * @returns {IntegrationAuth} integrationAuth - updated integration auth
      */
-    static async setIntegrationAuthRefresh({ 
+    static async setIntegrationAuthRefresh({
         integrationAuthId,
-        refreshToken, 
-    }: { 
-        integrationAuthId: string; 
+        refreshToken,
+    }: {
+        integrationAuthId: string;
         refreshToken: string;
     }) {
         return await setIntegrationAuthRefreshHelper({
@@ -122,12 +120,12 @@ class IntegrationService {
      * @param {Date} obj.accessExpiresAt - expiration date of access token
      * @returns {IntegrationAuth} - updated integration auth
      */
-    static async setIntegrationAuthAccess({ 
+    static async setIntegrationAuthAccess({
         integrationAuthId,
         accessId,
         accessToken,
         accessExpiresAt,
-    }: { 
+    }: {
         integrationAuthId: string;
         accessId: string | null;
         accessToken: string;

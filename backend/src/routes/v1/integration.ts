@@ -4,6 +4,7 @@ import {
   requireAuth,
   requireIntegrationAuth,
   requireIntegrationAuthorizationAuth,
+  requireWorkspaceAuth,
   validateRequest,
 } from "../../middleware";
 import {
@@ -71,6 +72,21 @@ router.delete(
   param("integrationId").exists().trim(),
   validateRequest,
   integrationController.deleteIntegration
+);
+
+router.post(
+  "/manual-sync",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  requireWorkspaceAuth({
+    acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: "body",
+  }),
+  body("environment").isString().exists().trim(),
+  body("workspaceId").exists().trim(),
+  validateRequest,
+  integrationController.manualSync
 );
 
 export default router;

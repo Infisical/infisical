@@ -1,0 +1,83 @@
+---
+title: "Configure Redis"
+description: "Learn to configure Redis with your self hosted Infisical"
+---
+
+## Why Redis?
+As the features and use case of Infisical have grown, the need for a fast and reliable in-memory data storage has become clear. 
+By adding Redis to Infisical, we can now support more complex workflows such as queuing system to run long running asynchronous tasks, cron jobs, and access reliable cache to speed up frequently used resources. 
+
+<Info>
+  Starting with Infisical version v0.31.0, Redis will be required to fully use Infisical
+</Info>
+
+### Adding Redis to your self hosted instance of Infisical
+To add Redis to your self hosted instance, follow the instructions for the deployment method you used.
+
+<Tabs>
+  <Tab title="Kubernetes Helm chart">
+    ### In cluster Redis
+    By default, new versions of the Infisical Helm chart already comes with an in-cluster Redis instance. To deploy a in-cluster Redis instance along with your Infisical instance, update your Infisical chart then redeploy/upgrade your release. 
+    This will spin up a Redis instance and automatically configure it with your Infisical backend. 
+
+    1. Update Infisical Helm chart 
+    ```bash
+    helm repo update
+    ```
+
+    2. Upgrade Infisical release
+    ```bash
+    helm upgrade <infisical release name> infisical-helm-charts/infisical  --values <path to your values file>
+    ```
+    ### External Redis 
+    If you want to use an external Redis instance, please add a Redis connection URL under the backend environments variables and then upgrade/redeploy your Infisical instance.
+
+    1. Update your helm values file 
+    ```yaml your-values.yaml
+    backendEnvironmentVariables:
+      REDIS_URL=<your redis connection string>
+    ```
+
+    2. Upgrade Infisical release
+    ```bash
+    helm upgrade <infisical release name> infisical-helm-charts/infisical  --values <path to your values file>
+    ``` 
+  </Tab>
+  <Tab title="Docker compose">
+    ### Internal Redis service
+    By default, new versions of the docker compose file already comes with a Redis service. To use the pre-configured Redis service, please update your docker compose file to the latest version.
+
+    1. Download the new docker compose file
+    ```
+    wget -O docker-compose.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.yml
+    ```
+    2. Add Redis environment variable to your .env file
+    ```.env .env
+      REDIS_URL=redis://redis:6379
+    ```
+
+    3. Restart your docker compose services 
+  </Tab>
+  <Tab title="Standalone Docker image">
+    This standalone version of Infisical does not have an internal Redis service. To configure Redis with your Infisical instance, you must connect to a external Redis service by setting the connection string as an environment variable.
+
+    Example: 
+
+    ```bash 
+    docker run -p 80:80  \
+    -e ENCRYPTION_KEY=f40c9178624764ad85a6830b37ce239a \
+    -e JWT_SIGNUP_SECRET=38ea90fb7998b92176080f457d890392 \
+    -e JWT_REFRESH_SECRET=7764c7bbf3928ad501591a3e005eb364 \
+    -e JWT_AUTH_SECRET=5239fea3a4720c0e524f814a540e14a2 \
+    -e JWT_SERVICE_SECRET=8509fb8b90c9b53e9e61d1e35826dcb5  \
+    -e REDIS_URL=<> \
+    -e MONGO_URL="<>" \
+    infisical/infisical:latest
+    ```
+
+    Redis environment variable name: `REDIS_URL`
+  </Tab>
+</Tabs>
+
+## Support 
+If you have questions or need support, please join our [slack channel](https://infisical-users.slack.com) and one of our teammates will be happy to guide you.

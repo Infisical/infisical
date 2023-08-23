@@ -11,7 +11,7 @@ import {
   IServiceTokenData,
   Secret,
   SecretBlindIndexData,
-  ServiceTokenData,
+  ServiceTokenData
 } from "../models";
 import { EventType, SecretVersion } from "../ee/models";
 import {
@@ -463,8 +463,8 @@ export const createSecretHelper = async ({
   });
 
   const postHogClient = await TelemetryService.getPostHogClient();
-  
-  if (postHogClient && (metadata?.source !== "signup")) {
+
+  if (postHogClient && metadata?.source !== "signup") {
     postHogClient.capture({
       event: "secrets added",
       distinctId: await TelemetryService.getDistinctId({
@@ -549,7 +549,7 @@ export const getSecretsHelper = async ({
       channel: authData.userAgentType,
       ipAddress: authData.ipAddress
     }));
-  
+
   await EEAuditLogService.createAuditLog(
     authData,
     {
@@ -659,7 +659,7 @@ export const getSecretHelper = async ({
       ipAddress: authData.ipAddress
     }));
 
-    await EEAuditLogService.createAuditLog(
+  await EEAuditLogService.createAuditLog(
     authData,
     {
       type: EventType.GET_SECRET,
@@ -824,8 +824,8 @@ export const updateSecretHelper = async ({
       channel: authData.userAgentType,
       ipAddress: authData.ipAddress
     }));
-  
-    await EEAuditLogService.createAuditLog(
+
+  await EEAuditLogService.createAuditLog(
     authData,
     {
       type: EventType.UPDATE_SECRET,
@@ -908,14 +908,14 @@ export const deleteSecretHelper = async ({
   if (type === SECRET_SHARED) {
     secrets = await Secret.find({
       secretBlindIndex,
-      workspaceId: new Types.ObjectId(workspaceId),
+      workspace: new Types.ObjectId(workspaceId),
       environment,
       folder: folderId
     }).lean();
 
     secret = await Secret.findOneAndDelete({
       secretBlindIndex,
-      workspaceId: new Types.ObjectId(workspaceId),
+      workspace: new Types.ObjectId(workspaceId),
       environment,
       type,
       folder: folderId
@@ -931,7 +931,7 @@ export const deleteSecretHelper = async ({
     secret = await Secret.findOneAndDelete({
       secretBlindIndex,
       folder: folderId,
-      workspaceId: new Types.ObjectId(workspaceId),
+      workspace: new Types.ObjectId(workspaceId),
       environment,
       type,
       ...getAuthDataPayloadUserObj(authData)
@@ -1088,7 +1088,8 @@ const recursivelyExpandSecret = async (
 
   let interpolatedValue = interpolatedSec[key];
   if (!interpolatedValue) {
-    throw new Error(`Couldn't find referenced value - ${key}`);
+    console.error(`Couldn't find referenced value - ${key}`);
+    return "";
   }
 
   const refs = interpolatedValue.match(INTERPOLATION_SYNTAX_REG);

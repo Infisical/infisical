@@ -40,7 +40,8 @@ export const PasswordStep = ({
         authMethod
     } = jwt_decode(providerAuthToken) as any;
     
-    const handleLogin = async () => {
+    const handleLogin = async (e:React.FormEvent) => {
+        e.preventDefault()
         try {
             setIsLoading(true);
             
@@ -119,10 +120,12 @@ export const PasswordStep = ({
             console.error(err);
         }
     };
+
+
     
     return (
         <form 
-            onSubmit={(e) => e.preventDefault()}
+            onSubmit={handleLogin}
             className="h-full mx-auto w-full max-w-md px-6 pt-8"
         >
             <div className="mb-8">
@@ -153,9 +156,9 @@ export const PasswordStep = ({
             </div>
             <div className='lg:w-1/6 w-1/4 w-full mx-auto flex items-center justify-center min-w-[22rem] text-center rounded-md mt-4'>
                 <Button
+                    type="submit"
                     colorSchema="primary" 
                     variant="outline_bg"
-                    onClick={async () => handleLogin()} 
                     isFullWidth
                     isLoading={isLoading}
                     className="h-14"

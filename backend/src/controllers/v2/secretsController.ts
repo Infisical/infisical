@@ -956,7 +956,7 @@ export const getSecrets = async (req: Request, res: Response) => {
       type: EventType.GET_SECRETS,
       metadata: {
         environment,
-        secretPath: secretPath as string,
+        secretPath: (secretPath as string) ?? "/",
         numberOfSecrets: secrets.length
       }
     },
