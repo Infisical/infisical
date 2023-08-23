@@ -414,8 +414,7 @@ export const createSecretHelper = async ({
     secretValueIV,
     secretValueTag,
     algorithm: ALGORITHM_AES_256_GCM,
-    keyEncoding: ENCODING_SCHEME_UTF8,
-    metadata
+    keyEncoding: ENCODING_SCHEME_UTF8
   });
   
   // (EE) add version for new secret
