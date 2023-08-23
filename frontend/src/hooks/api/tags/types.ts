@@ -4,6 +4,7 @@ export type WsTag = {
   _id: string;
   name: string;
   slug: string;
+  tagColor?: string;
   workspace: string;
   createdAt: string;
   updatedAt: string;
@@ -16,6 +17,7 @@ export type CreateTagDTO = {
   workspaceID: string;
   tagSlug: string;
   tagName: string;
+  tagColor: string;
 };
 
 export type CreateTagRes = {
@@ -23,6 +25,7 @@ export type CreateTagRes = {
   slug: string;
   workspace: string;
   createdAt: string;
+  tagColor?: string;
   user: string;
   _id: string;
 };
@@ -51,11 +54,4 @@ export type TagColor  =  {
   rgba: string
   name: string
   selected: boolean
-}
-
-export type QueryTag =  {
-  workspaceID: string; 
-  tagName: string; 
-  tagColor: string;
-  tagSlug: string
 }

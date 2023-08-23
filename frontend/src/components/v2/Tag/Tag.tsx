@@ -1,17 +1,10 @@
 import { ReactNode } from "react";
-import { faClose } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { cva, VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
 type Props = {
   children: ReactNode;
   className?: string;
-  onClose?: () => void;
-  color?: string;
-  styles?: Record<string, string>
-  isDisabled?: boolean;
-  tagColor: string;
 } & VariantProps<typeof tagVariants>;
 
 const tagVariants = cva(
@@ -34,12 +27,7 @@ export const Tag = ({
   children,
   className,
   colorSchema = "gray",
-  color,
-  isDisabled,
-  size = "sm",
-  onClose,
-  styles = {}
-}: Props) => (
+  size = "sm" }: Props) => (
   <div
     className={twMerge(tagVariants({ colorSchema, className, size }))}
   >

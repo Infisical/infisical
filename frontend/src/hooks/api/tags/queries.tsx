@@ -7,9 +7,7 @@ import {
   CreateTagRes,
   DeleteTagDTO,
   DeleteWsTagRes,
-  QueryTag,
   UserWsTags,
-  WsTag
 } from "./types";
 
 const workspaceTags = {
@@ -32,33 +30,35 @@ export const useGetWsTags = (workspaceID: string) => {
   });
 }
 
+
 export const useCreateWsTag = () => {
   const queryClient = useQueryClient();
 
   return useMutation<CreateTagRes, {}, CreateTagDTO>({
-    mutationFn: async ({ workspaceID, tagName, tagColor, tagSlug }: QueryTag) => {
+    mutationFn: async ({ workspaceID, tagName, tagColor, tagSlug }) => {
       const { data } = await apiRequest.post(`/api/v2/workspace/${workspaceID}/tags`, {
         name: tagName,
-        tagColor: tagColor,
+        tagColor,
         slug: tagSlug
       })
       return data;
     },
-    onSuccess: (tagData: WsTag) => {
+    onSuccess: (tagData) => {
       queryClient.invalidateQueries(workspaceTags.getWsTags(tagData?.workspace));
     }
   });
 };
 
+
 export const useDeleteWsTag = () => {
   const queryClient = useQueryClient();
 
   return useMutation<DeleteWsTagRes, {}, DeleteTagDTO>({
-    mutationFn: async ({ tagID }: {tagID: string}) => {
+    mutationFn: async ({ tagID }) => {
       const { data } = await apiRequest.delete(`/api/v2/workspace/tags/${tagID}`);
       return data
     },
-    onSuccess: (tagData: WsTag) => {
+    onSuccess: (tagData) => {
       queryClient.invalidateQueries(workspaceTags.getWsTags(tagData?.workspace));
     }
   });
