@@ -103,7 +103,7 @@ export const CreateTagModal = ({ onCreateTag }: Props): JSX.Element => {
       />
 
       <div className="mt-2">
-        <h6 className="text-mineshaft-400">Tag color</h6>
+        <div className="mb-0.5 ml-1 block text-sm font-normal text-mineshaft-400">Tag Color</div>
         <div className="flex gap-2 h-[50px]">
           <div className="w-[12%]   h-[2.813rem]	 inline-flex font-inter items-center justify-center border relative rounded-md border-mineshaft-500  bg-mineshaft-900 hover:bg-mineshaft-800">
             <div className="w-[26px]  h-[26px] rounded-full" style={{ background: `${tagColor}` }} />
