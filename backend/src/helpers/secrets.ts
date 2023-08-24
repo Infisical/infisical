@@ -694,7 +694,7 @@ export const getSecretHelper = async ({
 
   if (postHogClient) {
     postHogClient.capture({
-      event: "secrets pull",
+      event: "secrets pulled",
       distinctId: await TelemetryService.getDistinctId({
         authData
       }),
