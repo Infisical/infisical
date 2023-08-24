@@ -55,6 +55,14 @@ export const getAllImportedSecrets = async (
       }
     },
     {
+      $lookup: {
+        from: "tags", // note this is the name of the collection in the database, not the Mongoose model name
+        localField: "tags",
+        foreignField: "_id",
+        as: "tags"
+      }
+    },
+    {
       $group: {
         _id: {
           environment: "$environment",
