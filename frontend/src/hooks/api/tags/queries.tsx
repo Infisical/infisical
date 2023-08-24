@@ -38,7 +38,7 @@ export const useCreateWsTag = () => {
     mutationFn: async ({ workspaceID, tagName, tagColor, tagSlug }) => {
       const { data } = await apiRequest.post(`/api/v2/workspace/${workspaceID}/tags`, {
         name: tagName,
-        tagColor,
+        tagColor: tagColor || null,
         slug: tagSlug
       })
       return data;
