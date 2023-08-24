@@ -2,16 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faFolderBlank, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { faArrowDown, faArrowUp, faFolderBlank, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
 
-import { IconButton } from "@app/components/v2";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import NavHeader from "@app/components/navigation/NavHeader";
 import {
   Button,
   EmptyState,
+  IconButton,
   Input,
   Table,
   TableContainer,
