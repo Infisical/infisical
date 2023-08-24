@@ -973,7 +973,7 @@ export const getSecrets = async (req: Request, res: Response) => {
 
   // reduce the number of events captured
   let shouldRecordK8Event = false
-  if (req.authData instanceof ServiceTokenData && req.authData.userAgent == K8_USER_AGENT_NAME) {
+  if (req.authData.userAgent == K8_USER_AGENT_NAME) {
     const randomNumber = Math.random();
     if (randomNumber > 0.9) {
       shouldRecordK8Event = true

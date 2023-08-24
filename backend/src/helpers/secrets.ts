@@ -571,7 +571,7 @@ export const getSecretsHelper = async ({
 
   // reduce the number of events captured
   let shouldRecordK8Event = false
-  if (authData instanceof ServiceTokenData && authData.userAgent == K8_USER_AGENT_NAME) {
+  if (authData.userAgent == K8_USER_AGENT_NAME) {
     const randomNumber = Math.random();
     if (randomNumber > 0.9) {
       shouldRecordK8Event = true
