@@ -1,4 +1,6 @@
 import {
+  INTEGRATION_GCP_SECRET_MANAGER,
+  INTEGRATION_GCP_API_URL,
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_AZURE_KEY_VAULT,
@@ -79,6 +81,11 @@ const getApps = async ({
 }) => {
   let apps: App[] = [];
   switch (integrationAuth.integration) {
+    case INTEGRATION_GCP_SECRET_MANAGER:
+      apps = await getAppsGCPSecretManager({
+        accessToken,
+      });
+      break;
     case INTEGRATION_AZURE_KEY_VAULT:
       apps = [];
       break;
@@ -208,6 +215,91 @@ const getApps = async ({
   }
 
   return apps;
+};
+
+/**
+ * Return list of apps for Heroku integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Heroku API
+ * @returns {Object[]} apps - names of Heroku apps
+ * @returns {String} apps.name - name of Heroku app
+ */
+const getAppsGCPSecretManager = async ({ accessToken }: { accessToken: string }) => {
+  console.log("getAppsGCPSecretManager");
+  console.log("getAppsGCPSecretManager accessToken: ", accessToken);
+  
+  let apps: any = [];
+  
+  interface GCPApp {
+    projectNumber: string;
+    projectId: string;
+    lifecycleState: "ACTIVE" | "LIFECYCLE_STATE_UNSPECIFIED" | "DELETE_REQUESTED" | "DELETE_IN_PROGRESS";
+    name: string;
+    createTime: string;
+    parent: {
+      type: "organization" | "folder" | "project";
+      id: string;
+    }
+  }
+  
+  interface GCPRes {
+    projects: GCPApp[];
+    nextPageToken?: string;
+  }
+  
+  const pageSize = 10;
+  let pageToken: string | undefined;
+  let hasMorePages = true;
+  
+  while (hasMorePages) {
+    console.log("iterrr");
+    const params = new URLSearchParams({
+      pageSize: String(pageSize),
+      ...(pageToken ? { pageToken } : {})
+    });
+    console.log("params: ", params);
+
+    const res: GCPRes = (await standardRequest.get(`${INTEGRATION_GCP_API_URL}/v1/projects`, {
+        params,
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      })
+    )
+    .data;
+    
+    res.projects.forEach((project) => {
+      apps.push({
+        name: project.name,
+        appId: project.projectId
+      });
+    });
+
+    if (!res.nextPageToken) {
+      hasMorePages = false;
+    }
+    
+    pageToken = res.nextPageToken;
+  }
+  
+  // const projects: GCPApp[] = (
+  // .projects
+  
+  // console.log("res: ", res);
+
+  // .filter((project: GCPApp) => project.lifecycleState === "ACTIVE");
+  
+  // console.log("projects: ", projects);
+
+  // const apps = projects.map((project) => ({
+  //   name: project.name,
+  //   appId: project.projectId
+  // }));
+  
+  console.log("apps: ", apps);
+
+  return [];
 };
 
 /**

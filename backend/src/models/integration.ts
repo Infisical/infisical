@@ -24,7 +24,8 @@ import {
   INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL,
-  INTEGRATION_WINDMILL
+  INTEGRATION_WINDMILL,
+  INTEGRATION_GCP_SECRET_MANAGER
 } from "../variables";
 import { Schema, Types, model } from "mongoose";
 
@@ -70,7 +71,8 @@ export interface IIntegration {
     | "digital-ocean-app-platform"
     | "cloud-66"
     | "northflank"
-    | "windmill";
+    | "windmill"
+    | "gcp-secret-manager";
   integrationAuth: Types.ObjectId;
 }
 
@@ -167,7 +169,8 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_BITBUCKET,
         INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
         INTEGRATION_CLOUD_66,
-        INTEGRATION_NORTHFLANK
+        INTEGRATION_NORTHFLANK,
+        INTEGRATION_GCP_SECRET_MANAGER
       ],
       required: true,
     },

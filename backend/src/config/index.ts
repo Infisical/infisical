@@ -37,6 +37,7 @@ export const getClientIdNetlify = async () => (await client.getSecret("CLIENT_ID
 export const getClientIdGitHub = async () => (await client.getSecret("CLIENT_ID_GITHUB")).secretValue;
 export const getClientIdGitLab = async () => (await client.getSecret("CLIENT_ID_GITLAB")).secretValue;
 export const getClientIdBitBucket = async () => (await client.getSecret("CLIENT_ID_BITBUCKET")).secretValue;
+export const getClientIdGCPSecretManager = async () => (await client.getSecret("CLIENT_ID_GCP_SECRET_MANAGER")).secretValue;
 export const getClientSecretAzure = async () => (await client.getSecret("CLIENT_SECRET_AZURE")).secretValue;
 export const getClientSecretHeroku = async () => (await client.getSecret("CLIENT_SECRET_HEROKU")).secretValue;
 export const getClientSecretVercel = async () => (await client.getSecret("CLIENT_SECRET_VERCEL")).secretValue;
@@ -44,6 +45,7 @@ export const getClientSecretNetlify = async () => (await client.getSecret("CLIEN
 export const getClientSecretGitHub = async () => (await client.getSecret("CLIENT_SECRET_GITHUB")).secretValue;
 export const getClientSecretGitLab = async () => (await client.getSecret("CLIENT_SECRET_GITLAB")).secretValue;
 export const getClientSecretBitBucket = async () => (await client.getSecret("CLIENT_SECRET_BITBUCKET")).secretValue;
+export const getClientSecretGCPSecretManager = async () => (await client.getSecret("CLIENT_SECRET_GCP_SECRET_MANAGER")).secretValue;
 export const getClientSlugVercel = async () => (await client.getSecret("CLIENT_SLUG_VERCEL")).secretValue;
 
 export const getClientIdGoogleLogin = async () => (await client.getSecret("CLIENT_ID_GOOGLE_LOGIN")).secretValue;

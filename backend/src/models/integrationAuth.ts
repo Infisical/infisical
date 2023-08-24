@@ -26,7 +26,8 @@ import {
   INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL,
-  INTEGRATION_WINDMILL
+  INTEGRATION_WINDMILL,
+  INTEGRATION_GCP_SECRET_MANAGER
 } from "../variables";
 import { Document, Schema, Types, model } from "mongoose";
 
@@ -58,7 +59,8 @@ export interface IIntegrationAuth extends Document {
     | "terraform-cloud"
     | "teamcity"
     | "northflank"
-    | "windmill";
+    | "windmill"
+    | "gcp-secret-manager";
   teamId: string;
   accountId: string;
   url: string;
@@ -111,7 +113,8 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_BITBUCKET,
         INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
         INTEGRATION_CLOUD_66,
-        INTEGRATION_NORTHFLANK
+        INTEGRATION_NORTHFLANK,
+        INTEGRATION_GCP_SECRET_MANAGER
       ],
       required: true,
     },
