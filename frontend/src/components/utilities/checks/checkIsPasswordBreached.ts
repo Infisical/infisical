@@ -1,11 +1,10 @@
 import axios from "axios";
-import { createHash } from "crypto"; // added types from @types/node
 
   // see API details here: https://haveibeenpwned.com/API/v3#SearchingPwnedPasswordsByRange
   // in short, the pending password is hashed (SHA-1), the first 5 chars are sliced and compared against a ranged hash table
   // this hash table is formed from the 5 char hash prefix (ie. 00000-FFFFF) so 16^5 results
   // returns a hash table of 800-1000 results
-  // padding has been added to prevent MiTM attacker determining which hash table was called by the response size
+  // padding has been added to prevent MitM attacker determining which hash table was called by the response size
   // the last 35 chars of the password hash are compared client-side against the table
   // if there is a match, that password has been involved in a password breach (ie. pwnd) and should NOT be accepted
   // the database consists of ~700 mln breached passwords and is continuously updated, including with law enforcement ingestion
@@ -21,18 +20,43 @@ import { createHash } from "crypto"; // added types from @types/node
   // • Context-specific words, such as the name of the service, the username, and derivatives
   //   thereof."
 
-export const checkIsPasswordBreached = async (password: string) => {
-  const dataBreachCheckAPIBaseURL = "https://api.pwnedpasswords.com/range/"; // added to CSP
+export const checkIsPasswordBreached = async (password: string): Promise<boolean> => {
+  const dataBreachCheckAPIBaseURL = "https://api.pwnedpasswords.com/range/";
   const maxRetryAttempts = 3;
 
+  let encodedPwd: Uint8Array | undefined;
+  let hashedPwdBuffer: ArrayBuffer | undefined;
+
   try {
+    // Convert the password to a Uint8Array (UTF-8 encoded bytes)
     const textEncoder = new TextEncoder();
-    const encodedPwd = textEncoder.encode(password);
-    const hash = createHash("sha1").update(encodedPwd).digest();
-    const hashedPwd = hash.toString("hex").toUpperCase();
-    const hashedPwdToSend = hashedPwd.slice(0, 5); // ONLY the first five hash chars are sent
-    const rangedHashTableUri = `${dataBreachCheckAPIBaseURL}${hashedPwdToSend}`;
-    
+    encodedPwd = textEncoder.encode(password);
+
+    // SHA-1 hash the password using the SubtleCrypto API
+    async function hashPassword(passwordBytes: ArrayBuffer): Promise<ArrayBuffer> {
+      const buffer = await crypto.subtle.digest("SHA-1", passwordBytes);
+      return buffer;
+    }
+
+    // Convert the hashed password buffer to a hexadecimal string
+    function bufferToHex(buffer: ArrayBuffer): string {
+      const byteArray = new Uint8Array(buffer);
+      const hexParts: string[] = [];
+      byteArray.forEach((byte) => {
+        const hex = byte.toString(16).padStart(2, "0");
+        hexParts.push(hex);
+      });
+      return hexParts.join("");
+    }
+
+    // Hash the password and convert it to a useful format for the HIBP API
+    hashedPwdBuffer = await hashPassword(encodedPwd!.buffer);
+    const hashedPwd = bufferToHex(hashedPwdBuffer).toUpperCase();
+    // ONLY send the first 5 hash chars (over HTTPS)
+    const hashedPwdToSend = hashedPwd.slice(0, 5);
+    const safeHashedPwdToSend = encodeURIComponent(hashedPwdToSend); // Ensure URL safety
+    const rangedHashTableUri = `${dataBreachCheckAPIBaseURL}${safeHashedPwdToSend}`;
+
     let response;
     let retryAttempt = 0;
 
@@ -46,7 +70,11 @@ export const checkIsPasswordBreached = async (password: string) => {
         });
 
         if (response.status === 200) {
-          break;
+          // now we get back one of 16^5 hash prefix tables with random padding
+          const responseData = response.data.toUpperCase();
+          // check the last 35 hash chars to see if there's a match
+          const isBreachedPassword: boolean = responseData.includes(hashedPwd.slice(5, 40));
+          return isBreachedPassword;
         } else {
           retryAttempt++;
         }
@@ -58,26 +86,27 @@ export const checkIsPasswordBreached = async (password: string) => {
       }
     }
 
-    if (response && response.status === 200) {
-      const responseData = response.data.toUpperCase();
-      // compare last 35 hash chars to the returned ranged hash table
-      // returns a boolean: true indicates the password has been involved in a data breach (ie. pwnd)
-      const isBreachedPassword = responseData.includes(hashedPwd.slice(5, 40));
-
-      // Clear the hashed password from memory as a precaution
-      const zeroBuffer = new Uint8Array(encodedPwd.length);
-      encodedPwd.set(zeroBuffer);
-
-      return isBreachedPassword;
-    }
-
     console.error(
       `Received a non-200 response (${response ? response.status : "unknown"}) from the Pwnd Passwords API`
     );
-    return false; // better to return a safe response if no breach can be determined
+    return false;
   } catch (err: any) {
     console.error("An unexpected error has occurred:", err.message);
-    return false; // Return a safe response in case of unexpected errors 
-    // the HIBP API could return 400 (empty string supplied), 429 or 503 if Cloudflare edge node is down)
+    return false;
+  } finally {
+
+    // Clear the UTF-8 encoded password from memory
+
+    if (encodedPwd) {
+      const zeroEncodedPwdBuffer = new Uint8Array(encodedPwd.length);
+      encodedPwd.set(zeroEncodedPwdBuffer);
+    }
+
+    // Clear the hashed password buffer from memory
+
+    if (hashedPwdBuffer) {
+      const zeroHashedPwdBuffer = new Uint8Array(hashedPwdBuffer);
+      zeroHashedPwdBuffer.fill(0);
+    }
   }
 };
