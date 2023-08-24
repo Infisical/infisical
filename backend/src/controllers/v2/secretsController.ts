@@ -9,6 +9,7 @@ import {
   ACTION_UPDATE_SECRETS,
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
+  K8_USER_AGENT_NAME,
   SECRET_PERSONAL
 } from "../../variables";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
@@ -59,7 +60,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
   let secretPath = req.body.secretPath as string;
   let folderId = req.body.folderId as string;
-  
+
   const createSecrets: BatchSecret[] = [];
   const updateSecrets: BatchSecret[] = [];
   const deleteSecrets: { _id: Types.ObjectId, secretName: string; }[] = [];
@@ -154,7 +155,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
         };
       })
     });
-    
+
     const auditLogs = await Promise.all(
       createdSecrets.map((secret, index) => {
         return EEAuditLogService.createAuditLog(
@@ -178,7 +179,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
     );
 
     await AuditLog.insertMany(auditLogs);
-    
+
     const addAction = (await EELogService.createAction({
       name: ACTION_ADD_SECRETS,
       userId: req.user?._id,
@@ -280,7 +281,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
         $in: updateSecrets.map((u) => new Types.ObjectId(u._id))
       }
     });
-    
+
     const auditLogs = await Promise.all(
       updateSecrets.map((secret) => {
         return EEAuditLogService.createAuditLog(
@@ -332,26 +333,26 @@ export const batchSecrets = async (req: Request, res: Response) => {
   // handle delete secrets
   if (deleteSecrets.length > 0) {
     const deleteSecretIds: Types.ObjectId[] = deleteSecrets.map((s) => s._id);
-    
+
     const deletedSecretsObj = (await Secret.find({
       _id: {
         $in: deleteSecretIds
       }
     }))
-    .reduce(
-      (obj: any, secret: ISecret) => ({
-        ...obj,
-        [secret._id.toString()]: secret
-      }),
-      {}
-    );
-    
+      .reduce(
+        (obj: any, secret: ISecret) => ({
+          ...obj,
+          [secret._id.toString()]: secret
+        }),
+        {}
+      );
+
     await Secret.deleteMany({
       _id: {
         $in: deleteSecretIds
       }
     });
-    
+
     await EESecretService.markDeletedSecretVersions({
       secretIds: deleteSecretIds
     });
@@ -952,7 +953,7 @@ export const getSecrets = async (req: Request, res: Response) => {
       channel,
       ipAddress: req.realIP
     }));
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -969,22 +970,36 @@ export const getSecrets = async (req: Request, res: Response) => {
   );
 
   const postHogClient = await TelemetryService.getPostHogClient();
-  
+
+  // reduce the number of events captured
+  let shouldRecordK8Event = false
+  if (req.authData instanceof ServiceTokenData && req.authData.userAgent == K8_USER_AGENT_NAME) {
+    const randomNumber = Math.random();
+    if (randomNumber > 0.9) {
+      shouldRecordK8Event = true
+    }
+  }
+
   if (postHogClient) {
-    postHogClient.capture({
-      event: "secrets pulled",
-      distinctId: await TelemetryService.getDistinctId({
-        authData: req.authData
-      }),
-      properties: {
-        numberOfSecrets: secrets.length,
-        environment,
-        workspaceId,
-        channel,
-        folderId,
-        userAgent: req.headers?.["user-agent"]
-      }
-    });
+    const shouldCapture = req.authData.userAgent !== K8_USER_AGENT_NAME || shouldRecordK8Event;
+    const approximateForNoneCapturedEvents = secrets.length * 10
+
+    if (shouldCapture) {
+      postHogClient.capture({
+        event: "secrets pulled",
+        distinctId: await TelemetryService.getDistinctId({
+          authData: req.authData
+        }),
+        properties: {
+          numberOfSecrets: shouldRecordK8Event ? approximateForNoneCapturedEvents : secrets.length,
+          environment,
+          workspaceId,
+          folderId,
+          channel: req.authData.userAgentType,
+          userAgent: req.authData.userAgent
+        }
+      });
+    }
   }
 
   return res.status(200).send({
@@ -1091,10 +1106,10 @@ export const updateSecrets = async (req: Request, res: Response) => {
           tags,
           ...(secretCommentCiphertext !== undefined && secretCommentIV && secretCommentTag
             ? {
-                secretCommentCiphertext,
-                secretCommentIV,
-                secretCommentTag
-              }
+              secretCommentCiphertext,
+              secretCommentIV,
+              secretCommentTag
+            }
             : {})
         }
       }

@@ -29,6 +29,7 @@ import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_BASE64,
   ENCODING_SCHEME_UTF8,
+  K8_USER_AGENT_NAME,
   SECRET_PERSONAL,
   SECRET_SHARED
 } from "../variables";
@@ -396,7 +397,7 @@ export const createSecretHelper = async ({
     keyEncoding: ENCODING_SCHEME_UTF8,
     metadata
   }).save();
-  
+
   const secretVersion = new SecretVersion({
     secret: secret._id,
     version: secret.version,
@@ -416,7 +417,7 @@ export const createSecretHelper = async ({
     algorithm: ALGORITHM_AES_256_GCM,
     keyEncoding: ENCODING_SCHEME_UTF8
   });
-  
+
   // (EE) add version for new secret
   await EESecretService.addSecretVersions({
     secretVersions: [secretVersion]
@@ -567,24 +568,34 @@ export const getSecretsHelper = async ({
   );
 
   const postHogClient = await TelemetryService.getPostHogClient();
-  
-  const numberOfSignupSecrets = (secrets.filter((secret) => secret?.metadata?.source === "signup")).length;
 
-  if (postHogClient && (secrets.length - numberOfSignupSecrets > 0)) {
-    postHogClient.capture({
-      event: "secrets pulled",
-      distinctId: await TelemetryService.getDistinctId({
-        authData
-      }),
-      properties: {
-        numberOfSecrets: secrets.length - numberOfSignupSecrets,
-        environment,
-        workspaceId,
-        folderId,
-        channel: authData.userAgentType,
-        userAgent: authData.userAgent
-      }
-    });
+  // reduce the number of events captured
+  let shouldRecordK8Event = false
+  if (authData instanceof ServiceTokenData && authData.userAgent == K8_USER_AGENT_NAME) {
+    const randomNumber = Math.random();
+    if (randomNumber > 0.9) {
+      shouldRecordK8Event = true
+    }
+  }
+
+  if (postHogClient) {
+    const shouldCapture = authData.userAgent !== K8_USER_AGENT_NAME || shouldRecordK8Event;
+    const approximateForNoneCapturedEvents = secrets.length * 10
+
+    if (shouldCapture) {
+      postHogClient.capture({
+        event: "secrets pulled",
+        distinctId: await TelemetryService.getDistinctId({ authData }),
+        properties: {
+          numberOfSecrets: shouldRecordK8Event ? approximateForNoneCapturedEvents : secrets.length,
+          environment,
+          workspaceId,
+          folderId,
+          channel: authData.userAgentType,
+          userAgent: authData.userAgent
+        }
+      });
+    }
   }
 
   return secrets;
