@@ -3,6 +3,7 @@ import { Schema, Types, model } from "mongoose";
 export interface ITag {
 	_id: Types.ObjectId;
 	name: string;
+	tagColor: string;
 	slug: string;
 	user: Types.ObjectId;
 	workspace: Types.ObjectId;
@@ -13,6 +14,11 @@ const tagSchema = new Schema<ITag>(
 		name: {
 			type: String,
 			required: true,
+			trim: true,
+		},
+		tagColor: {
+			type: String,
+			required: false,
 			trim: true,
 		},
 		slug: {

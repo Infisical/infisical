@@ -38,7 +38,7 @@ const fetchProjectEncryptedSecrets = async (
   folderId?: string,
   secretPath?: string
 ) => {
-  const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>("/api/v2/secrets", {
+  const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>("/api/v3/secrets", {
     params: {
       environment: env,
       workspaceId,
@@ -46,6 +46,7 @@ const fetchProjectEncryptedSecrets = async (
       secretPath
     }
   });
+  
   return data.secrets;
 };
 

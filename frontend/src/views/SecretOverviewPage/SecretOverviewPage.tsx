@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faFolderBlank, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { faArrowDown, faArrowUp, faFolderBlank, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -10,6 +10,7 @@ import NavHeader from "@app/components/navigation/NavHeader";
 import {
   Button,
   EmptyState,
+  IconButton,
   Input,
   Table,
   TableContainer,
@@ -46,6 +47,7 @@ export const SecretOverviewPage = () => {
   // coz when overflow the table goes to the right
   const parentTableRef = useRef<HTMLTableElement>(null);
   const [expandableTableWidth, setExpandableTableWidth] = useState(0);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     const handleParentTableWidthResize = () => {
@@ -219,7 +221,7 @@ export const SecretOverviewPage = () => {
 
   const filteredSecretNames = secKeys?.filter((name) =>
     name.toUpperCase().includes(searchFilter.toUpperCase())
-  );
+  ).sort((a, b) => sortDir === "asc" ? a.localeCompare(b) : b.localeCompare(a));
   const filteredFolderNames = folderNames?.filter((name) =>
     name.toLowerCase().includes(searchFilter.toLowerCase())
   );
@@ -278,6 +280,9 @@ export const SecretOverviewPage = () => {
                 <Th className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0">
                   <div className="flex items-center border-b border-r border-mineshaft-600 px-5 pt-4 pb-3.5">
                     Name
+                    <IconButton variant="plain" className="ml-2" ariaLabel="sort" onClick={() => setSortDir(prev => prev === "asc" ? "desc" : "asc")}>
+                      <FontAwesomeIcon icon={sortDir === "asc" ? faArrowDown : faArrowUp} />
+                    </IconButton>
                   </div>
                 </Th>
                 {userAvailableEnvs?.map(({ name, slug }, index) => {

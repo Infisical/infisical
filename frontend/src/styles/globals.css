@@ -107,6 +107,31 @@
     @apply bg-primary-400;
   }
 }
+.tags-conic-bg {
+  background: conic-gradient(rgb(235, 87, 87), rgb(242, 201, 76), rgb(76, 183, 130), rgb(78, 167, 252), rgb(250, 96, 122));
+}
+
+.show-tags {
+  transform: translateY(10px);
+  transition: all 0.2s;
+  opacity: 1;
+}
+.hide-tags {
+  transform: translateY(-20px);
+  transition: all 0.2s;
+  opacity: 0;
+}
+
+.show-hex-input {
+  transform: translateY(-33px);
+  transition: all 0.2s;
+  opacity: 1;
+}
+.hide-hex-input {
+  transform: translateY(20px);
+  transition: all 0.2s;
+  opacity: 0;
+}
 
 @import "@fontsource/inter/400.css";
 @import "@fontsource/inter/500.css";

@@ -6,10 +6,11 @@ import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 
 export const createWorkspaceTag = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
-  const { name, slug } = req.body;
+  const { name, slug, tagColor } = req.body;
   
   const tagToCreate = {
       name,
+      tagColor,
       workspace: new Types.ObjectId(workspaceId),
       slug,
       user: new Types.ObjectId(req.user._id),

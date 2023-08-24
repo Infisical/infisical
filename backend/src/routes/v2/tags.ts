@@ -48,6 +48,7 @@ router.post(
   }),
   param("workspaceId").exists().trim(),
   body("name").exists().trim(),
+  body("tagColor").exists().trim(),
   body("slug").exists().trim(),
   validateRequest,
   tagController.createWorkspaceTag

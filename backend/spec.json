@@ -3203,6 +3203,9 @@
                   "name": {
                     "example": "any"
                   },
+                  "tagColor": {
+                    "example": "any"
+                  },
                   "slug": {
                     "example": "any"
                   }

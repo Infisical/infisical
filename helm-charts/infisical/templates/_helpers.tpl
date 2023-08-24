@@ -126,4 +126,5 @@ Create the mongodb connection string.
 {{- if .Values.mongodbConnection.externalMongoDBConnectionString -}}
 {{- $connectionString = .Values.mongodbConnection.externalMongoDBConnectionString -}}
 {{- end -}}
+{{- printf "%s" $connectionString -}}
 {{- end -}}

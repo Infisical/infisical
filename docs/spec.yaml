@@ -1949,6 +1949,8 @@ paths:
               properties:
                 name:
                   example: any
+                tagColor:
+                  example: any
                 slug:
                   example: any
   /api/v2/workspace/tags/{tagId}:
