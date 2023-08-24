@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy, faTrash, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -39,14 +38,11 @@ export const SecretEditRow = ({
       value: defaultValue
     }
   });
-  const editorRef = useRef(defaultValue);
   const [isDeleting, setIsDeleting] = useToggle();
   const { createNotification } = useNotificationContext();
 
   const handleFormReset = () => {
     reset();
-    const val = getValues();
-    editorRef.current = val.value;
   };
 
   const handleCopySecretToClipboard = async () => {
@@ -78,7 +74,6 @@ export const SecretEditRow = ({
     try {
       await onSecretDelete(environment, secretName);
       reset({ value: undefined });
-      editorRef.current = undefined;
     } finally {
       setIsDeleting.off();
     }
@@ -90,20 +85,7 @@ export const SecretEditRow = ({
         <Controller
           control={control}
           name="value"
-          render={({ field: { onChange, onBlur } }) => (
-            <SecretInput
-              value={editorRef.current}
-              onChange={(val, html) => {
-                onChange(val);
-                editorRef.current = html;
-              }}
-              onBlur={(html) => {
-                editorRef.current = html;
-                onBlur();
-              }}
-              isVisible={isVisible}
-            />
-          )}
+          render={({ field }) => <SecretInput {...field} isVisible={isVisible} />}
         />
       </div>
       <div className="flex w-16 justify-center space-x-3 pl-2 transition-all">
