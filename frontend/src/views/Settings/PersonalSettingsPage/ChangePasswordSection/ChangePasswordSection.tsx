@@ -15,14 +15,12 @@ import { useUser } from "@app/context";
 type Errors = {
   tooShort?: string;
   tooLong?: string;
-  upperCase?: string;
-  lowerCase?: string;
-  number?: string;
-  specialChar?: string;
+  noLetterChar?: string;
+  noNumOrSpecialChar?: string;
   repeatedChar?: string;
-  isEmail?: string;
-  isUrl?: string;
-  isBreachedPassword?: string;
+  escapeChar?: string;
+  lowEntropy?: string;
+  breached?: string;
 };
 
 const schema = yup

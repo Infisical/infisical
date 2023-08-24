@@ -31,14 +31,12 @@ const client = new jsrp.client();
 type Errors = {
   tooShort?: string;
   tooLong?: string;
-  upperCase?: string;
-  lowerCase?: string;
-  number?: string;
-  specialChar?: string;
+  noLetterChar?: string;
+  noNumOrSpecialChar?: string;
   repeatedChar?: string;
-  isEmail?: string;
-  isUrl?: string;
-  breachedPassword?: string;
+  escapeChar?: string;
+  lowEntropy?: string;
+  breached?: string;
 };
 
 export default function SignupInvite() {

@@ -1,17 +1,15 @@
-import {string} from "yup"
+import { letterCharRegex, numAndSpecialCharRegex, repeatedCharRegex, escapeCharRegex, lowEntropyRegexes } from "./passwordRegexes";
 import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
 
 type Errors = {
   tooShort?: string;
   tooLong?: string;
-  upperCase?: string;
-  lowerCase?: string;
-  number?: string;
-  specialChar?: string;
+  noLetterChar?: string;
+  noNumOrSpecialChar?: string;
   repeatedChar?: string;
-  isEmail?: string;
-  isUrl?: string;
-  isBreachedPassword?: string;
+  escapeChar?: string;
+  lowEntropy?: string;
+  breached?: string;
 };
 
 interface CheckPasswordParams {
@@ -23,12 +21,11 @@ interface CheckPasswordParams {
  * Validate that the password [password]:
  * - Contains at least 14 characters
  * - Contains at most 100 characters
- * - Contains at least 1 uppercase character (A-Z)
- * - Contains at least 1 lowercase character (a-z)
- * - Contains at least 1 number (0-9)
- * - Contains at least 1 special character
+ * - Contains at least 1 letter character (many languages supported) (case insensitive)
+ * - Contains at least 1 number (0-9) or special character (emojis included)
  * - Does not contain 3 repeat, consecutive characters
- * - Is not an email address
+ * - Does not contain any escape characters/sequences
+ * - Does not contain PII and/or low entropy data (eg. email address, URL, phone number, DoB, SSN, driver's license, passport)
  * - Is not in a database of breached passwords
  *
  * The function returns whether or not the password [password]
@@ -39,78 +36,60 @@ interface CheckPasswordParams {
  * @param {String} obj.password - the password to check
  * @param {Function} obj.setErrors - set state function to set error object
  */
+
 const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Promise<boolean> => {
   const errors: Errors = {};
 
-  // tooShort
-  if (password.length < 14) {
-    errors.tooShort = "at least 14 characters";
+  const tests = [
+    {
+      name: "tooShort",
+      validator: (pwd: string) => pwd.length >= 14,
+      errorText: "at least 14 characters",
+    },
+    {
+      name: "tooLong",
+      validator: (pwd: string) => pwd.length < 101,
+      errorText: "at most 100 characters",
+    },
+    {
+      name: "noLetterChar",
+      validator: (pwd: string) => letterCharRegex.test(pwd),
+      errorText: "at least 1 letter character",
+    },
+    {
+      name: "noNumOrSpecialChar",
+      validator: (pwd: string) => numAndSpecialCharRegex.test(pwd),
+      errorText: "at least 1 number or special character",
+    },
+    {
+      name: "repeatedChar",
+      validator: (pwd: string) => !repeatedCharRegex.test(pwd),
+      errorText: "at most 3 repeated, consecutive characters",
+    },
+    {
+      name: "escapeChar",
+      validator: (pwd: string) => !escapeCharRegex.test(pwd),
+      errorText: "No escape characters allowed.",
+    },
+    {
+      name: "lowEntropy",
+      validator: (pwd: string) => (
+        !lowEntropyRegexes.some(regex => regex.test(pwd))
+      ),
+      errorText: "Password contains sensitive data.",
+    },
+  ];
+
+  const isBreached = await checkIsPasswordBreached(password);
+
+  if (isBreached) {
+    errors.breached = "Password was found in a data breach.";
   }
 
-  // tooLong
-  if (password.length > 100) {
-    errors.tooLong = "at most 100 characters";
-  }
-
-  // upperCase
-  // this adds support for the user to select an uppercase character from many major languages
-  // NB. ES2018 is required to run this
-  if (!/[A-Z\u0041-\u005A\u00C0-\u00D6\u00D8-\u00DE]/.test(password)) {
-    errors.upperCase = "at least 1 uppercase character"; // most major langauges supported
-  }
-
-  // lowerCase
-  // this adds support for the user to select a lowercase character from many major languages
-  // NB. ES2018 is required to run this
-  if (!/[a-z\u0061-\u007A\u00DF-\u00F6\u00F8-\u00FF]/.test(password)) {
-    errors.lowerCase = "at least 1 lowercase character"; // most major langauges supported
-  }
-
-  // number
-  if (!/[0-9]/.test(password)) {
-    errors.number = "at least 1 number";
-  }
-
-  // specialChar
-  // this adds support for the user to select a special character from many major languages and emojis
-  // NB. ES2018 is required to run this
-  if (
-    !/[!@#$%^&*(),.?":{}|<>\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u0600-\u06FF\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F\u05B0-\u05FF\u0980-\u09FF\u1F00-\u1FFF\u0130\u015E\u011E\u00D6\u00C7\u00FC\u00FB\u00F6\u00EB\u00E7\u00C7\p{Emoji}]/u.test(
-      password
-    )
-  ) {
-    errors.specialChar = "at least 1 special character (emojis, symbols & non-Latin languages)";
-  }
-
-  // repeatedChar
-  // this prevents the user from selecting repeated characters from many major languages, emojis as well as numbers and symbols
-  // NB. ES2018 is required to run this
-  if (
-    /([!@#$%^&*(),.?":{}|<>0-9A-Za-z\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u0600-\u06FF\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F\u05B0-\u05FF\u0980-\u09FF\u1F00-\u1FFF\u0130\u015E\u011E\u00D6\u00C7\u00FC\u00FB\u00F6\u00EB\u00E7\u00C7\u003a-\u003f\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF\p{Emoji}])\1\1/.test(
-      password
-    )
-  ) {
-    errors.repeatedChar = "at most 2 repeated, consecutive characters";
-  }
-
-  // isEmail
-  const emailSchema = string().email();
-
-  if (await emailSchema.isValid(password)) {
-    errors.isEmail = "The password cannot be an email address";
-  }
-
-  // isUrl
-  const urlSchema = string().url();
-
-  if (await urlSchema.isValid(password)) {
-    errors.isUrl = "The password cannot be a URL";
-  }
-
-  // breachedPassword
-  if (await checkIsPasswordBreached(password)) {
-    errors.isBreachedPassword =
-      "The new password is in a list of passwords commonly used on other websites. Please try again with a stronger password.";
+  for (const test of tests) {
+    if (test.validator && !test.validator(password)) {
+      errors[test.name as keyof Errors] = test.errorText;
+    }
   }
 
   setErrors(errors);

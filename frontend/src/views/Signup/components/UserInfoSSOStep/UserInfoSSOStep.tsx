@@ -35,14 +35,12 @@ type Props = {
 type Errors = {
   tooShort?: string;
   tooLong?: string;
-  upperCase?: string;
-  lowerCase?: string;
-  number?: string;
-  specialChar?: string;
+  noLetterChar?: string;
+  noNumOrSpecialChar?: string;
   repeatedChar?: string;
-  isEmail?: string;
-  isUrl?: string;
-  isBeachedPassword?: string;
+  escapeChar?: string;
+  lowEntropy?: string;
+  breached?: string;
 };
 
 /**
