@@ -393,9 +393,10 @@ export const createSecretHelper = async ({
     secretCommentTag,
     folder: folderId,
     algorithm: ALGORITHM_AES_256_GCM,
-    keyEncoding: ENCODING_SCHEME_UTF8
+    keyEncoding: ENCODING_SCHEME_UTF8,
+    metadata
   }).save();
-
+  
   const secretVersion = new SecretVersion({
     secret: secret._id,
     version: secret.version,
@@ -415,7 +416,7 @@ export const createSecretHelper = async ({
     algorithm: ALGORITHM_AES_256_GCM,
     keyEncoding: ENCODING_SCHEME_UTF8
   });
-
+  
   // (EE) add version for new secret
   await EESecretService.addSecretVersions({
     secretVersions: [secretVersion]
@@ -566,15 +567,17 @@ export const getSecretsHelper = async ({
   );
 
   const postHogClient = await TelemetryService.getPostHogClient();
+  
+  const numberOfSignupSecrets = (secrets.filter((secret) => secret?.metadata?.source === "signup")).length;
 
-  if (postHogClient) {
+  if (postHogClient && (secrets.length - numberOfSignupSecrets > 0)) {
     postHogClient.capture({
       event: "secrets pulled",
       distinctId: await TelemetryService.getDistinctId({
         authData
       }),
       properties: {
-        numberOfSecrets: secrets.length,
+        numberOfSecrets: secrets.length - numberOfSignupSecrets,
         environment,
         workspaceId,
         folderId,

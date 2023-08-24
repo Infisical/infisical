@@ -234,6 +234,9 @@ export const batchSecrets = async (req: Request, res: Response) => {
           $inc: {
             version: 1
           },
+          $unset: {
+            'metadata.source': true as true
+          },
           ...u,
           _id: new Types.ObjectId(u._id)
         }
@@ -966,6 +969,7 @@ export const getSecrets = async (req: Request, res: Response) => {
   );
 
   const postHogClient = await TelemetryService.getPostHogClient();
+  
   if (postHogClient) {
     postHogClient.capture({
       event: "secrets pulled",

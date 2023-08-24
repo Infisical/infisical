@@ -31,6 +31,9 @@ export interface ISecret {
   keyEncoding: "utf8" | "base64";
   tags?: string[];
   folder?: string;
+  metadata?: {
+    [key: string]: string;
+  }
 }
 
 const secretSchema = new Schema<ISecret>(
@@ -131,6 +134,9 @@ const secretSchema = new Schema<ISecret>(
       type: String,
       default: "root",
     },
+    metadata: {
+      type: Schema.Types.Mixed
+    }
   },
   {
     timestamps: true,
