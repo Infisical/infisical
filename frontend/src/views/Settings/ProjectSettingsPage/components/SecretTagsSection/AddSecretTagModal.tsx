@@ -53,8 +53,8 @@ export const AddSecretTagModal = ({
             await createWsTag.mutateAsync({
                 workspaceID: currentWorkspace?._id,
                 tagName: name,
-                tagSlug: name.replace(" ", "_"),
-                tagColor: null
+                tagSlug: name.replace(/\s+/g, " ").replace(" ", "_"),
+                tagColor: ""
             });
 
             handlePopUpClose("CreateSecretTag");
@@ -63,6 +63,7 @@ export const AddSecretTagModal = ({
                 text: "Successfully created a tag",
                 type: "success"
             });
+            reset()
         } catch (err) {
             console.error(err);
             createNotification({

@@ -17,7 +17,7 @@ export type CreateTagDTO = {
   workspaceID: string;
   tagSlug: string;
   tagName: string;
-  tagColor: string | null;
+  tagColor: string;
 };
 
 export type CreateTagRes = {
