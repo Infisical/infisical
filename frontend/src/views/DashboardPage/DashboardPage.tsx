@@ -297,6 +297,7 @@ export const DashboardPage = () => {
     resolver: yupResolver(schema)
   });
 
+
   const {
     register,
     control,
@@ -513,11 +514,12 @@ export const DashboardPage = () => {
   }, []);
 
   const onCreateWsTag = useCallback(
-    async (tagName: string) => {
+    async (tagName: string, tagColor: string) => {
       try {
         await createWsTag({
           workspaceID: workspaceId,
           tagName,
+          tagColor,
           tagSlug: tagName.replace(" ", "_")
         });
         handlePopUpClose("addTag");

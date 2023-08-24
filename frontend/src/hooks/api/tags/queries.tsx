@@ -7,7 +7,7 @@ import {
   CreateTagRes,
   DeleteTagDTO,
   DeleteWsTagRes,
-  UserWsTags
+  UserWsTags,
 } from "./types";
 
 const workspaceTags = {
@@ -30,13 +30,15 @@ export const useGetWsTags = (workspaceID: string) => {
   });
 }
 
+
 export const useCreateWsTag = () => {
   const queryClient = useQueryClient();
 
   return useMutation<CreateTagRes, {}, CreateTagDTO>({
-    mutationFn: async ({ workspaceID, tagName, tagSlug }) => {
+    mutationFn: async ({ workspaceID, tagName, tagColor, tagSlug }) => {
       const { data } = await apiRequest.post(`/api/v2/workspace/${workspaceID}/tags`, {
         name: tagName,
+        tagColor: tagColor || "",
         slug: tagSlug
       })
       return data;
@@ -46,6 +48,7 @@ export const useCreateWsTag = () => {
     }
   });
 };
+
 
 export const useDeleteWsTag = () => {
   const queryClient = useQueryClient();

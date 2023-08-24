@@ -58,7 +58,8 @@ const secretSchema = yup.object({
     yup.object({
       _id: yup.string().required(),
       name: yup.string().required(),
-      slug: yup.string().required()
+      slug: yup.string().required(),
+      tagColor: yup.string().nullable(),
     })
   ),
   overrideAction: yup.string().notRequired().oneOf(Object.values(SecretActionType)),
