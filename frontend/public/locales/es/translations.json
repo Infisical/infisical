@@ -237,7 +237,8 @@
       "validate-special-char": "al menos 1 carácter especial",
       "validate-repeated-char": "como máximo 2 caracteres repetidos y consecutivos",
       "validate-is-email": "La contraseña no puede ser una dirección de correo electrónico.",
-      "validate-breached": "La nueva contraseña se encuentra en una lista de contraseñas comúnmente utilizadas en otros sitios web. Vuelva a intentarlo con una contraseña más segura."
+      "validate-is-url": "La contraseña no puede ser una URL.",
+      "validate-is-breached": "La nueva contraseña se encuentra en una lista de contraseñas comúnmente utilizadas en otros sitios web. Vuelva a intentarlo con una contraseña más segura."
     },
     "token": {
       "service-tokens": "Tokens de servicio",

@@ -1,4 +1,4 @@
-import isEmail from "validator/lib/isEmail";
+import {string} from "yup"
 import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
 
 type Errors = {
@@ -10,6 +10,7 @@ type Errors = {
   specialChar?: string;
   repeatedChar?: string;
   isEmail?: string;
+  isUrl?: string;
   isBreachedPassword?: string;
 };
 
@@ -93,8 +94,17 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
   }
 
   // isEmail
-  if (isEmail(password)) {
+  const emailSchema = string().email();
+
+  if (await emailSchema.isValid(password)) {
     errors.isEmail = "The password cannot be an email address";
+  }
+
+  // isUrl
+  const urlSchema = string().url();
+
+  if (await urlSchema.isValid(password)) {
+    errors.isUrl = "The password cannot be a URL";
   }
 
   // breachedPassword

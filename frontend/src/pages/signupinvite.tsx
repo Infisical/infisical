@@ -29,13 +29,15 @@ import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 const client = new jsrp.client();
 
 type Errors = {
-  length?: string;
+  tooShort?: string;
+  tooLong?: string;
   upperCase?: string;
   lowerCase?: string;
   number?: string;
   specialChar?: string;
   repeatedChar?: string;
   isEmail?: string;
+  isUrl?: string;
   breachedPassword?: string;
 };
 

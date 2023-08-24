@@ -240,6 +240,7 @@
       "validate-special-char": "at least 1 special character",
       "validate-repeated-char": "at most 2 repeated, consecutive characters",
       "validate-is-email": "The password cannot be an email address.",
+      "validate-is-url": "The password cannot be a URL.",
       "validate-is-breached": "The new password is in a list of passwords commonly used on other websites. Please try again with a stronger password."
     },
     "token": {

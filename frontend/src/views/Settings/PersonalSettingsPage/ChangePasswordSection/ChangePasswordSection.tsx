@@ -21,6 +21,7 @@ type Errors = {
   specialChar?: string;
   repeatedChar?: string;
   isEmail?: string;
+  isUrl?: string;
   isBreachedPassword?: string;
 };
 

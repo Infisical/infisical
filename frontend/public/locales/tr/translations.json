@@ -237,7 +237,8 @@
       "validate-special-char": "en az 1 özel karakter",
       "validate-repeated-char": "en fazla 2 tekrarlanan, ardışık karakter",
       "validate-is-email": "Şifre bir e-posta adresi olamaz.",
-      "validate-breached": "Yeni şifre, diğer web sitelerinde yaygın olarak kullanılan şifrelerin listesinde yer almaktadır. Lütfen daha güçlü bir şifre ile tekrar deneyiniz."
+      "validate-is-url": "Şifre bir URL olamaz.",
+      "validate-is-breached": "Yeni şifre, diğer web sitelerinde yaygın olarak kullanılan şifrelerin listesinde yer almaktadır. Lütfen daha güçlü bir şifre ile tekrar deneyiniz."
     },
     "token": {
       "service-tokens": "Servis Belirteçleri",

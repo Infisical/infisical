@@ -36,6 +36,7 @@ export default function PasswordReset() {
   const [passwordErrorSpecialChar, setPasswordErrorSpecialChar] = useState(false);
   const [passwordErrorRepeatedChar, setPasswordErrorRepeatedChar] = useState(false);
   const [passwordErrorIsEmail, setPasswordErrorIsEmail] = useState(false);
+  const [passwordErrorIsUrl, setPasswordErrorIsUrl] = useState(false);
   const [passwordErrorIsBreachedPassword, setPasswordErrorIsBreachedPassword] = useState(false);
 
   const router = useRouter();
@@ -81,6 +82,7 @@ export default function PasswordReset() {
       setPasswordErrorSpecialChar,
       setPasswordErrorRepeatedChar,
       setPasswordErrorIsEmail,
+      setPasswordErrorIsUrl,
       setPasswordErrorIsBreachedPassword,
       errorCheck: false
     });
@@ -243,6 +245,7 @@ export default function PasswordReset() {
               setPasswordErrorSpecialChar,
               setPasswordErrorRepeatedChar,
               setPasswordErrorIsEmail,
+              setPasswordErrorIsUrl,
               setPasswordErrorIsBreachedPassword,
               errorCheck: false
             });
@@ -259,6 +262,7 @@ export default function PasswordReset() {
             passwordErrorSpecialChar &&
             passwordErrorRepeatedChar &&
             passwordErrorIsEmail &&
+            passwordErrorIsUrl &&
             passwordErrorIsBreachedPassword
           }
           autoComplete="new-password"
@@ -273,6 +277,7 @@ export default function PasswordReset() {
       passwordErrorSpecialChar ||
       passwordErrorRepeatedChar ||
       passwordErrorIsEmail ||
+      passwordErrorIsUrl ||
       passwordErrorIsBreachedPassword ? (
         <div className="mx-2 mt-3 mb-2 flex w-full max-w-md flex-col items-start rounded-md bg-white/5 px-2 py-2">
           <div className="mb-1 text-sm text-gray-400">Password should contain:</div>
@@ -367,6 +372,18 @@ export default function PasswordReset() {
                 className={`${passwordErrorIsEmail ? "text-gray-400" : "text-gray-600"} text-sm`}
               >
                 The password cannot be an email address.
+              </div>
+            </div>
+            <div className="ml-1 flex flex-row items-center justify-start">
+              {passwordErrorIsUrl ? (
+                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              ) : (
+                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              )}
+              <div
+                className={`${passwordErrorIsUrl ? "text-gray-400" : "text-gray-600"} text-sm`}
+              >
+                The password cannot be a URL.
               </div>
             </div>
             <div className="ml-1 flex flex-row items-center justify-start">
