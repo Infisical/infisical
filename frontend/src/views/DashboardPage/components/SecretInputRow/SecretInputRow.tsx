@@ -15,6 +15,7 @@ import {
   faCopy,
   faEllipsis,
   faInfoCircle,
+  faPlus,
   faTags,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
@@ -23,12 +24,15 @@ import { cx } from "cva";
 import { twMerge } from "tailwind-merge";
 
 import {
+  Button,
+  Checkbox,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
   IconButton,
   Input,
   Popover,
+  PopoverContent,
   PopoverTrigger,
   SecretInput,
   Tag,
@@ -64,6 +68,7 @@ type Props = {
   isKeyError?: boolean;
   keyError?: string;
   autoCapitalization?: boolean;
+  handleCheckedSecret: (secretObj: {_id: string | undefined, isChecked: string | boolean}) =>  void
 };
 
 export const SecretInputRow = memo(
@@ -84,7 +89,8 @@ export const SecretInputRow = memo(
     isKeyError,
     keyError,
     secUniqId,
-    autoCapitalization
+    autoCapitalization,
+    handleCheckedSecret
   }: Props): JSX.Element => {
     const isKeySubDisabled = useRef<boolean>(false);
     // comment management in a row
@@ -212,10 +218,18 @@ export const SecretInputRow = memo(
       return <></>;
     }
 
+
+    // console.log("SECRET => ", checkedSecrets)
+
     return (
       <tr className="group flex flex-row hover:bg-mineshaft-700" key={index}>
-        <td className="flex h-10 w-10 items-center justify-center border-none px-4">
-          <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div>
+        <td className="flex h-10 w-10 items-center justify-center border-none ml-4">
+          <Checkbox
+            className="mr-0 data-[state=checked]:bg-primary"
+            id="autoCapitalization"
+            // isChecked={Boolean(value)}
+            onCheckedChange={(isChecked) => handleCheckedSecret({_id: secUniqId, isChecked})}
+          />
         </td>
 
         <Controller
@@ -368,16 +382,51 @@ export const SecretInputRow = memo(
                       </Tooltip>
                     </div>
                   </PopoverTrigger>
-                  <AddTagPopoverContent
-                    wsTags={wsTags}
-                    secKey={secKey || "this secret"}
-                    selectedTagIds={selectedTagIds}
-                    handleSelectTag={(wsTag: WsTag) => onSelectTag(wsTag)}
-                    handleTagOnMouseEnter={(wsTag: WsTag) => handleTagOnMouseEnter(wsTag)}
-                    handleTagOnMouseLeave={() => handleTagOnMouseLeave()}
-                    checkIfTagIsVisible={(wsTag: WsTag) => checkIfTagIsVisible(wsTag)}
-                    handleOnCreateTagOpen={() => onCreateTagOpen()}
-                  />
+                  <PopoverContent
+                    side="left"
+                    className="max-h-96 w-auto min-w-[200px] overflow-y-auto overflow-x-hidden border border-mineshaft-600 bg-mineshaft-800 p-2 text-bunker-200"
+                    hideCloseBtn
+                  >
+                    <div className="mb-2 px-2 text-center text-sm font-medium text-bunker-200">
+                      Add tags to {secKey || "this secret"}
+                    </div>
+                    <div className="flex flex-col space-y-1">
+                      {wsTags?.map((wsTag) => (
+                        <Button
+                          variant="plain"
+                          size="sm"
+                          className={twMerge(
+                            "justify-start bg-mineshaft-600 text-bunker-100 hover:bg-mineshaft-500",
+                            selectedTagIds?.[wsTag.slug] && "text-primary"
+                          )}
+                          onClick={() => onSelectTag(wsTag)}
+                          leftIcon={
+                            <Checkbox
+                              className="mr-0 data-[state=checked]:bg-primary"
+                              id="autoCapitalization"
+                              isChecked={selectedTagIds?.[wsTag.slug]}
+                              onCheckedChange={() => { }}
+                            >
+                              { }
+                            </Checkbox>
+                          }
+                          key={wsTag._id}
+                        >
+                          {wsTag.slug}
+                        </Button>
+                      ))}
+                      <Button
+                        variant="star"
+                        color="primary"
+                        size="sm"
+                        className="mt-4 h-7 justify-start bg-mineshaft-600 px-1"
+                        onClick={onCreateTagOpen}
+                        leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                      >
+                        Add new tag
+                      </Button>
+                    </div>
+                  </PopoverContent>
                 </Popover>
               </div>
             )}

@@ -719,6 +719,8 @@ export const DashboardPage = () => {
     []
   );
 
+  const [checkedSecrets, setCheckedSecrets] = useState<{ _id: string | undefined, isChecked: string | boolean }[]>([])
+
   // when secrets is not loading and secrets list is empty
   const isDashboardSecretEmpty = !isSecretsLoading && !fields?.length;
 
@@ -742,9 +744,24 @@ export const DashboardPage = () => {
     );
   }
 
+
+
   const userAvailableEnvs = wsEnv?.filter(
     ({ isReadDenied, isWriteDenied }) => !isReadDenied || !isWriteDenied
   );
+
+
+  const handleCheckedSecret = (secretObj: { _id: string | undefined, isChecked: string | boolean }) => {
+    const checkedSecretsClone = [...checkedSecrets]
+    const checkedSecretIndex = checkedSecretsClone.findIndex(secret => secret._id === secretObj._id)
+    if (secretObj.isChecked) {
+      checkedSecretsClone.push(secretObj)
+    } else {
+      checkedSecretsClone.splice(checkedSecretIndex, 1)
+    }
+    console.log("761 checkedSecretsClone", checkedSecretsClone)
+    setCheckedSecrets(() => checkedSecretsClone)
+  }
 
   return (
     <div className="container mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -931,9 +948,8 @@ export const DashboardPage = () => {
           </div>
         </div>
         <div
-          className={`${
-            isEmptyPage ? "flex flex-col flex-grow items-center justify-center" : ""
-          } no-scrollbar::-webkit-scrollbar mt-3 flex flex-col overflow-x-hidden overflow-y-scroll no-scrollbar`}
+          className={`${isEmptyPage ? "flex flex-col flex-grow items-center justify-center" : ""
+            } no-scrollbar::-webkit-scrollbar mt-3 flex flex-col overflow-x-hidden overflow-y-scroll no-scrollbar`}
           ref={secretContainer}
         >
           {!isEmptyPage && (
@@ -961,28 +977,31 @@ export const DashboardPage = () => {
                       folders={folderList}
                       search={searchFilter}
                     />
-                    {fields.map(({ id, _id }, index) => (
-                      <SecretInputRow
-                        key={id}
-                        secUniqId={_id}
-                        isReadOnly={isReadOnly}
-                        isRollbackMode={isRollbackMode}
-                        isAddOnly={isAddOnly}
-                        index={index}
-                        searchTerm={searchFilter}
-                        onSecretDelete={onSecretDelete}
-                        isKeyError={Boolean(errors?.secrets?.[index]?.key?.message)}
-                        keyError={errors?.secrets?.[index]?.key?.message}
-                        onRowExpand={onDrawerOpen}
-                        isSecretValueHidden={isSecretValueHidden}
-                        wsTags={wsTags}
-                        onCreateTagOpen={handleCreateTagModalOpen}
-                        register={register}
-                        control={control}
-                        setValue={setValue}
-                        autoCapitalization={currentWorkspace?.autoCapitalization}
-                      />
-                    ))}
+                    {fields.map(({ id, _id }, index) => {
+                      return (
+                        <SecretInputRow
+                          key={id}
+                          secUniqId={_id}
+                          isReadOnly={isReadOnly}
+                          isRollbackMode={isRollbackMode}
+                          isAddOnly={isAddOnly}
+                          index={index}
+                          searchTerm={searchFilter}
+                          onSecretDelete={onSecretDelete}
+                          isKeyError={Boolean(errors?.secrets?.[index]?.key?.message)}
+                          keyError={errors?.secrets?.[index]?.key?.message}
+                          onRowExpand={onDrawerOpen}
+                          isSecretValueHidden={isSecretValueHidden}
+                          wsTags={wsTags}
+                          onCreateTagOpen={handleCreateTagModalOpen}
+                          register={register}
+                          control={control}
+                          setValue={setValue}
+                          autoCapitalization={currentWorkspace?.autoCapitalization}
+                          handleCheckedSecret={(secretObj) => handleCheckedSecret(secretObj)}
+                        />
+                      )
+                    })}
                     {!isReadOnly && !isRollbackMode && (
                       <tr>
                         <td colSpan={3} className="hover:bg-mineshaft-700">
@@ -1119,9 +1138,8 @@ export const DashboardPage = () => {
         isOpen={popUp.deleteSecretImport.isOpen}
         deleteKey="unlink"
         title="Do you want to remove this secret import?"
-        subTitle={`This will unlink secrets from environment ${
-          (popUp.deleteSecretImport?.data as TDeleteSecretImport)?.environment
-        } of path ${(popUp.deleteSecretImport?.data as TDeleteSecretImport)?.secretPath}?`}
+        subTitle={`This will unlink secrets from environment ${(popUp.deleteSecretImport?.data as TDeleteSecretImport)?.environment
+          } of path ${(popUp.deleteSecretImport?.data as TDeleteSecretImport)?.secretPath}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteSecretImport", isOpen)}
         onDeleteApproved={handleSecretImportDelete}
       />
