@@ -719,8 +719,6 @@ export const DashboardPage = () => {
     []
   );
 
-  const [checkedSecrets, setCheckedSecrets] = useState<{ _id: string | undefined, isChecked: string | boolean }[]>([])
-
   // when secrets is not loading and secrets list is empty
   const isDashboardSecretEmpty = !isSecretsLoading && !fields?.length;
 
@@ -736,6 +734,17 @@ export const DashboardPage = () => {
   const isSecretImportEmpty = !secretImportCfg?.imports?.length;
   const isEmptyPage = isFoldersEmpty && isSecretEmpty && isSecretImportEmpty;
 
+  const [checkedSecrets, setCheckedSecrets] = useState<{ _id: string | undefined, isChecked: string | boolean }[]>([])
+
+  useEffect(() => {
+    const secCheckBox = document.querySelector("#sec-checkbox")
+    if(checkedSecrets.length > 0) {
+      secCheckBox?.classList.add("slideup-sec-checkbox")
+    }else {
+      secCheckBox?.classList.remove("slideup-sec-checkbox")
+    }
+  }, [checkedSecrets])
+
   if (isSecretsLoading || isEnvListLoading) {
     return (
       <div className="container mx-auto flex h-1/2 w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -743,8 +752,6 @@ export const DashboardPage = () => {
       </div>
     );
   }
-
-
 
   const userAvailableEnvs = wsEnv?.filter(
     ({ isReadDenied, isWriteDenied }) => !isReadDenied || !isWriteDenied
@@ -759,12 +766,32 @@ export const DashboardPage = () => {
     } else {
       checkedSecretsClone.splice(checkedSecretIndex, 1)
     }
-    console.log("761 checkedSecretsClone", checkedSecretsClone)
     setCheckedSecrets(() => checkedSecretsClone)
   }
 
   return (
     <div className="container mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+      {
+        checkedSecrets.length > 0 && (
+          <div className="fixed flex justify-center bottom-[22px] left-[220px] right-0 z-10 pointer-events-none translate-y-[20px]  transition-all" id="sec-checkbox">
+            <div className="flex flex-initial items-center justify-center shadow-md  bg-mineshaft-800 border border-mineshaft-500 rounded-[4px] pt-[8px] pr-[8px] pb-[8px] pl-[16px] pointer-events-auto gap-[16px]">
+              <span className="min-w-[65px] text-gray-300">{checkedSecrets.length} selected</span>
+              <div className="flex gap-2">
+                <div className="bg-mineshaft-900 hover:bg-mineshaft-700 cursor-pointer flex justify-center items-center border border-mineshaft-500 rounded-md px-[15px] py-1.5 text-gray-300">
+                  Move
+                </div>
+                <div className="bg-mineshaft-900 hover:bg-mineshaft-700 cursor-pointer  flex justify-center items-center border rounded-md border-mineshaft-500 px-[15px] py-1.5 text-gray-300">
+                  Add tag
+                </div>
+                <div className="bg-mineshaft-900 hover:bg-mineshaft-700 cursor-pointer flex justify-center items-center border rounded-md border-mineshaft-500 px-[15px] py-1.5 text-gray-300">
+                  Delete
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
       <form autoComplete="off" className="h-full flex flex-col">
         {/* breadcrumb row */}
         <div className="relative right-6 -top-2 mb-2 ml-6">
@@ -999,6 +1026,8 @@ export const DashboardPage = () => {
                           setValue={setValue}
                           autoCapitalization={currentWorkspace?.autoCapitalization}
                           handleCheckedSecret={(secretObj) => handleCheckedSecret(secretObj)}
+                          checkedSecrets={checkedSecrets}
+
                         />
                       )
                     })}

@@ -68,7 +68,8 @@ type Props = {
   isKeyError?: boolean;
   keyError?: string;
   autoCapitalization?: boolean;
-  handleCheckedSecret: (secretObj: {_id: string | undefined, isChecked: string | boolean}) =>  void
+  handleCheckedSecret: (secretObj: { _id: string | undefined, isChecked: string | boolean }) => void;
+  checkedSecrets: { _id: string | undefined }[]
 };
 
 export const SecretInputRow = memo(
@@ -90,7 +91,8 @@ export const SecretInputRow = memo(
     keyError,
     secUniqId,
     autoCapitalization,
-    handleCheckedSecret
+    handleCheckedSecret,
+    checkedSecrets
   }: Props): JSX.Element => {
     const isKeySubDisabled = useRef<boolean>(false);
     // comment management in a row
@@ -200,6 +202,22 @@ export const SecretInputRow = memo(
     const isCreatedSecret = !secId;
     const shouldBeBlockedInAddOnly = !isCreatedSecret && isAddOnly;
 
+    const [hoveredSecret, setHoveredSecret] = useState<{ _id: string | undefined } | null>(null);
+
+    const handleSecretOnMouseEnter = ({ _id }: { _id: string | undefined }) => {
+      setHoveredSecret(() => ({ _id }));
+    }
+
+    const handleSecretOnMouseLeave = () => {
+      setHoveredSecret(null);
+    }
+
+    const checkIfSecretIsVisible = ({ _id }: { _id: string | undefined }) => {
+      const checkedSecretsCopy = [...checkedSecrets]
+      const findCheckedSecret = checkedSecretsCopy.findIndex(secret => secret._id === _id)
+      return (_id === hoveredSecret?._id) || (findCheckedSecret > -1)
+    };
+
     // Why this instead of filter in parent
     // Because rhf field.map has default values so basically
     // keys are not updated there and index needs to kept so that we can monitor
@@ -218,18 +236,25 @@ export const SecretInputRow = memo(
       return <></>;
     }
 
-
-    // console.log("SECRET => ", checkedSecrets)
+    console.log("checkedSecrets", checkedSecrets)
 
     return (
-      <tr className="group flex flex-row hover:bg-mineshaft-700" key={index}>
+      <tr className="group flex flex-row hover:bg-mineshaft-700"
+        key={index}
+        onMouseOver={() => handleSecretOnMouseEnter({ _id: secUniqId })}
+        onMouseLeave={() => handleSecretOnMouseLeave()}
+        onFocus={() => { }}>
         <td className="flex h-10 w-10 items-center justify-center border-none ml-4">
-          <Checkbox
-            className="mr-0 data-[state=checked]:bg-primary"
-            id="autoCapitalization"
-            // isChecked={Boolean(value)}
-            onCheckedChange={(isChecked) => handleCheckedSecret({_id: secUniqId, isChecked})}
-          />
+          {
+            checkIfSecretIsVisible({ _id: secUniqId }) && (
+              <Checkbox
+                className="mr-0 data-[state=checked]:bg-primary"
+                id="autoCapitalization"
+                onCheckedChange={(isChecked) => handleCheckedSecret({ _id: secUniqId, isChecked })}
+              />
+            )
+          }
+
         </td>
 
         <Controller

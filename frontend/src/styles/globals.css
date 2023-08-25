@@ -133,6 +133,10 @@
   opacity: 0;
 }
 
+.slideup-sec-checkbox {
+  transform: translateY(0);
+}
+
 @import "@fontsource/inter/400.css";
 @import "@fontsource/inter/500.css";
 @import "@fontsource/inter/700.css";
