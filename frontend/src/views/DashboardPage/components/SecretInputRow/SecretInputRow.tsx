@@ -1,5 +1,5 @@
 /* eslint-disable react/jsx-no-useless-fragment */
-import { memo, useEffect,useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import {
   Control,
   Controller,
@@ -32,7 +32,8 @@ import {
   PopoverTrigger,
   SecretInput,
   Tag,
-  Tooltip} from "@app/components/v2";
+  Tooltip
+} from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 import { WsTag } from "@app/hooks/api/types";
 
@@ -83,7 +84,7 @@ export const SecretInputRow = memo(
     isKeyError,
     keyError,
     secUniqId,
-    autoCapitalization,
+    autoCapitalization
   }: Props): JSX.Element => {
     const isKeySubDisabled = useRef<boolean>(false);
     // comment management in a row
@@ -94,7 +95,7 @@ export const SecretInputRow = memo(
     } = useFieldArray({ control, name: `secrets.${index}.tags` });
 
     // display the tags in alphabetical order
-    secretTags.sort((a, b) => a?.name?.localeCompare(b?.name))
+    secretTags.sort((a, b) => a?.name?.localeCompare(b?.name));
 
     // to get details on a secret
     const overrideAction = useWatch({
@@ -127,47 +128,40 @@ export const SecretInputRow = memo(
     const isOverridden =
       overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
 
-
-    const [editorRef, setEditorRef] = useState(isOverridden ? secValueOverride : secValue);
     const [hoveredTag, setHoveredTag] = useState<WsTag | null>(null);
 
     const handleTagOnMouseEnter = (wsTag: WsTag) => {
       setHoveredTag(wsTag);
-    }
+    };
 
     const handleTagOnMouseLeave = () => {
       setHoveredTag(null);
-    }
+    };
 
-    const checkIfTagIsVisible = (wsTag: WsTag) =>  wsTag._id === hoveredTag?._id;
+    const checkIfTagIsVisible = (wsTag: WsTag) => wsTag._id === hoveredTag?._id;
 
     const secId = useWatch({ control, name: `secrets.${index}._id`, exact: true });
-    const tags = useWatch({ control, name: `secrets.${index}.tags`, exact: true, defaultValue: [] }) || [];
+    const tags =
+      useWatch({ control, name: `secrets.${index}.tags`, exact: true, defaultValue: [] }) || [];
 
     const selectedTagIds = tags.reduce<Record<string, boolean>>(
       (prev, curr) => ({ ...prev, [curr.slug]: true }),
       {}
     );
 
-    const [isInviteLinkCopied, setInviteLinkCopied] = useToggle(false);
-
+    const [isSecValueCopied, setIsSecValueCopied] = useToggle(false);
 
     useEffect(() => {
       let timer: NodeJS.Timeout;
-      if (isInviteLinkCopied) {
-        timer = setTimeout(() => setInviteLinkCopied.off(), 2000);
+      if (isSecValueCopied) {
+        timer = setTimeout(() => setIsSecValueCopied.off(), 2000);
       }
       return () => clearTimeout(timer);
-    }, [isInviteLinkCopied]);
-
-
-    useEffect(() => {
-      setEditorRef(isOverridden ? secValueOverride : secValue);
-    }, [isOverridden]);
+    }, [isSecValueCopied]);
 
     const copyTokenToClipboard = () => {
       navigator.clipboard.writeText((secValueOverride || secValue) as string);
-      setInviteLinkCopied.on();
+      setIsSecValueCopied.on();
     };
 
     const onSecretOverride = () => {
@@ -191,8 +185,8 @@ export const SecretInputRow = memo(
     const onSelectTag = (selectedTag: WsTag) => {
       const shouldAppend = !selectedTagIds[selectedTag.slug];
       if (shouldAppend) {
-        const {_id: id, name, slug, tagColor} = selectedTag
-        append({_id: id, name, slug, tagColor});
+        const { _id: id, name, slug, tagColor } = selectedTag;
+        append({ _id: id, name, slug, tagColor });
       } else {
         const pos = tags.findIndex(({ slug }: { slug: string }) => selectedTag.slug === slug);
         remove(pos);
@@ -272,7 +266,7 @@ export const SecretInputRow = memo(
               <Controller
                 control={control}
                 name={`secrets.${index}.valueOverride`}
-                render={({ field: { onChange, onBlur } }) => (
+                render={({ field }) => (
                   <SecretInput
                     key={`secrets.${index}.valueOverride`}
                     isDisabled={
@@ -280,16 +274,8 @@ export const SecretInputRow = memo(
                       isRollbackMode ||
                       (isOverridden ? isAddOnly : shouldBeBlockedInAddOnly)
                     }
-                    value={editorRef}
                     isVisible={!isSecretValueHidden}
-                    onChange={(val, html) => {
-                      onChange(val);
-                      setEditorRef(html);
-                    }}
-                    onBlur={(html) => {
-                      setEditorRef(html);
-                      onBlur();
-                    }}
+                    {...field}
                   />
                 )}
               />
@@ -297,7 +283,7 @@ export const SecretInputRow = memo(
               <Controller
                 control={control}
                 name={`secrets.${index}.value`}
-                render={({ field: { onBlur, onChange } }) => (
+                render={({ field }) => (
                   <SecretInput
                     key={`secrets.${index}.value`}
                     isVisible={!isSecretValueHidden}
@@ -306,15 +292,7 @@ export const SecretInputRow = memo(
                       isRollbackMode ||
                       (isOverridden ? isAddOnly : shouldBeBlockedInAddOnly)
                     }
-                    onChange={(val, html) => {
-                      onChange(val);
-                      setEditorRef(html);
-                    }}
-                    value={editorRef}
-                    onBlur={(html) => {
-                      setEditorRef(html);
-                      onBlur();
-                    }}
+                    {...field}
                   />
                 )}
               />
@@ -323,38 +301,41 @@ export const SecretInputRow = memo(
         </td>
         <td className="min-w-sm flex">
           <div className="flex h-8 items-center pl-2">
-            {secretTags.map(({ id, slug, tagColor}) => {
+            {secretTags.map(({ id, slug, tagColor }) => {
               return (
-               <>
-                 <Popover>
-                  <PopoverTrigger asChild>
-                    <div>
-                      <Tag
-                        // isDisabled={isReadOnly || isAddOnly || isRollbackMode}
-                        // onClose={() => remove(i)}
-                        key={id}
-                        className="cursor-pointer"
-                      >
-                        <div className="rounded-full border-mineshaft-500 bg-transparent flex items-center  gap-1.5 justify-around">
-                          <div className="w-[10px] h-[10px] rounded-full" style={{ background: tagColor || "#bec2c8" }} />
-                          {slug}
-                        </div>
-                      </Tag>
-                    </div>
-                  </PopoverTrigger>
-                  <AddTagPopoverContent
-                    wsTags={wsTags}
-                    secKey={secKey || "this secret"}
-                    selectedTagIds={selectedTagIds}
-                    handleSelectTag={(wsTag: WsTag) => onSelectTag(wsTag)}
-                    handleTagOnMouseEnter={(wsTag: WsTag) => handleTagOnMouseEnter(wsTag)}
-                    handleTagOnMouseLeave={() => handleTagOnMouseLeave()}
-                    checkIfTagIsVisible={(wsTag: WsTag) => checkIfTagIsVisible(wsTag)}
-                    handleOnCreateTagOpen={() => onCreateTagOpen()}
-                  />
-                </Popover>
-               </>
-              )
+                <>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <div>
+                        <Tag
+                          // isDisabled={isReadOnly || isAddOnly || isRollbackMode}
+                          // onClose={() => remove(i)}
+                          key={id}
+                          className="cursor-pointer"
+                        >
+                          <div className="rounded-full border-mineshaft-500 bg-transparent flex items-center  gap-1.5 justify-around">
+                            <div
+                              className="w-[10px] h-[10px] rounded-full"
+                              style={{ background: tagColor || "#bec2c8" }}
+                            />
+                            {slug}
+                          </div>
+                        </Tag>
+                      </div>
+                    </PopoverTrigger>
+                    <AddTagPopoverContent
+                      wsTags={wsTags}
+                      secKey={secKey || "this secret"}
+                      selectedTagIds={selectedTagIds}
+                      handleSelectTag={(wsTag: WsTag) => onSelectTag(wsTag)}
+                      handleTagOnMouseEnter={(wsTag: WsTag) => handleTagOnMouseEnter(wsTag)}
+                      handleTagOnMouseLeave={() => handleTagOnMouseLeave()}
+                      checkIfTagIsVisible={(wsTag: WsTag) => checkIfTagIsVisible(wsTag)}
+                      handleOnCreateTagOpen={() => onCreateTagOpen()}
+                    />
+                  </Popover>
+                </>
+              );
             })}
             <div className="w-0 overflow-hidden group-hover:w-6">
               <Tooltip content="Copy value">
@@ -365,7 +346,7 @@ export const SecretInputRow = memo(
                   className="py-[0.42rem]"
                   onClick={copyTokenToClipboard}
                 >
-                  <FontAwesomeIcon icon={isInviteLinkCopied ? faCheck : faCopy} />
+                  <FontAwesomeIcon icon={isSecValueCopied ? faCheck : faCopy} />
                 </IconButton>
               </Tooltip>
             </div>
