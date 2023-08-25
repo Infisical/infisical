@@ -9,7 +9,7 @@ import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
 
 import InputField from "@app/components/basic/InputField";
-import checkPassword from "@app/components/utilities/checks/checkPassword";
+import checkPassword from "~/components/utilities/checks/password/checkPassword";
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
 import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";

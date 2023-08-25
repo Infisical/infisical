@@ -13,7 +13,7 @@ import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import ProjectService from "@app/services/ProjectService";
 
 import InputField from "../basic/InputField";
-import checkPassword from "../utilities/checks/checkPassword";
+import checkPassword from "../utilities/checks/password/checkPassword";
 import Aes256Gcm from "../utilities/cryptography/aes-256-gcm";
 import { deriveArgonKey } from "../utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "../utilities/saveTokenToLocalStorage";

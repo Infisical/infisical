@@ -8,7 +8,7 @@ import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import attemptChangePassword from "@app/components/utilities/attemptChangePassword";
-import checkPassword from "@app/components/utilities/checks/checkPassword";
+import checkPassword from "~/components/utilities/checks/password/checkPassword";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useUser } from "@app/context";
 

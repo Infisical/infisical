@@ -10,7 +10,7 @@ import queryString from "query-string";
 
 import Button from "@app/components/basic/buttons/Button";
 import InputField from "@app/components/basic/InputField";
-import passwordCheck from "@app/components/utilities/checks/PasswordCheck";
+import passwordCheck from "~/components/utilities/checks/password/PasswordCheck";
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
 import { useResetPassword, useVerifyPasswordResetCode } from "@app/hooks/api";
 import { getBackupEncryptedPrivateKey } from "@app/hooks/api/auth/queries";
