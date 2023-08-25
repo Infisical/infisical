@@ -22,7 +22,7 @@ Resources:
   DocumentDBCluster:
     Type: "AWS::DocDB::DBCluster"
     Properties:
-      EngineVersion: 4.0.0
+      EngineVersion: 5.0.0
       StorageEncrypted: true
       MasterUsername: !Ref DocumentDBUsername
       MasterUserPassword: !Ref DocumentDBPassword
@@ -38,7 +38,7 @@ Resources:
     Type: "AWS::DocDB::DBClusterParameterGroup"
     Properties:
       Description: "description"
-      Family: "docdb4.0"
+      Family: "docdb5.0"
       Parameters:
         tls: "disabled"
         ttl_monitor: "disabled"
