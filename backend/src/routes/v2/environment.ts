@@ -16,7 +16,7 @@ import {
 router.post(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -32,7 +32,7 @@ router.post(
 router.put(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -49,7 +49,7 @@ router.put(
 router.patch(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -67,7 +67,7 @@ router.patch(
 router.delete(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN],
@@ -82,7 +82,7 @@ router.delete(
 router.get(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [MEMBER, ADMIN],
