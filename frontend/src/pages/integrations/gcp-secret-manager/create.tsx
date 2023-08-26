@@ -33,10 +33,8 @@ export default function GCPSecretManagerCreateIntegrationPage() {
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
 
-  console.log("integrationAuthApps: ", integrationAuthApps);
-
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
-  const [targetApp, setTargetApp] = useState("");
+  const [targetAppId, setTargetAppId] = useState("");
   const [secretPath, setSecretPath] = useState("/");
 
   const [isLoading, setIsLoading] = useState(false);
@@ -50,9 +48,9 @@ export default function GCPSecretManagerCreateIntegrationPage() {
   useEffect(() => {
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
-        setTargetApp(integrationAuthApps[0].name);
+        setTargetAppId(integrationAuthApps[0].appId as string);
       } else {
-        setTargetApp("none");
+        setTargetAppId("none");
       }
     }
   }, [integrationAuthApps]);
@@ -62,12 +60,12 @@ export default function GCPSecretManagerCreateIntegrationPage() {
       setIsLoading(true);
 
       if (!integrationAuth?._id) return;
-
+      
       await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
-        app: targetApp,
-        appId: null,
+        app: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId)?.name ?? null,
+        appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: null,
         targetEnvironmentId: null,
@@ -90,11 +88,11 @@ export default function GCPSecretManagerCreateIntegrationPage() {
     workspace &&
     selectedSourceEnvironment &&
     integrationAuthApps &&
-    targetApp ? (
+    targetAppId ? (
     <div className="flex h-full w-full items-center justify-center">
       <Card className="max-w-md rounded-md p-8">
         <CardTitle className="text-center">GCP Secret Manager Integration</CardTitle>
-        {/* <FormControl label="Project Environment" className="mt-4">
+        <FormControl label="Project Environment" className="mt-4">
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
@@ -117,29 +115,29 @@ export default function GCPSecretManagerCreateIntegrationPage() {
             placeholder="Provide a path, default is /"
           />
         </FormControl>
-        <FormControl label="Heroku App" className="mt-4">
+        <FormControl label="GCP Project">
           <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
+            value={targetAppId}
+            onValueChange={(val) => setTargetAppId(val)}
             className="w-full border border-mineshaft-500"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
               integrationAuthApps.map((integrationAuthApp) => (
                 <SelectItem
-                  value={integrationAuthApp.name}
-                  key={`target-app-${integrationAuthApp.name}`}
+                  value={integrationAuthApp.appId as string}
+                  key={`target-app-${integrationAuthApp.appId}`}
                 >
                   {integrationAuthApp.name}
                 </SelectItem>
               ))
             ) : (
               <SelectItem value="none" key="target-app-none">
-                No apps found
+                No projects found
               </SelectItem>
             )}
           </Select>
-        </FormControl> */}
+        </FormControl>
         <Button
           onClick={handleButtonClick}
           color="mineshaft"

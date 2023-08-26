@@ -1,6 +1,4 @@
 import {
-  INTEGRATION_GCP_SECRET_MANAGER,
-  INTEGRATION_GCP_API_URL,
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_AZURE_KEY_VAULT,
@@ -20,6 +18,10 @@ import {
   INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
+  INTEGRATION_GCP_API_URL,
+  INTEGRATION_GCP_SECRET_MANAGER,
+  INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME,
+  INTEGRATION_GCP_SERVICE_USAGE_URL,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_GITLAB_API_URL,
@@ -218,17 +220,14 @@ const getApps = async ({
 };
 
 /**
- * Return list of apps for Heroku integration
+ * Return list of apps for GCP secret manager integration
  * @param {Object} obj
- * @param {String} obj.accessToken - access token for Heroku API
- * @returns {Object[]} apps - names of Heroku apps
- * @returns {String} apps.name - name of Heroku app
+ * @param {String} obj.accessToken - access token for GCP API
+ * @returns {Object[]} apps - list of GCP projects
+ * @returns {String} apps.name - name of GCP project
+ * @returns {String} apps.appId - id of GCP project
  */
 const getAppsGCPSecretManager = async ({ accessToken }: { accessToken: string }) => {
-  console.log("getAppsGCPSecretManager");
-  console.log("getAppsGCPSecretManager accessToken: ", accessToken);
-  
-  let apps: any = [];
   
   interface GCPApp {
     projectNumber: string;
@@ -242,24 +241,31 @@ const getAppsGCPSecretManager = async ({ accessToken }: { accessToken: string })
     }
   }
   
-  interface GCPRes {
+  interface GCPGetProjectsRes {
     projects: GCPApp[];
     nextPageToken?: string;
   }
   
-  const pageSize = 10;
+  interface GCPGetServiceRes {
+    name: string;
+    parent: string;
+    state: "ENABLED" | "DISABLED" | "STATE_UNSPECIFIED"
+  }
+
+  let gcpApps: GCPApp[] = [];
+  const apps: App[] = [];
+  
+  const pageSize = 100;
   let pageToken: string | undefined;
   let hasMorePages = true;
   
   while (hasMorePages) {
-    console.log("iterrr");
     const params = new URLSearchParams({
       pageSize: String(pageSize),
       ...(pageToken ? { pageToken } : {})
     });
-    console.log("params: ", params);
 
-    const res: GCPRes = (await standardRequest.get(`${INTEGRATION_GCP_API_URL}/v1/projects`, {
+    const res: GCPGetProjectsRes = (await standardRequest.get(`${INTEGRATION_GCP_API_URL}/v1/projects`, {
         params,
         headers: {
           "Authorization": `Bearer ${accessToken}`,
@@ -269,12 +275,7 @@ const getAppsGCPSecretManager = async ({ accessToken }: { accessToken: string })
     )
     .data;
     
-    res.projects.forEach((project) => {
-      apps.push({
-        name: project.name,
-        appId: project.projectId
-      });
-    });
+    gcpApps = gcpApps.concat(res.projects);
 
     if (!res.nextPageToken) {
       hasMorePages = false;
@@ -283,23 +284,29 @@ const getAppsGCPSecretManager = async ({ accessToken }: { accessToken: string })
     pageToken = res.nextPageToken;
   }
   
-  // const projects: GCPApp[] = (
-  // .projects
-  
-  // console.log("res: ", res);
+  for await (const gcpApp of gcpApps) {
+    try {
+      const res: GCPGetServiceRes = (await standardRequest.get(
+        `${INTEGRATION_GCP_SERVICE_USAGE_URL}/v1/projects/${gcpApp.projectId}/services/${INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME}`, {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
+        }
+      )).data;
+      
+      if (res.state === "ENABLED") {
+        apps.push({
+          name: gcpApp.name,
+          appId: gcpApp.projectId
+        });
+      }
+    } catch {
+      continue;
+    }
+  }
 
-  // .filter((project: GCPApp) => project.lifecycleState === "ACTIVE");
-  
-  // console.log("projects: ", projects);
-
-  // const apps = projects.map((project) => ({
-  //   name: project.name,
-  //   appId: project.projectId
-  // }));
-  
-  console.log("apps: ", apps);
-
-  return [];
+  return apps;
 };
 
 /**

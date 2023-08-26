@@ -29,7 +29,7 @@ const integrationSlugNameMapping: Mapping = {
   "cloud-66": "Cloud 66",
   "northflank": "Northflank",
   "windmill": "Windmill",
-  "gcp-secret-manager": "Google Cloud Platform"
+  "gcp-secret-manager": "GCP Secret Manager"
 }
 
 const envMapping: Mapping = {

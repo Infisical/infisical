@@ -1,12 +1,12 @@
 import {
     getClientIdAzure,
     getClientIdBitBucket,
+    getClientIdGCPSecretManager,
     getClientIdGitHub,
     getClientIdGitLab,
     getClientIdHeroku,
     getClientIdNetlify,
-    getClientSlugVercel,
-    getClientIdGCPSecretManager
+    getClientSlugVercel
 } from "../config";
 
 // integrations
@@ -101,6 +101,10 @@ export const INTEGRATION_WINDMILL_API_URL = "https://app.windmill.dev/api";
 export const INTEGRATION_DIGITAL_OCEAN_API_URL = "https://api.digitalocean.com";
 export const INTEGRATION_CLOUD_66_API_URL = "https://app.cloud66.com/api";
 export const INTEGRATION_NORTHFLANK_API_URL = "https://api.northflank.com";
+
+export const INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME = "secretmanager.googleapis.com"
+export const INTEGRATION_GCP_SECRET_MANAGER_URL = `https://${INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME}`;
+export const INTEGRATION_GCP_SERVICE_USAGE_URL = "https://serviceusage.googleapis.com";
 
 export const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [
