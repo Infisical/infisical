@@ -1,17 +1,19 @@
 import {
     getClientIdAzure,
     getClientIdBitBucket,
+    getClientIdGCPSecretManager,
     getClientIdGitHub,
     getClientIdGitLab,
     getClientIdHeroku,
     getClientIdNetlify,
-    getClientSlugVercel,
+    getClientSlugVercel
 } from "../config";
 
 // integrations
 export const INTEGRATION_AZURE_KEY_VAULT = "azure-key-vault";
 export const INTEGRATION_AWS_PARAMETER_STORE = "aws-parameter-store";
 export const INTEGRATION_AWS_SECRET_MANAGER = "aws-secret-manager";
+export const INTEGRATION_GCP_SECRET_MANAGER = "gcp-secret-manager";
 export const INTEGRATION_HEROKU = "heroku";
 export const INTEGRATION_VERCEL = "vercel";
 export const INTEGRATION_NETLIFY = "netlify";
@@ -36,35 +38,37 @@ export const INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM = "digital-ocean-app-platfor
 export const INTEGRATION_CLOUD_66 = "cloud-66";
 export const INTEGRATION_NORTHFLANK = "northflank";
 export const INTEGRATION_SET = new Set([
+    INTEGRATION_GCP_SECRET_MANAGER,
     INTEGRATION_AZURE_KEY_VAULT,
-  INTEGRATION_HEROKU,
-  INTEGRATION_VERCEL,
-  INTEGRATION_NETLIFY,
-  INTEGRATION_GITHUB,
-  INTEGRATION_GITLAB,
-  INTEGRATION_RENDER,
-  INTEGRATION_FLYIO,
-  INTEGRATION_CIRCLECI,
-  INTEGRATION_LARAVELFORGE,
-  INTEGRATION_TRAVISCI,
-  INTEGRATION_TEAMCITY,
-  INTEGRATION_SUPABASE,
-  INTEGRATION_CHECKLY,
-  INTEGRATION_TERRAFORM_CLOUD,
-  INTEGRATION_HASHICORP_VAULT,
-  INTEGRATION_CLOUDFLARE_PAGES,
-  INTEGRATION_CODEFRESH,
-  INTEGRATION_WINDMILL,
-  INTEGRATION_BITBUCKET,
-  INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
-  INTEGRATION_CLOUD_66,
-  INTEGRATION_NORTHFLANK
+    INTEGRATION_HEROKU,
+    INTEGRATION_VERCEL,
+    INTEGRATION_NETLIFY,
+    INTEGRATION_GITHUB,
+    INTEGRATION_GITLAB,
+    INTEGRATION_RENDER,
+    INTEGRATION_FLYIO,
+    INTEGRATION_CIRCLECI,
+    INTEGRATION_LARAVELFORGE,
+    INTEGRATION_TRAVISCI,
+    INTEGRATION_TEAMCITY,
+    INTEGRATION_SUPABASE,
+    INTEGRATION_CHECKLY,
+    INTEGRATION_TERRAFORM_CLOUD,
+    INTEGRATION_HASHICORP_VAULT,
+    INTEGRATION_CLOUDFLARE_PAGES,
+    INTEGRATION_CODEFRESH,
+    INTEGRATION_WINDMILL,
+    INTEGRATION_BITBUCKET,
+    INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
+    INTEGRATION_CLOUD_66,
+    INTEGRATION_NORTHFLANK
 ]);
 
 // integration types
 export const INTEGRATION_OAUTH2 = "oauth2";
 
 // integration oauth endpoints
+export const INTEGRATION_GCP_TOKEN_URL = "https://accounts.google.com/o/oauth2/token";
 export const INTEGRATION_AZURE_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
 export const INTEGRATION_HEROKU_TOKEN_URL = "https://id.heroku.com/oauth/token";
 export const INTEGRATION_VERCEL_TOKEN_URL =
@@ -76,6 +80,7 @@ export const INTEGRATION_GITLAB_TOKEN_URL = "https://gitlab.com/oauth/token";
 export const INTEGRATION_BITBUCKET_TOKEN_URL = "https://bitbucket.org/site/oauth2/access_token"
 
 // integration apps endpoints
+export const INTEGRATION_GCP_API_URL = "https://cloudresourcemanager.googleapis.com";
 export const INTEGRATION_HEROKU_API_URL = "https://api.heroku.com";
 export const INTEGRATION_GITLAB_API_URL = "https://gitlab.com/api";
 export const INTEGRATION_VERCEL_API_URL = "https://api.vercel.com";
@@ -96,6 +101,10 @@ export const INTEGRATION_WINDMILL_API_URL = "https://app.windmill.dev/api";
 export const INTEGRATION_DIGITAL_OCEAN_API_URL = "https://api.digitalocean.com";
 export const INTEGRATION_CLOUD_66_API_URL = "https://app.cloud66.com/api";
 export const INTEGRATION_NORTHFLANK_API_URL = "https://api.northflank.com";
+
+export const INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME = "secretmanager.googleapis.com"
+export const INTEGRATION_GCP_SECRET_MANAGER_URL = `https://${INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME}`;
+export const INTEGRATION_GCP_SERVICE_USAGE_URL = "https://serviceusage.googleapis.com";
 
 export const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [
@@ -272,12 +281,12 @@ export const getIntegrationOptions = async () => {
             docsLink: "",
         },
         {
-            name: "Google Cloud Platform",
-            slug: "gcp",
+            name: "GCP Secret Manager",
+            slug: "gcp-secret-manager",
             image: "Google Cloud Platform.png",
-            isAvailable: false,
-            type: "",
-            clientId: "",
+            isAvailable: true,
+            type: "oauth",
+            clientId: await getClientIdGCPSecretManager(),
             docsLink: ""
         },
         {
