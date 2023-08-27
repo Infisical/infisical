@@ -68,8 +68,8 @@ type Props = {
   isKeyError?: boolean;
   keyError?: string;
   autoCapitalization?: boolean;
-  handleCheckedSecret: (secretObj: { _id: string | undefined, isChecked: string | boolean }) => void;
-  checkedSecrets: { _id: string | undefined }[]
+  handleCheckedSecret: (secretObj: { _id: string, isChecked: string | boolean }) => void;
+  checkedSecrets: { _id: string | undefined }[];
 };
 
 export const SecretInputRow = memo(
@@ -92,7 +92,7 @@ export const SecretInputRow = memo(
     secUniqId,
     autoCapitalization,
     handleCheckedSecret,
-    checkedSecrets
+    checkedSecrets,
   }: Props): JSX.Element => {
     const isKeySubDisabled = useRef<boolean>(false);
     // comment management in a row
@@ -236,8 +236,6 @@ export const SecretInputRow = memo(
       return <></>;
     }
 
-    console.log("checkedSecrets", checkedSecrets)
-
     return (
       <tr className="group flex flex-row hover:bg-mineshaft-700"
         key={index}
@@ -250,7 +248,7 @@ export const SecretInputRow = memo(
               <Checkbox
                 className="mr-0 data-[state=checked]:bg-primary"
                 id="autoCapitalization"
-                onCheckedChange={(isChecked) => handleCheckedSecret({ _id: secUniqId, isChecked })}
+                onCheckedChange={(isChecked) => handleCheckedSecret({ _id: secUniqId as string, isChecked })}
               />
             )
           }

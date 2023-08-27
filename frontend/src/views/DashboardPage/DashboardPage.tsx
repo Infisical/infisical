@@ -734,13 +734,13 @@ export const DashboardPage = () => {
   const isSecretImportEmpty = !secretImportCfg?.imports?.length;
   const isEmptyPage = isFoldersEmpty && isSecretEmpty && isSecretImportEmpty;
 
-  const [checkedSecrets, setCheckedSecrets] = useState<{ _id: string | undefined, isChecked: string | boolean }[]>([])
+  const [checkedSecrets, setCheckedSecrets] = useState<{ _id: string, isChecked: string | boolean }[]>([])
 
   useEffect(() => {
     const secCheckBox = document.querySelector("#sec-checkbox")
-    if(checkedSecrets.length > 0) {
+    if (checkedSecrets.length > 0) {
       secCheckBox?.classList.add("slideup-sec-checkbox")
-    }else {
+    } else {
       secCheckBox?.classList.remove("slideup-sec-checkbox")
     }
   }, [checkedSecrets])
@@ -758,7 +758,7 @@ export const DashboardPage = () => {
   );
 
 
-  const handleCheckedSecret = (secretObj: { _id: string | undefined, isChecked: string | boolean }) => {
+  const handleCheckedSecret = (secretObj: { _id: string, isChecked: string | boolean }) => {
     const checkedSecretsClone = [...checkedSecrets]
     const checkedSecretIndex = checkedSecretsClone.findIndex(secret => secret._id === secretObj._id)
     if (secretObj.isChecked) {
@@ -767,6 +767,55 @@ export const DashboardPage = () => {
       checkedSecretsClone.splice(checkedSecretIndex, 1)
     }
     setCheckedSecrets(() => checkedSecretsClone)
+  }
+
+  const handleSecretsBulkDelete = async () => {
+    // eslint-disable-next-line no-alert
+    const confirm = window.confirm("Are you sure you want to delete tis secrets?")
+    if (confirm) {
+      const checkedSecretsIds = [...checkedSecrets].map(checkedSecret => checkedSecret._id)
+      const userSecrets = [...fields]
+      const deletedSecrets: { id: string, secretName: string }[] = userSecrets.filter((secret) => checkedSecretsIds.includes(secret._id as string)).map(secret => ({
+        id: secret._id as string,
+        secretName: secret.key
+      }))
+
+      const batchedSecret = transformSecretsToBatchSecretReq(
+        deletedSecrets,
+        latestFileKey,
+        userSecrets,
+        secrets?.secrets
+      );
+
+      if (!selectedEnv?.slug) return;
+      if (batchedSecret.length === 0) {
+        return;
+      }
+
+      try {
+        await batchSecretOp({
+          requests: batchedSecret,
+          workspaceId,
+          folderId,
+          environment: selectedEnv?.slug
+        });
+        createNotification({
+          text: "Successfully deleted  secrets",
+          type: "success"
+        });
+        setCheckedSecrets(() => []);
+        if (!hasUserPushed) {
+          await registerUserAction(USER_ACTION_PUSH);
+        }
+      } catch (error) {
+        console.log(error);
+        createNotification({
+          text: "Failed to deleted secrets",
+          type: "error"
+        });
+      }
+    }
+
   }
 
   return (
@@ -783,7 +832,10 @@ export const DashboardPage = () => {
                 <div className="bg-mineshaft-900 hover:bg-mineshaft-700 cursor-pointer  flex justify-center items-center border rounded-md border-mineshaft-500 px-[15px] py-1.5 text-gray-300">
                   Add tag
                 </div>
-                <div className="bg-mineshaft-900 hover:bg-mineshaft-700 cursor-pointer flex justify-center items-center border rounded-md border-mineshaft-500 px-[15px] py-1.5 text-gray-300">
+                <div role="button" className="bg-mineshaft-900 hover:bg-mineshaft-700 cursor-pointer flex justify-center items-center border rounded-md border-mineshaft-500 px-[15px] py-1.5 text-gray-300"
+                  onClick={() => handleSecretsBulkDelete()}
+                  tabIndex={-1}
+                  onKeyUp={() => { }} >
                   Delete
                 </div>
               </div>
@@ -1027,7 +1079,6 @@ export const DashboardPage = () => {
                           autoCapitalization={currentWorkspace?.autoCapitalization}
                           handleCheckedSecret={(secretObj) => handleCheckedSecret(secretObj)}
                           checkedSecrets={checkedSecrets}
-
                         />
                       )
                     })}
