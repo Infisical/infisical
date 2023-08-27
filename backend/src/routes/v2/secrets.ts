@@ -1,14 +1,12 @@
 import express from "express";
 const router = express.Router();
-import { Types } from "mongoose";
 import {
   requireAuth,
   requireSecretsAuth,
   requireWorkspaceAuth,
   validateRequest
 } from "../../middleware";
-import { validateClientForSecrets } from "../../validation";
-import { body, query } from "express-validator";
+import { body } from "express-validator";
 import { secretsController } from "../../controllers/v2";
 import {
   ADMIN,
@@ -19,9 +17,9 @@ import {
   SECRET_PERSONAL,
   SECRET_SHARED
 } from "../../variables";
-import { BatchSecretRequest } from "../../types/secret";
 
-router.post( // TODO endpoint: strongly consider deprecation in favor of a single operation experience on dashboard
+router.post(
+  // TODO endpoint: strongly consider deprecation in favor of a single operation experience on dashboard
   "/batch",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
@@ -30,33 +28,11 @@ router.post( // TODO endpoint: strongly consider deprecation in favor of a singl
     acceptedRoles: [ADMIN, MEMBER],
     locationWorkspaceId: "body"
   }),
-  body("workspaceId").exists().isString().trim(),
-  body("folderId").default("root").isString().trim(),
-  body("environment").exists().isString().trim(),
-  body("secretPath").optional().isString().trim(),
-  body("requests")
-    .exists()
-    .custom(async (requests: BatchSecretRequest[], { req }) => {
-      if (Array.isArray(requests)) {
-        const secretIds = requests
-          .map((request) => request.secret._id)
-          .filter((secretId) => secretId !== undefined);
-
-        if (secretIds.length > 0) {
-          req.secrets = await validateClientForSecrets({
-            authData: req.authData,
-            secretIds: secretIds.map((secretId: string) => new Types.ObjectId(secretId)),
-            requiredPermissions: []
-          });
-        }
-      }
-      return true;
-    }),
-  validateRequest,
   secretsController.batchSecrets
 );
 
-router.post( // TODO endpoint: deprecate (moved to POST api/v3/secrets)
+router.post(
+  // TODO endpoint: deprecate (moved to POST api/v3/secrets)
   "/",
   body("workspaceId").exists().isString().trim(),
   body("environment").exists().isString().trim(),
@@ -117,15 +93,9 @@ router.post( // TODO endpoint: deprecate (moved to POST api/v3/secrets)
   secretsController.createSecrets
 );
 
-router.get( // TODO endpoint: deprecate (moved to GET api/v3/secrets)
+router.get(
+  // TODO endpoint: deprecate (moved to GET api/v3/secrets)
   "/",
-  query("workspaceId").exists().trim(),
-  query("environment").exists().trim(),
-  query("tagSlugs"),
-  query("folderId").default("root").isString().trim(),
-  query("secretPath").optional().isString().trim(),
-  query("include_imports").optional().default(false).isBoolean(),
-  validateRequest,
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
@@ -138,7 +108,8 @@ router.get( // TODO endpoint: deprecate (moved to GET api/v3/secrets)
   secretsController.getSecrets
 );
 
-router.patch( // TODO endpoint: deprecate (moved to PATCH api/v3/secrets)
+router.patch(
+  // TODO endpoint: deprecate (moved to PATCH api/v3/secrets)
   "/",
   body("secrets")
     .exists()
@@ -173,7 +144,8 @@ router.patch( // TODO endpoint: deprecate (moved to PATCH api/v3/secrets)
   secretsController.updateSecrets
 );
 
-router.delete( // TODO endpoint: deprecate (moved to DELETE api/v3/secrets)
+router.delete(
+  // TODO endpoint: deprecate (moved to DELETE api/v3/secrets)
   "/",
   body("secretIds")
     .exists()

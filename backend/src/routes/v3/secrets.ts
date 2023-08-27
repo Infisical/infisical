@@ -15,36 +15,18 @@ import {
 
 router.get(
   "/raw",
-  query("workspaceId").optional().isString().trim(),
-  query("environment").optional().isString().trim(),
-  query("folderId").optional().isString().trim(),
-  query("secretPath").default("/").isString().trim(),
-  query("include_imports").optional().isBoolean().default(false),
-  validateRequest,
   requireAuth({
-    acceptedAuthModes: [
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN
-    ]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   secretsController.getSecretsRaw
 );
 
+// TODO(akhilmhdh): tony please split the requireWorkspaceAuth to multiple middlewares
+// IP checking into another one
 router.get(
   "/raw/:secretName",
-  param("secretName").exists().isString().trim(),
-  query("workspaceId").exists().isString().trim(),
-  query("environment").exists().isString().trim(),
-  query("secretPath").default("/").isString().trim(),
-  query("type").optional().isIn([SECRET_SHARED, SECRET_PERSONAL]),
-  validateRequest,
   requireAuth({
-    acceptedAuthModes: [
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN
-    ]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -60,19 +42,8 @@ router.get(
 
 router.post(
   "/raw/:secretName",
-  body("workspaceId").exists().isString().trim(),
-  body("environment").exists().isString().trim(),
-  body("type").exists().isIn([SECRET_SHARED, SECRET_PERSONAL]),
-  body("secretValue").exists().isString().trim(),
-  body("secretComment").default("").isString().trim(),
-  body("secretPath").default("/").isString().trim(),
-  validateRequest,
   requireAuth({
-    acceptedAuthModes: [
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN
-    ]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -88,19 +59,8 @@ router.post(
 
 router.patch(
   "/raw/:secretName",
-  param("secretName").exists().isString().trim(),
-  body("workspaceId").exists().isString().trim(),
-  body("environment").exists().isString().trim(),
-  body("type").exists().isIn([SECRET_SHARED, SECRET_PERSONAL]),
-  body("secretValue").exists().isString().trim(),
-  body("secretPath").default("/").isString().trim(),
-  validateRequest,
   requireAuth({
-    acceptedAuthModes: [
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN
-    ]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -116,18 +76,8 @@ router.patch(
 
 router.delete(
   "/raw/:secretName",
-  param("secretName").exists().isString().trim(),
-  body("workspaceId").exists().isString().trim(),
-  body("environment").exists().isString().trim(),
-  body("secretPath").default("/").isString().trim(),
-  body("type").exists().isIn([SECRET_SHARED, SECRET_PERSONAL]),
-  validateRequest,
   requireAuth({
-    acceptedAuthModes: [
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN
-    ]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -149,11 +99,7 @@ router.get(
   query("secretPath").default("/").isString().trim(),
   validateRequest,
   requireAuth({
-    acceptedAuthModes: [
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN
-    ]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -169,28 +115,8 @@ router.get(
 
 router.post(
   "/:secretName",
-  body("workspaceId").exists().isString().trim(),
-  body("environment").exists().isString().trim(),
-  body("type").exists().isIn([SECRET_SHARED, SECRET_PERSONAL]),
-  body("secretKeyCiphertext").exists().isString().trim(),
-  body("secretKeyIV").exists().isString().trim(),
-  body("secretKeyTag").exists().isString().trim(),
-  body("secretValueCiphertext").exists().isString().trim(),
-  body("secretValueIV").exists().isString().trim(),
-  body("secretValueTag").exists().isString().trim(),
-  body("secretCommentCiphertext").optional().isString().trim(),
-  body("secretCommentIV").optional().isString().trim(),
-  body("secretCommentTag").optional().isString().trim(),
-  body("secretPath").default("/").isString().trim(),
-  body("metadata").optional().isObject().withMessage("Metadata should be an object"),
-  body("metadata.source").optional().isString().withMessage("Source should be a string"),
-  validateRequest,
   requireAuth({
-    acceptedAuthModes: [
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN
-    ]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -206,18 +132,8 @@ router.post(
 
 router.get(
   "/:secretName",
-  param("secretName").exists().isString().trim(),
-  query("workspaceId").exists().isString().trim(),
-  query("environment").exists().isString().trim(),
-  query("secretPath").default("/").isString().trim(),
-  query("type").optional().isIn([SECRET_SHARED, SECRET_PERSONAL]),
-  validateRequest,
   requireAuth({
-    acceptedAuthModes: [
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN
-    ]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -232,21 +148,8 @@ router.get(
 
 router.patch(
   "/:secretName",
-  param("secretName").exists().isString().trim(),
-  body("workspaceId").exists().isString().trim(),
-  body("environment").exists().isString().trim(),
-  body("type").exists().isIn([SECRET_SHARED, SECRET_PERSONAL]),
-  body("secretValueCiphertext").exists().isString().trim(),
-  body("secretValueIV").exists().isString().trim(),
-  body("secretValueTag").exists().isString().trim(),
-  body("secretPath").default("/").isString().trim(),
-  validateRequest,
   requireAuth({
-    acceptedAuthModes: [
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN
-    ]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -269,11 +172,7 @@ router.delete(
   body("type").exists().isIn([SECRET_SHARED, SECRET_PERSONAL]),
   validateRequest,
   requireAuth({
-    acceptedAuthModes: [
-      AuthMode.JWT,
-      AuthMode.API_KEY,
-      AuthMode.SERVICE_TOKEN
-    ]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],

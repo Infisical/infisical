@@ -1,14 +1,10 @@
 import { Types } from "mongoose";
-import {
-  ISecret,
-  IServiceTokenData,
-  IUser,
-  ServiceTokenData,
-} from "../models";
+import { ISecret, IServiceTokenData, IUser, ServiceTokenData } from "../models";
 import { ServiceTokenDataNotFoundError, UnauthorizedRequestError } from "../utils/errors";
 import { validateUserClientForWorkspace } from "./user";
 import { ActorType } from "../ee/models";
 import { AuthData } from "../interfaces/middleware";
+import { z } from "zod";
 
 /**
  * Validate authenticated clients for service token with id [serviceTokenId] based
@@ -31,10 +27,11 @@ export const validateClientForServiceTokenData = async ({
     .select("+encryptedKey +iv +tag")
     .populate<{ user: IUser }>("user");
 
-  if (!serviceTokenData) throw ServiceTokenDataNotFoundError({
-    message: "Failed to find service token data"
-  });
-  
+  if (!serviceTokenData)
+    throw ServiceTokenDataNotFoundError({
+      message: "Failed to find service token data"
+    });
+
   switch (authData.actor.type) {
     case ActorType.USER:
       await validateUserClientForWorkspace({
@@ -140,3 +137,28 @@ export const validateServiceTokenDataClientForSecrets = async ({
     });
   });
 };
+
+export const CreateServiceTokenV2 = z.object({
+  body: z.object({
+    name: z.string().trim(),
+    workspaceId: z.string().trim(),
+    scopes: z
+      .object({
+        environment: z.string().trim(),
+        secretPath: z.string().trim()
+      })
+      .array()
+      .min(1),
+    encryptedKey: z.string().trim(),
+    iv: z.string().trim(),
+    tag: z.string().trim(),
+    expiresIn: z.number(),
+    permissions: z.enum(["read", "write"]).array()
+  })
+});
+
+export const DeleteServiceTokenV2 = z.object({
+  params: z.object({
+    serviceTokenDataId: z.string().trim()
+  })
+});

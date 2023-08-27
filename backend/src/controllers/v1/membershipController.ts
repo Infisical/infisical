@@ -7,6 +7,14 @@ import { sendMail } from "../../helpers/nodemailer";
 import { ACCEPTED, ADMIN, MEMBER } from "../../variables";
 import { getSiteURL } from "../../config";
 import { EEAuditLogService } from "../../ee/services";
+import { validateRequest } from "../../helpers/validation";
+import * as reqValidator from "../../validation/membership";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  getUserProjectPermissions
+} from "../../services/ProjectRoleService";
+import { ForbiddenError } from "@casl/ability";
 
 /**
  * Check that user is a member of workspace with id [workspaceId]
@@ -15,7 +23,10 @@ import { EEAuditLogService } from "../../ee/services";
  * @returns
  */
 export const validateMembership = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
+  const {
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.ValidateMembershipV1, req);
+
   // validate membership
   const membership = await findMembership({
     user: req.user._id,
@@ -38,8 +49,10 @@ export const validateMembership = async (req: Request, res: Response) => {
  * @returns
  */
 export const deleteMembership = async (req: Request, res: Response) => {
-  const { membershipId } = req.params;
-  
+  const {
+    params: { membershipId }
+  } = await validateRequest(reqValidator.DeleteMembershipV1, req);
+
   // check if membership to delete exists
   const membershipToDelete = await Membership.findOne({
     _id: membershipId
@@ -49,27 +62,20 @@ export const deleteMembership = async (req: Request, res: Response) => {
     throw new Error("Failed to delete workspace membership that doesn't exist");
   }
 
-  // check if user is a member and admin of the workspace
-  // whose membership we wish to delete
-  const membership = await Membership.findOne({
-    user: req.user._id,
-    workspace: membershipToDelete.workspace
-  });
-
-  if (!membership) {
-    throw new Error("Failed to validate workspace membership");
-  }
-
-  if (membership.role !== ADMIN) {
-    // user is not an admin member of the workspace
-    throw new Error("Insufficient role for deleting workspace membership");
-  }
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    membershipToDelete.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.Member
+  );
 
   // delete workspace membership
   const deletedMembership = await deleteMember({
     membershipId: membershipToDelete._id.toString()
   });
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -80,7 +86,7 @@ export const deleteMembership = async (req: Request, res: Response) => {
       }
     },
     {
-      workspaceId: membership.workspace
+      workspaceId: membershipToDelete.workspace
     }
   );
 
@@ -96,43 +102,37 @@ export const deleteMembership = async (req: Request, res: Response) => {
  * @returns
  */
 export const changeMembershipRole = async (req: Request, res: Response) => {
-  const { membershipId } = req.params;
-  const { role } = req.body;
+  const {
+    body: { role },
+    params: { membershipId }
+  } = await validateRequest(reqValidator.ChangeMembershipRoleV1, req);
 
   if (![ADMIN, MEMBER].includes(role)) {
     throw new Error("Failed to validate role");
   }
 
   // validate target membership
-  const membershipToChangeRole = await Membership
-    .findById(membershipId)
-    .populate<{ user: IUser }>("user");
+  const membershipToChangeRole = await Membership.findById(membershipId).populate<{ user: IUser }>(
+    "user"
+  );
 
   if (!membershipToChangeRole) {
     throw new Error("Failed to find membership to change role");
   }
 
-  // check if user is a member and admin of target membership's
-  // workspace
-  const membership = await findMembership({
-    user: req.user._id,
-    workspace: membershipToChangeRole.workspace
-  });
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    membershipToChangeRole.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Member
+  );
 
-  if (!membership) {
-    throw new Error("Failed to validate membership");
-  }
-
-  if (membership.role !== ADMIN) {
-    // user is not an admin member of the workspace
-    throw new Error("Insufficient role for changing member roles");
-  }
-  
   const oldRole = membershipToChangeRole.role;
-
   membershipToChangeRole.role = role;
   await membershipToChangeRole.save();
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {

@@ -1,18 +1,15 @@
 import { Types } from "mongoose";
-import {
-    IUser,
-    Integration,
-    IntegrationAuth,
-} from "../models";
+import { IUser, Integration, IntegrationAuth } from "../models";
 import { validateUserClientForWorkspace } from "./user";
 import { IntegrationService } from "../services";
 import {
-    IntegrationAuthNotFoundError,
-    IntegrationNotFoundError,
-    UnauthorizedRequestError,
+  IntegrationAuthNotFoundError,
+  IntegrationNotFoundError,
+  UnauthorizedRequestError
 } from "../utils/errors";
 import { AuthData } from "../interfaces/middleware";
 import { ActorType } from "../ee/models";
+import { z } from "zod";
 
 /**
  * Validate authenticated clients for integration with id [integrationId] based
@@ -25,42 +22,80 @@ import { ActorType } from "../ee/models";
  * @param {String[]} obj.requiredPermissions - required permissions as part of the endpoint
  */
 export const validateClientForIntegration = async ({
-    authData,
-    integrationId,
-    acceptedRoles,
+  authData,
+  integrationId,
+  acceptedRoles
 }: {
-    authData: AuthData;
-    integrationId: Types.ObjectId;
-    acceptedRoles: Array<"admin" | "member">;
+  authData: AuthData;
+  integrationId: Types.ObjectId;
+  acceptedRoles: Array<"admin" | "member">;
 }) => {
-    
-    const integration = await Integration.findById(integrationId);
-    if (!integration) throw IntegrationNotFoundError();
+  const integration = await Integration.findById(integrationId);
+  if (!integration) throw IntegrationNotFoundError();
 
-    const integrationAuth = await IntegrationAuth
-        .findById(integration.integrationAuth)
-        .select(
-			"+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt"
-        );
-    
-    if (!integrationAuth) throw IntegrationAuthNotFoundError();
+  const integrationAuth = await IntegrationAuth.findById(integration.integrationAuth).select(
+    "+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt"
+  );
 
-    const accessToken = (await IntegrationService.getIntegrationAuthAccess({
-        integrationAuthId: integrationAuth._id,
-    })).accessToken;
-    
-    switch (authData.actor.type) {
-        case ActorType.USER:
-            await validateUserClientForWorkspace({
-                user: authData.authPayload as IUser,
-                workspaceId: integration.workspace,
-                acceptedRoles,
-            });
-        
-            return ({ integration, accessToken }); 
-        case ActorType.SERVICE:
-            throw UnauthorizedRequestError({
-                message: "Failed service token authorization for integration",
-            }); 
-    }
-}
+  if (!integrationAuth) throw IntegrationAuthNotFoundError();
+
+  const accessToken = (
+    await IntegrationService.getIntegrationAuthAccess({
+      integrationAuthId: integrationAuth._id
+    })
+  ).accessToken;
+
+  switch (authData.actor.type) {
+    case ActorType.USER:
+      await validateUserClientForWorkspace({
+        user: authData.authPayload as IUser,
+        workspaceId: integration.workspace,
+        acceptedRoles
+      });
+
+      return { integration, accessToken };
+    case ActorType.SERVICE:
+      throw UnauthorizedRequestError({
+        message: "Failed service token authorization for integration"
+      });
+  }
+};
+
+export const CreateIntegrationV1 = z.object({
+  body: z.object({
+    integrationAuthId: z.string().trim(),
+    app: z.string().trim(),
+    isActive: z.boolean(),
+    appId: z.string().trim(),
+    secretPath: z.string().trim().default("/"),
+    sourceEnvironment: z.string().trim(),
+    targetEnvironment: z.string().trim(),
+    targetEnvironmentId: z.string().trim(),
+    targetService: z.string().trim(),
+    targetServiceId: z.string().trim(),
+    owner: z.string().trim(),
+    path: z.string().trim(),
+    region: z.string().trim()
+  })
+});
+
+export const UpdateIntegrationV1 = z.object({
+  params: z.object({
+    integrationId: z.string().trim()
+  }),
+  body: z.object({
+    app: z.string().trim(),
+    appId: z.string().trim(),
+    isActive: z.boolean(),
+    secretPath: z.string().trim().default("/"),
+    targetEnvironment: z.string().trim(),
+    owner: z.string().trim(),
+    environment: z.string().trim()
+  })
+});
+
+export const DeleteIntegrationV1 = z.object({
+  params: z.object({
+    integrationId: z.string().trim()
+  })
+});

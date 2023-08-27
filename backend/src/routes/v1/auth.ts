@@ -1,6 +1,5 @@
 import express from "express";
 const router = express.Router();
-import { body } from "express-validator";
 import { requireAuth, validateRequest } from "../../middleware";
 import { authController } from "../../controllers/v1";
 import { authLimiter } from "../../helpers/rateLimiter";
@@ -12,9 +11,6 @@ router.post(
   // TODO endpoint: deprecate (moved to api/v3/auth/login1)
   "/login1",
   authLimiter,
-  body("email").exists().trim().notEmpty().toLowerCase(),
-  body("clientPublicKey").exists().trim().notEmpty(),
-  validateRequest,
   authController.login1
 );
 
@@ -22,9 +18,6 @@ router.post(
   // TODO endpoint: deprecate (moved to api/v3/auth/login2)
   "/login2",
   authLimiter,
-  body("email").exists().trim().notEmpty().toLowerCase(),
-  body("clientProof").exists().trim().notEmpty(),
-  validateRequest,
   authController.login2
 );
 
@@ -44,6 +37,8 @@ router.post(
   }),
   authController.checkAuth
 );
+
+router.get("/common-passwords", authLimiter, authController.getCommonPasswords);
 
 router.delete(
   // TODO endpoint: deprecate (moved to DELETE v2/users/me/sessions)

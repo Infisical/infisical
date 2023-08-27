@@ -197,3 +197,11 @@ export const DeleteOrgMemberv2 = z.object({
 export const GetOrgWorkspacesv2 = z.object({
   params: z.object({ organizationId: z.string().trim() })
 });
+
+export const VerfiyUserToOrganizationV1 = z.object({
+  body: z.object({
+    email: z.string().trim().email(),
+    organizationId: z.string().trim(),
+    code: z.string().trim()
+  })
+});

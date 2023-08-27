@@ -20,6 +20,13 @@ import {
   getUserOrgPermissions
 } from "../../services/RoleService";
 import { ForbiddenError } from "@casl/ability";
+import { validateRequest } from "../../helpers/validation";
+import * as reqValidator from "../../validation";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  getUserProjectPermissions
+} from "../../services/ProjectRoleService";
 
 /**
  * Return public keys of members of workspace with id [workspaceId]
@@ -28,7 +35,15 @@ import { ForbiddenError } from "@casl/ability";
  * @returns
  */
 export const getWorkspacePublicKeys = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
+  const {
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.GetWorkspacePublicKeysV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Member
+  );
 
   const publicKeys = (
     await Membership.find({
@@ -53,7 +68,15 @@ export const getWorkspacePublicKeys = async (req: Request, res: Response) => {
  * @returns
  */
 export const getWorkspaceMemberships = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
+  const {
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.GetWorkspaceMembershipsV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Member
+  );
 
   const users = await Membership.find({
     workspace: workspaceId
@@ -89,7 +112,9 @@ export const getWorkspaces = async (req: Request, res: Response) => {
  * @returns
  */
 export const getWorkspace = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
+  const {
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.GetWorkspaceV1, req);
 
   const workspace = await Workspace.findOne({
     _id: workspaceId
@@ -108,7 +133,9 @@ export const getWorkspace = async (req: Request, res: Response) => {
  * @returns
  */
 export const createWorkspace = async (req: Request, res: Response) => {
-  const { workspaceName, organizationId } = req.body;
+  const {
+    body: { organizationId, workspaceName }
+  } = await validateRequest(reqValidator.CreateWorkspaceV1, req);
 
   const organization = await Organization.findById(organizationId);
   if (!organization) {
@@ -183,8 +210,16 @@ export const deleteWorkspace = async (req: Request, res: Response) => {
  * @returns
  */
 export const changeWorkspaceName = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
-  const { name } = req.body;
+  const {
+    params: { workspaceId },
+    body: { name }
+  } = await validateRequest(reqValidator.ChangeWorkspaceNameV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Workspace
+  );
 
   const workspace = await Workspace.findOneAndUpdate(
     {
@@ -229,7 +264,15 @@ export const getWorkspaceIntegrations = async (req: Request, res: Response) => {
  * @returns
  */
 export const getWorkspaceIntegrationAuthorizations = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
+  const {
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.GetWorkspaceIntegrationAuthorizationsV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
 
   const authorizations = await IntegrationAuth.find({
     workspace: workspaceId
@@ -247,7 +290,16 @@ export const getWorkspaceIntegrationAuthorizations = async (req: Request, res: R
  * @returns
  */
 export const getWorkspaceServiceTokens = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
+  const {
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.GetWorkspaceServiceTokensV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.ServiceTokens
+  );
+
   // ?? FIX.
   const serviceTokens = await ServiceToken.find({
     user: req.user._id,

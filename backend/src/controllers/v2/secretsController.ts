@@ -25,7 +25,7 @@ import {
   userHasWriteOnlyAbility
 } from "../../ee/helpers/checkMembershipPermissions";
 import _ from "lodash";
-import { BatchSecret, BatchSecretRequest } from "../../types/secret";
+import { BatchSecret } from "../../types/secret";
 import {
   getFolderByPath,
   getFolderIdFromServiceToken,
@@ -35,6 +35,8 @@ import {
 import { isValidScope } from "../../helpers/secrets";
 import path from "path";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
+import { validateRequest } from "../../helpers/validation";
+import { BatchSecretsV2, GetSecretsV2 } from "../../validation";
 
 /**
  * Peform a batch of any specified CUD secret operations
@@ -46,22 +48,17 @@ export const batchSecrets = async (req: Request, res: Response) => {
   const channel = getUserAgentType(req.headers["user-agent"]);
   const postHogClient = await TelemetryService.getPostHogClient();
 
+  const validatedData = await validateRequest(BatchSecretsV2, req);
   const {
-    workspaceId,
-    environment,
-    requests
-  }: {
-    workspaceId: string;
-    environment: string;
-    requests: BatchSecretRequest[];
-  } = req.body;
-
-  let secretPath = req.body.secretPath as string;
-  let folderId = req.body.folderId as string;
+    body: { workspaceId, environment, requests }
+  } = validatedData;
+  let {
+    body: { secretPath, folderId }
+  } = validatedData;
 
   const createSecrets: BatchSecret[] = [];
   const updateSecrets: BatchSecret[] = [];
-  const deleteSecrets: { _id: Types.ObjectId, secretName: string; }[] = [];
+  const deleteSecrets: { _id: Types.ObjectId; secretName: string }[] = [];
   const actions: IAction[] = [];
 
   // get secret blind index salt
@@ -72,7 +69,11 @@ export const batchSecrets = async (req: Request, res: Response) => {
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
 
   if (req.authData.authPayload instanceof ServiceTokenData) {
-    const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, secretPath);
+    const isValidScopeAccess = isValidScope(
+      req.authData.authPayload,
+      environment,
+      secretPath || "/"
+    );
 
     // in service token when not giving secretpath folderid must be root
     // this is to avoid giving folderid when service tokens are used
@@ -133,7 +134,10 @@ export const batchSecrets = async (req: Request, res: Response) => {
         });
         break;
       case "DELETE":
-        deleteSecrets.push({ _id: new Types.ObjectId(request.secret._id), secretName: request.secret.secretName });
+        deleteSecrets.push({
+          _id: new Types.ObjectId(request.secret._id),
+          secretName: request.secret.secretName
+        });
         break;
     }
   }
@@ -332,18 +336,19 @@ export const batchSecrets = async (req: Request, res: Response) => {
   if (deleteSecrets.length > 0) {
     const deleteSecretIds: Types.ObjectId[] = deleteSecrets.map((s) => s._id);
 
-    const deletedSecretsObj = (await Secret.find({
-      _id: {
-        $in: deleteSecretIds
-      }
-    }))
-      .reduce(
-        (obj: any, secret: ISecret) => ({
-          ...obj,
-          [secret._id.toString()]: secret
-        }),
-        {}
-      );
+    const deletedSecretsObj = (
+      await Secret.find({
+        _id: {
+          $in: deleteSecretIds
+        }
+      })
+    ).reduce(
+      (obj: any, secret: ISecret) => ({
+        ...obj,
+        [secret._id.toString()]: secret
+      }),
+      {}
+    );
 
     await Secret.deleteMany({
       _id: {
@@ -781,10 +786,13 @@ export const getSecrets = async (req: Request, res: Response) => {
     }   
     */
 
-  const { tagSlugs, secretPath, include_imports } = req.query;
-  let { folderId } = req.query;
-  const workspaceId = req.query.workspaceId as string;
-  const environment = req.query.environment as string;
+  const validatedData = await validateRequest(GetSecretsV2, req);
+  const {
+    query: { tagSlugs, secretPath, include_imports, workspaceId, environment }
+  } = validatedData;
+  let {
+    query: { folderId }
+  } = validatedData;
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
 
@@ -926,7 +934,7 @@ export const getSecrets = async (req: Request, res: Response) => {
 
   // TODO(akhilmhdh) - secret-imp change this to org type
   let importedSecrets: any[] = [];
-  if (include_imports === "true") {
+  if (include_imports) {
     importedSecrets = await getAllImportedSecrets(workspaceId, environment, folderId as string);
   }
 

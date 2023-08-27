@@ -1,16 +1,22 @@
-import { AbilityBuilder, MongoAbility, RawRuleOf, createMongoAbility } from "@casl/ability";
+import {
+  AbilityBuilder,
+  ForcedSubject,
+  MongoAbility,
+  RawRuleOf,
+  createMongoAbility
+} from "@casl/ability";
 import { Membership } from "../models";
 import { IRole } from "../models/role";
 import { BadRequestError, UnauthorizedRequestError } from "../utils/errors";
 
-export enum GeneralPermissionActions {
+export enum ProjectPermissionActions {
   Read = "read",
   Create = "create",
   Edit = "edit",
   Delete = "delete"
 }
 
-export enum ProjectPermission {
+export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
   Settings = "settings",
@@ -24,96 +30,119 @@ export enum ProjectPermission {
   Workspace = "workspace",
   Secrets = "secrets",
   SecretImports = "secret-imports",
+  SecretRollback = "secret-rollback",
   Folders = "folders"
 }
 
+type GenericFields = {
+  environment: string;
+  secretPath?: string;
+};
+
 export type ProjectPermissionSet =
-  | [GeneralPermissionActions, ProjectPermission.Secrets]
-  | [GeneralPermissionActions, ProjectPermission.Folders]
-  | [GeneralPermissionActions, ProjectPermission.SecretImports]
-  | [GeneralPermissionActions, ProjectPermission.Role]
-  | [GeneralPermissionActions, ProjectPermission.Tags]
-  | [GeneralPermissionActions, ProjectPermission.Member]
-  | [GeneralPermissionActions, ProjectPermission.Integrations]
-  | [GeneralPermissionActions, ProjectPermission.Webhooks]
-  | [GeneralPermissionActions, ProjectPermission.AuditLogs]
-  | [GeneralPermissionActions, ProjectPermission.Environments]
-  | [GeneralPermissionActions, ProjectPermission.IpAllowList]
-  | [GeneralPermissionActions, ProjectPermission.Settings]
-  | [GeneralPermissionActions, ProjectPermission.ServiceTokens]
-  | [GeneralPermissionActions.Delete, ProjectPermission.Workspace]
-  | [GeneralPermissionActions.Edit, ProjectPermission.Workspace];
+  | [
+      ProjectPermissionActions,
+      ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & GenericFields)
+    ]
+  | [
+      ProjectPermissionActions,
+      ProjectPermissionSub.Folders | (ForcedSubject<ProjectPermissionSub.Folders> & GenericFields)
+    ]
+  | [
+      ProjectPermissionActions,
+      (
+        | ProjectPermissionSub.SecretImports
+        | (ForcedSubject<ProjectPermissionSub.SecretImports> & GenericFields)
+      )
+    ]
+  | [ProjectPermissionActions, ProjectPermissionSub.Role]
+  | [ProjectPermissionActions, ProjectPermissionSub.Tags]
+  | [ProjectPermissionActions, ProjectPermissionSub.Member]
+  | [ProjectPermissionActions, ProjectPermissionSub.Integrations]
+  | [ProjectPermissionActions, ProjectPermissionSub.Webhooks]
+  | [ProjectPermissionActions, ProjectPermissionSub.AuditLogs]
+  | [ProjectPermissionActions, ProjectPermissionSub.Environments]
+  | [ProjectPermissionActions, ProjectPermissionSub.IpAllowList]
+  | [ProjectPermissionActions, ProjectPermissionSub.Settings]
+  | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
+  | [ProjectPermissionActions.Delete, ProjectPermissionSub.Workspace]
+  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Workspace]
+  | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
+  | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback];
 
 const buildAdminPermission = () => {
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.Secrets);
-  can(GeneralPermissionActions.Create, ProjectPermission.Secrets);
-  can(GeneralPermissionActions.Edit, ProjectPermission.Secrets);
-  can(GeneralPermissionActions.Delete, ProjectPermission.Secrets);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.Folders);
-  can(GeneralPermissionActions.Create, ProjectPermission.Folders);
-  can(GeneralPermissionActions.Edit, ProjectPermission.Folders);
-  can(GeneralPermissionActions.Delete, ProjectPermission.Folders);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Folders);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Folders);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Folders);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Folders);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.SecretImports);
-  can(GeneralPermissionActions.Create, ProjectPermission.SecretImports);
-  can(GeneralPermissionActions.Edit, ProjectPermission.SecretImports);
-  can(GeneralPermissionActions.Delete, ProjectPermission.SecretImports);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretImports);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretImports);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretImports);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.Member);
-  can(GeneralPermissionActions.Create, ProjectPermission.Member);
-  can(GeneralPermissionActions.Edit, ProjectPermission.Member);
-  can(GeneralPermissionActions.Delete, ProjectPermission.Member);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.Role);
-  can(GeneralPermissionActions.Create, ProjectPermission.Role);
-  can(GeneralPermissionActions.Edit, ProjectPermission.Role);
-  can(GeneralPermissionActions.Delete, ProjectPermission.Role);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Member);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Member);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.Integrations);
-  can(GeneralPermissionActions.Create, ProjectPermission.Integrations);
-  can(GeneralPermissionActions.Edit, ProjectPermission.Integrations);
-  can(GeneralPermissionActions.Delete, ProjectPermission.Integrations);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Role);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Role);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.Webhooks);
-  can(GeneralPermissionActions.Create, ProjectPermission.Webhooks);
-  can(GeneralPermissionActions.Edit, ProjectPermission.Webhooks);
-  can(GeneralPermissionActions.Delete, ProjectPermission.Webhooks);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.ServiceTokens);
-  can(GeneralPermissionActions.Create, ProjectPermission.ServiceTokens);
-  can(GeneralPermissionActions.Edit, ProjectPermission.ServiceTokens);
-  can(GeneralPermissionActions.Delete, ProjectPermission.ServiceTokens);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.Settings);
-  can(GeneralPermissionActions.Create, ProjectPermission.Settings);
-  can(GeneralPermissionActions.Edit, ProjectPermission.Settings);
-  can(GeneralPermissionActions.Delete, ProjectPermission.Settings);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.ServiceTokens);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.ServiceTokens);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.Environments);
-  can(GeneralPermissionActions.Create, ProjectPermission.Environments);
-  can(GeneralPermissionActions.Edit, ProjectPermission.Environments);
-  can(GeneralPermissionActions.Delete, ProjectPermission.Environments);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Settings);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Settings);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.Tags);
-  can(GeneralPermissionActions.Create, ProjectPermission.Tags);
-  can(GeneralPermissionActions.Edit, ProjectPermission.Tags);
-  can(GeneralPermissionActions.Delete, ProjectPermission.Tags);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Environments);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Environments);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Environments);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.AuditLogs);
-  can(GeneralPermissionActions.Create, ProjectPermission.AuditLogs);
-  can(GeneralPermissionActions.Edit, ProjectPermission.AuditLogs);
-  can(GeneralPermissionActions.Delete, ProjectPermission.AuditLogs);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Tags);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Tags);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Tags);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.IpAllowList);
-  can(GeneralPermissionActions.Create, ProjectPermission.IpAllowList);
-  can(GeneralPermissionActions.Edit, ProjectPermission.IpAllowList);
-  can(GeneralPermissionActions.Delete, ProjectPermission.IpAllowList);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.AuditLogs);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.AuditLogs);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.AuditLogs);
 
-  can(GeneralPermissionActions.Edit, ProjectPermission.Workspace);
-  can(GeneralPermissionActions.Delete, ProjectPermission.IpAllowList);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.IpAllowList);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.IpAllowList);
+
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Workspace);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.IpAllowList);
 
   return build();
 };
@@ -123,31 +152,33 @@ export const adminProjectPermissions = buildAdminPermission();
 const buildMemberPermission = () => {
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.Secrets);
-  can(GeneralPermissionActions.Create, ProjectPermission.Secrets);
-  can(GeneralPermissionActions.Edit, ProjectPermission.Secrets);
-  can(GeneralPermissionActions.Delete, ProjectPermission.Secrets);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.Folders);
-  can(GeneralPermissionActions.Create, ProjectPermission.Folders);
-  can(GeneralPermissionActions.Edit, ProjectPermission.Folders);
-  can(GeneralPermissionActions.Delete, ProjectPermission.Folders);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Folders);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Folders);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Folders);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Folders);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.SecretImports);
-  can(GeneralPermissionActions.Create, ProjectPermission.SecretImports);
-  can(GeneralPermissionActions.Edit, ProjectPermission.SecretImports);
-  can(GeneralPermissionActions.Delete, ProjectPermission.SecretImports);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretImports);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretImports);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretImports);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.Member);
-  can(GeneralPermissionActions.Read, ProjectPermission.Role);
-  can(GeneralPermissionActions.Read, ProjectPermission.Integrations);
-  can(GeneralPermissionActions.Read, ProjectPermission.Webhooks);
-  can(GeneralPermissionActions.Read, ProjectPermission.ServiceTokens);
-  can(GeneralPermissionActions.Read, ProjectPermission.Settings);
-  can(GeneralPermissionActions.Read, ProjectPermission.Environments);
-  can(GeneralPermissionActions.Read, ProjectPermission.Tags);
-  can(GeneralPermissionActions.Read, ProjectPermission.AuditLogs);
-  can(GeneralPermissionActions.Read, ProjectPermission.IpAllowList);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
 
   return build();
 };
@@ -157,19 +188,20 @@ export const memberProjectPermissions = buildMemberPermission();
 const buildViewerPermission = () => {
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
-  can(GeneralPermissionActions.Read, ProjectPermission.Secrets);
-  can(GeneralPermissionActions.Read, ProjectPermission.Folders);
-  can(GeneralPermissionActions.Read, ProjectPermission.SecretImports);
-  can(GeneralPermissionActions.Read, ProjectPermission.Member);
-  can(GeneralPermissionActions.Read, ProjectPermission.Role);
-  can(GeneralPermissionActions.Read, ProjectPermission.Integrations);
-  can(GeneralPermissionActions.Read, ProjectPermission.Webhooks);
-  can(GeneralPermissionActions.Read, ProjectPermission.ServiceTokens);
-  can(GeneralPermissionActions.Read, ProjectPermission.Settings);
-  can(GeneralPermissionActions.Read, ProjectPermission.Environments);
-  can(GeneralPermissionActions.Read, ProjectPermission.Tags);
-  can(GeneralPermissionActions.Read, ProjectPermission.AuditLogs);
-  can(GeneralPermissionActions.Read, ProjectPermission.IpAllowList);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Folders);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
 
   return build();
 };
