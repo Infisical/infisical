@@ -26,8 +26,10 @@ import {
   faFileImport,
   faFolderPlus,
   faMagnifyingGlass,
-  faPlus
-} from "@fortawesome/free-solid-svg-icons";
+  faPlus,
+  faTags,
+  faTrash,
+  faUpDownLeftRight} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
@@ -772,6 +774,7 @@ export const DashboardPage = () => {
   const handleSecretsBulkDelete = async () => {
     // eslint-disable-next-line no-alert
     const confirm = window.confirm("Are you sure you want to delete tis secrets?")
+
     if (confirm) {
       const checkedSecretsIds = [...checkedSecrets].map(checkedSecret => checkedSecret._id)
       const userSecrets = [...fields]
@@ -826,16 +829,19 @@ export const DashboardPage = () => {
             <div className="flex flex-initial items-center justify-center shadow-md  bg-mineshaft-800 border border-mineshaft-500 rounded-[4px] pt-[8px] pr-[8px] pb-[8px] pl-[16px] pointer-events-auto gap-[16px]">
               <span className="min-w-[65px] text-gray-300">{checkedSecrets.length} selected</span>
               <div className="flex gap-2">
-                <div className="bg-mineshaft-900 hover:bg-mineshaft-700 cursor-pointer flex justify-center items-center border border-mineshaft-500 rounded-md px-[15px] py-1.5 text-gray-300">
+                <div className="bg-mineshaft-700 hover:bg-mineshaft-500 cursor-pointer flex justify-center items-center border border-mineshaft-500 rounded-md px-[15px] py-1.5 text-gray-200">
+                  <FontAwesomeIcon icon={faUpDownLeftRight} className="mr-2" />
                   Move
                 </div>
-                <div className="bg-mineshaft-900 hover:bg-mineshaft-700 cursor-pointer  flex justify-center items-center border rounded-md border-mineshaft-500 px-[15px] py-1.5 text-gray-300">
+                <div className="bg-mineshaft-700 hover:bg-mineshaft-500  cursor-pointer  flex justify-center items-center border rounded-md border-mineshaft-500 px-[15px] py-1.5 text-gray-200">
+                  <FontAwesomeIcon icon={faTags} className="mr-2" />
                   Add tag
                 </div>
-                <div role="button" className="bg-mineshaft-900 hover:bg-mineshaft-700 cursor-pointer flex justify-center items-center border rounded-md border-mineshaft-500 px-[15px] py-1.5 text-gray-300"
+                <div role="button" className="bg-mineshaft-700 hover:bg-mineshaft-500  cursor-pointer flex justify-center items-center border rounded-md border-mineshaft-500 px-[15px] py-1.5 text-gray-200"
                   onClick={() => handleSecretsBulkDelete()}
                   tabIndex={-1}
                   onKeyUp={() => { }} >
+                  <FontAwesomeIcon icon={faTrash} className="mr-2" />
                   Delete
                 </div>
               </div>
