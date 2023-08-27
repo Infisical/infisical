@@ -3,7 +3,9 @@ title: "Netlify"
 description: "How to sync secrets from Infisical to Netlify"
 ---
 
-<Warning>
+<Tabs>
+  <Tab title="Usage">
+  <Warning>
   Infisical integrates with Netlify's new environment variable experience. If
   your site uses Netlify's old environment variable experience, you'll have to
   upgrade it to the new one to use this integration.
@@ -21,7 +23,7 @@ Prerequisites:
 
 Press on the Netlify tile and grant Infisical access to your Netlify account.
 
-![integrations netlify authorization](../../images/integrations-netlify-auth.png)
+![integrations netlify authorization](../../images/integrations/netlify/integrations-netlify-auth.png)
 
 <Info>
   If this is your project's first cloud integration, then you'll have to grant
@@ -34,5 +36,37 @@ Press on the Netlify tile and grant Infisical access to your Netlify account.
 
 Select which Infisical environment secrets you want to sync to which Netlify app and context. Lastly, press create integration to start syncing secrets to Netlify.
 
-![integrations netlify](../../images/integrations-netlify-create.png)
-![integrations netlify](../../images/integrations-netlify.png)
+![integrations netlify](../../images/integrations/netlify/integrations-netlify-create.png)
+![integrations netlify](../../images/integrations/netlify/integrations-netlify.png)
+
+  </Tab>
+  <Tab title="Self-Hosted Setup">
+    Using the Netlify integration on a self-hosted instance of Infisical requires configuring an OAuth application in Netlify
+  and registering your instance with it.
+  
+  ## Create an OAuth application in Netlify
+  
+  Navigate to your User settings > Applications > OAuth to create a new OAuth application.
+  
+   ![integrations Netlify config](../../images/integrations/netlify/integrations-netlify-config-user-settings.png) 
+   ![integrations Netlify config](../../images/integrations/netlify/integrations-netlify-config-new-app.png) 
+    
+    Create the OAuth application. As part of the form, set the **Redirect URI** to `https://your-domain.com/integrations/netlify/oauth2/callback`.
+
+   ![integrations Netlify config](../../images/integrations/netlify/integrations-netlify-config-new-app-form.png) 
+
+   ## Add your Netlify OAuth application credentials to Infisical
+   
+   Obtain the **Client ID** and **Secret** for your Netlify OAuth application.
+   
+   ![integrations Netlify config](../../images/integrations/netlify/integrations-netlify-config-credentials.png) 
+   
+   Back in your Infisical instance, add two new environment variables for the credentials of your Netlify OAuth application.
+
+   - `CLIENT_ID_NETLIFY`: The **Client ID** of your Netlify OAuth application.
+   - `CLIENT_SECRET_NETLIFY`: The **Secret** of your Netlify OAuth application.
+   
+  Once added, restart your Infisical instance and use the Netlify integration.
+  </Tab>
+</Tabs>
+
