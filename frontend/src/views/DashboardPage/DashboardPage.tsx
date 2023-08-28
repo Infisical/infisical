@@ -29,7 +29,8 @@ import {
   faPlus,
   faTags,
   faTrash,
-  faUpDownLeftRight} from "@fortawesome/free-solid-svg-icons";
+  faUpDownLeftRight
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
@@ -38,11 +39,13 @@ import {
   DropdownMenuTrigger
 } from "@radix-ui/react-dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
+import { twMerge } from "tailwind-merge";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import NavHeader from "@app/components/navigation/NavHeader";
 import {
   Button,
+  Checkbox,
   DeleteActionModal,
   IconButton,
   Input,
@@ -84,7 +87,7 @@ import {
   useUpdateSecretImport
 } from "@app/hooks/api";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
-import { WorkspaceEnv } from "@app/hooks/api/types";
+import { WorkspaceEnv, WsTag } from "@app/hooks/api/types";
 
 import { CompareSecret } from "./components/CompareSecret";
 import { CreateTagModal } from "./components/CreateTagModal";
@@ -309,6 +312,8 @@ export const DashboardPage = () => {
     formState: { isSubmitting, isDirty, errors },
     reset
   } = method;
+
+  const [checkedSecrets, setCheckedSecrets] = useState<{ _id: string, isChecked: string | boolean }[]>([])
   const { fields, prepend, append, remove } = useFieldArray({ control, name: "secrets" });
   const isReadOnly = selectedEnv?.isWriteDenied;
   const isAddOnly = selectedEnv?.isReadDenied && !selectedEnv?.isWriteDenied;
@@ -457,6 +462,7 @@ export const DashboardPage = () => {
         text: "Successfully saved changes",
         type: "success"
       });
+      setCheckedSecrets([])
       deletedSecretIds.current = [];
       if (!hasUserPushed) {
         await registerUserAction(USER_ACTION_PUSH);
@@ -736,7 +742,9 @@ export const DashboardPage = () => {
   const isSecretImportEmpty = !secretImportCfg?.imports?.length;
   const isEmptyPage = isFoldersEmpty && isSecretEmpty && isSecretImportEmpty;
 
-  const [checkedSecrets, setCheckedSecrets] = useState<{ _id: string, isChecked: string | boolean }[]>([])
+
+  const [selectedTags, setSelectedtags] = useState<WsTag[]>([])
+  
 
   useEffect(() => {
     const secCheckBox = document.querySelector("#sec-checkbox")
@@ -746,6 +754,24 @@ export const DashboardPage = () => {
       secCheckBox?.classList.remove("slideup-sec-checkbox")
     }
   }, [checkedSecrets])
+
+  useEffect(() => {
+    const newSecrets = secrets?.secrets
+    if (newSecrets) {
+      const fieldsCopy = [...newSecrets]
+      const updatedSelectedTags = fieldsCopy.reduce((acc, cur) => {
+        const { tags } = cur
+        if (tags && tags.length > 0) {
+          // eslint-disable-next-line no-restricted-syntax
+          for (const tag of tags) {
+            acc.push(tag as never)
+          }
+        }
+        return acc
+      }, [])
+      setSelectedtags(updatedSelectedTags)
+    }
+  }, [secrets])
 
   if (isSecretsLoading || isEnvListLoading) {
     return (
@@ -811,15 +837,47 @@ export const DashboardPage = () => {
           await registerUserAction(USER_ACTION_PUSH);
         }
       } catch (error) {
-        console.log(error);
         createNotification({
           text: "Failed to deleted secrets",
           type: "error"
         });
       }
     }
-
   }
+
+  const handleCheckedState = (checked: boolean, wsTag: WsTag) => {
+    const selectedTagsCopy = [...selectedTags]
+    const fieldsCopy = [...fields]
+    const checkedSecretsCopy = [...checkedSecrets].map(secret => secret._id)
+
+    if (checked) {
+      selectedTagsCopy.push(wsTag);
+    } else {
+      const tagIndex = selectedTagsCopy.findIndex(selectedTag => selectedTag._id === wsTag._id)
+      if (tagIndex > -1) {
+        selectedTagsCopy.splice(tagIndex, 1)
+      }
+    }
+
+    setSelectedtags(selectedTagsCopy)
+
+    checkedSecretsCopy.forEach(checkedSecretId => {
+      const fieldIndex = fieldsCopy.findIndex(field => field._id === checkedSecretId)
+      if (fieldIndex > -1) {
+        if (checked) {
+          fieldsCopy[fieldIndex].tags?.push(wsTag)
+        } else {
+          const tagIndex = fieldsCopy[fieldIndex].tags?.findIndex(tag => tag._id === wsTag._id) as number
+          if (tagIndex > -1) {
+            fieldsCopy[fieldIndex].tags?.splice(tagIndex, 1)
+          }
+        }
+      }
+    })
+    setValue("secrets", fieldsCopy, { shouldDirty: true })
+  }
+
+  const isTagChecked = (wsTag: WsTag) => selectedTags.filter(tag => tag._id === wsTag._id).length > 0
 
   return (
     <div className="container mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -830,18 +888,72 @@ export const DashboardPage = () => {
               <span className="min-w-[65px] text-gray-300">{checkedSecrets.length} selected</span>
               <div className="flex gap-2">
                 <div className="bg-mineshaft-700 hover:bg-mineshaft-500 cursor-pointer flex justify-center items-center border border-mineshaft-500 rounded-md px-[15px] py-1.5 text-gray-200">
-                  <FontAwesomeIcon icon={faUpDownLeftRight} className="mr-2" />
+                  <FontAwesomeIcon icon={faUpDownLeftRight} className="mr-2.5" />
                   Move
                 </div>
-                <div className="bg-mineshaft-700 hover:bg-mineshaft-500  cursor-pointer  flex justify-center items-center border rounded-md border-mineshaft-500 px-[15px] py-1.5 text-gray-200">
-                  <FontAwesomeIcon icon={faTags} className="mr-2" />
-                  Add tag
+                <div className="bg-mineshaft-700 hover:bg-mineshaft-500  cursor-pointer  flex justify-center items-center border rounded-md border-mineshaft-500 text-gray-200">
+                  <Popover>
+                    <PopoverTrigger asChild={false}>
+                      <div className="w-full group-hover:w-full data-[state=open]:w-full">
+                        <Tooltip content="Add tags">
+                          <div className="flex justify-center items-center px-[15px] py-1.5 ">
+                            <FontAwesomeIcon icon={faTags} className="mr-2.5" />
+                            Add tag
+                          </div>
+                        </Tooltip>
+                      </div>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      side="left"
+                      className="max-h-96 w-auto min-w-[200px] overflow-y-auto overflow-x-hidden border border-mineshaft-600 bg-mineshaft-800 p-2 text-bunker-200"
+                      hideCloseBtn
+                    >
+                      <div className="mb-2 px-2 text-center text-sm font-medium text-bunker-200">
+                        Add tags to {checkedSecrets.length > 1 ? "secret" : "secrets"}
+                      </div>
+                      <div className="flex flex-col space-y-1">
+                        {wsTags?.map((wsTag) => (
+                          <Button
+                            variant="plain"
+                            size="sm"
+                            className={twMerge(
+                              "justify-start bg-mineshaft-600 text-bunker-100 hover:bg-mineshaft-500",
+                              isTagChecked(wsTag) && "text-primary"
+                            )}
+                            // onClick={() => onSelectTag(wsTag)}
+                            leftIcon={
+                              <Checkbox
+                                className="mr-0 data-[state=checked]:bg-primary"
+                                id="autoCapitalization"
+                                isChecked={isTagChecked(wsTag)}
+                                onCheckedChange={(checked: boolean) => handleCheckedState(checked, wsTag)}
+                              />
+                            }
+                            key={wsTag._id}
+                          >
+                            {wsTag.slug}
+                          </Button>
+                        ))}
+                        <Button
+                          variant="star"
+                          color="primary"
+                          size="sm"
+                          className="mt-4 h-7 justify-start bg-mineshaft-600 px-1"
+                          onClick={handleCreateTagModalOpen}
+                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                        >
+                          Add new tag
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
                 </div>
                 <div role="button" className="bg-mineshaft-700 hover:bg-mineshaft-500  cursor-pointer flex justify-center items-center border rounded-md border-mineshaft-500 px-[15px] py-1.5 text-gray-200"
                   onClick={() => handleSecretsBulkDelete()}
                   tabIndex={-1}
                   onKeyUp={() => { }} >
-                  <FontAwesomeIcon icon={faTrash} className="mr-2" />
+                  <FontAwesomeIcon icon={faTrash} className="mr-2.5" />
                   Delete
                 </div>
               </div>

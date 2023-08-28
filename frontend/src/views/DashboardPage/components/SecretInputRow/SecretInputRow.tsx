@@ -212,12 +212,13 @@ export const SecretInputRow = memo(
       setHoveredSecret(null);
     }
 
-    const checkIfSecretIsVisible = ({ _id }: { _id: string | undefined }) => {
+    const checkIfSecretIsVisibleOnHover = ({ _id }: { _id: string | undefined }) => {
       const checkedSecretsCopy = [...checkedSecrets]
       const findCheckedSecret = checkedSecretsCopy.findIndex(secret => secret._id === _id)
       return (_id === hoveredSecret?._id) || (findCheckedSecret > -1)
     };
-
+    
+    const isSecretChecked = (secretId: string | undefined) => checkedSecrets.findIndex(secret => secret._id === secretId) > -1
     // Why this instead of filter in parent
     // Because rhf field.map has default values so basically
     // keys are not updated there and index needs to kept so that we can monitor
@@ -244,10 +245,11 @@ export const SecretInputRow = memo(
         onFocus={() => { }}>
         <td className="flex h-10 w-10 items-center justify-center border-none ml-4">
           {
-            checkIfSecretIsVisible({ _id: secUniqId }) && (
+            checkIfSecretIsVisibleOnHover({ _id: secUniqId }) && (
               <Checkbox
                 className="mr-0 data-[state=checked]:bg-primary"
                 id="autoCapitalization"
+                isChecked={isSecretChecked(secUniqId)}
                 onCheckedChange={(isChecked) => handleCheckedSecret({ _id: secUniqId as string, isChecked })}
               />
             )
