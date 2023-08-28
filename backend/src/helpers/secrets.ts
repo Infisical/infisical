@@ -498,6 +498,7 @@ export const getSecretsHelper = async ({
   workspaceId,
   environment,
   authData,
+  folderId,
   secretPath = "/"
 }: GetSecretsParams) => {
   let secrets: ISecret[] = [];
@@ -507,7 +508,10 @@ export const getSecretsHelper = async ({
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
-  const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
+  
+  if (!folderId) {
+    folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
+  }
 
   // get personal secrets first
   secrets = await Secret.find({
