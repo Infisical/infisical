@@ -50,6 +50,7 @@ router.post(
   body("name").exists().trim(),
   body("tagColor").exists().trim(),
   body("slug").exists().trim(),
+  body("checkedSecrets").exists(),
   validateRequest,
   tagController.createWorkspaceTag
 );

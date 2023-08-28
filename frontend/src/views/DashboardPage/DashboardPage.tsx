@@ -166,7 +166,6 @@ export const DashboardPage = () => {
   const selectedEnvSlug = selectedEnv?.slug || "";
 
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
-
   useEffect(() => {
     if (!isLoading && !workspaceId && router.isReady) {
       router.push(`/org/${currentOrg?._id}/overview`);
@@ -195,7 +194,7 @@ export const DashboardPage = () => {
     decryptFileKey: latestFileKey!
   });
 
-  const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
+  const { data: secrets, isLoading: isSecretsLoading, refetch } = useGetProjectSecrets({
     workspaceId,
     env: selectedEnvSlug,
     decryptFileKey: latestFileKey!,
@@ -240,6 +239,7 @@ export const DashboardPage = () => {
   );
 
   const { data: wsTags } = useGetWsTags(workspaceId);
+  const [checkedSecrets, setCheckedSecrets] = useState<{ _id: string, isChecked: string | boolean }[]>([])
 
   // mutation calls
   const { mutateAsync: batchSecretOp } = useBatchSecretsOp();
@@ -313,7 +313,7 @@ export const DashboardPage = () => {
     reset
   } = method;
 
-  const [checkedSecrets, setCheckedSecrets] = useState<{ _id: string, isChecked: string | boolean }[]>([])
+  
   const { fields, prepend, append, remove } = useFieldArray({ control, name: "secrets" });
   const isReadOnly = selectedEnv?.isWriteDenied;
   const isAddOnly = selectedEnv?.isReadDenied && !selectedEnv?.isWriteDenied;
@@ -522,19 +522,21 @@ export const DashboardPage = () => {
   }, []);
 
   const onCreateWsTag = useCallback(
-    async (tagName: string, tagColor: string) => {
+    async (tagName: string, $checkedSecrets: { _id: string, isChecked: string | boolean }[], tagColor: string) => {
       try {
         await createWsTag({
           workspaceID: workspaceId,
           tagName,
           tagColor,
-          tagSlug: tagName.replace(" ", "_")
+          tagSlug: tagName.replace(/ /g, "_"),
+          checkedSecrets: $checkedSecrets
         });
         handlePopUpClose("addTag");
         createNotification({
-          text: "Successfully created a tag",
+          text: `Successfully created a tag for ${$checkedSecrets.length > 1 ? "secrets" : "secret"}`,
           type: "success"
         });
+        refetch()
       } catch (error) {
         console.error(error);
         createNotification({
@@ -1264,7 +1266,7 @@ export const DashboardPage = () => {
           title="Create tag"
           subTitle="Specify your tag name, and the slug will be created automatically."
         >
-          <CreateTagModal onCreateTag={onCreateWsTag} />
+          <CreateTagModal onCreateTag={onCreateWsTag} checkedSecrets={checkedSecrets}  />
         </ModalContent>
       </Modal>
       {/* Uploaded env override or not confirmation modal */}

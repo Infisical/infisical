@@ -4,7 +4,7 @@ export type WsTag = {
   _id: string;
   name: string;
   slug: string;
-  tagColor?: string;
+  tagColor: string;
   workspace: string;
   createdAt: string;
   updatedAt: string;
@@ -18,6 +18,7 @@ export type CreateTagDTO = {
   tagSlug: string;
   tagName: string;
   tagColor: string;
+  checkedSecrets: { _id: string, isChecked: string | boolean }[]
 };
 
 export type CreateTagRes = {
