@@ -105,34 +105,46 @@ export const createWorkspaceEnvironment = async (req: Request, res: Response) =>
  * @param res
  * @returns
  */
-export const reorderWorkspaceEnvironments = async (
-  req: Request,
-  res: Response
-) => {
-  const { workspaceId } = req.params;
-  const { environmentSlug, environmentName, otherEnvironmentSlug, otherEnvironmentName } = req.body;
+export const reorderWorkspaceEnvironments = async (req: Request, res: Response) => {
+  const {
+    params: { workspaceId },
+    body: { environmentName, environmentSlug, otherEnvironmentSlug, otherEnvironmentName }
+  } = await validateRequest(reqValidator.ReorderWorkspaceEnvironmentsV2, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Environments
+  );
 
   // atomic update the env to avoid conflict
   const workspace = await Workspace.findById(workspaceId).exec();
   if (!workspace) {
-    throw BadRequestError({message: "Couldn't load workspace"});
+    throw BadRequestError({ message: "Couldn't load workspace" });
   }
 
-  const environmentIndex = workspace.environments.findIndex((env) => env.name === environmentName && env.slug === environmentSlug)
-  const otherEnvironmentIndex = workspace.environments.findIndex((env) => env.name === otherEnvironmentName && env.slug === otherEnvironmentSlug)
+  const environmentIndex = workspace.environments.findIndex(
+    (env) => env.name === environmentName && env.slug === environmentSlug
+  );
+  const otherEnvironmentIndex = workspace.environments.findIndex(
+    (env) => env.name === otherEnvironmentName && env.slug === otherEnvironmentSlug
+  );
 
   if (environmentIndex === -1 || otherEnvironmentIndex === -1) {
-    throw BadRequestError({message: "environment or otherEnvironment couldn't be found"})
+    throw BadRequestError({ message: "environment or otherEnvironment couldn't be found" });
   }
 
   // swap the order of the environments
-  [workspace.environments[environmentIndex], workspace.environments[otherEnvironmentIndex]] = [workspace.environments[otherEnvironmentIndex], workspace.environments[environmentIndex]]
+  [workspace.environments[environmentIndex], workspace.environments[otherEnvironmentIndex]] = [
+    workspace.environments[otherEnvironmentIndex],
+    workspace.environments[environmentIndex]
+  ];
 
-  await workspace.save()
+  await workspace.save();
 
   return res.status(200).send({
     message: "Successfully reordered environments",
-    workspace: workspaceId,
+    workspace: workspaceId
   });
 };
 

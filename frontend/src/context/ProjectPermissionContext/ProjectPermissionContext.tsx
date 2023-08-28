@@ -12,11 +12,10 @@ type Props = {
 const ProjectPermissionContext = createContext<null | TProjectPermission>(null);
 
 export const ProjectPermissionProvider = ({ children }: Props): JSX.Element => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentWorkspace, isLoading: isWsLoading } = useWorkspace();
   const workspaceId = currentWorkspace?._id || "";
   const { data: permission, isLoading } = useGetUserProjectPermissions({ workspaceId });
 
-  console.log(workspaceId);
   if (!permission && currentWorkspace) {
     return (
       <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
@@ -25,7 +24,7 @@ export const ProjectPermissionProvider = ({ children }: Props): JSX.Element => {
     );
   }
 
-  if (isLoading && workspaceId) {
+  if ((isLoading && currentWorkspace) || isWsLoading) {
     return (
       <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
         <img

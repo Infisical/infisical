@@ -57,8 +57,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
     if (providerAuthToken) {
       await validateProviderAuthToken({
         email,
-        providerAuthToken,
-        user
+        providerAuthToken
       });
     } else {
       const [AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE] = <[string, string]>(

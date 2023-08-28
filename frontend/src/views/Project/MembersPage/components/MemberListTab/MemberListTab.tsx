@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   decryptAssymmetric,
   encryptAssymmetric
@@ -34,8 +34,6 @@ import {
   UpgradePlanModal
 } from "@app/components/v2";
 import {
-  GeneralPermissionActions,
-  OrgPermissionSubjects,
   ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,

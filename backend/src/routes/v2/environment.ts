@@ -23,18 +23,8 @@ router.put(
 router.patch(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
-  requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "params",
-  }),
-  param("workspaceId").exists().trim(),
-  body("environmentSlug").exists().isString().trim(),
-  body("environmentName").exists().isString().trim(),
-  body("otherEnvironmentSlug").exists().isString().trim(),
-  body("otherEnvironmentName").exists().isString().trim(),
-  validateRequest,
   environmentController.reorderWorkspaceEnvironments
 );
 

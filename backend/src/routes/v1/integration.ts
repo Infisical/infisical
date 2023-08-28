@@ -1,8 +1,6 @@
 import express from "express";
 const router = express.Router();
-import {
-  requireAuth
-} from "../../middleware";
+import { requireAuth } from "../../middleware";
 import { AuthMode } from "../../variables";
 import { integrationController } from "../../controllers/v1";
 

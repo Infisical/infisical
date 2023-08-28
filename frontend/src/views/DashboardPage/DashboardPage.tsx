@@ -56,7 +56,13 @@ import {
   UpgradePlanModal
 } from "@app/components/v2";
 import { leaveConfirmDefaultMessage } from "@app/const";
-import { ProjectPermissionActions, ProjectPermissionSub,useOrganization, useSubscription, useWorkspace  } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useSubscription,
+  useWorkspace
+} from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { useLeaveConfirm, usePopUp, useToggle } from "@app/hooks";
 import {
@@ -522,11 +528,12 @@ export const DashboardPage = withProjectPermission(
     );
 
     const onCreateWsTag = useCallback(
-      async (tagName: string) => {
+      async (tagName: string, tagColor: string) => {
         try {
           await createWsTag({
             workspaceID: workspaceId,
             tagName,
+            tagColor,
             tagSlug: tagName.replace(" ", "_")
           });
           handlePopUpClose("addTag");
@@ -862,7 +869,7 @@ export const DashboardPage = withProjectPermission(
                       }}
                       leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
                       isLoading={isLoadingSnapshotCount}
-                      isDisabled={!canDoRollback || !isAllowed}
+                      isDisabled={!canDoRollback && !isAllowed}
                       className="h-10"
                     >
                       {snapshotCount} Commits
