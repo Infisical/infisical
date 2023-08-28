@@ -1,3 +1,4 @@
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   decryptAssymmetric,
   decryptSymmetric
@@ -24,7 +25,7 @@ export const ProjectIndexSecretsSection = withProjectPermission(
     const { data: latestFileKey } = useGetUserWsKey(currentWorkspace?._id ?? "");
     const { data: encryptedSecrets } = useGetWorkspaceSecrets(currentWorkspace?._id ?? "");
     const nameWorkspaceSecrets = useNameWorkspaceSecrets();
-    
+
     const onEnableBlindIndices = async () => {
       if (!currentWorkspace?._id) return;
       if (!encryptedSecrets) return;
@@ -65,9 +66,19 @@ export const ProjectIndexSecretsSection = withProjectPermission(
           secrets. To access individual secrets by name through the SDK and public API, please
           enable blind indexing.
         </p>
-        <Button onClick={onEnableBlindIndices} color="mineshaft" size="sm" type="submit">
-          Enable Blind Indexing
-        </Button>
+        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
+          {(isAllowed) => (
+            <Button
+              onClick={onEnableBlindIndices}
+              isDisabled={!isAllowed}
+              color="mineshaft"
+              size="sm"
+              type="submit"
+            >
+              Enable Blind Indexing
+            </Button>
+          )}
+        </ProjectPermissionCan>
       </div>
     ) : (
       <div />

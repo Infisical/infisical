@@ -138,6 +138,17 @@ export const getRoles = async (req: Request, res: Response) => {
 
   const customRoles = await Role.find({ organization: orgId, isOrgRole, workspace: workspaceId });
   const roles = [
+    ...(isOrgRole
+      ? [
+          {
+            _id: "owner",
+            name: "Owner",
+            slug: "owner",
+            description: "Complete administration access over the organization.",
+            permissions: adminPermissions.rules
+          }
+        ]
+      : []),
     {
       _id: "admin",
       name: "Admin",
@@ -152,24 +163,19 @@ export const getRoles = async (req: Request, res: Response) => {
       description: "Non-administrative role in an organization",
       permissions: isOrgRole ? memberPermissions.rules : adminProjectPermissions.rules
     },
-    {
-      _id: "viewer",
-      name: "Viewer",
-      slug: "viewer",
-      description: "Non-administrative role in an organization",
-      permissions: isOrgRole ? viewerProjectPermission.rules : viewerProjectPermission.rules
-    },
+    ...(isOrgRole
+      ? []
+      : [
+          {
+            _id: "viewer",
+            name: "Viewer",
+            slug: "viewer",
+            description: "Non-administrative role in an organization",
+            permissions: isOrgRole ? viewerProjectPermission.rules : viewerProjectPermission.rules
+          }
+        ]),
     ...customRoles
   ];
-  if (isOrgRole) {
-    roles.unshift({
-      _id: "owner",
-      name: "Owner",
-      slug: "owner",
-      description: "Complete administration access over the organization.",
-      permissions: adminPermissions.rules
-    });
-  }
 
   res.status(200).json({
     message: "Successfully fetched role list",

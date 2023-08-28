@@ -2,7 +2,9 @@ import { useTranslation } from "react-i18next";
 import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { DeleteActionModal,Skeleton, Tooltip } from "@app/components/v2";
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { DeleteActionModal, Skeleton, Tooltip } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { IntegrationAuth, TCloudIntegration } from "@app/hooks/api/types";
 
@@ -28,11 +30,13 @@ export const CloudIntegrationSection = ({
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteConfirmation"
   ] as const);
+  const permission = useProjectPermission();
+  const { createNotification } = useNotificationContext();
 
   const isEmpty = !isLoading && !cloudIntegrations?.length;
 
   const sortedCloudIntegrations = cloudIntegrations.sort((a, b) => a.name.localeCompare(b.name));
-  
+
   return (
     <div>
       <div className="m-4 mt-7 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">
@@ -57,6 +61,18 @@ export const CloudIntegrationSection = ({
               } flex h-32 flex-row items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4`}
               onClick={() => {
                 if (!cloudIntegration.isAvailable) return;
+                if (
+                  permission.cannot(
+                    ProjectPermissionActions.Create,
+                    ProjectPermissionSub.Integrations
+                  )
+                ) {
+                  createNotification({
+                    type: "error",
+                    text: "Permission Denied. Kindly contact your project admin"
+                  });
+                  return;
+                }
                 onIntegrationStart(cloudIntegration.slug);
               }}
               key={cloudIntegration.slug}

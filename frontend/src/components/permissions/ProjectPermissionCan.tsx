@@ -10,7 +10,7 @@ type Props = {
 } & BoundCanProps<TProjectPermission>;
 
 export const ProjectPermissionCan: FunctionComponent<Props> = ({
-  label = "Permission Denied. Kindly contact your org admin",
+  label = "Permission Denied. Kindly contact your project admin",
   children,
   passThrough = true,
   ...props

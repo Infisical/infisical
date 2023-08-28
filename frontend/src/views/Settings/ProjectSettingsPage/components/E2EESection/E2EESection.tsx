@@ -90,17 +90,19 @@ export const E2EESection = withProjectPermission(
         </p>
         <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
           {(isAllowed) => (
-            <Checkbox
-              className="data-[state=checked]:bg-primary"
-              id="autoCapitalization"
-              isChecked={!bot.isActive}
-              isDisabled={!isAllowed}
-              onCheckedChange={async () => {
-                await toggleBotActivate();
-              }}
-            >
-              End-to-end encryption enabled
-            </Checkbox>
+            <div className="w-max">
+              <Checkbox
+                className="data-[state=checked]:bg-primary"
+                id="autoCapitalization"
+                isChecked={!bot.isActive}
+                isDisabled={!isAllowed}
+                onCheckedChange={async () => {
+                  await toggleBotActivate();
+                }}
+              >
+                End-to-end encryption enabled
+              </Checkbox>
+            </div>
           )}
         </ProjectPermissionCan>
       </div>

@@ -1,4 +1,4 @@
-import { faArrowDown,faArrowUp, faPencil, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faArrowDown, faArrowUp, faPencil, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -16,9 +16,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import {
-  useReorderWsEnvironment
-} from "@app/hooks/api";
+import { useReorderWsEnvironment } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -39,18 +37,23 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
   const { createNotification } = useNotificationContext();
   const reorderWsEnvironment = useReorderWsEnvironment();
 
-  const handleReorderEnv= async (shouldMoveUp: boolean, name: string, slug: string) => {
+  const handleReorderEnv = async (shouldMoveUp: boolean, name: string, slug: string) => {
     try {
       if (!currentWorkspace?._id) return;
 
-      const indexOfEnv = currentWorkspace.environments.findIndex((env) => env.name === name && env.slug === slug);
+      const indexOfEnv = currentWorkspace.environments.findIndex(
+        (env) => env.name === name && env.slug === slug
+      );
 
       // check that this reordering is possible
-      if (indexOfEnv === 0 && shouldMoveUp || indexOfEnv === currentWorkspace.environments.length - 1 && !shouldMoveUp) {
-        return
+      if (
+        (indexOfEnv === 0 && shouldMoveUp) ||
+        (indexOfEnv === currentWorkspace.environments.length - 1 && !shouldMoveUp)
+      ) {
+        return;
       }
 
-      const indexToSwap = shouldMoveUp ? indexOfEnv - 1 : indexOfEnv + 1
+      const indexToSwap = shouldMoveUp ? indexOfEnv - 1 : indexOfEnv + 1;
 
       await reorderWsEnvironment.mutateAsync({
         workspaceID: currentWorkspace._id,
@@ -92,31 +95,48 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                 <Td>{name}</Td>
                 <Td>{slug}</Td>
                 <Td className="flex items-center justify-end">
-                  <IconButton
-                    className="mr-3 py-2"
-                    onClick={() => {
-                      handleReorderEnv(false, name, slug)
-                    }}
-                    colorSchema="primary"
-                    variant="plain"
-                    ariaLabel="update"
-                    isDisabled={pos === currentWorkspace.environments.length - 1}
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Edit}
+                    a={ProjectPermissionSub.Environments}
                   >
-                    <FontAwesomeIcon icon={faArrowDown} />
-                  </IconButton>
-                  <IconButton
-                    className="mr-3 py-2"
-                    onClick={() => {
-                      handleReorderEnv(true, name, slug)
-                    }}
-                    colorSchema="primary"
-                    variant="plain"
-                    ariaLabel="update"
-                    isDisabled={pos === 0}
+                    {(isAllowed) => (
+                      <IconButton
+                        className="mr-3 py-2"
+                        onClick={() => {
+                          handleReorderEnv(false, name, slug);
+                        }}
+                        colorSchema="primary"
+                        variant="plain"
+                        ariaLabel="update"
+                        isDisabled={pos === currentWorkspace.environments.length - 1 || !isAllowed}
+                      >
+                        <FontAwesomeIcon icon={faArrowDown} />
+                      </IconButton>
+                    )}
+                  </ProjectPermissionCan>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Edit}
+                    a={ProjectPermissionSub.Environments}
                   >
-                    <FontAwesomeIcon icon={faArrowUp} />
-                  </IconButton>
-                  <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Environments}
+                    {(isAllowed) => (
+                      <IconButton
+                        className="mr-3 py-2"
+                        onClick={() => {
+                          handleReorderEnv(true, name, slug);
+                        }}
+                        colorSchema="primary"
+                        variant="plain"
+                        ariaLabel="update"
+                        isDisabled={pos === 0 || !isAllowed}
+                      >
+                        <FontAwesomeIcon icon={faArrowUp} />
+                      </IconButton>
+                    )}
+                  </ProjectPermissionCan>
+
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Edit}
+                    a={ProjectPermissionSub.Environments}
                   >
                     {(isAllowed) => (
                       <IconButton

@@ -42,17 +42,19 @@ export const AutoCapitalizationSection = withProjectPermission(
         <p className="mb-3 text-xl font-semibold">{t("settings.project.auto-capitalization")}</p>
         <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
           {(isAllowed) => (
-            <Checkbox
-              className="data-[state=checked]:bg-primary"
-              id="autoCapitalization"
-              isDisabled={!isAllowed}
-              isChecked={currentWorkspace?.autoCapitalization ?? false}
-              onCheckedChange={(state) => {
-                handleToggleCapitalizationToggle(state as boolean);
-              }}
-            >
-              {t("settings.project.auto-capitalization-description")}
-            </Checkbox>
+            <div className="w-max">
+              <Checkbox
+                className="data-[state=checked]:bg-primary"
+                id="autoCapitalization"
+                isDisabled={!isAllowed}
+                isChecked={currentWorkspace?.autoCapitalization ?? false}
+                onCheckedChange={(state) => {
+                  handleToggleCapitalizationToggle(state as boolean);
+                }}
+              >
+                {t("settings.project.auto-capitalization-description")}
+              </Checkbox>
+            </div>
           )}
         </ProjectPermissionCan>
       </div>
