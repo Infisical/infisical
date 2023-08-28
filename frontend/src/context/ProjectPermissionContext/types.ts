@@ -1,13 +1,13 @@
-import { MongoAbility } from "@casl/ability";
+import { ForcedSubject, MongoAbility } from "@casl/ability";
 
-export enum ProjectGeneralPermissionActions {
+export enum ProjectPermissionActions {
   Read = "read",
   Create = "create",
   Edit = "edit",
   Delete = "delete"
 }
 
-export enum ProjectPermissionSubjects {
+export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
   Settings = "settings",
@@ -21,24 +21,44 @@ export enum ProjectPermissionSubjects {
   Workspace = "workspace",
   Secrets = "secrets",
   SecretImports = "secret-imports",
+  SecretRollback = "secret-rollback",
   Folders = "folders"
 }
 
+type SubjectFields = {
+  environment: string;
+  secretPath?: string;
+};
+
 export type ProjectPermissionSet =
-  | [ProjectGeneralPermissionActions, ProjectPermissionSubjects.Secrets]
-  | [ProjectGeneralPermissionActions, ProjectPermissionSubjects.Folders]
-  | [ProjectGeneralPermissionActions, ProjectPermissionSubjects.SecretImports]
-  | [ProjectGeneralPermissionActions, ProjectPermissionSubjects.Role]
-  | [ProjectGeneralPermissionActions, ProjectPermissionSubjects.Tags]
-  | [ProjectGeneralPermissionActions, ProjectPermissionSubjects.Member]
-  | [ProjectGeneralPermissionActions, ProjectPermissionSubjects.Integrations]
-  | [ProjectGeneralPermissionActions, ProjectPermissionSubjects.Webhooks]
-  | [ProjectGeneralPermissionActions, ProjectPermissionSubjects.AuditLogs]
-  | [ProjectGeneralPermissionActions, ProjectPermissionSubjects.Environments]
-  | [ProjectGeneralPermissionActions, ProjectPermissionSubjects.IpAllowList]
-  | [ProjectGeneralPermissionActions, ProjectPermissionSubjects.Settings]
-  | [ProjectGeneralPermissionActions, ProjectPermissionSubjects.ServiceTokens]
-  | [ProjectGeneralPermissionActions.Delete, ProjectPermissionSubjects.Workspace]
-  | [ProjectGeneralPermissionActions.Edit, ProjectPermissionSubjects.Workspace];
+  | [
+      ProjectPermissionActions,
+      ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SubjectFields)
+    ]
+  | [
+      ProjectPermissionActions,
+      ProjectPermissionSub.Folders | (ForcedSubject<ProjectPermissionSub.Folders> & SubjectFields)
+    ]
+  | [
+      ProjectPermissionActions,
+      (
+        | ProjectPermissionSub.SecretImports
+        | (ForcedSubject<ProjectPermissionSub.SecretImports> & SubjectFields)
+      )
+    ]
+  | [ProjectPermissionActions, ProjectPermissionSub.Role]
+  | [ProjectPermissionActions, ProjectPermissionSub.Tags]
+  | [ProjectPermissionActions, ProjectPermissionSub.Member]
+  | [ProjectPermissionActions, ProjectPermissionSub.Integrations]
+  | [ProjectPermissionActions, ProjectPermissionSub.Webhooks]
+  | [ProjectPermissionActions, ProjectPermissionSub.AuditLogs]
+  | [ProjectPermissionActions, ProjectPermissionSub.Environments]
+  | [ProjectPermissionActions, ProjectPermissionSub.IpAllowList]
+  | [ProjectPermissionActions, ProjectPermissionSub.Settings]
+  | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
+  | [ProjectPermissionActions.Delete, ProjectPermissionSub.Workspace]
+  | [ProjectPermissionActions.Edit, ProjectPermissionSub.Workspace]
+  | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
+  | [ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

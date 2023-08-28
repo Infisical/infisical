@@ -1,7 +1,6 @@
 import express from "express";
 const router = express.Router();
-import { body, param } from "express-validator";
-import { requireAuth, validateRequest } from "../../middleware";
+import { requireAuth } from "../../middleware";
 import { membershipController } from "../../controllers/v1";
 import { AuthMode } from "../../variables";
 
@@ -14,8 +13,6 @@ router.get(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  param("workspaceId").exists().trim(),
-  validateRequest,
   membershipController.validateMembership
 );
 
@@ -25,8 +22,6 @@ router.delete(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  param("membershipId").exists().trim(),
-  validateRequest,
   membershipController.deleteMembership
 );
 
@@ -36,8 +31,6 @@ router.post(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  body("role").exists().trim(),
-  validateRequest,
   membershipController.changeMembershipRole
 );
 

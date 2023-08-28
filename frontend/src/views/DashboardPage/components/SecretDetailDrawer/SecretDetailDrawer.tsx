@@ -2,6 +2,7 @@ import { useFormContext, useWatch } from "react-hook-form";
 import { faCircle, faCircleDot, faShuffle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   Drawer,
@@ -14,6 +15,7 @@ import {
   Switch,
   TextArea
 } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 import { FormData, SecretActionType } from "../../DashboardPage.utils";
@@ -85,20 +87,34 @@ export const SecretDetailDrawer = ({
               </Button>
             </div>
             <div className="flex w-full space-x-2">
-              <Button isFullWidth onClick={onSave} isDisabled={isReadOnly}>
-                Save Changes
-              </Button>
-              <Button
-                colorSchema="danger"
-                isDisabled={isReadOnly}
-                onClick={() => {
-                  const secret = getValues(`secrets.${index}`);
-                  
-                  onSecretDelete(index, secret.key, secret._id, secret.idOverride);
-                }}
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Edit}
+                a={ProjectPermissionSub.Secrets}
               >
-                Delete
-              </Button>
+                {(isAllowed) => (
+                  <Button isFullWidth onClick={onSave} isDisabled={isReadOnly || !isAllowed}>
+                    Save Changes
+                  </Button>
+                )}
+              </ProjectPermissionCan>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Edit}
+                a={ProjectPermissionSub.Secrets}
+              >
+                {(isAllowed) => (
+                  <Button
+                    colorSchema="danger"
+                    isDisabled={isReadOnly || !isAllowed}
+                    onClick={() => {
+                      const secret = getValues(`secrets.${index}`);
+
+                      onSecretDelete(index, secret.key, secret._id, secret.idOverride);
+                    }}
+                  >
+                    Delete
+                  </Button>
+                )}
+              </ProjectPermissionCan>
             </div>
           </div>
         }

@@ -7,10 +7,11 @@ export {
   OrgPermissionSubjects,
   useOrgPermission
 } from "./OrgPermissionContext";
+export type { TProjectPermission } from "./ProjectPermissionContext";
 export {
-  ProjectGeneralPermissionActions,
+  ProjectPermissionActions,
   ProjectPermissionProvider,
-  ProjectPermissionSubjects,
+  ProjectPermissionSub,
   useProjectPermission
 } from "./ProjectPermissionContext";
 export { SubscriptionProvider, useSubscription } from "./SubscriptionContext";

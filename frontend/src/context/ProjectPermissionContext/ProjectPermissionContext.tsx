@@ -16,6 +16,15 @@ export const ProjectPermissionProvider = ({ children }: Props): JSX.Element => {
   const workspaceId = currentWorkspace?._id || "";
   const { data: permission, isLoading } = useGetUserProjectPermissions({ workspaceId });
 
+  console.log(workspaceId);
+  if (!permission && currentWorkspace) {
+    return (
+      <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
+        Failed to load user permissions
+      </div>
+    );
+  }
+
   if (isLoading && workspaceId) {
     return (
       <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
@@ -29,20 +38,8 @@ export const ProjectPermissionProvider = ({ children }: Props): JSX.Element => {
     );
   }
 
-  if (!permission && currentWorkspace) {
-    return (
-      <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
-        Failed to load user permissions
-      </div>
-    );
-  }
-
-  if (!permission) {
-    return <>children</>;
-  }
-
   return (
-    <ProjectPermissionContext.Provider value={permission}>
+    <ProjectPermissionContext.Provider value={permission!}>
       {children}
     </ProjectPermissionContext.Provider>
   );

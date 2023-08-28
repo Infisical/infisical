@@ -2,6 +2,7 @@ import { faArrowDown,faArrowUp, faPencil, faXmark } from "@fortawesome/free-soli
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   EmptyState,
   IconButton,
@@ -14,7 +15,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import {
   useReorderWsEnvironment
 } from "@app/hooks/api";
@@ -115,28 +116,42 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                   >
                     <FontAwesomeIcon icon={faArrowUp} />
                   </IconButton>
-                  <IconButton
-                    className="mr-3 py-2"
-                    onClick={() => {
-                      handlePopUpOpen("updateEnv", { name, slug });
-                    }}
-                    colorSchema="primary"
-                    variant="plain"
-                    ariaLabel="update"
+                  <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Environments}
                   >
-                    <FontAwesomeIcon icon={faPencil} />
-                  </IconButton>
-                  <IconButton
-                    onClick={() => {
-                      handlePopUpOpen("deleteEnv", { name, slug });
-                    }}
-                    size="lg"
-                    colorSchema="danger"
-                    variant="plain"
-                    ariaLabel="update"
+                    {(isAllowed) => (
+                      <IconButton
+                        className="mr-3 py-2"
+                        onClick={() => {
+                          handlePopUpOpen("updateEnv", { name, slug });
+                        }}
+                        isDisabled={!isAllowed}
+                        colorSchema="primary"
+                        variant="plain"
+                        ariaLabel="update"
+                      >
+                        <FontAwesomeIcon icon={faPencil} />
+                      </IconButton>
+                    )}
+                  </ProjectPermissionCan>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Delete}
+                    a={ProjectPermissionSub.Environments}
                   >
-                    <FontAwesomeIcon icon={faXmark} />
-                  </IconButton>
+                    {(isAllowed) => (
+                      <IconButton
+                        onClick={() => {
+                          handlePopUpOpen("deleteEnv", { name, slug });
+                        }}
+                        size="lg"
+                        colorSchema="danger"
+                        variant="plain"
+                        ariaLabel="update"
+                        isDisabled={!isAllowed}
+                      >
+                        <FontAwesomeIcon icon={faXmark} />
+                      </IconButton>
+                    )}
+                  </ProjectPermissionCan>
                 </Td>
               </Tr>
             ))}

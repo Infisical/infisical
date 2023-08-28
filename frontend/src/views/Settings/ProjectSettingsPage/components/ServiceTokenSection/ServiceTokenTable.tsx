@@ -1,6 +1,7 @@
 import { faFolder, faKey, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   EmptyState,
   IconButton,
@@ -13,7 +14,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useGetUserWsServiceTokens } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -70,18 +71,26 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                 </Td>
                 <Td>{row.expiresAt && new Date(row.expiresAt).toUTCString()}</Td>
                 <Td>
-                  <IconButton
-                    onClick={() =>
-                      handlePopUpOpen("deleteAPITokenConfirmation", {
-                        name: row.name,
-                        id: row._id
-                      })
-                    }
-                    colorSchema="danger"
-                    ariaLabel="delete"
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Delete}
+                    a={ProjectPermissionSub.ServiceTokens}
                   >
-                    <FontAwesomeIcon icon={faTrashCan} />
-                  </IconButton>
+                    {(isAllowed) => (
+                      <IconButton
+                        onClick={() =>
+                          handlePopUpOpen("deleteAPITokenConfirmation", {
+                            name: row.name,
+                            id: row._id
+                          })
+                        }
+                        colorSchema="danger"
+                        ariaLabel="delete"
+                        isDisabled={!isAllowed}
+                      >
+                        <FontAwesomeIcon icon={faTrashCan} />
+                      </IconButton>
+                    )}
+                  </ProjectPermissionCan>
                 </Td>
               </Tr>
             ))}

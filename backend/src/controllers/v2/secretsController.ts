@@ -25,7 +25,6 @@ import {
   userHasWriteOnlyAbility
 } from "../../ee/helpers/checkMembershipPermissions";
 import _ from "lodash";
-import { BatchSecret } from "../../types/secret";
 import {
   getFolderByPath,
   getFolderIdFromServiceToken,
@@ -56,8 +55,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
     body: { secretPath, folderId }
   } = validatedData;
 
-  const createSecrets: BatchSecret[] = [];
-  const updateSecrets: BatchSecret[] = [];
+  const createSecrets: any[] = [];
+  const updateSecrets: any[] = [];
   const deleteSecrets: { _id: Types.ObjectId; secretName: string }[] = [];
   const actions: IAction[] = [];
 
@@ -111,7 +110,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
           version: 1,
           user: request.secret.type === SECRET_PERSONAL ? req.user : undefined,
           environment,
-          workspace: new Types.ObjectId(workspaceId),
+          workspace: workspaceId,
           folder: folderId,
           secretBlindIndex,
           algorithm: ALGORITHM_AES_256_GCM,
@@ -126,7 +125,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
         updateSecrets.push({
           ...request.secret,
-          _id: new Types.ObjectId(request.secret._id),
+          _id: request.secret._id,
           secretBlindIndex,
           folder: folderId,
           algorithm: ALGORITHM_AES_256_GCM,
@@ -145,7 +144,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
   // handle create secrets
   let createdSecrets: ISecret[] = [];
   if (createSecrets.length > 0) {
-    createdSecrets = await Secret.insertMany(createSecrets);
+    createdSecrets = (await Secret.insertMany(createSecrets)) as any;
     // (EE) add secret versions for new secrets
     await EESecretService.addSecretVersions({
       secretVersions: createdSecrets.map((n: any) => {

@@ -22,6 +22,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { cx } from "cva";
 import { twMerge } from "tailwind-merge";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   HoverCard,
   HoverCardContent,
@@ -34,6 +35,10 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
 import { WsTag } from "@app/hooks/api/types";
 
@@ -452,22 +457,29 @@ export const SecretInputRow = memo(
                   </Tooltip>
                 </div>
               )}
-              <div className="opacity-0 group-hover:opacity-100">
-                <Tooltip content="Delete">
-                  <IconButton
-                    size="lg"
-                    variant="plain"
-                    colorSchema="danger"
-                    ariaLabel="delete"
-                    isDisabled={isReadOnly || isRollbackMode}
-                    onClick={() => {
-                      onSecretDelete(index, secKey, secId, idOverride);
-                    }}
-                  >
-                    <FontAwesomeIcon icon={faXmark} />
-                  </IconButton>
-                </Tooltip>
-              </div>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Delete}
+                a={ProjectPermissionSub.Secrets}
+              >
+                {(isAllowed) => (
+                  <div className="opacity-0 group-hover:opacity-100">
+                    <Tooltip content="Delete">
+                      <IconButton
+                        size="lg"
+                        variant="plain"
+                        colorSchema="danger"
+                        ariaLabel="delete"
+                        isDisabled={isReadOnly || isRollbackMode || !isAllowed}
+                        onClick={() => {
+                          onSecretDelete(index, secKey, secId, idOverride);
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faXmark} />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+                )}
+              </ProjectPermissionCan>
             </div>
           </div>
         </td>

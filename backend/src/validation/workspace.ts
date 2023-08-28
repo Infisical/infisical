@@ -130,8 +130,8 @@ export const GetWorkspaceSecretSnapshotsV1 = z.object({
   query: z.object({
     environment: z.string().trim(),
     folderId: z.string().trim().default("root"),
-    offset: z.number(),
-    limit: z.number()
+    offset: z.coerce.number(),
+    limit: z.coerce.number()
   })
 });
 
@@ -161,8 +161,8 @@ export const GetWorkspaceLogsV1 = z.object({
     workspaceId: z.string().trim()
   }),
   query: z.object({
-    offset: z.number(),
-    limit: z.number(),
+    offset: z.coerce.number(),
+    limit: z.coerce.number(),
     sortBy: z.string().trim().optional(),
     userId: z.string().trim().optional(),
     actionNames: z.string().trim().optional()
@@ -178,8 +178,8 @@ export const GetWorkspaceAuditLogsV1 = z.object({
     userAgentType: z.nativeEnum(UserAgentType).nullable().optional(),
     startDate: z.string().datetime().nullable().optional(),
     endDate: z.string().datetime().nullable().optional(),
-    offset: z.number(),
-    limit: z.number(),
+    offset: z.coerce.number(),
+    limit: z.coerce.number(),
     actor: z.string().nullish().optional()
   })
 });

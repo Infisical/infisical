@@ -117,7 +117,7 @@ export const CompletedAccountSignupV3 = z.object({
   body: z.object({
     email: z.string().email().trim(),
     firstName: z.string().trim(),
-    lastName: z.string().trim().optional().nullish(),
+    lastName: z.string().trim().optional(),
     protectedKey: z.string().trim(),
     protectedKeyIV: z.string().trim(),
     protectedKeyTag: z.string().trim(),

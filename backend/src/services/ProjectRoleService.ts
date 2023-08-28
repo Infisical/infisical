@@ -34,7 +34,7 @@ export enum ProjectPermissionSub {
   Folders = "folders"
 }
 
-type GenericFields = {
+type SubjectFields = {
   environment: string;
   secretPath?: string;
 };
@@ -42,17 +42,17 @@ type GenericFields = {
 export type ProjectPermissionSet =
   | [
       ProjectPermissionActions,
-      ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & GenericFields)
+      ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SubjectFields)
     ]
   | [
       ProjectPermissionActions,
-      ProjectPermissionSub.Folders | (ForcedSubject<ProjectPermissionSub.Folders> & GenericFields)
+      ProjectPermissionSub.Folders | (ForcedSubject<ProjectPermissionSub.Folders> & SubjectFields)
     ]
   | [
       ProjectPermissionActions,
       (
         | ProjectPermissionSub.SecretImports
-        | (ForcedSubject<ProjectPermissionSub.SecretImports> & GenericFields)
+        | (ForcedSubject<ProjectPermissionSub.SecretImports> & SubjectFields)
       )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]

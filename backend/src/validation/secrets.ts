@@ -115,8 +115,8 @@ export const GetSecretVersionsV1 = z.object({
     secretId: z.string().trim()
   }),
   query: z.object({
-    offset: z.number(),
-    limit: z.number()
+    offset: z.coerce.number(),
+    limit: z.coerce.number()
   })
 });
 
@@ -175,17 +175,19 @@ const batchUpdateRequestV2 = z.object({
   secretCommentCiphertext: z.string().trim().optional(),
   secretCommentIV: z.string().trim().optional(),
   secretCommentTag: z.string().trim().optional(),
-  tags: z.object({
-    _id: z.string().trim(),
-    name: z.string().trim(),
-    slug: z.string().trim()
-  })
+  tags: z
+    .object({
+      _id: z.string().trim(),
+      name: z.string().trim(),
+      slug: z.string().trim()
+    })
+    .array()
 });
 
 export const BatchSecretsV2 = z.object({
   body: z.object({
     workspaceId: z.string().trim(),
-    folderId: z.string().trim(),
+    folderId: z.string().trim().default("root"),
     environment: z.string().trim(),
     secretPath: z.string().trim().optional(),
     requests: z

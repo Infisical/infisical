@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import { OrgPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
 import {
   decryptAssymmetric,
   encryptAssymmetric
@@ -36,6 +36,8 @@ import {
 import {
   GeneralPermissionActions,
   OrgPermissionSubjects,
+  ProjectPermissionActions,
+  ProjectPermissionSub,
   useOrganization,
   useUser,
   useWorkspace
@@ -240,7 +242,7 @@ export const MemberListTab = ({ roles = [] }: Props) => {
             placeholder="Search members..."
           />
         </div>
-        <OrgPermissionCan I={GeneralPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+        <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Member}>
           {(isAllowed) => (
             <Button
               isDisabled={!isAllowed}
@@ -250,7 +252,7 @@ export const MemberListTab = ({ roles = [] }: Props) => {
               Add Member
             </Button>
           )}
-        </OrgPermissionCan>
+        </ProjectPermissionCan>
       </div>
       <div>
         <TableContainer>
@@ -276,9 +278,9 @@ export const MemberListTab = ({ roles = [] }: Props) => {
                         <Td>{name}</Td>
                         <Td>{email}</Td>
                         <Td>
-                          <OrgPermissionCan
-                            I={GeneralPermissionActions.Edit}
-                            a={OrgPermissionSubjects.Member}
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Edit}
+                            a={ProjectPermissionSub.Member}
                           >
                             {(isAllowed) => (
                               <>
@@ -316,13 +318,13 @@ export const MemberListTab = ({ roles = [] }: Props) => {
                                 )}
                               </>
                             )}
-                          </OrgPermissionCan>
+                          </ProjectPermissionCan>
                         </Td>
                         <Td>
                           {userId !== u?._id && (
-                            <OrgPermissionCan
-                              I={GeneralPermissionActions.Delete}
-                              a={OrgPermissionSubjects.Member}
+                            <ProjectPermissionCan
+                              I={ProjectPermissionActions.Delete}
+                              a={ProjectPermissionSub.Member}
                             >
                               {(isAllowed) => (
                                 <IconButton
@@ -336,7 +338,7 @@ export const MemberListTab = ({ roles = [] }: Props) => {
                                   <FontAwesomeIcon icon={faTrash} />
                                 </IconButton>
                               )}
-                            </OrgPermissionCan>
+                            </ProjectPermissionCan>
                           )}
                         </Td>
                       </Tr>

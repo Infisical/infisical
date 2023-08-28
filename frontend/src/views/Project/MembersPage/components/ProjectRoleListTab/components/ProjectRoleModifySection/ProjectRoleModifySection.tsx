@@ -34,6 +34,7 @@ import {
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
 import { SingleProjectPermission } from "./SingleProjectPermission";
+import { WsProjectPermission } from "./WsProjectPermission";
 
 const SINGLE_PERMISSION_LIST = [
   {
@@ -271,6 +272,13 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
               />
             </div>
           ))}
+          <div className="flex flex-col space-y-4" key="permission-ws">
+            <WsProjectPermission
+              control={control}
+              setValue={setValue}
+              isNonEditable={isNonEditable}
+            />
+          </div>
         </div>
         <div className="flex items-center space-x-4 mt-12">
           <Button

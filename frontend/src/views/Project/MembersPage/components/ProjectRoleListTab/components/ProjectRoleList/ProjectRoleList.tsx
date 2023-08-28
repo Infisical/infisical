@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -19,7 +20,12 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { useOrganization, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useWorkspace
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteRole } from "@app/hooks/api";
 import { TRole } from "@app/hooks/api/roles/types";
@@ -69,9 +75,17 @@ export const ProjectRoleList = ({ isRolesLoading, roles = [], onSelectRole }: Pr
             placeholder="Search roles..."
           />
         </div>
-        <Button leftIcon={<FontAwesomeIcon icon={faPlus} />} onClick={() => onSelectRole()}>
-          Add Role
-        </Button>
+        <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Role}>
+          {(isAllowed) => (
+            <Button
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() => onSelectRole()}
+              isDisabled={!isAllowed}
+            >
+              Add Role
+            </Button>
+          )}
+        </ProjectPermissionCan>
       </div>
       <div>
         <TableContainer>
@@ -99,27 +113,48 @@ export const ProjectRoleList = ({ isRolesLoading, roles = [], onSelectRole }: Pr
                     </Td>
                     <Td>
                       <div className="flex space-x-2 items-center">
-                        <Tooltip content="Edit">
-                          <IconButton
-                            ariaLabel="edit"
-                            onClick={() => onSelectRole(role)}
-                            variant="plain"
-                          >
-                            <FontAwesomeIcon icon={faEdit} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip
-                          content={isNonMutatable ? "Reserved roles are non-removable" : "Delete"}
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Edit}
+                          a={ProjectPermissionSub.Role}
                         >
-                          <IconButton
-                            ariaLabel="delete"
-                            onClick={() => handlePopUpOpen("deleteRole", role)}
-                            variant="plain"
-                            isDisabled={isNonMutatable}
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </IconButton>
-                        </Tooltip>
+                          {(isAllowed) => (
+                            <div>
+                              <Tooltip content="Edit">
+                                <IconButton
+                                  isDisabled={!isAllowed}
+                                  ariaLabel="edit"
+                                  onClick={() => onSelectRole(role)}
+                                  variant="plain"
+                                >
+                                  <FontAwesomeIcon icon={faEdit} />
+                                </IconButton>
+                              </Tooltip>
+                            </div>
+                          )}
+                        </ProjectPermissionCan>
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Delete}
+                          a={ProjectPermissionSub.Role}
+                        >
+                          {(isAllowed) => (
+                            <div>
+                              <Tooltip
+                                content={
+                                  isNonMutatable ? "Reserved roles are non-removable" : "Delete"
+                                }
+                              >
+                                <IconButton
+                                  ariaLabel="delete"
+                                  onClick={() => handlePopUpOpen("deleteRole", role)}
+                                  variant="plain"
+                                  isDisabled={isNonMutatable || !isAllowed}
+                                >
+                                  <FontAwesomeIcon icon={faTrash} />
+                                </IconButton>
+                              </Tooltip>
+                            </div>
+                          )}
+                        </ProjectPermissionCan>
                       </div>
                     </Td>
                   </Tr>

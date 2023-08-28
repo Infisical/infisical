@@ -3,7 +3,9 @@ import { faCheck, faCopy, faTrash, faXmark } from "@fortawesome/free-solid-svg-i
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { IconButton, SecretInput, Tooltip } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 type Props = {
@@ -91,19 +93,26 @@ export const SecretEditRow = ({
       <div className="flex w-16 justify-center space-x-3 pl-2 transition-all">
         {isDirty ? (
           <>
-            <div>
-              <Tooltip content="save">
-                <IconButton
-                  variant="plain"
-                  ariaLabel="submit-value"
-                  className="h-full"
-                  isDisabled={isSubmitting}
-                  onClick={handleSubmit(handleFormSubmit)}
-                >
-                  <FontAwesomeIcon icon={faCheck} />
-                </IconButton>
-              </Tooltip>
-            </div>
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Create}
+              a={ProjectPermissionSub.Secrets}
+            >
+              {(isAllowed) => (
+                <div>
+                  <Tooltip content="save">
+                    <IconButton
+                      variant="plain"
+                      ariaLabel="submit-value"
+                      className="h-full"
+                      isDisabled={isSubmitting || !isAllowed}
+                      onClick={handleSubmit(handleFormSubmit)}
+                    >
+                      <FontAwesomeIcon icon={faCheck} />
+                    </IconButton>
+                  </Tooltip>
+                </div>
+              )}
+            </ProjectPermissionCan>
             <div>
               <Tooltip content="cancel">
                 <IconButton
@@ -132,19 +141,26 @@ export const SecretEditRow = ({
                 </IconButton>
               </Tooltip>
             </div>
-            <div className="opacity-0 group-hover:opacity-100">
-              <Tooltip content="Delete">
-                <IconButton
-                  variant="plain"
-                  ariaLabel="delete-value"
-                  className="h-full"
-                  onClick={handleDeleteSecret}
-                  isDisabled={isDeleting}
-                >
-                  <FontAwesomeIcon icon={faTrash} />
-                </IconButton>
-              </Tooltip>
-            </div>
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Delete}
+              a={ProjectPermissionSub.Secrets}
+            >
+              {(isAllowed) => (
+                <div className="opacity-0 group-hover:opacity-100">
+                  <Tooltip content="Delete">
+                    <IconButton
+                      variant="plain"
+                      ariaLabel="delete-value"
+                      className="h-full"
+                      onClick={handleDeleteSecret}
+                      isDisabled={isDeleting || !isAllowed}
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
+                    </IconButton>
+                  </Tooltip>
+                </div>
+              )}
+            </ProjectPermissionCan>
           </>
         )}
       </div>

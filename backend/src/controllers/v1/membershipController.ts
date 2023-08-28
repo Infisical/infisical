@@ -4,7 +4,7 @@ import { IUser, Key, Membership, MembershipOrg, User } from "../../models";
 import { EventType } from "../../ee/models";
 import { deleteMembership as deleteMember, findMembership } from "../../helpers/membership";
 import { sendMail } from "../../helpers/nodemailer";
-import { ACCEPTED, ADMIN, MEMBER } from "../../variables";
+import { ACCEPTED, ADMIN, CUSTOM, MEMBER, VIEWER } from "../../variables";
 import { getSiteURL } from "../../config";
 import { EEAuditLogService } from "../../ee/services";
 import { validateRequest } from "../../helpers/validation";
@@ -15,6 +15,8 @@ import {
   getUserProjectPermissions
 } from "../../services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
+import Role from "../../models/role";
+import { BadRequestError } from "../../utils/errors";
 
 /**
  * Check that user is a member of workspace with id [workspaceId]
@@ -107,10 +109,6 @@ export const changeMembershipRole = async (req: Request, res: Response) => {
     params: { membershipId }
   } = await validateRequest(reqValidator.ChangeMembershipRoleV1, req);
 
-  if (![ADMIN, MEMBER].includes(role)) {
-    throw new Error("Failed to validate role");
-  }
-
   // validate target membership
   const membershipToChangeRole = await Membership.findById(membershipId).populate<{ user: IUser }>(
     "user"
@@ -129,9 +127,32 @@ export const changeMembershipRole = async (req: Request, res: Response) => {
     ProjectPermissionSub.Member
   );
 
-  const oldRole = membershipToChangeRole.role;
-  membershipToChangeRole.role = role;
-  await membershipToChangeRole.save();
+  const isCustomRole = ![ADMIN, MEMBER, VIEWER].includes(role);
+  if (isCustomRole) {
+    const wsRole = await Role.findOne({
+      slug: role,
+      isOrgRole: false,
+      workspace: membershipToChangeRole.workspace
+    });
+    if (!wsRole) throw BadRequestError({ message: "Role not found" });
+    const membership = await Membership.findByIdAndUpdate(membershipId, {
+      role: CUSTOM,
+      customRole: wsRole
+    });
+    return res.status(200).send({
+      membership
+    });
+  }
+
+  const membership = await Membership.findByIdAndUpdate(
+    membershipId,
+    {
+      role
+    },
+    {
+      new: true
+    }
+  );
 
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -140,8 +161,8 @@ export const changeMembershipRole = async (req: Request, res: Response) => {
       metadata: {
         userId: membershipToChangeRole.user._id.toString(),
         email: membershipToChangeRole.user.email,
-        oldRole,
-        newRole: membershipToChangeRole.role
+        oldRole: membershipToChangeRole.role,
+        newRole: role
       }
     },
     {
@@ -150,7 +171,7 @@ export const changeMembershipRole = async (req: Request, res: Response) => {
   );
 
   return res.status(200).send({
-    membership: membershipToChangeRole
+    membership
   });
 };
 

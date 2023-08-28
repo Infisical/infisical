@@ -23,7 +23,13 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { useOrganization, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useWorkspace
+} from "@app/context";
+import { withProjectPermission } from "@app/hoc";
 import {
   useCreateSecretV3,
   useDeleteSecretV3,
@@ -38,7 +44,7 @@ import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
 
-export const SecretOverviewPage = () => {
+const SecretOverview = () => {
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
   const router = useRouter();
@@ -394,3 +400,8 @@ export const SecretOverviewPage = () => {
     </div>
   );
 };
+
+export const SecretOverviewPage = withProjectPermission(SecretOverview, {
+  action: ProjectPermissionActions.Read,
+  subject: ProjectPermissionSub.Secrets
+});
