@@ -1,5 +1,5 @@
-import { letterCharRegex, numAndSpecialCharRegex, repeatedCharRegex, escapeCharRegex, lowEntropyRegexes } from "./passwordRegexes";
 import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
+import { escapeCharRegex, letterCharRegex, lowEntropyRegexes,numAndSpecialCharRegex, repeatedCharRegex } from "./passwordRegexes";
 
 type Errors = {
   tooShort?: string;
@@ -86,11 +86,11 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
     errors.breached = "Password was found in a data breach.";
   }
 
-  for (const test of tests) {
+  tests.forEach((test) => {
     if (test.validator && !test.validator(password)) {
       errors[test.name as keyof Errors] = test.errorText;
     }
-  }
+  });
 
   setErrors(errors);
   return Object.keys(errors).length > 0;

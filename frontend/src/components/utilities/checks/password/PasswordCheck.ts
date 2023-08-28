@@ -1,9 +1,8 @@
-import { letterCharRegex, numAndSpecialCharRegex, repeatedCharRegex, escapeCharRegex, lowEntropyRegexes } from "./passwordRegexes";
 import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
+import { escapeCharRegex, letterCharRegex, lowEntropyRegexes,numAndSpecialCharRegex, repeatedCharRegex } from "./passwordRegexes";
 
 interface PasswordCheckProps {
   password: string;
-  errorCheck: boolean;
   setPasswordErrorTooShort: (value: boolean) => void;
   setPasswordErrorTooLong: (value: boolean) => void;
   setPasswordErrorNoLetterChar: (value: boolean) => void;
@@ -23,9 +22,9 @@ const passwordCheck = async ({
   setPasswordErrorRepeatedChar,
   setPasswordErrorEscapeChar,
   setPasswordErrorLowEntropy,
-  setPasswordErrorBreached,
-  errorCheck
+  setPasswordErrorBreached
 }: PasswordCheckProps) => {
+  let errorCheck = false;
   const tests = [
     {
       name: "tooShort",
@@ -74,15 +73,15 @@ const passwordCheck = async ({
   } else {
     setPasswordErrorBreached(false);
   }
-
-  for (const test of tests) {
+  
+  tests.forEach((test) => {
     if (!test.validator(password)) {
       errorCheck = true;
       test.setError(true);
     } else {
       test.setError(false);
     }
-  }
+  })
 
   return errorCheck;
 };
