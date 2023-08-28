@@ -20,22 +20,22 @@ import {
   SRPR1Res,
   VerifyMfaTokenDTO,
   VerifyMfaTokenRes,
-  VerifySignupInviteDTO} from "./types";
+  VerifySignupInviteDTO
+} from "./types";
 
 const authKeys = {
-  getAuthToken: ["token"] as const,
-  commonPasswords: ["common-passwords"] as const
+  getAuthToken: ["token"] as const
 };
 
 export const login1 = async (loginDetails: Login1DTO) => {
   const { data } = await apiRequest.post<Login1Res>("/api/v3/auth/login1", loginDetails);
   return data;
-}
+};
 
 export const login2 = async (loginDetails: Login2DTO) => {
   const { data } = await apiRequest.post<Login2Res>("/api/v3/auth/login2", loginDetails);
   return data;
-}
+};
 
 export const useLogin1 = () => {
   return useMutation({
@@ -47,7 +47,7 @@ export const useLogin1 = () => {
       return login1(details);
     }
   });
-}
+};
 
 export const useLogin2 = () => {
   return useMutation({
@@ -59,22 +59,22 @@ export const useLogin2 = () => {
       return login2(details);
     }
   });
-}
+};
 
 export const srp1 = async (details: SRP1DTO) => {
   const { data } = await apiRequest.post<SRPR1Res>("/api/v1/password/srp1", details);
-  return data; 
-}
+  return data;
+};
 
 export const completeAccountSignup = async (details: CompleteAccountSignupDTO) => {
   const { data } = await apiRequest.post("/api/v3/signup/complete-account/signup", details);
-  return data; 
-}
+  return data;
+};
 
 export const completeAccountSignupInvite = async (details: CompleteAccountDTO) => {
   const { data } = await apiRequest.post("/api/v2/signup/complete-account/invite", details);
-  return data; 
-}
+  return data;
+};
 
 export const useCompleteAccountSignup = () => {
   return useMutation({
@@ -82,7 +82,7 @@ export const useCompleteAccountSignup = () => {
       return completeAccountSignup(details);
     }
   });
-}
+};
 
 export const useSendMfaToken = () => {
   return useMutation<{}, {}, SendMfaTokenDTO>({
@@ -91,22 +91,16 @@ export const useSendMfaToken = () => {
       return data;
     }
   });
-}
+};
 
-export const verifyMfaToken = async ({
-  email,
-  mfaCode
-}: {
-  email: string;
-  mfaCode: string;
-}) => {
+export const verifyMfaToken = async ({ email, mfaCode }: { email: string; mfaCode: string }) => {
   const { data } = await apiRequest.post("/api/v2/auth/mfa/verify", {
     email,
     mfaToken: mfaCode
   });
 
   return data;
-}
+};
 
 export const useVerifyMfaToken = () => {
   return useMutation<VerifyMfaTokenRes, {}, VerifyMfaTokenDTO>({
@@ -117,87 +111,67 @@ export const useVerifyMfaToken = () => {
       });
     }
   });
-}
+};
 
 export const verifySignupInvite = async (details: VerifySignupInviteDTO) => {
   const { data } = await apiRequest.post("/api/v1/invite-org/verify", details);
   return data;
-}
+};
 
 export const useSendVerificationEmail = () => {
   return useMutation({
-    mutationFn: async ({ 
-      email 
-    }: { 
-      email: string; 
-    }) => {
+    mutationFn: async ({ email }: { email: string }) => {
       const { data } = await apiRequest.post("/api/v1/signup/email/signup", {
         email
       });
-      
+
       return data;
     }
   });
-}
+};
 
 export const useVerifyEmailVerificationCode = () => {
   return useMutation({
-    mutationFn: async ({ 
-      email,
-      code
-    }: { 
-      email: string; 
-      code: string; 
-    }) => {
+    mutationFn: async ({ email, code }: { email: string; code: string }) => {
       const { data } = await apiRequest.post("/api/v1/signup/email/verify", {
         email,
         code
       });
-      
+
       return data;
     }
   });
-}
+};
 
 export const useSendPasswordResetEmail = () => {
   return useMutation({
-    mutationFn: async ({ 
-      email 
-    }: { 
-      email: string; 
-    }) => {
+    mutationFn: async ({ email }: { email: string }) => {
       const { data } = await apiRequest.post("/api/v1/password/email/password-reset", {
         email
       });
-      
+
       return data;
     }
   });
-}
+};
 
 export const useVerifyPasswordResetCode = () => {
   return useMutation({
-    mutationFn: async ({ 
-      email,
-      code
-    }: { 
-      email: string; 
-      code: string; 
-    }) => {
+    mutationFn: async ({ email, code }: { email: string; code: string }) => {
       const { data } = await apiRequest.post("/api/v1/password/email/password-reset-verify", {
         email,
         code
       });
-      
+
       return data;
     }
   });
-}
+};
 
 export const issueBackupPrivateKey = async (details: IssueBackupPrivateKeyDTO) => {
   const { data } = await apiRequest.post("/api/v1/password/backup-private-key", details);
   return data;
-}
+};
 
 export const getBackupEncryptedPrivateKey = async ({
   verificationToken
@@ -207,37 +181,41 @@ export const getBackupEncryptedPrivateKey = async ({
       Authorization: `Bearer ${verificationToken}`
     }
   });
-  
+
   return data.backupPrivateKey;
-}
+};
 
 export const useResetPassword = () => {
   return useMutation({
     mutationFn: async (details: ResetPasswordDTO) => {
-      const { data } = await apiRequest.post("/api/v1/password/password-reset", {
-        protectedKey: details.protectedKey,
-        protectedKeyIV: details.protectedKeyIV,
-        protectedKeyTag: details.protectedKeyTag,
-        encryptedPrivateKey: details.encryptedPrivateKey,
-        encryptedPrivateKeyIV: details.encryptedPrivateKeyIV,
-        encryptedPrivateKeyTag: details.encryptedPrivateKeyTag,
-        salt: details.salt,
-        verifier: details.verifier
-      }, {
-        headers: {
-          Authorization: `Bearer ${details.verificationToken}`
+      const { data } = await apiRequest.post(
+        "/api/v1/password/password-reset",
+        {
+          protectedKey: details.protectedKey,
+          protectedKeyIV: details.protectedKeyIV,
+          protectedKeyTag: details.protectedKeyTag,
+          encryptedPrivateKey: details.encryptedPrivateKey,
+          encryptedPrivateKeyIV: details.encryptedPrivateKeyIV,
+          encryptedPrivateKeyTag: details.encryptedPrivateKeyTag,
+          salt: details.salt,
+          verifier: details.verifier
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${details.verificationToken}`
+          }
         }
-      });
-      
+      );
+
       return data;
     }
   });
-}
+};
 
 export const changePassword = async (details: ChangePasswordDTO) => {
   const { data } = await apiRequest.post("/api/v1/password/change-password", details);
   return data;
-}
+};
 
 export const useChangePassword = () => {
   // note: use after srp1
@@ -246,7 +224,7 @@ export const useChangePassword = () => {
       return changePassword(details);
     }
   });
-}
+};
 
 // Refresh token is set as cookie when logged in
 // Using that we fetch the auth bearer token needed for auth calls
@@ -263,11 +241,3 @@ export const useGetAuthToken = () =>
     onSuccess: (data) => setAuthToken(data.token),
     retry: 0
   });
-
-const fetchCommonPasswords = async () => {
-  const { data } = await apiRequest.get("/api/v1/auth/common-passwords");
-  return data || [];
-};
-
-export const useGetCommonPasswords = () =>
-  useQuery({ queryKey: authKeys.commonPasswords, queryFn: fetchCommonPasswords });

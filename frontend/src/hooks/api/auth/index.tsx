@@ -1,10 +1,10 @@
 export {
   useGetAuthToken,
-  useGetCommonPasswords,
   useResetPassword,
-  useSendMfaToken, 
+  useSendMfaToken,
   useSendPasswordResetEmail,
   useSendVerificationEmail,
   useVerifyEmailVerificationCode,
   useVerifyMfaToken,
-  useVerifyPasswordResetCode} from "./queries"
+  useVerifyPasswordResetCode
+} from "./queries";

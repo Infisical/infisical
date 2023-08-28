@@ -210,10 +210,15 @@
       "current": "Senha atual",
       "current-wrong": "A senha atual pode estar errada",
       "new": "Nova Senha",
-      "validate-base": "A senha deve conter pelo menos:",
-      "validate-length": "14 caracteres",
-      "validate-case": "1 caractere minúsculo",
-      "validate-number": "1 número"
+      "validate-base": "A senha deve conter:",
+      "validate-tooShort": "pelo menos 14 caracteres",
+      "validate-tooLong": "no máximo 100 caracteres",
+      "validate-noLetterChar": "pelo menos 1 caractere alfabético",
+      "validate-noNumOrSpecialChar": "pelo menos 1 número ou caractere especial",
+      "validate-repeatedChar": "no máximo 3 caracteres repetidos e consecutivos",
+      "validate-escapeChar": "Nenhum caractere de escape permitido.",
+      "validate-lowEntropy": "A senha contém dados sensíveis.",
+      "validate-breached": "A senha foi encontrada em uma violação de dados."
     },
     "token": {
       "service-tokens": "Tokens de Serviço",
