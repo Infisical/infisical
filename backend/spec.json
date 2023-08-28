@@ -3208,6 +3208,9 @@
                   },
                   "slug": {
                     "example": "any"
+                  },
+                  "checkedSecrets": {
+                    "example": "any"
                   }
                 }
               }

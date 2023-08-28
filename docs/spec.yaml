@@ -1953,6 +1953,8 @@ paths:
                   example: any
                 slug:
                   example: any
+                checkedSecrets:
+                  example: any
   /api/v2/workspace/tags/{tagId}:
     delete:
       description: ''
