@@ -15,8 +15,8 @@ import { addMemberships } from "../../helpers/membership";
 import { ADMIN } from "../../variables";
 import { OrganizationNotFoundError } from "../../utils/errors";
 import {
+  OrgPermissionActions,
   OrgPermissionSubjects,
-  WorkspacePermissionActions,
   getUserOrgPermissions
 } from "../../services/RoleService";
 import { ForbiddenError } from "@casl/ability";
@@ -146,7 +146,7 @@ export const createWorkspace = async (req: Request, res: Response) => {
 
   const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
   ForbiddenError.from(permission).throwUnlessCan(
-    WorkspacePermissionActions.Create,
+    OrgPermissionActions.Create,
     OrgPermissionSubjects.Workspace
   );
 

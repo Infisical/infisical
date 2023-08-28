@@ -2,7 +2,7 @@ export { AuthProvider } from "./AuthContext";
 export { OrgProvider, useOrganization } from "./OrganizationContext";
 export type { TOrgPermission } from "./OrgPermissionContext";
 export {
-  GeneralPermissionActions,
+  OrgPermissionActions,
   OrgPermissionProvider,
   OrgPermissionSubjects,
   useOrgPermission

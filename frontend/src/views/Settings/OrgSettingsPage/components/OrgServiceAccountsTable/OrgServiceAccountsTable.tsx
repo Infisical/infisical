@@ -35,7 +35,7 @@ import {
   Tr
 } from "@app/components/v2";
 import {
-  GeneralPermissionActions,
+  OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
   useWorkspace
@@ -382,7 +382,7 @@ export const OrgServiceAccountsTable = withPermission(
     );
   },
   {
-    action: GeneralPermissionActions.Read,
+    action: OrgPermissionActions.Read,
     subject: OrgPermissionSubjects.Settings,
     containerClassName: "mb-4"
   }

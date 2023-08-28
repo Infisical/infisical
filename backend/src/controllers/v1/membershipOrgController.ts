@@ -19,7 +19,7 @@ import {
 import { validateUserEmail } from "../../validation";
 import { validateRequest } from "../../helpers/validation";
 import {
-  GeneralPermissionActions,
+  OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
 } from "../../services/RoleService";
@@ -50,7 +50,7 @@ export const deleteMembershipOrg = async (req: Request, _res: Response) => {
     membershipOrgToDelete.organization.toString()
   );
   ForbiddenError.from(permission).throwUnlessCan(
-    GeneralPermissionActions.Delete,
+    OrgPermissionActions.Delete,
     OrgPermissionSubjects.Member
   );
 
@@ -98,7 +98,7 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 
   const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
   ForbiddenError.from(permission).throwUnlessCan(
-    GeneralPermissionActions.Create,
+    OrgPermissionActions.Create,
     OrgPermissionSubjects.Member
   );
 

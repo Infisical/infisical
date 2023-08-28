@@ -9,9 +9,8 @@ import { CUSTOM } from "../../variables";
 import * as reqValidator from "../../validation/organization";
 import { validateRequest } from "../../helpers/validation";
 import {
-  GeneralPermissionActions,
+  OrgPermissionActions,
   OrgPermissionSubjects,
-  WorkspacePermissionActions,
   getUserOrgPermissions
 } from "../../services/RoleService";
 import { ForbiddenError } from "@casl/ability";
@@ -61,7 +60,7 @@ export const getOrganizationMemberships = async (req: Request, res: Response) =>
 
   const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
   ForbiddenError.from(permission).throwUnlessCan(
-    GeneralPermissionActions.Read,
+    OrgPermissionActions.Read,
     OrgPermissionSubjects.Member
   );
 
@@ -139,7 +138,7 @@ export const updateOrganizationMembership = async (req: Request, res: Response) 
   } = await validateRequest(reqValidator.UpdateOrgMemberv2, req);
   const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
   ForbiddenError.from(permission).throwUnlessCan(
-    GeneralPermissionActions.Edit,
+    OrgPermissionActions.Edit,
     OrgPermissionSubjects.Member
   );
 
@@ -220,7 +219,7 @@ export const deleteOrganizationMembership = async (req: Request, res: Response) 
   } = await validateRequest(reqValidator.DeleteOrgMemberv2, req);
   const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
   ForbiddenError.from(permission).throwUnlessCan(
-    GeneralPermissionActions.Delete,
+    OrgPermissionActions.Delete,
     OrgPermissionSubjects.Member
   );
 
@@ -284,7 +283,7 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
 
   const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
   ForbiddenError.from(permission).throwUnlessCan(
-    WorkspacePermissionActions.Read,
+    OrgPermissionActions.Read,
     OrgPermissionSubjects.Workspace
   );
 

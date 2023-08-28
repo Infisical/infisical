@@ -4,16 +4,11 @@ import { IRole } from "../models/role";
 import { BadRequestError, UnauthorizedRequestError } from "../utils/errors";
 import { ACCEPTED } from "../variables";
 
-export enum GeneralPermissionActions {
+export enum OrgPermissionActions {
   Read = "read",
   Create = "create",
   Edit = "edit",
   Delete = "delete"
-}
-
-export enum WorkspacePermissionActions {
-  Read = "read",
-  Create = "create"
 }
 
 export enum OrgPermissionSubjects {
@@ -28,55 +23,56 @@ export enum OrgPermissionSubjects {
 }
 
 export type OrgPermissionSet =
-  | [WorkspacePermissionActions, OrgPermissionSubjects.Workspace]
-  | [GeneralPermissionActions, OrgPermissionSubjects.Role]
-  | [GeneralPermissionActions, OrgPermissionSubjects.Member]
-  | [GeneralPermissionActions, OrgPermissionSubjects.Settings]
-  | [GeneralPermissionActions, OrgPermissionSubjects.IncidentAccount]
-  | [GeneralPermissionActions, OrgPermissionSubjects.Sso]
-  | [GeneralPermissionActions, OrgPermissionSubjects.SecretScanning]
-  | [GeneralPermissionActions, OrgPermissionSubjects.Billing];
+  | [OrgPermissionActions.Read, OrgPermissionSubjects.Workspace]
+  | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
+  | [OrgPermissionActions, OrgPermissionSubjects.Role]
+  | [OrgPermissionActions, OrgPermissionSubjects.Member]
+  | [OrgPermissionActions, OrgPermissionSubjects.Settings]
+  | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
+  | [OrgPermissionActions, OrgPermissionSubjects.Sso]
+  | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
+  | [OrgPermissionActions, OrgPermissionSubjects.Billing];
 
 const buildAdminPermission = () => {
   const { can, build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
   // ws permissions
-  can(WorkspacePermissionActions.Read, OrgPermissionSubjects.Workspace);
-  can(WorkspacePermissionActions.Create, OrgPermissionSubjects.Workspace);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   // role permission
-  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Role);
-  can(GeneralPermissionActions.Create, OrgPermissionSubjects.Role);
-  can(GeneralPermissionActions.Edit, OrgPermissionSubjects.Role);
-  can(GeneralPermissionActions.Delete, OrgPermissionSubjects.Role);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Role);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Role);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Role);
 
-  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Member);
-  can(GeneralPermissionActions.Create, OrgPermissionSubjects.Member);
-  can(GeneralPermissionActions.Edit, OrgPermissionSubjects.Member);
-  can(GeneralPermissionActions.Delete, OrgPermissionSubjects.Member);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
 
-  can(GeneralPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
-  can(GeneralPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
-  can(GeneralPermissionActions.Edit, OrgPermissionSubjects.SecretScanning);
-  can(GeneralPermissionActions.Delete, OrgPermissionSubjects.SecretScanning);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.SecretScanning);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.SecretScanning);
 
-  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Settings);
-  can(GeneralPermissionActions.Create, OrgPermissionSubjects.Settings);
-  can(GeneralPermissionActions.Edit, OrgPermissionSubjects.Settings);
-  can(GeneralPermissionActions.Delete, OrgPermissionSubjects.Settings);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
 
-  can(GeneralPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
-  can(GeneralPermissionActions.Create, OrgPermissionSubjects.IncidentAccount);
-  can(GeneralPermissionActions.Edit, OrgPermissionSubjects.IncidentAccount);
-  can(GeneralPermissionActions.Delete, OrgPermissionSubjects.IncidentAccount);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.IncidentAccount);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.IncidentAccount);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.IncidentAccount);
 
-  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Sso);
-  can(GeneralPermissionActions.Create, OrgPermissionSubjects.Sso);
-  can(GeneralPermissionActions.Edit, OrgPermissionSubjects.Sso);
-  can(GeneralPermissionActions.Delete, OrgPermissionSubjects.Sso);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Sso);
 
-  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Billing);
-  can(GeneralPermissionActions.Create, OrgPermissionSubjects.Billing);
-  can(GeneralPermissionActions.Edit, OrgPermissionSubjects.Billing);
-  can(GeneralPermissionActions.Delete, OrgPermissionSubjects.Billing);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Billing);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Billing);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Billing);
 
   return build();
 };
@@ -86,15 +82,15 @@ export const adminPermissions = buildAdminPermission();
 const buildMemberPermission = () => {
   const { can, build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
 
-  can(WorkspacePermissionActions.Read, OrgPermissionSubjects.Workspace);
-  can(WorkspacePermissionActions.Create, OrgPermissionSubjects.Workspace);
-  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Member);
-  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Role);
-  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Settings);
-  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Billing);
-  can(GeneralPermissionActions.Read, OrgPermissionSubjects.Sso);
-  can(GeneralPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
-  can(GeneralPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
 
   return build();
 };

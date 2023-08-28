@@ -11,7 +11,7 @@ import { EELicenseService } from "../../services";
 import * as reqValidator from "../../../validation/sso";
 import { validateRequest } from "../../../helpers/validation";
 import {
-  GeneralPermissionActions,
+  OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
 } from "../../../services/RoleService";
@@ -49,7 +49,7 @@ export const getSSOConfig = async (req: Request, res: Response) => {
 
   const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
   ForbiddenError.from(permission).throwUnlessCan(
-    GeneralPermissionActions.Read,
+    OrgPermissionActions.Read,
     OrgPermissionSubjects.Sso
   );
 
@@ -73,7 +73,7 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
 
   const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
   ForbiddenError.from(permission).throwUnlessCan(
-    GeneralPermissionActions.Edit,
+    OrgPermissionActions.Edit,
     OrgPermissionSubjects.Sso
   );
 
@@ -208,7 +208,7 @@ export const createSSOConfig = async (req: Request, res: Response) => {
 
   const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
   ForbiddenError.from(permission).throwUnlessCan(
-    GeneralPermissionActions.Create,
+    OrgPermissionActions.Create,
     OrgPermissionSubjects.Sso
   );
 

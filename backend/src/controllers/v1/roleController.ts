@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { BadRequestError } from "../../utils/errors";
 import Role from "../../models/role";
 import {
-  GeneralPermissionActions,
+  OrgPermissionActions,
   OrgPermissionSubjects,
   adminPermissions,
   getUserOrgPermissions,
@@ -30,7 +30,7 @@ export const createRole = async (req: Request, res: Response) => {
   } = await validateRequest(CreateRoleSchema, req);
 
   const { permission } = await getUserOrgPermissions(req.user.id, orgId);
-  if (permission.cannot(GeneralPermissionActions.Create, OrgPermissionSubjects.Role)) {
+  if (permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Role)) {
     throw BadRequestError({ message: "User doesn't have the permission." });
   }
 
@@ -68,7 +68,7 @@ export const updateRole = async (req: Request, res: Response) => {
   const isOrgRole = !workspaceId; // if workspaceid is provided then its a workspace rule
 
   const { permission } = await getUserOrgPermissions(req.user.id, orgId);
-  if (permission.cannot(GeneralPermissionActions.Edit, OrgPermissionSubjects.Role)) {
+  if (permission.cannot(OrgPermissionActions.Edit, OrgPermissionSubjects.Role)) {
     throw BadRequestError({ message: "User doesn't have the permission." });
   }
 
@@ -112,7 +112,7 @@ export const deleteRole = async (req: Request, res: Response) => {
   }
 
   const { permission } = await getUserOrgPermissions(req.user.id, role.organization.toString());
-  if (permission.cannot(GeneralPermissionActions.Delete, OrgPermissionSubjects.Role)) {
+  if (permission.cannot(OrgPermissionActions.Delete, OrgPermissionSubjects.Role)) {
     throw BadRequestError({ message: "User doesn't have the permission." });
   }
   await Role.findByIdAndDelete(role.id);
@@ -132,7 +132,7 @@ export const getRoles = async (req: Request, res: Response) => {
   const isOrgRole = !workspaceId;
 
   const { permission } = await getUserOrgPermissions(req.user.id, orgId);
-  if (permission.cannot(GeneralPermissionActions.Read, OrgPermissionSubjects.Role)) {
+  if (permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Role)) {
     throw BadRequestError({ message: "User doesn't have the permission." });
   }
 

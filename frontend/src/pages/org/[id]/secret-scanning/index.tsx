@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
-import { GeneralPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { SecretScanningLogsTable } from "@app/views/SecretScanning/components";
 
@@ -101,7 +101,7 @@ const SecretScanning = withPermission(
               ) : (
                 <div className="flex items-center h-[3.25rem]">
                   <OrgPermissionCan
-                    I={GeneralPermissionActions.Create}
+                    I={OrgPermissionActions.Create}
                     a={OrgPermissionSubjects.SecretScanning}
                   >
                     {(isAllowed) => (
@@ -125,7 +125,7 @@ const SecretScanning = withPermission(
       </div>
     );
   },
-  { action: GeneralPermissionActions.Read, subject: OrgPermissionSubjects.SecretScanning }
+  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.SecretScanning }
 );
 
 Object.assign(SecretScanning, { requireAuth: true });

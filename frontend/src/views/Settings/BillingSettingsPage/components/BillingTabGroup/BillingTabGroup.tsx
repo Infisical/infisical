@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { Tab } from "@headlessui/react";
 
-import { GeneralPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
 
 import { BillingCloudTab } from "../BillingCloudTab";
@@ -53,5 +53,5 @@ export const BillingTabGroup = withPermission(
       </Tab.Group>
     );
   },
-  { action: GeneralPermissionActions.Read, subject: OrgPermissionSubjects.Billing }
+  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Billing }
 );

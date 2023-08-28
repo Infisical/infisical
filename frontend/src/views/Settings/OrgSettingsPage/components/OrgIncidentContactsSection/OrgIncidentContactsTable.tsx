@@ -18,7 +18,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { GeneralPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteIncidentContact, useGetOrgIncidentContact } from "@app/hooks/api";
 
@@ -85,7 +85,7 @@ export const OrgIncidentContactsTable = () => {
                 <Td className="w-full">{email}</Td>
                 <Td className="mr-4">
                   <OrgPermissionCan
-                    I={GeneralPermissionActions.Delete}
+                    I={OrgPermissionActions.Delete}
                     an={OrgPermissionSubjects.IncidentAccount}
                   >
                     {(isAllowed) => (

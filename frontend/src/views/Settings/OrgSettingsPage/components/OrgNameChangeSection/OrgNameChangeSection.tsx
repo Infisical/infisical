@@ -6,7 +6,7 @@ import * as yup from "yup";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { GeneralPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { useRenameOrg } from "@app/hooks/api";
 
@@ -68,7 +68,7 @@ export const OrgNameChangeSection = withPermission(
             name="name"
           />
         </div>
-        <OrgPermissionCan I={GeneralPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
           {(isAllowed) => (
             <Button
               isLoading={isLoading}
@@ -85,7 +85,7 @@ export const OrgNameChangeSection = withPermission(
     );
   },
   {
-    action: GeneralPermissionActions.Read,
+    action: OrgPermissionActions.Read,
     subject: OrgPermissionSubjects.Settings,
     containerClassName: "mb-4"
   }

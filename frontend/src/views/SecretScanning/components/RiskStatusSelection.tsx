@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { GeneralPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import updateRiskStatus, { RiskStatus } from "@app/pages/api/secret-scanning/updateRiskStatus";
 
 export const RiskStatusSelection = ({
@@ -26,7 +26,7 @@ export const RiskStatusSelection = ({
   }, [selectedRiskStatus]);
 
   return (
-    <OrgPermissionCan I={GeneralPermissionActions.Edit} a={OrgPermissionSubjects.SecretScanning}>
+    <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.SecretScanning}>
       {(isAllowed) => (
         <select
           disabled={!isAllowed}

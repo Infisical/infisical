@@ -16,8 +16,8 @@ import {
   faArrowUpRightFromSquare,
   faCheck,
   faCheckCircle,
-  faExclamationCircle,
   faClipboard,
+  faExclamationCircle,
   faHandPeace,
   faMagnifyingGlass,
   faNetworkWired,
@@ -43,9 +43,8 @@ import {
   Skeleton,
   UpgradePlanModal
 } from "@app/components/v2";
-import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import {
-  GeneralPermissionActions,
+  OrgPermissionActions,
   OrgPermissionSubjects,
   useSubscription,
   useUser,
@@ -59,6 +58,7 @@ import {
   useRegisterUserAction,
   useUploadWsKey
 } from "@app/hooks/api";
+import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { encryptAssymmetric } from "../../../../components/utilities/cryptography/crypto";
@@ -473,82 +473,81 @@ const OrganizationPage = withPermission(
     const { createNotification } = useNotificationContext();
     const addWsUser = useAddUserToWs();
 
-  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "addNewWs",
-    "upgradePlan"
-  ] as const);
-  const {
-    control,
-    formState: { isSubmitting },
-    reset,
-    handleSubmit
-  } = useForm<TAddProjectFormData>({
-    resolver: yupResolver(formSchema)
-  });
+    const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+      "addNewWs",
+      "upgradePlan"
+    ] as const);
+    const {
+      control,
+      formState: { isSubmitting },
+      reset,
+      handleSubmit
+    } = useForm<TAddProjectFormData>({
+      resolver: yupResolver(formSchema)
+    });
 
-  const [hasUserClickedSlack, setHasUserClickedSlack] = useState(false);
-  const [hasUserClickedIntro, setHasUserClickedIntro] = useState(false);
-  const [hasUserPushedSecrets, setHasUserPushedSecrets] = useState(false);
-  const [usersInOrg, setUsersInOrg] = useState(false);
-  const [searchFilter, setSearchFilter] = useState("");
-  const createWs = useCreateWorkspace();
-  const { user } = useUser();
-  const uploadWsKey = useUploadWsKey();
-  const { data: serverDetails } = useFetchServerStatus();
-  
+    const [hasUserClickedSlack, setHasUserClickedSlack] = useState(false);
+    const [hasUserClickedIntro, setHasUserClickedIntro] = useState(false);
+    const [hasUserPushedSecrets, setHasUserPushedSecrets] = useState(false);
+    const [usersInOrg, setUsersInOrg] = useState(false);
+    const [searchFilter, setSearchFilter] = useState("");
+    const createWs = useCreateWorkspace();
+    const { user } = useUser();
+    const uploadWsKey = useUploadWsKey();
+    const { data: serverDetails } = useFetchServerStatus();
 
-  const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
-    // type check
-    if (!currentOrg) return;
-    try {
-      const {
-        data: {
-          workspace: { _id: newWorkspaceId }
-        }
-      } = await createWs.mutateAsync({
-        organizationId: currentOrg,
-        workspaceName: name
-      });
-
-      const randomBytes = crypto.randomBytes(16).toString("hex");
-      const PRIVATE_KEY = String(localStorage.getItem("PRIVATE_KEY"));
-      const { ciphertext, nonce } = encryptAssymmetric({
-        plaintext: randomBytes,
-        publicKey: user.publicKey,
-        privateKey: PRIVATE_KEY
-      });
-
-      await uploadWsKey.mutateAsync({
-        encryptedKey: ciphertext,
-        nonce,
-        userId: user?._id,
-        workspaceId: newWorkspaceId
-      });
-
-      if (addMembers) {
-        // not using hooks because need at this point only
-        const orgUsers = await fetchOrgUsers(currentOrg);
-        orgUsers.forEach(({ status, user: orgUser }) => {
-          // skip if status of org user is not accepted
-          // this orgUser is the person who created the ws
-          if (status !== "accepted" || user.email === orgUser.email) return;
-          addWsUser.mutate({ email: orgUser.email, workspaceId: newWorkspaceId });
+    const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
+      // type check
+      if (!currentOrg) return;
+      try {
+        const {
+          data: {
+            workspace: { _id: newWorkspaceId }
+          }
+        } = await createWs.mutateAsync({
+          organizationId: currentOrg,
+          workspaceName: name
         });
+
+        const randomBytes = crypto.randomBytes(16).toString("hex");
+        const PRIVATE_KEY = String(localStorage.getItem("PRIVATE_KEY"));
+        const { ciphertext, nonce } = encryptAssymmetric({
+          plaintext: randomBytes,
+          publicKey: user.publicKey,
+          privateKey: PRIVATE_KEY
+        });
+
+        await uploadWsKey.mutateAsync({
+          encryptedKey: ciphertext,
+          nonce,
+          userId: user?._id,
+          workspaceId: newWorkspaceId
+        });
+
+        if (addMembers) {
+          // not using hooks because need at this point only
+          const orgUsers = await fetchOrgUsers(currentOrg);
+          orgUsers.forEach(({ status, user: orgUser }) => {
+            // skip if status of org user is not accepted
+            // this orgUser is the person who created the ws
+            if (status !== "accepted" || user.email === orgUser.email) return;
+            addWsUser.mutate({ email: orgUser.email, workspaceId: newWorkspaceId });
+          });
+        }
+        createNotification({ text: "Workspace created", type: "success" });
+        handlePopUpClose("addNewWs");
+        router.push(`/project/${newWorkspaceId}/secrets/overview`);
+      } catch (err) {
+        console.error(err);
+        createNotification({ text: "Failed to create workspace", type: "error" });
       }
-      createNotification({ text: "Workspace created", type: "success" });
-      handlePopUpClose("addNewWs");
-      router.push(`/project/${newWorkspaceId}/secrets/overview`);
-    } catch (err) {
-      console.error(err);
-      createNotification({ text: "Failed to create workspace", type: "error" });
-    }
-  };
+    };
 
-  const { subscription } = useSubscription();
+    const { subscription } = useSubscription();
 
-  const isAddingProjectsAllowed = subscription?.workspaceLimit
-    ? subscription.workspacesUsed < subscription.workspaceLimit
-    : true;
+    const isAddingProjectsAllowed = subscription?.workspaceLimit
+      ? subscription.workspacesUsed < subscription.workspaceLimit
+      : true;
 
     useEffect(() => {
       onboardingCheck({
@@ -567,18 +566,28 @@ const OrganizationPage = withPermission(
           <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
           <link rel="icon" href="/infisical.ico" />
         </Head>
-        {!serverDetails?.redisConfigured && <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
-          <p className="mr-4 mb-4 font-semibold text-white">Announcements</p>
-          <div className="w-full border border-blue-400/70 rounded-md bg-blue-900/70 p-2 text-base text-mineshaft-100 flex items-center">
-            <FontAwesomeIcon icon={faExclamationCircle} className="text-2xl mr-4 p-4 text-mineshaft-50"/>
-            Attention: Updated versions of Infisical now require Redis for full functionality. Learn how to configure it 
-            <Link href="https://infisical.com/docs/self-hosting/configuration/redis" target="_blank">
-              <span className="pl-1 text-white underline underline-offset-2 hover:decoration-blue-400 hover:text-blue-200 duration-100 cursor-pointer">
-                here
-              </span>
-            </Link>. 
+        {!serverDetails?.redisConfigured && (
+          <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
+            <p className="mr-4 mb-4 font-semibold text-white">Announcements</p>
+            <div className="w-full border border-blue-400/70 rounded-md bg-blue-900/70 p-2 text-base text-mineshaft-100 flex items-center">
+              <FontAwesomeIcon
+                icon={faExclamationCircle}
+                className="text-2xl mr-4 p-4 text-mineshaft-50"
+              />
+              Attention: Updated versions of Infisical now require Redis for full functionality.
+              Learn how to configure it
+              <Link
+                href="https://infisical.com/docs/self-hosting/configuration/redis"
+                target="_blank"
+              >
+                <span className="pl-1 text-white underline underline-offset-2 hover:decoration-blue-400 hover:text-blue-200 duration-100 cursor-pointer">
+                  here
+                </span>
+              </Link>
+              .
+            </div>
           </div>
-      </div>}
+        )}
         <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
           <p className="mr-4 font-semibold text-white">Projects</p>
           <div className="mt-6 flex w-full flex-row">
@@ -589,10 +598,7 @@ const OrganizationPage = withPermission(
               onChange={(e) => setSearchFilter(e.target.value)}
               leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
             />
-            <OrgPermissionCan
-              I={GeneralPermissionActions.Create}
-              an={OrgPermissionSubjects.Workspace}
-            >
+            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
               {(isAllowed) => (
                 <Button
                   isDisabled={!isAllowed}
@@ -877,7 +883,7 @@ const OrganizationPage = withPermission(
     );
   },
   {
-    action: GeneralPermissionActions.Read,
+    action: OrgPermissionActions.Read,
     subject: OrgPermissionSubjects.Workspace
   }
 );

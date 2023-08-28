@@ -14,7 +14,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { GeneralPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteOrgTaxId, useGetOrgTaxIds } from "@app/hooks/api";
 
 const taxIDTypeLabelMap: { [key: string]: string } = {
@@ -103,7 +103,7 @@ export const TaxIDTable = () => {
                 <Td>{value}</Td>
                 <Td>
                   <OrgPermissionCan
-                    I={GeneralPermissionActions.Delete}
+                    I={OrgPermissionActions.Delete}
                     a={OrgPermissionSubjects.Billing}
                   >
                     {(isAllowed) => (

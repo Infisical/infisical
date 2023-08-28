@@ -43,7 +43,7 @@ import {
   UpgradePlanModal
 } from "@app/components/v2";
 import {
-  GeneralPermissionActions,
+  OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
   useSubscription,
@@ -305,7 +305,7 @@ export const OrgMembersTable = ({ roles = [] }: Props) => {
             placeholder="Search members..."
           />
         </div>
-        <OrgPermissionCan I={GeneralPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+        <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
           {(isAllowed) => (
             <Button
               isDisabled={!isAllowed}
@@ -359,7 +359,7 @@ export const OrgMembersTable = ({ roles = [] }: Props) => {
                         <Td>{email}</Td>
                         <Td>
                           <OrgPermissionCan
-                            I={GeneralPermissionActions.Edit}
+                            I={OrgPermissionActions.Edit}
                             a={OrgPermissionSubjects.Member}
                           >
                             {(isAllowed) => (
@@ -453,7 +453,7 @@ export const OrgMembersTable = ({ roles = [] }: Props) => {
                         <Td>
                           {userId !== u?._id && (
                             <OrgPermissionCan
-                              I={GeneralPermissionActions.Delete}
+                              I={OrgPermissionActions.Delete}
                               a={OrgPermissionSubjects.Member}
                             >
                               {(isAllowed) => (

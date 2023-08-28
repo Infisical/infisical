@@ -6,7 +6,7 @@ import * as yup from "yup";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { GeneralPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useGetOrgBillingDetails, useUpdateOrgBillingDetails } from "@app/hooks/api";
 
 const schema = yup
@@ -76,7 +76,7 @@ export const InvoiceEmailSection = () => {
           name="email"
         />
       </div>
-      <OrgPermissionCan I={GeneralPermissionActions.Edit} a={OrgPermissionSubjects.Billing}>
+      <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Billing}>
         {(isAllowed) => (
           <Button
             type="submit"

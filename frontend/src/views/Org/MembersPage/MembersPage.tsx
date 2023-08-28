@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { GeneralPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { useGetRoles } from "@app/hooks/api";
 import { TRole } from "@app/hooks/api/roles/types";
@@ -59,5 +59,5 @@ export const MembersPage = withPermission(
       </div>
     );
   },
-  { action: GeneralPermissionActions.Read, subject: OrgPermissionSubjects.Member }
+  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Member }
 );

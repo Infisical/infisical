@@ -12,7 +12,7 @@ import { Organization } from "../../models";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/secretScanning";
 import {
-  GeneralPermissionActions,
+  OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
 } from "../../services/RoleService";
@@ -33,7 +33,7 @@ export const createInstallationSession = async (req: Request, res: Response) => 
 
   const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
   ForbiddenError.from(permission).throwUnlessCan(
-    GeneralPermissionActions.Create,
+    OrgPermissionActions.Create,
     OrgPermissionSubjects.SecretScanning
   );
 
@@ -69,7 +69,7 @@ export const linkInstallationToOrganization = async (req: Request, res: Response
     installationSession.organization.toString()
   );
   ForbiddenError.from(permission).throwUnlessCan(
-    GeneralPermissionActions.Edit,
+    OrgPermissionActions.Edit,
     OrgPermissionSubjects.SecretScanning
   );
 
@@ -131,7 +131,7 @@ export const getRisksForOrganization = async (req: Request, res: Response) => {
 
   const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
   ForbiddenError.from(permission).throwUnlessCan(
-    GeneralPermissionActions.Read,
+    OrgPermissionActions.Read,
     OrgPermissionSubjects.SecretScanning
   );
 
@@ -151,7 +151,7 @@ export const updateRisksStatus = async (req: Request, res: Response) => {
 
   const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
   ForbiddenError.from(permission).throwUnlessCan(
-    GeneralPermissionActions.Edit,
+    OrgPermissionActions.Edit,
     OrgPermissionSubjects.SecretScanning
   );
 
