@@ -1,5 +1,22 @@
 import axios from "axios";
 
+// SHA-1 hash the password using the SubtleCrypto API
+async function hashPassword(passwordBytes: ArrayBuffer): Promise<ArrayBuffer> {
+  const buffer = await window.crypto.subtle.digest("SHA-1", passwordBytes);
+  return buffer;
+}
+
+// Convert the hashed password buffer to a hexadecimal string
+function bufferToHex(buffer: ArrayBuffer): string {
+  const byteArray = new Uint8Array(buffer);
+  const hexParts: string[] = [];
+  byteArray.forEach((byte) => {
+    const hex = byte.toString(16).padStart(2, "0");
+    hexParts.push(hex);
+  });
+  return hexParts.join("");
+}
+
   // see API details here: https://haveibeenpwned.com/API/v3#SearchingPwnedPasswordsByRange
   // in short, the pending password is hashed (SHA-1), the first 5 chars are sliced and compared against a ranged hash table
   // this hash table is formed from the 5 char hash prefix (ie. 00000-FFFFF) so 16^5 results
@@ -21,7 +38,7 @@ import axios from "axios";
   //   thereof."
 
 export const checkIsPasswordBreached = async (password: string): Promise<boolean> => {
-  const dataBreachCheckAPIBaseURL = "https://api.pwnedpasswords.com/range/";
+  const HAVE_I_BEEN_PWNED_API_URL = "https://api.pwnedpasswords.com";
   const maxRetryAttempts = 3;
 
   let encodedPwd: Uint8Array | undefined;
@@ -32,34 +49,18 @@ export const checkIsPasswordBreached = async (password: string): Promise<boolean
     const textEncoder = new TextEncoder();
     encodedPwd = textEncoder.encode(password);
 
-    // SHA-1 hash the password using the SubtleCrypto API
-    async function hashPassword(passwordBytes: ArrayBuffer): Promise<ArrayBuffer> {
-      const buffer = await crypto.subtle.digest("SHA-1", passwordBytes);
-      return buffer;
-    }
-
-    // Convert the hashed password buffer to a hexadecimal string
-    function bufferToHex(buffer: ArrayBuffer): string {
-      const byteArray = new Uint8Array(buffer);
-      const hexParts: string[] = [];
-      byteArray.forEach((byte) => {
-        const hex = byte.toString(16).padStart(2, "0");
-        hexParts.push(hex);
-      });
-      return hexParts.join("");
-    }
-
     // Hash the password and convert it to a useful format for the HIBP API
     hashedPwdBuffer = await hashPassword(encodedPwd!.buffer);
     const hashedPwd = bufferToHex(hashedPwdBuffer).toUpperCase();
     // ONLY send the first 5 hash chars (over HTTPS)
     const hashedPwdToSend = hashedPwd.slice(0, 5);
     const safeHashedPwdToSend = encodeURIComponent(hashedPwdToSend); // Ensure URL safety
-    const rangedHashTableUri = `${dataBreachCheckAPIBaseURL}${safeHashedPwdToSend}`;
+    const rangedHashTableUri = `${HAVE_I_BEEN_PWNED_API_URL}/range/${safeHashedPwdToSend}`;
 
     let response;
     let retryAttempt = 0;
 
+    /* eslint-disable no-await-in-loop */
     while (retryAttempt < maxRetryAttempts) {
       try {
         response = await axios.get(rangedHashTableUri, {
@@ -75,14 +76,14 @@ export const checkIsPasswordBreached = async (password: string): Promise<boolean
           // check the last 35 hash chars to see if there's a match
           const isBreachedPassword: boolean = responseData.includes(hashedPwd.slice(5, 40));
           return isBreachedPassword;
-        } else {
-          retryAttempt++;
-        }
+        } 
+          retryAttempt += 1;
+        
       } catch (err) {
         if (!axios.isAxiosError(err)) {
           throw err;
         }
-        retryAttempt++;
+        retryAttempt += 1;
       }
     }
 

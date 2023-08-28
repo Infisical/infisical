@@ -269,11 +269,11 @@ export default function UserInfoStep({
           <InputField
             label={t("section.password.password")}
             onChangeHandler={async (pass: string) => {
-              setPassword(pass);
               await checkPassword({
                 password: pass,
                 setErrors
               });
+              setPassword(pass);
             }}
             type="password"
             value={password}
