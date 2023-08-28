@@ -884,8 +884,8 @@ export const DashboardPage = () => {
   return (
     <div className="container mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
       {
-        checkedSecrets.length > 0 && (
-          <div className="fixed flex justify-center bottom-[22px] left-[220px] right-0 z-10 pointer-events-none translate-y-[20px]  transition-all" id="sec-checkbox">
+         (
+          <div className="fixed flex justify-center opacity-0 bottom-[22px] left-[220px] scale-50 right-0 z-10 pointer-events-none translate-y-[20px]  transition-all duration-300" id="sec-checkbox">
             <div className="flex flex-initial items-center justify-center shadow-md  bg-mineshaft-800 border border-mineshaft-500 rounded-[4px] pt-[8px] pr-[8px] pb-[8px] pl-[16px] pointer-events-auto gap-[16px]">
               <span className="min-w-[65px] text-gray-300">{checkedSecrets.length} selected</span>
               <div className="flex gap-2">
