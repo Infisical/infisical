@@ -62,7 +62,7 @@ export const SecretOverviewTableRow = ({
           const secret = getSecretByKey(slug, secretKey);
           const isSecretPresent = Boolean(secret);
           const isSecretEmpty = secret?.value === "";
-          // when secret is override by personal values
+          // when secret is overridden by personal values
           const isOverridden =
             secret?.overrideAction === SecretActionType.Created || secret?.overrideAction === SecretActionType.Modified;
           return (
@@ -88,7 +88,7 @@ export const SecretOverviewTableRow = ({
                   )}
                   {isOverridden && (
                     <Tooltip content="Overridden with a personal value">
-                        <FontAwesomeIcon icon={faCodeBranch} className="absolute text-xs ml-10 w-7 text-primary" />
+                      <FontAwesomeIcon icon={faCodeBranch} className="absolute text-[10px] top-0.5 right-8 w-8 text-primary" />
                     </Tooltip>
                   )}
                 </div>
