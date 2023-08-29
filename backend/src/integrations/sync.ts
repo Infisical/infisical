@@ -2234,7 +2234,7 @@ const syncSecretsTeamCity = async ({
         `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`,
         {
           name: `env.${key}`,
-          value: secrets[key]
+          value: secrets[key].value
         },
         {
           headers: {
