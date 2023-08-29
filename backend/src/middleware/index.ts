@@ -14,6 +14,9 @@ import requireServiceAccountAuth from "./requireServiceAccountAuth";
 import requireServiceAccountWorkspacePermissionAuth from "./requireServiceAccountWorkspacePermissionAuth";
 import requireSecretAuth from "./requireSecretAuth";
 import requireSecretsAuth from "./requireSecretsAuth";
+import requireBlindIndicesEnabled from "./requireBlindIndicesEnabled";
+import requireE2EEOff from "./requireE2EEOff";
+import requireIPAllowlistCheck from "./requireIPAllowlistCheck";
 import validateRequest from "./validateRequest";
 
 export {
@@ -33,5 +36,8 @@ export {
 	requireServiceAccountWorkspacePermissionAuth,
 	requireSecretAuth,
 	requireSecretsAuth,
+	requireBlindIndicesEnabled,
+	requireE2EEOff,
+	requireIPAllowlistCheck,
 	validateRequest,
 };

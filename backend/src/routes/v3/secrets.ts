@@ -1,6 +1,12 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth, requireWorkspaceAuth, validateRequest } from "../../middleware";
+import { 
+  requireAuth, 
+  requireBlindIndicesEnabled, 
+  requireE2EEOff,
+  requireWorkspaceAuth,
+  validateRequest 
+} from "../../middleware";
 import { body, param, query } from "express-validator";
 import { secretsController } from "../../controllers/v3";
 import {
@@ -21,8 +27,6 @@ router.get(
   secretsController.getSecretsRaw
 );
 
-// TODO(akhilmhdh): tony please split the requireWorkspaceAuth to multiple middlewares
-// IP checking into another one
 router.get(
   "/raw/:secretName",
   requireAuth({
@@ -32,10 +36,13 @@ router.get(
     acceptedRoles: [ADMIN, MEMBER],
     locationWorkspaceId: "query",
     locationEnvironment: "query",
-    requiredPermissions: [PERMISSION_READ_SECRETS],
-    requireBlindIndicesEnabled: true,
-    requireE2EEOff: true,
-    checkIPAllowlist: false
+    requiredPermissions: [PERMISSION_READ_SECRETS]
+  }),
+  requireBlindIndicesEnabled({
+    locationWorkspaceId: "query"
+  }),
+  requireE2EEOff({
+    locationWorkspaceId: "query"
   }),
   secretsController.getSecretByNameRaw
 );
@@ -49,10 +56,13 @@ router.post(
     acceptedRoles: [ADMIN, MEMBER],
     locationWorkspaceId: "body",
     locationEnvironment: "body",
-    requiredPermissions: [PERMISSION_WRITE_SECRETS],
-    requireBlindIndicesEnabled: true,
-    requireE2EEOff: true,
-    checkIPAllowlist: false
+    requiredPermissions: [PERMISSION_WRITE_SECRETS]
+  }),
+  requireBlindIndicesEnabled({
+    locationWorkspaceId: "body"
+  }),
+  requireE2EEOff({
+    locationWorkspaceId: "body"
   }),
   secretsController.createSecretRaw
 );
@@ -66,10 +76,13 @@ router.patch(
     acceptedRoles: [ADMIN, MEMBER],
     locationWorkspaceId: "body",
     locationEnvironment: "body",
-    requiredPermissions: [PERMISSION_WRITE_SECRETS],
-    requireBlindIndicesEnabled: true,
-    requireE2EEOff: true,
-    checkIPAllowlist: false
+    requiredPermissions: [PERMISSION_WRITE_SECRETS]
+  }),
+  requireBlindIndicesEnabled({
+    locationWorkspaceId: "body"
+  }),
+  requireE2EEOff({
+    locationWorkspaceId: "body"
   }),
   secretsController.updateSecretByNameRaw
 );
@@ -83,10 +96,13 @@ router.delete(
     acceptedRoles: [ADMIN, MEMBER],
     locationWorkspaceId: "body",
     locationEnvironment: "body",
-    requiredPermissions: [PERMISSION_WRITE_SECRETS],
-    requireBlindIndicesEnabled: true,
-    requireE2EEOff: true,
-    checkIPAllowlist: false
+    requiredPermissions: [PERMISSION_WRITE_SECRETS]
+  }),
+  requireBlindIndicesEnabled({
+    locationWorkspaceId: "body"
+  }),
+  requireE2EEOff({
+    locationWorkspaceId: "body"
   }),
   secretsController.deleteSecretByNameRaw
 );
@@ -105,10 +121,10 @@ router.get(
     acceptedRoles: [ADMIN, MEMBER],
     locationWorkspaceId: "query",
     locationEnvironment: "query",
-    requiredPermissions: [PERMISSION_READ_SECRETS],
-    requireBlindIndicesEnabled: true,
-    requireE2EEOff: false,
-    checkIPAllowlist: false
+    requiredPermissions: [PERMISSION_READ_SECRETS]
+  }),
+  requireBlindIndicesEnabled({
+    locationWorkspaceId: "query"
   }),
   secretsController.getSecrets
 );
@@ -122,10 +138,10 @@ router.post(
     acceptedRoles: [ADMIN, MEMBER],
     locationWorkspaceId: "body",
     locationEnvironment: "body",
-    requiredPermissions: [PERMISSION_WRITE_SECRETS],
-    requireBlindIndicesEnabled: true,
-    requireE2EEOff: false,
-    checkIPAllowlist: false
+    requiredPermissions: [PERMISSION_WRITE_SECRETS]
+  }),
+  requireBlindIndicesEnabled({
+    locationWorkspaceId: "body"
   }),
   secretsController.createSecret
 );
@@ -139,9 +155,10 @@ router.get(
     acceptedRoles: [ADMIN, MEMBER],
     locationWorkspaceId: "query",
     locationEnvironment: "query",
-    requiredPermissions: [PERMISSION_READ_SECRETS],
-    requireBlindIndicesEnabled: true,
-    checkIPAllowlist: false
+    requiredPermissions: [PERMISSION_READ_SECRETS]
+  }),
+  requireBlindIndicesEnabled({
+    locationWorkspaceId: "query"
   }),
   secretsController.getSecretByName
 );
@@ -155,10 +172,10 @@ router.patch(
     acceptedRoles: [ADMIN, MEMBER],
     locationWorkspaceId: "body",
     locationEnvironment: "body",
-    requiredPermissions: [PERMISSION_WRITE_SECRETS],
-    requireBlindIndicesEnabled: true,
-    requireE2EEOff: false,
-    checkIPAllowlist: false
+    requiredPermissions: [PERMISSION_WRITE_SECRETS]
+  }),
+  requireBlindIndicesEnabled({
+    locationWorkspaceId: "body"
   }),
   secretsController.updateSecretByName
 );
@@ -178,10 +195,10 @@ router.delete(
     acceptedRoles: [ADMIN, MEMBER],
     locationWorkspaceId: "body",
     locationEnvironment: "body",
-    requiredPermissions: [PERMISSION_WRITE_SECRETS],
-    requireBlindIndicesEnabled: true,
-    requireE2EEOff: false,
-    checkIPAllowlist: false
+    requiredPermissions: [PERMISSION_WRITE_SECRETS]
+  }),
+  requireBlindIndicesEnabled({
+    locationWorkspaceId: "body"
   }),
   secretsController.deleteSecretByName
 );
