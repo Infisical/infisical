@@ -1,16 +1,16 @@
 import Queue, { Job } from "bull";
 import { ProbotOctokit } from "probot"
-import { Commit, Committer, Repository } from "@octokit/webhooks-types";
+import { Commit } from "@octokit/webhooks-types";
 import TelemetryService from "../../services/TelemetryService";
 import { sendMail } from "../../helpers";
 import GitRisks from "../../ee/models/gitRisks";
 import { MembershipOrg, User } from "../../models";
-import { OWNER, ADMIN } from "../../variables";
+import { ADMIN, OWNER } from "../../variables";
 import { convertKeysToLowercase, scanContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
 import { SecretMatch } from "../../ee/services/GithubSecretScanning/types";
 
-export const githubPushEventSecretScan = new Queue('github-push-event-secret-scanning', 'redis://redis:6379');
+export const githubPushEventSecretScan = new Queue("github-push-event-secret-scanning", "redis://redis:6379");
 
 type TScanPushEventQueueDetails = {
   organizationId: string,

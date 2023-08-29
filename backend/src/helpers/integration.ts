@@ -9,7 +9,6 @@ import {
   INTEGRATION_VERCEL
 } from "../variables";
 import { UnauthorizedRequestError } from "../utils/errors";
-import { syncSecretsToActiveIntegrationsQueue } from "../queues/integrations/syncSecretsToThirdPartyServices"
 
 interface Update {
   workspace: string;

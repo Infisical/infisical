@@ -2185,7 +2185,7 @@ const syncSecretsTerraformCloud = async ({
 };
 
 /**
- * Sync/push [secrets] to TeamCity project
+ * Sync/push [secrets] to TeamCity project (and optionally build config)
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
  * @param {Object} obj.secrets - secrets to push to integration
@@ -2207,57 +2207,124 @@ const syncSecretsTeamCity = async ({
     value: string;
   }
 
-  // get secrets from Teamcity
-  const res = (
-    await standardRequest.get(
-      `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`,
+  interface TeamCityBuildConfigParameter {
+    name: string;
+    value: string;
+    inherited: boolean;
+  }
+  interface GetTeamCityBuildConfigParametersRes {
+    href: string;
+    count: number;
+    property: TeamCityBuildConfigParameter[];
+  }
+
+  if (integration.targetEnvironment && integration.targetEnvironmentId) {
+    // case: sync to specific build-config in TeamCity project
+    const res = (await standardRequest.get<GetTeamCityBuildConfigParametersRes>(
+      `${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters`, 
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json"
-        }
+          Accept: "application/json",
+        },
       }
-    )
-  ).data.property.reduce((obj: any, secret: TeamCitySecret) => {
-    const secretName = secret.name.replace(/^env\./, "");
-    return {
-      ...obj,
-      [secretName]: secret.value
-    };
-  }, {});
-
-  for await (const key of Object.keys(secrets)) {
-    if (!(key in res) || (key in res && secrets[key] !== res[key])) {
-      // case: secret does not exist in TeamCity or secret value has changed
-      // -> create/update secret
-      await standardRequest.post(
-        `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`,
+    ))
+    .data
+    .property
+    .filter((parameter) => !parameter.inherited)
+    .reduce((obj: any, secret: TeamCitySecret) => {
+      const secretName = secret.name.replace(/^env\./, "");
+      return {
+        ...obj,
+        [secretName]: secret.value
+      };
+    }, {});
+      
+    for await (const key of Object.keys(secrets)) {
+      if (!(key in res) || (key in res && secrets[key].value !== res[key])) {
+        // case: secret does not exist in TeamCity or secret value has changed
+        // -> create/update secret
+        await standardRequest.post(`${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters`,
         {
-          name: `env.${key}`,
+          name:`env.${key}`,
           value: secrets[key].value
         },
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json"
-          }
-        }
-      );
+            Accept: "application/json",
+          },
+        });
+      }
     }
-  }
 
-  for await (const key of Object.keys(res)) {
-    if (!(key in secrets)) {
-      // delete secret
-      await standardRequest.delete(
-        `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters/env.${key}`,
+    for await (const key of Object.keys(res)) {
+      if (!(key in secrets)) {
+        // delete secret
+        await standardRequest.delete(
+          `${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters/env.${key}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json"
+            }
+          }
+        );
+      }
+    }
+  } else {
+    // case: sync to TeamCity project
+    const res = (
+      await standardRequest.get(
+        `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             Accept: "application/json"
           }
         }
-      );
+      )
+    ).data.property.reduce((obj: any, secret: TeamCitySecret) => {
+      const secretName = secret.name.replace(/^env\./, "");
+      return {
+        ...obj,
+        [secretName]: secret.value
+      };
+    }, {});
+
+    for await (const key of Object.keys(secrets)) {
+      if (!(key in res) || (key in res && secrets[key] !== res[key])) {
+        // case: secret does not exist in TeamCity or secret value has changed
+        // -> create/update secret
+        await standardRequest.post(
+          `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters`,
+          {
+            name: `env.${key}`,
+            value: secrets[key].value
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json"
+            }
+          }
+        );
+      }
+    }
+
+    for await (const key of Object.keys(res)) {
+      if (!(key in secrets)) {
+        // delete secret
+        await standardRequest.delete(
+          `${integrationAuth.url}/app/rest/projects/id:${integration.appId}/parameters/env.${key}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json"
+            }
+          }
+        );
+      }
     }
   }
 };

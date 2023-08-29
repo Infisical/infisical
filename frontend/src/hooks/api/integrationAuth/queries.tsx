@@ -10,8 +10,8 @@ import {
   IntegrationAuth, 
   NorthflankSecretGroup,
   Service, 
-  Team 
-} from "./types";
+  Team, 
+  TeamCityBuildConfig} from "./types";
 
 const integrationAuthKeys = {
   getIntegrationAuthById: (integrationAuthId: string) =>
@@ -49,7 +49,14 @@ const integrationAuthKeys = {
   }: {
     integrationAuthId: string;
     appId: string;
-  }) => [{ integrationAuthId, appId }, "integrationAuthNorthflankSecretGroups"] as const, 
+  }) => [{ integrationAuthId, appId }, "integrationAuthNorthflankSecretGroups"] as const,
+  getIntegrationAuthTeamCityBuildConfigs: ({
+    integrationAuthId,
+    appId
+  }: {
+    integrationAuthId: string;
+    appId: string;
+  }) => [{ integrationAuthId, appId }, "integrationAuthTeamCityBranchConfigs"] as const, 
 };
 
 const fetchIntegrationAuthById = async (integrationAuthId: string) => {
@@ -183,6 +190,27 @@ const fetchIntegrationAuthNorthflankSecretGroups = async ({
   return secretGroups;
 };
 
+const fetchIntegrationAuthTeamCityBuildConfigs = async ({
+  integrationAuthId,
+  appId
+}: {
+  integrationAuthId: string;
+  appId: string;
+}) => {
+  const {
+    data: { buildConfigs }
+  } = await apiRequest.get<{ buildConfigs: TeamCityBuildConfig[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/teamcity/build-configs`,
+    {
+      params: {
+        appId
+      }
+    }
+  );
+
+  return buildConfigs;
+};
+
 export const useGetIntegrationAuthById = (integrationAuthId: string) => {
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthById(integrationAuthId),
@@ -308,6 +336,26 @@ export const useGetIntegrationAuthNorthflankSecretGroups = ({
         integrationAuthId,
         appId
       }),
+    enabled: true
+  });
+};
+
+export const useGetIntegrationAuthTeamCityBuildConfigs = ({
+  integrationAuthId,
+  appId
+}: {
+  integrationAuthId: string;
+  appId: string;
+}) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthTeamCityBuildConfigs({
+      integrationAuthId,
+      appId
+    }),
+    queryFn: () => fetchIntegrationAuthTeamCityBuildConfigs({
+      integrationAuthId,
+      appId
+    }),
     enabled: true
   });
 };
