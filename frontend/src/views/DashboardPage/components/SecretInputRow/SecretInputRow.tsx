@@ -127,7 +127,6 @@ export const SecretInputRow = memo(
     // when secret is override by personal values
     const isOverridden =
       overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
-
     const [hoveredTag, setHoveredTag] = useState<WsTag | null>(null);
 
     const handleTagOnMouseEnter = (wsTag: WsTag) => {
@@ -265,6 +264,7 @@ export const SecretInputRow = memo(
             {isOverridden ? (
               <Controller
                 control={control}
+                key={`secrets.${index}.valueOverride`}
                 name={`secrets.${index}.valueOverride`}
                 render={({ field }) => (
                   <SecretInput
@@ -282,6 +282,7 @@ export const SecretInputRow = memo(
             ) : (
               <Controller
                 control={control}
+                key={`secrets.${index}.value`}
                 name={`secrets.${index}.value`}
                 render={({ field }) => (
                   <SecretInput
