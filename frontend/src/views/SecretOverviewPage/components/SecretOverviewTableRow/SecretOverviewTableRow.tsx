@@ -87,7 +87,7 @@ export const SecretOverviewTableRow = ({
                     </Tooltip>
                   )}
                   {isOverridden && (
-                    <Tooltip content="Override with a personal value">
+                    <Tooltip content="Overridden with a personal value">
                         <FontAwesomeIcon icon={faCodeBranch} className="absolute text-xs ml-10 w-7 text-primary" />
                     </Tooltip>
                   )}
