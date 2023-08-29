@@ -5,7 +5,8 @@ import {
   faEye,
   faEyeSlash,
   faKey,
-  faXmark
+  faXmark,
+  faCodeBranch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
@@ -15,6 +16,7 @@ import { useToggle } from "@app/hooks";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
 
 import { SecretEditRow } from "./SecretEditRow";
+import { SecretActionType } from "@app/views/DashboardPage/DashboardPage.utils";
 
 type Props = {
   secretKey: string;
@@ -60,6 +62,9 @@ export const SecretOverviewTableRow = ({
           const secret = getSecretByKey(slug, secretKey);
           const isSecretPresent = Boolean(secret);
           const isSecretEmpty = secret?.value === "";
+          // when secret is override by personal values
+          const isOverridden =
+            secret?.overrideAction === SecretActionType.Created || secret?.overrideAction === SecretActionType.Modified;
           return (
             <Td
               key={`sec-overview-${slug}-${i + 1}-value`}
@@ -72,13 +77,18 @@ export const SecretOverviewTableRow = ({
               )}
             >
               <div className="h-full w-full border-r border-mineshaft-600 py-[0.85rem] px-5">
-                <div className="flex justify-center">
+                <div className="flex justify-center relative">
                   {!isSecretEmpty &&  <Tooltip content={isSecretPresent ? "Present secret" : "Missing secret"}>
                     <FontAwesomeIcon icon={isSecretPresent ? faCheck : faXmark} />
                   </Tooltip>}
                   {isSecretEmpty && (
                     <Tooltip content="Empty value">
                       <FontAwesomeIcon icon={faCircle} />
+                    </Tooltip>
+                  )}
+                  {isOverridden && (
+                    <Tooltip content="Override with a personal value">
+                        <FontAwesomeIcon icon={faCodeBranch} className="absolute text-xs ml-10 w-7 text-primary" />
                     </Tooltip>
                   )}
                 </div>
@@ -144,6 +154,7 @@ export const SecretOverviewTableRow = ({
                               isVisible={isSecretVisible}
                               secretName={secretKey}
                               defaultValue={secret?.value}
+                              overriddenValue={secret?.valueOverride}
                               isCreatable={isCreatable}
                               onSecretDelete={onSecretDelete}
                               onSecretCreate={onSecretCreate}

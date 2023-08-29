@@ -8,6 +8,7 @@ import { useToggle } from "@app/hooks";
 
 type Props = {
   defaultValue?: string | null;
+  overriddenValue?: string | null;
   secretName: string;
   isCreatable?: boolean;
   isVisible?: boolean;
@@ -19,6 +20,7 @@ type Props = {
 
 export const SecretEditRow = ({
   defaultValue,
+  overriddenValue,
   isCreatable,
   onSecretUpdate,
   secretName,
@@ -35,7 +37,7 @@ export const SecretEditRow = ({
     formState: { isDirty, isSubmitting }
   } = useForm({
     values: {
-      value: defaultValue
+      value: overriddenValue ?? defaultValue
     }
   });
   const [isDeleting, setIsDeleting] = useToggle();
