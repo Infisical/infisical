@@ -35,7 +35,17 @@ import { isValidScope } from "../../helpers/secrets";
 import path from "path";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
 import { validateRequest } from "../../helpers/validation";
-import { BatchSecretsV2, GetSecretsV2 } from "../../validation";
+import {
+  BatchSecretsV2,
+  GetSecretsV2,
+  validateServiceTokenDataClientForWorkspace
+} from "../../validation";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  getUserProjectPermissions
+} from "../../services/ProjectRoleService";
+import { ForbiddenError, subject } from "@casl/ability";
 
 /**
  * Peform a batch of any specified CUD secret operations
@@ -68,17 +78,13 @@ export const batchSecrets = async (req: Request, res: Response) => {
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
 
   if (req.authData.authPayload instanceof ServiceTokenData) {
-    const isValidScopeAccess = isValidScope(
-      req.authData.authPayload,
+    await validateServiceTokenDataClientForWorkspace({
+      serviceTokenData: req.authData.authPayload,
+      workspaceId: new Types.ObjectId(workspaceId),
       environment,
-      secretPath || "/"
-    );
-
-    // in service token when not giving secretpath folderid must be root
-    // this is to avoid giving folderid when service tokens are used
-    if ((!secretPath && folderId !== "root") || (secretPath && !isValidScopeAccess)) {
-      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
-    }
+      secretPath,
+      requiredPermissions: [PERMISSION_WRITE_SECRETS]
+    });
   }
 
   if (secretPath) {
@@ -91,6 +97,22 @@ export const batchSecrets = async (req: Request, res: Response) => {
     secretPath = path.join(
       "/",
       ...folder.dir.map(({ name }) => name).filter((name) => name !== "root")
+    );
+  }
+
+  if (req.user?._id) {
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Delete,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
   }
 
@@ -977,17 +999,17 @@ export const getSecrets = async (req: Request, res: Response) => {
   const postHogClient = await TelemetryService.getPostHogClient();
 
   // reduce the number of events captured
-  let shouldRecordK8Event = false
+  let shouldRecordK8Event = false;
   if (req.authData.userAgent == K8_USER_AGENT_NAME) {
     const randomNumber = Math.random();
     if (randomNumber > 0.9) {
-      shouldRecordK8Event = true
+      shouldRecordK8Event = true;
     }
   }
 
   if (postHogClient) {
     const shouldCapture = req.authData.userAgent !== K8_USER_AGENT_NAME || shouldRecordK8Event;
-    const approximateForNoneCapturedEvents = secrets.length * 10
+    const approximateForNoneCapturedEvents = secrets.length * 10;
 
     if (shouldCapture) {
       postHogClient.capture({
@@ -1111,10 +1133,10 @@ export const updateSecrets = async (req: Request, res: Response) => {
           tags,
           ...(secretCommentCiphertext !== undefined && secretCommentIV && secretCommentTag
             ? {
-              secretCommentCiphertext,
-              secretCommentIV,
-              secretCommentTag
-            }
+                secretCommentCiphertext,
+                secretCommentIV,
+                secretCommentTag
+              }
             : {})
         }
       }

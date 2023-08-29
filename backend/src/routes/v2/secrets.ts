@@ -24,10 +24,6 @@ router.post(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
-  requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "body"
-  }),
   secretsController.batchSecrets
 );
 

@@ -1,22 +1,13 @@
 import express from "express";
 const router = express.Router();
-import { 
-  requireAuth, 
-  requireBlindIndicesEnabled, 
-  requireE2EEOff,
-  requireWorkspaceAuth,
-  validateRequest 
+import {
+  requireAuth,
+  requireBlindIndicesEnabled,
+  requireE2EEOff
 } from "../../middleware";
-import { body, param, query } from "express-validator";
 import { secretsController } from "../../controllers/v3";
 import {
-  ADMIN,
-  AuthMode,
-  MEMBER,
-  PERMISSION_READ_SECRETS,
-  PERMISSION_WRITE_SECRETS,
-  SECRET_PERSONAL,
-  SECRET_SHARED
+  AuthMode
 } from "../../variables";
 
 router.get(
@@ -32,12 +23,6 @@ router.get(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
-  requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "query",
-    locationEnvironment: "query",
-    requiredPermissions: [PERMISSION_READ_SECRETS]
-  }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "query"
   }),
@@ -51,12 +36,6 @@ router.post(
   "/raw/:secretName",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
-  }),
-  requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "body",
-    locationEnvironment: "body",
-    requiredPermissions: [PERMISSION_WRITE_SECRETS]
   }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "body"
@@ -72,12 +51,6 @@ router.patch(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
-  requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "body",
-    locationEnvironment: "body",
-    requiredPermissions: [PERMISSION_WRITE_SECRETS]
-  }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "body"
   }),
@@ -92,12 +65,6 @@ router.delete(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
-  requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "body",
-    locationEnvironment: "body",
-    requiredPermissions: [PERMISSION_WRITE_SECRETS]
-  }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "body"
   }),
@@ -109,19 +76,8 @@ router.delete(
 
 router.get(
   "/",
-  query("workspaceId").exists().isString().trim(),
-  query("environment").exists().isString().trim(),
-  query("folderId").optional().isString().trim(),
-  query("secretPath").default("/").isString().trim(),
-  validateRequest,
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
-  }),
-  requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "query",
-    locationEnvironment: "query",
-    requiredPermissions: [PERMISSION_READ_SECRETS]
   }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "query"
@@ -134,12 +90,6 @@ router.post(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
-  requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "body",
-    locationEnvironment: "body",
-    requiredPermissions: [PERMISSION_WRITE_SECRETS]
-  }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "body"
   }),
@@ -150,12 +100,6 @@ router.get(
   "/:secretName",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
-  }),
-  requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "query",
-    locationEnvironment: "query",
-    requiredPermissions: [PERMISSION_READ_SECRETS]
   }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "query"
@@ -168,12 +112,6 @@ router.patch(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
   }),
-  requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "body",
-    locationEnvironment: "body",
-    requiredPermissions: [PERMISSION_WRITE_SECRETS]
-  }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "body"
   }),
@@ -182,20 +120,8 @@ router.patch(
 
 router.delete(
   "/:secretName",
-  param("secretName").exists().isString().trim(),
-  body("workspaceId").exists().isString().trim(),
-  body("environment").exists().isString().trim(),
-  body("secretPath").default("/").isString().trim(),
-  body("type").exists().isIn([SECRET_SHARED, SECRET_PERSONAL]),
-  validateRequest,
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
-  }),
-  requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "body",
-    locationEnvironment: "body",
-    requiredPermissions: [PERMISSION_WRITE_SECRETS]
   }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "body"
