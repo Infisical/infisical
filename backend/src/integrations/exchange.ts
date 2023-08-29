@@ -4,6 +4,8 @@ import {
   INTEGRATION_AZURE_TOKEN_URL,
   INTEGRATION_BITBUCKET,
   INTEGRATION_BITBUCKET_TOKEN_URL,
+  INTEGRATION_GCP_SECRET_MANAGER,
+  INTEGRATION_GCP_TOKEN_URL,
   INTEGRATION_GITHUB,
   INTEGRATION_GITHUB_TOKEN_URL,
   INTEGRATION_GITLAB,
@@ -13,21 +15,19 @@ import {
   INTEGRATION_NETLIFY,
   INTEGRATION_NETLIFY_TOKEN_URL,
   INTEGRATION_VERCEL,
-  INTEGRATION_VERCEL_TOKEN_URL,
-  INTEGRATION_GCP_SECRET_MANAGER,
-  INTEGRATION_GCP_TOKEN_URL
+  INTEGRATION_VERCEL_TOKEN_URL
 } from "../variables";
 import {
-  getClientIdGCPSecretManager,
-  getClientSecretGCPSecretManager,
   getClientIdAzure,
   getClientIdBitBucket,
+  getClientIdGCPSecretManager,
   getClientIdGitHub,
   getClientIdGitLab,
   getClientIdNetlify,
   getClientIdVercel,
   getClientSecretAzure,
   getClientSecretBitBucket,
+  getClientSecretGCPSecretManager,
   getClientSecretGitHub,
   getClientSecretGitLab,
   getClientSecretHeroku,
