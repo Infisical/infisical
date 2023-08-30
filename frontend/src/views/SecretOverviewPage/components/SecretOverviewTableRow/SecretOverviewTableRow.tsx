@@ -15,12 +15,6 @@ import { Button, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
 
-export enum SecretActionType {
-  Created = "created",
-  Modified = "modified",
-  Deleted = "deleted"
-}
-
 import { SecretEditRow } from "./SecretEditRow";
 
 type Props = {
@@ -32,6 +26,12 @@ type Props = {
   onSecretUpdate: (env: string, key: string, value: string) => Promise<void>;
   onSecretDelete: (env: string, key: string) => Promise<void>;
 };
+
+export enum SecretActionType {
+  Created = "created",
+  Modified = "modified",
+  Deleted = "deleted"
+}
 
 export const SecretOverviewTableRow = ({
   secretKey,
