@@ -14,9 +14,9 @@ import { twMerge } from "tailwind-merge";
 import { Button, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
+import { SecretActionType } from "@app/views/DashboardPage/DashboardPage.utils";
 
 import { SecretEditRow } from "./SecretEditRow";
-import { SecretActionType } from "@app/views/DashboardPage/DashboardPage.utils";
 
 type Props = {
   secretKey: string;
