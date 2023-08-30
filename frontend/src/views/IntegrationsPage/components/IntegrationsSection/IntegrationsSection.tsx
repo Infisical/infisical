@@ -119,7 +119,7 @@ export const IntegrationsSection = ({
                   <div className="ml-2 flex flex-col">
                     <FormLabel label="Secret Suffix" />
                     <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
-                      {integration.secretSuffix || "-"}
+                      {integration?.metadata?.secretSuffix || "-"}
                     </div>
                   </div>
                 )}

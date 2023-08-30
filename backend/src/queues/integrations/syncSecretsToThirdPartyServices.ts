@@ -1,6 +1,5 @@
 import Queue, { Job } from "bull";
-import Integration from "../../models/integration";
-import IntegrationAuth from "../../models/integrationAuth";
+import { Integration, IntegrationAuth } from "../../models";
 import { BotService } from "../../services";
 import { getIntegrationAuthAccessHelper } from "../../helpers";
 import { syncSecrets } from "../../integrations/sync"
@@ -37,9 +36,9 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
     });
 
     const suffixedSecrets: any = {};
-    if (integration?.secretSuffix) {
+    if (integration.metadata?.secretSuffix) {
       for (const key in secrets) {
-        const newKey = key + integration?.secretSuffix;
+        const newKey = key + integration.metadata?.secretSuffix;
         suffixedSecrets[newKey] = secrets[key];
       }      
     }

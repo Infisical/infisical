@@ -23,6 +23,4 @@ const userActionSchema = new Schema<IUserAction>(
 	}
 );
 
-const UserAction = model<IUserAction>("UserAction", userActionSchema);
-
-export default UserAction;
+export const UserAction = model<IUserAction>("UserAction", userActionSchema);

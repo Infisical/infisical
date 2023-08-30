@@ -42,6 +42,4 @@ const tokenVersionSchema = new Schema<ITokenVersion>(
     }
 );
 
-const TokenVersion = model<ITokenVersion>("TokenVersion", tokenVersionSchema);
-
-export default TokenVersion;
+export const TokenVersion = model<ITokenVersion>("TokenVersion", tokenVersionSchema);

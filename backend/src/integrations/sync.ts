@@ -2004,7 +2004,7 @@ const syncSecretsCheckly = async ({
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
-  // get secrets from travis-ci
+  
   const getSecretsRes = (
     await standardRequest.get(`${INTEGRATION_CHECKLY_API_URL}/v1/variables`, {
       headers: {
@@ -2026,7 +2026,6 @@ const syncSecretsCheckly = async ({
     if (!(key in getSecretsRes)) {
       // case: secret does not exist in checkly
       // -> add secret
-
       await standardRequest.post(
         `${INTEGRATION_CHECKLY_API_URL}/v1/variables`,
         {
@@ -2066,7 +2065,7 @@ const syncSecretsCheckly = async ({
   }
 
   for await (const key of Object.keys(getSecretsRes)) {
-    if (!(key in secrets) && key.endsWith(integration?.secretSuffix)) {
+    if (!(key in secrets)) {
       // delete secret
       await standardRequest.delete(`${INTEGRATION_CHECKLY_API_URL}/v1/variables/${key}`, {
         headers: {

@@ -193,9 +193,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
   }
 );
 
-const IntegrationAuth = model<IIntegrationAuth>(
+export const IntegrationAuth = model<IIntegrationAuth>(
   "IntegrationAuth",
   integrationAuthSchema
 );
-
-export default IntegrationAuth;

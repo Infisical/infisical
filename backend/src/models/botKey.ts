@@ -40,6 +40,4 @@ const botKeySchema = new Schema<IBotKey>(
 	}
 );
 
-const BotKey = model<IBotKey>("BotKey", botKeySchema);
-
-export default BotKey;
+export const BotKey = model<IBotKey>("BotKey", botKeySchema);

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { PipelineStage, Types } from "mongoose";
-import { Membership, Secret, ServiceTokenData, User } from "../../../models";
+import { Folder, Membership, Secret, ServiceTokenData, TFolderSchema, User } from "../../../models";
 import {
   ActorType,
   AuditLog,
@@ -18,7 +18,7 @@ import {
 } from "../../models";
 import { EESecretService } from "../../services";
 import { getLatestSecretVersionIds } from "../../helpers/secretVersion";
-import Folder, { TFolderSchema } from "../../../models/folder";
+// import Folder, { TFolderSchema } from "../../../models/folder";
 import { searchByFolderId } from "../../../services/FolderService";
 import { EEAuditLogService, EELicenseService } from "../../services";
 import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";

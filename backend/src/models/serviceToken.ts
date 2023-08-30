@@ -56,6 +56,4 @@ const serviceTokenSchema = new Schema<IServiceToken>(
 	}
 );
 
-const ServiceToken = model<IServiceToken>("ServiceToken", serviceTokenSchema);
-
-export default ServiceToken;
+export const ServiceToken = model<IServiceToken>("ServiceToken", serviceTokenSchema);

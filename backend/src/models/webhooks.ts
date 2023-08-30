@@ -80,6 +80,4 @@ const WebhookSchema = new Schema<IWebhook>(
   }
 );
 
-const Webhook = model<IWebhook>("Webhook", WebhookSchema);
-
-export default Webhook;
+export const Webhook = model<IWebhook>("Webhook", WebhookSchema);

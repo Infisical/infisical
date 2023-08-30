@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { Types } from "mongoose";
 import picomatch from "picomatch";
 import { client, getRootEncryptionKey } from "../config";
-import Webhook, { IWebhook } from "../models/webhooks";
+import { IWebhook, Webhook } from "../models";
 
 export const triggerWebhookRequest = async (
   { url, encryptedSecretKey, iv, tag }: IWebhook,

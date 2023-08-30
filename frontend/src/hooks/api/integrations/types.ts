@@ -27,8 +27,10 @@ export type TIntegration = {
   integration: string;
   integrationAuth: string;
   secretPath: string;
-  secretSuffix: string;
   createdAt: string;
   updatedAt: string;
   __v: number;
+  metadata?: {
+    secretSuffix?: string;
+  }
 };

@@ -80,7 +80,9 @@ export default function ChecklyCreateIntegrationPage() {
         path: null,
         region: null,
         secretPath,
-        secretSuffix
+        metadata: {
+          secretSuffix
+        }
       });
 
       setIsLoading(false);

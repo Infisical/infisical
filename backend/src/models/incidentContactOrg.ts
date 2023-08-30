@@ -23,9 +23,7 @@ const incidentContactOrgSchema = new Schema<IIncidentContactOrg>(
 	}
 );
 
-const IncidentContactOrg = model<IIncidentContactOrg>(
+export const IncidentContactOrg = model<IIncidentContactOrg>(
 	"IncidentContactOrg",
 	incidentContactOrgSchema
 );
-
-export default IncidentContactOrg;

@@ -24,6 +24,4 @@ const loginSRPDetailSchema = new Schema<ILoginSRPDetail>(
 	}
 );
 
-const LoginSRPDetail = model("LoginSRPDetail", loginSRPDetailSchema);
-
-export default LoginSRPDetail;
+export const LoginSRPDetail = model("LoginSRPDetail", loginSRPDetailSchema);

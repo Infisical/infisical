@@ -6,10 +6,9 @@ import { BotService } from "../../services";
 import { containsGlobPatterns, repackageSecretToRaw } from "../../helpers/secrets";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
-import Folder from "../../models/folder";
+import { Folder, IServiceTokenData } from "../../models";
 import { getFolderByPath } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
-import { IServiceTokenData } from "../../models";
 import { requireWorkspaceAuth } from "../../middleware";
 import { ADMIN, MEMBER, PERMISSION_READ_SECRETS } from "../../variables";
 

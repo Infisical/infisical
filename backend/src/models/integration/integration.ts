@@ -26,8 +26,9 @@ import {
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL,
   INTEGRATION_WINDMILL
-} from "../variables";
+} from "../../variables";
 import { Schema, Types, model } from "mongoose";
+import { Metadata } from "./types";
 
 export interface IIntegration {
   _id: Types.ObjectId;
@@ -45,7 +46,6 @@ export interface IIntegration {
   path: string;
   region: string;
   secretPath: string;
-  secretSuffix: string;
   integration:
     | "azure-key-vault"
     | "aws-parameter-store"
@@ -75,6 +75,7 @@ export interface IIntegration {
     | "windmill"
     | "gcp-secret-manager";
   integrationAuth: Types.ObjectId;
+  metadata: Metadata;
 }
 
 const integrationSchema = new Schema<IIntegration>(
@@ -185,10 +186,8 @@ const integrationSchema = new Schema<IIntegration>(
       required: true,
       default: "/",
     },
-    secretSuffix: {
-      type: String,
-      required: false,
-      default: "",
+    metadata: {
+      type: Schema.Types.Mixed
     }
   },
   {
@@ -196,6 +195,4 @@ const integrationSchema = new Schema<IIntegration>(
   }
 );
 
-const Integration = model<IIntegration>("Integration", integrationSchema);
-
-export default Integration;
+export const Integration = model<IIntegration>("Integration", integrationSchema);

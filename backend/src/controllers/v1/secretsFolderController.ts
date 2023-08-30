@@ -4,8 +4,7 @@ import { EventType, FolderVersion } from "../../ee/models";
 import { EEAuditLogService, EESecretService } from "../../ee/services";
 import { validateMembership } from "../../helpers/membership";
 import { isValidScope } from "../../helpers/secrets";
-import { Secret, ServiceTokenData } from "../../models";
-import Folder from "../../models/folder";
+import { Folder, Secret, ServiceTokenData } from "../../models";
 import {
   appendFolder,
   deleteFolderById,

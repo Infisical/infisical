@@ -50,6 +50,4 @@ const tagSchema = new Schema<ITag>(
 tagSchema.index({ slug: 1, workspace: 1 }, { unique: true })
 tagSchema.index({ workspace: 1 })
 
-const Tag = model<ITag>("Tag", tagSchema);
-
-export default Tag;
+export const Tag = model<ITag>("Tag", tagSchema);

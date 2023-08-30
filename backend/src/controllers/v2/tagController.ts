@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Membership, Secret } from "../../models";
-import Tag from "../../models/tag";
+import { Membership, Secret, Tag } from "../../models";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 
 export const createWorkspaceTag = async (req: Request, res: Response) => {

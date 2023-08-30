@@ -21,6 +21,4 @@ const organizationSchema = new Schema<IOrganization>(
 	}
 );
 
-const Organization = model<IOrganization>("Organization", organizationSchema);
-
-export default Organization;
+export const Organization = model<IOrganization>("Organization", organizationSchema);
