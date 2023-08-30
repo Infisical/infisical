@@ -238,7 +238,7 @@
       "validate-noNumOrSpecialChar": "at least 1 number or special character",
       "validate-repeatedChar": "at most 3 repeated, consecutive characters",
       "validate-escapeChar": "No escape characters allowed.",
-      "validate-lowEntropy": "Password contains sensitive data.",
+      "validate-lowEntropy": "Password contains personal info.",
       "validate-breached": "Password was found in a data breach."
     },
     "token": {

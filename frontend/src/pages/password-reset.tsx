@@ -350,7 +350,7 @@ export default function PasswordReset() {
               <div
                 className={`${passwordErrorLowEntropy ? "text-gray-400" : "text-gray-600"} text-sm`}
               >
-                Password contains sensitive data.
+                Password contains personal info.
               </div>
           </div>
           <div className="ml-1 flex flex-row items-center justify-start">
