@@ -22,9 +22,9 @@ type Props = {
   environments: { name: string; slug: string }[];
   expandableColWidth: number;
   getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
-  onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretUpdate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretDelete: (env: string, key: string) => Promise<void>;
+  onSecretCreate: (env: string, key: string, value: string, type: string) => Promise<void>;
+  onSecretUpdate: (env: string, key: string, value: string, type: string) => Promise<void>;
+  onSecretDelete: (env: string, key: string, type: string) => Promise<void>;
 };
 
 export enum SecretActionType {
