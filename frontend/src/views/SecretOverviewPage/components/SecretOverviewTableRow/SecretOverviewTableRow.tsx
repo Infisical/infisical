@@ -145,6 +145,9 @@ export const SecretOverviewTableRow = ({
                     {environments.map(({ name, slug }) => {
                       const secret = getSecretByKey(slug, secretKey);
                       const isCreatable = !secret;
+                      // when secret is overridden by personal values
+                      const isOverridden =
+                        secret?.overrideAction === SecretActionType.Created || secret?.overrideAction === SecretActionType.Modified;
 
                       return (
                         <tr
@@ -160,6 +163,7 @@ export const SecretOverviewTableRow = ({
                               secretName={secretKey}
                               defaultValue={secret?.value}
                               overriddenValue={secret?.valueOverride}
+                              isOverriddenValue={isOverridden}
                               isCreatable={isCreatable}
                               onSecretDelete={onSecretDelete}
                               onSecretCreate={onSecretCreate}

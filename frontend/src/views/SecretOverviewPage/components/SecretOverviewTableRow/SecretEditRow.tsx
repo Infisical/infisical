@@ -9,18 +9,20 @@ import { useToggle } from "@app/hooks";
 type Props = {
   defaultValue?: string | null;
   overriddenValue?: string | null;
+  isOverriddenValue?: boolean,
   secretName: string;
   isCreatable?: boolean;
   isVisible?: boolean;
   environment: string;
-  onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretUpdate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretDelete: (env: string, key: string) => Promise<void>;
+  onSecretCreate: (env: string, key: string, value: string, type: string) => Promise<void>;
+  onSecretUpdate: (env: string, key: string, value: string, type: string) => Promise<void>;
+  onSecretDelete: (env: string, key: string, type: string) => Promise<void>;
 };
 
 export const SecretEditRow = ({
   defaultValue,
   overriddenValue,
+  isOverriddenValue,
   isCreatable,
   onSecretUpdate,
   secretName,
@@ -61,20 +63,22 @@ export const SecretEditRow = ({
   };
 
   const handleFormSubmit = async ({ value }: { value?: string | null }) => {
+    const type = isOverriddenValue ? 'personal' : 'shared';
     if ((value || value === "") && secretName) {
       if (isCreatable) {
-        await onSecretCreate(environment, secretName, value);
+        await onSecretCreate(environment, secretName, value, type);
       } else {
-        await onSecretUpdate(environment, secretName, value);
+        await onSecretUpdate(environment, secretName, value, type);
       }
     }
     reset({ value });
   };
 
   const handleDeleteSecret = async () => {
+    const type = isOverriddenValue ? 'personal' : 'shared';
     setIsDeleting.on();
     try {
-      await onSecretDelete(environment, secretName);
+      await onSecretDelete(environment, secretName, type);
       reset({ value: undefined });
     } finally {
       setIsDeleting.off();
