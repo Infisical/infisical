@@ -29,6 +29,7 @@ router.post(
   body("isActive").exists().isBoolean(),
   body("appId").trim(),
   body("secretPath").default("/").isString().trim(),
+  body("secretSuffix").default("").isString().trim(),
   body("sourceEnvironment").trim(),
   body("targetEnvironment").trim(),
   body("targetEnvironmentId").trim(),

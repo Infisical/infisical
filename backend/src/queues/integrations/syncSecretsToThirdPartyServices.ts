@@ -36,6 +36,14 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
       secretPath: integration.secretPath
     });
 
+    const suffixedSecrets: any = {};
+    if (integration?.secretSuffix) {
+      for (const key in secrets) {
+        const newKey = key + integration?.secretSuffix;
+        suffixedSecrets[newKey] = secrets[key];
+      }      
+    }
+
     const integrationAuth = await IntegrationAuth.findById(integration.integrationAuth);
 
     if (!integrationAuth) throw new Error("Failed to find integration auth");
@@ -49,7 +57,7 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
     await syncSecrets({
       integration,
       integrationAuth,
-      secrets,
+      secrets: Object.keys(suffixedSecrets).length !== 0 ? suffixedSecrets : secrets,
       accessId: access.accessId === undefined ? null : access.accessId,
       accessToken: access.accessToken
     });

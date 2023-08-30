@@ -45,6 +45,7 @@ export interface IIntegration {
   path: string;
   region: string;
   secretPath: string;
+  secretSuffix: string;
   integration:
     | "azure-key-vault"
     | "aws-parameter-store"
@@ -183,6 +184,11 @@ const integrationSchema = new Schema<IIntegration>(
       type: String,
       required: true,
       default: "/",
+    },
+    secretSuffix: {
+      type: String,
+      required: false,
+      default: "",
     }
   },
   {

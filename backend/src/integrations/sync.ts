@@ -2066,7 +2066,7 @@ const syncSecretsCheckly = async ({
   }
 
   for await (const key of Object.keys(getSecretsRes)) {
-    if (!(key in secrets)) {
+    if (!(key in secrets) && key.endsWith(integration?.secretSuffix)) {
       // delete secret
       await standardRequest.delete(`${INTEGRATION_CHECKLY_API_URL}/v1/variables/${key}`, {
         headers: {
