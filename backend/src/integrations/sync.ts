@@ -317,8 +317,8 @@ const syncSecretsGCPSecretManager = async ({
   }
   
   interface GCPSMListSecretsRes {
-    secrets: GCPSecret[];
-    totalSize: number;
+    secrets?: GCPSecret[];
+    totalSize?: number;
     nextPageToken?: string;
   }
   
@@ -345,7 +345,9 @@ const syncSecretsGCPSecretManager = async ({
       }
     )).data;
     
-    gcpSecrets = gcpSecrets.concat(res.secrets);
+    if (res.secrets) {
+      gcpSecrets = gcpSecrets.concat(res.secrets);
+    }
     
     if (!res.nextPageToken) {
       hasMorePages = false;

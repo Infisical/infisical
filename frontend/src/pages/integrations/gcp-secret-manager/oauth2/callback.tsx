@@ -7,7 +7,6 @@ import {
 } from "@app/hooks/api";
 
 export default function GCPSecretManagerOAuth2CallbackPage() {
-    console.log("GCPSecretManagerOAuth2CallbackPage");
     const router = useRouter();
     const { mutateAsync } = useAuthorizeIntegration();
 
@@ -17,10 +16,6 @@ export default function GCPSecretManagerOAuth2CallbackPage() {
     (async () => {
       try {
         // validate state
-        
-        console.log("gcp oauth2 callback page");
-        console.log("gcp oauth2 callback page code: ", code);
-        console.log("gcp oauth2 callback page state: ", state);
 
         if (state !== localStorage.getItem("latestCSRFToken")) return;
         localStorage.removeItem("latestCSRFToken");
@@ -30,8 +25,6 @@ export default function GCPSecretManagerOAuth2CallbackPage() {
           integration: "gcp-secret-manager"
         });
         
-        console.log("integrationAuth: ", integrationAuth);
-
         router.push(`/integrations/gcp-secret-manager/create?integrationAuthId=${integrationAuth._id}`);
       } catch (err) {
         console.error(err);
