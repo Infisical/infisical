@@ -1,6 +1,7 @@
 export type TSecretFolder = {
   id: string;
   name: string;
+  folders? : {name: string, id: string}[]
 };
 
 export type GetProjectFoldersDTO = {

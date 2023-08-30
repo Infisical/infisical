@@ -97,6 +97,7 @@ import {
   TDeleteFolderForm,
   TEditFolderForm
 } from "./components/FolderSection";
+import { MoveSecretsToFolder } from "./components/MoveSecrets";
 import { PitDrawer } from "./components/PitDrawer";
 import { SecretDetailDrawer } from "./components/SecretDetailDrawer";
 import { SecretDropzone } from "./components/SecretDropzone";
@@ -147,7 +148,8 @@ export const DashboardPage = () => {
     "deleteFolder",
     "upgradePlan",
     "addSecretImport",
-    "deleteSecretImport"
+    "deleteSecretImport",
+    "moveSecrets"
   ] as const);
   const [isSecretValueHidden, setIsSecretValueHidden] = useToggle(true);
   const [searchFilter, setSearchFilter] = useState("");
@@ -712,6 +714,7 @@ export const DashboardPage = () => {
 
   // OPTIMIZATION HOOKS PURELY FOR PERFORMANCE AND TO AVOID RE-RENDERING
   const handleCreateTagModalOpen = useCallback(() => handlePopUpOpen("addTag"), []);
+  const handleMoveSecretsModalOpen = useCallback(() => handlePopUpOpen("moveSecrets"), []);
   const handleFolderCreatePopUpOpen = useCallback(
     (id: string, name: string) => handlePopUpOpen("folderForm", { id, name }),
     []
@@ -848,20 +851,8 @@ export const DashboardPage = () => {
   }
 
   const handleCheckedState = (checked: boolean, wsTag: WsTag) => {
-    const selectedTagsCopy = [...selectedTags]
     const fieldsCopy = [...fields]
     const checkedSecretsCopy = [...checkedSecrets].map(secret => secret._id)
-
-    if (checked) {
-      selectedTagsCopy.push(wsTag);
-    } else {
-      const tagIndex = selectedTagsCopy.findIndex(selectedTag => selectedTag._id === wsTag._id)
-      if (tagIndex > -1) {
-        selectedTagsCopy.splice(tagIndex, 1)
-      }
-    }
-
-    setSelectedtags(selectedTagsCopy)
 
     checkedSecretsCopy.forEach(checkedSecretId => {
       const fieldIndex = fieldsCopy.findIndex(field => field._id === checkedSecretId)
@@ -879,7 +870,49 @@ export const DashboardPage = () => {
     setValue("secrets", fieldsCopy, { shouldDirty: true })
   }
 
+  const onSelectTag = (wsTag: WsTag) => {
+    const selectedTagsCopy = [...selectedTags]
+    const tagIndex = selectedTagsCopy.findIndex(tag => tag._id === wsTag._id)
+    if(tagIndex > -1) {
+      selectedTagsCopy.splice(tagIndex, 1)
+      handleCheckedState(false, wsTag)
+    }else {
+      selectedTagsCopy.push(wsTag)
+      handleCheckedState(true, wsTag)
+    }
+    setSelectedtags(() => selectedTagsCopy)
+  }
+
   const isTagChecked = (wsTag: WsTag) => selectedTags.filter(tag => tag._id === wsTag._id).length > 0
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // const onMoveSecrets = useCallback(() => {
+
+  // },
+  //   // async (selectedPath: string, $folderId: string, $checkedSecrets: {_id: string, isChecked: string | boolean}[]) => {
+  //   //   try {
+  //   //     await moveSecrets({
+  //   //       workspaceID: workspaceId,
+  //   //       selectedPath,
+  //   //       folderId: $folderId,
+  //   //       checkedSecrets: $checkedSecrets
+  //   //     });
+  //   //     handlePopUpClose("addTag");
+  //   //     createNotification({
+  //   //       text: `Successfully created a tag for ${$checkedSecrets.length > 1 ? "secrets" : "secret"}`,
+  //   //       type: "success"
+  //   //     });
+  //   //     refetch()
+  //   //   } catch (error) {
+  //   //     console.error(error);
+  //   //     createNotification({
+  //   //       text: "Failed to create a tag",
+  //   //       type: "error"
+  //   //     });
+  //   //   }
+  //   // },
+  //   [workspaceId]
+  // );
 
   return (
     <div className="container mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -889,7 +922,11 @@ export const DashboardPage = () => {
             <div className="flex flex-initial items-center justify-center shadow-md  bg-mineshaft-800 border border-mineshaft-500 rounded-[4px] pt-[8px] pr-[8px] pb-[8px] pl-[16px] pointer-events-auto gap-[16px]">
               <span className="min-w-[65px] text-gray-300">{checkedSecrets.length} selected</span>
               <div className="flex gap-2">
-                <div className="bg-mineshaft-700 hover:bg-mineshaft-500 cursor-pointer flex justify-center items-center border border-mineshaft-500 rounded-md px-[15px] py-1.5 text-gray-200">
+                <div className="bg-mineshaft-700 hover:bg-mineshaft-500 cursor-pointer flex justify-center items-center border border-mineshaft-500 rounded-md px-[15px] py-1.5 text-gray-200" 
+                  role="button"
+                  onClick={() => handleMoveSecretsModalOpen()} 
+                  tabIndex={-1}
+                  onKeyUp={() => { }}> 
                   <FontAwesomeIcon icon={faUpDownLeftRight} className="mr-2.5" />
                   Move
                 </div>
@@ -922,13 +959,13 @@ export const DashboardPage = () => {
                               "justify-start bg-mineshaft-600 text-bunker-100 hover:bg-mineshaft-500",
                               isTagChecked(wsTag) && "text-primary"
                             )}
-                            // onClick={() => onSelectTag(wsTag)}
+                            onClick={() => onSelectTag(wsTag)}
                             leftIcon={
                               <Checkbox
                                 className="mr-0 data-[state=checked]:bg-primary"
                                 id="autoCapitalization"
                                 isChecked={isTagChecked(wsTag)}
-                                onCheckedChange={(checked: boolean) => handleCheckedState(checked, wsTag)}
+                                // onCheckedChange={(checked: boolean) => handleCheckedState(checked, wsTag)}
                               />
                             }
                             key={wsTag._id}
@@ -1267,6 +1304,24 @@ export const DashboardPage = () => {
           subTitle="Specify your tag name, and the slug will be created automatically."
         >
           <CreateTagModal onCreateTag={onCreateWsTag} checkedSecrets={checkedSecrets}  />
+        </ModalContent>
+      </Modal>
+      {/* Bult secrets move modal */}
+      <Modal
+        isOpen={popUp?.moveSecrets?.isOpen}
+        onOpenChange={(open) => {
+          handlePopUpToggle("moveSecrets", open);
+        }}
+      >
+        <ModalContent
+          title={`Move  ${checkedSecrets.length > 1 ? "secrets" : "secret"} to another folder`}
+          subTitle="choose a folder you wish you move secrets below"
+        >
+          <MoveSecretsToFolder 
+            // onMoveSecrets={onMoveSecrets} 
+            checkedSecrets={checkedSecrets}  
+            folderData={folderData}
+          />
         </ModalContent>
       </Modal>
       {/* Uploaded env override or not confirmation modal */}
