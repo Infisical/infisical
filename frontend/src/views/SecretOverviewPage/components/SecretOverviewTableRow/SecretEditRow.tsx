@@ -63,7 +63,7 @@ export const SecretEditRow = ({
   };
 
   const handleFormSubmit = async ({ value }: { value?: string | null }) => {
-    const type = isOverriddenValue ? 'personal' : 'shared';
+    const type = isOverriddenValue ? "personal" : "shared";
     if ((value || value === "") && secretName) {
       if (isCreatable) {
         await onSecretCreate(environment, secretName, value, type);
@@ -75,7 +75,7 @@ export const SecretEditRow = ({
   };
 
   const handleDeleteSecret = async () => {
-    const type = isOverriddenValue ? 'personal' : 'shared';
+    const type = isOverriddenValue ? "personal" : "shared";
     setIsDeleting.on();
     try {
       await onSecretDelete(environment, secretName, type);
