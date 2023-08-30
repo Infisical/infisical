@@ -113,7 +113,7 @@ export const SecretOverviewPage = () => {
         secretName: key,
         secretValue: value,
         secretComment: "",
-        type: type,
+        type,
         latestFileKey: latestFileKey!
       });
       createNotification({
@@ -137,7 +137,7 @@ export const SecretOverviewPage = () => {
         secretPath,
         secretName: key,
         secretValue: value,
-        type: type,
+        type,
         latestFileKey: latestFileKey!
       });
       createNotification({
@@ -160,7 +160,7 @@ export const SecretOverviewPage = () => {
         workspaceId,
         secretPath,
         secretName: key,
-        type: type
+        type
       });
       createNotification({
         type: "success",
