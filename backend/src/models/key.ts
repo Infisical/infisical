@@ -40,6 +40,4 @@ const keySchema = new Schema<IKey>(
 	}
 );
 
-const Key = model<IKey>("Key", keySchema);
-
-export default Key;
+export const Key = model<IKey>("Key", keySchema);

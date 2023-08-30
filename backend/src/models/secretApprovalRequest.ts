@@ -1,5 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
-import Secret, { ISecret } from "./secret";
+import { ISecret, Secret } from "./secret";
 
 interface ISecretApprovalRequest {
 	secret: mongoose.Types.ObjectId;
@@ -78,6 +78,4 @@ const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
 	}
 );
 
-const SecretApprovalRequest = model<ISecretApprovalRequest>("SecretApprovalRequest", secretApprovalRequestSchema);
-
-export default SecretApprovalRequest;
+export const SecretApprovalRequest = model<ISecretApprovalRequest>("SecretApprovalRequest", secretApprovalRequestSchema);

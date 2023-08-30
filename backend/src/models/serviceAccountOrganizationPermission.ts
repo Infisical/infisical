@@ -18,6 +18,4 @@ const serviceAccountOrganizationPermissionSchema = new Schema<IServiceAccountOrg
     }
 );
 
-const ServiceAccountOrganizationPermission = model<IServiceAccountOrganizationPermission>("ServiceAccountOrganizationPermission", serviceAccountOrganizationPermissionSchema);
-
-export default ServiceAccountOrganizationPermission;
+export const ServiceAccountOrganizationPermission = model<IServiceAccountOrganizationPermission>("ServiceAccountOrganizationPermission", serviceAccountOrganizationPermissionSchema);

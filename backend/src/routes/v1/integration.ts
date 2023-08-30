@@ -37,6 +37,8 @@ router.post(
   body("owner").trim(),
   body("path").trim(),
   body("region").trim(),
+  body("metadata").optional().isObject().withMessage("Metadata should be an object"),
+  body("metadata.secretSuffix").optional().isString().withMessage("Suffix should be a string"),
   validateRequest,
   integrationController.createIntegration
 );

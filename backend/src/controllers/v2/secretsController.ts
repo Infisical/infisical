@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import { Request, Response } from "express";
-import { ISecret, Secret, ServiceTokenData } from "../../models";
+import { Folder, ISecret, Secret, ServiceTokenData, Tag } from "../../models";
 import { AuditLog, EventType, IAction, SecretVersion } from "../../ee/models";
 import {
   ACTION_ADD_SECRETS,
@@ -24,10 +24,8 @@ import {
   userHasWorkspaceAccess,
   userHasWriteOnlyAbility
 } from "../../ee/helpers/checkMembershipPermissions";
-import Tag from "../../models/tag";
 import _ from "lodash";
 import { BatchSecret, BatchSecretRequest } from "../../types/secret";
-import Folder from "../../models/folder";
 import {
   getFolderByPath,
   getFolderIdFromServiceToken,

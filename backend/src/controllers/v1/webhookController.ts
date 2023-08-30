@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { client, getRootEncryptionKey } from "../../config";
 import { validateMembership } from "../../helpers";
-import Webhook from "../../models/webhooks";
+import { Webhook } from "../../models";
 import { getWebhookPayload, triggerWebhookRequest } from "../../services/WebhookService";
 import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
 import { EEAuditLogService } from "../../ee/services";

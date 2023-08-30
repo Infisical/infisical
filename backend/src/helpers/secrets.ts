@@ -7,11 +7,13 @@ import {
   UpdateSecretParams
 } from "../interfaces/services/SecretService";
 import {
+  Folder,
   ISecret,
   IServiceTokenData,
   Secret,
   SecretBlindIndexData,
-  ServiceTokenData
+  ServiceTokenData,
+  TFolderRootSchema
 } from "../models";
 import { EventType, SecretVersion } from "../ee/models";
 import {
@@ -46,7 +48,6 @@ import { getAuthDataPayloadIdObj, getAuthDataPayloadUserObj } from "../utils/aut
 import { getFolderByPath, getFolderIdFromServiceToken } from "../services/FolderService";
 import picomatch from "picomatch";
 import path from "path";
-import Folder, { TFolderRootSchema } from "../models/folder";
 
 export const isValidScope = (
   authPayload: IServiceTokenData,

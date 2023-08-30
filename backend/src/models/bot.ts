@@ -74,6 +74,4 @@ const botSchema = new Schema<IBot>(
 	}
 );
 
-const Bot = model<IBot>("Bot", botSchema);
-
-export default Bot;
+export const Bot = model<IBot>("Bot", botSchema);

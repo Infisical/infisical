@@ -1,9 +1,8 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Integration } from "../../models";
+import { Folder, Integration } from "../../models";
 import { EventService } from "../../services";
 import { eventStartIntegration } from "../../events";
-import Folder from "../../models/folder";
 import { getFolderByPath } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
 import { EEAuditLogService } from "../../ee/services";
@@ -30,7 +29,8 @@ export const createIntegration = async (req: Request, res: Response) => {
     owner,
     path,
     region,
-    secretPath
+    secretPath,
+    metadata
   } = req.body;
 
   const folders = await Folder.findOne({
@@ -65,7 +65,8 @@ export const createIntegration = async (req: Request, res: Response) => {
     region,
     secretPath,
     integration: req.integrationAuth.integration,
-    integrationAuth: new Types.ObjectId(integrationAuthId)
+    integrationAuth: new Types.ObjectId(integrationAuthId),
+    metadata
   }).save();
 
   if (integration) {
