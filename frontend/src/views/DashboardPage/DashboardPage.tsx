@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
+import { subject } from "@casl/ability";
 import {
   closestCenter,
   DndContext,
@@ -25,6 +26,7 @@ import {
   faEyeSlash,
   faFileImport,
   faFolderPlus,
+  faLock,
   faMagnifyingGlass,
   faPlus
 } from "@fortawesome/free-solid-svg-icons";
@@ -60,6 +62,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
+  useProjectPermission,
   useSubscription,
   useWorkspace
 } from "@app/context";
@@ -79,7 +82,6 @@ import {
   useGetSecretVersion,
   useGetSnapshotSecrets,
   useGetUserAction,
-  useGetUserWsEnvironments,
   useGetUserWsKey,
   useGetWorkspaceSecretSnapshots,
   useGetWsSnapshotCount,
@@ -139,6 +141,7 @@ export const DashboardPage = withProjectPermission(
     const { createNotification } = useNotificationContext();
     const queryClient = useQueryClient();
     const envQuery = router.query.env as string;
+    const permission = useProjectPermission();
 
     const secretContainer = useRef<HTMLDivElement | null>(null);
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
@@ -180,17 +183,6 @@ export const DashboardPage = withProjectPermission(
     // fetching data
     const { data: userAction } = useGetUserAction(USER_ACTION_PUSH);
     const hasUserPushed = Boolean(userAction);
-
-    const { data: wsEnv, isLoading: isEnvListLoading } = useGetUserWsEnvironments({
-      workspaceId,
-      onSuccess: (data) => {
-        // get an env with one of the access available
-        const env = data.find(({ isReadDenied, isWriteDenied }) => !isWriteDenied || !isReadDenied);
-        if (env && data?.map((wsenv) => wsenv.slug).includes(envQuery)) {
-          setSelectedEnv(data?.filter((dp) => dp.slug === envQuery)[0]);
-        }
-      }
-    });
 
     const { data: secretVersion } = useGetSecretVersion({
       limit: 10,
@@ -267,6 +259,24 @@ export const DashboardPage = withProjectPermission(
       folderId
     });
 
+    const secretPath = `/${(folderData?.dir || [])
+      ?.filter(({ name }) => name !== "root")
+      .join("/")}`;
+
+    const userAvailableEnvs = currentWorkspace?.environments?.filter(({ slug }) =>
+      permission.can(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, { environment: slug, secretPath })
+      )
+    );
+
+    useEffect(() => {
+      if (!isLoading && currentWorkspace) {
+        const env = userAvailableEnvs?.find(({ slug }) => slug === envQuery);
+        if (env) setSelectedEnv(env);
+      }
+    }, [isLoading, workspaceId, userAvailableEnvs]);
+
     // This is for dnd-kit. As react-query state mutation async
     // This will act as a placeholder to avoid a glitching animation on dropping items
     const [items, setItems] = useState<
@@ -316,11 +326,19 @@ export const DashboardPage = withProjectPermission(
       reset
     } = method;
     const { fields, prepend, append, remove } = useFieldArray({ control, name: "secrets" });
-    const isReadOnly = selectedEnv?.isWriteDenied;
-    const isAddOnly = selectedEnv?.isReadDenied && !selectedEnv?.isWriteDenied;
-    const canDoRollback = !isReadOnly && !isAddOnly;
-    const isSubmitDisabled =
-      isReadOnly || (!isRollbackMode && !isDirty) || isAddOnly || isSubmitting;
+
+    const isReadOnly =
+      permission.can(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, { environment: selectedEnvSlug })
+      ) &&
+      permission.cannot(
+        ProjectPermissionActions.Edit,
+        subject(ProjectPermissionSub.Secrets, { environment: selectedEnvSlug })
+      );
+
+    const canDoRollback = !isReadOnly;
+    const isSubmitDisabled = isReadOnly || (!isRollbackMode && !isDirty) || isSubmitting;
 
     useEffect(() => {
       if (!isSnapshotChanging && Boolean(snapshotId)) {
@@ -437,14 +455,12 @@ export const DashboardPage = withProjectPermission(
       }
       // just closing this if save is triggered from drawer
       handlePopUpClose("secretDetails");
-      // when add only mode remove rest of things not created
-      const sec = isAddOnly ? userSec.filter(({ _id }) => !_id) : userSec;
       // encrypt and format the secrets to batch api format
       // requests = [ {method:"", secret:""} ]
       const batchedSecret = transformSecretsToBatchSecretReq(
         deletedSecretIds.current,
         latestFileKey,
-        sec,
+        userSec,
         secrets?.secrets
       );
       // type check
@@ -486,7 +502,8 @@ export const DashboardPage = withProjectPermission(
         // eslint-disable-next-line no-alert
         if (!window.confirm(leaveConfirmDefaultMessage)) return;
       }
-      const env = wsEnv?.find((el) => el.slug === slug);
+
+      const env = userAvailableEnvs?.find((el) => el.slug === slug);
       if (env) setSelectedEnv(env);
       const query: Record<string, string> = { ...router.query, env: slug };
       delete query.folderId;
@@ -748,7 +765,7 @@ export const DashboardPage = withProjectPermission(
     const isSecretImportEmpty = !secretImportCfg?.imports?.length;
     const isEmptyPage = isFoldersEmpty && isSecretEmpty && isSecretImportEmpty;
 
-    if (isSecretsLoading || isEnvListLoading) {
+    if (isSecretsLoading) {
       return (
         <div className="container mx-auto flex h-1/2 w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
           <img src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
@@ -756,9 +773,29 @@ export const DashboardPage = withProjectPermission(
       );
     }
 
-    const userAvailableEnvs = wsEnv?.filter(
-      ({ isReadDenied, isWriteDenied }) => !isReadDenied || !isWriteDenied
-    );
+    if (
+      permission.cannot(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, { environment: envQuery, secretPath })
+      )
+    ) {
+      return (
+        <div className="container h-full mx-auto flex justify-center items-center">
+          <div className="rounded-md bg-mineshaft-800 text-bunker-300 p-16 flex space-x-12 items-end">
+            <div>
+              <FontAwesomeIcon icon={faLock} size="6x" />
+            </div>
+            <div>
+              <div className="text-4xl font-medium mb-2">Permission Denied</div>
+              <div className="text-sm">
+                You do not have permission to this page. <br /> Kindly contact your organization
+                administrator
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="container mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -768,7 +805,7 @@ export const DashboardPage = withProjectPermission(
             <NavHeader
               pageName={t("dashboard.title")}
               currentEnv={
-                userAvailableEnvs?.filter((envir) => envir.slug === envQuery)[0].name || ""
+                userAvailableEnvs?.filter((envir) => envir.slug === envQuery)?.[0]?.name || ""
               }
               isFolderMode
               folders={folderData?.dir}
@@ -869,7 +906,7 @@ export const DashboardPage = withProjectPermission(
                       }}
                       leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
                       isLoading={isLoadingSnapshotCount}
-                      isDisabled={!canDoRollback && !isAllowed}
+                      isDisabled={!canDoRollback || !isAllowed}
                       className="h-10"
                     >
                       {snapshotCount} Commits
@@ -1037,7 +1074,6 @@ export const DashboardPage = withProjectPermission(
                           secUniqId={_id}
                           isReadOnly={isReadOnly}
                           isRollbackMode={isRollbackMode}
-                          isAddOnly={isAddOnly}
                           index={index}
                           searchTerm={searchFilter}
                           onSecretDelete={onSecretDelete}

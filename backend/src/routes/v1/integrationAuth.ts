@@ -93,11 +93,11 @@ router.get(
 );
 
 router.get(
-	"/:integrationAuthId/teamcity/build-configs",
-	requireAuth({
-        acceptedAuthModes: [AuthMode.JWT],
-    }),
-	integrationAuthController.getIntegrationAuthTeamCityBuildConfigs
+  "/:integrationAuthId/teamcity/build-configs",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  integrationAuthController.getIntegrationAuthTeamCityBuildConfigs
 );
 
 router.delete(

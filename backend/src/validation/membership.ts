@@ -6,7 +6,6 @@ import { MembershipNotFoundError } from "../utils/errors";
 import { AuthData } from "../interfaces/middleware";
 import { ActorType } from "../ee/models";
 import { z } from "zod";
-import { ADMIN, CUSTOM, MEMBER, VIEWER } from "../variables";
 
 /**
  * Validate authenticated clients for membership with id [membershipId] based
@@ -66,7 +65,7 @@ export const DeleteMembershipV1 = z.object({
 
 export const ChangeMembershipRoleV1 = z.object({
   body: z.object({
-    role: z.enum([ADMIN, VIEWER, MEMBER, CUSTOM])
+    role: z.string().trim()
   }),
   params: z.object({ membershipId: z.string().trim() })
 });

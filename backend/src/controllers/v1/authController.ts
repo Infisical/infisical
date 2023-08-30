@@ -201,14 +201,6 @@ export const logout = async (req: Request, res: Response) => {
   });
 };
 
-export const getCommonPasswords = async (req: Request, res: Response) => {
-  const commonPasswords = fs
-    .readFileSync(path.resolve(__dirname, "../../data/" + "common_passwords.txt"), "utf8")
-    .split("\n");
-
-  return res.status(200).send(commonPasswords);
-};
-
 export const revokeAllSessions = async (req: Request, res: Response) => {
   await TokenVersion.updateMany(
     {

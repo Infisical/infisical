@@ -77,16 +77,6 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
 
-  if (req.authData.authPayload instanceof ServiceTokenData) {
-    await validateServiceTokenDataClientForWorkspace({
-      serviceTokenData: req.authData.authPayload,
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath,
-      requiredPermissions: [PERMISSION_WRITE_SECRETS]
-    });
-  }
-
   if (secretPath) {
     folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
   }
@@ -100,7 +90,15 @@ export const batchSecrets = async (req: Request, res: Response) => {
     );
   }
 
-  if (req.user?._id) {
+  if (req.authData.authPayload instanceof ServiceTokenData) {
+    await validateServiceTokenDataClientForWorkspace({
+      serviceTokenData: req.authData.authPayload,
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      secretPath,
+      requiredPermissions: [PERMISSION_WRITE_SECRETS]
+    });
+  } else {
     const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,

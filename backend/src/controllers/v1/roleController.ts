@@ -203,7 +203,6 @@ export const getUserWorkspacePermissions = async (req: Request, res: Response) =
     params: { workspaceId }
   } = await validateRequest(GetUserProjectPermission, req);
   const { permission } = await getUserProjectPermissions(req.user.id, workspaceId);
-
   res.status(200).json({
     data: {
       permissions: packRules(permission.rules)

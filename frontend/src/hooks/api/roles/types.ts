@@ -18,13 +18,13 @@ export type TRole<T extends string | undefined> = {
 export type TPermission = TWorkspacePermission | TGeneralPermission;
 
 type TGeneralPermission = {
-  condition?: Record<string, any>;
+  conditions?: Record<string, any>;
   action: "read" | "edit" | "create" | "delete";
   subject: "member" | "role" | "incident-contact" | "sso" | "billing" | "settings";
 };
 
 type TWorkspacePermission = {
-  condition?: Record<string, any>;
+  conditions?: Record<string, any>;
   action: "read" | "create";
   subject: "workspace";
 };
@@ -32,7 +32,7 @@ type TWorkspacePermission = {
 export type TProjectPermission = TProjectGeneralPermission | TProjectWorkspacePermission;
 
 type TProjectGeneralPermission = {
-  condition?: Record<string, any>;
+  conditions?: Record<string, any>;
   action: "read" | "edit" | "create" | "delete";
   subject:
     | "member"
@@ -46,7 +46,7 @@ type TProjectGeneralPermission = {
 };
 
 type TProjectWorkspacePermission = {
-  condition?: Record<string, any>;
+  conditions?: Record<string, any>;
   action: "delete" | "edit";
   subject: "workspace";
 };

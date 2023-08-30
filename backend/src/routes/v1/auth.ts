@@ -38,8 +38,6 @@ router.post(
   authController.checkAuth
 );
 
-router.get("/common-passwords", authLimiter, authController.getCommonPasswords);
-
 router.delete(
   // TODO endpoint: deprecate (moved to DELETE v2/users/me/sessions)
   "/sessions",

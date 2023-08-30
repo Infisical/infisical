@@ -58,14 +58,14 @@ const multiEnvApi2Form = (
   formVal: TFormSchema["permissions"]["secrets"],
   permission: TProjectPermission
 ) => {
-  const isCustomRule = Boolean(permission?.condition?.slug);
+  const isCustomRule = Boolean(permission?.conditions?.environment);
   // full access
   if (isCustomRule && formVal && !formVal?.custom) {
     formVal.custom = { read: true, edit: true, delete: true, create: true };
   }
 
-  const secretEnv = permission?.condition?.slug || "all";
-  const secretPath = permission?.condition?.secretPath;
+  const secretEnv = permission?.conditions?.environment || "all";
+  const secretPath = permission?.conditions?.secretPath;
   // initialize
   if (formVal && !formVal?.[secretEnv]) {
     formVal[secretEnv] = { read: false, edit: false, create: false, delete: false, secretPath };
@@ -94,7 +94,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
   permissions.forEach((permission) => {
     if (["secrets", "folders", "secret-imports"].includes(permission.subject)) {
-      multiEnvApi2Form(formVal?.secrets, permission);
+      multiEnvApi2Form(formVal[permission.subject], permission);
     } else {
       // everything else follows same pattern
       // formVal[settings][read | write] = true
@@ -134,11 +134,10 @@ const multiEnvForm2Api = (
         actions.forEach((action) => {
           // if not full access for an action
           if (!formVal?.all?.[action] && action !== "secretPath" && formVal?.[slug]?.[action]) {
-            permissions.push({
-              action,
-              subject,
-              condition: { slug, secretPath: formVal[slug]?.secretPath }
-            });
+            const conditions: Record<string, unknown> = { environment: slug };
+            if (formVal[slug]?.secretPath) conditions.secretPath = formVal[slug].secretPath;
+
+            permissions.push({ action, subject, conditions });
           }
         });
       });

@@ -44,6 +44,4 @@ const membershipOrgSchema = new Schema(
   }
 );
 
-const MembershipOrg = model<IMembershipOrg>("MembershipOrg", membershipOrgSchema);
-
-export default MembershipOrg;
+export const MembershipOrg = model<IMembershipOrg>("MembershipOrg", membershipOrgSchema);

@@ -219,7 +219,6 @@ export const getUserProjectPermissions = async (userId: string, workspaceId: str
     }>("customRole")
     .exec();
 
-  console.log(membership, userId, workspaceId);
   if (!membership || (membership.role === "custom" && !membership.customRole)) {
     throw UnauthorizedRequestError({ message: "User doesn't belong to organization" });
   }
