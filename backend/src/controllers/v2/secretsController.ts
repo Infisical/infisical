@@ -236,7 +236,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
             version: 1
           },
           $unset: {
-            'metadata.source': true as true
+            "metadata.source": true as const
           },
           ...u,
           _id: new Types.ObjectId(u._id)

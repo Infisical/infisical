@@ -850,7 +850,7 @@ const getAppsTeamCity = async ({
       },
     })
   ).data.project.slice(1);
-
+  
   const apps = res.map((a: any) => {
     return {
       name: a.name,

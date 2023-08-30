@@ -540,20 +540,26 @@ export const backfillIntegration = async () => {
 };
 
 export const backfillServiceTokenMultiScope = async () => {
-  await ServiceTokenData.updateMany(
-    {
-      scopes: {
-        $exists: false
-      }
-    },
-    [
-      {
-        $set: {
-          scopes: [{ environment: "$environment", secretPath: "$secretPath" }]
+  const documentsToUpdate = await ServiceTokenData.find({ scopes: { $exists: false } });
+
+  for (const doc of documentsToUpdate) {
+    // Cast doc to any to bypass TypeScript's type checks
+    const anyDoc = doc as any;
+
+    const environment = anyDoc.environment;
+    const secretPath = anyDoc.secretPath;
+
+    if (environment && secretPath) {
+      const updatedScopes = [
+        {
+          environment: environment,
+          secretPath: secretPath
         }
-      }
-    ]
-  );
+      ];
+
+      await ServiceTokenData.updateOne({ _id: doc._id }, { $set: { scopes: updatedScopes } });
+    }
+  }
 
   console.log("Migration: Service token migration v2 complete");
 };
@@ -649,24 +655,25 @@ export const backfillUserAuthMethods = async () => {
     }
   );
 
-  await User.updateMany(
-  {
-    authProvider: {
-      $exists: true
-    },
-    authMethods: {
-      $exists: false
-    }
-  },
-  [
-    {
-      $set: {
-        authMethods: ["$authProvider"]
+
+  const documentsToUpdate = await User.find({
+    authProvider: { $exists: true },
+    authMethods: { $exists: false }
+  });
+
+  for (const doc of documentsToUpdate) {
+    // Cast doc to any to bypass TypeScript's type checks
+    const anyDoc = doc as any;
+
+    const authProvider = anyDoc.authProvider;
+    const authMethods = [authProvider];
+
+    await User.updateOne(
+      { _id: doc._id },
+      {
+        $set: { authMethods: authMethods },
+        $unset: { authProvider: 1, authId: 1 }
       }
-    },
-    {
-      $unset: ["authProvider", "authId"]
-    }
-  ]
-);
+    );
+  }
 }

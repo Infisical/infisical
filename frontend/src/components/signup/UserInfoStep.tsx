@@ -8,13 +8,12 @@ import jsrp from "jsrp";
 import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
 
-import { useGetCommonPasswords } from "@app/hooks/api";
 import { completeAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import ProjectService from "@app/services/ProjectService";
 
 import InputField from "../basic/InputField";
-import checkPassword from "../utilities/checks/checkPassword";
+import checkPassword from "../utilities/checks/password/checkPassword";
 import Aes256Gcm from "../utilities/cryptography/aes-256-gcm";
 import { deriveArgonKey } from "../utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "../utilities/saveTokenToLocalStorage";
@@ -39,12 +38,14 @@ interface UserInfoStepProps {
 }
 
 type Errors = {
-  length?: string,
-  upperCase?: string,
-  lowerCase?: string,
-  number?: string,
-  specialChar?: string,
-  repeatedChar?: string,
+  tooShort?: string;
+  tooLong?: string;
+  noLetterChar?: string;
+  noNumOrSpecialChar?: string;
+  repeatedChar?: string;
+  escapeChar?: string;
+  lowEntropy?: string;
+  breached?: string;
 };
 
 /**
@@ -71,9 +72,8 @@ export default function UserInfoStep({
   setOrganizationName,
   attributionSource,
   setAttributionSource,
-  providerAuthToken,
+  providerAuthToken
 }: UserInfoStepProps): JSX.Element {
-  const { data: commonPasswords } = useGetCommonPasswords();
   const [nameError, setNameError] = useState(false);
   const [organizationNameError, setOrganizationNameError] = useState(false);
 
@@ -99,10 +99,9 @@ export default function UserInfoStep({
     } else {
       setOrganizationNameError(false);
     }
-    
-    errorCheck = checkPassword({
+
+    errorCheck = await checkPassword({
       password,
-      commonPasswords,
       setErrors
     });
 
@@ -174,7 +173,7 @@ export default function UserInfoStep({
                 salt: result.salt,
                 verifier: result.verifier,
                 organizationName,
-                attributionSource,
+                attributionSource
               });
 
               // unset signup JWT token and set JWT token
@@ -191,7 +190,7 @@ export default function UserInfoStep({
               });
 
               const userOrgs = await fetchOrganizations();
-            
+
               const orgId = userOrgs[0]?._id;
               const project = await ProjectService.initProject({
                 organizationId: orgId,
@@ -215,13 +214,15 @@ export default function UserInfoStep({
   };
 
   return (
-    <div className="h-full mx-auto mb-36 w-max rounded-xl md:px-8 md:mb-16">
-      <p className="mx-8 mb-6 flex justify-center text-xl font-bold text-medium md:mx-16 text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
+    <div className="mx-auto mb-36 h-full w-max rounded-xl md:mb-16 md:px-8">
+      <p className="text-medium mx-8 mb-6 flex justify-center bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-xl font-bold text-transparent md:mx-16">
         {t("signup.step3-message")}
       </p>
-      <div className="h-full mx-auto mb-36 w-max rounded-xl py-6 md:px-8 md:mb-16 md:border md:border-mineshaft-600 md:bg-mineshaft-800">
-        <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
-          <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Your Name</p>
+      <div className="mx-auto mb-36 h-full w-max rounded-xl py-6 md:mb-16 md:border md:border-mineshaft-600 md:bg-mineshaft-800 md:px-8">
+        <div className="relative z-0 flex w-1/4 w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
+          <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
+            Your Name
+          </p>
           <Input
             placeholder="Jane Doe"
             onChange={(e) => setName(e.target.value)}
@@ -230,10 +231,16 @@ export default function UserInfoStep({
             autoComplete="given-name"
             className="h-12"
           />
-          {nameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your name</p>}
+          {nameError && (
+            <p className="mt-1 ml-1 w-full text-left text-xs text-red-600">
+              Please, specify your name
+            </p>
+          )}
         </div>
-        <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
-          <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Organization Name</p>
+        <div className="relative z-0 flex w-1/4 w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
+          <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
+            Organization Name
+          </p>
           <Input
             placeholder="Infisical"
             onChange={(e) => setOrganizationName(e.target.value)}
@@ -241,10 +248,16 @@ export default function UserInfoStep({
             isRequired
             className="h-12"
           />
-          {organizationNameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your organization name</p>}
+          {organizationNameError && (
+            <p className="mt-1 ml-1 w-full text-left text-xs text-red-600">
+              Please, specify your organization name
+            </p>
+          )}
         </div>
-        <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
-          <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Where did you hear about us? <span className="font-light">(optional)</span></p>
+        <div className="relative z-0 flex w-1/4 w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
+          <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
+            Where did you hear about us? <span className="font-light">(optional)</span>
+          </p>
           <Input
             placeholder=""
             onChange={(e) => setAttributionSource(e.target.value)}
@@ -252,14 +265,13 @@ export default function UserInfoStep({
             className="h-12"
           />
         </div>
-        <div className="mt-2 flex lg:w-1/6 w-1/4 min-w-[20rem] max-h-60 w-full flex-col items-center justify-center rounded-lg py-2">
+        <div className="mt-2 flex max-h-60 w-1/4 w-full min-w-[20rem] flex-col items-center justify-center rounded-lg py-2 lg:w-1/6">
           <InputField
             label={t("section.password.password")}
-            onChangeHandler={(pass: string) => {
+            onChangeHandler={async (pass: string) => {
               setPassword(pass);
-              checkPassword({
+              await checkPassword({
                 password: pass,
-                commonPasswords,
                 setErrors
               });
             }}
@@ -272,23 +284,20 @@ export default function UserInfoStep({
           />
           {Object.keys(errors).length > 0 && (
             <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
-              <div className="mb-2 text-sm text-gray-400">{t("section.password.validate-base")}</div> 
+              <div className="mb-2 text-sm text-gray-400">
+                {t("section.password.validate-base")}
+              </div>
               {Object.keys(errors).map((key) => {
                 if (errors[key as keyof Errors]) {
                   return (
-                    <div 
-                      className="ml-1 flex flex-row items-top justify-start"
-                      key={key}
-                    >
+                    <div className="items-top ml-1 flex flex-row justify-start" key={key}>
                       <div>
-                        <FontAwesomeIcon 
-                          icon={faXmark} 
-                          className="text-md text-red ml-0.5 mr-2.5"
+                        <FontAwesomeIcon
+                          icon={faXmark}
+                          className="text-md ml-0.5 mr-2.5 text-red"
                         />
                       </div>
-                      <p className="text-gray-400 text-sm">
-                        {errors[key as keyof Errors]} 
-                      </p>
+                      <p className="text-sm text-gray-400">{errors[key as keyof Errors]}</p>
                     </div>
                   );
                 }
@@ -298,18 +307,21 @@ export default function UserInfoStep({
             </div>
           )}
         </div>
-        <div className="flex flex-col items-center justify-center lg:w-[19%] w-1/4 min-w-[20rem] mt-2 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
-          <div className="text-l py-1 text-lg w-full">
+        <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
+          <div className="text-l w-full py-1 text-lg">
             <Button
               type="submit"
               onClick={signupErrorCheck}
               size="sm"
               isFullWidth
-              className='h-14'
+              className="h-14"
               colorSchema="primary"
               variant="outline_bg"
               isLoading={isLoading}
-            > {String(t("signup.signup"))} </Button>
+            >
+              {" "}
+              {String(t("signup.signup"))}{" "}
+            </Button>
           </div>
         </div>
       </div>

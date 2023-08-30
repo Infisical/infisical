@@ -182,10 +182,15 @@
       "current": "현재 비밀번호",
       "new": "새 비밀번호",
       "current-wrong": "현재 비밀번호가 잘못되었어요",
-      "validate-base": "비밀번호는 다음 조건을 만족해야 합니다:",
-      "validate-length": "14 글자 이상",
-      "validate-case": "1개 이상의 소문자",
-      "validate-number": "1개 이상의 숫자"
+      "validate-base": "비밀번호는 다음을 포함해야 합니다:",
+      "validate-tooShort": "최소 14자",
+      "validate-tooLong": "최대 100자",
+      "validate-noLetterChar": "최소 1개의 문자를 포함해야 합니다.",
+      "validate-noNumOrSpecialChar": "최소 1개의 숫자 또는 특수 문자를 포함해야 합니다.",
+      "validate-repeatedChar": "연속으로 최대 3개의 반복된 문자를 포함할 수 있습니다.",
+      "validate-escapeChar": "이스케이프 문자는 허용되지 않습니다.",
+      "validate-lowEntropy": "비밀번호에 민감한 데이터가 포함되어 있습니다.",
+      "validate-breached": "비밀번호가 데이터 유출에 포함되었습니다."
     },
     "token": {
       "add-dialog": {

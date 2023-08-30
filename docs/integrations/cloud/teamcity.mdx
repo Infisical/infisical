@@ -11,21 +11,18 @@ Prerequisites:
 
 ![integrations](../../images/integrations.png)
 
-## Enter your TeamCity API Token and Server URL
+## Enter your TeamCity Access Token and Server URL
 
-Obtain a TeamCity API Token in Profile > Access Tokens
+Obtain a TeamCity Access Token in Profile > Access Tokens
 
-![integrations teamcity dashboard](../../images/integrations-teamcity-dashboard.png)
-![integrations teamcity tokens](../../images/integrations-teamcity-tokens.png)
+![integrations teamcity dashboard](../../images/integrations/teamcity/integrations-teamcity-dashboard.png)
+![integrations teamcity token](../../images/integrations/teamcity/integrations-teamcity-token.png)
 
-Obtain your TeamCity Server URL in Administration > Cloud Server Settings > Server URL
-
-![integrations teamcity projects](../../images/integrations-teamcity-projects.png)
-![integrations teamcity server url](../../images/integrations-teamcity-serverurl.png)
-
-Press on the TeamCity tile and input your TeamCity API Token and Server URL to grant Infisical access to your TeamCity account.
-
-![integrations teamcity authorization](../../images/integrations-teamcity-auth.png)
+<Note>
+  For this integration to work, the TeamCity Access Token must either have the
+  **Same as current user** account-wide permission enabled or, if **Limit per project**
+  is selected, then it must at minimum have the **View build configuration settings** and **Edit project** permissions enabled.
+</Note>
 
 <Info>
   If this is your project's first cloud integration, then you'll have to grant
@@ -34,9 +31,20 @@ Press on the TeamCity tile and input your TeamCity API Token and Server URL to g
   the cloud platform.
 </Info>
 
+Press on the TeamCity tile and input your TeamCity Access Token and Server URL to grant Infisical access to your TeamCity account.
+
+![integrations teamcity authorization](../../images/integrations/teamcity/integrations-teamcity-auth.png)
+
 ## Start integration
 
-Select which Infisical environment secrets, you want to sync to which TeamCity project and press create integration to start syncing secrets to TeamCity.
+Select which Infisical environment secrets you want to sync to which TeamCity project (and optionally build configuration) and press create integration to start syncing secrets to TeamCity.
 
-![integrations teamcity](../../images/integrations-teamcity-create.png)
-![integrations teamcity](../../images/integrations-teamcity.png)
+![integrations teamcity](../../images/integrations/teamcity/integrations-teamcity-create.png)
+
+<Note>
+  Infisical integrates with both TeamCity's project-level and build configuration-level environment variables.
+  
+  To sync secrets to a specific build configuration in a TeamCity project, you can select a build configuration from the **TeamCity Build Config** dropdown; otherwise, leaving it empty will sync secrets to TeamCity at the project-level.
+</Note>
+
+![integrations teamcity](../../images/integrations/teamcity/integrations-teamcity.png)

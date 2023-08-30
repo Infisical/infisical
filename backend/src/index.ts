@@ -24,7 +24,7 @@ import {
   secretSnapshot as eeSecretSnapshotRouter,
   users as eeUsersRouter,
   workspace as eeWorkspaceRouter,
-  secretScanning as v1SecretScanningRouter,
+  secretScanning as v1SecretScanningRouter
 } from "./ee/routes/v1";
 import {
   auth as v1AuthRouter,
@@ -58,7 +58,7 @@ import {
   signup as v2SignupRouter,
   tags as v2TagsRouter,
   users as v2UsersRouter,
-  workspace as v2WorkspaceRouter,
+  workspace as v2WorkspaceRouter
 } from "./routes/v2";
 import {
   auth as v3AuthRouter,
@@ -70,14 +70,21 @@ import { healthCheck } from "./routes/status";
 import { getLogger } from "./utils/logger";
 import { RouteNotFoundError } from "./utils/errors";
 import { requestErrorHandler } from "./middleware/requestErrorHandler";
-import { getNodeEnv, getPort, getSecretScanningGitAppId, getSecretScanningPrivateKey, getSecretScanningWebhookProxy, getSecretScanningWebhookSecret, getSiteURL } from "./config";
+import {
+  getNodeEnv,
+  getPort,
+  getSecretScanningGitAppId,
+  getSecretScanningPrivateKey,
+  getSecretScanningWebhookProxy,
+  getSecretScanningWebhookSecret,
+  getSiteURL
+} from "./config";
 import { setup } from "./utils/setup";
 import { syncSecretsToThirdPartyServices } from "./queues/integrations/syncSecretsToThirdPartyServices";
 import { githubPushEventSecretScan } from "./queues/secret-scanning/githubScanPushEvent";
-const SmeeClient = require('smee-client') // eslint-disable-line
+const SmeeClient = require("smee-client"); // eslint-disable-line
 
 const main = async () => {
-
   await setup();
 
   await EELicenseService.initGlobalFeatureSet();
@@ -94,11 +101,15 @@ const main = async () => {
     })
   );
 
-  if (await getSecretScanningGitAppId() && await getSecretScanningWebhookSecret() && await getSecretScanningPrivateKey()) {
+  if (
+    (await getSecretScanningGitAppId()) &&
+    (await getSecretScanningWebhookSecret()) &&
+    (await getSecretScanningPrivateKey())
+  ) {
     const probot = new Probot({
       appId: await getSecretScanningGitAppId(),
       privateKey: await getSecretScanningPrivateKey(),
-      secret: await getSecretScanningWebhookSecret(),
+      secret: await getSecretScanningWebhookSecret()
     });
 
     if ((await getNodeEnv()) != "production") {
@@ -106,12 +117,14 @@ const main = async () => {
         source: await getSecretScanningWebhookProxy(),
         target: "http://backend:4000/ss-webhook",
         logger: console
-      })
+      });
 
-      smee.start()
+      smee.start();
     }
 
-    app.use(createNodeMiddleware(GithubSecretScanningService, { probot, webhooksPath: "/ss-webhook" })); // secret scanning webhook
+    app.use(
+      createNodeMiddleware(GithubSecretScanningService, { probot, webhooksPath: "/ss-webhook" })
+    ); // secret scanning webhook
   }
 
   if ((await getNodeEnv()) === "production") {
@@ -207,8 +220,8 @@ const main = async () => {
 
   server.on("close", async () => {
     await DatabaseService.closeDatabase();
-    syncSecretsToThirdPartyServices.close()
-    githubPushEventSecretScan.close()
+    syncSecretsToThirdPartyServices.close();
+    githubPushEventSecretScan.close();
   });
 
   return server;

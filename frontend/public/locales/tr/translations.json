@@ -228,10 +228,15 @@
       "current": "Mevcut şifre",
       "current-wrong": "Mevcut şifre yanlış olabilir",
       "new": "Yeni şifre",
-      "validate-base": "Şifre en az şunları içermelidir:",
-      "validate-length": "14 karakter",
-      "validate-case": "1 küçük harf",
-      "validate-number": "1 rakam"
+      "validate-base": "Parola içermelidir:",
+      "validate-tooShort": "en az 14 karakter",
+      "validate-tooLong": "en fazla 100 karakter",
+      "validate-noLetterChar": "en az 1 harf karakteri",
+      "validate-noNumOrSpecialChar": "en az 1 rakam veya özel karakter",
+      "validate-repeatedChar": "en fazla 3 tekrarlanan, ardışık karakter",
+      "validate-escapeChar": "Kaçış karakterlerine izin verilmez.",
+      "validate-lowEntropy": "Parola hassas veriler içeriyor.",
+      "validate-breached": "Parola veri ihlalinde bulundu."
     },
     "token": {
       "service-tokens": "Servis Belirteçleri",

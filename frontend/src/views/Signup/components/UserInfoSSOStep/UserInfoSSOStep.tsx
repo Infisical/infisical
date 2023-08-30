@@ -1,4 +1,3 @@
-
 import crypto from "crypto";
 
 import React, { useEffect, useState } from "react";
@@ -10,13 +9,12 @@ import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
 
 import InputField from "@app/components/basic/InputField";
-import checkPassword from "@app/components/utilities/checks/checkPassword";
+import checkPassword from "@app/components/utilities/checks/password/checkPassword";
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
 import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input } from "@app/components/v2";
-import { useGetCommonPasswords } from "@app/hooks/api";
 import { completeAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import ProjectService from "@app/services/ProjectService";
@@ -25,22 +23,24 @@ import ProjectService from "@app/services/ProjectService";
 const client = new jsrp.client();
 
 type Props = {
-    setStep: (step: number) => void;
-    email: string;
-    password: string;
-    setPassword: (value: string) => void;
-    name: string;
-    providerOrganizationName: string;
-    providerAuthToken?: string;
-}
+  setStep: (step: number) => void;
+  email: string;
+  password: string;
+  setPassword: (value: string) => void;
+  name: string;
+  providerOrganizationName: string;
+  providerAuthToken?: string;
+};
 
 type Errors = {
-  length?: string,
-  upperCase?: string,
-  lowerCase?: string,
-  number?: string,
-  specialChar?: string,
-  repeatedChar?: string,
+  tooShort?: string;
+  tooLong?: string;
+  noLetterChar?: string;
+  noNumOrSpecialChar?: string;
+  repeatedChar?: string;
+  escapeChar?: string;
+  lowEntropy?: string;
+  breached?: string;
 };
 
 /**
@@ -63,9 +63,8 @@ export const UserInfoSSOStep = ({
   password,
   setPassword,
   setStep,
-  providerAuthToken,
+  providerAuthToken
 }: Props) => {
-  const { data: commonPasswords } = useGetCommonPasswords();
   const [nameError, setNameError] = useState(false);
   const [organizationName, setOrganizationName] = useState("");
   const [organizationNameError, setOrganizationNameError] = useState(false);
@@ -97,10 +96,9 @@ export const UserInfoSSOStep = ({
     } else {
       setOrganizationNameError(false);
     }
-    
-    errorCheck = checkPassword({
+
+    errorCheck = await checkPassword({
       password,
-      commonPasswords,
       setErrors
     });
 
@@ -210,15 +208,17 @@ export const UserInfoSSOStep = ({
       setIsLoading(false);
     }
   };
-  
+
   return (
-    <div className="h-full mx-auto mb-36 w-max rounded-xl md:px-8 md:mb-16">
-      <p className="mx-8 mb-6 flex justify-center text-xl font-bold text-medium md:mx-16 text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
+    <div className="mx-auto mb-36 h-full w-max rounded-xl md:mb-16 md:px-8">
+      <p className="text-medium mx-8 mb-6 flex justify-center bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-xl font-bold text-transparent md:mx-16">
         {t("signup.step3-message")}
       </p>
-      <div className="h-full mx-auto mb-36 w-max rounded-xl py-6 md:px-8 md:mb-16 md:border md:border-mineshaft-600 md:bg-mineshaft-800">
-        <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
-          <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Your Name</p>
+      <div className="mx-auto mb-36 h-full w-max rounded-xl py-6 md:mb-16 md:border md:border-mineshaft-600 md:bg-mineshaft-800 md:px-8">
+        <div className="relative z-0 flex w-1/4 w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
+          <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
+            Your Name
+          </p>
           <Input
             placeholder="Jane Doe"
             value={name}
@@ -227,11 +227,17 @@ export const UserInfoSSOStep = ({
             autoComplete="given-name"
             className="h-12"
           />
-          {nameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your name</p>}
+          {nameError && (
+            <p className="mt-1 ml-1 w-full text-left text-xs text-red-600">
+              Please, specify your name
+            </p>
+          )}
         </div>
         {providerOrganizationName === undefined && (
-          <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
-            <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Organization Name</p>
+          <div className="relative z-0 flex w-1/4 w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
+            <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
+              Organization Name
+            </p>
             <Input
               placeholder="Infisical"
               value={organizationName}
@@ -240,12 +246,18 @@ export const UserInfoSSOStep = ({
               className="h-12"
               disabled
             />
-            {organizationNameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your organization name</p>}
+            {organizationNameError && (
+              <p className="mt-1 ml-1 w-full text-left text-xs text-red-600">
+                Please, specify your organization name
+              </p>
+            )}
           </div>
         )}
         {providerOrganizationName === undefined && (
-          <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
-            <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Where did you hear about us? <span className="font-light">(optional)</span></p>
+          <div className="relative z-0 flex w-1/4 w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
+            <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
+              Where did you hear about us? <span className="font-light">(optional)</span>
+            </p>
             <Input
               placeholder=""
               onChange={(e) => setAttributionSource(e.target.value)}
@@ -254,14 +266,13 @@ export const UserInfoSSOStep = ({
             />
           </div>
         )}
-        <div className="mt-2 flex lg:w-1/6 w-1/4 min-w-[20rem] max-h-60 w-full flex-col items-center justify-center rounded-lg py-2">
+        <div className="mt-2 flex max-h-60 w-1/4 w-full min-w-[20rem] flex-col items-center justify-center rounded-lg py-2 lg:w-1/6">
           <InputField
             label="Infisical Password"
-            onChangeHandler={(pass: string) => {
+            onChangeHandler={async (pass: string) => {
               setPassword(pass);
-              checkPassword({
+              await checkPassword({
                 password: pass,
-                commonPasswords,
                 setErrors
               });
             }}
@@ -272,26 +283,27 @@ export const UserInfoSSOStep = ({
             autoComplete="new-password"
             id="new-password"
           />
-          <div className="mt-2 w-min min-w-[20rem] max-h-60 flex-col items-center justify-center rounded-md px-1.5 bg-mineshaft-500 text-mineshaft-300 text-xs p-1.5"><FontAwesomeIcon icon={faInfoCircle} className="mr-1.5" />Infisical Password is used as part of the encryption mechanism so that even the authentication provider is not able to access your secrets.</div>
+          <div className="mt-2 max-h-60 w-min min-w-[20rem] flex-col items-center justify-center rounded-md bg-mineshaft-500 p-1.5 px-1.5 text-xs text-mineshaft-300">
+            <FontAwesomeIcon icon={faInfoCircle} className="mr-1.5" />
+            Infisical Password is used as part of the encryption mechanism so that even the
+            authentication provider is not able to access your secrets.
+          </div>
           {Object.keys(errors).length > 0 && (
             <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
-              <div className="mb-2 text-sm text-gray-400">{t("section.password.validate-base")}</div> 
+              <div className="mb-2 text-sm text-gray-400">
+                {t("section.password.validate-base")}
+              </div>
               {Object.keys(errors).map((key) => {
                 if (errors[key as keyof Errors]) {
                   return (
-                    <div 
-                      className="ml-1 flex flex-row items-top justify-start"
-                      key={key}
-                    >
+                    <div className="items-top ml-1 flex flex-row justify-start" key={key}>
                       <div>
-                        <FontAwesomeIcon 
-                          icon={faXmark} 
-                          className="text-md text-red ml-0.5 mr-2.5"
+                        <FontAwesomeIcon
+                          icon={faXmark}
+                          className="text-md ml-0.5 mr-2.5 text-red"
                         />
                       </div>
-                      <p className="text-gray-400 text-sm">
-                        {errors[key as keyof Errors]} 
-                      </p>
+                      <p className="text-sm text-gray-400">{errors[key as keyof Errors]}</p>
                     </div>
                   );
                 }
@@ -301,21 +313,24 @@ export const UserInfoSSOStep = ({
             </div>
           )}
         </div>
-        <div className="flex flex-col items-center justify-center lg:w-[19%] w-1/4 min-w-[20rem] mt-2 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
-          <div className="text-l py-1 text-lg w-full">
+        <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
+          <div className="text-l w-full py-1 text-lg">
             <Button
               type="submit"
               onClick={signupErrorCheck}
               size="sm"
               isFullWidth
-              className='h-12'
+              className="h-12"
               colorSchema="primary"
               variant="outline_bg"
               isLoading={isLoading}
-            > {String(t("signup.signup"))} </Button>
+            >
+              {" "}
+              {String(t("signup.signup"))}{" "}
+            </Button>
           </div>
         </div>
       </div>
     </div>
   );
-}
+};

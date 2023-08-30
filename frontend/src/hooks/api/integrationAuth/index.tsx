@@ -7,6 +7,7 @@ export {
   useGetIntegrationAuthNorthflankSecretGroups,
   useGetIntegrationAuthRailwayEnvironments,
   useGetIntegrationAuthRailwayServices,
+  useGetIntegrationAuthTeamCityBuildConfigs,
   useGetIntegrationAuthTeams,
   useGetIntegrationAuthVercelBranches,
   useSaveIntegrationAccessToken
