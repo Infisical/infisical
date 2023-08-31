@@ -317,7 +317,7 @@ export const DashboardPage = () => {
     reset
   } = method;
 
-  
+
   const { fields, prepend, append, remove } = useFieldArray({ control, name: "secrets" });
   const isReadOnly = selectedEnv?.isWriteDenied;
   const isAddOnly = selectedEnv?.isReadDenied && !selectedEnv?.isWriteDenied;
@@ -752,7 +752,7 @@ export const DashboardPage = () => {
 
 
   const [selectedTags, setSelectedtags] = useState<WsTag[]>([])
-  
+
 
   useEffect(() => {
     const secCheckBox = document.querySelector("#sec-checkbox")
@@ -805,11 +805,11 @@ export const DashboardPage = () => {
     setCheckedSecrets(() => checkedSecretsClone)
   }
 
-  const onMoveSecrets = async ($folderId: string, $checkedSecrets: {_id: string, isChecked: string | boolean}[]) => {
+  const onMoveSecrets = async ($folderId: string, $checkedSecrets: { _id: string, isChecked: string | boolean }[]) => {
     // eslint-disable-next-line no-alert
     const confirm = window.confirm(`Are you sure you want to move  ${checkedSecrets.length > 1 ? "secrets" : "secret"}?`)
     handlePopUpClose("moveSecrets")
-    if(confirm) {
+    if (confirm) {
       const mappedCheckedSecrets = $checkedSecrets.map(checkedSecret => {
         return {
           _id: checkedSecret._id
@@ -910,10 +910,10 @@ export const DashboardPage = () => {
   const onSelectTag = (wsTag: WsTag) => {
     const selectedTagsCopy = [...selectedTags]
     const tagIndex = selectedTagsCopy.findIndex(tag => tag._id === wsTag._id)
-    if(tagIndex > -1) {
+    if (tagIndex > -1) {
       selectedTagsCopy.splice(tagIndex, 1)
       handleCheckedState(false, wsTag)
-    }else {
+    } else {
       selectedTagsCopy.push(wsTag)
       handleCheckedState(true, wsTag)
     }
@@ -926,90 +926,84 @@ export const DashboardPage = () => {
 
   return (
     <div className="container mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
-      {
-         (
-          <div className="fixed flex justify-center opacity-0 bottom-[22px] left-[220px] scale-50 right-0 z-10 pointer-events-none translate-y-[20px]  transition-all duration-300" id="sec-checkbox">
-            <div className="flex flex-initial items-center justify-center shadow-md  bg-mineshaft-800 border border-mineshaft-500 rounded-[4px] pt-[8px] pr-[8px] pb-[8px] pl-[16px] pointer-events-auto gap-[16px]">
-              <span className="min-w-[65px] text-gray-300">{checkedSecrets.length} selected</span>
-              <div className="flex gap-2">
-                <div className="bg-mineshaft-700 hover:bg-mineshaft-500 cursor-pointer flex justify-center items-center border border-mineshaft-500 rounded-md px-[15px] py-1.5 text-gray-200" 
-                  role="button"
-                  onClick={() => handleMoveSecretsModalOpen()} 
-                  tabIndex={-1}
-                  onKeyUp={() => { }}> 
-                  <FontAwesomeIcon icon={faUpDownLeftRight} className="mr-2.5" />
-                  Move
-                </div>
-                <div className="bg-mineshaft-700 hover:bg-mineshaft-500  cursor-pointer  flex justify-center items-center border rounded-md border-mineshaft-500 text-gray-200">
-                  <Popover>
-                    <PopoverTrigger asChild={false}>
-                      <div className="w-full group-hover:w-full data-[state=open]:w-full">
-                        <Tooltip content="Add tags">
-                          <div className="flex justify-center items-center px-[15px] py-1.5 ">
-                            <FontAwesomeIcon icon={faTags} className="mr-2.5" />
-                            Add tag
-                          </div>
-                        </Tooltip>
+      <div className="fixed flex justify-center opacity-0 bottom-[22px] left-[220px] scale-50 right-0 z-10 pointer-events-none translate-y-20  transition-all duration-300" id="sec-checkbox">
+        <div className="flex flex-initial items-center justify-center shadow-md  bg-mineshaft-800 border border-mineshaft-500 rounded-[4px] pt-[8px] pr-[8px] pb-[8px] pl-[16px] pointer-events-auto gap-[16px]">
+          <span className="min-w-[65px] text-gray-300">{checkedSecrets.length} selected</span>
+          <div className="flex gap-2">
+            <div className="bg-mineshaft-700 hover:bg-mineshaft-500 cursor-pointer flex justify-center items-center border border-mineshaft-500 rounded-md px-[15px] py-1.5 text-gray-200"
+              role="button"
+              onClick={() => handleMoveSecretsModalOpen()}
+              tabIndex={-1}
+              onKeyUp={() => { }}>
+              <FontAwesomeIcon icon={faUpDownLeftRight} className="mr-2.5" />
+              Move
+            </div>
+            <div className="bg-mineshaft-700 hover:bg-mineshaft-500  cursor-pointer  flex justify-center items-center border rounded-md border-mineshaft-500 text-gray-200">
+              <Popover>
+                <PopoverTrigger asChild={false}>
+                  <div className="w-full group-hover:w-full data-[state=open]:w-full">
+                    <Tooltip content="Add tags">
+                      <div className="flex justify-center items-center px-[15px] py-1.5 ">
+                        <FontAwesomeIcon icon={faTags} className="mr-2.5" />
+                        Add tag
                       </div>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      side="left"
-                      className="max-h-96 w-auto min-w-[200px] overflow-y-auto overflow-x-hidden border border-mineshaft-600 bg-mineshaft-800 p-2 text-bunker-200"
-                      hideCloseBtn
+                    </Tooltip>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent
+                  side="left"
+                  className="max-h-96 w-auto min-w-[200px] overflow-y-auto overflow-x-hidden border border-mineshaft-600 bg-mineshaft-800 p-2 text-bunker-200"
+                  hideCloseBtn
+                >
+                  <div className="mb-2 px-2 text-center text-sm font-medium text-bunker-200">
+                    Add tags to {checkedSecrets.length > 1 ? "secret" : "secrets"}
+                  </div>
+                  <div className="flex flex-col space-y-1">
+                    {wsTags?.map((wsTag) => (
+                      <Button
+                        variant="plain"
+                        size="sm"
+                        className={twMerge(
+                          "justify-start bg-mineshaft-600 text-bunker-100 hover:bg-mineshaft-500",
+                          isTagChecked(wsTag) && "text-primary"
+                        )}
+                        onClick={() => onSelectTag(wsTag)}
+                        leftIcon={
+                          <Checkbox
+                            className="mr-0 data-[state=checked]:bg-primary"
+                            id="autoCapitalization"
+                            isChecked={isTagChecked(wsTag)} />
+                        }
+                        key={wsTag._id}
+                      >
+                        {wsTag.slug}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="star"
+                      color="primary"
+                      size="sm"
+                      className="mt-4 h-7 justify-start bg-mineshaft-600 px-1"
+                      onClick={handleCreateTagModalOpen}
+                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     >
-                      <div className="mb-2 px-2 text-center text-sm font-medium text-bunker-200">
-                        Add tags to {checkedSecrets.length > 1 ? "secret" : "secrets"}
-                      </div>
-                      <div className="flex flex-col space-y-1">
-                        {wsTags?.map((wsTag) => (
-                          <Button
-                            variant="plain"
-                            size="sm"
-                            className={twMerge(
-                              "justify-start bg-mineshaft-600 text-bunker-100 hover:bg-mineshaft-500",
-                              isTagChecked(wsTag) && "text-primary"
-                            )}
-                            onClick={() => onSelectTag(wsTag)}
-                            leftIcon={
-                              <Checkbox
-                                className="mr-0 data-[state=checked]:bg-primary"
-                                id="autoCapitalization"
-                                isChecked={isTagChecked(wsTag)}
-                                // onCheckedChange={(checked: boolean) => handleCheckedState(checked, wsTag)}
-                              />
-                            }
-                            key={wsTag._id}
-                          >
-                            {wsTag.slug}
-                          </Button>
-                        ))}
-                        <Button
-                          variant="star"
-                          color="primary"
-                          size="sm"
-                          className="mt-4 h-7 justify-start bg-mineshaft-600 px-1"
-                          onClick={handleCreateTagModalOpen}
-                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                        >
-                          Add new tag
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
+                      Add new tag
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
 
-                </div>
-                <div role="button" className="bg-mineshaft-700 hover:bg-mineshaft-500  cursor-pointer flex justify-center items-center border rounded-md border-mineshaft-500 px-[15px] py-1.5 text-gray-200"
-                  onClick={() => handleSecretsBulkDelete()}
-                  tabIndex={-1}
-                  onKeyUp={() => { }} >
-                  <FontAwesomeIcon icon={faTrash} className="mr-2.5" />
-                  Delete
-                </div>
-              </div>
+            </div>
+            <div role="button" className="bg-mineshaft-700 hover:bg-mineshaft-500  cursor-pointer flex justify-center items-center border rounded-md border-mineshaft-500 px-[15px] py-1.5 text-gray-200"
+              onClick={() => handleSecretsBulkDelete()}
+              tabIndex={-1}
+              onKeyUp={() => { }} >
+              <FontAwesomeIcon icon={faTrash} className="mr-2.5" />
+              Delete
             </div>
           </div>
-        )
-      }
+        </div>
+      </div>
 
       <form autoComplete="off" className="h-full flex flex-col">
         {/* breadcrumb row */}
@@ -1189,7 +1183,7 @@ export const DashboardPage = () => {
               color="primary"
               variant="solid"
             >
-              {isRollbackMode ? "Rollback" : "Save Changes"} 
+              {isRollbackMode ? "Rollback" : "Save Changes"}
             </Button>
           </div>
         </div>
@@ -1313,7 +1307,7 @@ export const DashboardPage = () => {
           title="Create tag"
           subTitle="Specify your tag name, and the slug will be created automatically."
         >
-          <CreateTagModal onCreateTag={onCreateWsTag} checkedSecrets={checkedSecrets}  />
+          <CreateTagModal onCreateTag={onCreateWsTag} checkedSecrets={checkedSecrets} />
         </ModalContent>
       </Modal>
       {/* Bult secrets move modal */}
@@ -1327,9 +1321,9 @@ export const DashboardPage = () => {
           title={`Move  ${checkedSecrets.length > 1 ? "secrets" : "secret"} to another folder`}
           subTitle="choose a folder you wish you move secrets below"
         >
-          <MoveSecretsToFolder 
-            onMoveSecrets={onMoveSecrets} 
-            checkedSecrets={checkedSecrets}  
+          <MoveSecretsToFolder
+            onMoveSecrets={onMoveSecrets}
+            checkedSecrets={checkedSecrets}
             folderData={folderData}
           />
         </ModalContent>
