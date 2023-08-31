@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import { twMerge } from "tailwind-merge";
 
 import { TSecretFolder } from "../../../../hooks/api/secretFolders/types";
 
@@ -75,8 +76,7 @@ const DirectorySelector: React.FC<DirectorySelectorProps> = ({ directoryData, on
                 {folders.map((folder) => (
                     <li key={Math.floor(Math.random() * 50000) + 1}>
                         <button
-                            className={`py-1 px-2 bg-mineshaft-500 hover:bg-mineshaft-600 mb-2 rounded-md ${currentPath ? `ml-${depth * 4} ${(selectedFolder === folder.id) ? "bg-mineshaft-300 hover:bg-mineshaft-300 text-black" : "text-gray-400"}` : "font-semibold"
-                                }`}
+                            className={twMerge(`py-1 px-2 bg-mineshaft-500  hover:bg-mineshaft-600 mb-2 rounded-md ${selectedFolder === folder.id ? "bg-mineshaft-400 hover:bg-mineshaft-400" : ""}`)}
                             onClick={() => handlePathSelection(`${currentPath}/${folder.name}`, folder.id)}
                             type="submit"
                         >
@@ -131,7 +131,7 @@ const DirectorySelector: React.FC<DirectorySelectorProps> = ({ directoryData, on
                     </div>
                 )
             }
-            <p className="text-sm mt-2 text-gray-300">Selected folder path: <span className="rounded-md bg-mineshaft-600 py-1.5 px-2 ml-2">{adjustedPath}</span></p>
+            <p className="text-sm mt-2 text-gray-300 mt-5">Selected folder path: <span className="rounded-md bg-mineshaft-600 py-1 px-1.5 ml-2">{adjustedPath}</span></p>
         </div>
     );
 };

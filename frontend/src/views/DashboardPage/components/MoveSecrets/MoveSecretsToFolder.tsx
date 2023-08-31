@@ -32,7 +32,7 @@ export const MoveSecretsToFolder = ({ folderData, checkedSecrets, onMoveSecrets 
       <DirectorySelector directoryData={directoryData} onSelect={handleSelectPath} />
       <div className="mt-8 flex items-center">
         <Button className={twMerge(`mr-4 ${!selectedPath ? "bg-gray-500 border-none text-gray-900 hover:bg-gray-500" : ""}`)} type="submit" disabled={!selectedPath} onClick={() => onMoveSecrets(folderId, checkedSecrets)}>
-          Create
+          Move secrets
         </Button>
         <ModalClose asChild>
           <Button variant="plain" colorSchema="secondary">
