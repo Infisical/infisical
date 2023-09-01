@@ -199,7 +199,7 @@ export const SecretEditRow = ({
               <Tooltip content="Override with a personal value">
                 <IconButton
                   variant="plain"
-                  className={isOverridden && "text-primary"}
+                  className={isOverridden ? "text-primary" : ""}
                   onClick={onSecretOverride}
                   ariaLabel="info"
                 >
