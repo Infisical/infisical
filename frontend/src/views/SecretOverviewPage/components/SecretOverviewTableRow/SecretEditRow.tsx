@@ -5,7 +5,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { IconButton, SecretInput, Tooltip } from "@app/components/v2";
 import { useToggle } from "@app/hooks";
-import { SecretActionType } from "./SecretOverviewTableRow";
 
 type Props = {
   defaultValue?: string | null;
@@ -20,6 +19,12 @@ type Props = {
   onSecretUpdate: (env: string, key: string, value: string, type: string) => Promise<void>;
   onSecretDelete: (env: string, key: string, type: string) => Promise<void>;
 };
+
+export enum SecretActionType {
+  Created = "created",
+  Modified = "modified",
+  Deleted = "deleted"
+}
 
 export const SecretEditRow = ({
   defaultValue,
@@ -86,18 +91,18 @@ export const SecretEditRow = ({
 
   const handleFormSubmit = async ({ value, valueOverride }: { value?: string | null, valueOverride?: string | null }) => {
     const type = isOverridden ? "personal" : "shared";
-    value = isOverridden ? valueOverride : value;
+    const secretValue = isOverridden ? valueOverride : value;
 
     // when changing from personal override to shared secret
     if (watchOverrideAction === SecretActionType.Deleted) {
-      await onSecretDelete(environment, secretName, 'personal');
+      await onSecretDelete(environment, secretName, "personal");
     }
 
-    if ((value || value === "") && secretName) {
+    if ((secretValue || secretValue === "") && secretName) {
       if (isCreatable || watchOverrideAction === SecretActionType.Created) {
-        await onSecretCreate(environment, secretName, value, type);
+        await onSecretCreate(environment, secretName, secretValue, type);
       } else {
-        await onSecretUpdate(environment, secretName, value, type);
+        await onSecretUpdate(environment, secretName, secretValue, type);
       }
     }
     reset({ value });
@@ -119,7 +124,7 @@ export const SecretEditRow = ({
       // when user created a new override but then removes
       if (watchOverrideAction === SecretActionType.Created)
         setValue("valueOverride", "");
-      setValue(`overrideAction`, SecretActionType.Deleted, {
+      setValue("overrideAction", SecretActionType.Deleted, {
         shouldDirty: true
       });
     } else {
