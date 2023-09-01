@@ -3,9 +3,8 @@ import { mkdir, readFile, rm, writeFile } from "fs";
 import { tmpdir } from "os";
 import { join } from "path"
 import { SecretMatch } from "./types";
-import { Octokit } from "@octokit/rest";
 
-export async function scanFullContentAndGetFindings(octokit: Octokit, installationId: number, repositoryFullName: string): Promise<SecretMatch[]> {
+export async function scanFullContentAndGetFindings(octokit: any, installationId: number, repositoryFullName: string): Promise<SecretMatch[]> {
   const tempFolder = await createTempFolder();
   const findingsPath = join(tempFolder, "findings.json");
   const repoPath = join(tempFolder, "repo.git")
