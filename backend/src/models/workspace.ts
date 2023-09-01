@@ -49,6 +49,4 @@ const workspaceSchema = new Schema<IWorkspace>({
 	},
 });
 
-const Workspace = model<IWorkspace>("Workspace", workspaceSchema);
-
-export default Workspace;
+export const Workspace = model<IWorkspace>("Workspace", workspaceSchema);

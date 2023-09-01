@@ -12,6 +12,7 @@ import {
   INTEGRATION_CODEFRESH,
   INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
+  INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_HASHICORP_VAULT,
@@ -58,7 +59,8 @@ export interface IIntegrationAuth extends Document {
     | "terraform-cloud"
     | "teamcity"
     | "northflank"
-    | "windmill";
+    | "windmill"
+    | "gcp-secret-manager";
   teamId: string;
   accountId: string;
   url: string;
@@ -111,7 +113,8 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_BITBUCKET,
         INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
         INTEGRATION_CLOUD_66,
-        INTEGRATION_NORTHFLANK
+        INTEGRATION_NORTHFLANK,
+        INTEGRATION_GCP_SECRET_MANAGER
       ],
       required: true,
     },
@@ -190,9 +193,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
   }
 );
 
-const IntegrationAuth = model<IIntegrationAuth>(
+export const IntegrationAuth = model<IIntegrationAuth>(
   "IntegrationAuth",
   integrationAuthSchema
 );
-
-export default IntegrationAuth;

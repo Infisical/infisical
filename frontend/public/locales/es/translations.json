@@ -228,10 +228,15 @@
       "current": "Contraseña actual",
       "current-wrong": "La contraseña actual puede puede que sea incorrecta",
       "new": "Nueva contraseña",
-      "validate-base": "La contraseña debe contener como mínimo:",
-      "validate-length": "14 caracteres",
-      "validate-case": "1 letra en minúsculas",
-      "validate-number": "1 número"
+      "validate-base": "La contraseña debe contener:",
+      "validate-tooShort": "al menos 14 caracteres",
+      "validate-tooLong": "como máximo 100 caracteres",
+      "validate-noLetterChar": "al menos 1 carácter alfabético",
+      "validate-noNumOrSpecialChar": "al menos 1 número o carácter especial",
+      "validate-repeatedChar": "como máximo 3 caracteres repetidos y consecutivos",
+      "validate-escapeChar": "No se permiten caracteres de escape.",
+      "validate-lowEntropy": "La contraseña contiene datos sensibles.",
+      "validate-breached": "La contraseña se encontró en una violación de datos."
     },
     "token": {
       "service-tokens": "Tokens de servicio",

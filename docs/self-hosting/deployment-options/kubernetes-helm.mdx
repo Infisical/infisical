@@ -111,14 +111,14 @@ frontend:
   replicaCount: 2
   image:
     repository: infisical/frontend
-    tag: "v0.1.3"
+    tag: "v0.26.0" # <--- frontend version 
     pullPolicy: Always
 
 backend:
   replicaCount: 2
   image:
     repository: infisical/backend
-    tag: "v0.1.3"
+    tag: "v0.26.0" # <--- backend version 
     pullPolicy: Always
 
 backendEnvironmentVariables:
@@ -126,7 +126,7 @@ backendEnvironmentVariables:
 
 ingress:
   nginx:
-    enabled: false #<-- if you would like to install nginx along with Infisical
+    enabled: true #<-- if you would like to install nginx along with Infisical
 
 ```
 
@@ -218,3 +218,4 @@ Once installation is complete, you will have to create the first account. No def
 
 ## Related blogs
 - [Set up Infisical in a development cluster](https://iamunnip.hashnode.dev/infisical-open-source-secretops-kubernetes-setup)
+- [Set up Infisical in AKS using ArgoCD + Helm and integrate with an application using kustomize](https://mrdevops.medium.com/infisical-open-source-secretops-apply-it-using-gitops-approach-245f57fcd67e)

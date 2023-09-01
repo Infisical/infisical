@@ -40,7 +40,8 @@ export const useCreateIntegration = () => {
       owner,
       path,
       region,
-      secretPath
+      secretPath,
+      metadata
     }: {
       integrationAuthId: string;
       isActive: boolean;
@@ -55,6 +56,9 @@ export const useCreateIntegration = () => {
       owner: string | null;
       path: string | null;
       region: string | null;
+      metadata?: {
+        secretSuffix?: string;
+      }
     }) => {
       const { data: { integration } } = await apiRequest.post("/api/v1/integration", {
         integrationAuthId,
@@ -69,7 +73,8 @@ export const useCreateIntegration = () => {
         owner,
         path,
         region,
-        secretPath
+        secretPath,
+        metadata
       });
 
       return integration;

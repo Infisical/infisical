@@ -39,6 +39,4 @@ const serviceAccountWorkspacePermissionSchema = new Schema<IServiceAccountWorksp
     }
 );
 
-const ServiceAccountWorkspacePermission = model<IServiceAccountWorkspacePermission>("ServiceAccountWorkspacePermission", serviceAccountWorkspacePermissionSchema);
-
-export default ServiceAccountWorkspacePermission;
+export const ServiceAccountWorkspacePermission = model<IServiceAccountWorkspacePermission>("ServiceAccountWorkspacePermission", serviceAccountWorkspacePermissionSchema);

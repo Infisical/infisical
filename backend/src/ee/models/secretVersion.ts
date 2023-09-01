@@ -117,7 +117,7 @@ const secretVersionSchema = new Schema<ISecretVersion>(
       ref: "Tag",
       type: [Schema.Types.ObjectId],
       default: [],
-    },
+    }
   },
   {
     timestamps: true,

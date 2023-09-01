@@ -6,10 +6,9 @@ import { BotService } from "../../services";
 import { containsGlobPatterns, repackageSecretToRaw } from "../../helpers/secrets";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
-import Folder from "../../models/folder";
+import { Folder, IServiceTokenData } from "../../models";
 import { getFolderByPath } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
-import { IServiceTokenData } from "../../models";
 import { requireWorkspaceAuth } from "../../middleware";
 import { ADMIN, MEMBER, PERMISSION_READ_SECRETS } from "../../variables";
 
@@ -23,6 +22,7 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
   let workspaceId = req.query.workspaceId as string;
   let environment = req.query.environment as string;
   let secretPath = req.query.secretPath as string;
+  const folderId = req.query.folderId as string | undefined;
   const includeImports = req.query.include_imports as string;
 
   // if the service token has single scope, it will get all secrets for that scope by default
@@ -47,6 +47,7 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
   const secrets = await SecretService.getSecrets({
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
+    folderId,
     secretPath,
     authData: req.authData
   });
@@ -284,11 +285,13 @@ export const getSecrets = async (req: Request, res: Response) => {
   const workspaceId = req.query.workspaceId as string;
   const environment = req.query.environment as string;
   const secretPath = req.query.secretPath as string;
+  const folderId = req.query.folderId as string | undefined;
   const includeImports = req.query.include_imports as string;
 
   const secrets = await SecretService.getSecrets({
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
+    folderId,
     secretPath,
     authData: req.authData
   });

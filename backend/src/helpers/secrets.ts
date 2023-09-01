@@ -7,11 +7,13 @@ import {
   UpdateSecretParams
 } from "../interfaces/services/SecretService";
 import {
+  Folder,
   ISecret,
   IServiceTokenData,
   Secret,
   SecretBlindIndexData,
-  ServiceTokenData
+  ServiceTokenData,
+  TFolderRootSchema
 } from "../models";
 import { EventType, SecretVersion } from "../ee/models";
 import {
@@ -29,6 +31,7 @@ import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_BASE64,
   ENCODING_SCHEME_UTF8,
+  K8_USER_AGENT_NAME,
   SECRET_PERSONAL,
   SECRET_SHARED
 } from "../variables";
@@ -45,7 +48,6 @@ import { getAuthDataPayloadIdObj, getAuthDataPayloadUserObj } from "../utils/aut
 import { getFolderByPath, getFolderIdFromServiceToken } from "../services/FolderService";
 import picomatch from "picomatch";
 import path from "path";
-import Folder, { TFolderRootSchema } from "../models/folder";
 
 export const isValidScope = (
   authPayload: IServiceTokenData,
@@ -393,7 +395,8 @@ export const createSecretHelper = async ({
     secretCommentTag,
     folder: folderId,
     algorithm: ALGORITHM_AES_256_GCM,
-    keyEncoding: ENCODING_SCHEME_UTF8
+    keyEncoding: ENCODING_SCHEME_UTF8,
+    metadata
   }).save();
 
   const secretVersion = new SecretVersion({
@@ -496,6 +499,7 @@ export const getSecretsHelper = async ({
   workspaceId,
   environment,
   authData,
+  folderId,
   secretPath = "/"
 }: GetSecretsParams) => {
   let secrets: ISecret[] = [];
@@ -505,7 +509,10 @@ export const getSecretsHelper = async ({
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
-  const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
+
+  if (!folderId) {
+    folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
+  }
 
   // get personal secrets first
   secrets = await Secret.find({
@@ -567,21 +574,36 @@ export const getSecretsHelper = async ({
 
   const postHogClient = await TelemetryService.getPostHogClient();
 
-  if (postHogClient) {
-    postHogClient.capture({
-      event: "secrets pulled",
-      distinctId: await TelemetryService.getDistinctId({
-        authData
-      }),
-      properties: {
-        numberOfSecrets: secrets.length,
-        environment,
-        workspaceId,
-        folderId,
-        channel: authData.userAgentType,
-        userAgent: authData.userAgent
-      }
-    });
+  // reduce the number of events captured
+  let shouldRecordK8Event = false
+  if (authData.userAgent == K8_USER_AGENT_NAME) {
+    const randomNumber = Math.random();
+    if (randomNumber > 0.9) {
+      shouldRecordK8Event = true
+    }
+  }
+
+  const numberOfSignupSecrets = (secrets.filter((secret) => secret?.metadata?.source === "signup")).length;
+  const atLeastOneNonSignUpSecret = (secrets.length - numberOfSignupSecrets > 0)
+
+  if (postHogClient && atLeastOneNonSignUpSecret) {
+    const shouldCapture = authData.userAgent !== K8_USER_AGENT_NAME || shouldRecordK8Event;
+    const approximateForNoneCapturedEvents = secrets.length * 10
+
+    if (shouldCapture) {
+      postHogClient.capture({
+        event: "secrets pulled",
+        distinctId: await TelemetryService.getDistinctId({ authData }),
+        properties: {
+          numberOfSecrets: shouldRecordK8Event ? approximateForNoneCapturedEvents : secrets.length,
+          environment,
+          workspaceId,
+          folderId,
+          channel: authData.userAgentType,
+          userAgent: authData.userAgent
+        }
+      });
+    }
   }
 
   return secrets;
@@ -680,7 +702,7 @@ export const getSecretHelper = async ({
 
   if (postHogClient) {
     postHogClient.capture({
-      event: "secrets pull",
+      event: "secrets pulled",
       distinctId: await TelemetryService.getDistinctId({
         authData
       }),

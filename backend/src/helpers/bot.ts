@@ -14,7 +14,7 @@ import {
 } from "../variables";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
 import { InternalServerError } from "../utils/errors";
-import Folder from "../models/folder";
+import { Folder } from "../models";
 import { getFolderByPath } from "../services/FolderService";
 import { getAllImportedSecrets } from "../services/SecretImportService";
 import { expandSecrets } from "./secrets";

@@ -17,13 +17,20 @@ import {
 } from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
-  useGetIntegrationAuthById
+  useGetIntegrationAuthById,
+  useGetIntegrationAuthTeamCityBuildConfigs
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 
 export default function TeamCityCreateIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
+  
+  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [targetAppId, setTargetAppId] = useState("");
+  const [targetBuildConfigId, setTargetBuildConfigId] = useState<string>("");
+  const [secretPath, setSecretPath] = useState("/");
+  const [isLoading, setIsLoading] = useState(false);
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
@@ -32,11 +39,11 @@ export default function TeamCityCreateIntegrationPage() {
   const { data: integrationAuthApps } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
-
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
-  const [targetApp, setTargetApp] = useState("");
-  const [secretPath, setSecretPath] = useState("/");
-  const [isLoading, setIsLoading] = useState(false);
+  
+  const { data: targetBuildConfigs } = useGetIntegrationAuthTeamCityBuildConfigs({
+    integrationAuthId: (integrationAuthId as string) ?? "",
+    appId: targetAppId
+  });
 
   useEffect(() => {
     if (workspace) {
@@ -47,29 +54,31 @@ export default function TeamCityCreateIntegrationPage() {
   useEffect(() => {
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
-        setTargetApp(integrationAuthApps[0].name);
+        setTargetAppId(integrationAuthApps[0].appId as string);
       } else {
-        setTargetApp("none");
+        setTargetAppId("none");
       }
     }
   }, [integrationAuthApps]);
-
+  
   const handleButtonClick = async () => {
     try {
       if (!integrationAuth?._id) return;
 
       setIsLoading(true);
-
+      
+      const targetEnvironment = targetBuildConfigs?.find(
+        (buildConfig) => buildConfig.buildConfigId === targetBuildConfigId
+      );
+      
       await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
-        app: targetApp,
-        appId:
-          integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp)
-            ?.appId ?? null,
+        app: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId)?.name ?? null,
+        appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: null,
-        targetEnvironmentId: null,
+        targetEnvironment: targetEnvironment ? targetEnvironment.name : null,
+        targetEnvironmentId: targetEnvironment ? targetEnvironment.buildConfigId : null,
         targetService: null,
         targetServiceId: null,
         owner: null,
@@ -86,12 +95,17 @@ export default function TeamCityCreateIntegrationPage() {
     }
   };
 
+  const filteredBuildConfigs = targetBuildConfigs?.concat({
+    name: "",
+    buildConfigId: ""
+  });
 
   return integrationAuth &&
     workspace &&
     selectedSourceEnvironment &&
     integrationAuthApps &&
-    targetApp ? (
+    filteredBuildConfigs &&
+    targetAppId ? (
     <div className="flex h-full w-full items-center justify-center">
       <Card className="max-w-md rounded-md p-8">
         <CardTitle className="text-center">TeamCity Integration</CardTitle>
@@ -120,16 +134,16 @@ export default function TeamCityCreateIntegrationPage() {
         </FormControl>
         <FormControl label="TeamCity Project" className="mt-4">
           <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
+            value={targetAppId}
+            onValueChange={(val) => setTargetAppId(val)}
             className="w-full border border-mineshaft-500"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
               integrationAuthApps.map((integrationAuthApp) => (
                 <SelectItem
-                  value={integrationAuthApp.name}
-                  key={`target-app-${integrationAuthApp.name}`}
+                  value={integrationAuthApp.appId as string}
+                  key={`target-app-${integrationAuthApp.appId as string}`}
                 >
                   {integrationAuthApp.name}
                 </SelectItem>
@@ -139,6 +153,22 @@ export default function TeamCityCreateIntegrationPage() {
                 No project found
               </SelectItem>
             )}
+          </Select>
+        </FormControl>
+        <FormControl label="Team City Build Config (Optional)" className="mt-4">
+          <Select
+            value={targetBuildConfigId}
+            onValueChange={(val) => setTargetBuildConfigId(val)}
+            className="w-full border border-mineshaft-500"
+          >
+            {filteredBuildConfigs.map((buildConfig: any) => (
+              <SelectItem
+                value={buildConfig.buildConfigId}
+                key={`target-build-config-${buildConfig.buildConfigId}`}
+              >
+                {buildConfig.name}
+              </SelectItem>
+            ))}
           </Select>
         </FormControl>
         <Button

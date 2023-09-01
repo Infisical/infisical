@@ -9,6 +9,8 @@ The changelog below reflects new product developments and updates on a monthly b
 - Release Audit Logs V2.
 - Add support for GitHub SSO.
 - Enable users to opt in for multiple authentication methods.
+- Improved password requirements including check against [Have I Been Pwnd Password API](https://haveibeenpwned.com/Passwords).
+- Added native [GCP Secret Manager integration](https://infisical.com/docs/integrations/cloud/gcp-secret-manager)
 
 ## July 2023
 
@@ -16,17 +18,17 @@ The changelog below reflects new product developments and updates on a monthly b
 - Redesigned the project/organization experience.
 - Updated the secrets overview page; users are now able to edit secrets directly from it.
 - Added native [Laravel Forge integration](https://infisical.com/docs/integrations/cloud/laravel-forge).
-- Added native [Codefresh integration](https://infisical.com/docs/integrations/cicd/codefresh)
-- Added native [Bitbucket integration](https://infisical.com/docs/integrations/cicd/bitbucket)
-- Added native [DigitalOcean App Platform integration](https://infisical.com/docs/integrations/cloud/digital-ocean-app-platform)
-- Added native [Cloud66 integration](https://infisical.com/docs/integrations/cloud/cloud-66)
-- Added native [Terraform Cloud integration](https://infisical.com/docs/integrations/cloud/terraform-cloud)
-- Added native [Northflank integration](https://infisical.com/docs/integrations/cloud/northflank)
-- Added native [Windmill integration](https://infisical.com/docs/integrations/cloud/windmill)
+- Added native [Codefresh integration](https://infisical.com/docs/integrations/cicd/codefresh).
+- Added native [Bitbucket integration](https://infisical.com/docs/integrations/cicd/bitbucket).
+- Added native [DigitalOcean App Platform integration](https://infisical.com/docs/integrations/cloud/digital-ocean-app-platform).
+- Added native [Cloud66 integration](https://infisical.com/docs/integrations/cloud/cloud-66).
+- Added native [Terraform Cloud integration](https://infisical.com/docs/integrations/cloud/terraform-cloud).
+- Added native [Northflank integration](https://infisical.com/docs/integrations/cloud/northflank).
+- Added native [Windmill integration](https://infisical.com/docs/integrations/cloud/windmill).
 - Added support for Google SSO.
 - Added support for [Okta](https://infisical.com/docs/documentation/platform/sso/okta), [Azure AD](https://infisical.com/docs/documentation/platform/sso/azure), and JumpCloud [SAML](https://infisical.com/docs/documentation/platform/saml) authentication.
-- Released [folders / path-based secret storage](https://infisical.com/docs/documentation/platform/folder)
-- Released [webhooks](https://infisical.com/docs/documentation/platform/webhooks)
+- Released [folders / path-based secret storage](https://infisical.com/docs/documentation/platform/folder).
+- Released [webhooks](https://infisical.com/docs/documentation/platform/webhooks).
 
 ## June 2023
 
@@ -68,7 +70,7 @@ The changelog below reflects new product developments and updates on a monthly b
 ## Feb 2023
 
 - Upgraded private key encryption/decryption mechanism to use Argon2id and 256-bit protected keys.
-- Added preliminary emai-based 2FA capability
+- Added preliminary emai-based 2FA capability.
 - Added suspicious login alerting if user logs in via new device or IP address.
 - Added documentation for PM2 integration.
 - Added secret backups support for the CLI; it now fetches and caches secrets locally to be used in the event of future failed fetch.
@@ -93,9 +95,9 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added native GitHub Actions integration.
 - Added custom environment names.
 - Added auto-redeployment capability to the Kubernetes operator.
-- (Service Token 2.0) Shortened the length of service tokens
-- Added a public-facing API
-- Added preliminary access control capability for users to be provisioned read/write access to environments
+- (Service Token 2.0) Shortened the length of service tokens.
+- Added a public-facing API.
+- Added preliminary access control capability for users to be provisioned read/write access to environments.
 - Performed various web UI optimizations.
 
 ## Nov 2022

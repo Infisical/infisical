@@ -50,6 +50,4 @@ const tokenDataSchema = new Schema<ITokenData>({
   timestamps: true,
 });
 
-const TokenData = model<ITokenData>("TokenData", tokenDataSchema);
-
-export default TokenData;
+export const TokenData = model<ITokenData>("TokenData", tokenDataSchema);

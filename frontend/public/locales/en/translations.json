@@ -231,10 +231,15 @@
       "current": "Current password",
       "current-wrong": "The current password may be wrong",
       "new": "New password",
-      "validate-base": "Password should contain at least:",
-      "validate-length": "14 characters",
-      "validate-case": "1 lowercase character",
-      "validate-number": "1 number"
+      "validate-base": "Password should contain:",
+      "validate-tooShort": "at least 14 characters",
+      "validate-tooLong": "at most 100 characters",
+      "validate-noLetterChar": "at least 1 letter character",
+      "validate-noNumOrSpecialChar": "at least 1 number or special character",
+      "validate-repeatedChar": "at most 3 repeated, consecutive characters",
+      "validate-escapeChar": "No escape characters allowed.",
+      "validate-lowEntropy": "Password contains personal info.",
+      "validate-breached": "Password was found in a data breach."
     },
     "token": {
       "service-tokens": "Service Tokens",

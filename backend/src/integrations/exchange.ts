@@ -4,6 +4,8 @@ import {
   INTEGRATION_AZURE_TOKEN_URL,
   INTEGRATION_BITBUCKET,
   INTEGRATION_BITBUCKET_TOKEN_URL,
+  INTEGRATION_GCP_SECRET_MANAGER,
+  INTEGRATION_GCP_TOKEN_URL,
   INTEGRATION_GITHUB,
   INTEGRATION_GITHUB_TOKEN_URL,
   INTEGRATION_GITLAB,
@@ -13,17 +15,19 @@ import {
   INTEGRATION_NETLIFY,
   INTEGRATION_NETLIFY_TOKEN_URL,
   INTEGRATION_VERCEL,
-  INTEGRATION_VERCEL_TOKEN_URL,
+  INTEGRATION_VERCEL_TOKEN_URL
 } from "../variables";
 import {
   getClientIdAzure,
   getClientIdBitBucket,
+  getClientIdGCPSecretManager,
   getClientIdGitHub,
   getClientIdGitLab,
   getClientIdNetlify,
   getClientIdVercel,
   getClientSecretAzure,
   getClientSecretBitBucket,
+  getClientSecretGCPSecretManager,
   getClientSecretGitHub,
   getClientSecretGitLab,
   getClientSecretHeroku,
@@ -113,6 +117,11 @@ const exchangeCode = async ({
   let obj = {} as any;
 
   switch (integration) {
+    case INTEGRATION_GCP_SECRET_MANAGER:
+      obj = await exchangeCodeGCP({
+        code,
+      });
+      break;
     case INTEGRATION_AZURE_KEY_VAULT:
       obj = await exchangeCodeAzure({
         code,
@@ -151,6 +160,40 @@ const exchangeCode = async ({
   }
 
   return obj;
+};
+
+/**
+ * Return [accessToken] for GCP OAuth2 code-token exchange
+ * @param {Object} obj
+ * @param {String} obj.code - code for code-token exchange
+ * @returns {Object} obj2
+ * @returns {String} obj2.accessToken - access token for GCP API
+ * @returns {String} obj2.refreshToken - refresh token for GCP API
+ * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
+ */
+const exchangeCodeGCP = async ({ code }: { code: string }) => {
+  const accessExpiresAt = new Date();
+
+  const res: ExchangeCodeAzureResponse = (
+    await standardRequest.post(
+      INTEGRATION_GCP_TOKEN_URL,
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        code: code,
+        client_id: await getClientIdGCPSecretManager(),
+        client_secret: await getClientSecretGCPSecretManager(),
+        redirect_uri: `${await getSiteURL()}/integrations/gcp-secret-manager/oauth2/callback`,
+      } as any)
+    )
+  ).data;
+  
+  accessExpiresAt.setSeconds(accessExpiresAt.getSeconds() + res.expires_in);
+
+  return {
+    accessToken: res.access_token,
+    refreshToken: res.refresh_token,
+    accessExpiresAt,
+  };
 };
 
 /**

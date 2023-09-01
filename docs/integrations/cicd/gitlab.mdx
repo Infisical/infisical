@@ -3,12 +3,14 @@ title: "GitLab"
 description: "How to sync secrets from Infisical to GitLab"
 ---
 
-Prerequisites:
+<Tabs>
+  <Tab title="Usage">
+  Prerequisites:
 
 - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
 
-<Tabs>
-  <Tab title="Standard">
+<AccordionGroup>
+  <Accordion title="Standard">
   ## Navigate to your project's integrations tab
 
 ![integrations](../../images/integrations.png)
@@ -17,7 +19,7 @@ Prerequisites:
 
 Press on the GitLab tile and grant Infisical access to your GitLab account.
 
-![integrations gitlab authorization](../../images/integrations-gitlab-auth.png)
+![integrations gitlab authorization](../../images/integrations/gitlab/integrations-gitlab-auth.png)
 
 <Info>
   If this is your project's first cloud integration, then you'll have to grant
@@ -29,13 +31,11 @@ Press on the GitLab tile and grant Infisical access to your GitLab account.
 
 Select which Infisical environment secrets you want to sync to which GitLab repository and press create integration to start syncing secrets to GitLab.
 
-![integrations gitlab](../../images/integrations-gitlab-create.png)
-![integrations gitlab](../../images/integrations-gitlab.png)
-
-  </Tab>
-  <Tab title="Pipeline">
-
-## Generate service token
+![integrations gitlab](../../images/integrations/gitlab/integrations-gitlab-create.png)
+![integrations gitlab](../../images/integrations/gitlab/integrations-gitlab.png)
+  </Accordion>
+  <Accordion title="Pipeline">
+  ## Generate service token
 
 Generate an [Infisical Token](/documentation/platform/token) for the specific project and environment in Infisical.
 
@@ -65,6 +65,42 @@ build-job:
     - apt-get update && apt-get install -y infisical
     - infisical run -- npm run build
 ```
+  </Accordion>
+</AccordionGroup>
+  </Tab>
+  <Tab title="Self-Hosted Setup">
+  Using the GitLab integration on a self-hosted instance of Infisical requires configuring an application in GitLab
+  and registering your instance with it.
 
+  ## Create an OAuth application in GitLab
+    
+    Navigate to your user Settings > Applications to create a new GitLab application.
+   
+   ![integrations gitlab config](../../images/integrations/gitlab/integrations-gitlab-config-edit-profile.png) 
+   ![integrations gitlab config](../../images/integrations/gitlab/integrations-gitlab-config-new-app.png) 
+    
+    Create the application. As part of the form, set the **Redirect URI** to `https://your-domain.com/integrations/gitlab/oauth2/callback`.
+
+   ![integrations gitlab config](../../images/integrations/gitlab/integrations-gitlab-config-new-app-form.png) 
+   
+    <Note>
+      If you have a GitLab group, you can create an OAuth application under it
+      in your group Settings > Applications.
+    </Note>
+   
+   ## Add your OAuth application credentials to Infisical
+   
+   Obtain the **Application ID** and **Secret** for your GitLab application.
+   
+   ![integrations gitlab config](../../images/integrations/gitlab/integrations-gitlab-config-credentials.png) 
+   
+   Back in your Infisical instance, add two new environment variables for the credentials of your GitLab application:
+
+   - `CLIENT_ID_GITLAB`: The **Client ID** of your GitLab application.
+   - `CLIENT_SECRET_GITLAB`: The **Client Secret** of your GitLab application.
+   
+  Once added, restart your Infisical instance and use the GitLab integration.
+  
   </Tab>
 </Tabs>
+

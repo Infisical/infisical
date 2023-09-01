@@ -237,6 +237,7 @@
         "integrations/cloud/checkly",
         "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",
+        "integrations/cloud/gcp-secret-manager",
         "integrations/cloud/cloud-66",
         "integrations/cloud/windmill",
         "integrations/cicd/githubactions",
@@ -322,11 +323,20 @@
           ]
         },
         {
+          "group": "Environments",
+          "pages": [
+            "api-reference/endpoints/environments/list",
+            "api-reference/endpoints/environments/create",
+            "api-reference/endpoints/environments/update",
+            "api-reference/endpoints/environments/delete"
+          ]
+        },
+        {
           "group": "Secrets",
           "pages": [
-            "api-reference/endpoints/secrets/read",
+            "api-reference/endpoints/secrets/list",
             "api-reference/endpoints/secrets/create",
-            "api-reference/endpoints/secrets/read-one",
+            "api-reference/endpoints/secrets/read",
             "api-reference/endpoints/secrets/update",
             "api-reference/endpoints/secrets/delete",
             "api-reference/endpoints/secrets/versions",

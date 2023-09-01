@@ -3,7 +3,9 @@ title: "GitHub Actions"
 description: "How to sync secrets from Infisical to GitHub Actions"
 ---
 
-<Warning>
+<Tabs>
+  <Tab title="Usage">
+  <Warning>
     Infisical can sync secrets to GitHub repo secrets only. If your repo uses environment secrets, then stay tuned with this [issue](https://github.com/Infisical/infisical/issues/54).
 </Warning>
 
@@ -20,7 +22,7 @@ Prerequisites:
 
 Press on the GitHub tile and grant Infisical access to your GitHub account (repo privileges only).
 
-![integrations github authorization](../../images/integrations-github-auth.png)
+![integrations github authorization](../../images/integrations/github/integrations-github-auth.png)
 
 <Info>
   If this is your project's first cloud integration, then you'll have to grant Infisical access to your project's environment variables.
@@ -31,5 +33,43 @@ Press on the GitHub tile and grant Infisical access to your GitHub account (repo
 
 Select which Infisical environment secrets you want to sync to which GitHub repo and press start integration to start syncing secrets to the repo.
 
-![integrations github](../../images/integrations-github.png)
+![integrations github](../../images/integrations/github/integrations-github.png)
+  </Tab>
+  <Tab title="Self-Hosted Setup">
+    Using the GitHub integration on a self-hosted instance of Infisical requires configuring an OAuth application in GitHub
+    and registering your instance with it.
+    
+    ## Create an OAuth application in GitHub
+    
+    Navigate to your user Settings > Developer settings > OAuth Apps to create a new GitHub OAuth application.
+    
+   ![integrations github config](../../images/integrations/github/integrations-github-config-settings.png) 
+   ![integrations github config](../../images/integrations/github/integrations-github-config-dev-settings.png) 
+   ![integrations github config](../../images/integrations/github/integrations-github-config-new-app.png) 
+
+    Create the OAuth application. As part of the form, set the **Homepage URL** to your self-hosted domain `https://your-domain.com`
+    and the **Authorization callback URL** to `https://your-domain.com/integrations/github/oauth2/callback`.
+
+   ![integrations github config](../../images/integrations/github/integrations-github-config-new-app-form.png) 
+    
+    <Note>
+      If you have a GitHub organization, you can create an OAuth application under it
+      in your organization Settings > Developer settings > OAuth Apps > New Org OAuth App.
+    </Note>
+    
+    ## Add your OAuth application credentials to Infisical
+    
+    Obtain the **Client ID** and generate a new **Client Secret** for your GitHub OAuth application.
+   
+   ![integrations github config](../../images/integrations/github/integrations-github-config-credentials.png) 
+   
+   Back in your Infisical instance, add two new environment variables for the credentials of your GitHub OAuth application:
+
+   - `CLIENT_ID_GITHUB`: The **Client ID** of your GitHub OAuth application.
+   - `CLIENT_SECRET_GITHUB`: The **Client Secret** of your GitHub OAuth application.
+   
+  Once added, restart your Infisical instance and use the GitHub integration.
+   
+  </Tab>
+</Tabs>
 

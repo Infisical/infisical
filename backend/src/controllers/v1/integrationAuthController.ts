@@ -548,6 +548,57 @@ export const getIntegrationAuthNorthflankSecretGroups = async (req: Request, res
 }
 
 /**
+ * Return list of build configs for TeamCity project with id [appId]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: Response) => {
+  const appId = req.query.appId as string;
+  
+  interface TeamCityBuildConfig {
+    id: string;
+    name: string;
+    projectName: string;
+    projectId: string;
+    href: string;
+    webUrl: string;
+  }
+  
+  interface GetTeamCityBuildConfigsRes {
+    count: number;
+    href: string;
+    buildType: TeamCityBuildConfig[];
+  }
+  
+
+  if (appId && appId !== "") {
+    const { data: { buildType } } = (
+      await standardRequest.get<GetTeamCityBuildConfigsRes>(`${req.integrationAuth.url}/app/rest/buildTypes`, {
+        params: {
+          locator: `project:${appId}`
+        },
+        headers: {
+          Authorization: `Bearer ${req.accessToken}`,
+          Accept: "application/json",
+        },
+      })
+    );
+    
+    return res.status(200).send({
+      buildConfigs: buildType.map((buildConfig) => ({
+        name: buildConfig.name,
+        buildConfigId: buildConfig.id
+      }))
+    });
+  }
+  
+  return res.status(200).send({
+    buildConfigs: []
+  });
+}
+
+/**
  * Delete integration authorization with id [integrationAuthId]
  * @param req
  * @param res

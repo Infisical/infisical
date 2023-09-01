@@ -35,6 +35,7 @@ export default function ChecklyCreateIntegrationPage() {
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
+  const [secretSuffix, setSecretSuffix] = useState("");
 
   const [targetApp, setTargetApp] = useState("");
   const [targetAppId, setTargetAppId] = useState("");
@@ -78,7 +79,10 @@ export default function ChecklyCreateIntegrationPage() {
         owner: null,
         path: null,
         region: null,
-        secretPath
+        secretPath,
+        metadata: {
+          secretSuffix
+        }
       });
 
       setIsLoading(false);
@@ -147,6 +151,13 @@ export default function ChecklyCreateIntegrationPage() {
               </SelectItem>
             )}
           </Select>
+        </FormControl>
+        <FormControl label="Append the Secret Name with..." className="mt-4 px-6">
+          <Input
+            value={secretSuffix}
+            onChange={(evt) => setSecretSuffix(evt.target.value)}
+            placeholder="Provide a suffix for secret names, default is no suffix"
+          />
         </FormControl>
         <Button
           onClick={handleButtonClick}

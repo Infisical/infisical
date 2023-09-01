@@ -41,3 +41,8 @@ export type NorthflankSecretGroup = {
   name: string;
   groupId: string;
 }
+
+export type TeamCityBuildConfig = {
+  name: string;
+  buildConfigId: string;
+}

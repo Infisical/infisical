@@ -168,6 +168,20 @@ router.get(
 	integrationAuthController.getIntegrationAuthNorthflankSecretGroups
 );
 
+router.get(
+	"/:integrationAuthId/teamcity/build-configs",
+	requireAuth({
+        acceptedAuthModes: [AuthMode.JWT],
+    }),
+	requireIntegrationAuthorizationAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+	}),
+	param("integrationAuthId").exists().isString(),
+	query("appId").exists().isString(),
+	validateRequest,
+	integrationAuthController.getIntegrationAuthTeamCityBuildConfigs
+);
+
 router.delete(
 	"/:integrationAuthId",
 	requireAuth({

@@ -1,6 +1,5 @@
 import Queue, { Job } from "bull";
-import Integration from "../../models/integration";
-import IntegrationAuth from "../../models/integrationAuth";
+import { Integration, IntegrationAuth } from "../../models";
 import { BotService } from "../../services";
 import { getIntegrationAuthAccessHelper } from "../../helpers";
 import { syncSecrets } from "../../integrations/sync"
@@ -36,6 +35,14 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
       secretPath: integration.secretPath
     });
 
+    const suffixedSecrets: any = {};
+    if (integration.metadata?.secretSuffix) {
+      for (const key in secrets) {
+        const newKey = key + integration.metadata?.secretSuffix;
+        suffixedSecrets[newKey] = secrets[key];
+      }      
+    }
+
     const integrationAuth = await IntegrationAuth.findById(integration.integrationAuth);
 
     if (!integrationAuth) throw new Error("Failed to find integration auth");
@@ -49,7 +56,7 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
     await syncSecrets({
       integration,
       integrationAuth,
-      secrets,
+      secrets: Object.keys(suffixedSecrets).length !== 0 ? suffixedSecrets : secrets,
       accessId: access.accessId === undefined ? null : access.accessId,
       accessToken: access.accessToken
     });

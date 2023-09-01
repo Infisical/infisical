@@ -10,6 +10,7 @@ import {
   INTEGRATION_CODEFRESH,
   INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
+  INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_HASHICORP_VAULT,
@@ -25,8 +26,9 @@ import {
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL,
   INTEGRATION_WINDMILL
-} from "../variables";
+} from "../../variables";
 import { Schema, Types, model } from "mongoose";
+import { Metadata } from "./types";
 
 export interface IIntegration {
   _id: Types.ObjectId;
@@ -70,8 +72,10 @@ export interface IIntegration {
     | "digital-ocean-app-platform"
     | "cloud-66"
     | "northflank"
-    | "windmill";
+    | "windmill"
+    | "gcp-secret-manager";
   integrationAuth: Types.ObjectId;
+  metadata: Metadata;
 }
 
 const integrationSchema = new Schema<IIntegration>(
@@ -167,7 +171,8 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_BITBUCKET,
         INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
         INTEGRATION_CLOUD_66,
-        INTEGRATION_NORTHFLANK
+        INTEGRATION_NORTHFLANK,
+        INTEGRATION_GCP_SECRET_MANAGER
       ],
       required: true,
     },
@@ -180,6 +185,9 @@ const integrationSchema = new Schema<IIntegration>(
       type: String,
       required: true,
       default: "/",
+    },
+    metadata: {
+      type: Schema.Types.Mixed
     }
   },
   {
@@ -187,6 +195,4 @@ const integrationSchema = new Schema<IIntegration>(
   }
 );
 
-const Integration = model<IIntegration>("Integration", integrationSchema);
-
-export default Integration;
+export const Integration = model<IIntegration>("Integration", integrationSchema);

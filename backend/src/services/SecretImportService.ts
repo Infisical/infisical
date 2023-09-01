@@ -1,7 +1,10 @@
 import { Types } from "mongoose";
-import Folder from "../models/folder";
-import Secret, { ISecret } from "../models/secret";
-import SecretImport from "../models/secretImports";
+import {
+  Folder,
+  ISecret,
+  Secret,
+  SecretImport
+} from "../models";
 import { getFolderByPath } from "./FolderService";
 
 type TSecretImportFid = { environment: string; folderId: string; secretPath: string };
@@ -52,6 +55,14 @@ export const getAllImportedSecrets = async (
       $match: {
         workspace: new Types.ObjectId(workspaceId),
         type: "shared"
+      }
+    },
+    {
+      $lookup: {
+        from: "tags", // note this is the name of the collection in the database, not the Mongoose model name
+        localField: "tags",
+        foreignField: "_id",
+        as: "tags"
       }
     },
     {

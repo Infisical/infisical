@@ -52,6 +52,4 @@ const membershipSchema = new Schema<IMembership>(
 	}
 );
 
-const Membership = model<IMembership>("Membership", membershipSchema);
-
-export default Membership;
+export const Membership = model<IMembership>("Membership", membershipSchema);

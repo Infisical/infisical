@@ -68,9 +68,7 @@ const backupPrivateKeySchema = new Schema<IBackupPrivateKey>(
 	}
 );
 
-const BackupPrivateKey = model<IBackupPrivateKey>(
+export const BackupPrivateKey = model<IBackupPrivateKey>(
 	"BackupPrivateKey",
 	backupPrivateKeySchema
 );
-
-export default BackupPrivateKey;

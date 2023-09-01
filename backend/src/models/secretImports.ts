@@ -48,5 +48,4 @@ const secretImportSchema = new Schema<ISecretImports>(
   }
 );
 
-const SecretImport = model<ISecretImports>("SecretImports", secretImportSchema);
-export default SecretImport;
+export const SecretImport = model<ISecretImports>("SecretImports", secretImportSchema);

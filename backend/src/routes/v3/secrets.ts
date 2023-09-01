@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express from "express";
 const router = express.Router();
 import { requireAuth, requireWorkspaceAuth, validateRequest } from "../../middleware";
 import { body, param, query } from "express-validator";
@@ -17,6 +17,7 @@ router.get(
   "/raw",
   query("workspaceId").optional().isString().trim(),
   query("environment").optional().isString().trim(),
+  query("folderId").optional().isString().trim(),
   query("secretPath").default("/").isString().trim(),
   query("include_imports").optional().isBoolean().default(false),
   validateRequest,
@@ -144,6 +145,7 @@ router.get(
   "/",
   query("workspaceId").exists().isString().trim(),
   query("environment").exists().isString().trim(),
+  query("folderId").optional().isString().trim(),
   query("secretPath").default("/").isString().trim(),
   validateRequest,
   requireAuth({

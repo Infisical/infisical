@@ -18,6 +18,10 @@ import {
   INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
+  INTEGRATION_GCP_API_URL,
+  INTEGRATION_GCP_SECRET_MANAGER,
+  INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME,
+  INTEGRATION_GCP_SERVICE_USAGE_URL,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_GITLAB_API_URL,
@@ -79,6 +83,11 @@ const getApps = async ({
 }) => {
   let apps: App[] = [];
   switch (integrationAuth.integration) {
+    case INTEGRATION_GCP_SECRET_MANAGER:
+      apps = await getAppsGCPSecretManager({
+        accessToken,
+      });
+      break;
     case INTEGRATION_AZURE_KEY_VAULT:
       apps = [];
       break;
@@ -205,6 +214,96 @@ const getApps = async ({
         accessToken,
       });
       break;
+  }
+
+  return apps;
+};
+
+/**
+ * Return list of apps for GCP secret manager integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for GCP API
+ * @returns {Object[]} apps - list of GCP projects
+ * @returns {String} apps.name - name of GCP project
+ * @returns {String} apps.appId - id of GCP project
+ */
+const getAppsGCPSecretManager = async ({ accessToken }: { accessToken: string }) => {
+  
+  interface GCPApp {
+    projectNumber: string;
+    projectId: string;
+    lifecycleState: "ACTIVE" | "LIFECYCLE_STATE_UNSPECIFIED" | "DELETE_REQUESTED" | "DELETE_IN_PROGRESS";
+    name: string;
+    createTime: string;
+    parent: {
+      type: "organization" | "folder" | "project";
+      id: string;
+    }
+  }
+  
+  interface GCPGetProjectsRes {
+    projects: GCPApp[];
+    nextPageToken?: string;
+  }
+  
+  interface GCPGetServiceRes {
+    name: string;
+    parent: string;
+    state: "ENABLED" | "DISABLED" | "STATE_UNSPECIFIED"
+  }
+
+  let gcpApps: GCPApp[] = [];
+  const apps: App[] = [];
+  
+  const pageSize = 100;
+  let pageToken: string | undefined;
+  let hasMorePages = true;
+  
+  while (hasMorePages) {
+    const params = new URLSearchParams({
+      pageSize: String(pageSize),
+      ...(pageToken ? { pageToken } : {})
+    });
+
+    const res: GCPGetProjectsRes = (await standardRequest.get(`${INTEGRATION_GCP_API_URL}/v1/projects`, {
+        params,
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
+      })
+    )
+    .data;
+    
+    gcpApps = gcpApps.concat(res.projects);
+
+    if (!res.nextPageToken) {
+      hasMorePages = false;
+    }
+    
+    pageToken = res.nextPageToken;
+  }
+  
+  for await (const gcpApp of gcpApps) {
+    try {
+      const res: GCPGetServiceRes = (await standardRequest.get(
+        `${INTEGRATION_GCP_SERVICE_USAGE_URL}/v1/projects/${gcpApp.projectId}/services/${INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME}`, {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
+        }
+      )).data;
+      
+      if (res.state === "ENABLED") {
+        apps.push({
+          name: gcpApp.name,
+          appId: gcpApp.projectId
+        });
+      }
+    } catch {
+      continue;
+    }
   }
 
   return apps;
@@ -751,7 +850,7 @@ const getAppsTeamCity = async ({
       },
     })
   ).data.project.slice(1);
-
+  
   const apps = res.map((a: any) => {
     return {
       name: a.name,

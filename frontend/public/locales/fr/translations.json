@@ -215,10 +215,15 @@
       "current": "Mot de passe actuel",
       "current-wrong": "Le mot de passe actuel peut être érroné",
       "new": "Nouveau mot de passe",
-      "validate-base": "Le mot de passe doit contenir au moins:",
-      "validate-length": "14 caractères",
-      "validate-case": "1 caractère miniscule",
-      "validate-number": "1 chiffre"
+      "validate-base": "Le mot de passe doit contenir :",
+      "validate-tooShort": "au moins 14 caractères",
+      "validate-tooLong": "au plus 100 caractères",
+      "validate-noLetterChar": "au moins 1 caractère alphabétique",
+      "validate-noNumOrSpecialChar": "au moins 1 chiffre ou caractère spécial",
+      "validate-repeatedChar": "au plus 3 caractères consécutifs répétés",
+      "validate-escapeChar": "Aucun caractère d'échappement autorisé.",
+      "validate-lowEntropy": "Le mot de passe contient des données sensibles.",
+      "validate-breached": "Le mot de passe a été trouvé dans une violation de données."
     },
     "token": {
       "service-tokens": "Jetons de service",

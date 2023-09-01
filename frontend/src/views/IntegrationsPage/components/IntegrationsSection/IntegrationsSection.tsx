@@ -106,11 +106,20 @@ export const IntegrationsSection = ({
                   integration.integration === "netlify" ||
                   integration.integration === "railway" ||
                   integration.integration === "gitlab" ||
+                  integration.integration === "teamcity" ||
                   integration.integration === "bitbucket") && (
                   <div className="ml-4 flex flex-col">
                     <FormLabel label="Target Environment" />
                     <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
                       {integration.targetEnvironment}
+                    </div>
+                  </div>
+                )}
+                {(integration.integration === "checkly") && (
+                  <div className="ml-2 flex flex-col">
+                    <FormLabel label="Secret Suffix" />
+                    <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                      {integration?.metadata?.secretSuffix || "-"}
                     </div>
                   </div>
                 )}
