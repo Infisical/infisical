@@ -156,7 +156,7 @@ export const SecretEditRow = ({
           />
         )}
       </div>
-      <div className="flex w-16 justify-center space-x-2 p-2 transition-all">
+      <div className="flex w-16 justify-center space-x-1.5 transition-all">
         {isDirty ? (
           <>
             <div>
