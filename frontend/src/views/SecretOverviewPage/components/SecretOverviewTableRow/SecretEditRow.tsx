@@ -151,7 +151,7 @@ export const SecretEditRow = ({
           />
         )}
       </div>
-      <div className="flex w-16 justify-center space-x-3 pl-2 transition-all">
+      <div className="flex w-16 justify-center space-x-3 transition-all">
         {isDirty ? (
           <>
             <div>
@@ -195,7 +195,7 @@ export const SecretEditRow = ({
                 </IconButton>
               </Tooltip>
             </div>
-            <div className="opacity-0 group-hover:opacity-100">
+            {!isCreatable && <div className="opacity-0 group-hover:opacity-100">
               <Tooltip content="Override with a personal value">
                 <IconButton
                   variant="plain"
@@ -206,7 +206,7 @@ export const SecretEditRow = ({
                   <FontAwesomeIcon icon={faCodeBranch} />
                 </IconButton>
                 </Tooltip>
-            </div>
+            </div>}
             <div className="opacity-0 group-hover:opacity-100">
               <Tooltip content="Delete">
                 <IconButton
