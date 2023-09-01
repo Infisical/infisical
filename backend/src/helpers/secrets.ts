@@ -509,7 +509,7 @@ export const getSecretsHelper = async ({
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
-  
+
   if (!folderId) {
     folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
   }
@@ -583,7 +583,10 @@ export const getSecretsHelper = async ({
     }
   }
 
-  if (postHogClient) {
+  const numberOfSignupSecrets = (secrets.filter((secret) => secret?.metadata?.source === "signup")).length;
+  const atLeastOneNonSignUpSecret = (secrets.length - numberOfSignupSecrets > 0)
+
+  if (postHogClient && atLeastOneNonSignUpSecret) {
     const shouldCapture = authData.userAgent !== K8_USER_AGENT_NAME || shouldRecordK8Event;
     const approximateForNoneCapturedEvents = secrets.length * 10
 
