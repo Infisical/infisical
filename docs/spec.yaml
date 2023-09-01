@@ -2357,6 +2357,29 @@ paths:
                   example: any
                 requests:
                   example: any
+  /api/v2/secrets/move/{folderId}:
+    patch:
+      description: 'move secrets to a different folder'
+      parameters:
+        - name: folderId
+          in: path
+          schema:
+            type: string
+        - name: user-agent
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                secretIds:
+                  example: any
   /api/v2/secrets/:
     post:
       summary: Create new secret(s)

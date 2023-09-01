@@ -21,6 +21,7 @@ interface DirectorySelectorProps {
 const DirectorySelector: React.FC<DirectorySelectorProps> = ({ directoryData, onSelect }) => {
     const [selectedPath, setSelectedPath] = useState("");
     const [directoryTree, setDirectoryTree] = useState<TSecretFolder[]>([])
+    const [selectedFolder, setSelectedFolder] = useState<string>("")
 
     const router = useRouter();
     const { query } = router;
@@ -42,7 +43,7 @@ const DirectorySelector: React.FC<DirectorySelectorProps> = ({ directoryData, on
                         parentItem.folders = [];
                     }
                     if (currentItem.id !== queryFolderId) {
-                        if(!parentItem.folders.find(folder => folder.id === currentItem.id)) {
+                        if (!parentItem.folders.find(folder => folder.id === currentItem.id)) {
                             parentItem.folders.push(currentItem);
                         }
                     }
@@ -58,6 +59,7 @@ const DirectorySelector: React.FC<DirectorySelectorProps> = ({ directoryData, on
     }, [directoryData])
 
     const handlePathSelection = (path: string, folderId: string) => {
+        setSelectedFolder(folderId)
         setSelectedPath(path);
         onSelect(path, folderId);
     };
@@ -73,7 +75,7 @@ const DirectorySelector: React.FC<DirectorySelectorProps> = ({ directoryData, on
                 {folders.map((folder) => (
                     <li key={Math.floor(Math.random() * 50000) + 1}>
                         <button
-                            className={`py-1 px-2 bg-mineshaft-500 hover:bg-mineshaft-600 text-gray-400 mb-2 rounded-md ${currentPath ? `ml-${depth * 4}` : "font-semibold"
+                            className={`py-1 px-2 bg-mineshaft-500 hover:bg-mineshaft-600 mb-2 rounded-md ${currentPath ? `ml-${depth * 4} ${(selectedFolder === folder.id) ? "bg-mineshaft-300 hover:bg-mineshaft-300 text-black" : "text-gray-400"}` : "font-semibold"
                                 }`}
                             onClick={() => handlePathSelection(`${currentPath}/${folder.name}`, folder.id)}
                             type="submit"

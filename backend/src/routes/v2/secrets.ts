@@ -8,7 +8,7 @@ import {
   validateRequest
 } from "../../middleware";
 import { validateClientForSecrets } from "../../validation";
-import { body, query } from "express-validator";
+import { body, param, query } from "express-validator";
 import { secretsController } from "../../controllers/v2";
 import {
   ADMIN,
@@ -200,6 +200,21 @@ router.delete( // TODO endpoint: deprecate (moved to DELETE api/v3/secrets)
     requiredPermissions: [PERMISSION_WRITE_SECRETS]
   }),
   secretsController.deleteSecrets
+);
+
+router.patch(
+  "/move/:folderId",
+  param("folderId").exists().isString().trim(),
+  body("secretIds").exists().isArray().custom(array => array.length > 0),
+  validateRequest,
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+  }),
+  requireSecretsAuth({
+    acceptedRoles: [ADMIN, MEMBER],
+    requiredPermissions: [PERMISSION_WRITE_SECRETS]
+  }),
+  secretsController.moveSecretsToFolder
 );
 
 export default router;

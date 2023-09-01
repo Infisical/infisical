@@ -81,6 +81,7 @@ import {
   useGetWorkspaceSecretSnapshots,
   useGetWsSnapshotCount,
   useGetWsTags,
+  useMoveSecretsToFolder,
   usePerformSecretRollback,
   useRegisterUserAction,
   useUpdateFolder,
@@ -245,6 +246,7 @@ export const DashboardPage = () => {
 
   // mutation calls
   const { mutateAsync: batchSecretOp } = useBatchSecretsOp();
+  const { mutateAsync: moveSecretsToFolder } = useMoveSecretsToFolder();
   const { mutateAsync: performSecretRollback } = usePerformSecretRollback();
   const { mutateAsync: registerUserAction } = useRegisterUserAction();
   const { mutateAsync: createWsTag } = useCreateWsTag();
@@ -441,6 +443,7 @@ export const DashboardPage = () => {
     const sec = isAddOnly ? userSec.filter(({ _id }) => !_id) : userSec;
     // encrypt and format the secrets to batch api format
     // requests = [ {method:"", secret:""} ]
+    console.log("443 PAYLOAD => ", secrets?.secrets)
     const batchedSecret = transformSecretsToBatchSecretReq(
       deletedSecretIds.current,
       latestFileKey,
@@ -802,9 +805,42 @@ export const DashboardPage = () => {
     setCheckedSecrets(() => checkedSecretsClone)
   }
 
+  const onMoveSecrets = async ($folderId: string, $checkedSecrets: {_id: string, isChecked: string | boolean}[]) => {
+    // eslint-disable-next-line no-alert
+    const confirm = window.confirm(`Are you sure you want to move  ${checkedSecrets.length > 1 ? "secrets" : "secret"}?`)
+    handlePopUpClose("moveSecrets")
+    if(confirm) {
+      const mappedCheckedSecrets = $checkedSecrets.map(checkedSecret => {
+        return {
+          _id: checkedSecret._id
+        }
+      })
+
+      if (!selectedEnv?.slug) return;
+      try {
+        await moveSecretsToFolder({
+          secretIds: mappedCheckedSecrets,
+          folderId: $folderId,
+          workspaceId,
+          environment: selectedEnv?.slug || ""
+        });
+        createNotification({
+          text: `Successfully moved  ${checkedSecrets.length > 1 ? "secrets" : "secret"}`,
+          type: "success"
+        });
+        setCheckedSecrets(() => []);
+      } catch (error) {
+        createNotification({
+          text: `Failed to move ${checkedSecrets.length > 1 ? "secrets" : "secret"}`,
+          type: "error"
+        });
+      }
+    }
+  }
+
   const handleSecretsBulkDelete = async () => {
     // eslint-disable-next-line no-alert
-    const confirm = window.confirm("Are you sure you want to delete tis secrets?")
+    const confirm = window.confirm(`Are you sure you want to delete ${checkedSecrets.length > 1 ? "secrets" : "secret"}?`)
 
     if (confirm) {
       const checkedSecretsIds = [...checkedSecrets].map(checkedSecret => checkedSecret._id)
@@ -834,7 +870,7 @@ export const DashboardPage = () => {
           environment: selectedEnv?.slug
         });
         createNotification({
-          text: "Successfully deleted  secrets",
+          text: `Successfully deleted  ${checkedSecrets.length > 1 ? "secrets" : "secret"}`,
           type: "success"
         });
         setCheckedSecrets(() => []);
@@ -843,7 +879,7 @@ export const DashboardPage = () => {
         }
       } catch (error) {
         createNotification({
-          text: "Failed to deleted secrets",
+          text: `Failed to deleted ${checkedSecrets.length > 1 ? "secrets" : "secret"}`,
           type: "error"
         });
       }
@@ -885,34 +921,7 @@ export const DashboardPage = () => {
 
   const isTagChecked = (wsTag: WsTag) => selectedTags.filter(tag => tag._id === wsTag._id).length > 0
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  // const onMoveSecrets = useCallback(() => {
 
-  // },
-  //   // async (selectedPath: string, $folderId: string, $checkedSecrets: {_id: string, isChecked: string | boolean}[]) => {
-  //   //   try {
-  //   //     await moveSecrets({
-  //   //       workspaceID: workspaceId,
-  //   //       selectedPath,
-  //   //       folderId: $folderId,
-  //   //       checkedSecrets: $checkedSecrets
-  //   //     });
-  //   //     handlePopUpClose("addTag");
-  //   //     createNotification({
-  //   //       text: `Successfully created a tag for ${$checkedSecrets.length > 1 ? "secrets" : "secret"}`,
-  //   //       type: "success"
-  //   //     });
-  //   //     refetch()
-  //   //   } catch (error) {
-  //   //     console.error(error);
-  //   //     createNotification({
-  //   //       text: "Failed to create a tag",
-  //   //       type: "error"
-  //   //     });
-  //   //   }
-  //   // },
-  //   [workspaceId]
-  // );
 
   return (
     <div className="container mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -1179,7 +1188,7 @@ export const DashboardPage = () => {
               color="primary"
               variant="solid"
             >
-              {isRollbackMode ? "Rollback" : "Save Changes"}
+              {isRollbackMode ? "Rollback" : "Save Changes"} 
             </Button>
           </div>
         </div>
@@ -1318,7 +1327,7 @@ export const DashboardPage = () => {
           subTitle="choose a folder you wish you move secrets below"
         >
           <MoveSecretsToFolder 
-            // onMoveSecrets={onMoveSecrets} 
+            onMoveSecrets={onMoveSecrets} 
             checkedSecrets={checkedSecrets}  
             folderData={folderData}
           />

@@ -169,3 +169,10 @@ export type CreateSecretDTO = {
     source?: string;
   }
 }
+
+export type MoveSecretDTO = {
+  secretIds: {_id: string}[];
+  folderId: string;
+  workspaceId: string;
+  environment: string;
+}

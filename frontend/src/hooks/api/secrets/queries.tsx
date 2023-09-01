@@ -17,6 +17,7 @@ import {
   EncryptedSecretVersion,
   GetProjectSecretsDTO,
   GetSecretVersionsDTO,
+  MoveSecretDTO,
   TGetProjectSecretsAllEnvDTO} from "./types";
 
 export const secretKeys = {
@@ -342,6 +343,26 @@ export const useCreateSecret = () => {
     onSuccess: (_, dto) => {
       queryClient.invalidateQueries(
         secretKeys.getProjectSecret(dto.workspaceId, dto.environment)
+      );
+    }
+  });
+};
+
+export const useMoveSecretsToFolder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, MoveSecretDTO>({
+    mutationFn: async ({ secretIds, folderId }) => {
+      const reqBody = {
+        secretIds,
+      };
+      const { data } = await apiRequest.patch(`/api/v2/secrets/move/${folderId}`, reqBody);
+      console.log("184 => data", data)
+      return data;
+    },
+    onSuccess: (_, { workspaceId, environment }) => {
+      queryClient.invalidateQueries(
+        secretKeys.getProjectSecret(workspaceId, environment)
       );
     }
   });

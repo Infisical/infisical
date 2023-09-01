@@ -1378,3 +1378,36 @@ export const deleteSecrets = async (req: Request, res: Response) => {
     secrets: req.secrets
   });
 };
+
+
+
+export const moveSecretsToFolder = async (req: Request, res: Response) => {
+  const { folderId } = req.params;
+  const { secretIds } = req.body;
+  // eslint-disable-next-line no-console
+  console.error("FOLDER MOVE OBJECT => ", {folderId, secretIds})
+
+  const updateSecretsFolder = await Secret.updateMany(
+    { _id: { $in: secretIds.map((secret: {_id: string}) => new Types.ObjectId(secret._id)) } },
+    { $set: { folder: folderId } }
+  )
+
+  // const data = await SecretService.moveSecrets({
+  //   folderId,
+  //   secretIds,
+  //   workspaceId,
+  //   environment,
+  //   authData: req.authData
+  // });
+
+  // await EventService.handleEvent({
+  //   event: eventPushSecrets({
+  //     workspaceId: new Types.ObjectId(workspaceId),
+  //     environment,
+  //     secretPath
+  //   })
+  // });
+
+  return res.status(200).send(updateSecretsFolder);
+};
+
