@@ -40,13 +40,6 @@ const tagSchema = new Schema<ITag>(
     workspace: {
       type: Schema.Types.ObjectId,
       ref: "Workspace"
-    },
-    checkedSecrets: {
-      type: {
-        _id: String,
-        isChecked: [String, [String, Boolean]]
-      },
-      required: false
     }
   },
   {

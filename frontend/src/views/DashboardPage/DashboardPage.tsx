@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
@@ -165,7 +165,6 @@ export const DashboardPage = () => {
   const [selectedTags, setSelectedtags] = useState<WsTag[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<Record<string, boolean> | null>(null)
   const [hoveredTag, setHoveredTag] = useState<WsTag | null>(null);
-  const [poverKey, setPopoverKey] = useState<number>(0);
 
 
   const folderId = router.query.folderId as string;
@@ -280,12 +279,6 @@ export const DashboardPage = () => {
   const [items, setItems] = useState<
     Array<{ environment: string; secretPath: string; id: string }>
   >([]);
-
-  useEffect(() => {
-    return () => {
-      setCheckedSecrets(() => [])
-    };
-  }, []);
 
   useEffect(() => {
     if (
@@ -559,11 +552,12 @@ export const DashboardPage = () => {
 
   const onCreateWsTag = useCallback(
     async (tagName: string, selectedSecrets: { _id: string, isChecked: string | boolean }[], tagColor: string) => {
+      const tagSlug = stringToUnderscoreSlug(tagName)
       try {
         await createWsTag({
           workspaceID: workspaceId,
           tagName,
-          tagSlug: stringToUnderscoreSlug(tagName),
+          tagSlug,
           checkedSecrets: selectedSecrets,
           tagColor
         });
@@ -574,6 +568,7 @@ export const DashboardPage = () => {
         });
         refetchSecrets();
         refetchWsTags()
+        setSelectedTagIds((prev) => ({...prev, [tagSlug]: true}))
       } catch (error) {
         console.error(error);
         createNotification({
@@ -794,38 +789,44 @@ export const DashboardPage = () => {
   const checkIfTagIsVisible = (wsTag: WsTag) => wsTag._id === hoveredTag?._id;
 
   useEffect(() => {
-    if (checkedSecrets.length > 0) {
-      setPopoverKey((prev) => prev + 1);
+    if (checkedSecrets.length < 1) {
+      setSelectedTagIds(null);
+      return;
     }
-  }, [checkedSecrets, setSelectedTagIds]);
 
-  useEffect(() => {
-    const newSecrets = secrets?.secrets
-    if (newSecrets) {
-      const fieldsCopy = [...newSecrets]
-      const checkedSecretsCopy = [...checkedSecrets]
-      const updatedSelectedTags: WsTag[] = fieldsCopy.reduce((acc, cur) => {
-        const { tags } = cur
-        if (tags && tags.length > 0) {
-          // eslint-disable-next-line no-restricted-syntax
-          for (const tag of tags) {
-            const checkedSecretIndex = checkedSecretsCopy.findIndex(secret => secret._id === cur._id)
-            if (checkedSecretIndex > -1) {
-              acc.push(tag as never)
-            }
-          }
+    const checkedIds: Record<string, boolean> = {};
+
+    checkedSecrets.forEach((checkedSecret) => {
+      const secret = fields.find((fieldSecret) => fieldSecret._id === checkedSecret._id);
+      if (secret && secret.tags) {
+        secret.tags.forEach((tag) => {
+          checkedIds[tag.slug] = true;
+        });
+      }
+    });
+  
+    setSelectedTagIds(checkedIds);
+  }, [checkedSecrets, fields]);
+  
+
+  const handleCheckedSecret = useCallback((secretObj: { _id: string, isChecked: string | boolean }) => {
+    setCheckedSecrets((prevCheckedSecrets) => {
+      const updatedSecrets = [...prevCheckedSecrets];
+      const checkedSecretIndex = updatedSecrets.findIndex((secret) => secret._id === secretObj._id);
+
+      if (secretObj.isChecked) {
+        if (checkedSecretIndex === -1) {
+          updatedSecrets.push(secretObj);
         }
-        return acc
-      }, [])
+      } else if (checkedSecretIndex !== -1) {
+        updatedSecrets.splice(checkedSecretIndex, 1);
+      }
 
-      const updatedTagsIds: Record<string, boolean> = {}
-      updatedSelectedTags.forEach(tag => {
-        updatedTagsIds[tag.slug] = true
-      })
-      setSelectedtags(updatedSelectedTags)
-      setSelectedTagIds((prev) => ({ ...prev, ...updatedTagsIds }))
-    }
-  }, [secrets?.secrets, checkedSecrets])
+      return updatedSecrets;
+    });
+  }, []);
+
+  const memoizedCheckedSecrets = useMemo(() => checkedSecrets, [checkedSecrets]);
 
   if (isSecretsLoading || isEnvListLoading) {
     return (
@@ -839,17 +840,6 @@ export const DashboardPage = () => {
     ({ isReadDenied, isWriteDenied }) => !isReadDenied || !isWriteDenied
   );
 
-
-  const handleCheckedSecret = (secretObj: { _id: string, isChecked: string | boolean }) => {
-    const checkedSecretsClone = [...checkedSecrets]
-    const checkedSecretIndex = checkedSecretsClone.findIndex(secret => secret._id === secretObj._id)
-    if (secretObj.isChecked) {
-      checkedSecretsClone.push(secretObj)
-    } else {
-      checkedSecretsClone.splice(checkedSecretIndex, 1)
-    }
-    setCheckedSecrets(() => checkedSecretsClone)
-  }
 
   const onMoveSecrets = async ($folderId: string, selectedSecrets: { _id: string, isChecked: string | boolean }[]) => {
     handlePopUpClose("moveSecrets")
@@ -967,6 +957,7 @@ export const DashboardPage = () => {
     setSelectedtags(() => selectedTagsCopy)
   }
 
+
   return (
     <div className="container mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
       <div className={twMerge("fixed transform  flex justify-center opacity-0 bottom-[20px] left-[220px] scale-50 right-0 z-10 pointer-events-none translate-y-20  transition-all duration-300", checkedSecrets.length > 0 && "translate-y-0 scale-100 opacity-100")}>
@@ -1000,7 +991,6 @@ export const DashboardPage = () => {
                   handleTagOnMouseLeave={() => handleTagOnMouseLeave()}
                   checkIfTagIsVisible={(wsTag: WsTag) => checkIfTagIsVisible(wsTag)}
                   handleOnCreateTagOpen={handleCreateTagModalOpen}
-                  key={`tag-popover-${poverKey}`}
                 />
               </Popover>
 
@@ -1256,7 +1246,7 @@ export const DashboardPage = () => {
                           setValue={setValue}
                           autoCapitalization={currentWorkspace?.autoCapitalization}
                           handleCheckedSecret={(secretObj) => handleCheckedSecret(secretObj)}
-                          checkedSecrets={checkedSecrets}
+                          checkedSecrets={memoizedCheckedSecrets}
                         />
                       )
                     })}

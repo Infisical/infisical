@@ -38,6 +38,8 @@ import { isValidScope } from "../../helpers/secrets";
 import path from "path";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
 
+import { getParentFromFolderId } from "../../services/FolderService";
+
 /**
  * Peform a batch of any specified CUD secret operations
  * (used by dashboard)
@@ -1396,12 +1398,25 @@ export const moveSecretsToFolder = async (req: Request, res: Response) => {
   }
 
   if (!(req.authData.authPayload instanceof ServiceTokenData)) {
-    /** check that user is a member of the workspace */
+    /** check that user is a member of the workspace **/
     await validateMembership({
       userId: req.user._id.toString(),
       workspaceId,
       acceptedRoles: [ADMIN, MEMBER]
     });
+  }
+
+  if (folderId !== "root") {
+    const parentFolder = getParentFromFolderId(folders.nodes, folderId);
+
+    if (!parentFolder) {
+      throw BadRequestError({ message: "The folder doesn't exist" });
+    }
+    const folder = parentFolder.children.find(({ id }) => id === folderId);
+
+    if (!folder) {
+      throw BadRequestError({ message: "The folder doesn't exist" });
+    }
   }
 
   const updateSecretsFolder = await Secret.updateMany(

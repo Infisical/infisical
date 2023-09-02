@@ -19,11 +19,11 @@ type Props = {
 
 export const MoveSecretsToFolder = ({ folderData, checkedSecrets, onMoveSecrets }: Props): JSX.Element => {
   const directoryData = folderData
-  const [selectedPath, setSelecctedPath] = useState<string>("")
+  const [selectedPath, setSelectedPath] = useState<string>("")
   const [folderId, setFolderId] = useState<string>("")
 
   const handleSelectPath = (chosenPath: string, folderID: string) => {
-    setSelecctedPath(chosenPath)
+    setSelectedPath(chosenPath)
     setFolderId(folderID)
   };
 
