@@ -33,8 +33,7 @@ import {
   PopoverTrigger,
   SecretInput,
   Tag,
-  Tooltip
-} from "@app/components/v2";
+  Tooltip} from "@app/components/v2";
 import { useToggle } from "@app/hooks";
 import { WsTag } from "@app/hooks/api/types";
 
@@ -214,8 +213,9 @@ export const SecretInputRow = memo(
       const findCheckedSecret = checkedSecretsCopy.findIndex(secret => secret._id === _id)
       return (_id === hoveredSecret?._id) || (findCheckedSecret > -1)
     };
-    
+
     const isSecretChecked = (secretId: string | undefined) => checkedSecrets.findIndex(secret => secret._id === secretId) > -1
+
     // Why this instead of filter in parent
     // Because rhf field.map has default values so basically
     // keys are not updated there and index needs to kept so that we can monitor
@@ -235,23 +235,23 @@ export const SecretInputRow = memo(
     }
 
     return (
-      <tr className="group flex flex-row hover:bg-mineshaft-700"
-        key={index}
+      <tr className="group relative flex flex-row hover:bg-mineshaft-700" key={index}
         onMouseOver={() => handleSecretOnMouseEnter({ _id: secUniqId })}
         onMouseLeave={() => handleSecretOnMouseLeave()}
         onFocus={() => { }}>
-        <td className="flex h-10 w-10 items-center justify-center border-none ml-4">
-          {
-            checkIfSecretIsVisibleOnHover({ _id: secUniqId }) && (
-              <Checkbox
-                className="mr-0 data-[state=checked]:bg-primary"
-                id="autoCapitalization"
-                isChecked={isSecretChecked(secUniqId)}
-                onCheckedChange={(isChecked) => handleCheckedSecret({ _id: secUniqId as string, isChecked })}
-              />
-            )
-          }
-
+        <td className=" h-10 w-10 flex items-center justify-center border-none translate-x-[10px]">
+          <div className="w-10 text-center text-xs text-bunker-400">
+            {
+              checkIfSecretIsVisibleOnHover({ _id: secUniqId }) && (
+                <Checkbox
+                  className="mr-0 data-[state=checked]:bg-primary"
+                  id="autoCapitalization"
+                  isChecked={isSecretChecked(secUniqId)}
+                  onCheckedChange={(isChecked) => handleCheckedSecret({ _id: secUniqId as string, isChecked })}
+                />
+              )
+            }
+          </div>
         </td>
 
         <Controller
@@ -405,15 +405,15 @@ export const SecretInputRow = memo(
                     </div>
                   </PopoverTrigger>
                   <AddTagPopoverContent
-                      wsTags={wsTags}
-                      secKey={secKey || "this secret"}
-                      selectedTagIds={selectedTagIds}
-                      handleSelectTag={(wsTag: WsTag) => onSelectTag(wsTag)}
-                      handleTagOnMouseEnter={(wsTag: WsTag) => handleTagOnMouseEnter(wsTag)}
-                      handleTagOnMouseLeave={() => handleTagOnMouseLeave()}
-                      checkIfTagIsVisible={(wsTag: WsTag) => checkIfTagIsVisible(wsTag)}
-                      handleOnCreateTagOpen={() => onCreateTagOpen()}
-                    />
+                    wsTags={wsTags}
+                    secKey={secKey || "this secret"}
+                    selectedTagIds={selectedTagIds}
+                    handleSelectTag={(wsTag: WsTag) => onSelectTag(wsTag)}
+                    handleTagOnMouseEnter={(wsTag: WsTag) => handleTagOnMouseEnter(wsTag)}
+                    handleTagOnMouseLeave={() => handleTagOnMouseLeave()}
+                    checkIfTagIsVisible={(wsTag: WsTag) => checkIfTagIsVisible(wsTag)}
+                    handleOnCreateTagOpen={() => onCreateTagOpen()}
+                  />
                 </Popover>
               </div>
             )}
