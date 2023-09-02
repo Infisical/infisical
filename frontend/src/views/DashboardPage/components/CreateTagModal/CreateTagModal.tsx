@@ -25,7 +25,7 @@ const createTagSchema = yup.object({
 });
 type FormData = yup.InferType<typeof createTagSchema>;
 
-export const CreateTagModal = ({ onCreateTag,  checkedSecrets: $checkedSecrets}: Props): JSX.Element => {
+export const CreateTagModal = ({ onCreateTag,  checkedSecrets: selectedSecrets}: Props): JSX.Element => {
   const {
     control,
     reset,
@@ -42,7 +42,7 @@ export const CreateTagModal = ({ onCreateTag,  checkedSecrets: $checkedSecrets}:
 
 
   const onFormSubmit = async ({ name }: FormData) => {
-    await onCreateTag(name, $checkedSecrets, tagColor);
+    await onCreateTag(name, selectedSecrets, tagColor);
     reset();
   };
 

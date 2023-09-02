@@ -1,53 +1,60 @@
 import { Schema, Types, model } from "mongoose";
 
 export interface ITag {
-	_id: Types.ObjectId;
-	name: string;
-	tagColor: string;
-	slug: string;
-	user: Types.ObjectId;
-	workspace: Types.ObjectId;
+  _id: Types.ObjectId;
+  name: string;
+  tagColor: string;
+  slug: string;
+  user: Types.ObjectId;
+  workspace: Types.ObjectId;
+  checkedSecrets?: { _id: string; isChecked: string | boolean }[];
 }
-
 const tagSchema = new Schema<ITag>(
-	{
-		name: {
-			type: String,
-			required: true,
-			trim: true,
-		},
-		tagColor: {
-			type: String,
-			required: false,
-			trim: true,
-		},
-		slug: {
-			type: String,
-			required: true,
-			trim: true,
-			lowercase: true,
-			validate: [
-				function (value: any) {
-					return value.indexOf(" ") === -1;
-				},
-				"slug cannot contain spaces",
-			],
-		},
-		user: {
-			type: Schema.Types.ObjectId,
-			ref: "User",
-		},
-		workspace: {
-			type: Schema.Types.ObjectId,
-			ref: "Workspace",
-		},
-	},
-	{
-		timestamps: true,
-	}
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    tagColor: {
+      type: String,
+      required: false,
+      trim: true
+    },
+    slug: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true,
+      validate: [
+        function (value: string) {
+          return value.indexOf(" ") === -1;
+        },
+        "slug cannot contain spaces"
+      ]
+    },
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User"
+    },
+    workspace: {
+      type: Schema.Types.ObjectId,
+      ref: "Workspace"
+    },
+    checkedSecrets: {
+      type: {
+        _id: String,
+        isChecked: [String, [String, Boolean]]
+      },
+      required: false
+    }
+  },
+  {
+    timestamps: true
+  }
 );
 
-tagSchema.index({ slug: 1, workspace: 1 }, { unique: true })
-tagSchema.index({ workspace: 1 })
+tagSchema.index({ slug: 1, workspace: 1 }, { unique: true });
+tagSchema.index({ workspace: 1 });
 
 export const Tag = model<ITag>("Tag", tagSchema);

@@ -213,6 +213,7 @@ router.patch(
   }),
   body("secretIds").exists().isArray().custom(array => array.length > 0),
   body("workspaceId").exists().isString().trim(),
+  body("environment").exists().isString().trim(),
   validateRequest,
   secretsController.moveSecretsToFolder
 );

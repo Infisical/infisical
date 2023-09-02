@@ -3933,6 +3933,12 @@
                 "properties": {
                   "secretIds": {
                     "example": "any"
+                  },
+                  "workspaceId": {
+                    "example": "any"
+                  },
+                  "environment": {
+                    "example": "any"
                   }
                 }
               }

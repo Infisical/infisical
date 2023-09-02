@@ -2380,6 +2380,10 @@ paths:
               properties:
                 secretIds:
                   example: any
+                workspaceId:
+                  example: any
+                environment:
+                  example: any
   /api/v2/secrets/:
     post:
       summary: Create new secret(s)

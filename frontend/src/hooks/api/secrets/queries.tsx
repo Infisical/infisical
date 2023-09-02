@@ -352,10 +352,11 @@ export const useMoveSecretsToFolder = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, MoveSecretDTO>({
-    mutationFn: async ({ secretIds, folderId, workspaceId }) => {
+    mutationFn: async ({ secretIds, folderId, workspaceId, environment }) => {
       const reqBody = {
         secretIds,
-        workspaceId
+        workspaceId,
+        environment
       };
       const { data } = await apiRequest.patch(`/api/v2/secrets/move/${folderId}`, reqBody);
       return data;

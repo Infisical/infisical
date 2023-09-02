@@ -9,7 +9,7 @@ import { WsTag } from "../../hooks/api/tags/types";
 interface Props {
     wsTags: WsTag[] | undefined;
     secKey: string;
-    selectedTagIds: Record<string, boolean>;
+    selectedTagIds: Record<string, boolean> | null;
     handleSelectTag: (wsTag: WsTag) => void;
     handleTagOnMouseEnter: (wsTag: WsTag) => void;
     handleTagOnMouseLeave: () => void;

@@ -6,7 +6,7 @@ import {
 } from "@app/components/v2";
 
 import { TSecretFolder } from "../../../../hooks/api/secretFolders/types";
-import DirectorySelector from "./DirectorySelector";
+import {DirectorySelector} from "./DirectorySelector";
 
 type Props = {
   checkedSecrets: { _id: string, isChecked: string | boolean }[],
@@ -22,16 +22,16 @@ export const MoveSecretsToFolder = ({ folderData, checkedSecrets, onMoveSecrets 
   const [selectedPath, setSelecctedPath] = useState<string>("")
   const [folderId, setFolderId] = useState<string>("")
 
-  const handleSelectPath = ($selectedPath: string, $folderId: string) => {
-    setSelecctedPath($selectedPath)
-    setFolderId($folderId)
+  const handleSelectPath = (chosenPath: string, folderID: string) => {
+    setSelecctedPath(chosenPath)
+    setFolderId(folderID)
   };
 
   return (
     <>
-      <DirectorySelector directoryData={directoryData} onSelect={handleSelectPath} />
+      <DirectorySelector directoryData={directoryData} onSelect={handleSelectPath} checkedSecrets={checkedSecrets} />
       <div className="mt-8 flex items-center">
-        <Button className={twMerge(`mr-4 ${!selectedPath ? "bg-gray-500 border-none text-gray-900 hover:bg-gray-500" : ""}`)} type="submit" disabled={!selectedPath} onClick={() => onMoveSecrets(folderId, checkedSecrets)}>
+        <Button className={twMerge("mr-4",  !selectedPath &&  "bg-gray-500 border-none text-gray-900 hover:bg-gray-500")} type="submit" disabled={!selectedPath} onClick={() => onMoveSecrets(folderId, checkedSecrets)}>
           Move secrets
         </Button>
         <ModalClose asChild>

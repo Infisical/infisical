@@ -12,6 +12,7 @@ import {
   ModalContent
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
+import { stringToUnderscoreSlug } from "@app/helpers/convertStringToSlug";
 import { useCreateWsTag } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -53,8 +54,9 @@ export const AddSecretTagModal = ({
             await createWsTag.mutateAsync({
                 workspaceID: currentWorkspace?._id,
                 tagName: name,
-                tagSlug: name.replace(/\s+/g, " ").replace(" ", "_"),
-                tagColor: ""
+                tagSlug: stringToUnderscoreSlug(name),
+                tagColor: "",
+                checkedSecrets: []
             });
 
             handlePopUpClose("CreateSecretTag");

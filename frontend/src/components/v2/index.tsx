@@ -1,6 +1,7 @@
 export * from "./Button";
 export * from "./Card";
 export * from "./Checkbox";
+export * from "./ConfirmActionModal";
 export * from "./DatePicker";
 export * from "./DeleteActionModal";
 export * from "./Drawer";
