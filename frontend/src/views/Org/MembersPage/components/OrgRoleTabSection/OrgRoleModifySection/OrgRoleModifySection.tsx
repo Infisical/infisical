@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { faArrowLeft, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowLeft,
+  faCog,
+  faContactCard,
+  faMagnifyingGlass,
+  faMoneyBill,
+  faSignIn,
+  faUserCog,
+  faUsers
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -10,25 +19,64 @@ import { useOrganization } from "@app/context";
 import { useCreateRole, useUpdateRole } from "@app/hooks/api";
 import { TRole } from "@app/hooks/api/roles/types";
 
-import { BillingPermission } from "./BillingPermission";
-import { IncidentContactPermission } from "./IncidentContactPermission";
-import { MemberPermission } from "./MemberPermission";
 import {
   formRolePermission2API,
   formSchema,
   rolePermission2Form,
   TFormSchema
 } from "./OrgRoleModifySection.utils";
-import { RolePermission } from "./RolePermission";
-import { SecretScannigPermission } from "./SecretScanningPermission";
-import { SettingsPermission } from "./SettingsPermission";
-import { SsoPermission } from "./SsoPermission";
+import { SimpleLevelPermissionOption } from "./SimpleLevelPermissionOptions";
 import { WorkspacePermission } from "./WorkspacePermission";
 
 type Props = {
   role?: TRole<undefined>;
   onGoBack: VoidFunction;
 };
+
+const SIMPLE_PERMISSION_OPTIONS = [
+  {
+    title: "Members",
+    subtitle: "Project member management control",
+    icon: faUsers,
+    formName: "member"
+  },
+  {
+    title: "Billing",
+    subtitle: "Billing management control",
+    icon: faMoneyBill,
+    formName: "billing"
+  },
+  {
+    title: "Role",
+    subtitle: "Org role management control",
+    icon: faUserCog,
+    formName: "role"
+  },
+  {
+    title: "Incident Contacts",
+    subtitle: "Incident contacts management control",
+    icon: faContactCard,
+    formName: "incident-contact"
+  },
+  {
+    title: "Settings",
+    subtitle: "Settings management control",
+    icon: faCog,
+    formName: "settings"
+  },
+  {
+    title: "Secret Scanning",
+    subtitle: "Secret scanning management control",
+    icon: faMagnifyingGlass,
+    formName: "secret-scanning"
+  },
+  {
+    title: "SSO",
+    subtitle: "SSO management control",
+    icon: faSignIn,
+    formName: "sso"
+  }
+] as const;
 
 export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
   const [searchPermission, setSearchPermission] = useState("");
@@ -148,50 +196,26 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
               />
             </div>
           </div>
-          <div className="flex flex-col space-y-4">
+          <div className="">
             <WorkspacePermission
               isNonEditable={isNonEditable}
               control={control}
               setValue={setValue}
             />
           </div>
-          <div className="flex flex-col space-y-4">
-            <MemberPermission isNonEditable={isNonEditable} control={control} setValue={setValue} />
-          </div>
-          <div className="flex flex-col space-y-4">
-            <BillingPermission
-              isNonEditable={isNonEditable}
-              control={control}
-              setValue={setValue}
-            />
-          </div>
-          <div className="flex flex-col space-y-4">
-            <RolePermission isNonEditable={isNonEditable} control={control} setValue={setValue} />
-          </div>
-          <div className="flex flex-col space-y-4">
-            <IncidentContactPermission
-              isNonEditable={isNonEditable}
-              control={control}
-              setValue={setValue}
-            />
-          </div>
-          <div className="flex flex-col space-y-4">
-            <SettingsPermission
-              isNonEditable={isNonEditable}
-              control={control}
-              setValue={setValue}
-            />
-          </div>
-          <div className="flex flex-col space-y-4">
-            <SecretScannigPermission
-              isNonEditable={isNonEditable}
-              control={control}
-              setValue={setValue}
-            />
-          </div>
-          <div className="flex flex-col space-y-4">
-            <SsoPermission isNonEditable={isNonEditable} control={control} setValue={setValue} />
-          </div>
+          {SIMPLE_PERMISSION_OPTIONS.map(({ title, subtitle, icon, formName }) => (
+            <div key={`permission-${title}`}>
+              <SimpleLevelPermissionOption
+                isNonEditable={isNonEditable}
+                control={control}
+                setValue={setValue}
+                icon={icon}
+                title={title}
+                subtitle={subtitle}
+                formName={formName}
+              />
+            </div>
+          ))}
         </div>
         <div className="flex items-center space-x-4 mt-12">
           <Button

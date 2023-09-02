@@ -24,7 +24,7 @@ enum Permission {
 }
 
 const PERMISSIONS = [
-  { action: "read", label: "Read" },
+  { action: "read", label: "View" },
   { action: "create", label: "Create" }
 ] as const;
 
@@ -38,12 +38,12 @@ export const WorkspacePermission = ({ isNonEditable, setValue, control }: Props)
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
     const totalActions = PERMISSIONS.length;
-    const score = actions.map((key) => (rule[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
+    const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (isCustom) return Permission.Custom;
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
-    if (score === 1 && rule.read) return Permission.ReadOnly;
+    if (score === 1 && rule?.read) return Permission.ReadOnly;
 
     return Permission.Custom;
   }, [rule, isCustom]);

@@ -658,7 +658,7 @@ export const DashboardPage = withProjectPermission(
     }, [selectedEnv?.slug, (popUp?.deleteFolder?.data as TDeleteFolderForm)?.id]);
 
     // SECRET IMPORT SECTION
-    const handleSecretImportCreate = async (env: string, secretPath: string) => {
+    const handleSecretImportCreate = async (env: string, secPath: string) => {
       try {
         await createSecretImport({
           workspaceId,
@@ -666,7 +666,7 @@ export const DashboardPage = withProjectPermission(
           folderId,
           secretImport: {
             environment: env,
-            secretPath
+            secretPath: secPath
           }
         });
         createNotification({

@@ -260,7 +260,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
             />
           </div>
           {SINGLE_PERMISSION_LIST.map(({ title, subtitle, icon, formName }) => (
-            <div className="flex flex-col space-y-4" key={`permission-${title}`}>
+            <div key={`permission-${title}`}>
               <SingleProjectPermission
                 isNonEditable={isNonEditable}
                 control={control}

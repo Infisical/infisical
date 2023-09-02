@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Control, Controller, UseFormSetValue, useWatch } from "react-hook-form";
-import { faContactCard } from "@fortawesome/free-solid-svg-icons";
+import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
@@ -11,9 +11,13 @@ import { useToggle } from "@app/hooks";
 import { TFormSchema } from "./OrgRoleModifySection.utils";
 
 type Props = {
+  formName: keyof Omit<TFormSchema["permissions"], "workspace">;
   isNonEditable?: boolean;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;
+  title: string;
+  subtitle: string;
+  icon: IconProp;
 };
 
 enum Permission {
@@ -24,28 +28,36 @@ enum Permission {
 }
 
 const PERMISSIONS = [
-  { action: "read", label: "Read" },
+  { action: "read", label: "View" },
   { action: "create", label: "Create" },
-  { action: "edit", label: "Update" },
+  { action: "edit", label: "Modify" },
   { action: "delete", label: "Remove" }
 ] as const;
 
-export const IncidentContactPermission = ({ isNonEditable, setValue, control }: Props) => {
+export const SimpleLevelPermissionOption = ({
+  isNonEditable,
+  setValue,
+  control,
+  formName,
+  subtitle,
+  title,
+  icon
+}: Props) => {
   const rule = useWatch({
     control,
-    name: "permissions.incident-contact"
+    name: `permissions.${formName}`
   });
   const [isCustom, setIsCustom] = useToggle();
 
   const selectedPermissionCategory = useMemo(() => {
     const actions = Object.keys(rule || {}) as Array<keyof typeof rule>;
     const totalActions = PERMISSIONS.length;
-    const score = actions.map((key) => (rule[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
+    const score = actions.map((key) => (rule?.[key] ? 1 : 0)).reduce((a, b) => a + b, 0 as number);
 
     if (isCustom) return Permission.Custom;
     if (score === 0) return Permission.NoAccess;
     if (score === totalActions) return Permission.FullAccess;
-    if (score === 1 && rule.read) return Permission.ReadOnly;
+    if (score === 1 && rule?.read) return Permission.ReadOnly;
 
     return Permission.Custom;
   }, [rule, isCustom]);
@@ -62,28 +74,28 @@ export const IncidentContactPermission = ({ isNonEditable, setValue, control }: 
     switch (val) {
       case Permission.NoAccess:
         setValue(
-          "permissions.incident-contact",
+          `permissions.${formName}`,
           { read: false, edit: false, create: false, delete: false },
           { shouldDirty: true }
         );
         break;
       case Permission.FullAccess:
         setValue(
-          "permissions.incident-contact",
+          `permissions.${formName}`,
           { read: true, edit: true, create: true, delete: true },
           { shouldDirty: true }
         );
         break;
       case Permission.ReadOnly:
         setValue(
-          "permissions.incident-contact",
+          `permissions.${formName}`,
           { read: true, edit: false, create: false, delete: false },
           { shouldDirty: true }
         );
         break;
       default:
         setValue(
-          "permissions.incident-contact",
+          `permissions.${formName}`,
           { read: false, edit: false, create: false, delete: false },
           { shouldDirty: true }
         );
@@ -100,11 +112,11 @@ export const IncidentContactPermission = ({ isNonEditable, setValue, control }: 
     >
       <div className="flex items-center space-x-4">
         <div>
-          <FontAwesomeIcon icon={faContactCard} className="text-4xl" />
+          <FontAwesomeIcon icon={icon} className="text-4xl" />
         </div>
         <div className="flex-grow flex flex-col">
-          <div className="font-medium mb-1 text-lg">Incident Contact</div>
-          <div className="text-xs font-light">Incident Contacts management control</div>
+          <div className="font-medium mb-1 text-lg">{title}</div>
+          <div className="text-xs font-light">{subtitle}</div>
         </div>
         <div>
           <Select
@@ -128,14 +140,14 @@ export const IncidentContactPermission = ({ isNonEditable, setValue, control }: 
         {isCustom &&
           PERMISSIONS.map(({ action, label }) => (
             <Controller
-              name={`permissions.incident-contact.${action}`}
-              key={`permissions.incident-contact.${action}`}
+              name={`permissions.${formName}.${action}`}
+              key={`permissions.${formName}.${action}`}
               control={control}
               render={({ field }) => (
                 <Checkbox
                   isChecked={field.value}
                   onCheckedChange={field.onChange}
-                  id={`permissions.incident-contact.${action}`}
+                  id={`permissions.${formName}.${action}`}
                   isDisabled={isNonEditable}
                 >
                   {label}

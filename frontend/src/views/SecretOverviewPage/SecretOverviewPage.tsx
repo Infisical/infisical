@@ -42,7 +42,6 @@ import {
   useDeleteSecretV3,
   useGetFoldersByEnv,
   useGetProjectSecretsAllEnv,
-  useGetUserWsEnvironments,
   useGetUserWsKey,
   useUpdateSecretV3
 } from "@app/hooks/api";

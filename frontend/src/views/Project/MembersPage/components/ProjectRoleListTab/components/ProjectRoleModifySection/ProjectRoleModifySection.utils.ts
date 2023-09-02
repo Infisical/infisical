@@ -94,7 +94,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
   permissions.forEach((permission) => {
     if (["secrets", "folders", "secret-imports"].includes(permission.subject)) {
-      multiEnvApi2Form(formVal[permission.subject], permission);
+      multiEnvApi2Form(
+        formVal[permission.subject] as TFormSchema["permissions"]["secrets"],
+        permission
+      );
     } else {
       // everything else follows same pattern
       // formVal[settings][read | write] = true
@@ -135,7 +138,7 @@ const multiEnvForm2Api = (
           // if not full access for an action
           if (!formVal?.all?.[action] && action !== "secretPath" && formVal?.[slug]?.[action]) {
             const conditions: Record<string, unknown> = { environment: slug };
-            if (formVal[slug]?.secretPath) conditions.secretPath = formVal[slug].secretPath;
+            if (formVal[slug]?.secretPath) conditions.secretPath = formVal?.[slug]?.secretPath;
 
             permissions.push({ action, subject, conditions });
           }

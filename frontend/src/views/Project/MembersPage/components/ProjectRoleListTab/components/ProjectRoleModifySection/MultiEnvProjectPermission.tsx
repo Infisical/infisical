@@ -135,9 +135,9 @@ export const MultiEnvProjectPermission = ({
               <Tr>
                 <Th />
                 <Th className="min-w-[8rem]">Secret Path</Th>
-                <Th className="text-center">Read</Th>
+                <Th className="text-center">View</Th>
                 <Th className="text-center">Create</Th>
-                <Th className="text-center">Edit</Th>
+                <Th className="text-center">Modify</Th>
                 <Th className="text-center">Delete</Th>
               </Tr>
             </THead>

@@ -38,9 +38,9 @@ enum Permission {
 }
 
 const PERMISSIONS = [
-  { action: "read", label: "Read" },
+  { action: "read", label: "View" },
   { action: "create", label: "Create" },
-  { action: "edit", label: "Update" },
+  { action: "edit", label: "Modify" },
   { action: "delete", label: "Remove" }
 ] as const;
 
