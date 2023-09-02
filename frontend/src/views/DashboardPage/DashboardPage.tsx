@@ -166,7 +166,7 @@ export const DashboardPage = () => {
   const [selectedTagIds, setSelectedTagIds] = useState<Record<string, boolean> | null>(null)
   const [hoveredTag, setHoveredTag] = useState<WsTag | null>(null);
   const [poverKey, setPopoverKey] = useState<number>(0);
-  
+
 
   const folderId = router.query.folderId as string;
   const isRollbackMode = Boolean(snapshotId);
@@ -560,7 +560,7 @@ export const DashboardPage = () => {
   const onCreateWsTag = useCallback(
     async (tagName: string, selectedSecrets: { _id: string, isChecked: string | boolean }[], tagColor: string) => {
       try {
-       await createWsTag({
+        await createWsTag({
           workspaceID: workspaceId,
           tagName,
           tagSlug: stringToUnderscoreSlug(tagName),
@@ -985,12 +985,10 @@ export const DashboardPage = () => {
               <Popover>
                 <PopoverTrigger asChild={false}>
                   <div className="w-full group-hover:w-full data-[state=open]:w-full">
-                    <Tooltip content="Add tags">
-                      <div className="flex justify-center items-center px-[15px] py-1.5 ">
-                        <FontAwesomeIcon icon={faTags} className="mr-2.5" />
-                        Add tag
-                      </div>
-                    </Tooltip>
+                    <div className="flex justify-center items-center px-[15px] py-1.5 ">
+                      <FontAwesomeIcon icon={faTags} className="mr-2.5" />
+                      Add tag
+                    </div>
                   </div>
                 </PopoverTrigger>
                 <AddTagPopoverContent
