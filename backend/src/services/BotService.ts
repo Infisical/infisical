@@ -5,7 +5,7 @@ import {
   getIsWorkspaceE2EEHelper,
   getKey,
   getSecretsBotHelper,
-  getSecretsCommentBotHelper,
+  getSecretsCommentBotHelper
 } from "../helpers/bot";
 
 /**
@@ -27,13 +27,9 @@ class BotService {
    * @param {Types.ObjectId} obj.workspaceId - id of workspace to get workspace key for
    * @returns
    */
-  static async getWorkspaceKeyWithBot({
-    workspaceId,
-  }: {
-    workspaceId: Types.ObjectId;
-  }) {
+  static async getWorkspaceKeyWithBot({ workspaceId }: { workspaceId: Types.ObjectId }) {
     return await getKey({
-      workspaceId,
+      workspaceId
     });
   }
 
@@ -48,7 +44,7 @@ class BotService {
   static async getSecrets({
     workspaceId,
     environment,
-    secretPath,
+    secretPath
   }: {
     workspaceId: Types.ObjectId;
     environment: string;
@@ -57,7 +53,7 @@ class BotService {
     return await getSecretsBotHelper({
       workspaceId,
       environment,
-      secretPath,
+      secretPath
     });
   }
 
@@ -70,14 +66,14 @@ class BotService {
    */
   static async encryptSymmetric({
     workspaceId,
-    plaintext,
+    plaintext
   }: {
     workspaceId: Types.ObjectId;
     plaintext: string;
   }) {
     return await encryptSymmetricHelper({
       workspaceId,
-      plaintext,
+      plaintext
     });
   }
 
@@ -94,7 +90,7 @@ class BotService {
     workspaceId,
     ciphertext,
     iv,
-    tag,
+    tag
   }: {
     workspaceId: Types.ObjectId;
     ciphertext: string;
@@ -105,7 +101,7 @@ class BotService {
       workspaceId,
       ciphertext,
       iv,
-      tag,
+      tag
     });
   }
 

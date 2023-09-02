@@ -1,16 +1,14 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 
-import {
-  useSaveIntegrationAccessToken
-} from "@app/hooks/api";
+import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
 
 export default function DigitalOceanAppPlatformCreateIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useSaveIntegrationAccessToken();
-  
+
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -36,7 +34,9 @@ export default function DigitalOceanAppPlatformCreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/digital-ocean-app-platform/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(
+        `/integrations/digital-ocean-app-platform/create?integrationAuthId=${integrationAuth._id}`
+      );
     } catch (err) {
       console.error(err);
     }

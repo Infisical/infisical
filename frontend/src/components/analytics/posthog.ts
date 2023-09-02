@@ -6,7 +6,7 @@ import { ENV, POSTHOG_API_KEY, POSTHOG_HOST } from "../utilities/config";
 
 export const initPostHog = () => {
   // @ts-ignore
-  console.log("Hi there 👋")
+  console.log("Hi there 👋");
   try {
     if (typeof window !== "undefined") {
       // @ts-ignore
@@ -19,7 +19,7 @@ export const initPostHog = () => {
 
     return posthog;
   } catch (e) {
-    console.log("posthog err", e)
+    console.log("posthog err", e);
   }
 
   return undefined;

@@ -1,7 +1,7 @@
 interface AddServiceAccountPermissionDto {
-    name: string;
-    workspaceId?: string;
-    environment?: string;
+  name: string;
+  workspaceId?: string;
+  environment?: string;
 }
 
 export default AddServiceAccountPermissionDto;

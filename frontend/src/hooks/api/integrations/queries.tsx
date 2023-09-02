@@ -58,9 +58,11 @@ export const useCreateIntegration = () => {
       region: string | null;
       metadata?: {
         secretSuffix?: string;
-      }
+      };
     }) => {
-      const { data: { integration } } = await apiRequest.post("/api/v1/integration", {
+      const {
+        data: { integration }
+      } = await apiRequest.post("/api/v1/integration", {
         integrationAuthId,
         isActive,
         app,

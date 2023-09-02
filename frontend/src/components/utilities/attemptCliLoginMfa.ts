@@ -1,7 +1,7 @@
 /* eslint-disable prefer-destructuring */
 import jsrp from "jsrp";
 
-import { login1 , verifyMfaToken } from "@app/hooks/api/auth/queries";
+import { login1, verifyMfaToken } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchMyOrganizationProjects } from "@app/hooks/api/users/queries";
 // import verifyMfaToken from "@app/pages/api/auth/verifyMfaToken";
@@ -14,12 +14,11 @@ import SecurityClient from "./SecurityClient";
 const client = new jsrp.client();
 
 interface IsMfaLoginSuccessful {
-    success: boolean;
-    loginResponse:{ 
-        privateKey: string;
-        JTWToken: string;
-    }
-    
+  success: boolean;
+  loginResponse: {
+    privateKey: string;
+    JTWToken: string;
+  };
 }
 
 /**
@@ -30,91 +29,94 @@ interface IsMfaLoginSuccessful {
  * @param {String} obj.mfaToken - MFA code/token
  */
 const attemptLoginMfa = async ({
-    email,
-    password,
-    providerAuthToken,
-    mfaToken
+  email,
+  password,
+  providerAuthToken,
+  mfaToken
 }: {
-    email: string;
-    password: string;
-    providerAuthToken?: string,
-    mfaToken: string;
+  email: string;
+  password: string;
+  providerAuthToken?: string;
+  mfaToken: string;
 }): Promise<IsMfaLoginSuccessful> => {
-    return new Promise((resolve, reject) => {
-        client.init({
-            username: email,
-            password
-        }, async () => {
-            try {
-                const clientPublicKey = client.getPublicKey();
-                const { salt } = await login1({
-                    email,
-                    clientPublicKey,
-                    providerAuthToken,
-                });
+  return new Promise((resolve, reject) => {
+    client.init(
+      {
+        username: email,
+        password
+      },
+      async () => {
+        try {
+          const clientPublicKey = client.getPublicKey();
+          const { salt } = await login1({
+            email,
+            clientPublicKey,
+            providerAuthToken
+          });
 
-                const {
-                    encryptionVersion,
-                    protectedKey,
-                    protectedKeyIV,
-                    protectedKeyTag,
-                    token,
-                    publicKey,
-                    encryptedPrivateKey,
-                    iv,
-                    tag
-                } = await verifyMfaToken({
-                    email,
-                    mfaCode: mfaToken
-                });
+          const {
+            encryptionVersion,
+            protectedKey,
+            protectedKeyIV,
+            protectedKeyTag,
+            token,
+            publicKey,
+            encryptedPrivateKey,
+            iv,
+            tag
+          } = await verifyMfaToken({
+            email,
+            mfaCode: mfaToken
+          });
 
-                // unset temporary (MFA) JWT token and set JWT token
-                SecurityClient.setMfaToken("");
-                SecurityClient.setToken(token);
-                SecurityClient.setProviderAuthToken("");
+          // unset temporary (MFA) JWT token and set JWT token
+          SecurityClient.setMfaToken("");
+          SecurityClient.setToken(token);
+          SecurityClient.setProviderAuthToken("");
 
-                const privateKey = await KeyService.decryptPrivateKey({
-                    encryptionVersion,
-                    encryptedPrivateKey,
-                    iv,
-                    tag,
-                    password,
-                    salt,
-                    protectedKey,
-                    protectedKeyIV,
-                    protectedKeyTag
-                });
+          const privateKey = await KeyService.decryptPrivateKey({
+            encryptionVersion,
+            encryptedPrivateKey,
+            iv,
+            tag,
+            password,
+            salt,
+            protectedKey,
+            protectedKeyIV,
+            protectedKeyTag
+          });
 
-                saveTokenToLocalStorage({
-                    publicKey,
-                    encryptedPrivateKey,
-                    iv,
-                    tag,
-                    privateKey
-                });
+          saveTokenToLocalStorage({
+            publicKey,
+            encryptedPrivateKey,
+            iv,
+            tag,
+            privateKey
+          });
 
-                // TODO: in the future - move this logic elsewhere
-                // because this function is about logging the user in
-                // and not initializing the login details
-                const userOrgs = await fetchOrganizations();
-                const orgId = userOrgs[0]._id;
-                localStorage.setItem("orgData.id", orgId);
+          // TODO: in the future - move this logic elsewhere
+          // because this function is about logging the user in
+          // and not initializing the login details
+          const userOrgs = await fetchOrganizations();
+          const orgId = userOrgs[0]._id;
+          localStorage.setItem("orgData.id", orgId);
 
-                const orgUserProjects = await fetchMyOrganizationProjects(orgId);
-                localStorage.setItem("projectData.id", orgUserProjects[0]._id);
+          const orgUserProjects = await fetchMyOrganizationProjects(orgId);
+          localStorage.setItem("projectData.id", orgUserProjects[0]._id);
 
-                resolve({
-                    success: true,
-                    loginResponse:{
-                        privateKey,
-                        JTWToken: token
-                    }
-                });
-            } catch (err) {
-                reject(err);
+          resolve({
+            success: true,
+            loginResponse: {
+              privateKey,
+              JTWToken: token
             }
-        });
-    });
-}
+          });
+        } catch (err) {
+          reject(err);
+        }
+      }
+    );
+  });
+};
 
 export default attemptLoginMfa;

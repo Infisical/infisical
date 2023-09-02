@@ -19,7 +19,7 @@ export interface CreateSecretParams {
   secretPath: string;
   metadata?: {
     source?: string;
-  }
+  };
 }
 
 export interface GetSecretsParams {

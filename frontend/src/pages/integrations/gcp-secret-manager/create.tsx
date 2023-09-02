@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
-import {
-  useCreateIntegration
-} from "@app/hooks/api";
+import { useCreateIntegration } from "@app/hooks/api";
 
 import {
   Button,
@@ -60,11 +58,14 @@ export default function GCPSecretManagerCreateIntegrationPage() {
       setIsLoading(true);
 
       if (!integrationAuth?._id) return;
-      
+
       await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
-        app: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId)?.name ?? null,
+        app:
+          integrationAuthApps?.find(
+            (integrationAuthApp) => integrationAuthApp.appId === targetAppId
+          )?.name ?? null,
         appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: null,

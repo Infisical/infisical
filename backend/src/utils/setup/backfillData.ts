@@ -3,13 +3,7 @@ import crypto from "crypto";
 import { Types } from "mongoose";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../crypto";
 import { EESecretService } from "../../ee/services";
-import {
-  IPType,
-  ISecretVersion,
-  SecretSnapshot,
-  SecretVersion,
-  TrustedIP
-} from "../../ee/models";
+import { IPType, ISecretVersion, SecretSnapshot, SecretVersion, TrustedIP } from "../../ee/models";
 import {
   AuthMethod,
   BackupPrivateKey,
@@ -582,7 +576,7 @@ export const backfillTrustedIps = async () => {
         filter: {
           workspace: Types.ObjectId;
           ipAddress: string;
-        },
+        };
         update: {
           workspace: Types.ObjectId;
           ipAddress: string;
@@ -590,9 +584,9 @@ export const backfillTrustedIps = async () => {
           prefix: number;
           isActive: boolean;
           comment: string;
-        },
+        };
         upsert: boolean;
-      }
+      };
     }[] = [];
 
     workspaceIdsToAddTrustedIp.forEach((workspaceId) => {
@@ -638,7 +632,7 @@ export const backfillTrustedIps = async () => {
     await TrustedIP.bulkWrite(operations);
     console.log("Backfill: Trusted IPs complete");
   }
-}
+};
 
 export const backfillUserAuthMethods = async () => {
   await User.updateMany(
@@ -654,7 +648,6 @@ export const backfillUserAuthMethods = async () => {
       authMethods: [AuthMethod.EMAIL]
     }
   );
-
 
   const documentsToUpdate = await User.find({
     authProvider: { $exists: true },
@@ -676,4 +669,4 @@ export const backfillUserAuthMethods = async () => {
       }
     );
   }
-}
+};

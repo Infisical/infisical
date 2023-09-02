@@ -17,7 +17,7 @@ export const sendMail = async ({
   template,
   subjectLine,
   recipients,
-  substitutions,
+  substitutions
 }: {
   template: string;
   subjectLine: string;
@@ -25,10 +25,7 @@ export const sendMail = async ({
   substitutions: any;
 }) => {
   if (await getSmtpConfigured()) {
-    const html = fs.readFileSync(
-      path.resolve(__dirname, "../templates/" + template),
-      "utf8"
-    );
+    const html = fs.readFileSync(path.resolve(__dirname, "../templates/" + template), "utf8");
     const temp = handlebars.compile(html);
     const htmlToSend = temp(substitutions);
 
@@ -36,7 +33,7 @@ export const sendMail = async ({
       from: `"${await getSmtpFromName()}" <${await getSmtpFromAddress()}>`,
       to: recipients.join(", "),
       subject: subjectLine,
-      html: htmlToSend,
+      html: htmlToSend
     });
   }
 };

@@ -42,5 +42,5 @@ export interface BatchSecret {
   secretCommentIV: string;
   secretCommentTag: string;
   tags: string[];
-  folder: string
+  folder: string;
 }

@@ -5,24 +5,20 @@ import {
   requireIntegrationAuth,
   requireIntegrationAuthorizationAuth,
   requireWorkspaceAuth,
-  validateRequest,
+  validateRequest
 } from "../../middleware";
-import {
-  ADMIN,
-  AuthMode,
-  MEMBER
-} from "../../variables";
+import { ADMIN, AuthMode, MEMBER } from "../../variables";
 import { body, param } from "express-validator";
 import { integrationController } from "../../controllers/v1";
 
 router.post(
   "/",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
   requireIntegrationAuthorizationAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    location: "body",
+    location: "body"
   }),
   body("integrationAuthId").exists().isString().trim(),
   body("app").trim(),
@@ -49,7 +45,7 @@ router.patch(
     acceptedAuthModes: [AuthMode.JWT]
   }),
   requireIntegrationAuth({
-    acceptedRoles: [ADMIN, MEMBER],
+    acceptedRoles: [ADMIN, MEMBER]
   }),
   param("integrationId").exists().trim(),
   body("isActive").exists().isBoolean(),
@@ -69,7 +65,7 @@ router.delete(
     acceptedAuthModes: [AuthMode.JWT]
   }),
   requireIntegrationAuth({
-    acceptedRoles: [ADMIN, MEMBER],
+    acceptedRoles: [ADMIN, MEMBER]
   }),
   param("integrationId").exists().trim(),
   validateRequest,
@@ -83,7 +79,7 @@ router.post(
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "body",
+    locationWorkspaceId: "body"
   }),
   body("environment").isString().exists().trim(),
   body("workspaceId").exists().trim(),

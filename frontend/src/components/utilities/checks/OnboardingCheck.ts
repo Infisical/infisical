@@ -1,4 +1,4 @@
-import { fetchOrgUsers,fetchUserAction  } from "@app/hooks/api/users/queries";
+import { fetchOrgUsers, fetchUserAction } from "@app/hooks/api/users/queries";
 
 interface OnboardingCheckProps {
   setTotalOnboardingActionsDone?: (value: number) => void;
@@ -19,9 +19,7 @@ const onboardingCheck = async ({
   setUsersInOrg
 }: OnboardingCheckProps) => {
   let countActions = 0;
-  const userActionSlack = await fetchUserAction(
-    "slack_cta_clicked"
-  );
+  const userActionSlack = await fetchUserAction("slack_cta_clicked");
 
   if (userActionSlack) {
     countActions += 1;
@@ -43,7 +41,7 @@ const onboardingCheck = async ({
 
   const orgId = localStorage.getItem("orgData.id");
   const orgUsers = await fetchOrgUsers(orgId || "");
-  
+
   if (orgUsers.length > 1) {
     countActions += 1;
   }

@@ -1,23 +1,23 @@
 const MemoryLicenseServerKeyTokenStorage = () => {
-    let authToken: string;
-  
-    return {
-      setToken: (token: string) => {
-        authToken = token;
-      },
-      getToken: () => authToken,
-    };
+  let authToken: string;
+
+  return {
+    setToken: (token: string) => {
+      authToken = token;
+    },
+    getToken: () => authToken
+  };
 };
 
 const MemoryLicenseKeyTokenStorage = () => {
-    let authToken: string;
-  
-    return {
-      setToken: (token: string) => {
-        authToken = token;
-      },
-      getToken: () => authToken,
-    };
+  let authToken: string;
+
+  return {
+    setToken: (token: string) => {
+      authToken = token;
+    },
+    getToken: () => authToken
+  };
 };
 
 const licenseServerTokenStorage = MemoryLicenseServerKeyTokenStorage();

@@ -5,7 +5,8 @@ import { requireMfaAuth, validateRequest } from "../../middleware";
 import { authController } from "../../controllers/v2";
 import { authLimiter } from "../../helpers/rateLimiter";
 
-router.post( // TODO: deprecate (moved to api/v3/auth/login1)
+router.post(
+  // TODO: deprecate (moved to api/v3/auth/login1)
   "/login1",
   authLimiter,
   body("email").isString().trim().notEmpty().toLowerCase(),
@@ -14,7 +15,8 @@ router.post( // TODO: deprecate (moved to api/v3/auth/login1)
   authController.login1
 );
 
-router.post( // TODO: deprecate (moved to api/v3/auth/login1)
+router.post(
+  // TODO: deprecate (moved to api/v3/auth/login1)
   "/login2",
   authLimiter,
   body("email").isString().trim().notEmpty().toLowerCase(),

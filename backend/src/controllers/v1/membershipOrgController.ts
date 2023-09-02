@@ -111,7 +111,7 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
   }
 
   const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
-  
+
   const ssoConfig = await SSOConfig.findOne({
     organization: new Types.ObjectId(organizationId)
   });
@@ -119,9 +119,8 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
   if (ssoConfig && ssoConfig.isActive) {
     // case: SAML SSO is enabled for the organization
     return res.status(400).send({
-      message:
-        "Failed to invite member due to SAML SSO configured for organization"
-    }); 
+      message: "Failed to invite member due to SAML SSO configured for organization"
+    });
   }
 
   if (plan.memberLimit !== null) {

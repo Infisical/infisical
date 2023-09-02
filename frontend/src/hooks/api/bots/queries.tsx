@@ -12,7 +12,9 @@ export const useGetWorkspaceBot = (workspaceId: string) =>
   useQuery({
     queryKey: queryKeys.getBot(workspaceId),
     queryFn: async () => {
-      const { data: { bot } } = await apiRequest.get<{ bot: TBot }>(`/api/v1/bot/${workspaceId}`);
+      const {
+        data: { bot }
+      } = await apiRequest.get<{ bot: TBot }>(`/api/v1/bot/${workspaceId}`);
       return bot;
     },
     enabled: Boolean(workspaceId)

@@ -1,7 +1,7 @@
 import { exec } from "child_process";
 import { mkdir, readFile, rm, writeFile } from "fs";
 import { tmpdir } from "os";
-import { join } from "path"
+import { join } from "path";
 import { SecretMatch } from "./types";
 import { Octokit } from "@octokit/rest";
 
@@ -22,7 +22,7 @@ export async function scanContentAndGetFindings(textContent: string): Promise<Se
 
 export function createTempFolder(): Promise<string> {
   return new Promise((resolve, reject) => {
-    const tempDir = tmpdir()
+    const tempDir = tmpdir();
     const tempFolderName = Math.random().toString(36).substring(2);
     const tempFolderPath = join(tempDir, tempFolderName);
 
@@ -106,7 +106,7 @@ export async function getCommits(octokit: Octokit, owner: string, repo: string) 
       owner,
       repo,
       per_page: 100,
-      page,
+      page
     });
 
     commits = commits.concat(response.data);
@@ -120,6 +120,6 @@ export async function getFilesFromCommit(octokit: any, owner: string, repo: stri
   const response = await octokit.repos.getCommit({
     owner,
     repo,
-    ref: sha,
+    ref: sha
   });
 }

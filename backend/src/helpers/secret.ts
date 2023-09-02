@@ -10,7 +10,7 @@ import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
   SECRET_PERSONAL,
-  SECRET_SHARED,
+  SECRET_SHARED
 } from "../variables";
 
 interface V1PushSecret {
@@ -64,7 +64,7 @@ export const v1PushSecrets = async ({
   userId,
   workspaceId,
   environment,
-  secrets,
+  secrets
 }: {
   userId: string;
   workspaceId: string;
@@ -76,13 +76,13 @@ export const v1PushSecrets = async ({
   const oldSecrets = await getSecrets({
     userId,
     workspaceId,
-    environment,
+    environment
   });
 
   const oldSecretsObj: any = oldSecrets.reduce(
     (accumulator, s: any) => ({
       ...accumulator,
-      [`${s.type}-${s.secretKeyHash}`]: s,
+      [`${s.type}-${s.secretKeyHash}`]: s
     }),
     {}
   );
@@ -97,21 +97,19 @@ export const v1PushSecrets = async ({
     .map((s) => s._id);
   if (toDelete.length > 0) {
     await Secret.deleteMany({
-      _id: { $in: toDelete },
+      _id: { $in: toDelete }
     });
 
     await EESecretService.markDeletedSecretVersions({
-      secretIds: toDelete,
+      secretIds: toDelete
     });
   }
 
   const toUpdate = oldSecrets.filter((s) => {
     if (`${s.type}-${s.secretKeyHash}` in newSecretsObj) {
       if (
-        s.secretValueHash !==
-        newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashValue ||
-        s.secretCommentHash !==
-        newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashComment
+        s.secretValueHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashValue ||
+        s.secretCommentHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashComment
       ) {
         // case: filter secrets where value or comment changed
         return true;
@@ -135,7 +133,7 @@ export const v1PushSecrets = async ({
       ciphertextComment,
       ivComment,
       tagComment,
-      hashComment,
+      hashComment
     } = newSecretsObj[`${s.type}-${s.secretKeyHash}`];
 
     const update: Update = {
@@ -146,7 +144,7 @@ export const v1PushSecrets = async ({
       secretCommentCiphertext: ciphertextComment,
       secretCommentIV: ivComment,
       secretCommentTag: tagComment,
-      secretCommentHash: hashComment,
+      secretCommentHash: hashComment
     };
 
     if (!s.version) {
@@ -154,7 +152,7 @@ export const v1PushSecrets = async ({
       update.version = 1;
     } else {
       update["$inc"] = {
-        version: 1,
+        version: 1
       };
     }
 
@@ -166,10 +164,10 @@ export const v1PushSecrets = async ({
     return {
       updateOne: {
         filter: {
-          _id: oldSecretsObj[`${s.type}-${s.secretKeyHash}`]._id,
+          _id: oldSecretsObj[`${s.type}-${s.secretKeyHash}`]._id
         },
-        update,
-      },
+        update
+      }
     };
   });
   await Secret.bulkWrite(operations as any);
@@ -195,15 +193,13 @@ export const v1PushSecrets = async ({
         secretValueTag: newSecret.tagValue,
         secretValueHash: newSecret.hashValue,
         algorithm: ALGORITHM_AES_256_GCM,
-        keyEncoding: ENCODING_SCHEME_UTF8,
+        keyEncoding: ENCODING_SCHEME_UTF8
       });
-    }),
+    })
   });
 
   // handle adding new secrets
-  const toAdd = secrets.filter(
-    (s) => !(`${s.type}-${s.hashKey}` in oldSecretsObj)
-  );
+  const toAdd = secrets.filter((s) => !(`${s.type}-${s.hashKey}` in oldSecretsObj));
 
   if (toAdd.length > 0) {
     // add secrets
@@ -228,7 +224,7 @@ export const v1PushSecrets = async ({
             secretCommentTag: s.tagComment,
             secretCommentHash: s.hashComment,
             algorithm: ALGORITHM_AES_256_GCM,
-            keyEncoding: ENCODING_SCHEME_UTF8,
+            keyEncoding: ENCODING_SCHEME_UTF8
           };
 
           if (toAdd[idx].type === "personal") {
@@ -259,7 +255,7 @@ export const v1PushSecrets = async ({
           secretValueTag,
           secretValueHash,
           algorithm,
-          keyEncoding,
+          keyEncoding
         }) =>
           new SecretVersion({
             secret: _id,
@@ -278,16 +274,16 @@ export const v1PushSecrets = async ({
             secretValueTag,
             secretValueHash,
             algorithm,
-            keyEncoding,
+            keyEncoding
           })
-      ),
+      )
     });
   }
 
   // (EE) take a secret snapshot
   await EESecretService.takeSecretSnapshot({
     workspaceId: new Types.ObjectId(workspaceId),
-    environment,
+    environment
   });
 };
 
@@ -310,7 +306,7 @@ export const v2PushSecrets = async ({
   environment,
   secrets,
   channel,
-  ipAddress,
+  ipAddress
 }: {
   userId: string;
   workspaceId: string;
@@ -326,20 +322,20 @@ export const v2PushSecrets = async ({
   const oldSecrets = await getSecrets({
     userId,
     workspaceId,
-    environment,
+    environment
   });
 
   const oldSecretsObj: any = oldSecrets.reduce(
     (accumulator, s: any) => ({
       ...accumulator,
-      [`${s.type}-${s.secretKeyHash}`]: s,
+      [`${s.type}-${s.secretKeyHash}`]: s
     }),
     {}
   );
   const newSecretsObj: any = secrets.reduce(
     (accumulator, s) => ({
       ...accumulator,
-      [`${s.type}-${s.secretKeyHash}`]: s,
+      [`${s.type}-${s.secretKeyHash}`]: s
     }),
     {}
   );
@@ -350,18 +346,18 @@ export const v2PushSecrets = async ({
     .map((s) => s._id);
   if (toDelete.length > 0) {
     await Secret.deleteMany({
-      _id: { $in: toDelete },
+      _id: { $in: toDelete }
     });
 
     await EESecretService.markDeletedSecretVersions({
-      secretIds: toDelete,
+      secretIds: toDelete
     });
 
     const deleteAction = await EELogService.createAction({
       name: ACTION_DELETE_SECRETS,
       userId: new Types.ObjectId(userId),
       workspaceId: new Types.ObjectId(userId),
-      secretIds: toDelete,
+      secretIds: toDelete
     });
 
     deleteAction && actions.push(deleteAction);
@@ -370,10 +366,8 @@ export const v2PushSecrets = async ({
   const toUpdate = oldSecrets.filter((s) => {
     if (`${s.type}-${s.secretKeyHash}` in newSecretsObj) {
       if (
-        s.secretValueHash !==
-        newSecretsObj[`${s.type}-${s.secretKeyHash}`].secretValueHash ||
-        s.secretCommentHash !==
-        newSecretsObj[`${s.type}-${s.secretKeyHash}`].secretCommentHash
+        s.secretValueHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].secretValueHash ||
+        s.secretCommentHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].secretCommentHash
       ) {
         // case: filter secrets where value or comment changed
         return true;
@@ -398,7 +392,7 @@ export const v2PushSecrets = async ({
         secretCommentCiphertext,
         secretCommentIV,
         secretCommentTag,
-        secretCommentHash,
+        secretCommentHash
       } = newSecretsObj[`${s.type}-${s.secretKeyHash}`];
 
       const update: Update = {
@@ -409,7 +403,7 @@ export const v2PushSecrets = async ({
         secretCommentCiphertext,
         secretCommentIV,
         secretCommentTag,
-        secretCommentHash,
+        secretCommentHash
       };
 
       if (!s.version) {
@@ -417,7 +411,7 @@ export const v2PushSecrets = async ({
         update.version = 1;
       } else {
         update["$inc"] = {
-          version: 1,
+          version: 1
         };
       }
 
@@ -429,10 +423,10 @@ export const v2PushSecrets = async ({
       return {
         updateOne: {
           filter: {
-            _id: oldSecretsObj[`${s.type}-${s.secretKeyHash}`]._id,
+            _id: oldSecretsObj[`${s.type}-${s.secretKeyHash}`]._id
           },
-          update,
-        },
+          update
+        }
       };
     });
     await Secret.bulkWrite(operations as any);
@@ -447,25 +441,23 @@ export const v2PushSecrets = async ({
           workspace: new Types.ObjectId(workspaceId),
           user: s.user,
           environment: s.environment,
-          isDeleted: false,
+          isDeleted: false
         };
-      }),
+      })
     });
 
     const updateAction = await EELogService.createAction({
       name: ACTION_UPDATE_SECRETS,
       userId: new Types.ObjectId(userId),
       workspaceId: new Types.ObjectId(workspaceId),
-      secretIds: toUpdate.map((u) => u._id),
+      secretIds: toUpdate.map((u) => u._id)
     });
 
     updateAction && actions.push(updateAction);
   }
 
   // handle adding new secrets
-  const toAdd = secrets.filter(
-    (s) => !(`${s.type}-${s.secretKeyHash}` in oldSecretsObj)
-  );
+  const toAdd = secrets.filter((s) => !(`${s.type}-${s.secretKeyHash}` in oldSecretsObj));
 
   if (toAdd.length > 0) {
     // add secrets
@@ -478,7 +470,7 @@ export const v2PushSecrets = async ({
         environment,
         algorithm: ALGORITHM_AES_256_GCM,
         keyEncoding: ENCODING_SCHEME_UTF8,
-        ...(toAdd[idx].type === "personal" ? { user: userId } : {}),
+        ...(toAdd[idx].type === "personal" ? { user: userId } : {})
       }))
     );
 
@@ -490,16 +482,16 @@ export const v2PushSecrets = async ({
           secret: secretDocument._id,
           isDeleted: false,
           algorithm: ALGORITHM_AES_256_GCM,
-          keyEncoding: ENCODING_SCHEME_UTF8,
+          keyEncoding: ENCODING_SCHEME_UTF8
         });
-      }),
+      })
     });
 
     const addAction = await EELogService.createAction({
       name: ACTION_ADD_SECRETS,
       userId: new Types.ObjectId(userId),
       workspaceId: new Types.ObjectId(workspaceId),
-      secretIds: newSecrets.map((n) => n._id),
+      secretIds: newSecrets.map((n) => n._id)
     });
     addAction && actions.push(addAction);
   }
@@ -507,7 +499,7 @@ export const v2PushSecrets = async ({
   // (EE) take a secret snapshot
   await EESecretService.takeSecretSnapshot({
     workspaceId: new Types.ObjectId(workspaceId),
-    environment,
+    environment
   });
 
   // (EE) create (audit) log
@@ -517,7 +509,7 @@ export const v2PushSecrets = async ({
       workspaceId: new Types.ObjectId(workspaceId),
       actions,
       channel,
-      ipAddress,
+      ipAddress
     });
   }
 };
@@ -533,7 +525,7 @@ export const v2PushSecrets = async ({
 export const getSecrets = async ({
   userId,
   workspaceId,
-  environment,
+  environment
 }: {
   userId: string;
   workspaceId: string;
@@ -543,7 +535,7 @@ export const getSecrets = async ({
   const sharedSecrets = await Secret.find({
     workspace: workspaceId,
     environment,
-    type: SECRET_SHARED,
+    type: SECRET_SHARED
   });
 
   // get personal workspace secrets
@@ -551,7 +543,7 @@ export const getSecrets = async ({
     workspace: workspaceId,
     environment,
     type: SECRET_PERSONAL,
-    user: userId,
+    user: userId
   });
 
   // concat shared and personal workspace secrets
@@ -575,7 +567,7 @@ export const pullSecrets = async ({
   workspaceId,
   environment,
   channel,
-  ipAddress,
+  ipAddress
 }: {
   userId: string;
   workspaceId: string;
@@ -586,14 +578,14 @@ export const pullSecrets = async ({
   const secrets = await getSecrets({
     userId,
     workspaceId,
-    environment,
+    environment
   });
 
   const readAction = await EELogService.createAction({
     name: ACTION_READ_SECRETS,
     userId: new Types.ObjectId(userId),
     workspaceId: new Types.ObjectId(workspaceId),
-    secretIds: secrets.map((n: any) => n._id),
+    secretIds: secrets.map((n: any) => n._id)
   });
 
   readAction &&
@@ -602,7 +594,7 @@ export const pullSecrets = async ({
       workspaceId: new Types.ObjectId(workspaceId),
       actions: [readAction],
       channel,
-      ipAddress,
+      ipAddress
     }));
 
   return secrets;
@@ -625,22 +617,22 @@ export const reformatPullSecrets = ({ secrets }: { secrets: ISecret[] }) => {
       ciphertext: s.secretKeyCiphertext,
       iv: s.secretKeyIV,
       tag: s.secretKeyTag,
-      hash: s.secretKeyHash,
+      hash: s.secretKeyHash
     },
     secretValue: {
       workspace: s.workspace,
       ciphertext: s.secretValueCiphertext,
       iv: s.secretValueIV,
       tag: s.secretValueTag,
-      hash: s.secretValueHash,
+      hash: s.secretValueHash
     },
     secretComment: {
       workspace: s.workspace,
       ciphertext: s.secretCommentCiphertext,
       iv: s.secretCommentIV,
       tag: s.secretCommentTag,
-      hash: s.secretCommentHash,
-    },
+      hash: s.secretCommentHash
+    }
   }));
 
   return reformatedSecrets;

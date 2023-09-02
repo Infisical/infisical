@@ -14,13 +14,13 @@ import SecurityClient from "./SecurityClient";
 const client = new jsrp.client();
 
 interface IsCliLoginSuccessful {
-    mfaEnabled: boolean;
-    loginResponse?: {
-        email: string;
-        privateKey: string;
-        JTWToken: string;
-    };
-    success: boolean;
+  mfaEnabled: boolean;
+  loginResponse?: {
+    email: string;
+    privateKey: string;
+    JTWToken: string;
+  };
+  success: boolean;
 }
 
 /**
@@ -29,133 +29,127 @@ interface IsCliLoginSuccessful {
  * @param {string} email - email of user to log in
  * @param {string} password - password of user to log in
  */
-const attemptLogin = async (
-    {
-        email,
-        password,
-        providerAuthToken,
-    }: {
-        email: string;
-        password: string;
-        providerAuthToken?: string;
-    }
-): Promise<IsCliLoginSuccessful> => {
+const attemptLogin = async ({
+  email,
+  password,
+  providerAuthToken
+}: {
+  email: string;
+  password: string;
+  providerAuthToken?: string;
+}): Promise<IsCliLoginSuccessful> => {
+  const telemetry = new Telemetry().getInstance();
+  return new Promise((resolve, reject) => {
+    client.init(
+      {
+        username: email,
+        password
+      },
+      async () => {
+        try {
+          const clientPublicKey = client.getPublicKey();
+          const { serverPublicKey, salt } = await login1({
+            email,
+            clientPublicKey,
+            providerAuthToken
+          });
 
-    const telemetry = new Telemetry().getInstance();
-    return new Promise((resolve, reject) => {
-        client.init(
-            {
-                username: email,
-                password
-            },
-            async () => {
-                try {
-                    const clientPublicKey = client.getPublicKey();
-                    const { serverPublicKey, salt } = await login1({
-                        email,
-                        clientPublicKey,
-                        providerAuthToken,
-                    });
+          client.setSalt(salt);
+          client.setServerPublicKey(serverPublicKey);
+          const clientProof = client.getProof(); // called M1
 
-                    client.setSalt(salt);
-                    client.setServerPublicKey(serverPublicKey);
-                    const clientProof = client.getProof(); // called M1
+          const {
+            mfaEnabled,
+            encryptionVersion,
+            protectedKey,
+            protectedKeyIV,
+            protectedKeyTag,
+            token,
+            publicKey,
+            encryptedPrivateKey,
+            iv,
+            tag
+          } = await login2({
+            email,
+            clientProof,
+            providerAuthToken
+          });
+          if (mfaEnabled) {
+            // case: MFA is enabled
 
-                    const {
-                        mfaEnabled,
-                        encryptionVersion,
-                        protectedKey,
-                        protectedKeyIV,
-                        protectedKeyTag,
-                        token,
-                        publicKey,
-                        encryptedPrivateKey,
-                        iv,
-                        tag
-                    } = await login2(
-                        {
-                            email,
-                            clientProof,
-                            providerAuthToken,
-                        }
-                    );
-                    if (mfaEnabled) {
-                        // case: MFA is enabled
+            // set temporary (MFA) JWT token
+            SecurityClient.setMfaToken(token);
 
-                        // set temporary (MFA) JWT token
-                        SecurityClient.setMfaToken(token);
+            resolve({
+              mfaEnabled,
+              success: true
+            });
+          } else if (
+            !mfaEnabled &&
+            encryptionVersion &&
+            encryptedPrivateKey &&
+            iv &&
+            tag &&
+            token
+          ) {
+            // case: MFA is not enabled
 
-                        resolve({
-                            mfaEnabled,
-                            success: true
-                        });
-                    } else if (
-                        !mfaEnabled &&
-                        encryptionVersion &&
-                        encryptedPrivateKey &&
-                        iv &&
-                        tag &&
-                        token
-                    ) {
-                        // case: MFA is not enabled
+            // unset provider auth token in case it was used
+            SecurityClient.setProviderAuthToken("");
+            // set JWT token
+            SecurityClient.setToken(token);
 
-                        // unset provider auth token in case it was used
-                        SecurityClient.setProviderAuthToken("");
-                        // set JWT token
-                        SecurityClient.setToken(token);
+            const privateKey = await KeyService.decryptPrivateKey({
+              encryptionVersion,
+              encryptedPrivateKey,
+              iv,
+              tag,
+              password,
+              salt,
+              protectedKey,
+              protectedKeyIV,
+              protectedKeyTag
+            });
 
-                        const privateKey = await KeyService.decryptPrivateKey({
-                            encryptionVersion,
-                            encryptedPrivateKey,
-                            iv,
-                            tag,
-                            password,
-                            salt,
-                            protectedKey,
-                            protectedKeyIV,
-                            protectedKeyTag
-                        });
+            saveTokenToLocalStorage({
+              publicKey,
+              encryptedPrivateKey,
+              iv,
+              tag,
+              privateKey
+            });
 
-                        saveTokenToLocalStorage({
-                            publicKey,
-                            encryptedPrivateKey,
-                            iv,
-                            tag,
-                            privateKey
-                          });
+            const userOrgs = await fetchOrganizations();
+            const orgId = userOrgs[0]._id;
+            localStorage.setItem("orgData.id", orgId);
 
-                        const userOrgs = await fetchOrganizations();
-                        const orgId = userOrgs[0]._id;
-                        localStorage.setItem("orgData.id", orgId);
+            const orgUserProjects = await fetchMyOrganizationProjects(orgId);
 
-                        const orgUserProjects = await fetchMyOrganizationProjects(orgId);
-
-                        if (orgUserProjects.length > 0) {
-                            localStorage.setItem("projectData.id", orgUserProjects[0]._id);
-                        }
-
-                        if (email) {
-                            telemetry.identify(email, email);
-                            telemetry.capture("User Logged In");
-                        }
-
-                        resolve({
-                            mfaEnabled: false,
-                            loginResponse: {
-                                email,
-                                privateKey,
-                                JTWToken: token
-                            },
-                            success: true
-                        })
-
-                    }
-                } catch (err) {
-                    reject(err);
-                }
+            if (orgUserProjects.length > 0) {
+              localStorage.setItem("projectData.id", orgUserProjects[0]._id);
             }
-        );
-    });
+
+            if (email) {
+              telemetry.identify(email, email);
+              telemetry.capture("User Logged In");
+            }
+
+            resolve({
+              mfaEnabled: false,
+              loginResponse: {
+                email,
+                privateKey,
+                JTWToken: token
+              },
+              success: true
+            });
+          }
+        } catch (err) {
+          reject(err);
+        }
+      }
+    );
+  });
 };
 
 export default attemptLogin;

@@ -65,7 +65,7 @@ export default function SignUp() {
         const { token } = await mutateAsync({ email, code });
         SecurityClient.setSignupToken(token);
         setStep(3);
-      } catch(err) {
+      } catch (err) {
         console.error(err);
         setCodeError(true);
       }

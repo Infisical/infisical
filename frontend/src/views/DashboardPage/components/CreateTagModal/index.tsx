@@ -1,1 +1,1 @@
-export {CreateTagModal} from "./CreateTagModal"
+export { CreateTagModal } from "./CreateTagModal";

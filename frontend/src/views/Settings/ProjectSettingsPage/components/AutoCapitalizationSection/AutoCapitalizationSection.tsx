@@ -3,14 +3,14 @@ import { useTranslation } from "react-i18next";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Checkbox } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
-import { useToggleAutoCapitalization } from "@app/hooks/api"; 
+import { useToggleAutoCapitalization } from "@app/hooks/api";
 
 export const AutoCapitalizationSection = () => {
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
   const { currentWorkspace } = useWorkspace();
   const { mutateAsync } = useToggleAutoCapitalization();
-  
+
   const handleToggleCapitalizationToggle = async (state: boolean) => {
     try {
       if (!currentWorkspace?._id) return;
@@ -32,7 +32,7 @@ export const AutoCapitalizationSection = () => {
         type: "error"
       });
     }
-  }
+  };
 
   return (
     <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">

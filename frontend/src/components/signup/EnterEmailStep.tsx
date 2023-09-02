@@ -66,7 +66,11 @@ export default function EnterEmailStep({
             autoComplete="username"
             className="h-12"
           />
-          {emailError && <p className="text-red-600 text-xs text-left w-full ml-1.5 mt-1.5">Please enter a valid email.</p>}
+          {emailError && (
+            <p className="text-red-600 text-xs text-left w-full ml-1.5 mt-1.5">
+              Please enter a valid email.
+            </p>
+          )}
         </div>
         <div className="flex flex-col items-center justify-center lg:w-1/6 w-1/4 min-w-[20rem] mt-2 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
           <div className="text-l py-1 text-lg w-full">
@@ -75,10 +79,13 @@ export default function EnterEmailStep({
               onClick={emailCheck}
               size="sm"
               isFullWidth
-              className='h-14'
+              className="h-14"
               colorSchema="primary"
               variant="outline_bg"
-            > {String(t("signup.step1-submit"))} </Button>
+            >
+              {" "}
+              {String(t("signup.step1-submit"))}{" "}
+            </Button>
           </div>
         </div>
       </div>

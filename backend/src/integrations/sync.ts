@@ -315,73 +315,77 @@ const syncSecretsGCPSecretManager = async ({
     name: string;
     createTime: string;
   }
-  
+
   interface GCPSMListSecretsRes {
     secrets?: GCPSecret[];
     totalSize?: number;
     nextPageToken?: string;
   }
-  
+
   let gcpSecrets: GCPSecret[] = [];
-  
+
   const pageSize = 100;
   let pageToken: string | undefined;
   let hasMorePages = true;
-  
+
   while (hasMorePages) {
     const params = new URLSearchParams({
       pageSize: String(pageSize),
       ...(pageToken ? { pageToken } : {})
     });
-    
-    const res: GCPSMListSecretsRes = (await standardRequest.get(
-      `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1beta1/projects/${integration.appId}/secrets`,
-      {
-        params,
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Accept-Encoding": "application/json"
+
+    const res: GCPSMListSecretsRes = (
+      await standardRequest.get(
+        `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1beta1/projects/${integration.appId}/secrets`,
+        {
+          params,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
         }
-      }
-    )).data;
-    
+      )
+    ).data;
+
     if (res.secrets) {
       gcpSecrets = gcpSecrets.concat(res.secrets);
     }
-    
+
     if (!res.nextPageToken) {
       hasMorePages = false;
     }
-    
+
     pageToken = res.nextPageToken;
   }
-  
-  const res: { [key: string]: string; } = {};
-  
+
+  const res: { [key: string]: string } = {};
+
   interface GCPLatestSecretVersionAccess {
     name: string;
     payload: {
       data: string;
-    }
+    };
   }
-  
+
   for await (const gcpSecret of gcpSecrets) {
     const arr = gcpSecret.name.split("/");
     const key = arr[arr.length - 1];
 
-    const secretLatest: GCPLatestSecretVersionAccess = (await standardRequest.get(
-      `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1beta1/projects/${integration.appId}/secrets/${key}/versions/latest:access`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Accept-Encoding": "application/json"
+    const secretLatest: GCPLatestSecretVersionAccess = (
+      await standardRequest.get(
+        `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1beta1/projects/${integration.appId}/secrets/${key}/versions/latest:access`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
         }
-      }
-    )).data;
-    
+      )
+    ).data;
+
     res[key] = Buffer.from(secretLatest.payload.data, "base64").toString("utf-8");
   }
-  
+
   for await (const key of Object.keys(secrets)) {
     if (!(key in res)) {
       // case: create secret
@@ -402,7 +406,7 @@ const syncSecretsGCPSecretManager = async ({
           }
         }
       );
-      
+
       await standardRequest.post(
         `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1beta1/projects/${integration.appId}/secrets/${key}:addVersion`,
         {
@@ -419,7 +423,7 @@ const syncSecretsGCPSecretManager = async ({
       );
     }
   }
-  
+
   for await (const key of Object.keys(res)) {
     if (!(key in secrets)) {
       // case: delete secret
@@ -452,7 +456,7 @@ const syncSecretsGCPSecretManager = async ({
       }
     }
   }
-}
+};
 
 /**
  * Sync/push [secrets] to Azure Key Vault with vault URI [integration.app]
@@ -2006,7 +2010,6 @@ const syncSecretsCheckly = async ({
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
-  
   const getSecretsRes = (
     await standardRequest.get(`${INTEGRATION_CHECKLY_API_URL}/v1/variables`, {
       headers: {
@@ -2221,41 +2224,43 @@ const syncSecretsTeamCity = async ({
 
   if (integration.targetEnvironment && integration.targetEnvironmentId) {
     // case: sync to specific build-config in TeamCity project
-    const res = (await standardRequest.get<GetTeamCityBuildConfigParametersRes>(
-      `${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters`, 
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
-      }
-    ))
-    .data
-    .property
-    .filter((parameter) => !parameter.inherited)
-    .reduce((obj: any, secret: TeamCitySecret) => {
-      const secretName = secret.name.replace(/^env\./, "");
-      return {
-        ...obj,
-        [secretName]: secret.value
-      };
-    }, {});
-      
+    const res = (
+      await standardRequest.get<GetTeamCityBuildConfigParametersRes>(
+        `${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json"
+          }
+        }
+      )
+    ).data.property
+      .filter((parameter) => !parameter.inherited)
+      .reduce((obj: any, secret: TeamCitySecret) => {
+        const secretName = secret.name.replace(/^env\./, "");
+        return {
+          ...obj,
+          [secretName]: secret.value
+        };
+      }, {});
+
     for await (const key of Object.keys(secrets)) {
       if (!(key in res) || (key in res && secrets[key].value !== res[key])) {
         // case: secret does not exist in TeamCity or secret value has changed
         // -> create/update secret
-        await standardRequest.post(`${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters`,
-        {
-          name:`env.${key}`,
-          value: secrets[key].value
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json",
+        await standardRequest.post(
+          `${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters`,
+          {
+            name: `env.${key}`,
+            value: secrets[key].value
           },
-        });
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json"
+            }
+          }
+        );
       }
     }
 

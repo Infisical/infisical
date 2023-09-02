@@ -23,10 +23,10 @@ interface LogData {
   };
   serviceAccount?: {
     string: string;
-  },
+  };
   serviceTokenData?: {
     name: string;
-  }
+  };
   actions: {
     _id: string;
     name: string;
@@ -70,9 +70,7 @@ export default function Activity() {
   const [currentSidebarAction, toggleSidebar] = useState<string>();
   const { t } = useTranslation();
   const { subscription } = useSubscription();
-  const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
-    "upgradePlan"
-  ] as const);
+  const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["upgradePlan"] as const);
 
   // this use effect updates the data in case of a new filter being added
   useEffect(() => {
@@ -186,7 +184,11 @@ export default function Activity() {
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={() => handlePopUpClose("upgradePlan")}
-          text={subscription.slug === null ? "You can see more logs under an Enterprise license" : "You can see more logs if you switch to Infisical's Business/Professional Plan."}
+          text={
+            subscription.slug === null
+              ? "You can see more logs under an Enterprise license"
+              : "You can see more logs if you switch to Infisical's Business/Professional Plan."
+          }
         />
       )}
     </div>
@@ -194,4 +196,3 @@ export default function Activity() {
 }
 
 Activity.requireAuth = true;
-

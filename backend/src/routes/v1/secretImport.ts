@@ -8,7 +8,7 @@ const router = express.Router();
 router.post(
   "/",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -27,7 +27,7 @@ router.post(
 router.put(
   "/:id",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
   param("id").exists().isString().trim(),
   body("secretImports").exists().isArray(),
@@ -40,7 +40,7 @@ router.put(
 router.delete(
   "/:id",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
   param("id").exists().isString().trim(),
   body("secretImportPath").isString().exists().trim(),
@@ -52,7 +52,7 @@ router.delete(
 router.get(
   "/",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -68,7 +68,7 @@ router.get(
 router.get(
   "/secrets",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],

@@ -1,10 +1,10 @@
-const http = require('http');
+const http = require("http");
 const PORT = process.env.PORT || 4000;
 const options = {
-  host: 'localhost',
+  host: "localhost",
   port: PORT,
   timeout: 2000,
-  path: '/healthcheck'
+  path: "/healthcheck"
 };
 
 const healthCheck = http.request(options, (res) => {
@@ -16,7 +16,7 @@ const healthCheck = http.request(options, (res) => {
   }
 });
 
-healthCheck.on('error', function (err) {
+healthCheck.on("error", function (err) {
   console.error(`HEALTH CHECK ERROR: ${err}`);
   process.exit(1);
 });

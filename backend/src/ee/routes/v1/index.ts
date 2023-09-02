@@ -9,13 +9,13 @@ import cloudProducts from "./cloudProducts";
 import secretScanning from "./secretScanning";
 
 export {
-    secret,
-    secretSnapshot,
-    organizations,
-    sso,
-    users,
-    workspace,
-    action,
-    cloudProducts,
-    secretScanning
-}
+  secret,
+  secretSnapshot,
+  organizations,
+  sso,
+  users,
+  workspace,
+  action,
+  cloudProducts,
+  secretScanning
+};

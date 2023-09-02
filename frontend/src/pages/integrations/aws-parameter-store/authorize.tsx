@@ -1,16 +1,14 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 
-import {
-  useSaveIntegrationAccessToken
-} from "@app/hooks/api";
+import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
 
 export default function AWSParameterStoreAuthorizeIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useSaveIntegrationAccessToken();
-  
+
   const [isLoading, setIsLoading] = useState(false);
 
   const [accessKey, setAccessKey] = useState("");
@@ -65,11 +63,7 @@ export default function AWSParameterStoreAuthorizeIntegrationPage() {
           errorText={accessKeyErrorText}
           isError={accessKeyErrorText !== "" ?? false}
         >
-          <Input 
-            placeholder="" 
-            value={accessKey} 
-            onChange={(e) => setAccessKey(e.target.value)} 
-          />
+          <Input placeholder="" value={accessKey} onChange={(e) => setAccessKey(e.target.value)} />
         </FormControl>
         <FormControl
           label="Secret Access Key"

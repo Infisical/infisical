@@ -2,11 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { 
+import {
   BillingDetails,
   Invoice,
   License,
-  Organization, 
+  Organization,
   OrgPlanTable,
   PlanBillingInfo,
   PmtMethod,
@@ -19,7 +19,8 @@ const organizationKeys = {
   getUserOrganizations: ["organization"] as const,
   getOrgPlanBillingInfo: (orgId: string) => [{ orgId }, "organization-plan-billing"] as const,
   getOrgPlanTable: (orgId: string) => [{ orgId }, "organization-plan-table"] as const,
-  getOrgPlansTable: (orgId: string, billingCycle: "monthly" | "yearly") => [{ orgId, billingCycle }, "organization-plans-table"] as const,
+  getOrgPlansTable: (orgId: string, billingCycle: "monthly" | "yearly") =>
+    [{ orgId, billingCycle }, "organization-plans-table"] as const,
   getOrgBillingDetails: (orgId: string) => [{ orgId }, "organization-billing-details"] as const,
   getOrgPmtMethods: (orgId: string) => [{ orgId }, "organization-pmt-methods"] as const,
   getOrgTaxIds: (orgId: string) => [{ orgId }, "organization-tax-ids"] as const,
@@ -28,18 +29,20 @@ const organizationKeys = {
 };
 
 export const fetchOrganizations = async () => {
-  const { data: { organizations } } = await apiRequest.get<{ organizations: Organization[] }>("/api/v1/organization");
+  const {
+    data: { organizations }
+  } = await apiRequest.get<{ organizations: Organization[] }>("/api/v1/organization");
   return organizations;
-}
+};
 
 export const useGetOrganizations = () => {
-  return useQuery({ 
-    queryKey: organizationKeys.getUserOrganizations, 
+  return useQuery({
+    queryKey: organizationKeys.getUserOrganizations,
     queryFn: async () => {
       return fetchOrganizations();
     }
   });
-}
+};
 
 export const useRenameOrg = () => {
   const queryClient = useQueryClient();
@@ -56,17 +59,13 @@ export const useRenameOrg = () => {
 
 export const useGetOrgTrialUrl = () => {
   return useMutation({
-    mutationFn: async ({ 
-      orgId, 
-      success_url 
-    }: {
-      orgId: string;
-      success_url: string;
-    }) => {
-      const { data: { url } } = await apiRequest.post(`/api/v1/organizations/${orgId}/session/trial`, {
+    mutationFn: async ({ orgId, success_url }: { orgId: string; success_url: string }) => {
+      const {
+        data: { url }
+      } = await apiRequest.post(`/api/v1/organizations/${orgId}/session/trial`, {
         success_url
-      })
-      
+      });
+
       return url;
     }
   });
@@ -80,11 +79,11 @@ export const useGetOrgPlanBillingInfo = (organizationId: string) => {
         `/api/v1/organizations/${organizationId}/plan/billing`
       );
 
-      return data; 
+      return data;
     },
     enabled: true
   });
-}
+};
 
 export const useGetOrgPlanTable = (organizationId: string) => {
   return useQuery({
@@ -94,18 +93,18 @@ export const useGetOrgPlanTable = (organizationId: string) => {
         `/api/v1/organizations/${organizationId}/plan/table`
       );
 
-      return data; 
+      return data;
     },
     enabled: true
   });
-}
+};
 
 export const useGetOrgPlansTable = ({
   organizationId,
   billingCycle
 }: {
   organizationId: string;
-  billingCycle: "monthly" | "yearly"
+  billingCycle: "monthly" | "yearly";
 }) => {
   return useQuery({
     queryKey: organizationKeys.getOrgPlansTable(organizationId, billingCycle),
@@ -114,11 +113,11 @@ export const useGetOrgPlansTable = ({
         `/api/v1/organizations/${organizationId}/plans/table?billingCycle=${billingCycle}`
       );
 
-      return data; 
+      return data;
     },
     enabled: true
   });
-}
+};
 
 export const useGetOrgBillingDetails = (organizationId: string) => {
   return useQuery({
@@ -132,7 +131,7 @@ export const useGetOrgBillingDetails = (organizationId: string) => {
     },
     enabled: true
   });
-}
+};
 
 export const useUpdateOrgBillingDetails = () => {
   const queryClient = useQueryClient();
@@ -147,7 +146,7 @@ export const useUpdateOrgBillingDetails = () => {
       email?: string;
     }) => {
       const { data } = await apiRequest.patch(
-        `/api/v1/organizations/${organizationId}/billing-details`, 
+        `/api/v1/organizations/${organizationId}/billing-details`,
         {
           name,
           email
@@ -174,7 +173,7 @@ export const useGetOrgPmtMethods = (organizationId: string) => {
     },
     enabled: true
   });
-}
+};
 
 export const useAddOrgPmtMethod = () => {
   const queryClient = useQueryClient();
@@ -189,8 +188,10 @@ export const useAddOrgPmtMethod = () => {
       success_url: string;
       cancel_url: string;
     }) => {
-      const { data: { url } } = await apiRequest.post(
-        `/api/v1/organizations/${organizationId}/billing-details/payment-methods`, 
+      const {
+        data: { url }
+      } = await apiRequest.post(
+        `/api/v1/organizations/${organizationId}/billing-details/payment-methods`,
         {
           success_url,
           cancel_url
@@ -211,7 +212,7 @@ export const useDeleteOrgPmtMethod = () => {
   return useMutation({
     mutationFn: async ({
       organizationId,
-      pmtMethodId,
+      pmtMethodId
     }: {
       organizationId: string;
       pmtMethodId: string;
@@ -226,7 +227,7 @@ export const useDeleteOrgPmtMethod = () => {
       queryClient.invalidateQueries(organizationKeys.getOrgPmtMethods(dto.organizationId));
     }
   });
-}
+};
 
 export const useGetOrgTaxIds = (organizationId: string) => {
   return useQuery({
@@ -240,7 +241,7 @@ export const useGetOrgTaxIds = (organizationId: string) => {
     },
     enabled: true
   });
-}
+};
 
 export const useAddOrgTaxId = () => {
   const queryClient = useQueryClient();
@@ -256,7 +257,7 @@ export const useAddOrgTaxId = () => {
       value: string;
     }) => {
       const { data } = await apiRequest.post(
-        `/api/v1/organizations/${organizationId}/billing-details/tax-ids`, 
+        `/api/v1/organizations/${organizationId}/billing-details/tax-ids`,
         {
           type,
           value
@@ -275,13 +276,7 @@ export const useDeleteOrgTaxId = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      organizationId,
-      taxId,
-    }: {
-      organizationId: string;
-      taxId: string;
-    }) => {
+    mutationFn: async ({ organizationId, taxId }: { organizationId: string; taxId: string }) => {
       const { data } = await apiRequest.delete(
         `/api/v1/organizations/${organizationId}/billing-details/tax-ids/${taxId}`
       );
@@ -292,7 +287,7 @@ export const useDeleteOrgTaxId = () => {
       queryClient.invalidateQueries(organizationKeys.getOrgTaxIds(dto.organizationId));
     }
   });
-}
+};
 
 export const useGetOrgInvoices = (organizationId: string) => {
   return useQuery({
@@ -306,7 +301,7 @@ export const useGetOrgInvoices = (organizationId: string) => {
     },
     enabled: true
   });
-}
+};
 
 export const useCreateCustomerPortalSession = () => {
   return useMutation({
@@ -324,7 +319,7 @@ export const useGetOrgLicenses = (organizationId: string) => {
     queryKey: organizationKeys.getOrgLicenses(organizationId),
     queryFn: async () => {
       if (organizationId === "") return undefined;
-      
+
       const { data } = await apiRequest.get<License[]>(
         `/api/v1/organizations/${organizationId}/licenses`
       );
@@ -333,4 +328,4 @@ export const useGetOrgLicenses = (organizationId: string) => {
     },
     enabled: true
   });
-}
+};

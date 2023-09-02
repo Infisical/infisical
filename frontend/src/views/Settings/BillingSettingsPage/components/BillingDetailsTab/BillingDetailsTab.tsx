@@ -4,12 +4,12 @@ import { PmtMethodsSection } from "./PmtMethodsSection";
 import { TaxIDSection } from "./TaxIDSection";
 
 export const BillingDetailsTab = () => {
-    return (
-        <>
-            <CompanyNameSection />
-            <InvoiceEmailSection />
-            <PmtMethodsSection />
-            <TaxIDSection />
-        </>
-    );
-}
+  return (
+    <>
+      <CompanyNameSection />
+      <InvoiceEmailSection />
+      <PmtMethodsSection />
+      <TaxIDSection />
+    </>
+  );
+};

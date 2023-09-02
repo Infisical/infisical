@@ -13,8 +13,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   server.close();
-  githubPushEventSecretScan.close()
-  syncSecretsToThirdPartyServices.close()
+  githubPushEventSecretScan.close();
+  syncSecretsToThirdPartyServices.close();
 });
 
 describe("Healthcheck endpoint", () => {

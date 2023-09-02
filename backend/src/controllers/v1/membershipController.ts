@@ -39,7 +39,7 @@ export const validateMembership = async (req: Request, res: Response) => {
  */
 export const deleteMembership = async (req: Request, res: Response) => {
   const { membershipId } = req.params;
-  
+
   // check if membership to delete exists
   const membershipToDelete = await Membership.findOne({
     _id: membershipId
@@ -69,7 +69,7 @@ export const deleteMembership = async (req: Request, res: Response) => {
   const deletedMembership = await deleteMember({
     membershipId: membershipToDelete._id.toString()
   });
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -104,9 +104,9 @@ export const changeMembershipRole = async (req: Request, res: Response) => {
   }
 
   // validate target membership
-  const membershipToChangeRole = await Membership
-    .findById(membershipId)
-    .populate<{ user: IUser }>("user");
+  const membershipToChangeRole = await Membership.findById(membershipId).populate<{ user: IUser }>(
+    "user"
+  );
 
   if (!membershipToChangeRole) {
     throw new Error("Failed to find membership to change role");
@@ -127,12 +127,12 @@ export const changeMembershipRole = async (req: Request, res: Response) => {
     // user is not an admin member of the workspace
     throw new Error("Insufficient role for changing member roles");
   }
-  
+
   const oldRole = membershipToChangeRole.role;
 
   membershipToChangeRole.role = role;
   await membershipToChangeRole.save();
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {

@@ -15,7 +15,7 @@ const updateUserProjectPermission = async ({
   denials: {
     ability: string;
     environmentSlug: string;
-  }[]
+  }[];
 }) =>
   SecurityClient.fetchCall(`/api/v1/membership/${membershipId}/deny-permissions`, {
     method: "POST",

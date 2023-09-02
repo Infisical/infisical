@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
-import {
-  useCreateIntegration
-} from "@app/hooks/api";
+import { useCreateIntegration } from "@app/hooks/api";
 
 import {
   Button,
@@ -25,7 +23,7 @@ import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 export default function TeamCityCreateIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useCreateIntegration();
-  
+
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [targetAppId, setTargetAppId] = useState("");
   const [targetBuildConfigId, setTargetBuildConfigId] = useState<string>("");
@@ -39,7 +37,7 @@ export default function TeamCityCreateIntegrationPage() {
   const { data: integrationAuthApps } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
-  
+
   const { data: targetBuildConfigs } = useGetIntegrationAuthTeamCityBuildConfigs({
     integrationAuthId: (integrationAuthId as string) ?? "",
     appId: targetAppId
@@ -60,21 +58,24 @@ export default function TeamCityCreateIntegrationPage() {
       }
     }
   }, [integrationAuthApps]);
-  
+
   const handleButtonClick = async () => {
     try {
       if (!integrationAuth?._id) return;
 
       setIsLoading(true);
-      
+
       const targetEnvironment = targetBuildConfigs?.find(
         (buildConfig) => buildConfig.buildConfigId === targetBuildConfigId
       );
-      
+
       await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
-        app: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId)?.name ?? null,
+        app:
+          integrationAuthApps?.find(
+            (integrationAuthApp) => integrationAuthApp.appId === targetAppId
+          )?.name ?? null,
         appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: targetEnvironment ? targetEnvironment.name : null,

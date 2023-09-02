@@ -1,14 +1,6 @@
 import { Types } from "mongoose";
-import { 
-	Key, 
-	Membership, 
-	MembershipOrg, 
-	Workspace,
-} from "../models";
-import {
-	MembershipOrgNotFoundError,
-	UnauthorizedRequestError,
-} from "../utils/errors";
+import { Key, Membership, MembershipOrg, Workspace } from "../models";
+import { MembershipOrgNotFoundError, UnauthorizedRequestError } from "../utils/errors";
 
 /**
  * Validate that user with id [userId] is a member of organization with id [organizationId]
@@ -19,39 +11,43 @@ import {
  * @param {String[]} obj.acceptedRoles
  */
 export const validateMembershipOrg = async ({
-	userId,
-	organizationId,
-	acceptedRoles,
-	acceptedStatuses,
+  userId,
+  organizationId,
+  acceptedRoles,
+  acceptedStatuses
 }: {
-	userId: Types.ObjectId;
-	organizationId: Types.ObjectId;
-	acceptedRoles?: Array<"owner" | "admin" | "member">;
-	acceptedStatuses?: Array<"invited" | "accepted">;
+  userId: Types.ObjectId;
+  organizationId: Types.ObjectId;
+  acceptedRoles?: Array<"owner" | "admin" | "member">;
+  acceptedStatuses?: Array<"invited" | "accepted">;
 }) => {
-	const membershipOrg = await MembershipOrg.findOne({
-		user: userId,
-		organization: organizationId,
-	});
-	
-	if (!membershipOrg) {
-		throw MembershipOrgNotFoundError({ message: "Failed to find organization membership" });
-	}
-	
-	if (acceptedRoles) {
-		if (!acceptedRoles.includes(membershipOrg.role)) {
-			throw UnauthorizedRequestError({ message: "Failed to validate organization membership role" });
-		}
-	}
-	
-	if (acceptedStatuses) {
-		if (!acceptedStatuses.includes(membershipOrg.status)) {
-			throw UnauthorizedRequestError({ message: "Failed to validate organization membership status" });
-		}
-	}
-	
-	return membershipOrg;
-}
+  const membershipOrg = await MembershipOrg.findOne({
+    user: userId,
+    organization: organizationId
+  });
+
+  if (!membershipOrg) {
+    throw MembershipOrgNotFoundError({ message: "Failed to find organization membership" });
+  }
+
+  if (acceptedRoles) {
+    if (!acceptedRoles.includes(membershipOrg.role)) {
+      throw UnauthorizedRequestError({
+        message: "Failed to validate organization membership role"
+      });
+    }
+  }
+
+  if (acceptedStatuses) {
+    if (!acceptedStatuses.includes(membershipOrg.status)) {
+      throw UnauthorizedRequestError({
+        message: "Failed to validate organization membership status"
+      });
+    }
+  }
+
+  return membershipOrg;
+};
 
 /**
  * Return organization membership matching criteria specified in
@@ -60,8 +56,8 @@ export const validateMembershipOrg = async ({
  * @return {Object} membershipOrg - membership
  */
 export const findMembershipOrg = (queryObj: any) => {
-	const membershipOrg = MembershipOrg.findOne(queryObj);
-	return membershipOrg;
+  const membershipOrg = MembershipOrg.findOne(queryObj);
+  return membershipOrg;
 };
 
 /**
@@ -73,15 +69,15 @@ export const findMembershipOrg = (queryObj: any) => {
  * @param {String[]} obj.roles - roles of users.
  */
 export const addMembershipsOrg = async ({
-	userIds,
-	organizationId,
-	roles,
-	statuses,
+  userIds,
+  organizationId,
+  roles,
+  statuses
 }: {
-	userIds: string[];
-	organizationId: string;
-	roles: string[];
-	statuses: string[];
+  userIds: string[];
+  organizationId: string;
+  roles: string[];
+  statuses: string[];
 }) => {
   const operations = userIds.map((userId, idx) => {
     return {
@@ -90,16 +86,16 @@ export const addMembershipsOrg = async ({
           user: userId,
           organization: organizationId,
           role: roles[idx],
-          status: statuses[idx],
+          status: statuses[idx]
         },
         update: {
           user: userId,
           organization: organizationId,
           role: roles[idx],
-          status: statuses[idx],
+          status: statuses[idx]
         },
-        upsert: true,
-      },
+        upsert: true
+      }
     };
   });
 
@@ -111,13 +107,9 @@ export const addMembershipsOrg = async ({
  * @param {Object} obj
  * @param {String} obj.membershipOrgId - id of organization membership to delete
  */
-export const deleteMembershipOrg = async ({
-	membershipOrgId,
-}: {
-	membershipOrgId: string;
-}) => {
+export const deleteMembershipOrg = async ({ membershipOrgId }: { membershipOrgId: string }) => {
   const deletedMembershipOrg = await MembershipOrg.findOneAndDelete({
-    _id: membershipOrgId,
+    _id: membershipOrgId
   });
 
   if (!deletedMembershipOrg) throw new Error("Failed to delete organization membership");
@@ -128,24 +120,24 @@ export const deleteMembershipOrg = async ({
 
     const workspaces = (
       await Workspace.find({
-        organization: deletedMembershipOrg.organization,
+        organization: deletedMembershipOrg.organization
       })
     ).map((w) => w._id.toString());
 
     await Membership.deleteMany({
       user: deletedMembershipOrg.user,
       workspace: {
-        $in: workspaces,
-      },
+        $in: workspaces
+      }
     });
 
     await Key.deleteMany({
       receiver: deletedMembershipOrg.user,
       workspace: {
-        $in: workspaces,
-      },
+        $in: workspaces
+      }
     });
   }
 
-	return deletedMembershipOrg;
+  return deletedMembershipOrg;
 };

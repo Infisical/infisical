@@ -24,17 +24,15 @@ interface IsLoginSuccessful {
  * @param {string} email - email of user to log in
  * @param {string} password - password of user to log in
  */
-const attemptLogin = async (
-  {
-    email,
-    password,
-    providerAuthToken,
-  }: {
-    email: string;
-    password: string;
-    providerAuthToken?: string;
-  }
-): Promise<IsLoginSuccessful> => {
+const attemptLogin = async ({
+  email,
+  password,
+  providerAuthToken
+}: {
+  email: string;
+  password: string;
+  providerAuthToken?: string;
+}): Promise<IsLoginSuccessful> => {
   const telemetry = new Telemetry().getInstance();
   return new Promise((resolve, reject) => {
     client.init(
@@ -45,36 +43,34 @@ const attemptLogin = async (
       async () => {
         try {
           const clientPublicKey = client.getPublicKey();
-          
+
           const { serverPublicKey, salt } = await login1({
             email,
             clientPublicKey,
-            providerAuthToken,
+            providerAuthToken
           });
-          
+
           client.setSalt(salt);
           client.setServerPublicKey(serverPublicKey);
           const clientProof = client.getProof(); // called M1
-          
+
           const {
             mfaEnabled,
             encryptionVersion,
             protectedKey,
             protectedKeyIV,
             protectedKeyTag,
-            token, 
-            publicKey, 
-            encryptedPrivateKey, 
-            iv, 
-            tag 
-          } = await login2(
-            {
-              email,
-              clientProof,
-              providerAuthToken,
-            }
-          );
-          
+            token,
+            publicKey,
+            encryptedPrivateKey,
+            iv,
+            tag
+          } = await login2({
+            email,
+            clientProof,
+            providerAuthToken
+          });
+
           if (mfaEnabled) {
             // case: MFA is enabled
 
@@ -96,10 +92,10 @@ const attemptLogin = async (
             // case: MFA is not enabled
 
             // unset provider auth token in case it was used
-            SecurityClient.setProviderAuthToken("");            
+            SecurityClient.setProviderAuthToken("");
             // set JWT token
             SecurityClient.setToken(token);
-            
+
             const privateKey = await KeyService.decryptPrivateKey({
               encryptionVersion,
               encryptedPrivateKey,
@@ -119,17 +115,17 @@ const attemptLogin = async (
               tag,
               privateKey
             });
-            
+
             // TODO: in the future - move this logic elsewhere
             // because this function is about logging the user in
             // and not initializing the login details
-            const userOrgs = await fetchOrganizations(); 
-            
+            const userOrgs = await fetchOrganizations();
+
             const orgId = userOrgs[0]._id;
             localStorage.setItem("orgData.id", orgId);
-            
+
             const orgUserProjects = await fetchMyOrganizationProjects(orgId);
-            
+
             if (orgUserProjects.length > 0) {
               localStorage.setItem("projectData.id", orgUserProjects[0]._id);
             }
@@ -138,7 +134,7 @@ const attemptLogin = async (
               telemetry.identify(email, email);
               telemetry.capture("User Logged In");
             }
-            
+
             resolve({
               mfaEnabled: false,
               success: true

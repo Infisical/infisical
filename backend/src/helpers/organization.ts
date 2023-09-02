@@ -1,22 +1,10 @@
 import { Types } from "mongoose";
 import { MembershipOrg, Organization } from "../models";
-import {
-  ACCEPTED,
-} from "../variables";
-import {
-  EELicenseService,
-} from "../ee/services";
-import {
-  getLicenseServerKey,
-  getLicenseServerUrl,
-} from "../config";
-import {
-  licenseKeyRequest,
-  licenseServerKeyRequest,
-} from "../config/request";
-import {
-  createBotOrg
-} from "./botOrg";
+import { ACCEPTED } from "../variables";
+import { EELicenseService } from "../ee/services";
+import { getLicenseServerKey, getLicenseServerUrl } from "../config";
+import { licenseKeyRequest, licenseServerKeyRequest } from "../config/request";
+import { createBotOrg } from "./botOrg";
 
 /**
  * Create an organization with name [name]
@@ -25,34 +13,28 @@ import {
  * @param {String} obj.email - POC email that will receive invoice info
  * @param {Object} organization - new organization
  */
-export const createOrganization = async ({
-  name,
-  email,
-}: {
-  name: string;
-  email: string;
-}) => {
-  
+export const createOrganization = async ({ name, email }: { name: string; email: string }) => {
   const licenseServerKey = await getLicenseServerKey();
   let organization;
-  
+
   if (licenseServerKey) {
-    const { data: { customerId } } = await licenseServerKeyRequest.post(
+    const {
+      data: { customerId }
+    } = await licenseServerKeyRequest.post(
       `${await getLicenseServerUrl()}/api/license-server/v1/customers`,
       {
         email,
         name
       }
     );
-    
+
     organization = await new Organization({
       name,
       customerId
     }).save();
-    
   } else {
     organization = await new Organization({
-      name,
+      name
     }).save();
   }
 
@@ -72,13 +54,13 @@ export const createOrganization = async ({
  * @param {Number} obj.organizationId - id of subscription's organization
  */
 export const updateSubscriptionOrgQuantity = async ({
-  organizationId,
+  organizationId
 }: {
   organizationId: string;
 }) => {
   // find organization
   const organization = await Organization.findOne({
-    _id: organizationId,
+    _id: organizationId
   });
 
   if (organization && organization.customerId) {
@@ -86,13 +68,15 @@ export const updateSubscriptionOrgQuantity = async ({
       // instance of Infisical is a cloud instance
       const quantity = await MembershipOrg.countDocuments({
         organization: new Types.ObjectId(organizationId),
-        status: ACCEPTED,
+        status: ACCEPTED
       });
-      
+
       await licenseServerKeyRequest.patch(
-        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${organization.customerId}/cloud-plan`,
+        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${
+          organization.customerId
+        }/cloud-plan`,
         {
-          quantity,
+          quantity
         }
       );
 
@@ -102,17 +86,14 @@ export const updateSubscriptionOrgQuantity = async ({
 
   if (EELicenseService.instanceType === "enterprise-self-hosted") {
     // instance of Infisical is an enterprise self-hosted instance
-    
+
     const usedSeats = await MembershipOrg.countDocuments({
-      status: ACCEPTED,
+      status: ACCEPTED
     });
 
-    await licenseKeyRequest.patch(
-      `${await getLicenseServerUrl()}/api/license/v1/license`,
-      {
-        usedSeats,
-      }
-    );
+    await licenseKeyRequest.patch(`${await getLicenseServerUrl()}/api/license/v1/license`, {
+      usedSeats
+    });
   }
 
   await EELicenseService.refreshPlan(new Types.ObjectId(organizationId));

@@ -1,9 +1,7 @@
 import { Request, Response } from "express";
 import { MembershipOrg, User } from "../../models";
 import { completeAccount } from "../../helpers/user";
-import {
-	initializeDefaultOrg,
-} from "../../helpers/signup";
+import { initializeDefaultOrg } from "../../helpers/signup";
 import { issueAuthTokens } from "../../helpers/auth";
 import { ACCEPTED, INVITED } from "../../variables";
 import { standardRequest } from "../../config/request";
@@ -18,7 +16,7 @@ import { updateSubscriptionOrgQuantity } from "../../helpers/organization";
  * @returns
  */
 export const completeAccountSignup = async (req: Request, res: Response) => {
-	let user;
+  let user;
   const {
     email,
     firstName,
@@ -32,7 +30,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
     encryptedPrivateKeyTag,
     salt,
     verifier,
-    organizationName,
+    organizationName
   }: {
     email: string;
     firstName: string;
@@ -56,7 +54,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
     // case 1: user doesn't exist.
     // case 2: user has already completed account
     return res.status(403).send({
-      error: "Failed to complete account for complete user",
+      error: "Failed to complete account for complete user"
     });
   }
 
@@ -74,28 +72,27 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
     encryptedPrivateKeyIV,
     encryptedPrivateKeyTag,
     salt,
-    verifier,
+    verifier
   });
 
-  if (!user)
-    throw new Error("Failed to complete account for non-existent user"); // ensure user is non-null
+  if (!user) throw new Error("Failed to complete account for non-existent user"); // ensure user is non-null
 
   // initialize default organization and workspace
   await initializeDefaultOrg({
     organizationName,
-    user,
+    user
   });
 
   // update organization membership statuses that are
   // invited to completed with user attached
   const membershipsToUpdate = await MembershipOrg.find({
     inviteEmail: email,
-    status: INVITED,
+    status: INVITED
   });
-  
+
   membershipsToUpdate.forEach(async (membership) => {
     await updateSubscriptionOrgQuantity({
-      organizationId: membership.organization.toString(),
+      organizationId: membership.organization.toString()
     });
   });
 
@@ -104,11 +101,11 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
   await MembershipOrg.updateMany(
     {
       inviteEmail: email,
-      status: INVITED,
+      status: INVITED
     },
     {
       user,
-      status: ACCEPTED,
+      status: ACCEPTED
     }
   );
 
@@ -116,24 +113,28 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
   const tokens = await issueAuthTokens({
     userId: user._id,
     ip: req.realIP,
-    userAgent: req.headers["user-agent"] ?? "",
+    userAgent: req.headers["user-agent"] ?? ""
   });
 
   const token = tokens.token;
 
   // sending a welcome email to new users
   if (await getLoopsApiKey()) {
-    await standardRequest.post("https://app.loops.so/api/v1/events/send", {
-      "email": email,
-      "eventName": "Sign Up",
-      "firstName": firstName,
-      "lastName": lastName,
-    }, {
-      headers: {
-        "Accept": "application/json",
-        "Authorization": "Bearer " + (await getLoopsApiKey()),
+    await standardRequest.post(
+      "https://app.loops.so/api/v1/events/send",
+      {
+        email: email,
+        eventName: "Sign Up",
+        firstName: firstName,
+        lastName: lastName
       },
-    });
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: "Bearer " + (await getLoopsApiKey())
+        }
+      }
+    );
   }
 
   // store (refresh) token in httpOnly cookie
@@ -141,14 +142,14 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
     httpOnly: true,
     path: "/",
     sameSite: "strict",
-    secure: await getHttpsEnabled(),
+    secure: await getHttpsEnabled()
   });
 
-	return res.status(200).send({
-		message: "Successfully set up account",
-		user,
-		token,
-	});
+  return res.status(200).send({
+    message: "Successfully set up account",
+    user,
+    token
+  });
 };
 
 /**
@@ -159,7 +160,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
  * @returns
  */
 export const completeAccountInvite = async (req: Request, res: Response) => {
-	let user;
+  let user;
   const {
     email,
     firstName,
@@ -172,7 +173,7 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
     encryptedPrivateKeyIV,
     encryptedPrivateKeyTag,
     salt,
-    verifier,
+    verifier
   } = req.body;
 
   // get user
@@ -182,13 +183,13 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
     // case 1: user doesn't exist.
     // case 2: user has already completed account
     return res.status(403).send({
-      error: "Failed to complete account for complete user",
+      error: "Failed to complete account for complete user"
     });
   }
 
   const membershipOrg = await MembershipOrg.findOne({
     inviteEmail: email,
-    status: INVITED,
+    status: INVITED
   });
 
   if (!membershipOrg) throw new Error("Failed to find invitations for email");
@@ -207,33 +208,32 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
     encryptedPrivateKeyIV,
     encryptedPrivateKeyTag,
     salt,
-    verifier,
+    verifier
   });
 
-  if (!user)
-    throw new Error("Failed to complete account for non-existent user");
-  
+  if (!user) throw new Error("Failed to complete account for non-existent user");
+
   // update organization membership statuses that are
   // invited to completed with user attached
   const membershipsToUpdate = await MembershipOrg.find({
     inviteEmail: email,
-    status: INVITED,
+    status: INVITED
   });
-  
+
   membershipsToUpdate.forEach(async (membership) => {
     await updateSubscriptionOrgQuantity({
-      organizationId: membership.organization.toString(),
+      organizationId: membership.organization.toString()
     });
   });
 
   await MembershipOrg.updateMany(
     {
       inviteEmail: email,
-      status: INVITED,
+      status: INVITED
     },
     {
       user,
-      status: ACCEPTED,
+      status: ACCEPTED
     }
   );
 
@@ -241,7 +241,7 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
   const tokens = await issueAuthTokens({
     userId: user._id,
     ip: req.realIP,
-    userAgent: req.headers["user-agent"] ?? "",
+    userAgent: req.headers["user-agent"] ?? ""
   });
 
   const token = tokens.token;
@@ -251,12 +251,12 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
     httpOnly: true,
     path: "/",
     sameSite: "strict",
-    secure: await getHttpsEnabled(),
+    secure: await getHttpsEnabled()
   });
 
-	return res.status(200).send({
-		message: "Successfully set up account",
-		user,
-		token,
-	});
+  return res.status(200).send({
+    message: "Successfully set up account",
+    user,
+    token
+  });
 };

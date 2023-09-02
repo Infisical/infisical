@@ -12,11 +12,12 @@ import ProjectUsersTable from "@app/components/basic/table/ProjectUsersTable";
 import guidGenerator from "@app/components/utilities/randomId";
 import { Input } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import { 
+import {
   useAddUserToWorkspace,
   useGetOrgUsers,
-  useGetUser, 
-  useGetWorkspaceUsers} from "@app/hooks/api";
+  useGetUser,
+  useGetWorkspaceUsers
+} from "@app/hooks/api";
 import { uploadWsKey } from "@app/hooks/api/keys/queries";
 
 import {
@@ -46,14 +47,14 @@ interface MembershipProps {
 export default function Users() {
   const router = useRouter();
   const workspaceId = router.query.id as string;
-  
+
   const { data: user } = useGetUser();
   const { currentOrg } = useOrganization();
   const { data: orgUsers } = useGetOrgUsers(currentOrg?._id ?? "");
-  
+
   const { data: workspaceUsers } = useGetWorkspaceUsers(workspaceId);
   const { mutateAsync: addUserToWorkspaceMutateAsync } = useAddUserToWorkspace();
-  
+
   const [isAddOpen, setIsAddOpen] = useState(false);
   // let [isDeleteOpen, setIsDeleteOpen] = useState(false);
   // let [userIdToBeDeleted, setUserIdToBeDeleted] = useState(false);
@@ -63,7 +64,6 @@ export default function Users() {
 
   const { t } = useTranslation();
 
-
   const [userList, setUserList] = useState<any[]>([]);
   const [isUserListLoading, setIsUserListLoading] = useState(true);
   const [orgUserList, setOrgUserList] = useState<any[]>([]);
@@ -72,7 +72,7 @@ export default function Users() {
     if (user && workspaceUsers && orgUsers) {
       (async () => {
         setPersonalEmail(user.email);
-        
+
         const tempUserList = workspaceUsers.map((membership: MembershipProps) => ({
           key: guidGenerator(),
           firstName: membership.user?.firstName,
@@ -128,7 +128,7 @@ export default function Users() {
       email,
       workspaceId
     });
-    
+
     if (result?.invitee && result?.latestKey) {
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 

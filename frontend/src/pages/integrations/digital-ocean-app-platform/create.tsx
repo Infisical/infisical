@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
-import {
-  useCreateIntegration
-} from "@app/hooks/api";
+import { useCreateIntegration } from "@app/hooks/api";
 
 import {
   Button,

@@ -5,13 +5,13 @@ import { Dialog, Transition } from "@headlessui/react";
 // #TODO: USE THIS. Currently it's not. Kinda complicated to set up because of state.
 
 type Props = {
-  isOpen: boolean
-  onClose: () => void
-  onSubmit: () => void 
-}
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: () => void;
+};
 
 export const DeleteEnvVar = ({ isOpen, onClose, onSubmit }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
   return (
     <div>
       <Transition appear show={isOpen} as={Fragment}>

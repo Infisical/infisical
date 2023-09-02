@@ -182,14 +182,14 @@ export const getWorkspaceKey = async (req: Request, res: Response) => {
     }   
     */
   const { workspaceId } = req.params;
-  
+
   const key = await Key.findOne({
     workspace: workspaceId,
     receiver: req.user._id
   }).populate("sender", "+publicKey");
 
   if (!key) throw new Error("Failed to find workspace key");
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {

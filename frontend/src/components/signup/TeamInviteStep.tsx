@@ -16,7 +16,7 @@ export default function TeamInviteStep(): JSX.Element {
   const router = useRouter();
   const [emails, setEmails] = useState("");
   const { data: serverDetails } = useFetchServerStatus();
-  
+
   const { mutateAsync } = useAddUserToOrg();
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
 
@@ -63,17 +63,20 @@ export default function TeamInviteStep(): JSX.Element {
           <Button
             onClick={() => {
               if (serverDetails?.emailConfigured) {
-                inviteUsers({ emails })
+                inviteUsers({ emails });
               } else {
                 handlePopUpOpen("setUpEmail");
               }
             }}
             size="sm"
             // isFullWidth
-            className='h-10'
+            className="h-10"
             colorSchema="primary"
             variant="solid"
-          > {t("signup.step5-send-invites") ?? ""} </Button>
+          >
+            {" "}
+            {t("signup.step5-send-invites") ?? ""}{" "}
+          </Button>
         </div>
         <EmailServiceSetupModal
           isOpen={popUp.setUpEmail?.isOpen}
@@ -85,10 +88,13 @@ export default function TeamInviteStep(): JSX.Element {
           onClick={redirectToHome}
           size="sm"
           isFullWidth
-          className='h-12'
+          className="h-12"
           colorSchema="secondary"
           variant="outline"
-        > {t("signup.step5-skip") ?? "Skip"} </Button>
+        >
+          {" "}
+          {t("signup.step5-skip") ?? "Skip"}{" "}
+        </Button>
       </div>
     </div>
   );

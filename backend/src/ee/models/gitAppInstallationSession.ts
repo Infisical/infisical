@@ -5,12 +5,12 @@ type GitAppInstallationSession = {
   sessionId: string;
   organization: Types.ObjectId;
   user: Types.ObjectId;
-}
+};
 
 const gitAppInstallationSession = new Schema<GitAppInstallationSession>({
   id: {
     required: true,
-    type: String,
+    type: String
   },
   sessionId: {
     type: String,
@@ -28,7 +28,9 @@ const gitAppInstallationSession = new Schema<GitAppInstallationSession>({
   }
 });
 
-
-const GitAppInstallationSession = model<GitAppInstallationSession>("git_app_installation_session", gitAppInstallationSession);
+const GitAppInstallationSession = model<GitAppInstallationSession>(
+  "git_app_installation_session",
+  gitAppInstallationSession
+);
 
 export default GitAppInstallationSession;

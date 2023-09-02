@@ -75,7 +75,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
   }
 
   let user;
-  
+
   if (req.authData.actor.type === ActorType.USER) {
     user = req.authData.authPayload._id;
   }
@@ -100,7 +100,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
   if (!serviceTokenData) throw new Error("Failed to find service token data");
 
   const serviceToken = `st.${serviceTokenData._id.toString()}.${secret}`;
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -131,11 +131,12 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
   const { serviceTokenDataId } = req.params;
 
   const serviceTokenData = await ServiceTokenData.findByIdAndDelete(serviceTokenDataId);
-  
-  if (!serviceTokenData) return res.status(200).send({
-    message: "Failed to delete service token"
-  });
-  
+
+  if (!serviceTokenData)
+    return res.status(200).send({
+      message: "Failed to delete service token"
+    });
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {

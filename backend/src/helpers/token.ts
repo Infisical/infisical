@@ -6,7 +6,7 @@ import {
   TOKEN_EMAIL_CONFIRMATION,
   TOKEN_EMAIL_MFA,
   TOKEN_EMAIL_ORG_INVITATION,
-  TOKEN_EMAIL_PASSWORD_RESET,
+  TOKEN_EMAIL_PASSWORD_RESET
 } from "../variables";
 import { UnauthorizedRequestError } from "../utils/errors";
 import { getSaltRounds } from "../config";
@@ -24,13 +24,9 @@ export const createTokenHelper = async ({
   type,
   email,
   phoneNumber,
-  organizationId,
+  organizationId
 }: {
-  type:
-    | "emailConfirmation"
-    | "emailMfa"
-    | "organizationInvitation"
-    | "passwordReset";
+  type: "emailConfirmation" | "emailMfa" | "organizationInvitation" | "passwordReset";
   email?: string;
   phoneNumber?: string;
   organizationId?: Types.ObjectId;
@@ -87,7 +83,7 @@ export const createTokenHelper = async ({
   const update: TokenDataUpdate = {
     type,
     tokenHash: await bcrypt.hash(token, await getSaltRounds()),
-    expiresAt,
+    expiresAt
   };
 
   if (email) {
@@ -109,7 +105,7 @@ export const createTokenHelper = async ({
 
   await TokenData.findOneAndUpdate(query, update, {
     new: true,
-    upsert: true,
+    upsert: true
   });
 
   return token;
@@ -126,13 +122,9 @@ export const validateTokenHelper = async ({
   email,
   phoneNumber,
   organizationId,
-  token,
+  token
 }: {
-  type:
-    | "emailConfirmation"
-    | "emailMfa"
-    | "organizationInvitation"
-    | "passwordReset";
+  type: "emailConfirmation" | "emailMfa" | "organizationInvitation" | "passwordReset";
   email?: string;
   phoneNumber?: string;
   organizationId?: Types.ObjectId;
@@ -167,8 +159,8 @@ export const validateTokenHelper = async ({
     throw UnauthorizedRequestError({
       message: "MFA session expired. Please log in again",
       context: {
-        code: "mfa_expired",
-      },
+        code: "mfa_expired"
+      }
     });
   }
 
@@ -185,10 +177,10 @@ export const validateTokenHelper = async ({
         await TokenData.findByIdAndUpdate(
           tokenData._id,
           {
-            triesLeft: tokenData.triesLeft - 1,
+            triesLeft: tokenData.triesLeft - 1
           },
           {
-            new: true,
+            new: true
           }
         );
       }
@@ -197,16 +189,16 @@ export const validateTokenHelper = async ({
         message: "MFA code is invalid",
         context: {
           code: "mfa_invalid",
-          triesLeft: tokenData.triesLeft - 1,
-        },
+          triesLeft: tokenData.triesLeft - 1
+        }
       });
     }
 
     throw UnauthorizedRequestError({
       message: "MFA code is invalid",
       context: {
-        code: "mfa_invalid",
-      },
+        code: "mfa_invalid"
+      }
     });
   }
 

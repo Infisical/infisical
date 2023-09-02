@@ -1,1 +1,1 @@
-export {SecretTagsSection} from "./SecretTagsSection"
+export { SecretTagsSection } from "./SecretTagsSection";

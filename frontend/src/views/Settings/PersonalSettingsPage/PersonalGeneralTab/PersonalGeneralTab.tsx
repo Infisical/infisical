@@ -4,12 +4,12 @@ import { SessionsSection } from "../SessionsSection";
 import { UserNameSection } from "../UserNameSection";
 
 export const PersonalGeneralTab = () => {
-    return (
-        <div>
-            <UserNameSection />
-            <ChangeLanguageSection />
-            <SessionsSection />
-            <EmergencyKitSection />
-        </div>
-    );
-}
+  return (
+    <div>
+      <UserNameSection />
+      <ChangeLanguageSection />
+      <SessionsSection />
+      <EmergencyKitSection />
+    </div>
+  );
+};

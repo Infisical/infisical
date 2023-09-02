@@ -208,10 +208,7 @@ export const changePassword = async (req: Request, res: Response) => {
           }
         );
 
-        if (
-          req.authData.actor.type === ActorType.USER &&
-          req.authData.tokenVersionId
-        ) {
+        if (req.authData.actor.type === ActorType.USER && req.authData.tokenVersionId) {
           await clearTokens(req.authData.tokenVersionId);
         }
 

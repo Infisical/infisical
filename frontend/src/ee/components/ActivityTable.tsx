@@ -49,7 +49,6 @@ const ActivityLogsRow = ({
   const { t } = useTranslation();
 
   const renderUser = () => {
-    
     if (row?.user) return `${row.user}`;
     if (row?.serviceAccount) return `Service Account: ${row.serviceAccount.name}`;
     if (row?.serviceTokenData?.name) return `Service Token: ${row.serviceTokenData.name}`;
@@ -58,7 +57,10 @@ const ActivityLogsRow = ({
   };
   return (
     <>
-      <div key={guidGenerator()} className="w-full bg-mineshaft-800 text-sm text-mineshaft-200 duration-100 flex flex-row items-center">
+      <div
+        key={guidGenerator()}
+        className="w-full bg-mineshaft-800 text-sm text-mineshaft-200 duration-100 flex flex-row items-center"
+      >
         <button
           type="button"
           onClick={() => setPayloadOpened(!payloadOpened)}
@@ -87,10 +89,10 @@ const ActivityLogsRow = ({
       </div>
       {payloadOpened && (
         <div className="h-9 border-t border-mineshaft-700 text-sm text-bunker-200 bg-mineshaft-900/50 w-full flex flex-row items-center">
-          <div className='max-w-xl w-full flex flex-row items-center'>
-            <div className='w-24' />
-            <div className='w-1/2'>{String(t("common.timestamp"))}</div>
-            <div className='w-1/2'>{row.createdAt}</div>
+          <div className="max-w-xl w-full flex flex-row items-center">
+            <div className="w-24" />
+            <div className="w-1/2">{String(t("common.timestamp"))}</div>
+            <div className="w-1/2">{row.createdAt}</div>
           </div>
         </div>
       )}
@@ -98,24 +100,24 @@ const ActivityLogsRow = ({
         row.payload?.map(
           (action) =>
             action.secretVersions.length > 0 && (
-              <div 
+              <div
                 key={action.name}
                 className="h-9 border-t border-mineshaft-700 text-sm text-bunker-200 bg-mineshaft-900/50 w-full flex flex-row items-center"
               >
-                <div className='max-w-xl w-full flex flex-row items-center'>
-                  <div className='w-24' />
-                  <div className='w-1/2'>{t(`activity.event.${action.name}`)}</div>
-                  <button 
+                <div className="max-w-xl w-full flex flex-row items-center">
+                  <div className="w-24" />
+                  <div className="w-1/2">{t(`activity.event.${action.name}`)}</div>
+                  <button
                     type="button"
                     onClick={() => toggleSidebar(action._id)}
-                    className='w-1/2 text-primary-300 hover:text-primary-500 flex flex-row justify-left items-center duration-100'
+                    className="w-1/2 text-primary-300 hover:text-primary-500 flex flex-row justify-left items-center duration-100"
                   >
                     {action.secretVersions.length +
-                        (action.secretVersions.length !== 1 ? " secrets" : " secret")}
-                      <FontAwesomeIcon
-                        icon={faUpRightFromSquare}
-                        className="ml-2 mb-0.5 h-3 w-3 font-light"
-                      />
+                      (action.secretVersions.length !== 1 ? " secrets" : " secret")}
+                    <FontAwesomeIcon
+                      icon={faUpRightFromSquare}
+                      className="ml-2 mb-0.5 h-3 w-3 font-light"
+                    />
                   </button>
                 </div>
               </div>
@@ -123,10 +125,10 @@ const ActivityLogsRow = ({
         )}
       {payloadOpened && (
         <div className="h-9 border-t border-mineshaft-700 text-sm text-bunker-200 bg-mineshaft-900/50 w-full flex flex-row items-center">
-          <div className='max-w-xl w-full flex flex-row items-center'>
-            <div className='w-24' />
-            <div className='w-1/2'>{String(t("activity.ip-address"))}</div>
-            <div className='w-1/2'>{row.ipAddress}</div>
+          <div className="max-w-xl w-full flex flex-row items-center">
+            <div className="w-24" />
+            <div className="w-1/2">{String(t("activity.ip-address"))}</div>
+            <div className="w-1/2">{row.ipAddress}</div>
           </div>
         </div>
       )}
@@ -160,11 +162,7 @@ const ActivityTable = ({
         <div className="my-1 w-full">
           <div className="text-bunker-300 border-b border-mineshaft-600">
             <div className="text-sm flex flex-row w-full">
-              <button
-                type="button"
-                onClick={() => {}}
-                className="opacity-0"
-              >
+              <button type="button" onClick={() => {}} className="opacity-0">
                 <FontAwesomeIcon
                   icon={faAngleRight}
                   className="ml-6 mb-2 text-bunker-100 hover:bg-mineshaft-700 cursor-pointer h-4 w-4 rounded-md p-1 duration-100"

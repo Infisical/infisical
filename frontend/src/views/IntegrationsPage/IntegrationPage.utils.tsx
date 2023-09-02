@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-import { TCloudIntegration,UserWsKeyPair } from "@app/hooks/api/types";
+import { TCloudIntegration, UserWsKeyPair } from "@app/hooks/api/types";
 
 import {
   decryptAssymmetric,
@@ -32,11 +32,10 @@ export const generateBotKey = (botPublicKey: string, latestKey: UserWsKeyPair) =
 
 export const redirectForProviderAuth = (integrationOption: TCloudIntegration) => {
   try {
-
     // generate CSRF token for OAuth2 code-token exchange integrations
     const state = crypto.randomBytes(16).toString("hex");
     localStorage.setItem("latestCSRFToken", state);
-    
+
     let link = "";
     switch (integrationOption.slug) {
       case "gcp-secret-manager":
@@ -127,7 +126,6 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
     if (link !== "") {
       window.location.assign(link);
     }
-    
   } catch (err) {
     console.error(err);
   }

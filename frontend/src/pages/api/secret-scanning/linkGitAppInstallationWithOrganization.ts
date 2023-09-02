@@ -2,7 +2,7 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * Will create a new integration session and return it for the given org
- * @returns 
+ * @returns
  */
 const linkGitAppInstallationWithOrganization = (installationId: string, sessionId: string) =>
   SecurityClient.fetchCall("/api/v1/secret-scanning/link-installation", {
@@ -16,7 +16,7 @@ const linkGitAppInstallationWithOrganization = (installationId: string, sessionI
     })
   }).then(async (res) => {
     if (res && res.status === 200) {
-      return true
+      return true;
     }
     console.log("Failed to link installation to organization");
     return undefined;

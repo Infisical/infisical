@@ -12,32 +12,34 @@ const generateOpenAPISpec = async () => {
   const doc = {
     info: {
       title: "Infisical API",
-      description: "List of all available APIs that can be consumed",
+      description: "List of all available APIs that can be consumed"
     },
     host: ["https://infisical.com"],
     servers: [
       {
         url: "https://infisical.com",
-        description: "Production server",
+        description: "Production server"
       },
       {
         url: "http://localhost:8080",
-        description: "Local server",
-      },
+        description: "Local server"
+      }
     ],
     securityDefinitions: {
       bearerAuth: {
         type: "http",
         scheme: "bearer",
         bearerFormat: "JWT",
-        description: "This security definition uses the HTTP 'bearer' scheme, which allows the client to authenticate using a JSON Web Token (JWT) that is passed in the Authorization header of the request.",
+        description:
+          "This security definition uses the HTTP 'bearer' scheme, which allows the client to authenticate using a JSON Web Token (JWT) that is passed in the Authorization header of the request."
       },
       apiKeyAuth: {
         type: "apiKey",
         in: "header",
         name: "X-API-Key",
-        description: 'This security definition uses an API key, which is passed in the header of the request as the value of the "X-API-Key" header. The client must provide a valid key in order to access the API.',
-      },
+        description:
+          'This security definition uses an API key, which is passed in the header of the request as the value of the "X-API-Key" header. The client must provide a valid key in order to access the API.'
+      }
     },
     definitions: {
       CurrentUser: {
@@ -50,7 +52,7 @@ const generateOpenAPISpec = async () => {
         iv: "iv_of_enc_nacl_private_key",
         tag: "tag_of_enc_nacl_private_key",
         updatedAt: "2023-01-13T14:16:12.210Z",
-        createdAt: "2023-01-13T14:16:12.210Z",
+        createdAt: "2023-01-13T14:16:12.210Z"
       },
       Membership: {
         user: {
@@ -60,10 +62,10 @@ const generateOpenAPISpec = async () => {
           lastName: "Doe",
           publicKey: "johns_nacl_public_key",
           updatedAt: "2023-01-13T14:16:12.210Z",
-          createdAt: "2023-01-13T14:16:12.210Z",
+          createdAt: "2023-01-13T14:16:12.210Z"
         },
         workspace: "",
-        role: "admin",
+        role: "admin"
       },
       MembershipOrg: {
         user: {
@@ -73,33 +75,35 @@ const generateOpenAPISpec = async () => {
           lastName: "Doe",
           publicKey: "johns_nacl_public_key",
           updatedAt: "2023-01-13T14:16:12.210Z",
-          createdAt: "2023-01-13T14:16:12.210Z",
+          createdAt: "2023-01-13T14:16:12.210Z"
         },
         organization: "",
         role: "owner",
-        status: "accepted",
+        status: "accepted"
       },
       Organization: {
         _id: "",
         name: "Acme Corp.",
-        customerId: "",
+        customerId: ""
       },
       Project: {
         name: "My Project",
         organization: "",
-        environments: [{
-          name: "development",
-          slug: "dev",
-        }],
+        environments: [
+          {
+            name: "development",
+            slug: "dev"
+          }
+        ]
       },
       ProjectKey: {
         encryptedkey: "",
         nonce: "",
         sender: {
-          publicKey: "senders_nacl_public_key",
+          publicKey: "senders_nacl_public_key"
         },
         receiver: "",
-        workspace: "",
+        workspace: ""
       },
       CreateSecret: {
         type: "shared",
@@ -111,7 +115,7 @@ const generateOpenAPISpec = async () => {
         secretValueTag: "",
         secretCommentCiphertext: "",
         secretCommentIV: "",
-        secretCommentTag: "", 
+        secretCommentTag: ""
       },
       UpdateSecret: {
         id: "",
@@ -123,12 +127,12 @@ const generateOpenAPISpec = async () => {
         secretValueTag: "",
         secretCommentCiphertext: "",
         secretCommentIV: "",
-        secretCommentTag: "",
+        secretCommentTag: ""
       },
       Secret: {
         _id: "",
         version: 1,
-        workspace : "",
+        workspace: "",
         type: "shared",
         user: null,
         secretKeyCiphertext: "",
@@ -141,7 +145,7 @@ const generateOpenAPISpec = async () => {
         secretCommentIV: "",
         secretCommentTag: "",
         updatedAt: "2023-01-13T14:16:12.210Z",
-        createdAt: "2023-01-13T14:16:12.210Z",
+        createdAt: "2023-01-13T14:16:12.210Z"
       },
       Log: {
         _id: "",
@@ -149,12 +153,10 @@ const generateOpenAPISpec = async () => {
           _id: "",
           email: "johndoe@gmail.com",
           firstName: "John",
-          lastName: "Doe",
+          lastName: "Doe"
         },
         workspace: "",
-        actionNames: [
-          "addSecrets",
-        ],
+        actionNames: ["addSecrets"],
         actions: [
           {
             name: "addSecrets",
@@ -163,24 +165,24 @@ const generateOpenAPISpec = async () => {
             payload: [
               {
                 oldSecretVersion: "",
-                newSecretVersion: "",
-              },
-            ],
-          },
+                newSecretVersion: ""
+              }
+            ]
+          }
         ],
         channel: "cli",
         ipAddress: "192.168.0.1",
         updatedAt: "2023-01-13T14:16:12.210Z",
-        createdAt: "2023-01-13T14:16:12.210Z",
+        createdAt: "2023-01-13T14:16:12.210Z"
       },
       SecretSnapshot: {
         workspace: "",
         version: 1,
         secretVersions: [
           {
-            _id: "",
-          },
-        ],
+            _id: ""
+          }
+        ]
       },
       SecretVersion: {
         _id: "",
@@ -196,7 +198,7 @@ const generateOpenAPISpec = async () => {
         secretKeyTag: "",
         secretValueCiphertext: "",
         secretValueIV: "",
-        secretValueTag: "", 
+        secretValueTag: ""
       },
       ServiceTokenData: {
         _id: "",
@@ -206,16 +208,16 @@ const generateOpenAPISpec = async () => {
         user: {
           _id: "",
           firstName: "",
-          lastName: "",
+          lastName: ""
         },
         expiresAt: "2023-01-13T14:16:12.210Z",
         encryptedKey: "",
         iv: "",
         tag: "",
         updatedAt: "2023-01-13T14:16:12.210Z",
-        createdAt: "2023-01-13T14:16:12.210Z",
-      },
-    },
+        createdAt: "2023-01-13T14:16:12.210Z"
+      }
+    }
   };
 
   const outputJSONFile = "../spec.json";
@@ -224,6 +226,6 @@ const generateOpenAPISpec = async () => {
 
   const spec = await swaggerAutogen(outputJSONFile, endpointsFiles, doc);
   await fs.writeFile(outputYAMLFile, yaml.dump(spec.data));
-}
+};
 
 generateOpenAPISpec();

@@ -16,7 +16,6 @@ const yyyy = today.getFullYear();
 
 const todayFormatted = `${mm}/${dd}/${yyyy}`;
 
-
 function createPdfHeader(doc: jsPDF, personalName: string) {
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, 600, 900, "F");
@@ -93,4 +92,3 @@ function generateBackupPDF({ personalName, personalEmail, generatedKey }: PDFPro
 }
 
 export default generateBackupPDF;
-

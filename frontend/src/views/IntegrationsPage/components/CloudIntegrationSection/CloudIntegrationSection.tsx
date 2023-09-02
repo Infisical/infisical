@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { DeleteActionModal,Skeleton, Tooltip } from "@app/components/v2";
+import { DeleteActionModal, Skeleton, Tooltip } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 import { IntegrationAuth, TCloudIntegration } from "@app/hooks/api/types";
 
@@ -32,7 +32,7 @@ export const CloudIntegrationSection = ({
   const isEmpty = !isLoading && !cloudIntegrations?.length;
 
   const sortedCloudIntegrations = cloudIntegrations.sort((a, b) => a.name.localeCompare(b.name));
-  
+
   return (
     <div>
       <div className="m-4 mt-7 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">

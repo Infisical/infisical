@@ -14,7 +14,7 @@ export const requestErrorHandler: ErrorRequestHandler = async (
 ) => {
   if (res.headersSent) return next();
 
-  if (await getNodeEnv() !== "production") {
+  if ((await getNodeEnv()) !== "production") {
     /* eslint-disable no-console */
     console.error(error);
   }
@@ -25,7 +25,7 @@ export const requestErrorHandler: ErrorRequestHandler = async (
   } else if (!(error instanceof RequestError)) {
     error = InternalServerError({
       context: { exception: error.message },
-      stack: error.stack,
+      stack: error.stack
     });
     (await getLogger("backend-main")).log(
       (<RequestError>error).levelName.toLowerCase(),
@@ -40,15 +40,11 @@ export const requestErrorHandler: ErrorRequestHandler = async (
   //* Only sent error to Sentry if LogLevel is one of the following level 'ERROR', 'EMERGENCY' or 'CRITICAL'
   //* with this we will eliminate false-positive errors like 'BadRequestError', 'UnauthorizedRequestError' and so on
   if (
-    [LogLevel.ERROR, LogLevel.EMERGENCY, LogLevel.CRITICAL].includes(
-      (<RequestError>error).level
-    )
+    [LogLevel.ERROR, LogLevel.EMERGENCY, LogLevel.CRITICAL].includes((<RequestError>error).level)
   ) {
     Sentry.captureException(error);
   }
 
-  res
-    .status((<RequestError>error).statusCode)
-    .json((<RequestError>error).format(req));
+  res.status((<RequestError>error).statusCode).json((<RequestError>error).format(req));
   next();
 };

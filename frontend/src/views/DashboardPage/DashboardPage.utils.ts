@@ -59,7 +59,7 @@ const secretSchema = yup.object({
       _id: yup.string().required(),
       name: yup.string().required(),
       slug: yup.string().required(),
-      tagColor: yup.string().nullable(),
+      tagColor: yup.string().nullable()
     })
   ),
   overrideAction: yup.string().notRequired().oneOf(Object.values(SecretActionType)),
@@ -183,19 +183,21 @@ const deepCompareSecrets = (lhs: DecryptedSecret, rhs: any) =>
   JSON.stringify(lhs.tags) === JSON.stringify(rhs.tags);
 
 export const transformSecretsToBatchSecretReq = (
-  deletedSecretIds: { id: string; secretName: string; }[],
+  deletedSecretIds: { id: string; secretName: string }[],
   latestFileKey: any,
   secrets: FormData["secrets"],
   intialValues: DecryptedSecret[] = []
 ) => {
   // deleted secrets
-  const secretsToBeDeleted: BatchSecretDTO["requests"] = deletedSecretIds.map(({ id, secretName }) => ({
-    method: "DELETE",
-    secret: { 
-      _id: id,
-      secretName
-    }
-  }));
+  const secretsToBeDeleted: BatchSecretDTO["requests"] = deletedSecretIds.map(
+    ({ id, secretName }) => ({
+      method: "DELETE",
+      secret: {
+        _id: id,
+        secretName
+      }
+    })
+  );
 
   const secretsToBeUpdated: BatchSecretDTO["requests"] = [];
   const secretsToBeCreated: BatchSecretDTO["requests"] = [];

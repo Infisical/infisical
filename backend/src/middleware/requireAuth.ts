@@ -1,18 +1,18 @@
 import jwt from "jsonwebtoken";
 import { NextFunction, Request, Response } from "express";
 import {
-	getAuthAPIKeyPayload,
-	getAuthSTDPayload,
-	getAuthUserPayload,
-	validateAuthMode,
+  getAuthAPIKeyPayload,
+  getAuthSTDPayload,
+  getAuthUserPayload,
+  validateAuthMode
 } from "../helpers/auth";
 import { AuthMode } from "../variables";
 import { AuthData } from "../interfaces/middleware";
 
 declare module "jsonwebtoken" {
-	export interface UserIDJwtPayload extends jwt.JwtPayload {
-		userId: string;
-	}
+  export interface UserIDJwtPayload extends jwt.JwtPayload {
+    userId: string;
+  }
 }
 
 /**
@@ -25,52 +25,47 @@ declare module "jsonwebtoken" {
  * @param {String[]} obj.acceptedAuthModes - accepted modes of authentication (jwt/st)
  * @returns
  */
-const requireAuth = ({
-	acceptedAuthModes = [AuthMode.JWT],
-}: {
-	acceptedAuthModes: AuthMode[];
-}) => {
-	return async (req: Request, res: Response, next: NextFunction) => {
+const requireAuth = ({ acceptedAuthModes = [AuthMode.JWT] }: { acceptedAuthModes: AuthMode[] }) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    // validate auth token against accepted auth modes [acceptedAuthModes]
+    // and return token type [authTokenType] and value [authTokenValue]
+    const { authMode, authTokenValue } = validateAuthMode({
+      headers: req.headers,
+      acceptedAuthModes
+    });
 
-		// validate auth token against accepted auth modes [acceptedAuthModes]
-		// and return token type [authTokenType] and value [authTokenValue]
-		const { authMode, authTokenValue } = validateAuthMode({
-			headers: req.headers,
-			acceptedAuthModes,
-		});
-		
-		let authData: AuthData;
-		
-		switch (authMode) {
-			case AuthMode.SERVICE_TOKEN:
-				authData = await getAuthSTDPayload({
-					req,
-					authTokenValue,
-				});
-				req.serviceTokenData = authData.authPayload;
-				break;
-			case AuthMode.API_KEY:
-				authData = await getAuthAPIKeyPayload({
-					req,
-					authTokenValue
-				});
-				req.user = authData.authPayload;
-				break;
-			case AuthMode.JWT:
-				authData = await getAuthUserPayload({
-					req,
-					authTokenValue
-				});
-				// authPayload = authUserPayload.user;
-				req.user = authData.authPayload;
-				// req.tokenVersionId = authUserPayload.tokenVersionId; // TODO
-				break;
-		}
-		
-		req.authData = authData;
+    let authData: AuthData;
 
-		return next();
-	}
-}
+    switch (authMode) {
+      case AuthMode.SERVICE_TOKEN:
+        authData = await getAuthSTDPayload({
+          req,
+          authTokenValue
+        });
+        req.serviceTokenData = authData.authPayload;
+        break;
+      case AuthMode.API_KEY:
+        authData = await getAuthAPIKeyPayload({
+          req,
+          authTokenValue
+        });
+        req.user = authData.authPayload;
+        break;
+      case AuthMode.JWT:
+        authData = await getAuthUserPayload({
+          req,
+          authTokenValue
+        });
+        // authPayload = authUserPayload.user;
+        req.user = authData.authPayload;
+        // req.tokenVersionId = authUserPayload.tokenVersionId; // TODO
+        break;
+    }
+
+    req.authData = authData;
+
+    return next();
+  };
+};
 
 export default requireAuth;

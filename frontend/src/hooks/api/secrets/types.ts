@@ -79,7 +79,7 @@ export type UpdateSecretArg = {
 
 export type CreateSecretArg = Omit<UpdateSecretArg, "_id">;
 
-export type DeleteSecretArg = { _id: string, secretName: string; };
+export type DeleteSecretArg = { _id: string; secretName: string };
 
 export type BatchSecretDTO = {
   workspaceId: string;
@@ -167,5 +167,5 @@ export type CreateSecretDTO = {
   secretPath: string;
   metadata?: {
     source?: string;
-  }
-}
+  };
+};

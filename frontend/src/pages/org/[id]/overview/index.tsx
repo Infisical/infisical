@@ -38,7 +38,13 @@ import {
 } from "@app/components/v2";
 import { TabsObject } from "@app/components/v2/Tabs";
 import { useSubscription, useUser, useWorkspace } from "@app/context";
-import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useRegisterUserAction,useUploadWsKey } from "@app/hooks/api";
+import {
+  fetchOrgUsers,
+  useAddUserToWs,
+  useCreateWorkspace,
+  useRegisterUserAction,
+  useUploadWsKey
+} from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -92,9 +98,7 @@ const LearningItem = ({
             tabIndex={0}
             onClick={async () => {
               if (userAction && userAction !== "first_time_secrets_pushed") {
-                await registerUserAction.mutateAsync(
-                  userAction
-                );
+                await registerUserAction.mutateAsync(userAction);
               }
             }}
             className={`group relative flex h-[5.5rem] w-full items-center justify-between overflow-hidden rounded-md border ${
@@ -273,7 +277,6 @@ export default function Organization() {
   const { user } = useUser();
   const uploadWsKey = useUploadWsKey();
   const { data: serverDetails } = useFetchServerStatus();
-  
 
   const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
     // type check
@@ -345,18 +348,28 @@ export default function Organization() {
         <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      {!serverDetails?.redisConfigured && <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
+      {!serverDetails?.redisConfigured && (
+        <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
           <p className="mr-4 mb-4 font-semibold text-white">Announcements</p>
           <div className="w-full border border-blue-400/70 rounded-md bg-blue-900/70 p-2 text-base text-mineshaft-100 flex items-center">
-            <FontAwesomeIcon icon={faExclamationCircle} className="text-2xl mr-4 p-4 text-mineshaft-50"/>
-            Attention: Updated versions of Infisical now require Redis for full functionality. Learn how to configure it 
-            <Link href="https://infisical.com/docs/self-hosting/configuration/redis" target="_blank">
+            <FontAwesomeIcon
+              icon={faExclamationCircle}
+              className="text-2xl mr-4 p-4 text-mineshaft-50"
+            />
+            Attention: Updated versions of Infisical now require Redis for full functionality. Learn
+            how to configure it
+            <Link
+              href="https://infisical.com/docs/self-hosting/configuration/redis"
+              target="_blank"
+            >
               <span className="pl-1 text-white underline underline-offset-2 hover:decoration-blue-400 hover:text-blue-200 duration-100 cursor-pointer">
                 here
               </span>
-            </Link>. 
+            </Link>
+            .
           </div>
-      </div>}
+        </div>
+      )}
       <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
         <p className="mr-4 font-semibold text-white">Projects</p>
         <div className="mt-6 flex w-full flex-row">

@@ -33,7 +33,7 @@ export const createFolder = async (req: Request, res: Response) => {
   }).lean();
 
   // space has no folders initialized
-  
+
   if (!folders) {
     if (req.authData.authPayload instanceof ServiceTokenData) {
       // root check
@@ -65,7 +65,7 @@ export const createFolder = async (req: Request, res: Response) => {
       workspaceId,
       environment
     });
-    
+
     await EEAuditLogService.createAuditLog(
       req.authData,
       {
@@ -86,9 +86,9 @@ export const createFolder = async (req: Request, res: Response) => {
   }
 
   const folder = appendFolder(folders.nodes, { folderName, parentFolderId });
-  
+
   await Folder.findByIdAndUpdate(folders._id, folders);
-  
+
   const { folder: parentFolder, folderPath: parentFolderPath } = getFolderWithPathFromId(
     folders.nodes,
     parentFolderId || "root"
@@ -120,9 +120,9 @@ export const createFolder = async (req: Request, res: Response) => {
     environment,
     folderId: parentFolderId
   });
-  
-  const {folderPath} = getFolderWithPathFromId(folders.nodes, folder.id);
-  
+
+  const { folderPath } = getFolderWithPathFromId(folders.nodes, folder.id);
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -170,7 +170,7 @@ export const updateFolderById = async (req: Request, res: Response) => {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
   const folder = parentFolder.children.find(({ id }) => id === folderId);
-  
+
   if (!folder) {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
@@ -202,8 +202,8 @@ export const updateFolderById = async (req: Request, res: Response) => {
     folderId: parentFolder.id
   });
 
-  const {folderPath} = getFolderWithPathFromId(folders.nodes, folder.id);
-  
+  const { folderPath } = getFolderWithPathFromId(folders.nodes, folder.id);
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -245,7 +245,7 @@ export const deleteFolder = async (req: Request, res: Response) => {
     });
   }
 
-  const {folderPath} = getFolderWithPathFromId(folders.nodes, folderId);
+  const { folderPath } = getFolderWithPathFromId(folders.nodes, folderId);
 
   const delOp = deleteFolderById(folders.nodes, folderId);
   if (!delOp) {
@@ -288,7 +288,7 @@ export const deleteFolder = async (req: Request, res: Response) => {
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
-      type: EventType.DELETE_FOLDER ,
+      type: EventType.DELETE_FOLDER,
       metadata: {
         environment,
         folderId,

@@ -89,4 +89,7 @@ const serviceTokenDataSchema = new Schema<IServiceTokenData>(
   }
 );
 
-export const ServiceTokenData = model<IServiceTokenData>("ServiceTokenData", serviceTokenDataSchema);
+export const ServiceTokenData = model<IServiceTokenData>(
+  "ServiceTokenData",
+  serviceTokenDataSchema
+);

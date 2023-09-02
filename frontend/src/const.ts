@@ -50,7 +50,8 @@ const plansProd: Mapping = {
 
 export const plans = plansProd || plansDev;
 
-export const leaveConfirmDefaultMessage = "Your changes will be lost if you leave the page. Are you sure you want to continue?";
+export const leaveConfirmDefaultMessage =
+  "Your changes will be lost if you leave the page. Are you sure you want to continue?";
 
 export const secretTagsColors = [
   {
@@ -115,5 +116,5 @@ export const secretTagsColors = [
     rgba: "rgb(255,0,0, 0.8)",
     name: "Red",
     selected: false
-  },
-]
+  }
+];

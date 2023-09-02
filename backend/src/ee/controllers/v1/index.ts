@@ -9,13 +9,13 @@ import * as membershipController from "./membershipController";
 import * as cloudProductsController from "./cloudProductsController";
 
 export {
-    secretController,
-    secretSnapshotController,
-    organizationsController,
-    ssoController,
-    usersController,
-    workspaceController,
-    actionController,
-    membershipController,
-    cloudProductsController,
-}
+  secretController,
+  secretSnapshotController,
+  organizationsController,
+  ssoController,
+  usersController,
+  workspaceController,
+  actionController,
+  membershipController,
+  cloudProductsController
+};

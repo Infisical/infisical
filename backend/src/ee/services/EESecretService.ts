@@ -3,7 +3,7 @@ import { ISecretVersion } from "../models";
 import {
   addSecretVersionsHelper,
   markDeletedSecretVersionsHelper,
-  takeSecretSnapshotHelper,
+  takeSecretSnapshotHelper
 } from "../helpers/secret";
 import EELicenseService from "./EELicenseService";
 
@@ -23,7 +23,7 @@ export default class EESecretService {
   static async takeSecretSnapshot({
     workspaceId,
     environment,
-    folderId,
+    folderId
   }: {
     workspaceId: Types.ObjectId;
     environment: string;
@@ -33,7 +33,7 @@ export default class EESecretService {
     return await takeSecretSnapshotHelper({
       workspaceId,
       environment,
-      folderId,
+      folderId
     });
   }
 
@@ -43,14 +43,10 @@ export default class EESecretService {
    * @param {Object[]} obj.secretVersions
    * @returns {SecretVersion[]} newSecretVersions - new secret versions
    */
-  static async addSecretVersions({
-    secretVersions,
-  }: {
-    secretVersions: ISecretVersion[];
-  }) {
+  static async addSecretVersions({ secretVersions }: { secretVersions: ISecretVersion[] }) {
     if (!EELicenseService.isLicenseValid) return;
     return await addSecretVersionsHelper({
-      secretVersions,
+      secretVersions
     });
   }
 
@@ -60,14 +56,10 @@ export default class EESecretService {
    * @param {Object} obj
    * @param {ObjectId[]} obj.secretIds - secret ids
    */
-  static async markDeletedSecretVersions({
-    secretIds,
-  }: {
-    secretIds: Types.ObjectId[];
-  }) {
+  static async markDeletedSecretVersions({ secretIds }: { secretIds: Types.ObjectId[] }) {
     if (!EELicenseService.isLicenseValid) return;
     await markDeletedSecretVersionsHelper({
-      secretIds,
+      secretIds
     });
   }
 }

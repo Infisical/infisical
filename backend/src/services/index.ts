@@ -16,5 +16,5 @@ export {
   EventService,
   IntegrationService,
   TokenService,
-  SecretService,
-}
+  SecretService
+};

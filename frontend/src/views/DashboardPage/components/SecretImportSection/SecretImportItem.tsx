@@ -49,7 +49,9 @@ export const SecretImportItem = ({
   const rowEnv = currentWorkspace?.environments?.find(({ slug }) => slug === importedEnv);
 
   useEffect(() => {
-    const filteredSecrets = importedSecrets.filter(secret => secret.key.toUpperCase().includes(searchTerm.toUpperCase()))
+    const filteredSecrets = importedSecrets.filter((secret) =>
+      secret.key.toUpperCase().includes(searchTerm.toUpperCase())
+    );
 
     if (filteredSecrets.length > 0 && searchTerm) {
       setIsExpanded.on();
@@ -57,7 +59,6 @@ export const SecretImportItem = ({
       setIsExpanded.off();
     }
   }, [searchTerm]);
-
 
   useEffect(() => {
     if (isDragging) {
@@ -78,7 +79,11 @@ export const SecretImportItem = ({
         className="group flex cursor-default flex-row items-center hover:bg-mineshaft-700"
         onClick={() => setIsExpanded.toggle()}
       >
-        <td className={`ml-0.5 flex h-10 w-10 items-center justify-center border-none px-4 ${isExpanded && "border-t-2 border-mineshaft-500"}`}>
+        <td
+          className={`ml-0.5 flex h-10 w-10 items-center justify-center border-none px-4 ${
+            isExpanded && "border-t-2 border-mineshaft-500"
+          }`}
+        >
           <Tooltip content="Secret Import" className="capitalize">
             <FontAwesomeIcon icon={faFileImport} className="text-green-700" />
           </Tooltip>
@@ -127,7 +132,10 @@ export const SecretImportItem = ({
       </tr>
       <tr>
         {isExpanded && !isDragging && (
-          <td colSpan={3} className={`bg-bunker-800 ${isExpanded && "border-b-2 border-mineshaft-500"}`}>
+          <td
+            colSpan={3}
+            className={`bg-bunker-800 ${isExpanded && "border-b-2 border-mineshaft-500"}`}
+          >
             <div className="rounded-md bg-bunker-700 p-1">
               <TableContainer>
                 <table className="secret-table">
@@ -146,19 +154,26 @@ export const SecretImportItem = ({
                         </td>
                       </tr>
                     )}
-                    {importedSecrets.filter(secret => secret.key.toUpperCase().includes(searchTerm.toUpperCase())).map(({ key, value, overriden }, index) => (
-                      <tr key={`${importedEnv}-${importedSecPath}-${key}-${index + 1}`}>
-                        <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
-                          {key}
-                        </td>
-                        <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
-                          <SecretInput value={value} isDisabled isVisible />
-                        </td>
-                        <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
-                          <EnvFolderIcon env={overriden?.env} secretPath={overriden?.secretPath} />
-                        </td>
-                      </tr>
-                    ))}
+                    {importedSecrets
+                      .filter((secret) =>
+                        secret.key.toUpperCase().includes(searchTerm.toUpperCase())
+                      )
+                      .map(({ key, value, overriden }, index) => (
+                        <tr key={`${importedEnv}-${importedSecPath}-${key}-${index + 1}`}>
+                          <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
+                            {key}
+                          </td>
+                          <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
+                            <SecretInput value={value} isDisabled isVisible />
+                          </td>
+                          <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
+                            <EnvFolderIcon
+                              env={overriden?.env}
+                              secretPath={overriden?.secretPath}
+                            />
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </TableContainer>

@@ -1,3 +1,3 @@
 export type Metadata = {
-    secretSuffix?: string;
-}
+  secretSuffix?: string;
+};

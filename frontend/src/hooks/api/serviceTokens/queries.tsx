@@ -29,7 +29,7 @@ export const useGetUserWsServiceTokens = ({ workspaceID }: UseGetWorkspaceServic
     queryFn: () => fetchWorkspaceServiceTokens(workspaceID),
     enabled: Boolean(workspaceID)
   });
-}
+};
 
 // mutation
 export const useCreateServiceToken = () => {

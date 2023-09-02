@@ -11,9 +11,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import {
-  useCreateIntegration
-} from "@app/hooks/api";
+import { useCreateIntegration } from "@app/hooks/api";
 
 import {
   useGetIntegrationAuthApps,

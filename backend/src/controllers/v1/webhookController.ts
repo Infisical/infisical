@@ -29,7 +29,7 @@ export const createWebhook = async (req: Request, res: Response) => {
   }
 
   await webhook.save();
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -109,7 +109,7 @@ export const deleteWebhook = async (req: Request, res: Response) => {
     workspaceId: webhook.workspace,
     acceptedRoles: [ADMIN, MEMBER]
   });
-  
+
   webhook = await Webhook.findByIdAndDelete(webhookId);
 
   if (!webhook) {

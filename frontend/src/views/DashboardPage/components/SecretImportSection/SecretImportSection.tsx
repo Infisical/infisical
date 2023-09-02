@@ -65,7 +65,13 @@ type Props = {
 };
 
 export const SecretImportSection = memo(
-  ({ secrets = [], importedSecrets = [], onSecretImportDelete, items = [], searchTerm = "" }: Props) => {
+  ({
+    secrets = [],
+    importedSecrets = [],
+    onSecretImportDelete,
+    items = [],
+    searchTerm = ""
+  }: Props) => {
     const { currentWorkspace } = useWorkspace();
     const environments = currentWorkspace?.environments || [];
 

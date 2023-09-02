@@ -3,15 +3,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace/queries";
-import { 
-  App, 
-  BitBucketWorkspace, 
-  Environment, 
-  IntegrationAuth, 
+import {
+  App,
+  BitBucketWorkspace,
+  Environment,
+  IntegrationAuth,
   NorthflankSecretGroup,
-  Service, 
-  Team, 
-  TeamCityBuildConfig} from "./types";
+  Service,
+  Team,
+  TeamCityBuildConfig
+} from "./types";
 
 const integrationAuthKeys = {
   getIntegrationAuthById: (integrationAuthId: string) =>
@@ -56,7 +57,7 @@ const integrationAuthKeys = {
   }: {
     integrationAuthId: string;
     appId: string;
-  }) => [{ integrationAuthId, appId }, "integrationAuthTeamCityBranchConfigs"] as const, 
+  }) => [{ integrationAuthId, appId }, "integrationAuthTeamCityBranchConfigs"] as const
 };
 
 const fetchIntegrationAuthById = async (integrationAuthId: string) => {
@@ -75,12 +76,12 @@ const fetchIntegrationAuthApps = async ({
   teamId?: string;
   workspaceSlug?: string;
 }) => {
-  const params: Record<string, string> = {}
+  const params: Record<string, string> = {};
   if (teamId) {
-    params.teamId = teamId
+    params.teamId = teamId;
   }
   if (workspaceSlug) {
-    params.workspaceSlug = workspaceSlug
+    params.workspaceSlug = workspaceSlug;
   }
 
   const searchParams = new URLSearchParams(params);
@@ -97,7 +98,6 @@ const fetchIntegrationAuthTeams = async (integrationAuthId: string) => {
   );
   return data.teams;
 };
-
 
 const fetchIntegrationAuthVercelBranches = async ({
   integrationAuthId,
@@ -163,7 +163,9 @@ const fetchIntegrationAuthRailwayServices = async ({
 };
 
 const fetchIntegrationAuthBitBucketWorkspaces = async (integrationAuthId: string) => {
-  const { data: { workspaces } } = await apiRequest.get<{ workspaces: BitBucketWorkspace[] }>(
+  const {
+    data: { workspaces }
+  } = await apiRequest.get<{ workspaces: BitBucketWorkspace[] }>(
     `/api/v1/integration-auth/${integrationAuthId}/bitbucket/workspaces`
   );
   return workspaces;
@@ -222,7 +224,7 @@ export const useGetIntegrationAuthById = (integrationAuthId: string) => {
 export const useGetIntegrationAuthApps = ({
   integrationAuthId,
   teamId,
-  workspaceSlug,
+  workspaceSlug
 }: {
   integrationAuthId: string;
   teamId?: string;
@@ -352,10 +354,11 @@ export const useGetIntegrationAuthTeamCityBuildConfigs = ({
       integrationAuthId,
       appId
     }),
-    queryFn: () => fetchIntegrationAuthTeamCityBuildConfigs({
-      integrationAuthId,
-      appId
-    }),
+    queryFn: () =>
+      fetchIntegrationAuthTeamCityBuildConfigs({
+        integrationAuthId,
+        appId
+      }),
     enabled: true
   });
 };
@@ -373,7 +376,9 @@ export const useAuthorizeIntegration = () => {
       code: string;
       integration: string;
     }) => {
-      const { data: { integrationAuth } } = await apiRequest.post("/api/v1/integration-auth/oauth-token", {
+      const {
+        data: { integrationAuth }
+      } = await apiRequest.post("/api/v1/integration-auth/oauth-token", {
         workspaceId,
         code,
         integration
@@ -406,7 +411,9 @@ export const useSaveIntegrationAccessToken = () => {
       url: string | null;
       namespace: string | null;
     }) => {
-      const { data: { integrationAuth } } = await apiRequest.post("/api/v1/integration-auth/access-token", {
+      const {
+        data: { integrationAuth }
+      } = await apiRequest.post("/api/v1/integration-auth/access-token", {
         workspaceId,
         integration,
         accessId,
@@ -434,4 +441,3 @@ export const useDeleteIntegrationAuth = () => {
     }
   });
 };
-

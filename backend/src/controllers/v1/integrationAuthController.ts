@@ -144,7 +144,7 @@ export const saveIntegrationAccessToken = async (req: Request, res: Response) =>
   });
 
   if (!integrationAuth) throw new Error("Failed to save integration access token");
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -421,7 +421,6 @@ export const getIntegrationAuthRailwayServices = async (req: Request, res: Respo
  * @returns
  */
 export const getIntegrationAuthBitBucketWorkspaces = async (req: Request, res: Response) => {
-  
   interface WorkspaceResponse {
     size: number;
     page: number;
@@ -443,29 +442,26 @@ export const getIntegrationAuthBitBucketWorkspaces = async (req: Request, res: R
 
   const workspaces: Workspace[] = [];
   let hasNextPage = true;
-  let workspaceUrl = `${INTEGRATION_BITBUCKET_API_URL}/2.0/workspaces`
+  let workspaceUrl = `${INTEGRATION_BITBUCKET_API_URL}/2.0/workspaces`;
 
   while (hasNextPage) {
-    const { data }: { data: WorkspaceResponse } = await standardRequest.get(
-      workspaceUrl,
-      {
-        headers: {
-          Authorization: `Bearer ${req.accessToken}`,
-          "Accept-Encoding": "application/json"
-        }
+    const { data }: { data: WorkspaceResponse } = await standardRequest.get(workspaceUrl, {
+      headers: {
+        Authorization: `Bearer ${req.accessToken}`,
+        "Accept-Encoding": "application/json"
       }
-    );
-    
+    });
+
     if (data?.values.length > 0) {
       data.values.forEach((workspace) => {
-        workspaces.push(workspace)
-      })
+        workspaces.push(workspace);
+      });
     }
 
     if (data.next) {
-      workspaceUrl = data.next
+      workspaceUrl = data.next;
     } else {
-      hasNextPage = false
+      hasNextPage = false;
     }
   }
 
@@ -476,13 +472,13 @@ export const getIntegrationAuthBitBucketWorkspaces = async (req: Request, res: R
 
 /**
  * Return list of secret groups for Northflank project with id [appId]
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const getIntegrationAuthNorthflankSecretGroups = async (req: Request, res: Response) => {
   const appId = req.query.appId as string;
-  
+
   interface NorthflankSecretGroup {
     id: string;
     name: string;
@@ -490,43 +486,41 @@ export const getIntegrationAuthNorthflankSecretGroups = async (req: Request, res
     priority: number;
     projectId: string;
   }
-  
+
   interface SecretGroup {
     name: string;
     groupId: string;
   }
-  
+
   const secretGroups: SecretGroup[] = [];
 
-  if (appId && appId !== "") { 
+  if (appId && appId !== "") {
     let page = 1;
     const perPage = 10;
     let hasMorePages = true;
-    
-    while(hasMorePages) {
+
+    while (hasMorePages) {
       const params = new URLSearchParams({
         page: String(page),
         per_page: String(perPage),
-        filter: "all",
+        filter: "all"
       });
 
       const {
         data: {
-          data: {
-            secrets
-          }
+          data: { secrets }
         }
-      } = await standardRequest.get<{ data: { secrets: NorthflankSecretGroup[] }}>(
+      } = await standardRequest.get<{ data: { secrets: NorthflankSecretGroup[] } }>(
         `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects/${appId}/secrets`,
         {
           params,
           headers: {
             Authorization: `Bearer ${req.accessToken}`,
-            "Accept-Encoding": "application/json",
-          },
+            "Accept-Encoding": "application/json"
+          }
         }
       );
-      
+
       secrets.forEach((a: any) => {
         secretGroups.push({
           name: a.name,
@@ -541,21 +535,21 @@ export const getIntegrationAuthNorthflankSecretGroups = async (req: Request, res
       page++;
     }
   }
-  
+
   return res.status(200).send({
     secretGroups
   });
-}
+};
 
 /**
  * Return list of build configs for TeamCity project with id [appId]
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: Response) => {
   const appId = req.query.appId as string;
-  
+
   interface TeamCityBuildConfig {
     id: string;
     name: string;
@@ -564,27 +558,29 @@ export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: 
     href: string;
     webUrl: string;
   }
-  
+
   interface GetTeamCityBuildConfigsRes {
     count: number;
     href: string;
     buildType: TeamCityBuildConfig[];
   }
-  
 
   if (appId && appId !== "") {
-    const { data: { buildType } } = (
-      await standardRequest.get<GetTeamCityBuildConfigsRes>(`${req.integrationAuth.url}/app/rest/buildTypes`, {
+    const {
+      data: { buildType }
+    } = await standardRequest.get<GetTeamCityBuildConfigsRes>(
+      `${req.integrationAuth.url}/app/rest/buildTypes`,
+      {
         params: {
           locator: `project:${appId}`
         },
         headers: {
           Authorization: `Bearer ${req.accessToken}`,
-          Accept: "application/json",
-        },
-      })
+          Accept: "application/json"
+        }
+      }
     );
-    
+
     return res.status(200).send({
       buildConfigs: buildType.map((buildConfig) => ({
         name: buildConfig.name,
@@ -592,11 +588,11 @@ export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: 
       }))
     });
   }
-  
+
   return res.status(200).send({
     buildConfigs: []
   });
-}
+};
 
 /**
  * Delete integration authorization with id [integrationAuthId]
@@ -609,10 +605,11 @@ export const deleteIntegrationAuth = async (req: Request, res: Response) => {
     integrationAuth: req.integrationAuth,
     accessToken: req.accessToken
   });
-  
-  if (!integrationAuth) return res.status(400).send({
-    message: "Failed to find integration authorization"
-  });
+
+  if (!integrationAuth)
+    return res.status(400).send({
+      message: "Failed to find integration authorization"
+    });
 
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -631,4 +628,3 @@ export const deleteIntegrationAuth = async (req: Request, res: Response) => {
     integrationAuth
   });
 };
-

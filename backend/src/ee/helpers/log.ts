@@ -1,8 +1,5 @@
 import { Types } from "mongoose";
-import { 
-    IAction,
-    Log,
-} from "../models";
+import { IAction, Log } from "../models";
 
 /**
  * Create an (audit) log
@@ -15,36 +12,34 @@ import {
  * @returns {Log} log - new audit log
  */
 const createLogHelper = async ({
-    userId,
-    serviceAccountId,
-    serviceTokenDataId,
-    workspaceId,
+  userId,
+  serviceAccountId,
+  serviceTokenDataId,
+  workspaceId,
+  actions,
+  channel,
+  ipAddress
+}: {
+  userId?: Types.ObjectId;
+  serviceAccountId?: Types.ObjectId;
+  serviceTokenDataId?: Types.ObjectId;
+  workspaceId?: Types.ObjectId;
+  actions: IAction[];
+  channel: string;
+  ipAddress: string;
+}) => {
+  const log = await new Log({
+    user: userId,
+    serviceAccount: serviceAccountId,
+    serviceTokenData: serviceTokenDataId,
+    workspace: workspaceId ?? undefined,
+    actionNames: actions.map((a) => a.name),
     actions,
     channel,
-    ipAddress,
-}: {
-    userId?: Types.ObjectId;
-    serviceAccountId?: Types.ObjectId;
-    serviceTokenDataId?: Types.ObjectId;
-    workspaceId?: Types.ObjectId;
-    actions: IAction[];
-    channel: string;
-    ipAddress: string;
-}) => {
-    const log = await new Log({
-        user: userId,
-        serviceAccount: serviceAccountId,
-        serviceTokenData: serviceTokenDataId,
-        workspace: workspaceId ?? undefined,
-        actionNames: actions.map((a) => a.name),
-        actions,
-        channel,
-        ipAddress,
-    }).save();
+    ipAddress
+  }).save();
 
-    return log;
-}
+  return log;
+};
 
-export {
-    createLogHelper,
-}
+export { createLogHelper };

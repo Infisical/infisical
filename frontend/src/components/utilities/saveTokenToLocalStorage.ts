@@ -17,10 +17,9 @@ export const saveTokenToLocalStorage = ({
   encryptedPrivateKey,
   iv,
   tag,
-  privateKey,
+  privateKey
 }: Props) => {
   try {
-    
     if (protectedKey) {
       localStorage.removeItem("protectedKey");
       localStorage.setItem("protectedKey", protectedKey);
@@ -62,9 +61,7 @@ export const saveTokenToLocalStorage = ({
     }
   } catch (err) {
     if (err instanceof Error) {
-      throw new Error(
-        `Unable to send the tokens in local storage:${  err.message}`
-      );
+      throw new Error(`Unable to send the tokens in local storage:${err.message}`);
     }
   }
 };

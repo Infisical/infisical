@@ -21,7 +21,8 @@ import {
 } from "../../variables";
 import { BatchSecretRequest } from "../../types/secret";
 
-router.post( // TODO endpoint: strongly consider deprecation in favor of a single operation experience on dashboard
+router.post(
+  // TODO endpoint: strongly consider deprecation in favor of a single operation experience on dashboard
   "/batch",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
@@ -56,7 +57,8 @@ router.post( // TODO endpoint: strongly consider deprecation in favor of a singl
   secretsController.batchSecrets
 );
 
-router.post( // TODO endpoint: deprecate (moved to POST api/v3/secrets)
+router.post(
+  // TODO endpoint: deprecate (moved to POST api/v3/secrets)
   "/",
   body("workspaceId").exists().isString().trim(),
   body("environment").exists().isString().trim(),
@@ -117,7 +119,8 @@ router.post( // TODO endpoint: deprecate (moved to POST api/v3/secrets)
   secretsController.createSecrets
 );
 
-router.get( // TODO endpoint: deprecate (moved to GET api/v3/secrets)
+router.get(
+  // TODO endpoint: deprecate (moved to GET api/v3/secrets)
   "/",
   query("workspaceId").exists().trim(),
   query("environment").exists().trim(),
@@ -138,7 +141,8 @@ router.get( // TODO endpoint: deprecate (moved to GET api/v3/secrets)
   secretsController.getSecrets
 );
 
-router.patch( // TODO endpoint: deprecate (moved to PATCH api/v3/secrets)
+router.patch(
+  // TODO endpoint: deprecate (moved to PATCH api/v3/secrets)
   "/",
   body("secrets")
     .exists()
@@ -173,7 +177,8 @@ router.patch( // TODO endpoint: deprecate (moved to PATCH api/v3/secrets)
   secretsController.updateSecrets
 );
 
-router.delete( // TODO endpoint: deprecate (moved to DELETE api/v3/secrets)
+router.delete(
+  // TODO endpoint: deprecate (moved to DELETE api/v3/secrets)
   "/",
   body("secretIds")
     .exists()

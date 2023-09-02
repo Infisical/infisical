@@ -12,42 +12,41 @@ export interface ITokenData {
   updatedAt: Date;
 }
 
-const tokenDataSchema = new Schema<ITokenData>({
-  type: {
-    type: String,
-    enum: [
-      "emailConfirmation",
-      "emailMfa",
-      "organizationInvitation",
-      "passwordReset",
-    ],
-    required: true,
+const tokenDataSchema = new Schema<ITokenData>(
+  {
+    type: {
+      type: String,
+      enum: ["emailConfirmation", "emailMfa", "organizationInvitation", "passwordReset"],
+      required: true
+    },
+    email: {
+      type: String
+    },
+    phoneNumber: {
+      type: String
+    },
+    organization: {
+      // organizationInvitation-specific field
+      type: Schema.Types.ObjectId,
+      ref: "Organization"
+    },
+    tokenHash: {
+      type: String,
+      select: false,
+      required: true
+    },
+    triesLeft: {
+      type: Number
+    },
+    expiresAt: {
+      type: Date,
+      expires: 0,
+      required: true
+    }
   },
-  email: {
-    type: String,
-  },
-  phoneNumber: {
-    type: String,
-  },
-  organization: { // organizationInvitation-specific field
-    type: Schema.Types.ObjectId,
-    ref: "Organization",
-  },
-  tokenHash: {
-    type: String,
-    select: false,
-    required: true,
-  },
-  triesLeft: {
-    type: Number,
-  },
-  expiresAt: {
-    type: Date,
-    expires: 0,
-    required: true,
-  },
-}, {
-  timestamps: true,
-});
+  {
+    timestamps: true
+  }
+);
 
 export const TokenData = model<ITokenData>("TokenData", tokenDataSchema);

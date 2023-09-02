@@ -10,7 +10,8 @@ import {
   useDeleteUserFromWorkspace,
   useGetUserWsKey,
   useUpdateUserWorkspaceRole,
-  useUploadWsKey} from "@app/hooks/api";
+  useUploadWsKey
+} from "@app/hooks/api";
 
 import { decryptAssymmetric, encryptAssymmetric } from "../../utilities/cryptography/crypto";
 import guidGenerator from "../../utilities/randomId";
@@ -64,7 +65,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
 
   const handleRoleUpdate = async (index: number, e: string) => {
     await updateUserWorkspaceRoleMutateAsync({
-      membershipId: userData[index].membershipId, 
+      membershipId: userData[index].membershipId,
       role: e.toLowerCase()
     });
     createNotification({
@@ -191,7 +192,11 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
         <UpgradePlanModal
           isOpen={isUpgradeModalOpen}
           onClose={closeUpgradeModal}
-          text={subscription.slug === null ? "You can use RBAC under an Enterprise license" : "You can use RBAC if you switch to Infisical's Team Plan."}
+          text={
+            subscription.slug === null
+              ? "You can use RBAC under an Enterprise license"
+              : "You can use RBAC if you switch to Infisical's Team Plan."
+          }
         />
       )}
       <table className="my-0.5 w-full">
@@ -213,12 +218,13 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
           </tr>
         </thead>
         <tbody>
-          {!isUserListLoading && userData?.filter(
-            (user) =>
-              user.firstName?.toLowerCase().includes(filter) ||
-              user.lastName?.toLowerCase().includes(filter) ||
-              user.email?.toLowerCase().includes(filter)
-          ).length > 0 &&
+          {!isUserListLoading &&
+            userData?.filter(
+              (user) =>
+                user.firstName?.toLowerCase().includes(filter) ||
+                user.lastName?.toLowerCase().includes(filter) ||
+                user.email?.toLowerCase().includes(filter)
+            ).length > 0 &&
             userData
               ?.filter(
                 (user) =>
@@ -373,10 +379,18 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
                   </td>
                 </tr>
               ))}
-              {isUserListLoading && <>
-                <tr key={guidGenerator()} className="bg-mineshaft-800 text-sm animate-pulse h-14 w-full"/>
-                <tr key={guidGenerator()} className="bg-mineshaft-800 text-sm animate-pulse h-14 w-full"/>
-              </>}
+          {isUserListLoading && (
+            <>
+              <tr
+                key={guidGenerator()}
+                className="bg-mineshaft-800 text-sm animate-pulse h-14 w-full"
+              />
+              <tr
+                key={guidGenerator()}
+                className="bg-mineshaft-800 text-sm animate-pulse h-14 w-full"
+              />
+            </>
+          )}
         </tbody>
       </table>
     </div>

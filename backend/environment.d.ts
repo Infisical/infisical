@@ -10,9 +10,9 @@ declare global {
       JWT_AUTH_SECRET: string;
       JWT_REFRESH_LIFETIME: string;
       JWT_REFRESH_SECRET: string;
-			JWT_SERVICE_SECRET: string;
-			JWT_SIGNUP_LIFETIME: string;
-			JWT_SIGNUP_SECRET: string;
+      JWT_SERVICE_SECRET: string;
+      JWT_SIGNUP_LIFETIME: string;
+      JWT_SIGNUP_SECRET: string;
       MONGO_URL: string;
       NODE_ENV: "development" | "staging" | "testing" | "production";
       VERBOSE_ERROR_OUTPUT: string;
@@ -28,8 +28,8 @@ declare global {
       CLIENT_SECRET_GITHUB: string;
       CLIENT_SECRET_GITLAB: string;
       CLIENT_SLUG_VERCEL: string;
-			POSTHOG_HOST: string;
-			POSTHOG_PROJECT_API_KEY: string;
+      POSTHOG_HOST: string;
+      POSTHOG_PROJECT_API_KEY: string;
       SENTRY_DSN: string;
       SITE_URL: string;
       SMTP_HOST: string;

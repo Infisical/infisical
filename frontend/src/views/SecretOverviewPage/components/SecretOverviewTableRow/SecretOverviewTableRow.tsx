@@ -73,9 +73,11 @@ export const SecretOverviewTableRow = ({
             >
               <div className="h-full w-full border-r border-mineshaft-600 py-[0.85rem] px-5">
                 <div className="flex justify-center">
-                  {!isSecretEmpty &&  <Tooltip content={isSecretPresent ? "Present secret" : "Missing secret"}>
-                    <FontAwesomeIcon icon={isSecretPresent ? faCheck : faXmark} />
-                  </Tooltip>}
+                  {!isSecretEmpty && (
+                    <Tooltip content={isSecretPresent ? "Present secret" : "Missing secret"}>
+                      <FontAwesomeIcon icon={isSecretPresent ? faCheck : faXmark} />
+                    </Tooltip>
+                  )}
                   {isSecretEmpty && (
                     <Tooltip content="Empty value">
                       <FontAwesomeIcon icon={faCircle} />

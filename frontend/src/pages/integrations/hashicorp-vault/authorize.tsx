@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 
-import {
-  useSaveIntegrationAccessToken
-} from "@app/hooks/api";
+import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
 
@@ -13,7 +11,7 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
 
   const [vaultURL, setVaultURL] = useState("");
   const [vaultURLErrorText, setVaultURLErrorText] = useState("");
-  
+
   const [vaultNamespace, setVaultNamespace] = useState("");
   const [vaultNamespaceErrorText, setVaultNamespaceErrorText] = useState("");
 
@@ -30,44 +28,44 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
       if (vaultURL.length === 0) {
         setVaultURLErrorText("Vault Cluster URL cannot be blank");
       } else {
-        setVaultURLErrorText(""); 
+        setVaultURLErrorText("");
       }
-      
+
       if (vaultNamespace.length === 0) {
         setVaultNamespaceErrorText("Vault Namespace cannot be blank");
       } else {
         setVaultNamespaceErrorText("");
       }
-      
+
       if (vaultRoleID.length === 0) {
         setVaultRoleIDErrorText("Vault Role ID cannot be blank");
       } else {
         setVaultRoleIDErrorText("");
       }
-        
+
       if (vaultSecretID.length === 0) {
         setVaultSecretIDErrorText("Vault Secret ID cannot be blank");
       } else {
         setVaultSecretIDErrorText("");
       }
       if (
-          vaultURL.length === 0 ||
-          vaultNamespace.length === 0 ||
-          vaultRoleID.length === 0 ||
-          vaultSecretID.length === 0
+        vaultURL.length === 0 ||
+        vaultNamespace.length === 0 ||
+        vaultRoleID.length === 0 ||
+        vaultSecretID.length === 0
       ) {
-          return;
+        return;
       }
 
       setIsLoading(true);
 
       const integrationAuth = await mutateAsync({
-          workspaceId: localStorage.getItem("projectData.id"),
-          integration: "hashicorp-vault",
-          accessId: vaultRoleID,
-          accessToken: vaultSecretID,
-          url: vaultURL,
-          namespace: vaultNamespace
+        workspaceId: localStorage.getItem("projectData.id"),
+        integration: "hashicorp-vault",
+        accessId: vaultRoleID,
+        accessToken: vaultSecretID,
+        url: vaultURL,
+        namespace: vaultNamespace
       });
 
       setIsLoading(false);
@@ -94,29 +92,33 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
           errorText={vaultNamespaceErrorText}
           isError={vaultNamespaceErrorText !== "" ?? false}
         >
-          <Input 
-                placeholder="admin/education" 
-                value={vaultNamespace} 
-                onChange={(e) => setVaultNamespace(e.target.value)} 
-            />
+          <Input
+            placeholder="admin/education"
+            value={vaultNamespace}
+            onChange={(e) => setVaultNamespace(e.target.value)}
+          />
         </FormControl>
         <FormControl
           label="Vault RoleID"
           errorText={vaultRoleIDErrorText}
           isError={vaultRoleIDErrorText !== "" ?? false}
         >
-          <Input placeholder="" value={vaultRoleID} onChange={(e) => setVaultRoleID(e.target.value)} />
+          <Input
+            placeholder=""
+            value={vaultRoleID}
+            onChange={(e) => setVaultRoleID(e.target.value)}
+          />
         </FormControl>
         <FormControl
           label="Vault SecretID"
           errorText={vaultSecretIDErrorText}
           isError={vaultSecretIDErrorText !== "" ?? false}
         >
-          <Input 
-                placeholder="" 
-                value={vaultSecretID} 
-                onChange={(e) => setVaultSecretID(e.target.value)} 
-            />
+          <Input
+            placeholder=""
+            value={vaultSecretID}
+            onChange={(e) => setVaultSecretID(e.target.value)}
+          />
         </FormControl>
         <Button
           onClick={handleButtonClick}

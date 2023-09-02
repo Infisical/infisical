@@ -8,23 +8,23 @@ import { AuthMode } from "../../variables";
 // TODO endpoint: consider moving these endpoints to be under /organization to be more RESTful
 
 router.post(
-	"/signup",
-	requireAuth({
-        acceptedAuthModes: [AuthMode.JWT],
-    }),
-	body("inviteeEmail").exists().trim().notEmpty().isEmail(),
-	body("organizationId").exists().trim().notEmpty(),
-	validateRequest,
-	membershipOrgController.inviteUserToOrganization
+  "/signup",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  body("inviteeEmail").exists().trim().notEmpty().isEmail(),
+  body("organizationId").exists().trim().notEmpty(),
+  validateRequest,
+  membershipOrgController.inviteUserToOrganization
 );
 
 router.post(
-	"/verify",
-	body("email").exists().trim().notEmpty(),
-	body("organizationId").exists().trim().notEmpty(),
-	body("code").exists().trim().notEmpty(),
-	validateRequest,
-	membershipOrgController.verifyUserToOrganization
+  "/verify",
+  body("email").exists().trim().notEmpty(),
+  body("organizationId").exists().trim().notEmpty(),
+  body("code").exists().trim().notEmpty(),
+  validateRequest,
+  membershipOrgController.verifyUserToOrganization
 );
 
 export default router;

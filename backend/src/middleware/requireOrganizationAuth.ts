@@ -12,34 +12,34 @@ type req = "params" | "body" | "query";
  * @param {String[]} obj.accepteStatuses - accepted organization statuses
  */
 const requireOrganizationAuth = ({
-	acceptedRoles,
-	acceptedStatuses,
-	locationOrganizationId = "params",
+  acceptedRoles,
+  acceptedStatuses,
+  locationOrganizationId = "params"
 }: {
-	acceptedRoles: Array<"owner" | "admin" | "member">;
-	acceptedStatuses: Array<"invited" | "accepted">;
-	locationOrganizationId?: req;
+  acceptedRoles: Array<"owner" | "admin" | "member">;
+  acceptedStatuses: Array<"invited" | "accepted">;
+  locationOrganizationId?: req;
 }) => {
-	return async (req: Request, res: Response, next: NextFunction) => {
-		const { organizationId } = req[locationOrganizationId];
-		
-		const { organization, membershipOrg } = await validateClientForOrganization({
-			authData: req.authData,
-			organizationId: new Types.ObjectId(organizationId),
-			acceptedRoles,
-			acceptedStatuses,
-		});
-		
-		if (organization) {
-			req.organization = organization;
-		}
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const { organizationId } = req[locationOrganizationId];
 
-		if (membershipOrg) {
-			req.membershipOrg = membershipOrg;
-		}
+    const { organization, membershipOrg } = await validateClientForOrganization({
+      authData: req.authData,
+      organizationId: new Types.ObjectId(organizationId),
+      acceptedRoles,
+      acceptedStatuses
+    });
 
-		return next();
-	};
+    if (organization) {
+      req.organization = organization;
+    }
+
+    if (membershipOrg) {
+      req.membershipOrg = membershipOrg;
+    }
+
+    return next();
+  };
 };
 
 export default requireOrganizationAuth;

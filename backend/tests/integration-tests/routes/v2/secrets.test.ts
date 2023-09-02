@@ -23,10 +23,10 @@
 //   describe("Get secrets via JTW", () => {
 //     test("should create secrets and read secrets via jwt", async () => {
 //       try {
-//         // get login details 
+//         // get login details
 //         const loginResponse = await getJWTFromTestUser()
 
-//         // create creates 
+//         // create creates
 //         const createSecretsResponse = await request(server)
 //           .post("/api/v2/secrets/batch")
 //           .set('Authorization', `Bearer ${loginResponse.token}`)
@@ -37,7 +37,6 @@
 //           })
 
 //         expect(createSecretsResponse.statusCode).toBe(200)
-
 
 //         const getSecrets = await request(server)
 //           .get("/api/v2/secrets")
@@ -112,10 +111,10 @@
 
 //     test("Get secrets via jwt when personal overrides exist", async () => {
 //       try {
-//         // get login details 
+//         // get login details
 //         const loginResponse = await getJWTFromTestUser()
 
-//         // create creates 
+//         // create creates
 //         const createSecretsResponse = await request(server)
 //           .post("/api/v2/secrets/batch")
 //           .set('Authorization', `Bearer ${loginResponse.token}`)
@@ -202,10 +201,10 @@
 //   describe("fetch secrets via service token", () => {
 //     test("Get secrets via jwt when personal overrides exist", async () => {
 //       try {
-//         // get login details 
+//         // get login details
 //         const loginResponse = await getJWTFromTestUser()
 
-//         // create creates 
+//         // create creates
 //         const createSecretsResponse = await request(server)
 //           .post("/api/v2/secrets/batch")
 //           .set('Authorization', `Bearer ${loginResponse.token}`)
@@ -293,10 +292,10 @@
 
 //     test("should create secrets and read secrets via service token when no overrides", async () => {
 //       try {
-//         // get login details 
+//         // get login details
 //         const loginResponse = await getJWTFromTestUser()
 
-//         // create secrets 
+//         // create secrets
 //         const createSecretsResponse = await request(server)
 //           .post("/api/v2/secrets/batch")
 //           .set('Authorization', `Bearer ${loginResponse.token}`)
@@ -307,7 +306,6 @@
 //           })
 
 //         expect(createSecretsResponse.statusCode).toBe(200)
-
 
 //         // now use the service token to fetch secrets
 //         const serviceToken = await getServiceTokenFromTestUser()
@@ -386,10 +384,10 @@
 
 //   describe("create secrets via JWT", () => {
 //     test("Create secrets via jwt when some requests have missing required parameters", async () => {
-//       // get login details 
+//       // get login details
 //       const loginResponse = await getJWTFromTestUser()
 
-//       // create creates 
+//       // create creates
 //       const createSecretsResponse = await request(server)
 //         .post("/api/v2/secrets/batch")
 //         .set('Authorization', `Bearer ${loginResponse.token}`)
@@ -401,7 +399,7 @@
 
 //       const allSecretsInDB = await getAllSecrets()
 
-//       expect(createSecretsResponse.statusCode).toBe(500) // TODO should be set to 400 
+//       expect(createSecretsResponse.statusCode).toBe(500) // TODO should be set to 400
 //       expect(allSecretsInDB).toHaveLength(0)
 //     })
 //   })

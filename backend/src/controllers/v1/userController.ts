@@ -7,7 +7,7 @@ import { Request, Response } from "express";
  * @returns
  */
 export const getUser = async (req: Request, res: Response) => {
-	return res.status(200).send({
-		user: req.user,
-	});
+  return res.status(200).send({
+    user: req.user
+  });
 };

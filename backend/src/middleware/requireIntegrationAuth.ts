@@ -9,29 +9,29 @@ import { validateClientForIntegration } from "../validation";
  * @param {String[]} obj.acceptedRoles - accepted workspace roles
  */
 const requireIntegrationAuth = ({
-	acceptedRoles,
+  acceptedRoles
 }: {
-	acceptedRoles: Array<"admin" | "member">;
+  acceptedRoles: Array<"admin" | "member">;
 }) => {
-	return async (req: Request, res: Response, next: NextFunction) => {
-		const { integrationId } = req.params;
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const { integrationId } = req.params;
 
-		const { integration, accessToken } = await validateClientForIntegration({
-			authData: req.authData,
-			integrationId: new Types.ObjectId(integrationId),
-			acceptedRoles,
-		});
+    const { integration, accessToken } = await validateClientForIntegration({
+      authData: req.authData,
+      integrationId: new Types.ObjectId(integrationId),
+      acceptedRoles
+    });
 
-		if (integration) {
-			req.integration = integration;
-		}
-		
-		if (accessToken) {
-			req.accessToken = accessToken;
-		}
+    if (integration) {
+      req.integration = integration;
+    }
 
-		return next();
-	};
+    if (accessToken) {
+      req.accessToken = accessToken;
+    }
+
+    return next();
+  };
 };
 
 export default requireIntegrationAuth;

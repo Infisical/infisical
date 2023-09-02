@@ -54,7 +54,10 @@ const Notification = ({ notification, clearNotification }: NotificationProps) =>
         className="rounded-lg"
         onClick={() => clearNotification(notification.text)}
       >
-        <FontAwesomeIcon className="absolute right-2 top-3 text-bunker-300 pl-2 w-4 h-4 hover:text-white" icon={faXmark} />
+        <FontAwesomeIcon
+          className="absolute right-2 top-3 text-bunker-300 pl-2 w-4 h-4 hover:text-white"
+          icon={faXmark}
+        />
       </button>
     </div>
   );

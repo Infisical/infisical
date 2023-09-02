@@ -5,12 +5,12 @@ import {
   INTEGRATION_BITBUCKET,
   INTEGRATION_BITBUCKET_TOKEN_URL,
   INTEGRATION_GITLAB,
-  INTEGRATION_HEROKU,
+  INTEGRATION_HEROKU
 } from "../variables";
 import {
   INTEGRATION_AZURE_TOKEN_URL,
   INTEGRATION_GITLAB_TOKEN_URL,
-  INTEGRATION_HEROKU_TOKEN_URL,
+  INTEGRATION_HEROKU_TOKEN_URL
 } from "../variables";
 import { IntegrationService } from "../services";
 import {
@@ -21,7 +21,7 @@ import {
   getClientSecretBitBucket,
   getClientSecretGitLab,
   getClientSecretHeroku,
-  getSiteURL,
+  getSiteURL
 } from "../config";
 
 interface RefreshTokenAzureResponse {
@@ -68,7 +68,7 @@ interface RefreshTokenBitBucketResponse {
  */
 const exchangeRefresh = async ({
   integrationAuth,
-  refreshToken,
+  refreshToken
 }: {
   integrationAuth: IIntegrationAuth;
   refreshToken: string;
@@ -83,43 +83,39 @@ const exchangeRefresh = async ({
   switch (integrationAuth.integration) {
     case INTEGRATION_AZURE_KEY_VAULT:
       tokenDetails = await exchangeRefreshAzure({
-        refreshToken,
+        refreshToken
       });
       break;
     case INTEGRATION_HEROKU:
       tokenDetails = await exchangeRefreshHeroku({
-        refreshToken,
+        refreshToken
       });
       break;
     case INTEGRATION_GITLAB:
       tokenDetails = await exchangeRefreshGitLab({
-        refreshToken,
+        refreshToken
       });
       break;
     case INTEGRATION_BITBUCKET:
       tokenDetails = await exchangeRefreshBitBucket({
-        refreshToken,
+        refreshToken
       });
       break;
     default:
       throw new Error("Failed to exchange token for incompatible integration");
   }
 
-  if (
-    tokenDetails?.accessToken &&
-    tokenDetails?.refreshToken &&
-    tokenDetails?.accessExpiresAt
-  ) {
+  if (tokenDetails?.accessToken && tokenDetails?.refreshToken && tokenDetails?.accessExpiresAt) {
     await IntegrationService.setIntegrationAuthAccess({
       integrationAuthId: integrationAuth._id.toString(),
       accessId: null,
       accessToken: tokenDetails.accessToken,
-      accessExpiresAt: tokenDetails.accessExpiresAt,
+      accessExpiresAt: tokenDetails.accessExpiresAt
     });
 
     await IntegrationService.setIntegrationAuthRefresh({
       integrationAuthId: integrationAuth._id.toString(),
-      refreshToken: tokenDetails.refreshToken,
+      refreshToken: tokenDetails.refreshToken
     });
   }
 
@@ -133,11 +129,7 @@ const exchangeRefresh = async ({
  * @param {String} obj.refreshToken - refresh token to use to get new access token for Azure
  * @returns
  */
-const exchangeRefreshAzure = async ({
-  refreshToken,
-}: {
-  refreshToken: string;
-}) => {
+const exchangeRefreshAzure = async ({ refreshToken }: { refreshToken: string }) => {
   const accessExpiresAt = new Date();
   const { data }: { data: RefreshTokenAzureResponse } = await standardRequest.post(
     INTEGRATION_AZURE_TOKEN_URL,
@@ -146,7 +138,7 @@ const exchangeRefreshAzure = async ({
       scope: "openid offline_access",
       refresh_token: refreshToken,
       grant_type: "refresh_token",
-      client_secret: await getClientSecretAzure(),
+      client_secret: await getClientSecretAzure()
     } as any)
   );
 
@@ -155,7 +147,7 @@ const exchangeRefreshAzure = async ({
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
-    accessExpiresAt,
+    accessExpiresAt
   };
 };
 
@@ -166,14 +158,10 @@ const exchangeRefreshAzure = async ({
  * @param {String} obj.refreshToken - refresh token to use to get new access token for Heroku
  * @returns
  */
-const exchangeRefreshHeroku = async ({
-  refreshToken,
-}: {
-  refreshToken: string;
-}) => {
+const exchangeRefreshHeroku = async ({ refreshToken }: { refreshToken: string }) => {
   const accessExpiresAt = new Date();
   const {
-    data,
+    data
   }: {
     data: RefreshTokenHerokuResponse;
   } = await standardRequest.post(
@@ -181,7 +169,7 @@ const exchangeRefreshHeroku = async ({
     new URLSearchParams({
       grant_type: "refresh_token",
       refresh_token: refreshToken,
-      client_secret: await getClientSecretHeroku(),
+      client_secret: await getClientSecretHeroku()
     } as any)
   );
 
@@ -190,7 +178,7 @@ const exchangeRefreshHeroku = async ({
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
-    accessExpiresAt,
+    accessExpiresAt
   };
 };
 
@@ -201,14 +189,10 @@ const exchangeRefreshHeroku = async ({
  * @param {String} obj.refreshToken - refresh token to use to get new access token for GitLab
  * @returns
  */
-const exchangeRefreshGitLab = async ({
-  refreshToken,
-}: {
-  refreshToken: string;
-}) => {
+const exchangeRefreshGitLab = async ({ refreshToken }: { refreshToken: string }) => {
   const accessExpiresAt = new Date();
   const {
-    data,
+    data
   }: {
     data: RefreshTokenGitLabResponse;
   } = await standardRequest.post(
@@ -218,12 +202,12 @@ const exchangeRefreshGitLab = async ({
       refresh_token: refreshToken,
       client_id: await getClientIdGitLab(),
       client_secret: await getClientSecretGitLab(),
-      redirect_uri: `${await getSiteURL()}/integrations/gitlab/oauth2/callback`,
+      redirect_uri: `${await getSiteURL()}/integrations/gitlab/oauth2/callback`
     } as any),
     {
       headers: {
-        "Accept-Encoding": "application/json",
-      },
+        "Accept-Encoding": "application/json"
+      }
     }
   );
 
@@ -232,7 +216,7 @@ const exchangeRefreshGitLab = async ({
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
-    accessExpiresAt,
+    accessExpiresAt
   };
 };
 
@@ -243,14 +227,10 @@ const exchangeRefreshGitLab = async ({
  * @param {String} obj.refreshToken - refresh token to use to get new access token for BitBucket
  * @returns
  */
-const exchangeRefreshBitBucket = async ({
-  refreshToken,
-}: {
-  refreshToken: string;
-}) => {
+const exchangeRefreshBitBucket = async ({ refreshToken }: { refreshToken: string }) => {
   const accessExpiresAt = new Date();
   const {
-    data,
+    data
   }: {
     data: RefreshTokenBitBucketResponse;
   } = await standardRequest.post(
@@ -260,12 +240,12 @@ const exchangeRefreshBitBucket = async ({
       refresh_token: refreshToken,
       client_id: await getClientIdBitBucket(),
       client_secret: await getClientSecretBitBucket(),
-      redirect_uri: `${await getSiteURL()}/integrations/bitbucket/oauth2/callback`,
+      redirect_uri: `${await getSiteURL()}/integrations/bitbucket/oauth2/callback`
     } as any),
     {
       headers: {
-        "Accept-Encoding": "application/json",
-      },
+        "Accept-Encoding": "application/json"
+      }
     }
   );
 
@@ -274,7 +254,7 @@ const exchangeRefreshBitBucket = async ({
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
-    accessExpiresAt,
+    accessExpiresAt
   };
 };
 

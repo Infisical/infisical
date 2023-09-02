@@ -17,25 +17,25 @@ function bufferToHex(buffer: ArrayBuffer): string {
   return hexParts.join("");
 }
 
-  // see API details here: https://haveibeenpwned.com/API/v3#SearchingPwnedPasswordsByRange
-  // in short, the pending password is hashed (SHA-1), the first 5 chars are sliced and compared against a ranged hash table
-  // this hash table is formed from the 5 char hash prefix (ie. 00000-FFFFF) so 16^5 results
-  // returns a hash table of 800-1000 results
-  // padding has been added to prevent MitM attacker determining which hash table was called by the response size
-  // the last 35 chars of the password hash are compared client-side against the table
-  // if there is a match, that password has been involved in a password breach (ie. pwnd) and should NOT be accepted
-  // the database consists of ~700 mln breached passwords and is continuously updated, including with law enforcement ingestion
-  // https://www.troyhunt.com/open-source-pwned-passwords-with-fbi-feed-and-225m-new-nca-passwords-is-now-live/
+// see API details here: https://haveibeenpwned.com/API/v3#SearchingPwnedPasswordsByRange
+// in short, the pending password is hashed (SHA-1), the first 5 chars are sliced and compared against a ranged hash table
+// this hash table is formed from the 5 char hash prefix (ie. 00000-FFFFF) so 16^5 results
+// returns a hash table of 800-1000 results
+// padding has been added to prevent MitM attacker determining which hash table was called by the response size
+// the last 35 chars of the password hash are compared client-side against the table
+// if there is a match, that password has been involved in a password breach (ie. pwnd) and should NOT be accepted
+// the database consists of ~700 mln breached passwords and is continuously updated, including with law enforcement ingestion
+// https://www.troyhunt.com/open-source-pwned-passwords-with-fbi-feed-and-225m-new-nca-passwords-is-now-live/
 
-  // The HIBP API follows NIST guidance (pg.14) https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-63b.pdf
-  // "When processing requests to establish and change memorized secrets, verifiers SHALL compare
-  // the prospective secrets against a list that contains values known to be commonly-used, expected,
-  // or compromised. For example, the list MAY include, but is not limited to:
-  // • Passwords obtained from previous breach corpuses.
-  // • Dictionary words.
-  // • Repetitive or sequential characters (e.g. ‘aaaaaa’, ‘1234abcd’).
-  // • Context-specific words, such as the name of the service, the username, and derivatives
-  //   thereof."
+// The HIBP API follows NIST guidance (pg.14) https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-63b.pdf
+// "When processing requests to establish and change memorized secrets, verifiers SHALL compare
+// the prospective secrets against a list that contains values known to be commonly-used, expected,
+// or compromised. For example, the list MAY include, but is not limited to:
+// • Passwords obtained from previous breach corpuses.
+// • Dictionary words.
+// • Repetitive or sequential characters (e.g. ‘aaaaaa’, ‘1234abcd’).
+// • Context-specific words, such as the name of the service, the username, and derivatives
+//   thereof."
 
 export const checkIsPasswordBreached = async (password: string): Promise<boolean> => {
   const HAVE_I_BEEN_PWNED_API_URL = "https://api.pwnedpasswords.com";
@@ -66,8 +66,8 @@ export const checkIsPasswordBreached = async (password: string): Promise<boolean
         response = await axios.get(rangedHashTableUri, {
           headers: {
             "Add-Padding": "true", // see https://www.troyhunt.com/enhancing-pwned-passwords-privacy-with-padding/
-            "Content-Type": "text/plain",
-          },
+            "Content-Type": "text/plain"
+          }
         });
 
         if (response.status === 200) {
@@ -76,9 +76,8 @@ export const checkIsPasswordBreached = async (password: string): Promise<boolean
           // check the last 35 hash chars to see if there's a match
           const isBreachedPassword: boolean = responseData.includes(hashedPwd.slice(5, 40));
           return isBreachedPassword;
-        } 
-          retryAttempt += 1;
-        
+        }
+        retryAttempt += 1;
       } catch (err) {
         if (!axios.isAxiosError(err)) {
           throw err;
@@ -88,14 +87,15 @@ export const checkIsPasswordBreached = async (password: string): Promise<boolean
     }
 
     console.error(
-      `Received a non-200 response (${response ? response.status : "unknown"}) from the Pwnd Passwords API`
+      `Received a non-200 response (${
+        response ? response.status : "unknown"
+      }) from the Pwnd Passwords API`
     );
     return false;
   } catch (err: any) {
     console.error("An unexpected error has occurred:", err.message);
     return false;
   } finally {
-
     // Clear the UTF-8 encoded password from memory
 
     if (encodedPwd) {

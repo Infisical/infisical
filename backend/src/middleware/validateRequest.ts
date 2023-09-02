@@ -10,18 +10,30 @@ import { UnauthorizedRequestError, ValidationError } from "../utils/errors";
  * @returns
  */
 const validate = (req: Request, res: Response, next: NextFunction) => {
-	// express validator middleware
+  // express validator middleware
 
-	try {
-		const errors = validationResult(req);
-		if (!errors.isEmpty()) {
-			return next(ValidationError({ context: { errors: `One or more of your parameters are invalid [error(s)=${(JSON.stringify(errors))}]` } }))
-		}
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return next(
+        ValidationError({
+          context: {
+            errors: `One or more of your parameters are invalid [error(s)=${JSON.stringify(
+              errors
+            )}]`
+          }
+        })
+      );
+    }
 
-		return next();
-	} catch (err) {
-		return next(UnauthorizedRequestError({ message: "Unauthenticated requests are not allowed. Try logging in" }))
-	}
+    return next();
+  } catch (err) {
+    return next(
+      UnauthorizedRequestError({
+        message: "Unauthenticated requests are not allowed. Try logging in"
+      })
+    );
+  }
 };
 
 export default validate;

@@ -10,25 +10,18 @@ import { sendMail } from "../../helpers/nodemailer";
 import { TokenService } from "../../services";
 import { EELogService } from "../../ee/services";
 import { BadRequestError, InternalServerError } from "../../utils/errors";
-import {
-    ACTION_LOGIN,
-    TOKEN_EMAIL_MFA,
-} from "../../variables";
+import { ACTION_LOGIN, TOKEN_EMAIL_MFA } from "../../variables";
 import { getUserAgentType } from "../../utils/posthog"; // TODO: move this
-import {
-    getHttpsEnabled,
-    getJwtMfaLifetime,
-    getJwtMfaSecret,
-} from "../../config";
+import { getHttpsEnabled, getJwtMfaLifetime, getJwtMfaSecret } from "../../config";
 import { AuthMethod } from "../../models/user";
 
 declare module "jsonwebtoken" {
-    export interface ProviderAuthJwtPayload extends jwt.JwtPayload {
-        userId: string;
-        email: string;
-        authProvider: AuthMethod;
-        isUserCompleted: boolean,
-    }
+  export interface ProviderAuthJwtPayload extends jwt.JwtPayload {
+    userId: string;
+    email: string;
+    authProvider: AuthMethod;
+    isUserCompleted: boolean;
+  }
 }
 
 /**
@@ -38,53 +31,57 @@ declare module "jsonwebtoken" {
  * @returns
  */
 export const login1 = async (req: Request, res: Response) => {
-    const {
-        email,
-        providerAuthToken,
-        clientPublicKey,
-    }: {
-        email: string;
-        clientPublicKey: string,
-        providerAuthToken?: string;
-    } = req.body;
-    
-    const user = await User.findOne({
-        email,
-    }).select("+salt +verifier");
+  const {
+    email,
+    providerAuthToken,
+    clientPublicKey
+  }: {
+    email: string;
+    clientPublicKey: string;
+    providerAuthToken?: string;
+  } = req.body;
 
-    if (!user) throw new Error("Failed to find user");
-    
-    if (!user.authMethods.includes(AuthMethod.EMAIL)) {
-        await validateProviderAuthToken({
-            email,
-            providerAuthToken,
-        });
-    }
+  const user = await User.findOne({
+    email
+  }).select("+salt +verifier");
 
-    const server = new jsrp.server();
-    server.init(
+  if (!user) throw new Error("Failed to find user");
+
+  if (!user.authMethods.includes(AuthMethod.EMAIL)) {
+    await validateProviderAuthToken({
+      email,
+      providerAuthToken
+    });
+  }
+
+  const server = new jsrp.server();
+  server.init(
+    {
+      salt: user.salt,
+      verifier: user.verifier
+    },
+    async () => {
+      // generate server-side public key
+      const serverPublicKey = server.getPublicKey();
+      await LoginSRPDetail.findOneAndReplace(
         {
-            salt: user.salt,
-            verifier: user.verifier,
+          email: email
         },
-        async () => {
-            // generate server-side public key
-            const serverPublicKey = server.getPublicKey();
-            await LoginSRPDetail.findOneAndReplace({
-                email: email,
-            }, {
-                email,
-                userId: user.id,
-                clientPublicKey: clientPublicKey,
-                serverBInt: bigintConversion.bigintToBuf(server.bInt),
-            }, { upsert: true, returnNewDocument: false });
+        {
+          email,
+          userId: user.id,
+          clientPublicKey: clientPublicKey,
+          serverBInt: bigintConversion.bigintToBuf(server.bInt)
+        },
+        { upsert: true, returnNewDocument: false }
+      );
 
-            return res.status(200).send({
-                serverPublicKey,
-                salt: user.salt,
-            });
-        }
-    );
+      return res.status(200).send({
+        serverPublicKey,
+        salt: user.salt
+      });
+    }
+  );
 };
 
 /**
@@ -95,150 +92,149 @@ export const login1 = async (req: Request, res: Response) => {
  * @returns
  */
 export const login2 = async (req: Request, res: Response) => {
-    if (!req.headers["user-agent"]) throw InternalServerError({ message: "User-Agent header is required" });
+  if (!req.headers["user-agent"])
+    throw InternalServerError({ message: "User-Agent header is required" });
 
-    const { email, clientProof, providerAuthToken } = req.body;
+  const { email, clientProof, providerAuthToken } = req.body;
 
-    const user = await User.findOne({
-        email,
-    }).select("+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag +devices");
+  const user = await User.findOne({
+    email
+  }).select(
+    "+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag +devices"
+  );
 
-    if (!user) throw new Error("Failed to find user");
-    
-    if (!user.authMethods.includes(AuthMethod.EMAIL)) {
-        await validateProviderAuthToken({
-            email,
-            providerAuthToken,
-        })
-    }
+  if (!user) throw new Error("Failed to find user");
 
-    const loginSRPDetail = await LoginSRPDetail.findOneAndDelete({ email: email })
+  if (!user.authMethods.includes(AuthMethod.EMAIL)) {
+    await validateProviderAuthToken({
+      email,
+      providerAuthToken
+    });
+  }
 
-    if (!loginSRPDetail) {
-        return BadRequestError(Error("Failed to find login details for SRP"))
-    }
+  const loginSRPDetail = await LoginSRPDetail.findOneAndDelete({ email: email });
 
-    const server = new jsrp.server();
-    server.init(
-        {
-            salt: user.salt,
-            verifier: user.verifier,
-            b: loginSRPDetail.serverBInt,
-        },
-        async () => {
-            server.setClientPublicKey(loginSRPDetail.clientPublicKey);
+  if (!loginSRPDetail) {
+    return BadRequestError(Error("Failed to find login details for SRP"));
+  }
 
-            // compare server and client shared keys
-            if (server.checkClientProof(clientProof)) {
+  const server = new jsrp.server();
+  server.init(
+    {
+      salt: user.salt,
+      verifier: user.verifier,
+      b: loginSRPDetail.serverBInt
+    },
+    async () => {
+      server.setClientPublicKey(loginSRPDetail.clientPublicKey);
 
-                if (user.isMfaEnabled) {
-                    // case: user has MFA enabled
+      // compare server and client shared keys
+      if (server.checkClientProof(clientProof)) {
+        if (user.isMfaEnabled) {
+          // case: user has MFA enabled
 
-                    // generate temporary MFA token
-                    const token = createToken({
-                        payload: {
-                            userId: user._id.toString(),
-                        },
-                        expiresIn: await getJwtMfaLifetime(),
-                        secret: await getJwtMfaSecret(),
-                    });
+          // generate temporary MFA token
+          const token = createToken({
+            payload: {
+              userId: user._id.toString()
+            },
+            expiresIn: await getJwtMfaLifetime(),
+            secret: await getJwtMfaSecret()
+          });
 
-                    const code = await TokenService.createToken({
-                        type: TOKEN_EMAIL_MFA,
-                        email,
-                    });
+          const code = await TokenService.createToken({
+            type: TOKEN_EMAIL_MFA,
+            email
+          });
 
-                    // send MFA code [code] to [email]
-                    await sendMail({
-                        template: "emailMfa.handlebars",
-                        subjectLine: "Infisical MFA code",
-                        recipients: [user.email],
-                        substitutions: {
-                            code,
-                        },
-                    });
-
-                    return res.status(200).send({
-                        mfaEnabled: true,
-                        token,
-                    });
-                }
-
-                await checkUserDevice({
-                    user,
-                    ip: req.realIP,
-                    userAgent: req.headers["user-agent"] ?? "",
-                });
-
-                // issue tokens
-                const tokens = await issueAuthTokens({ 
-                    userId: user._id,
-                    ip: req.realIP,
-                    userAgent: req.headers["user-agent"] ?? "",
-                });
-                
-                // store (refresh) token in httpOnly cookie
-                res.cookie("jid", tokens.refreshToken, {
-                    httpOnly: true,
-                    path: "/",
-                    sameSite: "strict",
-                    secure: await getHttpsEnabled(),
-                });
-
-                // case: user does not have MFA enablgged
-                // return (access) token in response
-
-                interface ResponseData {
-                    mfaEnabled: boolean;
-                    encryptionVersion: any;
-                    protectedKey?: string;
-                    protectedKeyIV?: string;
-                    protectedKeyTag?: string;
-                    token: string;
-                    publicKey?: string;
-                    encryptedPrivateKey?: string;
-                    iv?: string;
-                    tag?: string;
-                }
-
-                const response: ResponseData = {
-                    mfaEnabled: false,
-                    encryptionVersion: user.encryptionVersion,
-                    token: tokens.token,
-                    publicKey: user.publicKey,
-                    encryptedPrivateKey: user.encryptedPrivateKey,
-                    iv: user.iv,
-                    tag: user.tag,
-                }
-
-                if (
-                    user?.protectedKey &&
-                    user?.protectedKeyIV &&
-                    user?.protectedKeyTag
-                ) {
-                    response.protectedKey = user.protectedKey;
-                    response.protectedKeyIV = user.protectedKeyIV
-                    response.protectedKeyTag = user.protectedKeyTag;
-                }
-
-                const loginAction = await EELogService.createAction({
-                    name: ACTION_LOGIN,
-                    userId: user._id,
-                });
-
-                loginAction && await EELogService.createLog({
-                    userId: user._id,
-                    actions: [loginAction],
-                    channel: getUserAgentType(req.headers["user-agent"]),
-                    ipAddress: req.realIP,
-                });
-
-                return res.status(200).send(response);
+          // send MFA code [code] to [email]
+          await sendMail({
+            template: "emailMfa.handlebars",
+            subjectLine: "Infisical MFA code",
+            recipients: [user.email],
+            substitutions: {
+              code
             }
+          });
 
-            return res.status(400).send({
-                message: "Failed to authenticate. Try again?",
-            });
+          return res.status(200).send({
+            mfaEnabled: true,
+            token
+          });
         }
-    );
+
+        await checkUserDevice({
+          user,
+          ip: req.realIP,
+          userAgent: req.headers["user-agent"] ?? ""
+        });
+
+        // issue tokens
+        const tokens = await issueAuthTokens({
+          userId: user._id,
+          ip: req.realIP,
+          userAgent: req.headers["user-agent"] ?? ""
+        });
+
+        // store (refresh) token in httpOnly cookie
+        res.cookie("jid", tokens.refreshToken, {
+          httpOnly: true,
+          path: "/",
+          sameSite: "strict",
+          secure: await getHttpsEnabled()
+        });
+
+        // case: user does not have MFA enablgged
+        // return (access) token in response
+
+        interface ResponseData {
+          mfaEnabled: boolean;
+          encryptionVersion: any;
+          protectedKey?: string;
+          protectedKeyIV?: string;
+          protectedKeyTag?: string;
+          token: string;
+          publicKey?: string;
+          encryptedPrivateKey?: string;
+          iv?: string;
+          tag?: string;
+        }
+
+        const response: ResponseData = {
+          mfaEnabled: false,
+          encryptionVersion: user.encryptionVersion,
+          token: tokens.token,
+          publicKey: user.publicKey,
+          encryptedPrivateKey: user.encryptedPrivateKey,
+          iv: user.iv,
+          tag: user.tag
+        };
+
+        if (user?.protectedKey && user?.protectedKeyIV && user?.protectedKeyTag) {
+          response.protectedKey = user.protectedKey;
+          response.protectedKeyIV = user.protectedKeyIV;
+          response.protectedKeyTag = user.protectedKeyTag;
+        }
+
+        const loginAction = await EELogService.createAction({
+          name: ACTION_LOGIN,
+          userId: user._id
+        });
+
+        loginAction &&
+          (await EELogService.createLog({
+            userId: user._id,
+            actions: [loginAction],
+            channel: getUserAgentType(req.headers["user-agent"]),
+            ipAddress: req.realIP
+          }));
+
+        return res.status(200).send(response);
+      }
+
+      return res.status(400).send({
+        message: "Failed to authenticate. Try again?"
+      });
+    }
+  );
 };

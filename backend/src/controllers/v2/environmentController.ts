@@ -6,7 +6,7 @@ import {
   Secret,
   ServiceToken,
   ServiceTokenData,
-  Workspace,
+  Workspace
 } from "../../models";
 import { EventType, SecretVersion } from "../../ee/models";
 import { EEAuditLogService, EELicenseService } from "../../ee/services";
@@ -20,11 +20,7 @@ import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variabl
  * @param res
  * @returns
  */
-export const createWorkspaceEnvironment = async (
-  req: Request,
-  res: Response
-) => {
-
+export const createWorkspaceEnvironment = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
   const { environmentName, environmentSlug } = req.body;
   const workspace = await Workspace.findById(workspaceId).exec();
@@ -39,7 +35,8 @@ export const createWorkspaceEnvironment = async (
       // case: number of environments used exceeds the number of environments allowed
 
       return res.status(400).send({
-        message: "Failed to create environment due to environment limit reached. Upgrade plan to create more environments.",
+        message:
+          "Failed to create environment due to environment limit reached. Upgrade plan to create more environments."
       });
     }
   }
@@ -55,7 +52,7 @@ export const createWorkspaceEnvironment = async (
 
   workspace?.environments.push({
     name: environmentName,
-    slug: environmentSlug.toLowerCase(),
+    slug: environmentSlug.toLowerCase()
   });
   await workspace.save();
 
@@ -80,8 +77,8 @@ export const createWorkspaceEnvironment = async (
     workspace: workspaceId,
     environment: {
       name: environmentName,
-      slug: environmentSlug,
-    },
+      slug: environmentSlug
+    }
   });
 };
 
@@ -91,34 +88,38 @@ export const createWorkspaceEnvironment = async (
  * @param res
  * @returns
  */
-export const reorderWorkspaceEnvironments = async (
-  req: Request,
-  res: Response
-) => {
+export const reorderWorkspaceEnvironments = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
   const { environmentSlug, environmentName, otherEnvironmentSlug, otherEnvironmentName } = req.body;
 
   // atomic update the env to avoid conflict
   const workspace = await Workspace.findById(workspaceId).exec();
   if (!workspace) {
-    throw BadRequestError({message: "Couldn't load workspace"});
+    throw BadRequestError({ message: "Couldn't load workspace" });
   }
 
-  const environmentIndex = workspace.environments.findIndex((env) => env.name === environmentName && env.slug === environmentSlug)
-  const otherEnvironmentIndex = workspace.environments.findIndex((env) => env.name === otherEnvironmentName && env.slug === otherEnvironmentSlug)
+  const environmentIndex = workspace.environments.findIndex(
+    (env) => env.name === environmentName && env.slug === environmentSlug
+  );
+  const otherEnvironmentIndex = workspace.environments.findIndex(
+    (env) => env.name === otherEnvironmentName && env.slug === otherEnvironmentSlug
+  );
 
   if (environmentIndex === -1 || otherEnvironmentIndex === -1) {
-    throw BadRequestError({message: "environment or otherEnvironment couldn't be found"})
+    throw BadRequestError({ message: "environment or otherEnvironment couldn't be found" });
   }
 
   // swap the order of the environments
-  [workspace.environments[environmentIndex], workspace.environments[otherEnvironmentIndex]] = [workspace.environments[otherEnvironmentIndex], workspace.environments[environmentIndex]]
+  [workspace.environments[environmentIndex], workspace.environments[otherEnvironmentIndex]] = [
+    workspace.environments[otherEnvironmentIndex],
+    workspace.environments[environmentIndex]
+  ];
 
-  await workspace.save()
+  await workspace.save();
 
   return res.status(200).send({
     message: "Successfully reordered environments",
-    workspace: workspaceId,
+    workspace: workspaceId
   });
 };
 
@@ -129,10 +130,7 @@ export const reorderWorkspaceEnvironments = async (
  * @param res
  * @returns
  */
-export const renameWorkspaceEnvironment = async (
-  req: Request,
-  res: Response
-) => {
+export const renameWorkspaceEnvironment = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
   const { environmentName, environmentSlug, oldEnvironmentSlug } = req.body;
   // user should pass both new slug and env name
@@ -148,16 +146,13 @@ export const renameWorkspaceEnvironment = async (
 
   const isEnvExist = workspace.environments.some(
     ({ name, slug }) =>
-      slug !== oldEnvironmentSlug &&
-      (name === environmentName || slug === environmentSlug)
+      slug !== oldEnvironmentSlug && (name === environmentName || slug === environmentSlug)
   );
   if (isEnvExist) {
     throw new Error("Invalid environment given");
   }
 
-  const envIndex = workspace?.environments.findIndex(
-    ({ slug }) => slug === oldEnvironmentSlug
-  );
+  const envIndex = workspace?.environments.findIndex(({ slug }) => slug === oldEnvironmentSlug);
   if (envIndex === -1) {
     throw new Error("Invalid environment given");
   }
@@ -191,7 +186,7 @@ export const renameWorkspaceEnvironment = async (
   await Membership.updateMany(
     {
       workspace: workspaceId,
-      "deniedPermissions.environmentSlug": oldEnvironmentSlug,
+      "deniedPermissions.environmentSlug": oldEnvironmentSlug
     },
     { $set: { "deniedPermissions.$[element].environmentSlug": environmentSlug } },
     { arrayFilters: [{ "element.environmentSlug": oldEnvironmentSlug }] }
@@ -218,8 +213,8 @@ export const renameWorkspaceEnvironment = async (
     workspace: workspaceId,
     environment: {
       name: environmentName,
-      slug: environmentSlug,
-    },
+      slug: environmentSlug
+    }
   });
 };
 
@@ -229,10 +224,7 @@ export const renameWorkspaceEnvironment = async (
  * @param res
  * @returns
  */
-export const deleteWorkspaceEnvironment = async (
-  req: Request,
-  res: Response
-) => {
+export const deleteWorkspaceEnvironment = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
   const { environmentSlug } = req.body;
   // atomic update the env to avoid conflict
@@ -241,9 +233,7 @@ export const deleteWorkspaceEnvironment = async (
     throw new Error("Failed to create workspace environment");
   }
 
-  const envIndex = workspace?.environments.findIndex(
-    ({ slug }) => slug === environmentSlug
-  );
+  const envIndex = workspace?.environments.findIndex(({ slug }) => slug === environmentSlug);
   if (envIndex === -1) {
     throw new Error("Invalid environment given");
   }
@@ -256,11 +246,11 @@ export const deleteWorkspaceEnvironment = async (
   // clean up
   await Secret.deleteMany({
     workspace: workspaceId,
-    environment: environmentSlug,
+    environment: environmentSlug
   });
   await SecretVersion.deleteMany({
     workspace: workspaceId,
-    environment: environmentSlug,
+    environment: environmentSlug
   });
 
   // await ServiceToken.deleteMany({
@@ -279,7 +269,7 @@ export const deleteWorkspaceEnvironment = async (
 
   await Integration.deleteMany({
     workspace: workspaceId,
-    environment: environmentSlug,
+    environment: environmentSlug
   });
   await Membership.updateMany(
     { workspace: workspaceId },
@@ -305,46 +295,48 @@ export const deleteWorkspaceEnvironment = async (
   return res.status(200).send({
     message: "Successfully deleted environment",
     workspace: workspaceId,
-    environment: environmentSlug,
+    environment: environmentSlug
   });
 };
 
-
-export const getAllAccessibleEnvironmentsOfWorkspace = async (
-  req: Request,
-  res: Response
-) => {
+export const getAllAccessibleEnvironmentsOfWorkspace = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
   const workspacesUserIsMemberOf = await Membership.findOne({
     workspace: workspaceId,
-    user: req.user,
-  })
+    user: req.user
+  });
 
   if (!workspacesUserIsMemberOf) {
-    throw BadRequestError()
+    throw BadRequestError();
   }
 
-  const accessibleEnvironments: any = []
-  const deniedPermission = workspacesUserIsMemberOf.deniedPermissions
+  const accessibleEnvironments: any = [];
+  const deniedPermission = workspacesUserIsMemberOf.deniedPermissions;
 
-  const relatedWorkspace = await Workspace.findById(workspaceId)
+  const relatedWorkspace = await Workspace.findById(workspaceId);
   if (!relatedWorkspace) {
-    throw BadRequestError()
+    throw BadRequestError();
   }
-  relatedWorkspace.environments.forEach(environment => {
-    const isReadBlocked = _.some(deniedPermission, { environmentSlug: environment.slug, ability: PERMISSION_READ_SECRETS })
-    const isWriteBlocked = _.some(deniedPermission, { environmentSlug: environment.slug, ability: PERMISSION_WRITE_SECRETS })
+  relatedWorkspace.environments.forEach((environment) => {
+    const isReadBlocked = _.some(deniedPermission, {
+      environmentSlug: environment.slug,
+      ability: PERMISSION_READ_SECRETS
+    });
+    const isWriteBlocked = _.some(deniedPermission, {
+      environmentSlug: environment.slug,
+      ability: PERMISSION_WRITE_SECRETS
+    });
     if (isReadBlocked && isWriteBlocked) {
-      return
+      return;
     } else {
       accessibleEnvironments.push({
         name: environment.name,
         slug: environment.slug,
         isWriteDenied: isWriteBlocked,
-        isReadDenied: isReadBlocked,
-      })
+        isReadDenied: isReadBlocked
+      });
     }
-  })
+  });
 
-  res.json({ accessibleEnvironments })
+  res.json({ accessibleEnvironments });
 };

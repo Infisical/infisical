@@ -12,27 +12,23 @@ type req = "params" | "body" | "query";
  * @param {String[]} obj.location - location of [workspaceId] on request (e.g. params, body) for parsing
  */
 const requireMembershipAuth = ({
-    acceptedRoles,
-    locationMembershipId = "params",
+  acceptedRoles,
+  locationMembershipId = "params"
 }: {
-    acceptedRoles: Array<"admin" | "member">;
-    locationMembershipId: req
+  acceptedRoles: Array<"admin" | "member">;
+  locationMembershipId: req;
 }) => {
-    return async (
-        req: Request, 
-        res: Response, 
-        next: NextFunction
-    ) => {
-        const { membershipId } = req[locationMembershipId];
-        
-        req.targetMembership = await validateClientForMembership({
-            authData: req.authData,
-            membershipId: new Types.ObjectId(membershipId),
-            acceptedRoles,
-        });
-        
-        return next();
-    }
-}
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const { membershipId } = req[locationMembershipId];
+
+    req.targetMembership = await validateClientForMembership({
+      authData: req.authData,
+      membershipId: new Types.ObjectId(membershipId),
+      acceptedRoles
+    });
+
+    return next();
+  };
+};
 
 export default requireMembershipAuth;

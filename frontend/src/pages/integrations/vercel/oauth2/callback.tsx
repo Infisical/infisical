@@ -2,9 +2,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
-import {
-  useAuthorizeIntegration
-} from "@app/hooks/api";
+import { useAuthorizeIntegration } from "@app/hooks/api";
 
 export default function VercelOAuth2CallbackPage() {
   const router = useRouter();
@@ -18,7 +16,7 @@ export default function VercelOAuth2CallbackPage() {
         // validate state
         if (state !== localStorage.getItem("latestCSRFToken")) return;
         localStorage.removeItem("latestCSRFToken");
-        
+
         const integrationAuth = await mutateAsync({
           workspaceId: localStorage.getItem("projectData.id") as string,
           code: code as string,

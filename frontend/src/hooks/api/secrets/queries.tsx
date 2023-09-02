@@ -17,7 +17,8 @@ import {
   EncryptedSecretVersion,
   GetProjectSecretsDTO,
   GetSecretVersionsDTO,
-  TGetProjectSecretsAllEnvDTO} from "./types";
+  TGetProjectSecretsAllEnvDTO
+} from "./types";
 
 export const secretKeys = {
   // this is also used in secretSnapshot part
@@ -46,7 +47,7 @@ const fetchProjectEncryptedSecrets = async (
       secretPath
     }
   });
-  
+
   return data.secrets;
 };
 
@@ -329,7 +330,7 @@ export const useBatchSecretsOp = () => {
 export const createSecret = async (dto: CreateSecretDTO) => {
   const { data } = await apiRequest.post(`/api/v3/secrets/${dto.secretKey}`, dto);
   return data;
-}
+};
 
 export const useCreateSecret = () => {
   const queryClient = useQueryClient();
@@ -340,9 +341,7 @@ export const useCreateSecret = () => {
       return data;
     },
     onSuccess: (_, dto) => {
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret(dto.workspaceId, dto.environment)
-      );
+      queryClient.invalidateQueries(secretKeys.getProjectSecret(dto.workspaceId, dto.environment));
     }
   });
 };

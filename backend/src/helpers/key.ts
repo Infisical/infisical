@@ -1,9 +1,9 @@
 import { IKey, Key } from "../models";
 
 interface Key {
-	encryptedKey: string;
-	nonce: string;
-	userId: string;
+  encryptedKey: string;
+  nonce: string;
+  userId: string;
 }
 
 /**
@@ -18,20 +18,20 @@ interface Key {
  * @param {String} obj.keys.userId - id of receiver user
  */
 export const pushKeys = async ({
-	userId,
-	workspaceId,
-	keys,
+  userId,
+  workspaceId,
+  keys
 }: {
-	userId: string;
-	workspaceId: string;
-	keys: Key[];
+  userId: string;
+  workspaceId: string;
+  keys: Key[];
 }): Promise<void> => {
   // filter out already-inserted keys
   const keysSet = new Set(
     (
       await Key.find(
         {
-          workspace: workspaceId,
+          workspace: workspaceId
         },
         "receiver"
       )
@@ -47,7 +47,7 @@ export const pushKeys = async ({
       nonce: k.nonce,
       sender: userId,
       receiver: k.userId,
-      workspace: workspaceId,
+      workspace: workspaceId
     }))
   );
 };

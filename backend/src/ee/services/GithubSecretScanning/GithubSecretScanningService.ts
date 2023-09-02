@@ -8,30 +8,32 @@ export default async (app: Probot) => {
     const { installation, repositories } = payload;
     if (repositories) {
       for (const repository of repositories) {
-        await GitRisks.deleteMany({ repositoryId: repository.id })
+        await GitRisks.deleteMany({ repositoryId: repository.id });
       }
-      await GitAppOrganizationInstallation.deleteOne({ installationId: installation.id })
+      await GitAppOrganizationInstallation.deleteOne({ installationId: installation.id });
     }
-  })
+  });
 
   app.on("installation", async (context) => {
     const { payload } = context;
-    payload.repositories
+    payload.repositories;
     const { installation, repositories } = payload;
-    // TODO: start full repo scans 
-  })
+    // TODO: start full repo scans
+  });
 
   app.on("push", async (context) => {
     const { payload } = context;
     const { commits, repository, installation, pusher } = payload;
 
     if (!commits || !repository || !installation || !pusher) {
-      return
+      return;
     }
 
-    const installationLinkToOrgExists = await GitAppOrganizationInstallation.findOne({ installationId: installation?.id }).lean()
+    const installationLinkToOrgExists = await GitAppOrganizationInstallation.findOne({
+      installationId: installation?.id
+    }).lean();
     if (!installationLinkToOrgExists) {
-      return
+      return;
     }
 
     scanGithubPushEventForSecretLeaks({
@@ -40,6 +42,6 @@ export default async (app: Probot) => {
       repository: { fullName: repository.full_name, id: repository.id },
       organizationId: installationLinkToOrgExists.organizationId,
       installationId: installation.id
-    })
+    });
   });
 };

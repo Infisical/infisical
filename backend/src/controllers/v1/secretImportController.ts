@@ -3,7 +3,11 @@ import { isValidScope, validateMembership } from "../../helpers";
 import { Folder, SecretImport, ServiceTokenData } from "../../models";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
 import { getFolderWithPathFromId } from "../../services/FolderService";
-import { BadRequestError, ResourceNotFoundError,UnauthorizedRequestError } from "../../utils/errors";
+import {
+  BadRequestError,
+  ResourceNotFoundError,
+  UnauthorizedRequestError
+} from "../../utils/errors";
 import { ADMIN, MEMBER } from "../../variables";
 import { EEAuditLogService } from "../../ee/services";
 import { EventType } from "../../ee/models";
@@ -40,8 +44,10 @@ export const createSecretImport = async (req: Request, res: Response) => {
     environment,
     folderId
   });
-  
-  const importToSecretPath = folders?getFolderWithPathFromId(folders.nodes, folderId).folderPath:"/";
+
+  const importToSecretPath = folders
+    ? getFolderWithPathFromId(folders.nodes, folderId).folderPath
+    : "/";
 
   if (!importSecDoc) {
     const doc = new SecretImport({
@@ -50,7 +56,7 @@ export const createSecretImport = async (req: Request, res: Response) => {
       folderId,
       imports: [{ environment: secretImport.environment, secretPath: secretImport.secretPath }]
     });
-    
+
     await doc.save();
     await EEAuditLogService.createAuditLog(
       req.authData,
@@ -84,7 +90,7 @@ export const createSecretImport = async (req: Request, res: Response) => {
     secretPath: secretImport.secretPath
   });
   await importSecDoc.save();
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -146,19 +152,22 @@ export const updateSecretImport = async (req: Request, res: Response) => {
 
   const orderBefore = importSecDoc.imports;
   importSecDoc.imports = secretImports;
-  
+
   await importSecDoc.save();
-  
+
   const folders = await Folder.findOne({
     workspace: importSecDoc.workspace,
-    environment: importSecDoc.environment,
+    environment: importSecDoc.environment
   }).lean();
-  
-  if (!folders) throw ResourceNotFoundError({
-    message: "Failed to find folder"
-  });
-  
-  const importToSecretPath = folders?getFolderWithPathFromId(folders.nodes, importSecDoc.folderId).folderPath:"/";
+
+  if (!folders)
+    throw ResourceNotFoundError({
+      message: "Failed to find folder"
+    });
+
+  const importToSecretPath = folders
+    ? getFolderWithPathFromId(folders.nodes, importSecDoc.folderId).folderPath
+    : "/";
 
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -224,14 +233,17 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
 
   const folders = await Folder.findOne({
     workspace: importSecDoc.workspace,
-    environment: importSecDoc.environment,
+    environment: importSecDoc.environment
   }).lean();
-  
-  if (!folders) throw ResourceNotFoundError({
-    message: "Failed to find folder"
-  });
-  
-  const importToSecretPath = folders?getFolderWithPathFromId(folders.nodes, importSecDoc.folderId).folderPath:"/";
+
+  if (!folders)
+    throw ResourceNotFoundError({
+      message: "Failed to find folder"
+    });
+
+  const importToSecretPath = folders
+    ? getFolderWithPathFromId(folders.nodes, importSecDoc.folderId).folderPath
+    : "/";
 
   await EEAuditLogService.createAuditLog(
     req.authData,

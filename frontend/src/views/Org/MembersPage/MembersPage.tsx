@@ -61,7 +61,9 @@ export const MembersPage = () => {
 
   const [completeInviteLink, setcompleteInviteLink] = useState<string | undefined>("");
 
-  const isMoreUsersNotAllowed = subscription?.memberLimit ? (subscription.membersUsed >= subscription.memberLimit) : false;
+  const isMoreUsersNotAllowed = subscription?.memberLimit
+    ? subscription.membersUsed >= subscription.memberLimit
+    : false;
 
   const onRenameOrg = async (name: string) => {
     if (!currentOrg?._id) return;

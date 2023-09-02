@@ -17,11 +17,7 @@ type FormData = yup.InferType<typeof formSchema>;
 export const OrgNameChangeSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { createNotification } = useNotificationContext();
-  const {
-    handleSubmit,
-    control,
-    reset
-  } = useForm<FormData>({ resolver: yupResolver(formSchema) });
+  const { handleSubmit, control, reset } = useForm<FormData>({ resolver: yupResolver(formSchema) });
   const { mutateAsync, isLoading } = useRenameOrg();
 
   useEffect(() => {
@@ -50,33 +46,26 @@ export const OrgNameChangeSection = (): JSX.Element => {
   };
 
   return (
-    <form 
+    <form
       onSubmit={handleSubmit(onFormSubmit)}
       className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
     >
-        <p className="text-xl font-semibold text-mineshaft-100 mb-4">
-          Organization name
-        </p>
-        <div className="mb-2 max-w-md">
-          <Controller
-            defaultValue=""
-            render={({ field, fieldState: { error } }) => (
-              <FormControl isError={Boolean(error)} errorText={error?.message}>
-                <Input placeholder="Acme Corp" {...field} />
-              </FormControl>
-            )}
-            control={control}
-            name="name"
-          />
-        </div>
-        <Button
-          isLoading={isLoading}
-          colorSchema="primary"
-          variant="outline_bg"
-          type="submit"
-        >
-          Save
-        </Button>
+      <p className="text-xl font-semibold text-mineshaft-100 mb-4">Organization name</p>
+      <div className="mb-2 max-w-md">
+        <Controller
+          defaultValue=""
+          render={({ field, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message}>
+              <Input placeholder="Acme Corp" {...field} />
+            </FormControl>
+          )}
+          control={control}
+          name="name"
+        />
+      </div>
+      <Button isLoading={isLoading} colorSchema="primary" variant="outline_bg" type="submit">
+        Save
+      </Button>
     </form>
   );
 };

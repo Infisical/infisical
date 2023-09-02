@@ -6,9 +6,9 @@ import { getJwtServiceSecret } from "../config";
 
 // TODO: deprecate
 declare module "jsonwebtoken" {
-	export interface UserIDJwtPayload extends jwt.JwtPayload {
-		userId: string;
-	}
+  export interface UserIDJwtPayload extends jwt.JwtPayload {
+    userId: string;
+  }
 }
 
 /**
@@ -19,33 +19,40 @@ declare module "jsonwebtoken" {
  * @param next - express next function
  * @returns
  */
-const requireServiceTokenAuth = async (
-	req: Request,
-	res: Response,
-	next: NextFunction
-) => {
-	// JWT service token middleware
-	
-	const [ AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE ] = <[string, string]>req.headers["authorization"]?.split(" ", 2) ?? [null, null]
-	if(AUTH_TOKEN_TYPE === null) return next(BadRequestError({message: "Missing Authorization Header in the request header."}))
-	//TODO: Determine what is the actual Token Type for Service Token Authentication (ex. Bearer)
-	//if(AUTH_TOKEN_TYPE.toLowerCase() !== 'bearer') return next(UnauthorizedRequestError({message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.`}))
-	if(AUTH_TOKEN_VALUE === null) return next(BadRequestError({message: "Missing Authorization Body in the request header"}))
+const requireServiceTokenAuth = async (req: Request, res: Response, next: NextFunction) => {
+  // JWT service token middleware
 
-	const decodedToken = <jwt.UserIDJwtPayload>(
-		jwt.verify(AUTH_TOKEN_VALUE, await getJwtServiceSecret())
-	);
+  const [AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE] = <[string, string]>(
+    req.headers["authorization"]?.split(" ", 2)
+  ) ?? [null, null];
+  if (AUTH_TOKEN_TYPE === null)
+    return next(
+      BadRequestError({ message: "Missing Authorization Header in the request header." })
+    );
+  //TODO: Determine what is the actual Token Type for Service Token Authentication (ex. Bearer)
+  //if(AUTH_TOKEN_TYPE.toLowerCase() !== 'bearer') return next(UnauthorizedRequestError({message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.`}))
+  if (AUTH_TOKEN_VALUE === null)
+    return next(BadRequestError({ message: "Missing Authorization Body in the request header" }));
 
-	const serviceToken = await ServiceToken.findOne({
-		_id: decodedToken.serviceTokenId,
-	})
-		.populate("user", "+publicKey")
-		.select("+encryptedKey +publicKey +nonce");
+  const decodedToken = <jwt.UserIDJwtPayload>(
+    jwt.verify(AUTH_TOKEN_VALUE, await getJwtServiceSecret())
+  );
 
-	if (!serviceToken) return next(UnauthorizedRequestError({message: "The service token does not match the record in the database"}))
+  const serviceToken = await ServiceToken.findOne({
+    _id: decodedToken.serviceTokenId
+  })
+    .populate("user", "+publicKey")
+    .select("+encryptedKey +publicKey +nonce");
 
-	req.serviceToken = serviceToken;
-	return next();
+  if (!serviceToken)
+    return next(
+      UnauthorizedRequestError({
+        message: "The service token does not match the record in the database"
+      })
+    );
+
+  req.serviceToken = serviceToken;
+  return next();
 };
 
 export default requireServiceTokenAuth;

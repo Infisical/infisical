@@ -1,5 +1,3 @@
 import requireSecretSnapshotAuth from "./requireSecretSnapshotAuth";
 
-export {
-    requireSecretSnapshotAuth,
-}
+export { requireSecretSnapshotAuth };

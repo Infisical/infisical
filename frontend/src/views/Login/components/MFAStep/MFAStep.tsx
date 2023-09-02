@@ -2,20 +2,19 @@ import React, { useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
-import axios from "axios"
+import axios from "axios";
 import jwt_decode from "jwt-decode";
 
 import Error from "@app/components/basic/Error"; // which to notification
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa"
+import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa";
 import attemptLoginMfa from "@app/components/utilities/attemptLoginMfa";
-import { Button } from "@app/components/v2";    
+import { Button } from "@app/components/v2";
 import { useUpdateUserAuthMethods } from "@app/hooks/api";
 import { useSendMfaToken } from "@app/hooks/api/auth";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { AuthMethod } from "@app/hooks/api/users/types";
-
 
 // The style for the verification code input
 const props = {
@@ -42,7 +41,7 @@ type Props = {
   password: string;
   providerAuthToken?: string;
   callbackPort?: string | null;
-}
+};
 
 interface VerifyMfaTokenError {
   response: {
@@ -56,11 +55,7 @@ interface VerifyMfaTokenError {
   };
 }
 
-export const MFAStep = ({
-  email,
-  password,
-  providerAuthToken
-}: Props) => {
+export const MFAStep = ({ email, password, providerAuthToken }: Props) => {
   const { createNotification } = useNotificationContext();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -71,22 +66,22 @@ export const MFAStep = ({
   const { t } = useTranslation();
 
   const sendMfaToken = useSendMfaToken();
-    const { mutateAsync: updateUserAuthMethodsMutateAsync } = useUpdateUserAuthMethods();
+  const { mutateAsync: updateUserAuthMethodsMutateAsync } = useUpdateUserAuthMethods();
 
   const handleLoginMfa = async () => {
     try {
       let isLinkingRequired: undefined | boolean;
       let callbackPort: undefined | string;
       let authMethod: undefined | AuthMethod;
-      
+
       if (providerAuthToken) {
         const decodedToken = jwt_decode(providerAuthToken) as any;
-        
+
         isLinkingRequired = decodedToken.isLinkingRequired;
         callbackPort = decodedToken.callbackPort;
         authMethod = decodedToken.authMethod;
       }
-      
+
       if (mfaCode.length !== 6) {
         createNotification({
           text: "Please enter a 6-digit MFA code and try again",
@@ -97,22 +92,21 @@ export const MFAStep = ({
 
       setIsLoading(true);
       if (callbackPort) {
-
         // attemptCliLogin
         const isCliLoginSuccessful = await attemptCliLoginMfa({
           email,
           password,
           providerAuthToken,
           mfaToken: mfaCode
-        })
+        });
 
-        if (isCliLoginSuccessful && isCliLoginSuccessful.success){
+        if (isCliLoginSuccessful && isCliLoginSuccessful.success) {
           // case: login was successful
-          const cliUrl = `http://localhost:${callbackPort}`
+          const cliUrl = `http://localhost:${callbackPort}`;
 
-          // send request to server endpoint 
-          const instance = axios.create()
-          await instance.post(cliUrl,{...isCliLoginSuccessful.loginResponse,email})
+          // send request to server endpoint
+          const instance = axios.create();
+          await instance.post(cliUrl, { ...isCliLoginSuccessful.loginResponse, email });
 
           // cli page
           router.push("/cli-redirect");
@@ -124,7 +118,7 @@ export const MFAStep = ({
           providerAuthToken,
           mfaToken: mfaCode
         });
-  
+
         if (isLoginSuccessful) {
           setIsLoading(false);
           const userOrgs = await fetchOrganizations();
@@ -132,18 +126,18 @@ export const MFAStep = ({
 
           // case: login does not require MFA step
           createNotification({
-              text: "Successfully logged in",
-              type: "success"
+            text: "Successfully logged in",
+            type: "success"
           });
 
           if (isLinkingRequired && authMethod) {
             const user = await fetchUserDetails();
-            const newAuthMethods = [...user.authMethods, authMethod] 
+            const newAuthMethods = [...user.authMethods, authMethod];
             await updateUserAuthMethodsMutateAsync({
-                authMethods: newAuthMethods
+              authMethods: newAuthMethods
             });
           }
-          
+
           router.push(`/org/${userOrg}/overview`);
         } else {
           createNotification({
@@ -152,7 +146,6 @@ export const MFAStep = ({
           });
         }
       }
-      
     } catch (err) {
       const error = err as VerifyMfaTokenError;
       createNotification({
@@ -184,8 +177,8 @@ export const MFAStep = ({
     }
   };
 
-    return (
-       <form className="mx-auto w-max md:px-8 pb-4 pt-4 md:mb-16">
+  return (
+    <form className="mx-auto w-max md:px-8 pb-4 pt-4 md:mb-16">
       <p className="text-l flex justify-center text-bunker-300">{t("mfa.step2-message")}</p>
       <p className="text-l my-1 flex justify-center font-semibold text-bunker-300">{email} </p>
       <div className="hidden md:block w-max min-w-[20rem] mx-auto">
@@ -219,11 +212,14 @@ export const MFAStep = ({
             onClick={() => handleLoginMfa()}
             size="sm"
             isFullWidth
-            className='h-14'
+            className="h-14"
             colorSchema="primary"
             variant="outline_bg"
             isLoading={isLoading}
-          > {String(t("mfa.verify"))} </Button>
+          >
+            {" "}
+            {String(t("mfa.verify"))}{" "}
+          </Button>
         </div>
       </div>
       <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
@@ -231,7 +227,7 @@ export const MFAStep = ({
           <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
           <div className="mt-2 text-bunker-400 text-md flex flex-row">
             <button disabled={isLoadingResend} onClick={handleResendMfaCode} type="button">
-              <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>
+              <span className="hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer">
                 {isLoadingResend
                   ? t("signup.step2-resend-progress")
                   : t("signup.step2-resend-submit")}
@@ -241,6 +237,6 @@ export const MFAStep = ({
         </div>
         <p className="text-sm text-bunker-400 pb-2">{t("signup.step2-spam-alert")}</p>
       </div>
-    </form> 
-    );
-}
+    </form>
+  );
+};

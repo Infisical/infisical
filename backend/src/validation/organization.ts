@@ -1,12 +1,6 @@
 import { Types } from "mongoose";
-import {
-    IUser,
-    Organization,
-} from "../models";
-import {
-    OrganizationNotFoundError,
-    UnauthorizedRequestError,
-} from "../utils/errors";
+import { IUser, Organization } from "../models";
+import { OrganizationNotFoundError, UnauthorizedRequestError } from "../utils/errors";
 import { validateUserClientForOrganization } from "./user";
 import { AuthData } from "../interfaces/middleware";
 import { ActorType } from "../ee/models";
@@ -21,7 +15,7 @@ export const validateClientForOrganization = async ({
   authData,
   organizationId,
   acceptedRoles,
-  acceptedStatuses,
+  acceptedStatuses
 }: {
   authData: AuthData;
   organizationId: Types.ObjectId;
@@ -32,10 +26,10 @@ export const validateClientForOrganization = async ({
 
   if (!organization) {
     throw OrganizationNotFoundError({
-      message: "Failed to find organization",
+      message: "Failed to find organization"
     });
   }
-  
+
   let membershipOrg;
   switch (authData.actor.type) {
     case ActorType.USER:
@@ -43,13 +37,13 @@ export const validateClientForOrganization = async ({
         user: authData.authPayload as IUser,
         organization,
         acceptedRoles,
-        acceptedStatuses,
+        acceptedStatuses
       });
 
-      return { organization, membershipOrg }; 
+      return { organization, membershipOrg };
     case ActorType.SERVICE:
       throw UnauthorizedRequestError({
-        message: "Failed service token authorization for organization",
+        message: "Failed service token authorization for organization"
       });
   }
 };

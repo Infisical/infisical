@@ -1,7 +1,7 @@
 export enum AuthMode {
-    JWT = "jwt",
-    SERVICE_TOKEN = "serviceToken",
-    API_KEY = "apiKey"
+  JWT = "jwt",
+  SERVICE_TOKEN = "serviceToken",
+  API_KEY = "apiKey"
 }
 
-export const K8_USER_AGENT_NAME = "k8-operator"
+export const K8_USER_AGENT_NAME = "k8-operator";

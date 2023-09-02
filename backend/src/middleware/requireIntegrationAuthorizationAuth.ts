@@ -12,38 +12,38 @@ type req = "params" | "body" | "query";
  * @param {Boolean} obj.attachAccessToken - whether or not to decrypt and attach integration authorization access token onto request
  */
 const requireIntegrationAuthorizationAuth = ({
-	acceptedRoles,
-	attachAccessToken = true,
-	location = "params",
+  acceptedRoles,
+  attachAccessToken = true,
+  location = "params"
 }: {
-	acceptedRoles: Array<"admin" | "member">;
-	attachAccessToken?: boolean;
-	location?: req;
+  acceptedRoles: Array<"admin" | "member">;
+  attachAccessToken?: boolean;
+  location?: req;
 }) => {
-	return async (req: Request, res: Response, next: NextFunction) => {
-		const { integrationAuthId } = req[location];
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const { integrationAuthId } = req[location];
 
-		const { integrationAuth, accessToken, accessId } = await validateClientForIntegrationAuth({
-			authData: req.authData,
-			integrationAuthId: new Types.ObjectId(integrationAuthId),
-			acceptedRoles,
-			attachAccessToken,
-		});
-		
-		if (integrationAuth) {
-			req.integrationAuth = integrationAuth;
-		}
+    const { integrationAuth, accessToken, accessId } = await validateClientForIntegrationAuth({
+      authData: req.authData,
+      integrationAuthId: new Types.ObjectId(integrationAuthId),
+      acceptedRoles,
+      attachAccessToken
+    });
 
-		if (accessToken) {
-			req.accessToken = accessToken;
-		}
-		
-		if (accessId) {
-			req.accessId = accessId;
-		}
-		
-		return next();
-	};
+    if (integrationAuth) {
+      req.integrationAuth = integrationAuth;
+    }
+
+    if (accessToken) {
+      req.accessToken = accessToken;
+    }
+
+    if (accessId) {
+      req.accessId = accessId;
+    }
+
+    return next();
+  };
 };
 
 export default requireIntegrationAuthorizationAuth;

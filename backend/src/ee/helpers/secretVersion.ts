@@ -7,29 +7,25 @@ import { SecretVersion } from "../models";
  * @param {Object} obj.secretIds = ids of secrets to get latest versions for
  * @returns
  */
-const getLatestSecretVersionIds = async ({
-  secretIds,
-}: {
-  secretIds: Types.ObjectId[];
-}) => {
+const getLatestSecretVersionIds = async ({ secretIds }: { secretIds: Types.ObjectId[] }) => {
   const latestSecretVersionIds = await SecretVersion.aggregate([
     {
       $match: {
         secret: {
-          $in: secretIds,
-        },
-      },
+          $in: secretIds
+        }
+      }
     },
     {
       $group: {
         _id: "$secret",
         version: { $max: "$version" },
-        versionId: { $max: "$_id" }, // id of latest secret version
-      },
+        versionId: { $max: "$_id" } // id of latest secret version
+      }
     },
     {
-      $sort: { version: -1 },
-    },
+      $sort: { version: -1 }
+    }
   ]).exec();
 
   return latestSecretVersionIds;
@@ -44,7 +40,7 @@ const getLatestSecretVersionIds = async ({
  */
 const getLatestNSecretSecretVersionIds = async ({
   secretIds,
-  n,
+  n
 }: {
   secretIds: Types.ObjectId[];
   n: number;
@@ -54,26 +50,26 @@ const getLatestNSecretSecretVersionIds = async ({
     {
       $match: {
         secret: {
-          $in: secretIds,
-        },
-      },
+          $in: secretIds
+        }
+      }
     },
     {
-      $sort: { version: -1 },
+      $sort: { version: -1 }
     },
     {
       $group: {
         _id: "$secret",
-        versions: { $push: "$$ROOT" },
-      },
+        versions: { $push: "$$ROOT" }
+      }
     },
     {
       $project: {
         _id: 0,
         secret: "$_id",
-        versions: { $slice: ["$versions", n] },
-      },
-    },
+        versions: { $slice: ["$versions", n] }
+      }
+    }
   ]);
 
   return latestNSecretVersions;

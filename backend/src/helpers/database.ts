@@ -5,40 +5,36 @@ import { getLogger } from "../utils/logger";
  * Initialize database connection
  * @param {Object} obj
  * @param {String} obj.mongoURL - mongo connection string
- * @returns 
+ * @returns
  */
-export const initDatabaseHelper = async ({
-    mongoURL,
-}: {
-    mongoURL: string;
-}) => {
-    try {
-        await mongoose.connect(mongoURL);
-    
-        // allow empty strings to pass the required validator
-        mongoose.Schema.Types.String.checkRequired(v => typeof v === "string");
+export const initDatabaseHelper = async ({ mongoURL }: { mongoURL: string }) => {
+  try {
+    await mongoose.connect(mongoURL);
 
-        (await getLogger("database")).info("Database connection established");
+    // allow empty strings to pass the required validator
+    mongoose.Schema.Types.String.checkRequired((v) => typeof v === "string");
 
-    } catch (err) {
-        (await getLogger("database")).error(`Unable to establish Database connection due to the error.\n${err}`);
-    }
+    (await getLogger("database")).info("Database connection established");
+  } catch (err) {
+    (await getLogger("database")).error(
+      `Unable to establish Database connection due to the error.\n${err}`
+    );
+  }
 
-    return mongoose.connection;
-}
+  return mongoose.connection;
+};
 
 /**
  * Close database conection
  */
 export const closeDatabaseHelper = async () => {
-    return Promise.all([
-        new Promise((resolve) => {
-            if (mongoose.connection && mongoose.connection.readyState == 1) {
-            mongoose.connection.close()
-                .then(() => resolve("Database connection closed"));
-            } else {
-            resolve("Database connection already closed");
-            }
-        }),
-    ]);
-}
+  return Promise.all([
+    new Promise((resolve) => {
+      if (mongoose.connection && mongoose.connection.readyState == 1) {
+        mongoose.connection.close().then(() => resolve("Database connection closed"));
+      } else {
+        resolve("Database connection already closed");
+      }
+    })
+  ]);
+};

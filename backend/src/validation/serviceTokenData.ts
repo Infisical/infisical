@@ -1,10 +1,5 @@
 import { Types } from "mongoose";
-import {
-  ISecret,
-  IServiceTokenData,
-  IUser,
-  ServiceTokenData,
-} from "../models";
+import { ISecret, IServiceTokenData, IUser, ServiceTokenData } from "../models";
 import { ServiceTokenDataNotFoundError, UnauthorizedRequestError } from "../utils/errors";
 import { validateUserClientForWorkspace } from "./user";
 import { ActorType } from "../ee/models";
@@ -31,10 +26,11 @@ export const validateClientForServiceTokenData = async ({
     .select("+encryptedKey +iv +tag")
     .populate<{ user: IUser }>("user");
 
-  if (!serviceTokenData) throw ServiceTokenDataNotFoundError({
-    message: "Failed to find service token data"
-  });
-  
+  if (!serviceTokenData)
+    throw ServiceTokenDataNotFoundError({
+      message: "Failed to find service token data"
+    });
+
   switch (authData.actor.type) {
     case ActorType.USER:
       await validateUserClientForWorkspace({

@@ -1,1 +1,1 @@
-export {ServiceTokenSection} from "./ServiceTokenSection"
+export { ServiceTokenSection } from "./ServiceTokenSection";

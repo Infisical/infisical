@@ -8,12 +8,11 @@ export const setUpHealthEndpoint = <T>(server: T) => {
     return Promise.all([
       new Promise((resolve) => {
         if (mongoose.connection && mongoose.connection.readyState == 1) {
-          mongoose.connection.close()
-            .then(() => resolve("Database connection closed"));
+          mongoose.connection.close().then(() => resolve("Database connection closed"));
         } else {
           resolve("Database connection already closed");
         }
-      }),
+      })
     ]);
   };
 
@@ -26,7 +25,7 @@ export const setUpHealthEndpoint = <T>(server: T) => {
   createTerminus(server, {
     healthChecks: {
       "/healthcheck": healthCheck,
-      onSignal,
-    },
+      onSignal
+    }
   });
 };

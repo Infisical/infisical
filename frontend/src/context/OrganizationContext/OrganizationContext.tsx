@@ -3,7 +3,6 @@ import { createContext, ReactNode, useContext, useMemo } from "react";
 import { useGetOrganizations } from "@app/hooks/api";
 import { Organization } from "@app/hooks/api/types";
 
-
 type TOrgContext = {
   orgs?: Organization[];
   currentOrg?: Organization;
@@ -18,7 +17,7 @@ type Props = {
 
 export const OrgProvider = ({ children }: Props): JSX.Element => {
   const { data: userOrgs, isLoading } = useGetOrganizations();
-  
+
   // const currentWsOrgID = currentWorkspace?.organization;
   const currentWsOrgID = localStorage.getItem("orgData.id");
 

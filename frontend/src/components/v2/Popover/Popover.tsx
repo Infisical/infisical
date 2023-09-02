@@ -3,17 +3,20 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
 
 type Props = {
-  children: any; 
-  text: string; 
-  onChangeHandler: (value: string, id: string) => void; 
+  children: any;
+  text: string;
+  onChangeHandler: (value: string, id: string) => void;
   id: string;
 };
 
 export type PopoverProps = Props;
 
-export const PopoverObject = ({children, text, onChangeHandler, id}: Props) => (
+export const PopoverObject = ({ children, text, onChangeHandler, id }: Props) => (
   <Popover.Root>
-    <Popover.Trigger asChild className='data-[state=open]:outline data-[state=open]:outline-primary data-[state=closed]:hover:outline data-[state=closed]:hover:outline-mineshaft-400'>
+    <Popover.Trigger
+      asChild
+      className="data-[state=open]:outline data-[state=open]:outline-primary data-[state=closed]:hover:outline data-[state=closed]:hover:outline-mineshaft-400"
+    >
       {children}
     </Popover.Trigger>
     <Popover.Portal>
@@ -29,9 +32,9 @@ export const PopoverObject = ({children, text, onChangeHandler, id}: Props) => (
             onChange={(e) => onChangeHandler(e.target.value, id)}
             // type={type}
             value={text}
-            className='z-10 dark:[color-scheme:dark] peer h-[20rem] ph-no-capture bg-bunker-600 border border-mineshaft-500 rounded-md py-2.5 caret-bunker-200 text-sm px-2 w-full outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200'
+            className="z-10 dark:[color-scheme:dark] peer h-[20rem] ph-no-capture bg-bunker-600 border border-mineshaft-500 rounded-md py-2.5 caret-bunker-200 text-sm px-2 w-full outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200"
             spellCheck="false"
-            placeholder='–'
+            placeholder="–"
           />
         </div>
         <Popover.Close

@@ -123,7 +123,7 @@ const router = express.Router();
 //         acceptedRoles: [ADMIN, MEMBER],
 //         locationWorkspaceId: "body",
 //     }),
-//     serviceAccountsController.addServiceAccountWorkspacePermission 
+//     serviceAccountsController.addServiceAccountWorkspacePermission
 // );
 
 // router.delete(
@@ -137,7 +137,7 @@ const router = express.Router();
 //     requireServiceAccountAuth({
 //         acceptedRoles: [OWNER, ADMIN],
 //         acceptedStatuses: [ACCEPTED],
-//     }), 
+//     }),
 //     requireServiceAccountWorkspacePermissionAuth({
 //         acceptedRoles: [OWNER, ADMIN],
 //         acceptedStatuses: [ACCEPTED],
@@ -154,7 +154,7 @@ const router = express.Router();
 //     requireServiceAccountAuth({
 //         acceptedRoles: [OWNER, ADMIN],
 //         acceptedStatuses: [ACCEPTED],
-//     }), 
+//     }),
 //     serviceAccountsController.getServiceAccountKeys
 // );
 

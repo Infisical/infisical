@@ -17,5 +17,5 @@ export type SecretMatch = {
   Tags: string[];
   RuleID: string;
   Fingerprint: string;
-  FingerPrintWithoutCommitId: string
+  FingerPrintWithoutCommitId: string;
 };

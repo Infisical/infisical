@@ -24,14 +24,9 @@ export const useGetUserWsKey = (workspaceID: string) =>
   });
 
 // mutations
-export const uploadWsKey = async ({
-  workspaceId,
-  userId,
-  encryptedKey,
-  nonce
-}: UploadWsKeyDTO) => {
-  return apiRequest.post(`/api/v1/key/${workspaceId}`, { key: { userId, encryptedKey, nonce } })
-}
+export const uploadWsKey = async ({ workspaceId, userId, encryptedKey, nonce }: UploadWsKeyDTO) => {
+  return apiRequest.post(`/api/v1/key/${workspaceId}`, { key: { userId, encryptedKey, nonce } });
+};
 
 export const useUploadWsKey = () =>
   useMutation<{}, {}, UploadWsKeyDTO>({

@@ -1,19 +1,15 @@
-import { 
-  IIntegrationAuth, 
-  Integration, 
-  IntegrationAuth,
-} from "../models";
+import { IIntegrationAuth, Integration, IntegrationAuth } from "../models";
 import {
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_HEROKU,
   INTEGRATION_NETLIFY,
-  INTEGRATION_VERCEL,
+  INTEGRATION_VERCEL
 } from "../variables";
 
 const revokeAccess = async ({
   integrationAuth,
-  accessToken,
+  accessToken
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
@@ -33,15 +29,15 @@ const revokeAccess = async ({
   }
 
   const deletedIntegrationAuth = await IntegrationAuth.findOneAndDelete({
-    _id: integrationAuth._id,
+    _id: integrationAuth._id
   });
 
   if (deletedIntegrationAuth) {
     await Integration.deleteMany({
-      integrationAuth: deletedIntegrationAuth._id,
+      integrationAuth: deletedIntegrationAuth._id
     });
   }
-  
+
   return deletedIntegrationAuth;
 };
 

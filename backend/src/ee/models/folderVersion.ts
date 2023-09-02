@@ -18,18 +18,18 @@ const folderVersionSchema = new Schema<TFolderVersionSchema>({
   id: {
     required: true,
     type: String,
-    default: "root",
+    default: "root"
   },
   name: {
     required: true,
     type: String,
-    default: "root",
+    default: "root"
   },
   version: {
     required: true,
     type: Number,
-    default: 1,
-  },
+    default: 1
+  }
 });
 
 folderVersionSchema.add({ children: [folderVersionSchema] });
@@ -39,16 +39,16 @@ const folderRootVersionSchema = new Schema<TFolderRootVersionSchema>(
     workspace: {
       type: Schema.Types.ObjectId,
       ref: "Workspace",
-      required: true,
+      required: true
     },
     environment: {
       type: String,
-      required: true,
+      required: true
     },
-    nodes: folderVersionSchema,
+    nodes: folderVersionSchema
   },
   {
-    timestamps: true,
+    timestamps: true
   }
 );
 

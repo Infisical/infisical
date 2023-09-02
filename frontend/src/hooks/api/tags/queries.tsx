@@ -2,13 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import {
-  CreateTagDTO,
-  CreateTagRes,
-  DeleteTagDTO,
-  DeleteWsTagRes,
-  UserWsTags,
-} from "./types";
+import { CreateTagDTO, CreateTagRes, DeleteTagDTO, DeleteWsTagRes, UserWsTags } from "./types";
 
 const workspaceTags = {
   getWsTags: (workspaceID: string) => ["workspace-tags", { workspaceID }] as const
@@ -28,8 +22,7 @@ export const useGetWsTags = (workspaceID: string) => {
     queryFn: () => fetchWsTag(workspaceID),
     enabled: Boolean(workspaceID)
   });
-}
-
+};
 
 export const useCreateWsTag = () => {
   const queryClient = useQueryClient();
@@ -40,7 +33,7 @@ export const useCreateWsTag = () => {
         name: tagName,
         tagColor: tagColor || "",
         slug: tagSlug
-      })
+      });
       return data;
     },
     onSuccess: (tagData) => {
@@ -49,14 +42,13 @@ export const useCreateWsTag = () => {
   });
 };
 
-
 export const useDeleteWsTag = () => {
   const queryClient = useQueryClient();
 
   return useMutation<DeleteWsTagRes, {}, DeleteTagDTO>({
     mutationFn: async ({ tagID }) => {
       const { data } = await apiRequest.delete(`/api/v2/workspace/tags/${tagID}`);
-      return data
+      return data;
     },
     onSuccess: (tagData) => {
       queryClient.invalidateQueries(workspaceTags.getWsTags(tagData?.workspace));

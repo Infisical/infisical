@@ -1,14 +1,8 @@
 import { Types } from "mongoose";
-import {
-    IServiceTokenData,
-    IUser,
-    Membership,
-} from "../models";
+import { IServiceTokenData, IUser, Membership } from "../models";
 import { validateUserClientForWorkspace } from "./user";
 import { validateServiceTokenDataClientForWorkspace } from "./serviceTokenData";
-import { 
-    MembershipNotFoundError,
-} from "../utils/errors";
+import { MembershipNotFoundError } from "../utils/errors";
 import { AuthData } from "../interfaces/middleware";
 import { ActorType } from "../ee/models";
 
@@ -22,36 +16,36 @@ import { ActorType } from "../ee/models";
  * @returns {Membership} - validated membership
  */
 export const validateClientForMembership = async ({
-	authData,
-	membershipId,
-	acceptedRoles,
+  authData,
+  membershipId,
+  acceptedRoles
 }: {
-	authData: AuthData;
-	membershipId: Types.ObjectId;
-    acceptedRoles: Array<"admin" | "member">;
+  authData: AuthData;
+  membershipId: Types.ObjectId;
+  acceptedRoles: Array<"admin" | "member">;
 }) => {
-	
-	const membership = await Membership.findById(membershipId);
-	
-	if (!membership) throw MembershipNotFoundError({
-		message: "Failed to find membership",
-	});
-	
-	switch (authData.actor.type) {
-		case ActorType.USER:
-			await validateUserClientForWorkspace({
-				user: authData.authPayload as IUser,
-				workspaceId: membership.workspace,
-				acceptedRoles,
-			});
-			
-			return membership;
-		case ActorType.SERVICE:
-			await validateServiceTokenDataClientForWorkspace({
-				serviceTokenData: authData.authPayload as IServiceTokenData,
-				workspaceId: new Types.ObjectId(membership.workspace),
-			});
-			
-			return membership;	
-	}
-}
+  const membership = await Membership.findById(membershipId);
+
+  if (!membership)
+    throw MembershipNotFoundError({
+      message: "Failed to find membership"
+    });
+
+  switch (authData.actor.type) {
+    case ActorType.USER:
+      await validateUserClientForWorkspace({
+        user: authData.authPayload as IUser,
+        workspaceId: membership.workspace,
+        acceptedRoles
+      });
+
+      return membership;
+    case ActorType.SERVICE:
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: authData.authPayload as IServiceTokenData,
+        workspaceId: new Types.ObjectId(membership.workspace)
+      });
+
+      return membership;
+  }
+};

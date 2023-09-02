@@ -1,15 +1,10 @@
-import {
-    IIntegrationAuth,
-} from "../models";
-import {
-    INTEGRATION_GITLAB,
-    INTEGRATION_GITLAB_API_URL,
-} from "../variables";
+import { IIntegrationAuth } from "../models";
+import { INTEGRATION_GITLAB, INTEGRATION_GITLAB_API_URL } from "../variables";
 import { standardRequest } from "../config/request";
 
 interface Team {
-    name: string;
-    teamId: string;
+  name: string;
+  teamId: string;
 }
 
 /**
@@ -20,27 +15,26 @@ interface Team {
  * @returns {Object[]} teams - teams of integration authorization
  * @returns {String} teams.name - name of team
  * @returns {String} teams.teamId - id of team
-*/
+ */
 const getTeams = async ({
-    integrationAuth,
-    accessToken,
+  integrationAuth,
+  accessToken
 }: {
-    integrationAuth: IIntegrationAuth;
-    accessToken: string;
+  integrationAuth: IIntegrationAuth;
+  accessToken: string;
 }) => {
-    
-    let teams: Team[] = [];
+  let teams: Team[] = [];
 
-    switch (integrationAuth.integration) {
-        case INTEGRATION_GITLAB:
-            teams = await getTeamsGitLab({
-                accessToken,
-            });
-            break;
-    }
-    
-    return teams;
-}
+  switch (integrationAuth.integration) {
+    case INTEGRATION_GITLAB:
+      teams = await getTeamsGitLab({
+        accessToken
+      });
+      break;
+  }
+
+  return teams;
+};
 
 /**
  * Return list of teams for GitLab integration
@@ -49,31 +43,24 @@ const getTeams = async ({
  * @returns {Object[]} teams - teams that user is part of in GitLab
  * @returns {String} teams.name - name of team
  * @returns {String} teams.teamId - id of team
-*/
-const getTeamsGitLab = async ({
-    accessToken,
-}: {
-    accessToken: string;
-}) => {
-    let teams: Team[] = [];
-    const res = (await standardRequest.get(
-        `${INTEGRATION_GITLAB_API_URL}/v4/groups`,
-        {
-            headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json",
-            },
-        }
-    )).data; 
+ */
+const getTeamsGitLab = async ({ accessToken }: { accessToken: string }) => {
+  let teams: Team[] = [];
+  const res = (
+    await standardRequest.get(`${INTEGRATION_GITLAB_API_URL}/v4/groups`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
+      }
+    })
+  ).data;
 
-    teams = res.map((t: any) => ({
-      name: t.name,
-      teamId: t.id,
-    }));
-    
-    return teams;
-}
+  teams = res.map((t: any) => ({
+    name: t.name,
+    teamId: t.id
+  }));
 
-export {
-    getTeams,
-}
+  return teams;
+};
+
+export { getTeams };

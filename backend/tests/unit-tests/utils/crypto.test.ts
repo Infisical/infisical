@@ -1,8 +1,5 @@
 import { describe, expect, test } from "@jest/globals";
-import {
-  decryptAsymmetric,
-  encryptAsymmetric,
-} from "../../../src/utils/crypto";
+import { decryptAsymmetric, encryptAsymmetric } from "../../../src/utils/crypto";
 
 describe("Crypto", () => {
   describe("encryptAsymmetric", () => {
@@ -72,7 +69,7 @@ describe("Crypto", () => {
         const result = encryptAsymmetric({
           plaintext,
           publicKey,
-          privateKey,
+          privateKey
         });
         expect(result.ciphertext).toBeDefined();
         expect(result.nonce).toBeDefined();
@@ -90,7 +87,7 @@ describe("Crypto", () => {
         const encryptedResult = encryptAsymmetric({
           plaintext,
           publicKey,
-          privateKey,
+          privateKey
         });
         const ciphertext = encryptedResult.ciphertext;
         const nonce = encryptedResult.nonce;
@@ -99,7 +96,7 @@ describe("Crypto", () => {
           ciphertext,
           nonce,
           publicKey,
-          privateKey,
+          privateKey
         });
 
         expect(decryptedResult).toBeDefined();
@@ -116,7 +113,7 @@ describe("Crypto", () => {
         const encryptedResult = encryptAsymmetric({
           plaintext,
           publicKey,
-          privateKey,
+          privateKey
         });
         const ciphertext = "=12adfJ@#52af1231=123"; // modified
         const nonce = encryptedResult.nonce;
@@ -126,7 +123,7 @@ describe("Crypto", () => {
             ciphertext,
             nonce,
             publicKey,
-            privateKey,
+            privateKey
           });
         }).toThrowError("invalid encoding");
       });
@@ -135,7 +132,7 @@ describe("Crypto", () => {
         const encryptedResult = encryptAsymmetric({
           plaintext,
           publicKey,
-          privateKey,
+          privateKey
         });
         const ciphertext = encryptedResult.ciphertext;
         const nonce = "=12adfJ@#52af1231=123"; // modified
@@ -145,7 +142,7 @@ describe("Crypto", () => {
             ciphertext,
             nonce,
             publicKey,
-            privateKey,
+            privateKey
           });
         }).toThrowError("invalid encoding");
       });

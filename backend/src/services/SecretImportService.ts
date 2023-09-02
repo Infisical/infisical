@@ -1,10 +1,5 @@
 import { Types } from "mongoose";
-import {
-  Folder,
-  ISecret,
-  Secret,
-  SecretImport
-} from "../models";
+import { Folder, ISecret, Secret, SecretImport } from "../models";
 import { getFolderByPath } from "./FolderService";
 
 type TSecretImportFid = { environment: string; folderId: string; secretPath: string };

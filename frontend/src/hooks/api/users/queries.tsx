@@ -55,27 +55,27 @@ export const useRenameUser = () => {
 
   return useMutation<{}, {}, RenameUserDTO>({
     mutationFn: ({ newName }) =>
-      apiRequest.patch("/api/v2/users/me/name", { firstName: newName?.split(" ")[0], lastName: newName?.split(" ").slice(1).join(" ") }),
+      apiRequest.patch("/api/v2/users/me/name", {
+        firstName: newName?.split(" ")[0],
+        lastName: newName?.split(" ").slice(1).join(" ")
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries(userKeys.getUser);
     }
   });
 };
 
-
 export const useUpdateUserAuthMethods = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      authMethods
-    }: {
-      authMethods: AuthMethod[];
-    }) => {
-      const { data: { user } } = await apiRequest.put("/api/v2/users/me/auth-methods", { 
+    mutationFn: async ({ authMethods }: { authMethods: AuthMethod[] }) => {
+      const {
+        data: { user }
+      } = await apiRequest.put("/api/v2/users/me/auth-methods", {
         authMethods
       });
-      
+
       return user;
     },
     onSuccess: () => {
@@ -142,12 +142,12 @@ export const useAddUserToWs = () => {
 
 export const useAddUserToOrg = () => {
   const queryClient = useQueryClient();
-  type Response  = {
+  type Response = {
     data: {
-      message: string, 
-      completeInviteLink: string | undefined
-    }
-  }
+      message: string;
+      completeInviteLink: string | undefined;
+    };
+  };
 
   return useMutation<Response, {}, AddUserToOrgDTO>({
     mutationFn: (dto) => {
@@ -164,7 +164,7 @@ export const useDeleteOrgMembership = () => {
 
   return useMutation<{}, {}, DeletOrgMembershipDTO>({
     mutationFn: ({ membershipId, orgId }) => {
-      return apiRequest.delete(`/api/v2/organizations/${orgId}/memberships/${membershipId}`)
+      return apiRequest.delete(`/api/v2/organizations/${orgId}/memberships/${membershipId}`);
     },
     onSuccess: (_, { orgId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(orgId));
@@ -177,9 +177,12 @@ export const useUpdateOrgUserRole = () => {
 
   return useMutation<{}, {}, UpdateOrgUserRoleDTO>({
     mutationFn: ({ organizationId, membershipId, role }) => {
-      return apiRequest.patch(`/api/v2/organizations/${organizationId}/memberships/${membershipId}`, {
-        role
-      });
+      return apiRequest.patch(
+        `/api/v2/organizations/${organizationId}/memberships/${membershipId}`,
+        {
+          role
+        }
+      );
     },
     onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
@@ -218,64 +221,49 @@ export const useLogoutUser = () =>
   });
 
 export const useGetMyIp = () => {
- return useQuery({
+  return useQuery({
     queryKey: userKeys.myIp,
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ ip: string; }>(
-        "/api/v1/users/me/ip"
-      );
+      const { data } = await apiRequest.get<{ ip: string }>("/api/v1/users/me/ip");
       return data.ip;
     },
     enabled: true
-  }); 
-}
+  });
+};
 
 export const useGetMyAPIKeys = () => {
   return useQuery({
     queryKey: userKeys.myAPIKeys,
     queryFn: async () => {
-      const { data } = await apiRequest.get<APIKeyData[]>(
-        "/api/v2/users/me/api-keys"
-      );
+      const { data } = await apiRequest.get<APIKeyData[]>("/api/v2/users/me/api-keys");
       return data;
     },
     enabled: true
   });
-}
+};
 
 export const useCreateAPIKey = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      name,
-      expiresIn
-    }: {
-      name: string;
-      expiresIn: number;
-    }) => {
-      const { data } = await apiRequest.post<CreateAPIKeyRes>(
-        "/api/v2/users/me/api-keys",
-        {
-          name,
-          expiresIn
-        }
-      );
-      
+    mutationFn: async ({ name, expiresIn }: { name: string; expiresIn: number }) => {
+      const { data } = await apiRequest.post<CreateAPIKeyRes>("/api/v2/users/me/api-keys", {
+        name,
+        expiresIn
+      });
+
       return data;
     },
     onSuccess() {
       queryClient.invalidateQueries(userKeys.myAPIKeys);
     }
   });
-}
+};
 
 export const useDeleteAPIKey = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (apiKeyDataId: string) => {
-      const { data } = await apiRequest.delete(
-        `/api/v2/users/me/api-keys/${apiKeyDataId}`
-      );
+      const { data } = await apiRequest.delete(`/api/v2/users/me/api-keys/${apiKeyDataId}`);
 
       return data;
     },
@@ -283,29 +271,25 @@ export const useDeleteAPIKey = () => {
       queryClient.invalidateQueries(userKeys.myAPIKeys);
     }
   });
-}
+};
 
 export const useGetMySessions = () => {
   return useQuery({
     queryKey: userKeys.mySessions,
     queryFn: async () => {
-      const { data } = await apiRequest.get<TokenVersion[]>(
-        "/api/v2/users/me/sessions"
-      );
+      const { data } = await apiRequest.get<TokenVersion[]>("/api/v2/users/me/sessions");
 
       return data;
     },
     enabled: true
   });
-}
+};
 
 export const useRevokeMySessions = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const { data } = await apiRequest.delete(
-        "/api/v2/users/me/sessions"
-      );
+      const { data } = await apiRequest.delete("/api/v2/users/me/sessions");
 
       return data;
     },
@@ -313,22 +297,17 @@ export const useRevokeMySessions = () => {
       queryClient.invalidateQueries(userKeys.mySessions);
     }
   });
-}
+};
 
 export const useUpdateMfaEnabled = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      isMfaEnabled
-    }: {
-      isMfaEnabled: boolean;
-    }) => {
-      const { data: { user } } = await apiRequest.patch(
-        "/api/v2/users/me/mfa",
-        {
-          isMfaEnabled
-        }
-      );
+    mutationFn: async ({ isMfaEnabled }: { isMfaEnabled: boolean }) => {
+      const {
+        data: { user }
+      } = await apiRequest.patch("/api/v2/users/me/mfa", {
+        isMfaEnabled
+      });
 
       return user;
     },
@@ -336,15 +315,15 @@ export const useUpdateMfaEnabled = () => {
       queryClient.invalidateQueries(userKeys.getUser);
     }
   });
-}
+};
 
 export const fetchMyOrganizationProjects = async (orgId: string) => {
-  const { data: { workspaces } } = await apiRequest.get(
-    `/api/v1/organization/${orgId}/my-workspaces`
-  );
+  const {
+    data: { workspaces }
+  } = await apiRequest.get(`/api/v1/organization/${orgId}/my-workspaces`);
 
   return workspaces;
-}
+};
 
 export const useGetMyOrganizationProjects = (orgId: string) => {
   return useQuery({
@@ -354,4 +333,4 @@ export const useGetMyOrganizationProjects = (orgId: string) => {
     },
     enabled: true
   });
-}
+};

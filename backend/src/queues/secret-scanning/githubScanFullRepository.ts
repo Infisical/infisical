@@ -64,7 +64,6 @@
 //   files?: {}[] | undefined;
 // }[]
 
-
 // githubFullRepositoryScan.process(async (job: Job, done: Queue.DoneCallback) => {
 //   const { organizationId, repositories, installationId }: TScanFullRepositoryDetails = job.data
 //   const repositoryFullNamesList = repositories ? repositories.map(repoDetails => repoDetails.full_name) : []
@@ -89,9 +88,7 @@
 //         page
 //       });
 
-
 //       await getFilesFromCommit(octokit, owner, repo, "646b386605177ed0a2cc0a596eeee0cf57666342")
-
 
 //       page++;
 //     }
@@ -198,4 +195,3 @@
 //   console.log("full repo scan started")
 //   githubFullRepositoryScan.add(scanFullRepositoryDetails)
 // }
-

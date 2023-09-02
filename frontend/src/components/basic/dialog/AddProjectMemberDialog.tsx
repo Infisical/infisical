@@ -127,7 +127,9 @@ const AddProjectMemberDialog = ({
                       </div>
                     ) : (
                       <Button
-                        onButtonPressed={() => router.push(`/org/${localStorage.getItem("orgData.id")}/members`)}
+                        onButtonPressed={() =>
+                          router.push(`/org/${localStorage.getItem("orgData.id")}/members`)
+                        }
                         color="mineshaft"
                         text={t("section.members.add-dialog.add-user-to-org") as string}
                         size="md"

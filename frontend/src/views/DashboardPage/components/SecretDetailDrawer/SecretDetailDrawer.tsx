@@ -93,7 +93,7 @@ export const SecretDetailDrawer = ({
                 isDisabled={isReadOnly}
                 onClick={() => {
                   const secret = getValues(`secrets.${index}`);
-                  
+
                   onSecretDelete(index, secret.key, secret._id, secret.idOverride);
                 }}
               >

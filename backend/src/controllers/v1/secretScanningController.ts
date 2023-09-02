@@ -5,7 +5,11 @@ import { Types } from "mongoose";
 import { UnauthorizedRequestError } from "../../utils/errors";
 import GitAppOrganizationInstallation from "../../ee/models/gitAppOrganizationInstallation";
 import { MembershipOrg } from "../../models";
-import GitRisks, { STATUS_RESOLVED_FALSE_POSITIVE, STATUS_RESOLVED_NOT_REVOKED, STATUS_RESOLVED_REVOKED } from "../../ee/models/gitRisks";
+import GitRisks, {
+  STATUS_RESOLVED_FALSE_POSITIVE,
+  STATUS_RESOLVED_NOT_REVOKED,
+  STATUS_RESOLVED_REVOKED
+} from "../../ee/models/gitRisks";
 
 export const createInstallationSession = async (req: Request, res: Response) => {
   const sessionId = crypto.randomBytes(16).toString("hex");
@@ -21,71 +25,89 @@ export const createInstallationSession = async (req: Request, res: Response) => 
 
   res.send({
     sessionId: sessionId
-  })
-}
+  });
+};
 
 export const linkInstallationToOrganization = async (req: Request, res: Response) => {
-  const { installationId, sessionId } = req.body
+  const { installationId, sessionId } = req.body;
 
-  const installationSession = await GitAppInstallationSession.findOneAndDelete({ sessionId: sessionId })
+  const installationSession = await GitAppInstallationSession.findOneAndDelete({
+    sessionId: sessionId
+  });
   if (!installationSession) {
-    throw UnauthorizedRequestError()
+    throw UnauthorizedRequestError();
   }
 
-  const userMembership = await MembershipOrg.find({ user: req.user._id, organization: installationSession.organization })
+  const userMembership = await MembershipOrg.find({
+    user: req.user._id,
+    organization: installationSession.organization
+  });
   if (!userMembership) {
-    throw UnauthorizedRequestError()
+    throw UnauthorizedRequestError();
   }
 
-  const installationLink = await GitAppOrganizationInstallation.findOneAndUpdate({
-    organizationId: installationSession.organization,
-  }, {
-    installationId: installationId,
-    organizationId: installationSession.organization,
-    user: installationSession.user
-  }, {
-    upsert: true
-  }).lean()
+  const installationLink = await GitAppOrganizationInstallation.findOneAndUpdate(
+    {
+      organizationId: installationSession.organization
+    },
+    {
+      installationId: installationId,
+      organizationId: installationSession.organization,
+      user: installationSession.user
+    },
+    {
+      upsert: true
+    }
+  ).lean();
 
-  res.json(installationLink)
-}
+  res.json(installationLink);
+};
 
 export const getCurrentOrganizationInstallationStatus = async (req: Request, res: Response) => {
-  const { organizationId } = req.params
+  const { organizationId } = req.params;
   try {
-    const appInstallation = await GitAppOrganizationInstallation.findOne({ organizationId: organizationId }).lean()
+    const appInstallation = await GitAppOrganizationInstallation.findOne({
+      organizationId: organizationId
+    }).lean();
     if (!appInstallation) {
       res.json({
         appInstallationComplete: false
-      })
+      });
     }
 
     res.json({
       appInstallationComplete: true
-    })
+    });
   } catch {
     res.json({
       appInstallationComplete: false
-    })
+    });
   }
-}
+};
 
 export const getRisksForOrganization = async (req: Request, res: Response) => {
-  const { organizationId } = req.params
-  const risks = await GitRisks.find({ organization: organizationId }).sort({ createdAt: -1 }).lean()
+  const { organizationId } = req.params;
+  const risks = await GitRisks.find({ organization: organizationId })
+    .sort({ createdAt: -1 })
+    .lean();
   res.json({
     risks: risks
-  })
-}
+  });
+};
 
 export const updateRisksStatus = async (req: Request, res: Response) => {
-  const { riskId } = req.params
-  const { status } = req.body
-  const isRiskResolved = status == STATUS_RESOLVED_FALSE_POSITIVE || status == STATUS_RESOLVED_REVOKED || status == STATUS_RESOLVED_NOT_REVOKED ? true : false
+  const { riskId } = req.params;
+  const { status } = req.body;
+  const isRiskResolved =
+    status == STATUS_RESOLVED_FALSE_POSITIVE ||
+    status == STATUS_RESOLVED_REVOKED ||
+    status == STATUS_RESOLVED_NOT_REVOKED
+      ? true
+      : false;
   const risk = await GitRisks.findByIdAndUpdate(riskId, {
     status: status,
     isResolved: isRiskResolved
-  }).lean()
+  }).lean();
 
-  res.json(risk)
-}
+  res.json(risk);
+};

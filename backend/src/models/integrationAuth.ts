@@ -84,7 +84,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
     workspace: {
       type: Schema.Types.ObjectId,
       ref: "Workspace",
-      required: true,
+      required: true
     },
     integration: {
       type: String,
@@ -116,84 +116,79 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_NORTHFLANK,
         INTEGRATION_GCP_SECRET_MANAGER
       ],
-      required: true,
+      required: true
     },
     teamId: {
       // vercel-specific integration param
-      type: String,
+      type: String
     },
     url: {
       // for any self-hosted integrations (e.g. self-hosted hashicorp-vault)
-      type: String,
+      type: String
     },
     namespace: {
       // hashicorp-vault-specific integration param
-      type: String,
+      type: String
     },
     accountId: {
       // netlify-specific integration param
-      type: String,
+      type: String
     },
     refreshCiphertext: {
       type: String,
-      select: false,
+      select: false
     },
     refreshIV: {
       type: String,
-      select: false,
+      select: false
     },
     refreshTag: {
       type: String,
-      select: false,
+      select: false
     },
     accessIdCiphertext: {
       type: String,
-      select: false,
+      select: false
     },
     accessIdIV: {
       type: String,
-      select: false,
+      select: false
     },
     accessIdTag: {
       type: String,
-      select: false,
+      select: false
     },
     accessCiphertext: {
       type: String,
-      select: false,
+      select: false
     },
     accessIV: {
       type: String,
-      select: false,
+      select: false
     },
     accessTag: {
       type: String,
-      select: false,
+      select: false
     },
     accessExpiresAt: {
       type: Date,
-      select: false,
+      select: false
     },
-    algorithm: { // the encryption algorithm used
+    algorithm: {
+      // the encryption algorithm used
       type: String,
       enum: [ALGORITHM_AES_256_GCM],
-      required: true,
+      required: true
     },
     keyEncoding: {
-        type: String,
-        enum: [
-            ENCODING_SCHEME_UTF8,
-            ENCODING_SCHEME_BASE64,
-        ],
-        required: true,
-    },
+      type: String,
+      enum: [ENCODING_SCHEME_UTF8, ENCODING_SCHEME_BASE64],
+      required: true
+    }
   },
   {
-    timestamps: true,
+    timestamps: true
   }
 );
 
-export const IntegrationAuth = model<IIntegrationAuth>(
-  "IntegrationAuth",
-  integrationAuthSchema
-);
+export const IntegrationAuth = model<IIntegrationAuth>("IntegrationAuth", integrationAuthSchema);

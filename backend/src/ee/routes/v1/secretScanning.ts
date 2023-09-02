@@ -1,23 +1,25 @@
 import express from "express";
 const router = express.Router();
-import {
-  requireAuth,
-  requireOrganizationAuth,
-  validateRequest,
-} from "../../../middleware";
+import { requireAuth, requireOrganizationAuth, validateRequest } from "../../../middleware";
 import { body, param } from "express-validator";
-import { createInstallationSession, getCurrentOrganizationInstallationStatus, getRisksForOrganization, linkInstallationToOrganization, updateRisksStatus } from "../../../controllers/v1/secretScanningController";
+import {
+  createInstallationSession,
+  getCurrentOrganizationInstallationStatus,
+  getRisksForOrganization,
+  linkInstallationToOrganization,
+  updateRisksStatus
+} from "../../../controllers/v1/secretScanningController";
 import { ACCEPTED, ADMIN, AuthMode, MEMBER, OWNER } from "../../../variables";
 
 router.post(
   "/create-installation-session/organization/:organizationId",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT],
+    acceptedAuthModes: [AuthMode.JWT]
   }),
   param("organizationId").exists().trim(),
   requireOrganizationAuth({
     acceptedRoles: [OWNER, ADMIN, MEMBER],
-    acceptedStatuses: [ACCEPTED],
+    acceptedStatuses: [ACCEPTED]
   }),
   validateRequest,
   createInstallationSession
@@ -26,7 +28,7 @@ router.post(
 router.post(
   "/link-installation",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT],
+    acceptedAuthModes: [AuthMode.JWT]
   }),
   body("installationId").exists().trim(),
   body("sessionId").exists().trim(),
@@ -37,12 +39,12 @@ router.post(
 router.get(
   "/installation-status/organization/:organizationId",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT],
+    acceptedAuthModes: [AuthMode.JWT]
   }),
   param("organizationId").exists().trim(),
   requireOrganizationAuth({
     acceptedRoles: [OWNER, ADMIN, MEMBER],
-    acceptedStatuses: [ACCEPTED],
+    acceptedStatuses: [ACCEPTED]
   }),
   validateRequest,
   getCurrentOrganizationInstallationStatus
@@ -51,12 +53,12 @@ router.get(
 router.get(
   "/organization/:organizationId/risks",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT],
+    acceptedAuthModes: [AuthMode.JWT]
   }),
   param("organizationId").exists().trim(),
   requireOrganizationAuth({
     acceptedRoles: [OWNER, ADMIN, MEMBER],
-    acceptedStatuses: [ACCEPTED],
+    acceptedStatuses: [ACCEPTED]
   }),
   validateRequest,
   getRisksForOrganization
@@ -65,14 +67,14 @@ router.get(
 router.post(
   "/organization/:organizationId/risks/:riskId/status",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT],
+    acceptedAuthModes: [AuthMode.JWT]
   }),
   param("organizationId").exists().trim(),
   param("riskId").exists().trim(),
   body("status").exists(),
   requireOrganizationAuth({
     acceptedRoles: [OWNER, ADMIN, MEMBER],
-    acceptedStatuses: [ACCEPTED],
+    acceptedStatuses: [ACCEPTED]
   }),
   validateRequest,
   updateRisksStatus

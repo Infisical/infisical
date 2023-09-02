@@ -1,5 +1,11 @@
 import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
-import { escapeCharRegex, letterCharRegex, lowEntropyRegexes,numAndSpecialCharRegex, repeatedCharRegex } from "./passwordRegexes";
+import {
+  escapeCharRegex,
+  letterCharRegex,
+  lowEntropyRegexes,
+  numAndSpecialCharRegex,
+  repeatedCharRegex
+} from "./passwordRegexes";
 
 interface PasswordCheckProps {
   password: string;
@@ -29,40 +35,38 @@ const passwordCheck = async ({
     {
       name: "tooShort",
       validator: (pwd: string) => pwd.length >= 14,
-      setError: setPasswordErrorTooShort,
+      setError: setPasswordErrorTooShort
     },
     {
       name: "tooLong",
       validator: (pwd: string) => pwd.length < 101,
-      setError: setPasswordErrorTooLong,
+      setError: setPasswordErrorTooLong
     },
     {
       name: "noLetterChar",
       validator: (pwd: string) => letterCharRegex.test(pwd),
-      setError: setPasswordErrorNoLetterChar,
+      setError: setPasswordErrorNoLetterChar
     },
     {
       name: "noNumOrSpecialChar",
       validator: (pwd: string) => numAndSpecialCharRegex.test(pwd),
-      setError: setPasswordErrorNoNumOrSpecialChar,
+      setError: setPasswordErrorNoNumOrSpecialChar
     },
     {
       name: "repeatedChar",
       validator: (pwd: string) => !repeatedCharRegex.test(pwd),
-      setError: setPasswordErrorRepeatedChar,
+      setError: setPasswordErrorRepeatedChar
     },
     {
       name: "escapeChar",
       validator: (pwd: string) => !escapeCharRegex.test(pwd),
-      setError: setPasswordErrorEscapeChar,
+      setError: setPasswordErrorEscapeChar
     },
     {
       name: "lowEntropy",
-      validator: (pwd: string) => (
-        !lowEntropyRegexes.some(regex => regex.test(pwd))
-      ),
-       setError: setPasswordErrorLowEntropy,
-    },
+      validator: (pwd: string) => !lowEntropyRegexes.some((regex) => regex.test(pwd)),
+      setError: setPasswordErrorLowEntropy
+    }
   ];
 
   const isBreached = await checkIsPasswordBreached(password);
@@ -73,7 +77,7 @@ const passwordCheck = async ({
   } else {
     setPasswordErrorBreached(false);
   }
-  
+
   tests.forEach((test) => {
     if (!test.validator(password)) {
       errorCheck = true;
@@ -81,7 +85,7 @@ const passwordCheck = async ({
     } else {
       test.setError(false);
     }
-  })
+  });
 
   return errorCheck;
 };

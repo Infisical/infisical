@@ -1,5 +1,3 @@
 import healthCheck from "./status";
 
-export {
-  healthCheck,
-}
+export { healthCheck };

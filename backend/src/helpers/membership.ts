@@ -11,9 +11,9 @@ import { BadRequestError, MembershipNotFoundError } from "../utils/errors";
  * @returns {Membership} membership - membership of user with id [userId] for workspace with id [workspaceId]
  */
 export const validateMembership = async ({
-	userId,
-	workspaceId,
-	acceptedRoles,
+  userId,
+  workspaceId,
+  acceptedRoles
 }: {
   userId: Types.ObjectId | string;
   workspaceId: Types.ObjectId | string;
@@ -21,19 +21,19 @@ export const validateMembership = async ({
 }) => {
   const membership = await Membership.findOne({
     user: userId,
-    workspace: workspaceId,
+    workspace: workspaceId
   }).populate("workspace");
 
   if (!membership) {
     throw MembershipNotFoundError({
-      message: "Failed to find workspace membership",
+      message: "Failed to find workspace membership"
     });
   }
 
   if (acceptedRoles) {
     if (!acceptedRoles.includes(membership.role)) {
       throw BadRequestError({
-        message: "Failed authorization for membership role",
+        message: "Failed authorization for membership role"
       });
     }
   }
@@ -47,7 +47,7 @@ export const validateMembership = async ({
  * @return {Object} membership - membership
  */
 export const findMembership = async (queryObj: any) => {
-	const membership = await Membership.findOne(queryObj);
+  const membership = await Membership.findOne(queryObj);
   return membership;
 };
 
@@ -60,9 +60,9 @@ export const findMembership = async (queryObj: any) => {
  * @param {String[]} obj.roles - roles of users.
  */
 export const addMemberships = async ({
-	userIds,
-	workspaceId,
-	roles,
+  userIds,
+  workspaceId,
+  roles
 }: {
   userIds: string[];
   workspaceId: string;
@@ -74,15 +74,15 @@ export const addMemberships = async ({
         filter: {
           user: userId,
           workspace: workspaceId,
-          role: roles[idx],
+          role: roles[idx]
         },
         update: {
           user: userId,
           workspace: workspaceId,
-          role: roles[idx],
+          role: roles[idx]
         },
-        upsert: true,
-      },
+        upsert: true
+      }
     };
   });
   await Membership.bulkWrite(operations as any);
@@ -94,8 +94,8 @@ export const addMemberships = async ({
  * @param {String} obj.membershipId - id of membership to delete
  */
 export const deleteMembership = async ({ membershipId }: { membershipId: string }) => {
-	const deletedMembership = await Membership.findOneAndDelete({
-    _id: membershipId,
+  const deletedMembership = await Membership.findOneAndDelete({
+    _id: membershipId
   });
 
   // delete keys associated with the membership
@@ -103,9 +103,9 @@ export const deleteMembership = async ({ membershipId }: { membershipId: string 
     // case: membership had a registered user
     await Key.deleteMany({
       receiver: deletedMembership.user,
-      workspace: deletedMembership.workspace,
+      workspace: deletedMembership.workspace
     });
   }
 
-	return deletedMembership;
+  return deletedMembership;
 };

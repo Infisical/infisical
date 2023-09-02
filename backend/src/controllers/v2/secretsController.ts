@@ -61,7 +61,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
   const createSecrets: BatchSecret[] = [];
   const updateSecrets: BatchSecret[] = [];
-  const deleteSecrets: { _id: Types.ObjectId, secretName: string; }[] = [];
+  const deleteSecrets: { _id: Types.ObjectId; secretName: string }[] = [];
   const actions: IAction[] = [];
 
   // get secret blind index salt
@@ -133,7 +133,10 @@ export const batchSecrets = async (req: Request, res: Response) => {
         });
         break;
       case "DELETE":
-        deleteSecrets.push({ _id: new Types.ObjectId(request.secret._id), secretName: request.secret.secretName });
+        deleteSecrets.push({
+          _id: new Types.ObjectId(request.secret._id),
+          secretName: request.secret.secretName
+        });
         break;
     }
   }
@@ -332,18 +335,19 @@ export const batchSecrets = async (req: Request, res: Response) => {
   if (deleteSecrets.length > 0) {
     const deleteSecretIds: Types.ObjectId[] = deleteSecrets.map((s) => s._id);
 
-    const deletedSecretsObj = (await Secret.find({
-      _id: {
-        $in: deleteSecretIds
-      }
-    }))
-      .reduce(
-        (obj: any, secret: ISecret) => ({
-          ...obj,
-          [secret._id.toString()]: secret
-        }),
-        {}
-      );
+    const deletedSecretsObj = (
+      await Secret.find({
+        _id: {
+          $in: deleteSecretIds
+        }
+      })
+    ).reduce(
+      (obj: any, secret: ISecret) => ({
+        ...obj,
+        [secret._id.toString()]: secret
+      }),
+      {}
+    );
 
     await Secret.deleteMany({
       _id: {
@@ -970,17 +974,17 @@ export const getSecrets = async (req: Request, res: Response) => {
   const postHogClient = await TelemetryService.getPostHogClient();
 
   // reduce the number of events captured
-  let shouldRecordK8Event = false
+  let shouldRecordK8Event = false;
   if (req.authData.userAgent == K8_USER_AGENT_NAME) {
     const randomNumber = Math.random();
     if (randomNumber > 0.9) {
-      shouldRecordK8Event = true
+      shouldRecordK8Event = true;
     }
   }
 
   if (postHogClient) {
     const shouldCapture = req.authData.userAgent !== K8_USER_AGENT_NAME || shouldRecordK8Event;
-    const approximateForNoneCapturedEvents = secrets.length * 10
+    const approximateForNoneCapturedEvents = secrets.length * 10;
 
     if (shouldCapture) {
       postHogClient.capture({
@@ -1104,10 +1108,10 @@ export const updateSecrets = async (req: Request, res: Response) => {
           tags,
           ...(secretCommentCiphertext !== undefined && secretCommentIV && secretCommentTag
             ? {
-              secretCommentCiphertext,
-              secretCommentIV,
-              secretCommentTag
-            }
+                secretCommentCiphertext,
+                secretCommentIV,
+                secretCommentTag
+              }
             : {})
         }
       }

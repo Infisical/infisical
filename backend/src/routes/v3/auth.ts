@@ -7,23 +7,23 @@ import { authLimiter } from "../../helpers/rateLimiter";
 const router = express.Router();
 
 router.post(
-    "/login1",
-    authLimiter,
-    body("email").isString().trim().toLowerCase(),
-    body("providerAuthToken").isString().trim().optional({nullable: true}),
-    body("clientPublicKey").isString().trim().notEmpty(),
-    validateRequest,
-    authController.login1
+  "/login1",
+  authLimiter,
+  body("email").isString().trim().toLowerCase(),
+  body("providerAuthToken").isString().trim().optional({ nullable: true }),
+  body("clientPublicKey").isString().trim().notEmpty(),
+  validateRequest,
+  authController.login1
 );
 
 router.post(
-    "/login2",
-    authLimiter,
-    body("email").isString().trim().toLowerCase(),
-    body("providerAuthToken").isString().trim().optional({nullable: true}),
-    body("clientProof").isString().trim().notEmpty(),
-    validateRequest,
-    authController.login2
+  "/login2",
+  authLimiter,
+  body("email").isString().trim().toLowerCase(),
+  body("providerAuthToken").isString().trim().optional({ nullable: true }),
+  body("clientProof").isString().trim().notEmpty(),
+  validateRequest,
+  authController.login2
 );
 
 export default router;

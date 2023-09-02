@@ -1,10 +1,10 @@
-export { 
-    useCreateServiceAccount,
-    useCreateServiceAccountProjectLevelPermission,
-    useDeleteServiceAccount,
-    useDeleteServiceAccountProjectLevelPermission,
-    useGetServiceAccountById,
-    useGetServiceAccountProjectLevelPermissions,
-    useGetServiceAccounts,
-    useRenameServiceAccount
+export {
+  useCreateServiceAccount,
+  useCreateServiceAccountProjectLevelPermission,
+  useDeleteServiceAccount,
+  useDeleteServiceAccountProjectLevelPermission,
+  useGetServiceAccountById,
+  useGetServiceAccountProjectLevelPermissions,
+  useGetServiceAccounts,
+  useRenameServiceAccount
 } from "./queries";

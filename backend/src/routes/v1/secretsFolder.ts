@@ -13,7 +13,7 @@ const router = express.Router();
 router.post(
   "/",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -30,7 +30,7 @@ router.post(
 router.patch(
   "/:folderId",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
   body("workspaceId").exists(),
   body("environment").exists(),
@@ -42,7 +42,7 @@ router.patch(
 router.delete(
   "/:folderId",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
   body("workspaceId").exists(),
   body("environment").exists(),
@@ -54,7 +54,7 @@ router.delete(
 router.get(
   "/",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT,AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
   query("workspaceId").exists().isString().trim(),
   query("environment").exists().isString().trim(),

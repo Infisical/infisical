@@ -3,9 +3,7 @@ import React, { useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 
-import {
-  useSendVerificationEmail
-} from "@app/hooks/api";
+import { useSendVerificationEmail } from "@app/hooks/api";
 
 import Error from "../basic/Error";
 import { Button } from "../v2";
@@ -121,11 +119,14 @@ export default function CodeInputStep({
             onClick={incrementStep}
             size="sm"
             isFullWidth
-            className='h-14'
+            className="h-14"
             colorSchema="primary"
             variant="outline_bg"
             isLoading={isCodeInputCheckLoading}
-          > {String(t("signup.verify"))} </Button>
+          >
+            {" "}
+            {String(t("signup.verify"))}{" "}
+          </Button>
         </div>
       </div>
       <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
@@ -133,7 +134,7 @@ export default function CodeInputStep({
           <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
           <div className="mt-2 text-bunker-400 text-md flex flex-row">
             <button disabled={isLoading} onClick={resendVerificationEmail} type="button">
-              <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>
+              <span className="hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer">
                 {isResendingVerificationEmail
                   ? t("signup.step2-resend-progress")
                   : t("signup.step2-resend-submit")}

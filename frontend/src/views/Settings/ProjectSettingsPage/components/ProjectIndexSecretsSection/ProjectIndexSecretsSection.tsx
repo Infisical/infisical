@@ -1,24 +1,26 @@
 import {
-    decryptAssymmetric,
-    decryptSymmetric
+  decryptAssymmetric,
+  decryptSymmetric
 } from "@app/components/utilities/cryptography/crypto";
 import { Button } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import {
-    useGetUserWsKey,
-    useGetWorkspaceIndexStatus,
-    useGetWorkspaceSecrets,
-    useNameWorkspaceSecrets
+  useGetUserWsKey,
+  useGetWorkspaceIndexStatus,
+  useGetWorkspaceSecrets,
+  useNameWorkspaceSecrets
 } from "@app/hooks/api";
 
 export const ProjectIndexSecretsSection = () => {
-    const { currentWorkspace } = useWorkspace();
-    const { data: isBlindIndexed, isLoading: isBlindIndexedLoading } = useGetWorkspaceIndexStatus(currentWorkspace?._id ?? "");
-    const { data: latestFileKey } = useGetUserWsKey(currentWorkspace?._id ?? "");
-    const { data: encryptedSecrets } = useGetWorkspaceSecrets(currentWorkspace?._id ?? "");
-    const nameWorkspaceSecrets = useNameWorkspaceSecrets();
-    
-    const onEnableBlindIndices = async () => {
+  const { currentWorkspace } = useWorkspace();
+  const { data: isBlindIndexed, isLoading: isBlindIndexedLoading } = useGetWorkspaceIndexStatus(
+    currentWorkspace?._id ?? ""
+  );
+  const { data: latestFileKey } = useGetUserWsKey(currentWorkspace?._id ?? "");
+  const { data: encryptedSecrets } = useGetWorkspaceSecrets(currentWorkspace?._id ?? "");
+  const nameWorkspaceSecrets = useNameWorkspaceSecrets();
+
+  const onEnableBlindIndices = async () => {
     if (!currentWorkspace?._id) return;
     if (!encryptedSecrets) return;
     if (!latestFileKey) return;
@@ -50,22 +52,19 @@ export const ProjectIndexSecretsSection = () => {
     });
   };
 
-    return (!isBlindIndexedLoading && (isBlindIndexed === false)) ? (
-        <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
-            <p className="mb-3 text-xl font-semibold">Blind Indices</p>
-            <p className="text-gray-400 mb-8">
-                Your project, created before the introduction of blind indexing, contains unindexed secrets. To access individual secrets by name through the SDK and public API, please enable blind indexing.
-            </p>
-            <Button
-                onClick={onEnableBlindIndices}
-                color="mineshaft"
-                size="sm"
-                type="submit"
-            >
-                Enable Blind Indexing
-            </Button>
-        </div>
-    ) : (
-        <div />
-    )
-}
+  return !isBlindIndexedLoading && isBlindIndexed === false ? (
+    <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
+      <p className="mb-3 text-xl font-semibold">Blind Indices</p>
+      <p className="text-gray-400 mb-8">
+        Your project, created before the introduction of blind indexing, contains unindexed secrets.
+        To access individual secrets by name through the SDK and public API, please enable blind
+        indexing.
+      </p>
+      <Button onClick={onEnableBlindIndices} color="mineshaft" size="sm" type="submit">
+        Enable Blind Indexing
+      </Button>
+    </div>
+  ) : (
+    <div />
+  );
+};

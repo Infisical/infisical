@@ -27,7 +27,11 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
 
   // if the service token has single scope, it will get all secrets for that scope by default
   const serviceTokenDetails: IServiceTokenData = req?.serviceTokenData;
-  if (serviceTokenDetails && serviceTokenDetails.scopes.length == 1 && !containsGlobPatterns(serviceTokenDetails.scopes[0].secretPath)) {
+  if (
+    serviceTokenDetails &&
+    serviceTokenDetails.scopes.length == 1 &&
+    !containsGlobPatterns(serviceTokenDetails.scopes[0].secretPath)
+  ) {
     const scope = serviceTokenDetails.scopes[0];
     secretPath = scope.secretPath;
     environment = scope.environment;
@@ -42,7 +46,6 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
       requireE2EEOff: true
     });
   }
-
 
   const secrets = await SecretService.getSecrets({
     workspaceId: new Types.ObjectId(workspaceId),

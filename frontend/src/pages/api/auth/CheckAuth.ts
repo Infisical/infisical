@@ -11,6 +11,6 @@ const checkAuth = async () => {
       "Content-Type": "application/json"
     }
   }).then((res) => res);
-}
+};
 
 export default checkAuth;

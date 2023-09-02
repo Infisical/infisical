@@ -1,21 +1,21 @@
 import { Types } from "mongoose";
 import {
-    CreateSecretParams,
-    DeleteSecretParams,
-    GetSecretParams,
-    GetSecretsParams,
-    UpdateSecretParams,
+  CreateSecretParams,
+  DeleteSecretParams,
+  GetSecretParams,
+  GetSecretsParams,
+  UpdateSecretParams
 } from "../interfaces/services/SecretService";
-import { 
-    createSecretBlindIndexDataHelper,
-    createSecretHelper,
-    deleteSecretHelper,
-    generateSecretBlindIndexHelper,
-    generateSecretBlindIndexWithSaltHelper,
-    getSecretBlindIndexSaltHelper,
-    getSecretHelper,
-    getSecretsHelper,
-    updateSecretHelper,
+import {
+  createSecretBlindIndexDataHelper,
+  createSecretHelper,
+  deleteSecretHelper,
+  generateSecretBlindIndexHelper,
+  generateSecretBlindIndexWithSaltHelper,
+  getSecretBlindIndexSaltHelper,
+  getSecretHelper,
+  getSecretsHelper,
+  updateSecretHelper
 } from "../helpers/secrets";
 
 class SecretService {
@@ -26,13 +26,9 @@ class SecretService {
    * @param {Buffer} obj.salt - 16-byte random salt
    * @param {Types.ObjectId} obj.workspaceId
    */
-  static async createSecretBlindIndexData({
-    workspaceId,
-  }: {
-    workspaceId: Types.ObjectId;
-  }) {
+  static async createSecretBlindIndexData({ workspaceId }: { workspaceId: Types.ObjectId }) {
     return await createSecretBlindIndexDataHelper({
-      workspaceId,
+      workspaceId
     });
   }
 
@@ -42,13 +38,9 @@ class SecretService {
    * @param {Types.ObjectId} obj.workspaceId - id of workspace to get salt for
    * @returns
    */
-  static async getSecretBlindIndexSalt({
-    workspaceId,
-  }: {
-    workspaceId: Types.ObjectId;
-  }) {
+  static async getSecretBlindIndexSalt({ workspaceId }: { workspaceId: Types.ObjectId }) {
     return await getSecretBlindIndexSaltHelper({
-      workspaceId,
+      workspaceId
     });
   }
 
@@ -61,14 +53,14 @@ class SecretService {
    */
   static async generateSecretBlindIndexWithSalt({
     secretName,
-    salt,
+    salt
   }: {
     secretName: string;
     salt: string;
   }) {
     return await generateSecretBlindIndexWithSaltHelper({
       secretName,
-      salt,
+      salt
     });
   }
 
@@ -81,14 +73,14 @@ class SecretService {
    */
   static async generateSecretBlindIndex({
     secretName,
-    workspaceId,
+    workspaceId
   }: {
     secretName: string;
     workspaceId: Types.ObjectId;
   }) {
     return await generateSecretBlindIndexHelper({
       secretName,
-      workspaceId,
+      workspaceId
     });
   }
 

@@ -29,7 +29,9 @@ const SecretValue = ({ workspaceId, env, envName, secretKey }: SecretValueProps)
   return (
     <FormControl label={envName}>
       <Input
-        className={`w-full text-ellipsis font-mono focus:ring-transparent ${getValue(secret) === "Not found" && "text-mineshaft-500"}`}
+        className={`w-full text-ellipsis font-mono focus:ring-transparent ${
+          getValue(secret) === "Not found" && "text-mineshaft-500"
+        }`}
         value={getValue(secret)}
         isReadOnly
         rightIcon={isSecretsLoading ? <Spinner /> : undefined}

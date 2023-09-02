@@ -14,39 +14,36 @@ const secretSnapshotSchema = new Schema<ISecretSnapshot>(
     workspace: {
       type: Schema.Types.ObjectId,
       ref: "Workspace",
-      required: true,
+      required: true
     },
     environment: {
       type: String,
-      required: true,
+      required: true
     },
     folderId: {
       type: String,
-      default: "root",
+      default: "root"
     },
     version: {
       type: Number,
       default: 1,
-      required: true,
+      required: true
     },
     secretVersions: [
       {
         type: Schema.Types.ObjectId,
         ref: "SecretVersion",
-        required: true,
-      },
+        required: true
+      }
     ],
     folderVersion: {
       type: Schema.Types.ObjectId,
-      ref: "FolderVersion",
-    },
+      ref: "FolderVersion"
+    }
   },
   {
-    timestamps: true,
+    timestamps: true
   }
 );
 
-export const SecretSnapshot = model<ISecretSnapshot>(
-  "SecretSnapshot",
-  secretSnapshotSchema
-);
+export const SecretSnapshot = model<ISecretSnapshot>("SecretSnapshot", secretSnapshotSchema);

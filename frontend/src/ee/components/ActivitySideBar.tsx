@@ -8,9 +8,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import getActionData from "@app/ee/api/secrets/GetActionData";
 import patienceDiff from "@app/ee/utilities/findTextDifferences";
-import {
-  useGetUserWsKey
-} from "@app/hooks/api";
+import { useGetUserWsKey } from "@app/hooks/api";
 
 import {
   decryptAssymmetric,
@@ -80,49 +78,49 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
           privateKey: String(PRIVATE_KEY)
         });
 
-      const decryptedSecretVersions = tempActionData.payload.secretVersions.map(
-        (encryptedSecretVersion: {
-          newSecretVersion?: SecretProps;
-          oldSecretVersion?: SecretProps;
-        }) => ({
-          newSecretVersion: {
-            key: decryptSymmetric({
-              ciphertext: encryptedSecretVersion.newSecretVersion!.secretKeyCiphertext,
-              iv: encryptedSecretVersion.newSecretVersion!.secretKeyIV,
-              tag: encryptedSecretVersion.newSecretVersion!.secretKeyTag,
-              key: decryptedLatestKey
-            }),
-            value: decryptSymmetric({
-              ciphertext: encryptedSecretVersion.newSecretVersion!.secretValueCiphertext,
-              iv: encryptedSecretVersion.newSecretVersion!.secretValueIV,
-              tag: encryptedSecretVersion.newSecretVersion!.secretValueTag,
-              key: decryptedLatestKey
-            })
-          },
-          oldSecretVersion: {
-            key: encryptedSecretVersion.oldSecretVersion?.secretKeyCiphertext
-              ? decryptSymmetric({
-                  ciphertext: encryptedSecretVersion.oldSecretVersion?.secretKeyCiphertext,
-                  iv: encryptedSecretVersion.oldSecretVersion?.secretKeyIV,
-                  tag: encryptedSecretVersion.oldSecretVersion?.secretKeyTag,
-                  key: decryptedLatestKey
-                })
-              : undefined,
-            value: encryptedSecretVersion.oldSecretVersion?.secretValueCiphertext
-              ? decryptSymmetric({
-                  ciphertext: encryptedSecretVersion.oldSecretVersion?.secretValueCiphertext,
-                  iv: encryptedSecretVersion.oldSecretVersion?.secretValueIV,
-                  tag: encryptedSecretVersion.oldSecretVersion?.secretValueTag,
-                  key: decryptedLatestKey
-                })
-              : undefined
-          }
-        })
-      );
+        const decryptedSecretVersions = tempActionData.payload.secretVersions.map(
+          (encryptedSecretVersion: {
+            newSecretVersion?: SecretProps;
+            oldSecretVersion?: SecretProps;
+          }) => ({
+            newSecretVersion: {
+              key: decryptSymmetric({
+                ciphertext: encryptedSecretVersion.newSecretVersion!.secretKeyCiphertext,
+                iv: encryptedSecretVersion.newSecretVersion!.secretKeyIV,
+                tag: encryptedSecretVersion.newSecretVersion!.secretKeyTag,
+                key: decryptedLatestKey
+              }),
+              value: decryptSymmetric({
+                ciphertext: encryptedSecretVersion.newSecretVersion!.secretValueCiphertext,
+                iv: encryptedSecretVersion.newSecretVersion!.secretValueIV,
+                tag: encryptedSecretVersion.newSecretVersion!.secretValueTag,
+                key: decryptedLatestKey
+              })
+            },
+            oldSecretVersion: {
+              key: encryptedSecretVersion.oldSecretVersion?.secretKeyCiphertext
+                ? decryptSymmetric({
+                    ciphertext: encryptedSecretVersion.oldSecretVersion?.secretKeyCiphertext,
+                    iv: encryptedSecretVersion.oldSecretVersion?.secretKeyIV,
+                    tag: encryptedSecretVersion.oldSecretVersion?.secretKeyTag,
+                    key: decryptedLatestKey
+                  })
+                : undefined,
+              value: encryptedSecretVersion.oldSecretVersion?.secretValueCiphertext
+                ? decryptSymmetric({
+                    ciphertext: encryptedSecretVersion.oldSecretVersion?.secretValueCiphertext,
+                    iv: encryptedSecretVersion.oldSecretVersion?.secretValueIV,
+                    tag: encryptedSecretVersion.oldSecretVersion?.secretValueTag,
+                    key: decryptedLatestKey
+                  })
+                : undefined
+            }
+          })
+        );
 
-      setActionData(decryptedSecretVersions);
-      setActionMetaData({ name: tempActionData.name });
-      setIsLoading(false);
+        setActionData(decryptedSecretVersions);
+        setActionMetaData({ name: tempActionData.name });
+        setIsLoading(false);
       }
     };
     getLogData();

@@ -8,26 +8,26 @@ import { UserAction } from "../../models";
  * @returns
  */
 export const addUserAction = async (req: Request, res: Response) => {
-	// add/record new action [action] for user with id [req.user._id]
+  // add/record new action [action] for user with id [req.user._id]
 
   const { action } = req.body;
 
   const userAction = await UserAction.findOneAndUpdate(
     {
       user: req.user._id,
-      action,
+      action
     },
     { user: req.user._id, action },
     {
       new: true,
-      upsert: true,
+      upsert: true
     }
   );
 
-	return res.status(200).send({
-		message: "Successfully recorded user action",
-		userAction,
-	});
+  return res.status(200).send({
+    message: "Successfully recorded user action",
+    userAction
+  });
 };
 
 /**
@@ -37,15 +37,15 @@ export const addUserAction = async (req: Request, res: Response) => {
  * @returns
  */
 export const getUserAction = async (req: Request, res: Response) => {
-	// get user action [action] for user with id [req.user._id]
+  // get user action [action] for user with id [req.user._id]
   const action: string = req.query.action as string;
 
   const userAction = await UserAction.findOne({
     user: req.user._id,
-    action,
+    action
   });
 
-	return res.status(200).send({
-		userAction,
-	});
+  return res.status(200).send({
+    userAction
+  });
 };

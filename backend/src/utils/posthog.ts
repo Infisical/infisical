@@ -1,4 +1,4 @@
-import { UserAgentType } from "../ee/models"
+import { UserAgentType } from "../ee/models";
 
 export const getUserAgentType = function (userAgent: string | undefined) {
   if (userAgent == undefined) {
@@ -12,4 +12,4 @@ export const getUserAgentType = function (userAgent: string | undefined) {
   } else {
     return UserAgentType.OTHER;
   }
-} 
+};

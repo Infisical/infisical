@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 
-import {
-  useSaveIntegrationAccessToken
-} from "@app/hooks/api";
+import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
 

@@ -149,7 +149,7 @@ export const DashboardPage = () => {
   const [snapshotId, setSnaphotId] = useState<string | null>(null);
   const [selectedEnv, setSelectedEnv] = useState<WorkspaceEnv | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const deletedSecretIds = useRef<{ id: string; secretName: string; }[]>([]);
+  const deletedSecretIds = useRef<{ id: string; secretName: string }[]>([]);
   const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({ initialValue: false });
 
   const folderId = router.query.folderId as string;
@@ -296,7 +296,6 @@ export const DashboardPage = () => {
     mode: "onBlur",
     resolver: yupResolver(schema)
   });
-
 
   const {
     register,
@@ -499,19 +498,24 @@ export const DashboardPage = () => {
 
   // record all deleted ids
   // This will make final deletion easier
-  const onSecretDelete = useCallback((index: number, secretName: string, id?: string, overrideId?: string) => {
-    if (id) deletedSecretIds.current.push({
-      id,
-      secretName
-    });
-    if (overrideId) deletedSecretIds.current.push({
-      id: overrideId,
-      secretName
-    });
-    remove(index);
-    // just the case if this is called from drawer
-    handlePopUpClose("secretDetails");
-  }, []);
+  const onSecretDelete = useCallback(
+    (index: number, secretName: string, id?: string, overrideId?: string) => {
+      if (id)
+        deletedSecretIds.current.push({
+          id,
+          secretName
+        });
+      if (overrideId)
+        deletedSecretIds.current.push({
+          id: overrideId,
+          secretName
+        });
+      remove(index);
+      // just the case if this is called from drawer
+      handlePopUpClose("secretDetails");
+    },
+    []
+  );
 
   const onCreateWsTag = useCallback(
     async (tagName: string, tagColor: string) => {
@@ -1119,9 +1123,10 @@ export const DashboardPage = () => {
         isOpen={popUp.deleteSecretImport.isOpen}
         deleteKey="unlink"
         title="Do you want to remove this secret import?"
-        subTitle={`This will unlink secrets from environment ${
-          (popUp.deleteSecretImport?.data as TDeleteSecretImport)?.environment
-        } of path ${(popUp.deleteSecretImport?.data as TDeleteSecretImport)?.secretPath}?`}
+        subTitle={`This will unlink secrets from environment ${(
+          popUp.deleteSecretImport?.data as TDeleteSecretImport
+        )?.environment} of path ${(popUp.deleteSecretImport?.data as TDeleteSecretImport)
+          ?.secretPath}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteSecretImport", isOpen)}
         onDeleteApproved={handleSecretImportDelete}
       />

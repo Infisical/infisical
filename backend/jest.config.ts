@@ -5,5 +5,5 @@ export default {
   modulePaths: ["<rootDir>/src"],
   testMatch: ["<rootDir>/tests/**/*.test.ts"],
   setupFiles: ["<rootDir>/test-resources/env-vars.js"],
-  setupFilesAfterEnv: ["<rootDir>/tests/setupTests.ts"],
+  setupFilesAfterEnv: ["<rootDir>/tests/setupTests.ts"]
 };

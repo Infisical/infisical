@@ -575,20 +575,22 @@ export const getSecretsHelper = async ({
   const postHogClient = await TelemetryService.getPostHogClient();
 
   // reduce the number of events captured
-  let shouldRecordK8Event = false
+  let shouldRecordK8Event = false;
   if (authData.userAgent == K8_USER_AGENT_NAME) {
     const randomNumber = Math.random();
     if (randomNumber > 0.9) {
-      shouldRecordK8Event = true
+      shouldRecordK8Event = true;
     }
   }
 
-  const numberOfSignupSecrets = (secrets.filter((secret) => secret?.metadata?.source === "signup")).length;
-  const atLeastOneNonSignUpSecret = (secrets.length - numberOfSignupSecrets > 0)
+  const numberOfSignupSecrets = secrets.filter(
+    (secret) => secret?.metadata?.source === "signup"
+  ).length;
+  const atLeastOneNonSignUpSecret = secrets.length - numberOfSignupSecrets > 0;
 
   if (postHogClient && atLeastOneNonSignUpSecret) {
     const shouldCapture = authData.userAgent !== K8_USER_AGENT_NAME || shouldRecordK8Event;
-    const approximateForNoneCapturedEvents = secrets.length * 10
+    const approximateForNoneCapturedEvents = secrets.length * 10;
 
     if (shouldCapture) {
       postHogClient.capture({

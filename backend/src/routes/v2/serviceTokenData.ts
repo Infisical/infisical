@@ -7,12 +7,7 @@ import {
   validateRequest
 } from "../../middleware";
 import { body, param } from "express-validator";
-import {
-  ADMIN,
-  AuthMode,
-  MEMBER,
-  PERMISSION_WRITE_SECRETS
-} from "../../variables";
+import { ADMIN, AuthMode, MEMBER, PERMISSION_WRITE_SECRETS } from "../../variables";
 import { serviceTokenDataController } from "../../controllers/v2";
 
 router.get(

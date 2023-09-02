@@ -1,9 +1,5 @@
 import { Request, Response } from "express";
-import {
-  ISecretVersion,
-  SecretSnapshot,
-  TFolderRootVersionSchema,
-} from "../../models";
+import { ISecretVersion, SecretSnapshot, TFolderRootVersionSchema } from "../../models";
 
 /**
  * Return secret snapshot with id [secretSnapshotId]
@@ -20,26 +16,27 @@ export const getSecretSnapshot = async (req: Request, res: Response) => {
       path: "secretVersions",
       populate: {
         path: "tags",
-        model: "Tag",
-      },
+        model: "Tag"
+      }
     })
     .populate<{ folderVersion: TFolderRootVersionSchema }>("folderVersion");
-  
+
   if (!secretSnapshot) throw new Error("Failed to find secret snapshot");
-  
+
   const folderId = secretSnapshot.folderId;
   // to show only the folder required secrets
   secretSnapshot.secretVersions = secretSnapshot.secretVersions.filter(
     ({ folder }) => folder === folderId
   );
 
-  secretSnapshot.folderVersion =
-    secretSnapshot?.folderVersion?.nodes?.children?.map(({ id, name }) => ({
+  secretSnapshot.folderVersion = secretSnapshot?.folderVersion?.nodes?.children?.map(
+    ({ id, name }) => ({
       id,
-      name,
-    })) as any;
+      name
+    })
+  ) as any;
 
   return res.status(200).send({
-    secretSnapshot,
+    secretSnapshot
   });
 };

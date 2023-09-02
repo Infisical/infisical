@@ -14,24 +14,24 @@ import {
   getSmtpPassword,
   getSmtpPort,
   getSmtpSecure,
-  getSmtpUsername,
+  getSmtpUsername
 } from "../config";
 import { getLogger } from "../utils/logger";
 
 export const initSmtp = async () => {
   const mailOpts: SMTPConnection.Options = {
     host: await getSmtpHost(),
-    port: await getSmtpPort(),
+    port: await getSmtpPort()
   };
 
   if ((await getSmtpUsername()) && (await getSmtpPassword())) {
     mailOpts.auth = {
       user: await getSmtpUsername(),
-      pass: await getSmtpPassword(),
+      pass: await getSmtpPassword()
     };
   }
 
-  if ((await getSmtpSecure()) ? (await getSmtpSecure()) : false) {
+  if ((await getSmtpSecure()) ? await getSmtpSecure() : false) {
     switch (await getSmtpHost()) {
       case SMTP_HOST_SENDGRID:
         mailOpts.requireTLS = true;
@@ -39,38 +39,38 @@ export const initSmtp = async () => {
       case SMTP_HOST_MAILGUN:
         mailOpts.requireTLS = true;
         mailOpts.tls = {
-          ciphers: "TLSv1.2",
-        }
+          ciphers: "TLSv1.2"
+        };
         break;
       case SMTP_HOST_SOCKETLABS:
         mailOpts.requireTLS = true;
         mailOpts.tls = {
-          ciphers: "TLSv1.2",
-        }
+          ciphers: "TLSv1.2"
+        };
         break;
       case SMTP_HOST_ZOHOMAIL:
         mailOpts.requireTLS = true;
         mailOpts.tls = {
-          ciphers: "TLSv1.2",
-        }
+          ciphers: "TLSv1.2"
+        };
         break;
       case SMTP_HOST_GMAIL:
         mailOpts.requireTLS = true;
         mailOpts.tls = {
-          ciphers: "TLSv1.2",
-        }
+          ciphers: "TLSv1.2"
+        };
         break;
       case SMTP_HOST_OFFICE365:
         mailOpts.requireTLS = true;
         mailOpts.tls = {
           ciphers: "TLSv1.2"
-        }
+        };
         break;
       default:
         if ((await getSmtpHost()).includes("amazonaws.com")) {
           mailOpts.tls = {
-            ciphers: "TLSv1.2",
-          }
+            ciphers: "TLSv1.2"
+          };
         } else {
           mailOpts.secure = true;
         }
@@ -84,9 +84,7 @@ export const initSmtp = async () => {
     .then(async () => {
       Sentry.setUser(null);
       Sentry.captureMessage("SMTP - Successfully connected");
-      (await getLogger("backend-main")).info(
-        "SMTP - Successfully connected"
-      );
+      (await getLogger("backend-main")).info("SMTP - Successfully connected");
     })
     .catch(async (err) => {
       Sentry.setUser(null);

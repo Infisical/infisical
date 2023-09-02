@@ -23,14 +23,6 @@ const tagVariants = cva(
   }
 );
 
-export const Tag = ({
-  children,
-  className,
-  colorSchema = "gray",
-  size = "sm" }: Props) => (
-  <div
-    className={twMerge(tagVariants({ colorSchema, className, size }))}
-  >
-    {children}
-  </div>
+export const Tag = ({ children, className, colorSchema = "gray", size = "sm" }: Props) => (
+  <div className={twMerge(tagVariants({ colorSchema, className, size }))}>{children}</div>
 );

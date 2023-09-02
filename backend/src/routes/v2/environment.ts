@@ -2,25 +2,17 @@ import express from "express";
 const router = express.Router();
 import { body, param } from "express-validator";
 import { environmentController } from "../../controllers/v2";
-import {
-  requireAuth,
-  requireWorkspaceAuth,
-  validateRequest,
-} from "../../middleware";
-import {
-  ADMIN, 
-  AuthMode,
-  MEMBER
-} from "../../variables";
+import { requireAuth, requireWorkspaceAuth, validateRequest } from "../../middleware";
+import { ADMIN, AuthMode, MEMBER } from "../../variables";
 
 router.post(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "params",
+    locationWorkspaceId: "params"
   }),
   param("workspaceId").exists().trim(),
   body("environmentSlug").exists().trim(),
@@ -32,11 +24,11 @@ router.post(
 router.put(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "params",
+    locationWorkspaceId: "params"
   }),
   param("workspaceId").exists().trim(),
   body("environmentSlug").exists().trim(),
@@ -49,11 +41,11 @@ router.put(
 router.patch(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "params",
+    locationWorkspaceId: "params"
   }),
   param("workspaceId").exists().trim(),
   body("environmentSlug").exists().isString().trim(),
@@ -67,11 +59,11 @@ router.patch(
 router.delete(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN],
-    locationWorkspaceId: "params",
+    locationWorkspaceId: "params"
   }),
   param("workspaceId").exists().trim(),
   body("environmentSlug").exists().trim(),
@@ -82,11 +74,11 @@ router.delete(
 router.get(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
   requireWorkspaceAuth({
     acceptedRoles: [MEMBER, ADMIN],
-    locationWorkspaceId: "params",
+    locationWorkspaceId: "params"
   }),
   param("workspaceId").exists().trim(),
   validateRequest,

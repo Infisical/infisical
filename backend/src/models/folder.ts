@@ -17,18 +17,18 @@ export type TFolderSchema = {
 const folderSchema = new Schema<TFolderSchema>({
   id: {
     required: true,
-    type: String,
+    type: String
   },
   version: {
     required: true,
     type: Number,
-    default: 1,
+    default: 1
   },
   name: {
     required: true,
     type: String,
-    default: "root",
-  },
+    default: "root"
+  }
 });
 
 folderSchema.add({ children: [folderSchema] });
@@ -38,16 +38,16 @@ const folderRootSchema = new Schema<TFolderRootSchema>(
     workspace: {
       type: Schema.Types.ObjectId,
       ref: "Workspace",
-      required: true,
+      required: true
     },
     environment: {
       type: String,
-      required: true,
+      required: true
     },
-    nodes: folderSchema,
+    nodes: folderSchema
   },
   {
-    timestamps: true,
+    timestamps: true
   }
 );
 

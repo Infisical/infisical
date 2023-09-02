@@ -221,14 +221,13 @@ export const deleteIntegration = async (req: Request, res: Response) => {
   });
 };
 
-// Will trigger sync for all integrations within the given env and workspace id 
+// Will trigger sync for all integrations within the given env and workspace id
 export const manualSync = async (req: Request, res: Response) => {
   const { workspaceId, environment } = req.body;
   syncSecretsToActiveIntegrationsQueue({
     workspaceId,
     environment
-  })
+  });
 
-  res.status(200).send()
+  res.status(200).send();
 };
-

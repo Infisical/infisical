@@ -1,16 +1,11 @@
 import { Types } from "mongoose";
-import {
-    ISecret,
-    IServiceTokenData,
-    IUser,
-    Secret,
-} from "../models";
+import { ISecret, IServiceTokenData, IUser, Secret } from "../models";
 import { validateUserClientForSecret, validateUserClientForSecrets } from "./user";
-import { validateServiceTokenDataClientForSecrets, validateServiceTokenDataClientForWorkspace } from "./serviceTokenData";
 import {
-    BadRequestError,
-    SecretNotFoundError,
-} from "../utils/errors";
+  validateServiceTokenDataClientForSecrets,
+  validateServiceTokenDataClientForWorkspace
+} from "./serviceTokenData";
+import { BadRequestError, SecretNotFoundError } from "../utils/errors";
 import { AuthData } from "../interfaces/middleware";
 import { ActorType } from "../ee/models";
 
@@ -24,42 +19,43 @@ import { ActorType } from "../ee/models";
  * @param {String[]} obj.requiredPermissions - required permissions as part of the endpoint
  */
 export const validateClientForSecret = async ({
-    authData,
-    secretId,
-    acceptedRoles,
-    requiredPermissions,
+  authData,
+  secretId,
+  acceptedRoles,
+  requiredPermissions
 }: {
-    authData: AuthData;
-    secretId: Types.ObjectId;
-    acceptedRoles: Array<"admin" | "member">;
-    requiredPermissions: string[];
+  authData: AuthData;
+  secretId: Types.ObjectId;
+  acceptedRoles: Array<"admin" | "member">;
+  requiredPermissions: string[];
 }) => {
-    const secret = await Secret.findById(secretId);
+  const secret = await Secret.findById(secretId);
 
-    if (!secret) throw SecretNotFoundError({
-        message: "Failed to find secret",
+  if (!secret)
+    throw SecretNotFoundError({
+      message: "Failed to find secret"
     });
-    
-    switch (authData.actor.type) {
-        case ActorType.USER:
-            await validateUserClientForSecret({
-                user: authData.authPayload as IUser,
-                secret,
-                acceptedRoles,
-                requiredPermissions,
-            });
 
-            return secret;
-        case ActorType.SERVICE:
-            await validateServiceTokenDataClientForWorkspace({
-                serviceTokenData: authData.authPayload as IServiceTokenData,
-                workspaceId: secret.workspace,
-                environment: secret.environment,
-            });
-        
-            return secret;
-    }
-}
+  switch (authData.actor.type) {
+    case ActorType.USER:
+      await validateUserClientForSecret({
+        user: authData.authPayload as IUser,
+        secret,
+        acceptedRoles,
+        requiredPermissions
+      });
+
+      return secret;
+    case ActorType.SERVICE:
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: authData.authPayload as IServiceTokenData,
+        workspaceId: secret.workspace,
+        environment: secret.environment
+      });
+
+      return secret;
+  }
+};
 
 /**
  * Validate authenticated clients for secrets with ids [secretIds] based
@@ -72,43 +68,42 @@ export const validateClientForSecret = async ({
  * @param {String[]} obj.requiredPermissions - required permissions as part of the endpoint
  */
 export const validateClientForSecrets = async ({
-    authData,
-    secretIds,
-    requiredPermissions,
+  authData,
+  secretIds,
+  requiredPermissions
 }: {
-    authData: AuthData;
-    secretIds: Types.ObjectId[];
-    requiredPermissions: string[];
+  authData: AuthData;
+  secretIds: Types.ObjectId[];
+  requiredPermissions: string[];
 }) => {
+  let secrets: ISecret[] = [];
 
-    let secrets: ISecret[] = [];
-    
-    secrets = await Secret.find({
-        _id: {
-            $in: secretIds,
-        },
-    });
+  secrets = await Secret.find({
+    _id: {
+      $in: secretIds
+    }
+  });
 
-    if (secrets.length != secretIds.length) {
-        throw BadRequestError({ message: "Failed to validate non-existent secrets" })
-    }
-    
-    switch (authData.actor.type) {
-        case ActorType.USER:
-            await validateUserClientForSecrets({
-                user: authData.authPayload as IUser,
-                secrets,
-                requiredPermissions,
-            });
-            
-            return secrets;
-        case ActorType.SERVICE:
-            await validateServiceTokenDataClientForSecrets({
-                serviceTokenData: authData.authPayload as IServiceTokenData,
-                secrets,
-                requiredPermissions,
-            });
-            
-            return secrets;
-    }
-}
+  if (secrets.length != secretIds.length) {
+    throw BadRequestError({ message: "Failed to validate non-existent secrets" });
+  }
+
+  switch (authData.actor.type) {
+    case ActorType.USER:
+      await validateUserClientForSecrets({
+        user: authData.authPayload as IUser,
+        secrets,
+        requiredPermissions
+      });
+
+      return secrets;
+    case ActorType.SERVICE:
+      await validateServiceTokenDataClientForSecrets({
+        serviceTokenData: authData.authPayload as IServiceTokenData,
+        secrets,
+        requiredPermissions
+      });
+
+      return secrets;
+  }
+};

@@ -13,26 +13,26 @@ import { validateClientForSecret } from "../validation";
  * @param {String[]} obj.location - location of [workspaceId] on request (e.g. params, body) for parsing
  */
 const requireSecretAuth = ({
-    acceptedRoles,
-    requiredPermissions,
+  acceptedRoles,
+  requiredPermissions
 }: {
-    acceptedRoles: Array<"admin" | "member">;
-    requiredPermissions: string[];
+  acceptedRoles: Array<"admin" | "member">;
+  requiredPermissions: string[];
 }) => {
-    return async (req: Request, res: Response, next: NextFunction) => {
-        const { secretId } = req.params;
-        
-        const secret = await validateClientForSecret({
-            authData: req.authData,
-            secretId: new Types.ObjectId(secretId),
-            acceptedRoles,
-            requiredPermissions,
-        });
-        
-        req._secret = secret;
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const { secretId } = req.params;
 
-        next();
-    }
-}
+    const secret = await validateClientForSecret({
+      authData: req.authData,
+      secretId: new Types.ObjectId(secretId),
+      acceptedRoles,
+      requiredPermissions
+    });
+
+    req._secret = secret;
+
+    next();
+  };
+};
 
 export default requireSecretAuth;

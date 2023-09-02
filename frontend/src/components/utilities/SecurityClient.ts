@@ -1,17 +1,11 @@
-import {
-  getAuthToken, 
-  setAuthToken,
-  setMfaTempToken,
-  setSignupTempToken} from "@app/reactQuery";
-
+import { getAuthToken, setAuthToken, setMfaTempToken, setSignupTempToken } from "@app/reactQuery";
 
 export const PROVIDER_AUTH_TOKEN_KEY = "infisical__provider-auth-token";
 
 // depreciated: go for apiRequest module in config/api
 export default class SecurityClient {
-
   static setProviderAuthToken(tokenStr: string) {
-    localStorage.setItem(PROVIDER_AUTH_TOKEN_KEY, tokenStr || "")
+    localStorage.setItem(PROVIDER_AUTH_TOKEN_KEY, tokenStr || "");
   }
 
   static getProviderAuthToken() {
