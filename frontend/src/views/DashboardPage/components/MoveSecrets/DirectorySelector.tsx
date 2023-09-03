@@ -118,7 +118,7 @@ export const DirectorySelector: React.FC<DirectorySelectorProps> = ({ directoryD
                                     {directoryData?.folders.map((folder) => (
                                         <li key={folder.id}>
                                             <button
-                                                className="py-1 px-2 bg-mineshaft-500 mb-2 hover:bg-mineshaft-600 text-gray-400 rounded-md"
+                                                 className={twMerge("py-1 px-2 bg-mineshaft-500  hover:bg-mineshaft-600 mb-2 rounded-md", selectedFolder === folder.id && "bg-mineshaft-400 hover:bg-mineshaft-400")}
                                                 onClick={() => handlePathSelection(`${""}/${folder.name}`, folder.id)}
                                                 type="submit"
                                             >
