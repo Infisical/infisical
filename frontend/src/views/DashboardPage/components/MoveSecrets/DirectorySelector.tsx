@@ -34,7 +34,7 @@ export const DirectorySelector: React.FC<DirectorySelectorProps> = ({ directoryD
     useEffect(() => {
         if ((directoryData?.dir && directoryData?.dir.length > 0)) {
             const directoryDataCopy = [...directoryData.dir]
-            const $directoryTree: TSecretFolder[] = [];
+            const rootDirectoryTree: TSecretFolder[] = [];
 
             let i = 0;
 
@@ -53,12 +53,12 @@ export const DirectorySelector: React.FC<DirectorySelectorProps> = ({ directoryD
                     }
 
                 } else if (currentItem.id !== queryFolderId) {
-                    $directoryTree.push(currentItem);
+                    rootDirectoryTree.push(currentItem);
                 }
 
                 i += 1;
             }
-            setDirectoryTree(() => $directoryTree)
+            setDirectoryTree(rootDirectoryTree)
         }
     }, [directoryData])
 
