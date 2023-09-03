@@ -162,7 +162,7 @@ export const DashboardPage = () => {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const deletedSecretIds = useRef<{ id: string; secretName: string; }[]>([]);
   const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({ initialValue: false });
-  const [selectedTags, setSelectedtags] = useState<WsTag[]>([])
+  // const [selectedTags, setSelectedtags] = useState<WsTag[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<Record<string, boolean> | null>(null)
   const [hoveredTag, setHoveredTag] = useState<WsTag | null>(null);
 
@@ -568,7 +568,7 @@ export const DashboardPage = () => {
         });
         refetchSecrets();
         refetchWsTags()
-        setSelectedTagIds((prev) => ({...prev, [tagSlug]: true}))
+        setSelectedTagIds((prev) => ({ ...prev, [tagSlug]: true }))
       } catch (error) {
         console.error(error);
         createNotification({
@@ -793,21 +793,20 @@ export const DashboardPage = () => {
       setSelectedTagIds(null);
       return;
     }
-
-    const checkedIds: Record<string, boolean> = {};
-
-    checkedSecrets.forEach((checkedSecret) => {
-      const secret = fields.find((fieldSecret) => fieldSecret._id === checkedSecret._id);
-      if (secret && secret.tags) {
-        secret.tags.forEach((tag) => {
-          checkedIds[tag.slug] = true;
-        });
-      }
-    });
-  
-    setSelectedTagIds(checkedIds);
+    if (wsTags) {
+      const checkedIds: Record<string, boolean> = {};
+      checkedSecrets.forEach((checkedSecret) => {
+        const secret = fields.find((fieldSecret) => fieldSecret._id === checkedSecret._id);
+        if (secret && secret.tags) {
+          secret.tags.forEach((tag) => {
+            checkedIds[tag.slug] = true;
+          });
+        }
+      });
+      setSelectedTagIds(checkedIds);
+    }
   }, [checkedSecrets, fields]);
-  
+
 
   const handleCheckedSecret = useCallback((secretObj: { _id: string, isChecked: string | boolean }) => {
     setCheckedSecrets((prevCheckedSecrets) => {
@@ -821,7 +820,6 @@ export const DashboardPage = () => {
       } else if (checkedSecretIndex !== -1) {
         updatedSecrets.splice(checkedSecretIndex, 1);
       }
-
       return updatedSecrets;
     });
   }, []);
@@ -942,19 +940,15 @@ export const DashboardPage = () => {
   }
 
   const onSelectTag = (wsTag: WsTag) => {
-    const selectedTagsCopy = [...selectedTags]
-    const tagIndex = selectedTagsCopy.findIndex(tag => tag._id === wsTag._id)
-
-    if (tagIndex > -1) {
-      selectedTagsCopy.splice(tagIndex, 1)
+    const checkedTagIds = { ...selectedTagIds }
+    if (wsTag.slug in checkedTagIds) {
+      checkedTagIds[wsTag.slug] = false
       handleCheckedState(false, wsTag)
-      setSelectedTagIds((prev) => ({ ...prev, [wsTag.slug]: false }))
     } else {
-      selectedTagsCopy.push(wsTag)
+      checkedTagIds[wsTag.slug] = true
       handleCheckedState(true, wsTag)
-      setSelectedTagIds((prev) => ({ ...prev, [wsTag.slug]: true }))
     }
-    setSelectedtags(() => selectedTagsCopy)
+    setSelectedTagIds(checkedTagIds)
   }
 
 
