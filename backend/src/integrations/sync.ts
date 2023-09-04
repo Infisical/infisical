@@ -691,15 +691,17 @@ const syncSecretsAWSParameterStore = async ({
   const parameterList = (await ssm.getParametersByPath(params).promise()).Parameters;
 
   let awsParameterStoreSecretsObj: {
-    [key: string]: any; // TODO: fix type
+    [key: string]: any;
   } = {};
 
   if (parameterList) {
     awsParameterStoreSecretsObj = parameterList.reduce(
-      (obj: any, secret: any) => ({
-        ...obj,
-        [secret.Name.split("/").pop()]: secret
-      }),
+      (obj: any, secret: any) => {
+        return ({
+          ...obj,
+          [secret.Name.substring(integration.path.length)]: secret
+        });
+      },
       {}
     );
   }

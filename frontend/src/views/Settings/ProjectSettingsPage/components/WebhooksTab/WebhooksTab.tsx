@@ -197,7 +197,7 @@ export const WebhooksTab = () => {
                                 <div className="text-xs">
                                   <div>
                                     Updated At:{" "}
-                                    {format(new Date(updatedAt), "YYYY-MM-DD, hh:mm aaa")}
+                                    {format(new Date(updatedAt), "yyyy-MM-dd, hh:mm aaa")}
                                   </div>
                                   {lastRunErrorMessage && (
                                     <div className="mt-2 text-red">
