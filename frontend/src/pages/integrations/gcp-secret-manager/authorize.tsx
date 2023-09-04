@@ -1,15 +1,15 @@
 import crypto from "crypto";
+
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
-  useSaveIntegrationAccessToken,
-  useGetCloudIntegrations
-} from "@app/hooks/api";
+  useGetCloudIntegrations,
+  useSaveIntegrationAccessToken} from "@app/hooks/api";
 
-import { Button, Card, CardTitle, FormControl, Input, TextArea } from "../../../components/v2";
+import { Button, Card, CardTitle, FormControl, TextArea } from "../../../components/v2";
 
 export default function GCPSecretManagerAuthorizeIntegrationPage() {
   const router = useRouter();
