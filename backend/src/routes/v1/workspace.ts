@@ -1,8 +1,7 @@
 import express from "express";
 const router = express.Router();
-import { body, param } from "express-validator";
-import { requireAuth, requireWorkspaceAuth, validateRequest } from "../../middleware";
-import { ADMIN, AuthMode, MEMBER } from "../../variables";
+import { requireAuth } from "../../middleware";
+import { AuthMode } from "../../variables";
 import { membershipController, workspaceController } from "../../controllers/v1";
 
 router.get(
@@ -42,7 +41,7 @@ router.post(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  workspaceController.deleteWorkspace
+  workspaceController.createWorkspace
 );
 
 router.post(
@@ -50,13 +49,6 @@ router.post(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: "params"
-  }),
-  param("workspaceId").exists().trim(),
-  body("name").exists().trim().notEmpty(),
-  validateRequest,
   workspaceController.changeWorkspaceName
 );
 

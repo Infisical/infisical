@@ -368,7 +368,7 @@ export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
  */
 export const getSecrets = async (req: Request, res: Response) => {
   const {
-    query: { secretPath, environment, workspaceId, include_imports: includeImports,folderId }
+    query: { secretPath, environment, workspaceId, include_imports: includeImports, folderId }
   } = await validateRequest(reqValidator.GetSecretsV3, req);
 
   if (req.user?._id) {
@@ -468,7 +468,6 @@ export const createSecret = async (req: Request, res: Response) => {
   const {
     body: {
       workspaceId,
-      secretName,
       secretPath,
       environment,
       metadata,
@@ -482,7 +481,8 @@ export const createSecret = async (req: Request, res: Response) => {
       secretKeyCiphertext,
       secretValueCiphertext,
       secretCommentCiphertext
-    }
+    },
+    params: { secretName }
   } = await validateRequest(reqValidator.CreateSecretV3, req);
 
   if (req.user?._id) {

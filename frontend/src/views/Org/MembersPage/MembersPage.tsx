@@ -23,7 +23,7 @@ export const MembersPage = withPermission(
 
     const orgId = currentOrg?._id || "";
 
-    const { data: roles } = useGetRoles({
+    const { data: roles, isLoading: isRolesLoading } = useGetRoles({
       orgId
     });
 
@@ -48,11 +48,17 @@ export const MembersPage = withPermission(
                 animate={{ opacity: 1, translateX: 0 }}
                 exit={{ opacity: 0, translateX: 30 }}
               >
-                <OrgMembersTable roles={roles as TRole<undefined>[]} />
+                <OrgMembersTable
+                  roles={roles as TRole<undefined>[]}
+                  isRolesLoading={isRolesLoading}
+                />
               </motion.div>
             </TabPanel>
             <TabPanel value={TabSections.Roles}>
-              <OrgRoleTabSection roles={roles as TRole<undefined>[]} />
+              <OrgRoleTabSection
+                roles={roles as TRole<undefined>[]}
+                isRolesLoading={isRolesLoading}
+              />
             </TabPanel>
           </Tabs>
         </div>

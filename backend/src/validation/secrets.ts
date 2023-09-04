@@ -228,7 +228,7 @@ export const GetSecretsRawV3 = z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
     secretPath: z.string().trim().default("/"),
-    folderId:z.string().trim().optional(),
+    folderId: z.string().trim().optional(),
     include_imports: z
       .enum(["true", "false"])
       .default("false")
@@ -319,7 +319,6 @@ export const CreateSecretV3 = z.object({
     environment: z.string().trim(),
     type: z.enum([SECRET_SHARED, SECRET_PERSONAL]),
     secretPath: z.string().trim().default("/"),
-    secretName: z.string().trim(),
     secretKeyCiphertext: z.string().trim(),
     secretKeyIV: z.string().trim(),
     secretKeyTag: z.string().trim(),
@@ -332,6 +331,9 @@ export const CreateSecretV3 = z.object({
     metadata: z.object({
       source: z.string()
     })
+  }),
+  params: z.object({
+    secretName: z.string().trim()
   })
 });
 

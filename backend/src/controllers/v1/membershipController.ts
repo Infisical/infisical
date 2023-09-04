@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { IUser, Key, Membership, MembershipOrg, User } from "../../models";
+import { IUser, Key, Membership, MembershipOrg, User, Workspace } from "../../models";
 import { EventType } from "../../ee/models";
 import { deleteMembership as deleteMember, findMembership } from "../../helpers/membership";
 import { sendMail } from "../../helpers/nodemailer";
@@ -17,6 +17,7 @@ import {
 import { ForbiddenError } from "@casl/ability";
 import Role from "../../models/role";
 import { BadRequestError } from "../../utils/errors";
+import { InviteUserToWorkspaceV1 } from "../../validation/workspace";
 
 /**
  * Check that user is a member of workspace with id [workspaceId]
@@ -182,8 +183,15 @@ export const changeMembershipRole = async (req: Request, res: Response) => {
  * @returns
  */
 export const inviteUserToWorkspace = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
-  const { email }: { email: string } = req.body;
+  const {
+    params: { workspaceId },
+    body: { email }
+  } = await validateRequest(InviteUserToWorkspaceV1, req);
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.Member
+  );
 
   const invitee = await User.findOne({
     email
@@ -200,11 +208,13 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
 
   if (inviteeMembership) throw new Error("Failed to add existing member of workspace");
 
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw new Error("Failed to find workspace");
   // validate invitee's organization membership - ensure that only
   // (accepted) organization members can be added to the workspace
   const membershipOrg = await MembershipOrg.findOne({
     user: invitee._id,
-    organization: req.membership.workspace.organization,
+    organization: workspace.organization,
     status: ACCEPTED
   });
 
@@ -232,7 +242,7 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
     substitutions: {
       inviterFirstName: req.user.firstName,
       inviterEmail: req.user.email,
-      workspaceName: req.membership.workspace.name,
+      workspaceName: workspace.name,
       callback_url: (await getSiteURL()) + "/login"
     }
   });

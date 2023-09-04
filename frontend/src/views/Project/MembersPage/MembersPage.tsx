@@ -47,7 +47,7 @@ export const MembersPage = withProjectPermission(
                 animate={{ opacity: 1, translateX: 0 }}
                 exit={{ opacity: 0, translateX: 30 }}
               >
-                <MemberListTab roles={roles as TRole<string>[]} />
+                <MemberListTab roles={roles as TRole<string>[]} isRolesLoading={isRolesLoading} />
               </motion.div>
             </TabPanel>
             <TabPanel value={TabSections.Roles}>

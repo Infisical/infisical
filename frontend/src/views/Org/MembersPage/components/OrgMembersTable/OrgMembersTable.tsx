@@ -66,6 +66,7 @@ import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 
 type Props = {
   roles?: TRole<undefined>[];
+  isRolesLoading?: boolean;
 };
 
 const addMemberFormSchema = yup.object({
@@ -74,7 +75,7 @@ const addMemberFormSchema = yup.object({
 
 type TAddMemberForm = yup.InferType<typeof addMemberFormSchema>;
 
-export const OrgMembersTable = ({ roles = [] }: Props) => {
+export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
   const router = useRouter();
   const { createNotification } = useNotificationContext();
 
@@ -292,7 +293,7 @@ export const OrgMembersTable = ({ roles = [] }: Props) => {
     setInviteLinkCopied.on();
   };
 
-  const isLoading = isMembersLoading || IsWsMembershipLoading;
+  const isLoading = isMembersLoading || IsWsMembershipLoading || isRolesLoading;
 
   return (
     <div className="w-full">

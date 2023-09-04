@@ -9,7 +9,7 @@ export const BeginEmailSignUpV1 = z.object({
 export const VerifyEmailSignUpV1 = z.object({
   body: z.object({
     email: z.string().email().trim(),
-    code: z.string().email().trim()
+    code: z.string().trim()
   })
 });
 

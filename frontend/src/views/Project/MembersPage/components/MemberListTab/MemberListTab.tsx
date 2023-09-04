@@ -54,6 +54,7 @@ import { TRole } from "@app/hooks/api/roles/types";
 
 type Props = {
   roles?: TRole<string>[];
+  isRolesLoading?: boolean;
 };
 
 const addMemberFormSchema = z.object({
@@ -62,7 +63,7 @@ const addMemberFormSchema = z.object({
 
 type TAddMemberForm = z.infer<typeof addMemberFormSchema>;
 
-export const MemberListTab = ({ roles = [] }: Props) => {
+export const MemberListTab = ({ roles = [], isRolesLoading }: Props) => {
   const { createNotification } = useNotificationContext();
   const { t } = useTranslation();
 
@@ -227,7 +228,7 @@ export const MemberListTab = ({ roles = [] }: Props) => {
     }
   };
 
-  const isLoading = isMembersLoading;
+  const isLoading = isMembersLoading || isRolesLoading;
 
   return (
     <div className="w-full">
