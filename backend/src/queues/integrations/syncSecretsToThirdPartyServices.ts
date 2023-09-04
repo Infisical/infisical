@@ -22,7 +22,6 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
       }
       : {}),
     isActive: true,
-    app: { $ne: null }
   });
 
   // for each workspace integration, sync/push secrets

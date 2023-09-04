@@ -394,6 +394,7 @@ export const useSaveIntegrationAccessToken = () => {
     mutationFn: async ({
       workspaceId,
       integration,
+      refreshToken,
       accessId,
       accessToken,
       url,
@@ -401,14 +402,16 @@ export const useSaveIntegrationAccessToken = () => {
     }: {
       workspaceId: string | null;
       integration: string | undefined;
-      accessId: string | null;
-      accessToken: string;
+      refreshToken?: string;
+      accessId?: string;
+      accessToken?: string;
       url: string | null;
       namespace: string | null;
     }) => {
       const { data: { integrationAuth } } = await apiRequest.post("/api/v1/integration-auth/access-token", {
         workspaceId,
         integration,
+        refreshToken,
         accessId,
         accessToken,
         url,

@@ -40,7 +40,6 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
     let link = "";
     switch (integrationOption.slug) {
       case "gcp-secret-manager":
-        // link = `https://accounts.google.com/o/oauth2/auth?scope=https://www.googleapis.com/auth/cloud-platform&response_type=code&access_type=offline&state=${state}&redirect_uri=${window.location.origin}/integrations/gcp-secret-manager/oauth2/callback&client_id=${integrationOption.clientId}`;
         link = `${window.location.origin}/integrations/gcp-secret-manager/authorize`;
         break;
       case "azure-key-vault":
