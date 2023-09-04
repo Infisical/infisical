@@ -29,6 +29,7 @@ router.get(
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
+		attachAccessToken: false
 	}),
 	param("integrationAuthId"),
 	validateRequest,
@@ -54,8 +55,9 @@ router.post(
 router.post(
 	"/access-token",
 	body("workspaceId").exists().trim().notEmpty(),
-	body("accessId").trim(),
-	body("accessToken").exists().trim().notEmpty(),
+	body("refreshToken").optional().isString().trim().notEmpty(),
+	body("accessId").optional().isString().trim(),
+	body("accessToken").optional().isString().trim().notEmpty(),
 	body("url").trim(),
 	body("namespace").trim(),
 	body("integration").exists().trim().notEmpty(),
@@ -67,7 +69,7 @@ router.post(
 		acceptedRoles: [ADMIN, MEMBER],
 		locationWorkspaceId: "body",
 	}),
-	integrationAuthController.saveIntegrationAccessToken
+	integrationAuthController.saveIntegrationToken
 );
 
 router.get(

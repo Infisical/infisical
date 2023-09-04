@@ -29,7 +29,6 @@ export default function SupabaseCreateIntegrationPage() {
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "supabase",
         accessToken: apiKey,
-        accessId: null,
         url: null,
         namespace: null
       });

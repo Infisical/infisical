@@ -68,7 +68,7 @@ export const INTEGRATION_SET = new Set([
 export const INTEGRATION_OAUTH2 = "oauth2";
 
 // integration oauth endpoints
-export const INTEGRATION_GCP_TOKEN_URL = "https://accounts.google.com/o/oauth2/token";
+export const INTEGRATION_GCP_TOKEN_URL = "https://oauth2.googleapis.com/token";
 export const INTEGRATION_AZURE_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
 export const INTEGRATION_HEROKU_TOKEN_URL = "https://id.heroku.com/oauth/token";
 export const INTEGRATION_VERCEL_TOKEN_URL =
@@ -105,6 +105,7 @@ export const INTEGRATION_NORTHFLANK_API_URL = "https://api.northflank.com";
 export const INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME = "secretmanager.googleapis.com"
 export const INTEGRATION_GCP_SECRET_MANAGER_URL = `https://${INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME}`;
 export const INTEGRATION_GCP_SERVICE_USAGE_URL = "https://serviceusage.googleapis.com";
+export const INTEGRATION_GCP_CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
 
 export const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [

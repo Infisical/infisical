@@ -7,6 +7,7 @@ import {
     setIntegrationAuthRefreshHelper,
 } from "../helpers/integration";
 import { syncSecretsToActiveIntegrationsQueue } from "../queues/integrations/syncSecretsToThirdPartyServices";
+import { IIntegrationAuth } from "../models";
 
 /**
  * Class to handle integrations
@@ -102,7 +103,7 @@ class IntegrationService {
     }: {
         integrationAuthId: string;
         refreshToken: string;
-    }) {
+    }): Promise<IIntegrationAuth> {
         return await setIntegrationAuthRefreshHelper({
             integrationAuthId,
             refreshToken,
@@ -127,8 +128,8 @@ class IntegrationService {
         accessExpiresAt,
     }: {
         integrationAuthId: string;
-        accessId: string | null;
-        accessToken: string;
+        accessId?: string;
+        accessToken?: string;
         accessExpiresAt: Date | undefined;
     }) {
         return await setIntegrationAuthAccessHelper({

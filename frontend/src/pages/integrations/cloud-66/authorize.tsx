@@ -28,7 +28,6 @@ export default function Cloud66CreateIntegrationPage() {
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "cloud-66",
-        accessId: null,
         accessToken: apiKey,
         url: null,
         namespace: null
