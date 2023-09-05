@@ -21,6 +21,8 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_GITLAB_API_URL,
+  INTEGRATION_HARNESS,
+  INTEGRATION_HARNESS_API_URL,
   INTEGRATION_HEROKU,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_LARAVELFORGE,
@@ -173,6 +175,11 @@ const getApps = async ({
       break;
     case INTEGRATION_CLOUD_66:
       apps = await getAppsCloud66({
+        accessToken,
+      });
+      break;
+    case INTEGRATION_HARNESS:
+      apps = await getAppsHarness({
         accessToken,
       });
       break;
@@ -953,6 +960,50 @@ const getAppsCloud66 = async ({ accessToken }: { accessToken: string }) => {
     name: app.name,
     appId: app.uid
   }));
+
+  return apps;
+};
+
+
+/**
+ * Return list of applications for Cloud66 integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - personal access token for Cloud66 API
+ * @returns {Object[]} apps - Cloud66 apps
+ * @returns {String} apps.name - name of Cloud66 app
+ * @returns {String} apps.appId - uid of Cloud66 app
+ */
+const getAppsHarness = async ({ accessToken }: { accessToken: string }) => {
+  interface HarnessApp {
+    project: {
+      orgIdentifier: string;
+      identifier: string;
+      name: string;
+      color: string;
+      modules: string[];
+      description: string;
+      tags: any;
+    };
+    createdAt: number;
+    lastModifiedAt: number;
+    isFavorite: boolean;
+  }
+
+  const projects = (
+    await standardRequest.get(`${INTEGRATION_HARNESS_API_URL}/ng/api/projects`, {
+      headers: {
+        "x-api-key": accessToken,
+        "Accept-Encoding": "application/json"
+      }
+    })
+  ).data.data.content as HarnessApp[];
+
+  const apps = projects.map((app) => ({
+    name: app.project.name,
+    appId: app.project.identifier,
+    organizationId: app.project.orgIdentifier
+  }));
+
 
   return apps;
 };

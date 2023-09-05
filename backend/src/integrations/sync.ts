@@ -29,6 +29,8 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_GITLAB_API_URL,
+  INTEGRATION_HARNESS,
+  INTEGRATION_HARNESS_API_URL,
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_HEROKU,
   INTEGRATION_HEROKU_API_URL,
@@ -233,6 +235,13 @@ const syncSecrets = async ({
       break;
     case INTEGRATION_CLOUD_66:
       await syncSecretsCloud66({
+        integration,
+        secrets,
+        accessToken
+      });
+      break;
+    case INTEGRATION_HARNESS:
+      await syncSecretsHarness({
         integration,
         secrets,
         accessToken
@@ -2255,6 +2264,38 @@ const syncSecretsCloud66 = async ({
         );
     }
   }
+};
+
+/**
+ * Sync/push [secrets] to Cloud66 application with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Cloud66 integration
+ */
+const syncSecretsHarness = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+
+  // get all current secrets
+  const res = (
+    await standardRequest.get(
+      `${INTEGRATION_HARNESS_API_URL}/v1/orgs/default/projects/${integration.appId}/secrets`,
+      {
+        headers: {
+          "x-api-key": accessToken,
+          Accept: "application/json"
+        }
+      }
+    )
+  ).data;
 };
 
 export { syncSecrets };
