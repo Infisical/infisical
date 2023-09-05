@@ -64,9 +64,7 @@ export default function LaravelForgeCreateIntegrationPage() {
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: targetApp,
-        appId:
-          integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp)
-            ?.appId ?? null,
+        appId: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp)?.appId,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: null,
         targetEnvironmentId: null,
