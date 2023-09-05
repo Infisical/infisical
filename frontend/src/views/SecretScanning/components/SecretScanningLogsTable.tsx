@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { FC, useEffect, useState } from "react";
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -13,14 +13,13 @@ import {
   Tr
 } from "@app/components/v2";
 import timeSince from "@app/ee/utilities/timeSince";
-import getRisksByOrganization, {
-  GitRisks
-} from "@app/pages/api/secret-scanning/getRisksByOrganization";
+import { getRisksByOrganization, GitRisks } from "@app/pages/api/secret-scanning/getRisksByOrganization";
+import { RiskStatus } from "@app/pages/api/secret-scanning/updateRiskStatus";
 
 import { RiskStatusSelection } from "./RiskStatusSelection";
 
-export const SecretScanningLogsTable = () => {
-  const [isLoading, setIsLoading] = useState(false);
+export const SecretScanningLogsTable: FC = () => {
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [gitRisks, setGitRisks] = useState<GitRisks[]>([]);
 
   useEffect(() => {
@@ -51,7 +50,7 @@ export const SecretScanningLogsTable = () => {
         <TBody>
           {!isLoading &&
             gitRisks &&
-            gitRisks?.map((risk) => {
+            gitRisks.map((risk) => {
               return (
                 <Tr key={risk.ruleID} className="h-10">
                   <Td>{timeSince(new Date(risk.createdAt))}</Td>
@@ -83,13 +82,16 @@ export const SecretScanningLogsTable = () => {
                   </Td>
                   <Td>{risk.isResolved ? "Resolved" : "Needs Attention"}</Td>
                   <Td>
-                    <RiskStatusSelection riskId={risk._id} currentSelection={risk.status} />
+                    <RiskStatusSelection
+                      riskId={risk._id}
+                      currentSelection={risk.status as RiskStatus}
+                    />
                   </Td>
                 </Tr>
               );
             })}
           {isLoading && <TableSkeleton columns={7} innerKey="gitRisks" />}
-          {!isLoading && gitRisks && gitRisks?.length === 0 && (
+          {!isLoading && gitRisks && gitRisks.length === 0 && (
             <Tr>
               <Td colSpan={7}>
                 <EmptyState title="No risks detected." icon={faCheck} />

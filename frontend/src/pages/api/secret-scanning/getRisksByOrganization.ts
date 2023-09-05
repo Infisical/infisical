@@ -41,18 +41,25 @@ export type GitRisks = {
  * Will create a new integration session and return it for the given org
  * @returns 
  */
-const getRisksByOrganization = (oranizationId: string): Promise<GitRisks[]> =>
-  SecurityClient.fetchCall(`/api/v1/secret-scanning/organization/${oranizationId}/risks`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json"
-    },
-  }).then(async (res) => {
-    if (res && res.status === 200) {
-      return (await res.json()).risks;
-    }
-    console.log("Failed to fetch risks");
-    return undefined;
-  });
+export const getRisksByOrganization = async (organizationId: string): Promise<GitRisks[]> => {
+  try {
+    const res = await SecurityClient.fetchCall(`/api/v1/secret-scanning/organization/${organizationId}/risks`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
-export default getRisksByOrganization;
+    if (res.ok) {
+      const data = (await res.json()).risks;
+      return data;
+    } 
+      console.error("Failed to fetch risks");
+      console.error("Response:", res);
+      return [];
+    
+  } catch (err) {
+    console.error("Failed to fetch risks:", err);
+    return [];
+  }
+};

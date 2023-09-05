@@ -3,11 +3,10 @@ import Head from "next/head";
 import { useRouter } from "next/router"
 
 import { Button } from "@app/components/v2";
+import { createSecretScanningSession } from "@app/pages/api/secret-scanning/createSecretScanningSession";
+import { getInstallationStatus } from "@app/pages/api/secret-scanning/getInstallationStatus";
+import { linkGitAppInstallationWithOrganization } from "@app/pages/api/secret-scanning/linkGitAppInstallationWithOrganization";
 import { SecretScanningLogsTable } from "@app/views/SecretScanning/components";
-
-import createNewIntegrationSession from "../../../api/secret-scanning/createSecretScanningSession";
-import getInstallationStatus from "../../../api/secret-scanning/getInstallationStatus";
-import linkGitAppInstallationWithOrganization from "../../../api/secret-scanning/linkGitAppInstallationWithOrganization";
 
 export default function SecretScanning() {
   const router = useRouter()
@@ -39,9 +38,10 @@ export default function SecretScanning() {
     linkInstallation()
   },[queryParams.state, queryParams.installation_id])
 
+  // change uri back to https://github.com/apps/infisical-radar/installations...
   const generateNewIntegrationSession = async () => {
-    const session = await createNewIntegrationSession(String(localStorage.getItem("orgData.id")))
-    router.push(`https://github.com/apps/infisical-radar/installations/new?state=${session.sessionId}`)
+    const session = await createSecretScanningSession(String(localStorage.getItem("orgData.id")))
+    router.push(`https://github.com/apps/infisical-radar-dev2/installations/new?state=${session.sessionId}`)
   }
 
   return (

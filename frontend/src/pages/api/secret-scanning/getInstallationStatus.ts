@@ -4,19 +4,25 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
  * Will create a new integration session and return it for the given org
  * @returns 
  */
-const getInstallationStatus = (organizationId: string) =>
-  SecurityClient.fetchCall(`/api/v1/secret-scanning/installation-status/organization/${organizationId}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json"
-    }
-  }).then(async (res) => {
-    if (res && res.status === 200) {
-      return (await res.json()).appInstallationComplete;
-    }
-    console.log("Failed to check installation status");
-    console.log("response", res)
-    return undefined;
-  });
+export const getInstallationStatus = async (organizationId: string) => {
+  try {
+    const res = await SecurityClient.fetchCall(`/api/v1/secret-scanning/installation-status/organization/${organizationId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
-export default getInstallationStatus;
+    if (res.ok) {
+      const data = (await res.json()).appInstallationComplete;
+      return data;
+    } 
+      console.error("Failed to check installation status");
+      console.error("Response:", res);
+      return undefined;
+    
+  } catch (err) {
+    console.error("Failed to check installation status:", err);
+    return undefined;
+  }
+};
