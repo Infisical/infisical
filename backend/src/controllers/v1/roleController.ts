@@ -1,14 +1,4 @@
 import { Request, Response } from "express";
-import { BadRequestError } from "../../utils/errors";
-import Role from "../../models/role";
-import {
-  OrgPermissionActions,
-  OrgPermissionSubjects,
-  adminPermissions,
-  getUserOrgPermissions,
-  memberPermissions
-} from "../../services/RoleService";
-import { validateRequest } from "../../helpers/validation";
 import {
   CreateRoleSchema,
   DeleteRoleSchema,
@@ -17,12 +7,23 @@ import {
   GetUserProjectPermission,
   UpdateRoleSchema
 } from "../../validation";
-import { packRules } from "@casl/ability/extra";
 import {
   adminProjectPermissions,
   getUserProjectPermissions,
+  memberProjectPermissions,
   viewerProjectPermission
 } from "../../services/ProjectRoleService";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  adminPermissions,
+  getUserOrgPermissions,
+  memberPermissions
+} from "../../services/RoleService";
+import { BadRequestError } from "../../utils/errors";
+import Role from "../../models/role";
+import { validateRequest } from "../../helpers/validation";
+import { packRules } from "@casl/ability/extra";
 
 export const createRole = async (req: Request, res: Response) => {
   const {
@@ -137,7 +138,9 @@ export const getRoles = async (req: Request, res: Response) => {
   }
 
   const customRoles = await Role.find({ organization: orgId, isOrgRole, workspace: workspaceId });
+  // as this is shared between org and workspace switch the rule set based on it
   const roles = [
+    // owner is only in org level role
     ...(isOrgRole
       ? [
           {
@@ -161,8 +164,9 @@ export const getRoles = async (req: Request, res: Response) => {
       name: "Member",
       slug: "member",
       description: "Non-administrative role in an organization",
-      permissions: isOrgRole ? memberPermissions.rules : adminProjectPermissions.rules
+      permissions: isOrgRole ? memberPermissions.rules : memberProjectPermissions.rules
     },
+    // viewer role only for project level
     ...(isOrgRole
       ? []
       : [
@@ -171,7 +175,7 @@ export const getRoles = async (req: Request, res: Response) => {
             name: "Viewer",
             slug: "viewer",
             description: "Non-administrative role in an organization",
-            permissions: isOrgRole ? viewerProjectPermission.rules : viewerProjectPermission.rules
+            permissions: viewerProjectPermission.rules
           }
         ]),
     ...customRoles
@@ -203,6 +207,7 @@ export const getUserWorkspacePermissions = async (req: Request, res: Response) =
     params: { workspaceId }
   } = await validateRequest(GetUserProjectPermission, req);
   const { permission } = await getUserProjectPermissions(req.user.id, workspaceId);
+
   res.status(200).json({
     data: {
       permissions: packRules(permission.rules)

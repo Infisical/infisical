@@ -18,19 +18,20 @@ type Props = {
 
 enum Permission {
   NoAccess = "no-access",
+  ReadOnly = "read-only",
   FullAccess = "full-acess",
   Custom = "custom"
 }
 
 const PERMISSIONS = [
-  { action: "edit", label: "Update" },
-  { action: "delete", label: "Remove" }
+  { action: "create", label: "Perform Rollback" },
+  { action: "read", label: "View" }
 ] as const;
 
-export const WsProjectPermission = ({ isNonEditable, setValue, control }: Props) => {
+export const SecretRollbackPermission = ({ isNonEditable, setValue, control }: Props) => {
   const rule = useWatch({
     control,
-    name: "permissions.workspace"
+    name: "permissions.secret-rollback"
   });
   const [isCustom, setIsCustom] = useToggle();
 
@@ -57,13 +58,32 @@ export const WsProjectPermission = ({ isNonEditable, setValue, control }: Props)
 
     switch (val) {
       case Permission.NoAccess:
-        setValue("permissions.workspace", { edit: false, delete: false }, { shouldDirty: true });
+        setValue(
+          "permissions.secret-rollback",
+          { read: false, create: false },
+          { shouldDirty: true }
+        );
         break;
       case Permission.FullAccess:
-        setValue("permissions.workspace", { edit: true, delete: true }, { shouldDirty: true });
+        setValue(
+          "permissions.secret-rollback",
+          { read: true, create: true },
+          { shouldDirty: true }
+        );
+        break;
+      case Permission.ReadOnly:
+        setValue(
+          "permissions.secret-rollback",
+          { read: true, create: false },
+          { shouldDirty: true }
+        );
         break;
       default:
-        setValue("permissions.workspace", { edit: false, delete: false }, { shouldDirty: true });
+        setValue(
+          "permissions.secret-rollback",
+          { read: false, create: false },
+          { shouldDirty: true }
+        );
         break;
     }
   };
@@ -80,8 +100,8 @@ export const WsProjectPermission = ({ isNonEditable, setValue, control }: Props)
           <FontAwesomeIcon icon={faPuzzlePiece} className="text-4xl" />
         </div>
         <div className="flex-grow flex flex-col">
-          <div className="font-medium mb-1 text-lg">Workspace</div>
-          <div className="text-xs font-light">Workspace control actions</div>
+          <div className="font-medium mb-1 text-lg">Secret Rollback</div>
+          <div className="text-xs font-light">Secret rollback control actions</div>
         </div>
         <div>
           <Select
@@ -91,6 +111,7 @@ export const WsProjectPermission = ({ isNonEditable, setValue, control }: Props)
             onValueChange={handlePermissionChange}
           >
             <SelectItem value={Permission.NoAccess}>No Access</SelectItem>
+            <SelectItem value={Permission.ReadOnly}>Read Only</SelectItem>
             <SelectItem value={Permission.FullAccess}>Full Access</SelectItem>
             <SelectItem value={Permission.Custom}>Custom</SelectItem>
           </Select>
@@ -104,14 +125,14 @@ export const WsProjectPermission = ({ isNonEditable, setValue, control }: Props)
         {isCustom &&
           PERMISSIONS.map(({ action, label }) => (
             <Controller
-              name={`permissions.workspace.${action}`}
-              key={`permissions.workspace.${action}`}
+              name={`permissions.secret-rollback.${action}`}
+              key={`permissions.secret-rollback.${action}`}
               control={control}
               render={({ field }) => (
                 <Checkbox
                   isChecked={field.value}
                   onCheckedChange={field.onChange}
-                  id={`permissions.workspace.${action}`}
+                  id={`permissions.secret-rollback.${action}`}
                   isDisabled={isNonEditable}
                 >
                   {label}

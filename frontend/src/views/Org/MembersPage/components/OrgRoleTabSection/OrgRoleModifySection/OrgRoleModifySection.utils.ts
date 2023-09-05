@@ -38,23 +38,15 @@ export type TFormSchema = z.infer<typeof formSchema>;
 
 // convert role permission to form compatiable  data structure
 export const rolePermission2Form = (permissions: TPermission[] = []) => {
-  const formVal: TFormSchema["permissions"] = {
-    workspace: {},
-    billing: {},
-    settings: {},
-    role: {},
-    sso: {},
-    member: {},
-    "service-account": {},
-    "incident-contact": {},
-    "secret-scanning": {}
-  };
+  const formVal: Partial<TFormSchema["permissions"]> = {};
 
   permissions.forEach((permission) => {
+    const { subject, action } = permission;
+    if (!formVal?.[subject]) formVal[subject] = {};
+
     // akhilmhdh: this is typecast as  something other than workspace key else i would need an if loop with same condition on both side
-    const key = permission.subject as keyof TFormSchema["permissions"];
-    (formVal[key] as Exclude<TFormSchema["permissions"]["member"], undefined>)[permission.action] =
-      true;
+    const key = subject as keyof TFormSchema["permissions"];
+    (formVal[key] as Exclude<TFormSchema["permissions"]["member"], undefined>)[action] = true;
   });
 
   return formVal;

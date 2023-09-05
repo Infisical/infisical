@@ -142,7 +142,7 @@ const buildAdminPermission = () => {
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.IpAllowList);
 
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Workspace);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.IpAllowList);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Workspace);
 
   return build();
 };

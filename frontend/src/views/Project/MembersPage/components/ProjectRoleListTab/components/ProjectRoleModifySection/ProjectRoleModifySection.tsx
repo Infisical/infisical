@@ -33,6 +33,7 @@ import {
   rolePermission2Form,
   TFormSchema
 } from "./ProjectRoleModifySection.utils";
+import { SecretRollbackPermission } from "./SecretRollbackPermission";
 import { SingleProjectPermission } from "./SingleProjectPermission";
 import { WsProjectPermission } from "./WsProjectPermission";
 
@@ -226,7 +227,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
               />
             </div>
           </div>
-          <div className="flex flex-col space-y-4">
+          <div>
             <MultiEnvProjectPermission
               isNonEditable={isNonEditable}
               control={control}
@@ -237,7 +238,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
               formName="secrets"
             />
           </div>
-          <div className="flex flex-col space-y-4">
+          <div>
             <MultiEnvProjectPermission
               isNonEditable={isNonEditable}
               control={control}
@@ -248,7 +249,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
               formName="folders"
             />
           </div>
-          <div className="flex flex-col space-y-4">
+          <div>
             <MultiEnvProjectPermission
               isNonEditable={isNonEditable}
               control={control}
@@ -257,6 +258,13 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
               title="Secret Imports"
               subtitle="Secret import management control"
               formName="secret-imports"
+            />
+          </div>
+          <div key="permission-ws">
+            <WsProjectPermission
+              control={control}
+              setValue={setValue}
+              isNonEditable={isNonEditable}
             />
           </div>
           {SINGLE_PERMISSION_LIST.map(({ title, subtitle, icon, formName }) => (
@@ -272,8 +280,8 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
               />
             </div>
           ))}
-          <div className="flex flex-col space-y-4" key="permission-ws">
-            <WsProjectPermission
+          <div key="permission-secret-rollback">
+            <SecretRollbackPermission
               control={control}
               setValue={setValue}
               isNonEditable={isNonEditable}

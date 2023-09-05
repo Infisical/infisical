@@ -48,6 +48,12 @@ export const formSchema = z.object({
         edit: z.boolean().optional(),
         delete: z.boolean().optional()
       })
+      .optional(),
+    "secret-rollback": z
+      .object({
+        read: z.boolean().optional(),
+        create: z.boolean().optional()
+      })
       .optional()
   })
 });
@@ -75,37 +81,23 @@ const multiEnvApi2Form = (
 
 // convert role permission to form compatiable  data structure
 export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
-  const formVal: TFormSchema["permissions"] = {
-    secrets: {},
-    folders: {},
-    integrations: {},
-    settings: {},
-    role: {},
-    member: {},
-    "service-tokens": {},
-    workspace: {},
-    environments: {},
-    tags: {},
-    webhooks: {},
-    "audit-logs": {},
-    "ip-allowlist": {},
-    "secret-imports": {}
-  };
+  const formVal: Partial<TFormSchema["permissions"]> = {};
 
   permissions.forEach((permission) => {
-    if (["secrets", "folders", "secret-imports"].includes(permission.subject)) {
-      multiEnvApi2Form(
-        formVal[permission.subject] as TFormSchema["permissions"]["secrets"],
-        permission
-      );
+    const { subject, action } = permission;
+    if (!formVal?.[subject]) formVal[subject] = {};
+
+    if (["secrets", "folders", "secret-imports"].includes(subject)) {
+      multiEnvApi2Form(formVal[subject] as TFormSchema["permissions"]["secrets"], permission);
     } else {
       // everything else follows same pattern
       // formVal[settings][read | write] = true
-      const key = permission.subject as keyof Omit<
-        TFormSchema["permissions"],
-        "secrets" | "workspace"
-      >;
-      formVal[key]![permission.action] = true;
+      formVal[
+        subject as keyof Omit<
+          TFormSchema["permissions"],
+          "secrets" | "workspace" | "secret-rollback"
+        >
+      ]![action] = true;
     }
   });
 
