@@ -15,13 +15,11 @@
 	},
 	"lint-staged": {
 		"*.{js,jsx,ts,tsx}": [
-			"eslint --fix", 
-      "prettier --write"
+			"eslint --fix"
 		]
 	},
 	"devDependencies": {
 		"eslint": "^8.29.0",
-		"husky": "^8.0.2",
-		"prettier": "3.0.3"
+		"husky": "^8.0.2"
 	}
 }

@@ -113,28 +113,6 @@ class IntegrationService {
   }: {
     integrationAuthId: string;
     refreshToken: string;
-  }) {
-    return await setIntegrationAuthRefreshHelper({
-      integrationAuthId,
-      refreshToken
-    });
-  }
-
-  /**
-   * Encrypt refresh token [refreshToken] using the bot's copy
-   * of the workspace key for workspace belonging to integration auth
-   * with id [integrationAuthId]
-   * @param {Object} obj
-   * @param {String} obj.integrationAuthId - id of integration auth
-   * @param {String} obj.refreshToken - refresh token
-   * @returns {IntegrationAuth} integrationAuth - updated integration auth
-   */
-  static async setIntegrationAuthRefresh({
-    integrationAuthId,
-    refreshToken
-  }: {
-    integrationAuthId: string;
-    refreshToken: string;
   }): Promise<IIntegrationAuth> {
     return await setIntegrationAuthRefreshHelper({
       integrationAuthId,
