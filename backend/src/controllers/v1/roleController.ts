@@ -193,7 +193,7 @@ export const getUserPermissions = async (req: Request, res: Response) => {
   const {
     params: { orgId }
   } = await validateRequest(GetUserPermission, req);
-  const { permission } = await getUserOrgPermissions(req.user.id, orgId);
+  const { permission } = await getUserOrgPermissions(req.user._id, orgId);
 
   res.status(200).json({
     data: {
@@ -206,7 +206,7 @@ export const getUserWorkspacePermissions = async (req: Request, res: Response) =
   const {
     params: { workspaceId }
   } = await validateRequest(GetUserProjectPermission, req);
-  const { permission } = await getUserProjectPermissions(req.user.id, workspaceId);
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
 
   res.status(200).json({
     data: {

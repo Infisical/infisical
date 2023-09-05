@@ -225,7 +225,7 @@ export const getUserProjectPermissions = async (userId: string, workspaceId: str
 
   if (membership.role === "admin") return { permission: adminProjectPermissions, membership };
   if (membership.role === "member") return { permission: memberProjectPermissions, membership };
-  if (membership.role === "viewer") return { permission: memberProjectPermissions, membership };
+  if (membership.role === "viewer") return { permission: viewerProjectPermission, membership };
 
   if (membership.role === "custom") {
     const permission = createMongoAbility<ProjectPermissionSet>(membership.customRole.permissions);

@@ -108,7 +108,7 @@ type Props = {
 export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
   const [searchPermission, setSearchPermission] = useState("");
 
-  const isNonEditable = ["owner", "admin", "member"].includes(role?.slug || "");
+  const isNonEditable = ["admin", "member", "viewer"].includes(role?.slug || "");
   const isNewRole = !role?.slug;
 
   const { createNotification } = useNotificationContext();
