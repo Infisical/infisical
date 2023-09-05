@@ -19,30 +19,17 @@ router.get(
 );
 
 router.get(
-<<<<<<< HEAD
   "/:integrationAuthId",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
   requireIntegrationAuthorizationAuth({
-    acceptedRoles: [ADMIN, MEMBER]
+    acceptedRoles: [ADMIN, MEMBER],
+    attachAccessToken: false
   }),
   param("integrationAuthId"),
   validateRequest,
   integrationAuthController.getIntegrationAuth
-=======
-	"/:integrationAuthId",
-	requireAuth({
-        acceptedAuthModes: [AuthMode.JWT],
-    }),
-	requireIntegrationAuthorizationAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		attachAccessToken: false
-	}),
-	param("integrationAuthId"),
-	validateRequest,
-	integrationAuthController.getIntegrationAuth	
->>>>>>> origin
 );
 
 router.post(
@@ -62,11 +49,11 @@ router.post(
 );
 
 router.post(
-<<<<<<< HEAD
   "/access-token",
   body("workspaceId").exists().trim().notEmpty(),
-  body("accessId").trim(),
-  body("accessToken").exists().trim().notEmpty(),
+  body("refreshToken").optional().isString().trim().notEmpty(),
+  body("accessId").optional().isString().trim(),
+  body("accessToken").optional().isString().trim().notEmpty(),
   body("url").trim(),
   body("namespace").trim(),
   body("integration").exists().trim().notEmpty(),
@@ -78,26 +65,7 @@ router.post(
     acceptedRoles: [ADMIN, MEMBER],
     locationWorkspaceId: "body"
   }),
-  integrationAuthController.saveIntegrationAccessToken
-=======
-	"/access-token",
-	body("workspaceId").exists().trim().notEmpty(),
-	body("refreshToken").optional().isString().trim().notEmpty(),
-	body("accessId").optional().isString().trim(),
-	body("accessToken").optional().isString().trim().notEmpty(),
-	body("url").trim(),
-	body("namespace").trim(),
-	body("integration").exists().trim().notEmpty(),
-	validateRequest,
-	requireAuth({
-        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
-    }),
-	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		locationWorkspaceId: "body",
-	}),
-	integrationAuthController.saveIntegrationToken
->>>>>>> origin
+  integrationAuthController.saveIntegrationToken
 );
 
 router.get(

@@ -6,14 +6,10 @@ import {
   INTEGRATION_BITBUCKET,
   INTEGRATION_BITBUCKET_TOKEN_URL,
   INTEGRATION_GITLAB,
-<<<<<<< HEAD
-  INTEGRATION_HEROKU
-=======
   INTEGRATION_HEROKU,
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_GCP_TOKEN_URL,
   INTEGRATION_GCP_CLOUD_PLATFORM_SCOPE
->>>>>>> origin
 } from "../variables";
 import {
   INTEGRATION_AZURE_TOKEN_URL,
@@ -29,13 +25,9 @@ import {
   getClientSecretBitBucket,
   getClientSecretGitLab,
   getClientSecretHeroku,
-<<<<<<< HEAD
-  getSiteURL
-=======
   getClientIdGCPSecretManager,
   getClientSecretGCPSecretManager,
-  getSiteURL,
->>>>>>> origin
+  getSiteURL
 } from "../config";
 
 interface RefreshTokenAzureResponse {
@@ -131,22 +123,14 @@ const exchangeRefresh = async ({
     case INTEGRATION_GCP_SECRET_MANAGER:
       tokenDetails = await exchangeRefreshGCPSecretManager({
         integrationAuth,
-        refreshToken,
+        refreshToken
       });
-      break; 
+      break;
     default:
       throw new Error("Failed to exchange token for incompatible integration");
   }
 
-<<<<<<< HEAD
-  if (tokenDetails?.accessToken && tokenDetails?.refreshToken && tokenDetails?.accessExpiresAt) {
-=======
-  if (
-    tokenDetails.accessToken &&
-    tokenDetails.refreshToken &&
-    tokenDetails.accessExpiresAt
-  ) {
->>>>>>> origin
+  if (tokenDetails.accessToken && tokenDetails.refreshToken && tokenDetails.accessExpiresAt) {
     await IntegrationService.setIntegrationAuthAccess({
       integrationAuthId: integrationAuth._id.toString(),
       accessToken: tokenDetails.accessToken,
@@ -307,66 +291,65 @@ const exchangeRefreshBitBucket = async ({ refreshToken }: { refreshToken: string
  */
 const exchangeRefreshGCPSecretManager = async ({
   integrationAuth,
-  refreshToken,
+  refreshToken
 }: {
   integrationAuth: IIntegrationAuth;
   refreshToken: string;
 }) => {
   const accessExpiresAt = new Date();
-  
+
   if (integrationAuth.metadata?.authMethod === "serviceAccount") {
     const serviceAccount = JSON.parse(refreshToken);
-        
+
     const payload = {
       iss: serviceAccount.client_email,
       aud: serviceAccount.token_uri,
       scope: INTEGRATION_GCP_CLOUD_PLATFORM_SCOPE,
       iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 3600,
+      exp: Math.floor(Date.now() / 1000) + 3600
     };
 
-    const token = jwt.sign(payload, serviceAccount.private_key, { algorithm: 'RS256' });
-    
-    const { data }: { data: ServiceAccountAccessTokenGCPSecretManagerResponse } = await standardRequest.post(
-      INTEGRATION_GCP_TOKEN_URL, 
-      new URLSearchParams({
-        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-        assertion: token
-      }).toString(), 
-      {
-        headers: { 
-          'Content-Type': 'application/x-www-form-urlencoded' 
+    const token = jwt.sign(payload, serviceAccount.private_key, { algorithm: "RS256" });
+
+    const { data }: { data: ServiceAccountAccessTokenGCPSecretManagerResponse } =
+      await standardRequest.post(
+        INTEGRATION_GCP_TOKEN_URL,
+        new URLSearchParams({
+          grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+          assertion: token
+        }).toString(),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          }
         }
-      }
-    );
-    
+      );
+
     accessExpiresAt.setSeconds(accessExpiresAt.getSeconds() + data.expires_in);
-    
+
     return {
       accessToken: data.access_token,
       refreshToken,
       accessExpiresAt
     };
   }
-  
-  const { data }: { data: RefreshTokenGCPSecretManagerResponse } = (
-    await standardRequest.post(
-      INTEGRATION_GCP_TOKEN_URL,
-      new URLSearchParams({
-        client_id: await getClientIdGCPSecretManager(),
-        client_secret: await getClientSecretGCPSecretManager(),
-        refresh_token: refreshToken,
-        grant_type: "refresh_token",
-      } as any)
-    )
+
+  const { data }: { data: RefreshTokenGCPSecretManagerResponse } = await standardRequest.post(
+    INTEGRATION_GCP_TOKEN_URL,
+    new URLSearchParams({
+      client_id: await getClientIdGCPSecretManager(),
+      client_secret: await getClientSecretGCPSecretManager(),
+      refresh_token: refreshToken,
+      grant_type: "refresh_token"
+    } as any)
   );
-  
+
   accessExpiresAt.setSeconds(accessExpiresAt.getSeconds() + data.expires_in);
 
   return {
     accessToken: data.access_token,
     refreshToken,
-    accessExpiresAt,
+    accessExpiresAt
   };
 };
 
