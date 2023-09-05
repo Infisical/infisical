@@ -2,16 +2,16 @@ import { z } from "zod";
 
 export const CreateRoleSchema = z.object({
   body: z.object({
-    slug: z.string(),
-    name: z.string(),
-    description: z.string().optional(),
-    workspaceId: z.string().optional(),
-    orgId: z.string(),
+    slug: z.string().trim(),
+    name: z.string().trim(),
+    description: z.string().trim().optional(),
+    workspaceId: z.string().trim().optional(),
+    orgId: z.string().trim(),
     permissions: z
       .object({
-        subject: z.string(),
-        action: z.string(),
-        conditions: z.record(z.union([z.string(), z.number()])).optional()
+        subject: z.string().trim(),
+        action: z.string().trim(),
+        conditions: z.record(z.union([z.string().trim(), z.number()])).optional()
       })
       .array()
   })
@@ -19,19 +19,19 @@ export const CreateRoleSchema = z.object({
 
 export const UpdateRoleSchema = z.object({
   params: z.object({
-    id: z.string()
+    id: z.string().trim()
   }),
   body: z.object({
-    slug: z.string().optional(),
-    name: z.string().optional(),
-    description: z.string().optional(),
-    workspaceId: z.string().optional(),
-    orgId: z.string(),
+    slug: z.string().trim().optional(),
+    name: z.string().trim().optional(),
+    description: z.string().trim().optional(),
+    workspaceId: z.string().trim().optional(),
+    orgId: z.string().trim(),
     permissions: z
       .object({
-        subject: z.string(),
-        action: z.string(),
-        conditions: z.record(z.union([z.string(), z.number()])).optional()
+        subject: z.string().trim(),
+        action: z.string().trim(),
+        conditions: z.record(z.union([z.string().trim(), z.number()])).optional()
       })
       .array()
       .optional()

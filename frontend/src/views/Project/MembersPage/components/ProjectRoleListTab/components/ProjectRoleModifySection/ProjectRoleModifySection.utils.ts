@@ -14,7 +14,7 @@ const generalPermissionSchema = z
 
 const multiEnvPermissionSchema = z
   .object({
-    secretPath: z.string().optional(),
+    secretPath: z.string().trim().optional(),
     read: z.boolean().optional(),
     edit: z.boolean().optional(),
     delete: z.boolean().optional(),
@@ -26,9 +26,9 @@ const PERMISSION_ACTIONS = ["read", "create", "edit", "delete"] as const;
 const MULTI_ENV_KEY = ["secrets", "folders", "secret-imports"] as const;
 
 export const formSchema = z.object({
-  name: z.string(),
-  description: z.string().optional(),
-  slug: z.string(),
+  name: z.string().trim(),
+  description: z.string().trim().optional(),
+  slug: z.string().trim(),
   permissions: z.object({
     secrets: z.record(multiEnvPermissionSchema).optional(),
     folders: z.record(multiEnvPermissionSchema).optional(),

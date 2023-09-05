@@ -328,9 +328,7 @@ export const CreateSecretV3 = z.object({
     secretCommentCiphertext: z.string().trim().optional(),
     secretCommentIV: z.string().trim().optional(),
     secretCommentTag: z.string().trim().optional(),
-    metadata: z.object({
-      source: z.string()
-    })
+    metadata: z.record(z.string()).optional(),
   }),
   params: z.object({
     secretName: z.string().trim()

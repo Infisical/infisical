@@ -102,7 +102,7 @@ export const DeleteIntegrationV1 = z.object({
 
 export const ManualSyncV1 = z.object({
   body: z.object({
-    environment: z.string(),
-    workspaceId: z.string()
+    environment: z.string().trim(),
+    workspaceId: z.string().trim()
   })
 });
