@@ -18,6 +18,7 @@ export default function GitLabOAuth2CallbackPage() {
         if (state !== localStorage.getItem("latestCSRFToken")) return;
         localStorage.removeItem("latestCSRFToken");
 
+        // TODO: self-hosted url somewhere here?
         const integrationAuth = await mutateAsync({
           workspaceId: localStorage.getItem("projectData.id") as string,
           code: code as string,
