@@ -46,6 +46,14 @@ interface ExchangeCodeAzureResponse {
   id_token: string;
 }
 
+interface ExchangeCodeGCPResponse {
+  access_token: string;
+  expires_in: number;
+  refresh_token: string;
+  scope: string;
+  token_type: string;
+}
+
 interface ExchangeCodeHerokuResponse {
   token_type: string;
   access_token: string;
@@ -168,7 +176,7 @@ const exchangeCode = async ({ integration, code }: { integration: string; code: 
 const exchangeCodeGCP = async ({ code }: { code: string }) => {
   const accessExpiresAt = new Date();
 
-  const res: ExchangeCodeAzureResponse = (
+  const res: ExchangeCodeGCPResponse = (
     await standardRequest.post(
       INTEGRATION_GCP_TOKEN_URL,
       new URLSearchParams({

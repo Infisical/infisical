@@ -1,69 +1,59 @@
-// import Queue, { Job } from "bull";
-// import { ProbotOctokit } from "probot"
-// import { Commit, Committer, Repository } from "@octokit/webhooks-types";
-// import TelemetryService from "../../services/TelemetryService";
-// import { sendMail } from "../../helpers";
-// import GitRisks from "../../ee/models/gitRisks";
-// import { MembershipOrg, User } from "../../models";
-// import { OWNER, ADMIN } from "../../variables";
-// import { convertKeysToLowercase, getFilesFromCommit, scanContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";
-// import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
+import Queue, { Job } from "bull";
+import { ProbotOctokit } from "probot"
+import TelemetryService from "../../services/TelemetryService";
+import { sendMail } from "../../helpers";
+import GitRisks from "../../ee/models/gitRisks";
+import { MembershipOrg, User } from "../../models";
+import { ADMIN, OWNER } from "../../variables";
+import { convertKeysToLowercase, scanFullRepoContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";
+import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
+import { SecretMatch } from "../../ee/services/GithubSecretScanning/types";
 
-// const githubFullRepositoryScan = new Queue('github-historical-secret-scanning', 'redis://redis:6379');
+export const githubFullRepositorySecretScan = new Queue("github-full-repository-secret-scanning", "redis://redis:6379");
 
-// type TScanFullRepositoryDetails = {
-//   organizationId: string,
-//   repositories: {
-//     id: number;
-//     node_id: string;
-//     name: string;
-//     full_name: string;
-//     private: boolean;
-//   }[] | undefined
-//   installationId: number
-// }
+type TScanPushEventQueueDetails = {
+  organizationId: string,
+  installationId: number, 
+  repository: {
+    id: number,
+    fullName: string,
+  },
+}
 
-// type SecretMatch = {
-//   Description: string;
-//   StartLine: number;
-//   EndLine: number;
-//   StartColumn: number;
-//   EndColumn: number;
-//   Match: string;
-//   Secret: string;
-//   File: string;
-//   SymlinkFile: string;
-//   Commit: string;
-//   Entropy: number;
-//   Author: string;
-//   Email: string;
-//   Date: string;
-//   Message: string;
-//   Tags: string[];
-//   RuleID: string;
-//   Fingerprint: string;
-//   FingerPrintWithoutCommitId: string
-// };
+githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback) => {
+  const { organizationId, repository, installationId }: TScanPushEventQueueDetails = job.data
+  try {
+    const octokit = new ProbotOctokit({
+        auth: {
+        appId: await getSecretScanningGitAppId(),
+        privateKey: await getSecretScanningPrivateKey(),
+        installationId: installationId
+        },
+    });
+    const findings : SecretMatch[] = await scanFullRepoContentAndGetFindings(octokit, installationId, repository.fullName)
+    for (const finding of findings) {
+      await GitRisks.findOneAndUpdate({ fingerprint: finding.Fingerprint}, 
+        {
+        ...convertKeysToLowercase(finding),
+        installationId: installationId,
+        organization: organizationId,
+        repositoryFullName: repository.fullName,
+        repositoryId: repository.id
+      }, {
+        upsert: true
+      }).lean()
+    }
 
-// type Helllo = {
-//   url: string;
-//   sha: string;
-//   node_id: string;
-//   html_url: string;
-//   comments_url: string;
-//   commit: {
-//     url: string;
-//     author: {
-//       name?: string | undefined;
-//       email?: string | undefined;
-//       date?: string | undefined;
-//     } | null;
-//     verification?: {
-//     } | undefined;
-//   };
-//   files?: {}[] | undefined;
-// }[]
+    // get emails of admins
+    const adminsOfWork = await MembershipOrg.find({
+      organization: organizationId,
+      $or: [
+        { role: OWNER },
+        { role: ADMIN }
+      ]
+    }).lean()
 
+<<<<<<< HEAD
 // githubFullRepositoryScan.process(async (job: Job, done: Queue.DoneCallback) => {
 //   const { organizationId, repositories, installationId }: TScanFullRepositoryDetails = job.data
 //   const repositoryFullNamesList = repositories ? repositories.map(repoDetails => repoDetails.full_name) : []
@@ -74,10 +64,28 @@
 //       installationId: installationId
 //     },
 //   });
+=======
+    const userEmails = await User.find({
+      _id: {
+        $in: [adminsOfWork.map(orgMembership => orgMembership.user)]
+      }
+    }).select("email").lean()
 
-//   for (const repositoryFullName of repositoryFullNamesList) {
-//     const [owner, repo] = repositoryFullName.split("/");
+    const usersToNotify = userEmails.map(userObject => userObject.email)
+>>>>>>> origin
 
+    if (findings.length) {
+      await sendMail({
+        template: "historicalSecretLeakIncident.handlebars",
+        subjectLine: `Incident alert: leaked secrets found in Github repository ${repository.fullName}`,
+        recipients: usersToNotify,
+        substitutions: {
+          numberOfSecrets: findings.length,
+        }
+      });
+    }
+
+<<<<<<< HEAD
 //     let page = 1;
 //     while (true) {
 //       // octokit.repos.getco
@@ -195,3 +203,34 @@
 //   console.log("full repo scan started")
 //   githubFullRepositoryScan.add(scanFullRepositoryDetails)
 // }
+=======
+    const postHogClient = await TelemetryService.getPostHogClient();
+    if (postHogClient) {
+      postHogClient.capture({
+        event: "historical cloud secret scan",
+        distinctId: repository.fullName,
+        properties: {
+          numberOfRisksFound: findings.length,
+        }
+      });
+    }
+    done(null, findings)
+  } catch (error) {
+    done(new Error(`gitHubHistoricalScanning.process: an error occurred ${error}`), null)
+  }
+})
+
+export const scanGithubFullRepoForSecretLeaks = (pushEventPayload: TScanPushEventQueueDetails) => {
+  githubFullRepositorySecretScan.add(pushEventPayload, {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 5000
+    },
+    removeOnComplete: true,
+    removeOnFail: {
+      count: 20 // keep the most recent 20 jobs
+    }
+  })
+}
+>>>>>>> origin

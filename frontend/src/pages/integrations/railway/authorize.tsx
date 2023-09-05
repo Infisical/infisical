@@ -26,7 +26,6 @@ export default function RailwayAuthorizeIntegrationPage() {
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "railway",
-        accessId: null,
         accessToken: apiKey,
         url: null,
         namespace: null

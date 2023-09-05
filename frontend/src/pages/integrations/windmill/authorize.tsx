@@ -27,7 +27,6 @@ export default function WindmillCreateIntegrationPage() {
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "windmill",
         accessToken: apiKey,
-        accessId: null,
         url: null,
         namespace: null
       });

@@ -1,3 +1,4 @@
+import jwt from "jsonwebtoken";
 import {
   CreateSecretCommand,
   GetSecretValueCommand,
@@ -28,6 +29,8 @@ import {
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_GCP_SECRET_MANAGER_URL,
+  INTEGRATION_GCP_TOKEN_URL,
+  INTEGRATION_GCP_CLOUD_PLATFORM_SCOPE,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_GITLAB_API_URL,
@@ -692,17 +695,16 @@ const syncSecretsAWSParameterStore = async ({
   const parameterList = (await ssm.getParametersByPath(params).promise()).Parameters;
 
   let awsParameterStoreSecretsObj: {
-    [key: string]: any; // TODO: fix type
+    [key: string]: any;
   } = {};
 
   if (parameterList) {
-    awsParameterStoreSecretsObj = parameterList.reduce(
-      (obj: any, secret: any) => ({
+    awsParameterStoreSecretsObj = parameterList.reduce((obj: any, secret: any) => {
+      return {
         ...obj,
-        [secret.Name.split("/").pop()]: secret
-      }),
-      {}
-    );
+        [secret.Name.substring(integration.path.length)]: secret
+      };
+    }, {});
   }
 
   // Identify secrets to create

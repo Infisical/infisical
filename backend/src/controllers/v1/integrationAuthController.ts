@@ -14,8 +14,10 @@ import {
   INTEGRATION_RAILWAY_API_URL,
   INTEGRATION_SET,
   INTEGRATION_VERCEL_API_URL,
+  INTEGRATION_GCP_SECRET_MANAGER,
   getIntegrationOptions as getIntegrationOptionsFunc
 } from "../../variables";
+import { exchangeRefresh } from "../../integrations";
 
 /***
  * Return integration authorization with id [integrationAuthId]
@@ -88,7 +90,7 @@ export const oAuthExchange = async (req: Request, res: Response) => {
  * @param req
  * @param res
  */
-export const saveIntegrationAccessToken = async (req: Request, res: Response) => {
+export const saveIntegrationToken = async (req: Request, res: Response) => {
   // TODO: refactor
   // TODO: check if access token is valid for each integration
 
@@ -96,14 +98,16 @@ export const saveIntegrationAccessToken = async (req: Request, res: Response) =>
   const {
     workspaceId,
     accessId,
+    refreshToken,
     accessToken,
     url,
     namespace,
     integration
   }: {
     workspaceId: string;
-    accessId: string | null;
-    accessToken: string;
+    accessId: string | undefined;
+    refreshToken: string | undefined;
+    accessToken: string | undefined;
     url: string;
     namespace: string;
     integration: string;
@@ -127,7 +131,14 @@ export const saveIntegrationAccessToken = async (req: Request, res: Response) =>
       url,
       namespace,
       algorithm: ALGORITHM_AES_256_GCM,
-      keyEncoding: ENCODING_SCHEME_UTF8
+      keyEncoding: ENCODING_SCHEME_UTF8,
+      ...(integration === INTEGRATION_GCP_SECRET_MANAGER
+        ? {
+            metadata: {
+              authMethod: "serviceAccount"
+            }
+          }
+        : {})
     },
     {
       new: true,
@@ -136,12 +147,22 @@ export const saveIntegrationAccessToken = async (req: Request, res: Response) =>
   );
 
   // encrypt and save integration access details
-  integrationAuth = await IntegrationService.setIntegrationAuthAccess({
-    integrationAuthId: integrationAuth._id.toString(),
-    accessId,
-    accessToken,
-    accessExpiresAt: undefined
-  });
+  if (refreshToken) {
+    await exchangeRefresh({
+      integrationAuth,
+      refreshToken
+    });
+  }
+
+  // encrypt and save integration access details
+  if (accessId || accessToken) {
+    integrationAuth = await IntegrationService.setIntegrationAuthAccess({
+      integrationAuthId: integrationAuth._id.toString(),
+      accessId,
+      accessToken,
+      accessExpiresAt: undefined
+    });
+  }
 
   if (!integrationAuth) throw new Error("Failed to save integration access token");
 

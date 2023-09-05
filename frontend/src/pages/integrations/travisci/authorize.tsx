@@ -27,7 +27,6 @@ export default function TravisCICreateIntegrationPage() {
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "travisci",
         accessToken: apiKey,
-        accessId: null,
         url: null,
         namespace: null
       });

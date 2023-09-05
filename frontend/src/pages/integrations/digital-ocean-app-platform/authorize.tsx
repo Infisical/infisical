@@ -26,7 +26,6 @@ export default function DigitalOceanAppPlatformCreateIntegrationPage() {
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "digital-ocean-app-platform",
-        accessId: null,
         accessToken: apiKey,
         url: null,
         namespace: null

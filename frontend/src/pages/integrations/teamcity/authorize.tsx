@@ -35,7 +35,6 @@ export default function TeamCityCreateIntegrationPage() {
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "teamcity",
-        accessId: null,
         accessToken: apiKey,
         url: serverUrl,
         namespace: null

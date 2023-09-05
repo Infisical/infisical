@@ -46,8 +46,8 @@ export const useCreateIntegration = () => {
       integrationAuthId: string;
       isActive: boolean;
       secretPath: string;
-      app: string | null;
-      appId: string | null;
+      app?: string | null;
+      appId?: string | null;
       sourceEnvironment: string;
       targetEnvironment: string | null;
       targetEnvironmentId: string | null;

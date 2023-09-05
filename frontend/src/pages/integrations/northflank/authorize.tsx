@@ -27,7 +27,6 @@ export default function NorthflankCreateIntegrationPage() {
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "northflank",
         accessToken: apiKey,
-        accessId: null,
         url: null,
         namespace: null
       });

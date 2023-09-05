@@ -26,7 +26,6 @@ export default function ChecklyCreateIntegrationPage() {
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "checkly",
-        accessId: null,
         accessToken,
         url: null,
         namespace: null

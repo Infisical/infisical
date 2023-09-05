@@ -7,6 +7,7 @@ import {
   setIntegrationAuthRefreshHelper
 } from "../helpers/integration";
 import { syncSecretsToActiveIntegrationsQueue } from "../queues/integrations/syncSecretsToThirdPartyServices";
+import { IIntegrationAuth } from "../models";
 
 /**
  * Class to handle integrations
@@ -119,6 +120,7 @@ class IntegrationService {
     });
   }
 
+<<<<<<< HEAD
   /**
    * Encrypt access token [accessToken] and (optionally) access id using the
    * bot's copy of the workspace key for workspace belonging to integration auth
@@ -148,6 +150,59 @@ class IntegrationService {
       accessExpiresAt
     });
   }
+=======
+    /**
+     * Encrypt refresh token [refreshToken] using the bot's copy
+     * of the workspace key for workspace belonging to integration auth
+     * with id [integrationAuthId]
+     * @param {Object} obj
+     * @param {String} obj.integrationAuthId - id of integration auth
+     * @param {String} obj.refreshToken - refresh token
+     * @returns {IntegrationAuth} integrationAuth - updated integration auth
+     */
+    static async setIntegrationAuthRefresh({
+        integrationAuthId,
+        refreshToken,
+    }: {
+        integrationAuthId: string;
+        refreshToken: string;
+    }): Promise<IIntegrationAuth> {
+        return await setIntegrationAuthRefreshHelper({
+            integrationAuthId,
+            refreshToken,
+        });
+    }
+
+    /**
+     * Encrypt access token [accessToken] and (optionally) access id using the 
+     * bot's copy of the workspace key for workspace belonging to integration auth
+     * with id [integrationAuthId]
+     * @param {Object} obj
+     * @param {String} obj.integrationAuthId - id of integration auth
+     * @param {String} obj.accessId - access id
+     * @param {String} obj.accessToken - access token
+     * @param {Date} obj.accessExpiresAt - expiration date of access token
+     * @returns {IntegrationAuth} - updated integration auth
+     */
+    static async setIntegrationAuthAccess({
+        integrationAuthId,
+        accessId,
+        accessToken,
+        accessExpiresAt,
+    }: {
+        integrationAuthId: string;
+        accessId?: string;
+        accessToken?: string;
+        accessExpiresAt: Date | undefined;
+    }) {
+        return await setIntegrationAuthAccessHelper({
+            integrationAuthId,
+            accessId,
+            accessToken,
+            accessExpiresAt,
+        });
+    }
+>>>>>>> origin
 }
 
 export default IntegrationService;

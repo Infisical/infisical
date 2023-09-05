@@ -1,20 +1,23 @@
 import { Types } from "mongoose";
-import { Bot, IntegrationAuth } from "../models";
+import { Bot, IIntegrationAuth, IntegrationAuth } from "../models";
 import { exchangeCode, exchangeRefresh } from "../integrations";
 import { BotService } from "../services";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
   INTEGRATION_NETLIFY,
-  INTEGRATION_VERCEL
+  INTEGRATION_VERCEL,
+  INTEGRATION_GCP_SECRET_MANAGER
 } from "../variables";
-import { UnauthorizedRequestError } from "../utils/errors";
+import { BadRequestError, InternalServerError, UnauthorizedRequestError } from "../utils/errors";
+import { IntegrationAuthMetadata } from "../models/integrationAuth/types";
 
 interface Update {
   workspace: string;
   integration: string;
   teamId?: string;
   accountId?: string;
+  metadata?: IntegrationAuthMetadata;
 }
 
 /**
@@ -64,6 +67,10 @@ export const handleOAuthExchangeHelper = async ({
       break;
     case INTEGRATION_NETLIFY:
       update.accountId = res.accountId;
+    case INTEGRATION_GCP_SECRET_MANAGER:
+      update.metadata = {
+        authMethod: "oauth2"
+      };
       break;
   }
 
@@ -93,7 +100,6 @@ export const handleOAuthExchangeHelper = async ({
     // set integration auth access token
     await setIntegrationAuthAccessHelper({
       integrationAuthId: integrationAuth._id.toString(),
-      accessId: null,
       accessToken: res.accessToken,
       accessExpiresAt: res.accessExpiresAt
     });
@@ -158,22 +164,24 @@ export const getIntegrationAuthAccessHelper = async ({
       message: "Failed to locate Integration Authentication credentials"
     });
 
-  accessToken = await BotService.decryptSymmetric({
-    workspaceId: integrationAuth.workspace,
-    ciphertext: integrationAuth.accessCiphertext as string,
-    iv: integrationAuth.accessIV as string,
-    tag: integrationAuth.accessTag as string
-  });
+  if (integrationAuth.accessCiphertext && integrationAuth.accessIV && integrationAuth.accessTag) {
+    accessToken = await BotService.decryptSymmetric({
+      workspaceId: integrationAuth.workspace,
+      ciphertext: integrationAuth.accessCiphertext as string,
+      iv: integrationAuth.accessIV as string,
+      tag: integrationAuth.accessTag as string
+    });
+  }
 
-  if (integrationAuth?.accessExpiresAt && integrationAuth?.refreshCiphertext) {
+  if (integrationAuth?.refreshCiphertext) {
     // there is a access token expiration date
     // and refresh token to exchange with the OAuth2 server
+    const refreshToken = await getIntegrationAuthRefreshHelper({
+      integrationAuthId
+    });
 
-    if (integrationAuth.accessExpiresAt < new Date()) {
+    if (integrationAuth?.accessExpiresAt && integrationAuth.accessExpiresAt < new Date()) {
       // access token is expired
-      const refreshToken = await getIntegrationAuthRefreshHelper({
-        integrationAuthId
-      });
       accessToken = await exchangeRefresh({
         integrationAuth,
         refreshToken
@@ -193,6 +201,8 @@ export const getIntegrationAuthAccessHelper = async ({
       tag: integrationAuth.accessIdTag as string
     });
   }
+
+  if (!accessToken) throw InternalServerError();
 
   return {
     accessId,
@@ -214,7 +224,7 @@ export const setIntegrationAuthRefreshHelper = async ({
 }: {
   integrationAuthId: string;
   refreshToken: string;
-}) => {
+}): Promise<IIntegrationAuth> => {
   let integrationAuth = await IntegrationAuth.findById(integrationAuthId);
 
   if (!integrationAuth) throw new Error("Failed to find integration auth");
@@ -240,6 +250,8 @@ export const setIntegrationAuthRefreshHelper = async ({
     }
   );
 
+  if (!integrationAuth) throw InternalServerError();
+
   return integrationAuth;
 };
 
@@ -259,20 +271,24 @@ export const setIntegrationAuthAccessHelper = async ({
   accessExpiresAt
 }: {
   integrationAuthId: string;
-  accessId: string | null;
-  accessToken: string;
+  accessId?: string;
+  accessToken?: string;
   accessExpiresAt: Date | undefined;
 }) => {
   let integrationAuth = await IntegrationAuth.findById(integrationAuthId);
 
   if (!integrationAuth) throw new Error("Failed to find integration auth");
 
-  const encryptedAccessTokenObj = await BotService.encryptSymmetric({
-    workspaceId: integrationAuth.workspace,
-    plaintext: accessToken
-  });
-
+  let encryptedAccessTokenObj;
   let encryptedAccessIdObj;
+
+  if (accessToken) {
+    encryptedAccessTokenObj = await BotService.encryptSymmetric({
+      workspaceId: integrationAuth.workspace,
+      plaintext: accessToken
+    });
+  }
+
   if (accessId) {
     encryptedAccessIdObj = await BotService.encryptSymmetric({
       workspaceId: integrationAuth.workspace,
@@ -286,11 +302,11 @@ export const setIntegrationAuthAccessHelper = async ({
     },
     {
       accessIdCiphertext: encryptedAccessIdObj?.ciphertext ?? undefined,
-      accessIdIV: encryptedAccessIdObj?.iv ?? undefined,
-      accessIdTag: encryptedAccessIdObj?.tag ?? undefined,
-      accessCiphertext: encryptedAccessTokenObj.ciphertext,
-      accessIV: encryptedAccessTokenObj.iv,
-      accessTag: encryptedAccessTokenObj.tag,
+      accessIdIV: encryptedAccessIdObj?.iv,
+      accessIdTag: encryptedAccessIdObj?.tag,
+      accessCiphertext: encryptedAccessTokenObj?.ciphertext,
+      accessIV: encryptedAccessTokenObj?.iv,
+      accessTag: encryptedAccessTokenObj?.tag,
       accessExpiresAt,
       algorithm: ALGORITHM_AES_256_GCM,
       keyEncoding: ENCODING_SCHEME_UTF8

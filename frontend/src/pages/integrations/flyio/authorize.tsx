@@ -26,7 +26,6 @@ export default function FlyioCreateIntegrationPage() {
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "flyio",
-        accessId: null,
         accessToken,
         url: null,
         namespace: null
