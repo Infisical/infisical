@@ -65,7 +65,6 @@ export default function HashiCorpVaultCreateIntegrationPage() {
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: vaultEnginePath,
-        appId: null,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: null,
         targetEnvironmentId: null,

@@ -97,7 +97,6 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: targetSecretName.trim(),
-        appId: null,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: null,
         targetEnvironmentId: null,

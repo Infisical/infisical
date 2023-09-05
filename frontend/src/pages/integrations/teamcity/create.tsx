@@ -74,7 +74,7 @@ export default function TeamCityCreateIntegrationPage() {
       await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
-        app: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId)?.name ?? null,
+        app: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId)?.name,
         appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: targetEnvironment ? targetEnvironment.name : null,
