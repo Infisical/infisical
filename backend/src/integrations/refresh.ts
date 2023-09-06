@@ -1,3 +1,4 @@
+import jwt from "jsonwebtoken";
 import { standardRequest } from "../config/request";
 import { IIntegrationAuth } from "../models";
 import {
@@ -6,6 +7,9 @@ import {
   INTEGRATION_BITBUCKET_TOKEN_URL,
   INTEGRATION_GITLAB,
   INTEGRATION_HEROKU,
+  INTEGRATION_GCP_SECRET_MANAGER,
+  INTEGRATION_GCP_TOKEN_URL,
+  INTEGRATION_GCP_CLOUD_PLATFORM_SCOPE
 } from "../variables";
 import {
   INTEGRATION_AZURE_TOKEN_URL,
@@ -21,6 +25,8 @@ import {
   getClientSecretBitBucket,
   getClientSecretGitLab,
   getClientSecretHeroku,
+  getClientIdGCPSecretManager,
+  getClientSecretGCPSecretManager,
   getSiteURL,
 } from "../config";
 
@@ -57,6 +63,19 @@ interface RefreshTokenBitBucketResponse {
   refresh_token: string;
   scopes: string;
   state: string;
+}
+
+interface ServiceAccountAccessTokenGCPSecretManagerResponse {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
+}
+
+interface RefreshTokenGCPSecretManagerResponse {
+  access_token: string;
+  expires_in: number;
+  scope: string;
+  token_type: string;
 }
 
 /**
@@ -101,18 +120,23 @@ const exchangeRefresh = async ({
         refreshToken,
       });
       break;
+    case INTEGRATION_GCP_SECRET_MANAGER:
+      tokenDetails = await exchangeRefreshGCPSecretManager({
+        integrationAuth,
+        refreshToken,
+      });
+      break; 
     default:
       throw new Error("Failed to exchange token for incompatible integration");
   }
 
   if (
-    tokenDetails?.accessToken &&
-    tokenDetails?.refreshToken &&
-    tokenDetails?.accessExpiresAt
+    tokenDetails.accessToken &&
+    tokenDetails.refreshToken &&
+    tokenDetails.accessExpiresAt
   ) {
     await IntegrationService.setIntegrationAuthAccess({
       integrationAuthId: integrationAuth._id.toString(),
-      accessId: null,
       accessToken: tokenDetails.accessToken,
       accessExpiresAt: tokenDetails.accessExpiresAt,
     });
@@ -274,6 +298,78 @@ const exchangeRefreshBitBucket = async ({
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
+    accessExpiresAt,
+  };
+};
+
+/**
+ * Return new access token by exchanging refresh token [refreshToken] for the
+ * GCP Secret Manager integration
+ * @param {Object} obj
+ * @param {String} obj.refreshToken - refresh token to use to get new access token for GCP Secret Manager
+ * @returns
+ */
+const exchangeRefreshGCPSecretManager = async ({
+  integrationAuth,
+  refreshToken,
+}: {
+  integrationAuth: IIntegrationAuth;
+  refreshToken: string;
+}) => {
+  const accessExpiresAt = new Date();
+  
+  if (integrationAuth.metadata?.authMethod === "serviceAccount") {
+    const serviceAccount = JSON.parse(refreshToken);
+        
+    const payload = {
+      iss: serviceAccount.client_email,
+      aud: serviceAccount.token_uri,
+      scope: INTEGRATION_GCP_CLOUD_PLATFORM_SCOPE,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    };
+
+    const token = jwt.sign(payload, serviceAccount.private_key, { algorithm: 'RS256' });
+    
+    const { data }: { data: ServiceAccountAccessTokenGCPSecretManagerResponse } = await standardRequest.post(
+      INTEGRATION_GCP_TOKEN_URL, 
+      new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion: token
+      }).toString(), 
+      {
+        headers: { 
+          'Content-Type': 'application/x-www-form-urlencoded' 
+        }
+      }
+    );
+    
+    accessExpiresAt.setSeconds(accessExpiresAt.getSeconds() + data.expires_in);
+    
+    return {
+      accessToken: data.access_token,
+      refreshToken,
+      accessExpiresAt
+    };
+  }
+  
+  const { data }: { data: RefreshTokenGCPSecretManagerResponse } = (
+    await standardRequest.post(
+      INTEGRATION_GCP_TOKEN_URL,
+      new URLSearchParams({
+        client_id: await getClientIdGCPSecretManager(),
+        client_secret: await getClientSecretGCPSecretManager(),
+        refresh_token: refreshToken,
+        grant_type: "refresh_token",
+      } as any)
+    )
+  );
+  
+  accessExpiresAt.setSeconds(accessExpiresAt.getSeconds() + data.expires_in);
+
+  return {
+    accessToken: data.access_token,
+    refreshToken,
     accessExpiresAt,
   };
 };

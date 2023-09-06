@@ -27,6 +27,4 @@ const tokenSchema = new Schema<IToken>({
 
 tokenSchema.index({ email: 1 });
 
-const Token = model<IToken>("Token", tokenSchema);
-
-export default Token;
+export const Token = model<IToken>("Token", tokenSchema);

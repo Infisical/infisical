@@ -1,3 +1,4 @@
+import jwt from "jsonwebtoken";
 import {
   CreateSecretCommand,
   GetSecretValueCommand,
@@ -28,6 +29,8 @@ import {
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_GCP_SECRET_MANAGER_URL,
+  INTEGRATION_GCP_TOKEN_URL,
+  INTEGRATION_GCP_CLOUD_PLATFORM_SCOPE,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_GITLAB_API_URL,
@@ -317,8 +320,8 @@ const syncSecretsGCPSecretManager = async ({
   }
   
   interface GCPSMListSecretsRes {
-    secrets: GCPSecret[];
-    totalSize: number;
+    secrets?: GCPSecret[];
+    totalSize?: number;
     nextPageToken?: string;
   }
   
@@ -345,7 +348,9 @@ const syncSecretsGCPSecretManager = async ({
       }
     )).data;
     
-    gcpSecrets = gcpSecrets.concat(res.secrets);
+    if (res.secrets) {
+      gcpSecrets = gcpSecrets.concat(res.secrets);
+    }
     
     if (!res.nextPageToken) {
       hasMorePages = false;
@@ -686,15 +691,17 @@ const syncSecretsAWSParameterStore = async ({
   const parameterList = (await ssm.getParametersByPath(params).promise()).Parameters;
 
   let awsParameterStoreSecretsObj: {
-    [key: string]: any; // TODO: fix type
+    [key: string]: any;
   } = {};
 
   if (parameterList) {
     awsParameterStoreSecretsObj = parameterList.reduce(
-      (obj: any, secret: any) => ({
-        ...obj,
-        [secret.Name.split("/").pop()]: secret
-      }),
+      (obj: any, secret: any) => {
+        return ({
+          ...obj,
+          [secret.Name.substring(integration.path.length)]: secret
+        });
+      },
       {}
     );
   }
@@ -2004,7 +2011,7 @@ const syncSecretsCheckly = async ({
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
-  // get secrets from travis-ci
+  
   const getSecretsRes = (
     await standardRequest.get(`${INTEGRATION_CHECKLY_API_URL}/v1/variables`, {
       headers: {
@@ -2026,7 +2033,6 @@ const syncSecretsCheckly = async ({
     if (!(key in getSecretsRes)) {
       // case: secret does not exist in checkly
       // -> add secret
-
       await standardRequest.post(
         `${INTEGRATION_CHECKLY_API_URL}/v1/variables`,
         {

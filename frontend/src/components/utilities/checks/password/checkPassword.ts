@@ -76,7 +76,7 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
       validator: (pwd: string) => (
         !lowEntropyRegexes.some(regex => regex.test(pwd))
       ),
-      errorText: "Password contains sensitive data.",
+      errorText: "Password contains personal info.",
     },
   ];
 

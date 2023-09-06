@@ -1,8 +1,6 @@
 import { Request, Response } from "express";
 import { isValidScope, validateMembership } from "../../helpers";
-import { ServiceTokenData } from "../../models";
-import Folder from "../../models/folder";
-import SecretImport from "../../models/secretImports";
+import { Folder, SecretImport, ServiceTokenData } from "../../models";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
 import { getFolderWithPathFromId } from "../../services/FolderService";
 import { BadRequestError, ResourceNotFoundError,UnauthorizedRequestError } from "../../utils/errors";

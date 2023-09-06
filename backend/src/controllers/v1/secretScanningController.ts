@@ -5,7 +5,10 @@ import { Types } from "mongoose";
 import { UnauthorizedRequestError } from "../../utils/errors";
 import GitAppOrganizationInstallation from "../../ee/models/gitAppOrganizationInstallation";
 import { MembershipOrg } from "../../models";
+import { scanGithubFullRepoForSecretLeaks  } from "../../queues/secret-scanning/githubScanFullRepository"
+import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
 import GitRisks, { STATUS_RESOLVED_FALSE_POSITIVE, STATUS_RESOLVED_NOT_REVOKED, STATUS_RESOLVED_REVOKED } from "../../ee/models/gitRisks";
+import { ProbotOctokit } from "probot";
 
 export const createInstallationSession = async (req: Request, res: Response) => {
   const sessionId = crypto.randomBytes(16).toString("hex");
@@ -47,6 +50,18 @@ export const linkInstallationToOrganization = async (req: Request, res: Response
     upsert: true
   }).lean()
 
+  const octokit = new ProbotOctokit({
+    auth: {
+      appId: await getSecretScanningGitAppId(),
+      privateKey: await getSecretScanningPrivateKey(),
+      installationId: installationId.toString()
+    },
+  });
+
+  const { data: { repositories }}= await octokit.apps.listReposAccessibleToInstallation()
+  for (const repository of repositories) {
+    scanGithubFullRepoForSecretLeaks({organizationId: installationSession.organization.toString(), installationId, repository: {id: repository.id, fullName: repository.full_name}})
+  }
   res.json(installationLink)
 }
 

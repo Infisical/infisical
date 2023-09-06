@@ -25,9 +25,9 @@ router.post(
     location: "body",
   }),
   body("integrationAuthId").exists().isString().trim(),
-  body("app").trim(),
   body("isActive").exists().isBoolean(),
-  body("appId").trim(),
+  body("app").optional().isString().trim(),
+  body("appId").optional().isString().trim(),
   body("secretPath").default("/").isString().trim(),
   body("sourceEnvironment").trim(),
   body("targetEnvironment").trim(),
@@ -37,6 +37,8 @@ router.post(
   body("owner").trim(),
   body("path").trim(),
   body("region").trim(),
+  body("metadata").optional().isObject().withMessage("Metadata should be an object"),
+  body("metadata.secretSuffix").optional().isString().withMessage("Suffix should be a string"),
   validateRequest,
   integrationController.createIntegration
 );

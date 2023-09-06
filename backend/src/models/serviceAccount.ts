@@ -48,6 +48,4 @@ const serviceAccountSchema = new Schema<IServiceAccount>(
     }
 );
 
-const ServiceAccount = model<IServiceAccount>("ServiceAccount", serviceAccountSchema);
-
-export default ServiceAccount;
+export const ServiceAccount = model<IServiceAccount>("ServiceAccount", serviceAccountSchema);

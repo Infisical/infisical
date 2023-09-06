@@ -30,4 +30,7 @@ export type TIntegration = {
   createdAt: string;
   updatedAt: string;
   __v: number;
+  metadata?: {
+    secretSuffix?: string;
+  }
 };

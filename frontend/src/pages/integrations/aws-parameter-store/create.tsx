@@ -97,8 +97,6 @@ export default function AWSParameterStoreCreateIntegrationPage() {
       await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
-        app: null,
-        appId: null,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: null,
         targetEnvironmentId: null,

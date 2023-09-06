@@ -36,6 +36,4 @@ const apiKeyDataSchema = new Schema<IAPIKeyData>(
     }
 );
 
-const APIKeyData = model<IAPIKeyData>("APIKeyData", apiKeyDataSchema);
-
-export default APIKeyData;
+export const APIKeyData = model<IAPIKeyData>("APIKeyData", apiKeyDataSchema);

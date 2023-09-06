@@ -93,6 +93,4 @@ const botOrgSchema = new Schema<IBotOrg>(
 	}
 );
 
-const BotOrg = model<IBotOrg>("BotOrg", botOrgSchema);
-
-export default BotOrg;
+export const BotOrg = model<IBotOrg>("BotOrg", botOrgSchema);

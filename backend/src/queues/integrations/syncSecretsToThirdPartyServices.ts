@@ -1,6 +1,5 @@
 import Queue, { Job } from "bull";
-import Integration from "../../models/integration";
-import IntegrationAuth from "../../models/integrationAuth";
+import { Integration, IntegrationAuth } from "../../models";
 import { BotService } from "../../services";
 import { getIntegrationAuthAccessHelper } from "../../helpers";
 import { syncSecrets } from "../../integrations/sync"
@@ -23,7 +22,6 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
       }
       : {}),
     isActive: true,
-    app: { $ne: null }
   });
 
   // for each workspace integration, sync/push secrets
@@ -35,6 +33,14 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
       environment: integration.environment,
       secretPath: integration.secretPath
     });
+
+    const suffixedSecrets: any = {};
+    if (integration.metadata?.secretSuffix) {
+      for (const key in secrets) {
+        const newKey = key + integration.metadata?.secretSuffix;
+        suffixedSecrets[newKey] = secrets[key];
+      }      
+    }
 
     const integrationAuth = await IntegrationAuth.findById(integration.integrationAuth);
 
@@ -49,7 +55,7 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
     await syncSecrets({
       integration,
       integrationAuth,
-      secrets,
+      secrets: Object.keys(suffixedSecrets).length !== 0 ? suffixedSecrets : secrets,
       accessId: access.accessId === undefined ? null : access.accessId,
       accessToken: access.accessToken
     });

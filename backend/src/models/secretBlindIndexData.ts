@@ -53,6 +53,4 @@ const secretBlindIndexDataSchema = new Schema<ISecretBlindIndexData>(
     }
 );
 
-const SecretBlindIndexData = model<ISecretBlindIndexData>("SecretBlindIndexData", secretBlindIndexDataSchema);
-
-export default SecretBlindIndexData;
+export const SecretBlindIndexData = model<ISecretBlindIndexData>("SecretBlindIndexData", secretBlindIndexDataSchema);

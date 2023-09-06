@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import mongoose, { Types } from "mongoose";
-import Secret, { ISecret } from "../../models/secret";
 import {
   CreateSecretRequestBody,
   ModifySecretRequestBody,
@@ -20,7 +19,7 @@ import {
   SECRET_SHARED
 } from "../../variables";
 import { TelemetryService } from "../../services";
-import { User } from "../../models";
+import { ISecret, Secret, User } from "../../models";
 import { AccountNotFoundError } from "../../utils/errors";
 
 /**

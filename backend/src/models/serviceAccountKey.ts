@@ -39,6 +39,4 @@ const serviceAccountKeySchema = new Schema<IServiceAccountKey>(
     }
 );
 
-const ServiceAccountKey = model<IServiceAccountKey>("ServiceAccountKey", serviceAccountKeySchema);
-
-export default ServiceAccountKey;
+export const ServiceAccountKey = model<IServiceAccountKey>("ServiceAccountKey", serviceAccountKeySchema);

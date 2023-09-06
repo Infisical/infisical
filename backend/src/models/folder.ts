@@ -51,6 +51,4 @@ const folderRootSchema = new Schema<TFolderRootSchema>(
   }
 );
 
-const Folder = model<TFolderRootSchema>("Folder", folderRootSchema);
-
-export default Folder;
+export const Folder = model<TFolderRootSchema>("Folder", folderRootSchema);

@@ -26,7 +26,6 @@ export default function RenderCreateIntegrationPage() {
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "render",
-        accessId: null,
         accessToken: apiKey,
         url: null,
         namespace: null
