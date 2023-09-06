@@ -2,6 +2,7 @@ import { FC, useEffect, useState } from "react";
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 
 import {
+  Button,
   EmptyState,
   Table,
   TableContainer,
@@ -18,39 +19,177 @@ import { GitRisks, RiskStatus } from "@app/pages/api/secret-scanning/types";
 
 import { RiskStatusSelection } from "./RiskStatusSelection";
 
+enum RiskStatusFilter {
+  NeedsAttention = "Needs Attention",
+  Resolved = "Resolved",
+  All = "All",
+}
+
 export const SecretScanningLogsTable: FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [gitRisks, setGitRisks] = useState<GitRisks[]>([]);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [repositoryOptions, setRepositoryOptions] = useState<string[]>([]);
+  const [secretTypeOptions, setSecretTypeOptions] = useState<string[]>([]);
+  const [repositoryFilter, setRepositoryFilter] = useState<string>();
+  const [secretTypeFilter, setSecretTypeFilter] = useState<string>();
+  const [statusFilter, setStatusFilter] = useState<RiskStatusFilter>(RiskStatusFilter.All);
 
   useEffect(() => {
     const fetchRisks = async () => {
       setIsLoading(true);
       const risks = await getRisksByOrganization(String(localStorage.getItem("orgData.id")));
       setGitRisks(risks);
+
+      const repositoryNames = Array.from(new Set(risks.map((risk) => risk.repositoryFullName)));
+      const secretTypes = Array.from(new Set(risks.map((risk) => risk.ruleID)));
+
+      setRepositoryOptions(repositoryNames);
+      setSecretTypeOptions(secretTypes);
+
       setIsLoading(false);
     };
 
     fetchRisks();
   }, []);
 
+  const generateRiskStatusConfig = () => {
+    const config = {} as Record<RiskStatus, { filterCategory: RiskStatusFilter; label: RiskStatusFilter }>;
+    config[RiskStatus.UNRESOLVED] = { filterCategory: RiskStatusFilter.NeedsAttention, label: RiskStatusFilter.NeedsAttention };
+    [RiskStatus.RESOLVED_FALSE_POSITIVE, RiskStatus.RESOLVED_NOT_REVOKED, RiskStatus.RESOLVED_REVOKED].forEach(status => {
+      config[status] = { filterCategory: RiskStatusFilter.Resolved, label: RiskStatusFilter.Resolved };
+    });
+    return config;
+  };
+
+  const riskStatusConfig = generateRiskStatusConfig();
+
+  const filteredRisks = gitRisks.filter((risk) => {
+    const selectedFilterCategory = riskStatusConfig[risk.status]?.filterCategory;
+    
+    if (selectedFilterCategory && statusFilter !== RiskStatusFilter.All) {
+      if (selectedFilterCategory !== statusFilter) {
+        return false;
+      }
+    }
+
+    if (repositoryFilter && risk.repositoryFullName) {
+      if (!risk.repositoryFullName.includes(repositoryFilter)) {
+        return false;
+      }
+    }
+
+    if (secretTypeFilter && risk.ruleID) {
+      if (!risk.ruleID.includes(secretTypeFilter)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const handleClearFilters = () => {
+    setStatusFilter(RiskStatusFilter.All);
+    setRepositoryFilter("");
+    setSecretTypeFilter("");
+  };
+
+  const sortByDate = (a: GitRisks, b: GitRisks) => {
+    const dateA = new Date(a.createdAt).getTime();
+    const dateB = new Date(b.createdAt).getTime();
+
+    if (sortOrder === "asc") {
+      return dateA - dateB;
+    } 
+      return dateB - dateA;
+    
+  };
+
+  const toggleSortOrder = () => {
+    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+  };
+
   return (
-    <TableContainer className="mt-8">
+    <>
+      <div className="mb-4">
+        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+        <label htmlFor="riskStatusSelect">Risk Status</label>
+        <select
+          id="riskStatusSelect"
+          onChange={(e) => setStatusFilter(e.target.value as RiskStatusFilter)}
+          value={statusFilter}
+          aria-labelledby="riskStatusSelect"
+        >
+          {Object.values(RiskStatusFilter).map((filterOption) => (
+            <option key={filterOption} value={filterOption}>
+              {filterOption}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="mb-4">
+        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+        <label htmlFor="sourceSelect">Source (Repository)</label>
+        <select
+          id="sourceSelect"
+          onChange={(e) => setRepositoryFilter(e.target.value)}
+          value={repositoryFilter}
+          aria-labelledby="sourceSelect"
+        >
+          <option value="">All</option>
+          {repositoryOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="mb-4">
+        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+        <label htmlFor="secretTypeSelect">Secret Type</label>
+        <select
+          id="secretTypeSelect"
+          onChange={(e) => setSecretTypeFilter(e.target.value)}
+          value={secretTypeFilter}
+          aria-labelledby="secretTypeSelect"
+        >
+          <option value="">All</option>
+          {secretTypeOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="mb-4">
+        <Button type="button" onClick={handleClearFilters}>
+          Clear filters
+        </Button>
+      </div>
+      <TableContainer className="mt-8">
         <Table>
           <THead>
             <Tr>
-              <Th className="flex-1">Date</Th>
+              <Th className="flex-1" onClick={toggleSortOrder}>
+                Date {sortOrder === "asc" ? "↑" : "↓"}
+              </Th>
               <Th className="flex-1">Secret Type</Th>
               <Th className="flex-1">View Risk</Th>
               <Th className="flex-1">Info</Th>
               <Th className="flex-1">Status</Th>
+              <Th className="flex-1">Action</Th>
             </Tr>
           </THead>
           <TBody>
             {!isLoading &&
-              gitRisks &&
-              gitRisks.map((risk) => {
+              filteredRisks &&
+              filteredRisks
+                .slice()
+                .sort(sortByDate)
+                .map((risk) => {
+                const riskStatusInfo = riskStatusConfig[risk.status] || {};
                 return (
-                  <Tr key={risk.ruleID} className="h-10">
+                  <Tr key={risk._id} className="h-10">
                     <Td>{timeSince(new Date(risk.createdAt))}</Td>
                     <Td>{risk.ruleID}</Td>
                     <Td>
@@ -78,7 +217,9 @@ export const SecretScanningLogsTable: FC = () => {
                         <span>{risk.email}</span>
                       </div>
                     </Td>
-                    <Td>{risk.status === RiskStatus.UNRESOLVED ? "Needs Attention" : "Resolved"}</Td>
+                    <Td>
+                      {riskStatusInfo.label}
+                    </Td>
                     <Td>
                       <RiskStatusSelection
                         riskId={risk._id}
@@ -89,7 +230,7 @@ export const SecretScanningLogsTable: FC = () => {
                 );
               })}
             {isLoading && <TableSkeleton columns={7} innerKey="gitRisks" />}
-            {!isLoading && gitRisks && gitRisks.length === 0 && (
+            {!isLoading && filteredRisks && filteredRisks?.length === 0 && (
               <Tr>
                 <Td colSpan={7}>
                   <EmptyState title="No risks detected." icon={faCheck} />
@@ -99,5 +240,6 @@ export const SecretScanningLogsTable: FC = () => {
           </TBody>
         </Table>
       </TableContainer>
+    </>
   );
 };

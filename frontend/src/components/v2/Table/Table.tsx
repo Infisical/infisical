@@ -94,14 +94,16 @@ export const Tr = ({
 export type ThProps = {
   children?: ReactNode;
   className?: string;
+  onClick?: () => void;
 };
 
-export const Th = ({ children, className }: ThProps): JSX.Element => (
+export const Th = ({ children, className, onClick }: ThProps): JSX.Element => (
   <th
     className={twMerge(
       "border-b-2 border-mineshaft-600 bg-mineshaft-800 px-5 pt-4 pb-3.5 font-semibold",
       className
     )}
+    onClick={onClick}
   >
     {children}
   </th>
