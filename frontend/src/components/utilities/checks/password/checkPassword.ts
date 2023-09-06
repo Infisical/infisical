@@ -1,5 +1,9 @@
+import debounce from "lodash/debounce";
+
 import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
 import { escapeCharRegex, letterCharRegex, lowEntropyRegexes,numAndSpecialCharRegex, repeatedCharRegex } from "./passwordRegexes";
+
+const debouncedCheckIsPasswordBreached = debounce(checkIsPasswordBreached, 500);
 
 type Errors = {
   tooShort?: string;
@@ -79,8 +83,8 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
       errorText: "Password contains personal info.",
     },
   ];
-
-  const isBreached = await checkIsPasswordBreached(password);
+  
+  const isBreached = await debouncedCheckIsPasswordBreached(password);
 
   if (isBreached) {
     errors.breached = "Password was found in a data breach.";

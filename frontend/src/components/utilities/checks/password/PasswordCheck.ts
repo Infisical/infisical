@@ -1,5 +1,9 @@
+import debounce from "lodash/debounce";
+
 import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
 import { escapeCharRegex, letterCharRegex, lowEntropyRegexes,numAndSpecialCharRegex, repeatedCharRegex } from "./passwordRegexes";
+
+const debouncedCheckIsPasswordBreached = debounce(checkIsPasswordBreached, 500);
 
 interface PasswordCheckProps {
   password: string;
@@ -65,7 +69,7 @@ const passwordCheck = async ({
     },
   ];
 
-  const isBreached = await checkIsPasswordBreached(password);
+  const isBreached = await debouncedCheckIsPasswordBreached(password);
 
   if (isBreached) {
     errorCheck = true;
