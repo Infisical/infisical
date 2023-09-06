@@ -1,6 +1,7 @@
 import { FC, useEffect, useState } from "react";
 
-import { RiskStatus, updateRiskStatus } from "@app/pages/api/secret-scanning/updateRiskStatus";
+import { RiskStatus } from "@app/pages/api/secret-scanning/types";
+import { updateRiskStatus } from "@app/pages/api/secret-scanning/updateRiskStatus";
 
 interface RiskStatusSelectionProps {
   riskId: string;

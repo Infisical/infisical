@@ -1,11 +1,6 @@
 import SecurityClient from "@app/components/utilities/SecurityClient";
 
-export enum RiskStatus {
-  RESOLVED_FALSE_POSITIVE = "RESOLVED_FALSE_POSITIVE",
-  RESOLVED_REVOKED = "RESOLVED_REVOKED",
-  RESOLVED_NOT_REVOKED = "RESOLVED_NOT_REVOKED",
-  UNRESOLVED = "UNRESOLVED",
-}
+import { RiskStatus } from "./types";
 
 /**
  * Will create a new integration session and return it for the given org
