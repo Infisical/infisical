@@ -71,7 +71,6 @@ export default function GitHubCreateIntegrationPage() {
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: targetApp.name,
-        appId: null,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: null,
         targetEnvironmentId: null,
