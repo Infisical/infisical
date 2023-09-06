@@ -1,9 +1,11 @@
 import { Schema, model } from "mongoose";
 
-export const STATUS_RESOLVED_FALSE_POSITIVE = "RESOLVED_FALSE_POSITIVE";
-export const STATUS_RESOLVED_REVOKED = "RESOLVED_REVOKED";
-export const STATUS_RESOLVED_NOT_REVOKED = "RESOLVED_NOT_REVOKED";
-export const STATUS_UNRESOLVED = "UNRESOLVED";
+export enum RiskStatus {
+  RESOLVED_FALSE_POSITIVE = "RESOLVED_FALSE_POSITIVE",
+  RESOLVED_REVOKED = "RESOLVED_REVOKED",
+  RESOLVED_NOT_REVOKED = "RESOLVED_NOT_REVOKED",
+  UNRESOLVED = "UNRESOLVED",
+}
 
 export type GitRisks = {
   id: string;
@@ -26,15 +28,12 @@ export type GitRisks = {
   ruleID: string;
   fingerprint: string;
   fingerPrintWithoutCommitId: string
-
-  isFalsePositive: boolean; // New field for marking risks as false positives
-  isResolved: boolean; // New field for marking risks as resolved
   riskOwner: string | null; // New field for setting a risk owner (nullable string)
   installationId: string,
   repositoryId: string,
   repositoryLink: string
   repositoryFullName: string
-  status: string
+  status: RiskStatus
   pusher: {
     name: string,
     email: string
@@ -98,14 +97,6 @@ const gitRisks = new Schema<GitRisks>({
   fingerPrintWithoutCommitId: {
     type: String,
   },
-  isFalsePositive: {
-    type: Boolean,
-    default: false
-  },
-  isResolved: {
-    type: Boolean,
-    default: false
-  },
   riskOwner: {
     type: String,
     default: null
@@ -137,13 +128,7 @@ const gitRisks = new Schema<GitRisks>({
   },
   status: {
     type: String,
-    enum: [
-      STATUS_RESOLVED_FALSE_POSITIVE,
-      STATUS_RESOLVED_REVOKED,
-      STATUS_RESOLVED_NOT_REVOKED,
-      STATUS_UNRESOLVED
-    ],
-    default: STATUS_UNRESOLVED
+    default: RiskStatus.UNRESOLVED,
   }
 }, { timestamps: true });
 

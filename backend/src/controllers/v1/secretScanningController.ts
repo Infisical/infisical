@@ -7,7 +7,7 @@ import GitAppOrganizationInstallation from "../../ee/models/gitAppOrganizationIn
 import { MembershipOrg } from "../../models";
 import { scanGithubFullRepoForSecretLeaks  } from "../../queues/secret-scanning/githubScanFullRepository"
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
-import GitRisks, { STATUS_RESOLVED_FALSE_POSITIVE, STATUS_RESOLVED_NOT_REVOKED, STATUS_RESOLVED_REVOKED } from "../../ee/models/gitRisks";
+import GitRisks, { RiskStatus } from "../../ee/models/gitRisks";
 import { ProbotOctokit } from "probot";
 
 export const createInstallationSession = async (req: Request, res: Response) => {
@@ -96,7 +96,7 @@ export const getRisksForOrganization = async (req: Request, res: Response) => {
 export const updateRisksStatus = async (req: Request, res: Response) => {
   const { riskId } = req.params
   const { status } = req.body
-  const isRiskResolved = status == STATUS_RESOLVED_FALSE_POSITIVE || status == STATUS_RESOLVED_REVOKED || status == STATUS_RESOLVED_NOT_REVOKED ? true : false
+  const isRiskResolved = status !== RiskStatus.UNRESOLVED ? true : false
   const risk = await GitRisks.findByIdAndUpdate(riskId, {
     status: status,
     isResolved: isRiskResolved
