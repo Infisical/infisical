@@ -48,6 +48,7 @@ router.post(
 	body("workspaceId").exists().trim().notEmpty(),
 	body("code").exists().trim().notEmpty(),
 	body("integration").exists().trim().notEmpty(),
+	body("url").optional().isString().trim(),
 	validateRequest,
 	integrationAuthController.oAuthExchange
 );

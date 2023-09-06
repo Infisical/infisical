@@ -14,18 +14,20 @@ export default function GitLabAuthorizeIntegrationPage() {
     const [gitLabURL, setGitLabURL] = useState("");
   
     const handleIntegrateWithOAuth = () => {
-        if (!cloudIntegrations) return;
-        const integrationOption = cloudIntegrations.find((integration) => integration.slug === "gitlab");
-        
-        if (!integrationOption) return;
-        
-        const baseURL = gitLabURL.trim() === "" ? "https://gitlab.com" : gitLabURL.trim();
-        
-        const csrfToken = crypto.randomBytes(16).toString("hex");
-        localStorage.setItem("latestCSRFToken", csrfToken);
-        
-        const link = `${baseURL}/oauth/authorize?client_id=${integrationOption.clientId}&redirect_uri=${window.location.origin}/integrations/gitlab/oauth2/callback&response_type=code&state=${state}`;
-        window.location.assign(link);
+      if (!cloudIntegrations) return;
+      const integrationOption = cloudIntegrations.find((integration) => integration.slug === "gitlab");
+      
+      if (!integrationOption) return;
+      
+      const baseURL = gitLabURL.trim() === "" ? "https://gitlab.com" : gitLabURL.trim();
+      
+      const csrfToken = crypto.randomBytes(16).toString("hex");
+      localStorage.setItem("latestCSRFToken", csrfToken);
+      
+      const state = `${csrfToken}|${gitLabURL.trim() === "" ? "" : gitLabURL.trim()}`;
+      const link = `${baseURL}/oauth/authorize?client_id=${integrationOption.clientId}&redirect_uri=${window.location.origin}/integrations/gitlab/oauth2/callback&response_type=code&state=${state}`;
+      
+      window.location.assign(link);
     }
 
   return (
