@@ -156,6 +156,7 @@ const syncSecrets = async ({
       break;
     case INTEGRATION_GITLAB:
       await syncSecretsGitLab({
+        integrationAuth,
         integration,
         secrets,
         accessToken
@@ -1813,10 +1814,12 @@ const syncSecretsTravisCI = async ({
  * @param {String} obj.accessToken - access token for GitLab integration
  */
 const syncSecretsGitLab = async ({
+  integrationAuth,
   integration,
   secrets,
   accessToken
 }: {
+  integrationAuth: IIntegrationAuth;
   integration: IIntegration;
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
@@ -1826,9 +1829,10 @@ const syncSecretsGitLab = async ({
     value: string;
     environment_scope: string;
   }
+  
+  const gitLabApiUrl = integrationAuth.url ? `${integrationAuth.url}/api` : INTEGRATION_GITLAB_API_URL;
 
   const getAllEnvVariables = async (integrationAppId: string, accessToken: string) => {
-    const gitLabApiUrl = `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integrationAppId}/variables`;
     const headers = {
       Authorization: `Bearer ${accessToken}`,
       "Accept-Encoding": "application/json",
@@ -1836,7 +1840,7 @@ const syncSecretsGitLab = async ({
     };
 
     let allEnvVariables: GitLabSecret[] = [];
-    let url: string | null = `${gitLabApiUrl}?per_page=100`;
+    let url: string | null = `${gitLabApiUrl}/v4/projects/${integrationAppId}/variables?per_page=100`;
 
     while (url) {
       const response: any = await standardRequest.get(url, { headers });
@@ -1864,7 +1868,7 @@ const syncSecretsGitLab = async ({
     const existingSecret = getSecretsRes.find((s: any) => s.key == key);
     if (!existingSecret) {
       await standardRequest.post(
-        `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables`,
+        `${gitLabApiUrl}/v4/projects/${integration?.appId}/variables`,
         {
           key: key,
           value: secrets[key].value,
@@ -1885,7 +1889,7 @@ const syncSecretsGitLab = async ({
       // update secret
       if (secrets[key].value !== existingSecret.value) {
         await standardRequest.put(
-          `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${existingSecret.key}?filter[environment_scope]=${integration.targetEnvironment}`,
+          `${gitLabApiUrl}/v4/projects/${integration?.appId}/variables/${existingSecret.key}?filter[environment_scope]=${integration.targetEnvironment}`,
           {
             ...existingSecret,
             value: secrets[existingSecret.key].value
@@ -1906,7 +1910,7 @@ const syncSecretsGitLab = async ({
   for await (const sec of getSecretsRes) {
     if (!(sec.key in secrets)) {
       await standardRequest.delete(
-        `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${sec.key}?filter[environment_scope]=${integration.targetEnvironment}`,
+        `${gitLabApiUrl}/v4/projects/${integration?.appId}/variables/${sec.key}?filter[environment_scope]=${integration.targetEnvironment}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`
