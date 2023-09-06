@@ -70,7 +70,7 @@ export const SecretEditRow = ({
   })
 
   const handleFormReset = () => {
-    reset();
+    reset({keepDirtyValues: false});
   };
 
   const handleCopySecretToClipboard = async () => {
