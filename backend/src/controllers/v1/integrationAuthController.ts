@@ -10,11 +10,11 @@ import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
   INTEGRATION_BITBUCKET_API_URL,
+  INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_NORTHFLANK_API_URL,
   INTEGRATION_RAILWAY_API_URL,
   INTEGRATION_SET,
   INTEGRATION_VERCEL_API_URL,
-  INTEGRATION_GCP_SECRET_MANAGER,
   getIntegrationOptions as getIntegrationOptionsFunc
 } from "../../variables";
 import { exchangeRefresh } from "../../integrations";
@@ -51,7 +51,12 @@ export const getIntegrationOptions = async (req: Request, res: Response) => {
  * @returns
  */
 export const oAuthExchange = async (req: Request, res: Response) => {
-  const { workspaceId, code, integration } = req.body;
+  const { 
+    workspaceId, 
+    code, 
+    integration,
+    url
+  } = req.body;
   if (!INTEGRATION_SET.has(integration)) throw new Error("Failed to validate integration");
 
   const environments = req.membership.workspace?.environments || [];
@@ -63,7 +68,8 @@ export const oAuthExchange = async (req: Request, res: Response) => {
     workspaceId,
     integration,
     code,
-    environment: environments[0].slug
+    environment: environments[0].slug,
+    url
   });
 
   await EEAuditLogService.createAuditLog(

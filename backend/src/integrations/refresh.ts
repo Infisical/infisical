@@ -5,11 +5,11 @@ import {
   INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_BITBUCKET,
   INTEGRATION_BITBUCKET_TOKEN_URL,
-  INTEGRATION_GITLAB,
-  INTEGRATION_HEROKU,
+  INTEGRATION_GCP_CLOUD_PLATFORM_SCOPE,
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_GCP_TOKEN_URL,
-  INTEGRATION_GCP_CLOUD_PLATFORM_SCOPE
+  INTEGRATION_GITLAB,
+  INTEGRATION_HEROKU
 } from "../variables";
 import {
   INTEGRATION_AZURE_TOKEN_URL,
@@ -20,13 +20,13 @@ import { IntegrationService } from "../services";
 import {
   getClientIdAzure,
   getClientIdBitBucket,
+  getClientIdGCPSecretManager,
   getClientIdGitLab,
   getClientSecretAzure,
   getClientSecretBitBucket,
+  getClientSecretGCPSecretManager,
   getClientSecretGitLab,
   getClientSecretHeroku,
-  getClientIdGCPSecretManager,
-  getClientSecretGCPSecretManager,
   getSiteURL,
 } from "../config";
 
@@ -112,6 +112,7 @@ const exchangeRefresh = async ({
       break;
     case INTEGRATION_GITLAB:
       tokenDetails = await exchangeRefreshGitLab({
+        integrationAuth,
         refreshToken,
       });
       break;
@@ -226,17 +227,21 @@ const exchangeRefreshHeroku = async ({
  * @returns
  */
 const exchangeRefreshGitLab = async ({
+  integrationAuth,
   refreshToken,
 }: {
+  integrationAuth: IIntegrationAuth;
   refreshToken: string;
 }) => {
   const accessExpiresAt = new Date();
+  const url = integrationAuth.url;
+  
   const {
     data,
   }: {
     data: RefreshTokenGitLabResponse;
   } = await standardRequest.post(
-    INTEGRATION_GITLAB_TOKEN_URL,
+    url ? `${url}/oauth/token` : INTEGRATION_GITLAB_TOKEN_URL,
     new URLSearchParams({
       grant_type: "refresh_token",
       refresh_token: refreshToken,
@@ -329,17 +334,17 @@ const exchangeRefreshGCPSecretManager = async ({
       exp: Math.floor(Date.now() / 1000) + 3600,
     };
 
-    const token = jwt.sign(payload, serviceAccount.private_key, { algorithm: 'RS256' });
+    const token = jwt.sign(payload, serviceAccount.private_key, { algorithm: "RS256" });
     
     const { data }: { data: ServiceAccountAccessTokenGCPSecretManagerResponse } = await standardRequest.post(
       INTEGRATION_GCP_TOKEN_URL, 
       new URLSearchParams({
-        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
         assertion: token
       }).toString(), 
       {
         headers: { 
-          'Content-Type': 'application/x-www-form-urlencoded' 
+          "Content-Type": "application/x-www-form-urlencoded" 
         }
       }
     );
