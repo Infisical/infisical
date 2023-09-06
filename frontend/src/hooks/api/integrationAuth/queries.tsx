@@ -367,16 +367,19 @@ export const useAuthorizeIntegration = () => {
     mutationFn: async ({
       workspaceId,
       code,
-      integration
+      integration,
+      url
     }: {
       workspaceId: string;
       code: string;
       integration: string;
+      url?: string;
     }) => {
       const { data: { integrationAuth } } = await apiRequest.post("/api/v1/integration-auth/oauth-token", {
         workspaceId,
         code,
-        integration
+        integration,
+        url
       });
 
       return integrationAuth;

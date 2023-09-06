@@ -118,9 +118,11 @@ interface ExchangeCodeBitBucketResponse {
 const exchangeCode = async ({
   integration,
   code,
+  url
 }: {
   integration: string;
   code: string;
+  url?: string;
 }) => {
   let obj = {} as any;
 
@@ -158,6 +160,7 @@ const exchangeCode = async ({
     case INTEGRATION_GITLAB:
       obj = await exchangeCodeGitlab({
         code,
+        url
       });
       break;
     case INTEGRATION_BITBUCKET:
@@ -388,11 +391,17 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
  * @returns {String} obj2.refreshToken - refresh token for Gitlab API
  * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
  */
-const exchangeCodeGitlab = async ({ code }: { code: string }) => {
+const exchangeCodeGitlab = async ({ 
+  code,
+  url
+}: { 
+  code: string,
+  url?: string;
+}) => {
   const accessExpiresAt = new Date();
   const res: ExchangeCodeGitlabResponse = (
     await standardRequest.post(
-      INTEGRATION_GITLAB_TOKEN_URL,
+      url ? `${url}/oauth/token` : INTEGRATION_GITLAB_TOKEN_URL,
       new URLSearchParams({
         grant_type: "authorization_code",
         code: code,
