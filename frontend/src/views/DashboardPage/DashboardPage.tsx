@@ -1138,7 +1138,6 @@ export const DashboardPage = withProjectPermission(
                 onEnvCompare={(key) => handlePopUpOpen("compareSecrets", key)}
               />
             </FormProvider>
-
             <SecretDropzone
               workspaceId={workspaceId}
               isSmaller={!isEmptyPage}

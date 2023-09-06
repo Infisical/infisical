@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -16,10 +17,9 @@ import {
   Td,
   Th,
   THead,
-  Tooltip,
   Tr
 } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteRole } from "@app/hooks/api";
 import { TRole } from "@app/hooks/api/roles/types";
@@ -65,9 +65,17 @@ export const OrgRoleTable = ({ isRolesLoading, roles = [], onSelectRole }: Props
             placeholder="Search roles..."
           />
         </div>
-        <Button leftIcon={<FontAwesomeIcon icon={faPlus} />} onClick={() => onSelectRole()}>
-          Add Role
-        </Button>
+        <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
+          {(isAllowed) => (
+            <Button
+              isDisabled={!isAllowed}
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() => onSelectRole()}
+            >
+              Add Role
+            </Button>
+          )}
+        </OrgPermissionCan>
       </div>
       <div>
         <TableContainer>
@@ -95,27 +103,42 @@ export const OrgRoleTable = ({ isRolesLoading, roles = [], onSelectRole }: Props
                     </Td>
                     <Td>
                       <div className="flex space-x-2 items-center">
-                        <Tooltip content="Edit">
-                          <IconButton
-                            ariaLabel="edit"
-                            onClick={() => onSelectRole(role)}
-                            variant="plain"
-                          >
-                            <FontAwesomeIcon icon={faEdit} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip
-                          content={isNonMutatable ? "Reserved roles are non-removable" : "Delete"}
+                        <OrgPermissionCan
+                          I={OrgPermissionActions.Edit}
+                          a={OrgPermissionSubjects.Role}
+                          renderTooltip
+                          allowedLabel="Edit"
                         >
-                          <IconButton
-                            ariaLabel="delete"
-                            onClick={() => handlePopUpOpen("deleteRole", role)}
-                            variant="plain"
-                            isDisabled={isNonMutatable}
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </IconButton>
-                        </Tooltip>
+                          {(isAllowed) => (
+                            <IconButton
+                              isDisabled={!isAllowed}
+                              ariaLabel="edit"
+                              onClick={() => onSelectRole(role)}
+                              variant="plain"
+                            >
+                              <FontAwesomeIcon icon={faEdit} />
+                            </IconButton>
+                          )}
+                        </OrgPermissionCan>
+                        <OrgPermissionCan
+                          I={OrgPermissionActions.Delete}
+                          a={OrgPermissionSubjects.Role}
+                          renderTooltip
+                          allowedLabel={
+                            isNonMutatable ? "Reserved roles are non-removable" : "Delete"
+                          }
+                        >
+                          {(isAllowed) => (
+                            <IconButton
+                              ariaLabel="delete"
+                              onClick={() => handlePopUpOpen("deleteRole", role)}
+                              variant="plain"
+                              isDisabled={isNonMutatable || !isAllowed}
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </IconButton>
+                          )}
+                        </OrgPermissionCan>
                       </div>
                     </Td>
                   </Tr>

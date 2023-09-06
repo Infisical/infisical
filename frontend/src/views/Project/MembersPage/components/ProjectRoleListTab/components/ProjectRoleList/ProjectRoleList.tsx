@@ -17,7 +17,6 @@ import {
   Td,
   Th,
   THead,
-  Tooltip,
   Tr
 } from "@app/components/v2";
 import {
@@ -116,43 +115,37 @@ export const ProjectRoleList = ({ isRolesLoading, roles = [], onSelectRole }: Pr
                         <ProjectPermissionCan
                           I={ProjectPermissionActions.Edit}
                           a={ProjectPermissionSub.Role}
+                          renderTooltip
+                          allowedLabel="Edit"
                         >
                           {(isAllowed) => (
-                            <div>
-                              <Tooltip content="Edit">
-                                <IconButton
-                                  isDisabled={!isAllowed}
-                                  ariaLabel="edit"
-                                  onClick={() => onSelectRole(role)}
-                                  variant="plain"
-                                >
-                                  <FontAwesomeIcon icon={faEdit} />
-                                </IconButton>
-                              </Tooltip>
-                            </div>
+                            <IconButton
+                              isDisabled={!isAllowed}
+                              ariaLabel="edit"
+                              onClick={() => onSelectRole(role)}
+                              variant="plain"
+                            >
+                              <FontAwesomeIcon icon={faEdit} />
+                            </IconButton>
                           )}
                         </ProjectPermissionCan>
                         <ProjectPermissionCan
                           I={ProjectPermissionActions.Delete}
                           a={ProjectPermissionSub.Role}
+                          renderTooltip
+                          allowedLabel={
+                            isNonMutatable ? "Reserved roles are non-removable" : "Delete"
+                          }
                         >
                           {(isAllowed) => (
-                            <div>
-                              <Tooltip
-                                content={
-                                  isNonMutatable ? "Reserved roles are non-removable" : "Delete"
-                                }
-                              >
-                                <IconButton
-                                  ariaLabel="delete"
-                                  onClick={() => handlePopUpOpen("deleteRole", role)}
-                                  variant="plain"
-                                  isDisabled={isNonMutatable || !isAllowed}
-                                >
-                                  <FontAwesomeIcon icon={faTrash} />
-                                </IconButton>
-                              </Tooltip>
-                            </div>
+                            <IconButton
+                              ariaLabel="delete"
+                              onClick={() => handlePopUpOpen("deleteRole", role)}
+                              variant="plain"
+                              isDisabled={isNonMutatable || !isAllowed}
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </IconButton>
                           )}
                         </ProjectPermissionCan>
                       </div>

@@ -191,7 +191,15 @@ export const createWorkspace = async (req: Request, res: Response) => {
  * @returns
  */
 export const deleteWorkspace = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
+  const {
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.DeleteWorkspaceV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.Workspace
+  );
 
   // delete workspace
   await deleteWork({
@@ -246,7 +254,14 @@ export const changeWorkspaceName = async (req: Request, res: Response) => {
  * @returns
  */
 export const getWorkspaceIntegrations = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
+  const {
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.GetWorkspaceIntegrationsV1, req);
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
 
   const integrations = await Integration.find({
     workspace: workspaceId

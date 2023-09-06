@@ -20,7 +20,7 @@ const SettingsBilling = withPermission<{}, TOrgPermission>(
       </div>
     );
   },
-  { action: OrgPermissionActions.Delete, subject: OrgPermissionSubjects.Billing }
+  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Billing }
 );
 
 Object.assign(SettingsBilling, { requireAuth: true });

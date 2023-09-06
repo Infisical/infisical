@@ -86,7 +86,9 @@ export const WorkspacePermission = ({ isNonEditable, setValue, control }: Props)
         </div>
         <div className="flex-grow flex flex-col">
           <div className="font-medium mb-1 text-lg">Project</div>
-          <div className="text-xs font-light">Project management control</div>
+          <div className="text-xs font-light">
+            More fine granined project access control can be defined with project level roles
+          </div>
         </div>
         <div>
           <Select

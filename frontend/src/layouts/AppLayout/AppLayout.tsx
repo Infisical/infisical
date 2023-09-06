@@ -31,6 +31,7 @@ import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { OrgPermissionCan } from "@app/components/permissions";
 import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
 import { tempLocalStorage } from "@app/components/utilities/checks/tempLocalStorage";
 import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
@@ -50,7 +51,14 @@ import {
   SelectItem,
   UpgradePlanModal
 } from "@app/components/v2";
-import { useOrganization, useSubscription, useUser, useWorkspace } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription,
+  useUser,
+  useWorkspace
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   fetchOrgUsers,
@@ -395,22 +403,30 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         </div>
                         <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />
                         <div className="w-full">
-                          <Button
-                            className="w-full bg-mineshaft-700 py-2 text-bunker-200"
-                            colorSchema="primary"
-                            variant="outline_bg"
-                            size="sm"
-                            onClick={() => {
-                              if (isAddingProjectsAllowed) {
-                                handlePopUpOpen("addNewWs");
-                              } else {
-                                handlePopUpOpen("upgradePlan");
-                              }
-                            }}
-                            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                          <OrgPermissionCan
+                            I={OrgPermissionActions.Create}
+                            a={OrgPermissionSubjects.Workspace}
                           >
-                            Add Project
-                          </Button>
+                            {(isAllowed) => (
+                              <Button
+                                className="w-full bg-mineshaft-700 py-2 text-bunker-200"
+                                colorSchema="primary"
+                                variant="outline_bg"
+                                size="sm"
+                                isDisabled={!isAllowed}
+                                onClick={() => {
+                                  if (isAddingProjectsAllowed) {
+                                    handlePopUpOpen("addNewWs");
+                                  } else {
+                                    handlePopUpOpen("upgradePlan");
+                                  }
+                                }}
+                                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                              >
+                                Add Project
+                              </Button>
+                            )}
+                          </OrgPermissionCan>
                         </div>
                       </Select>
                     </div>

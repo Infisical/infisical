@@ -7,12 +7,18 @@ import { Tooltip } from "../v2";
 
 type Props = {
   label?: ReactNode;
+  // this prop is used when there exist already a tooltip as helper text for users
+  // so when permission is allowed same tooltip will be reused  to show helpertext
+  renderTooltip?: boolean;
+  allowedLabel?: string;
 } & BoundCanProps<TProjectPermission>;
 
 export const ProjectPermissionCan: FunctionComponent<Props> = ({
   label = "Permission Denied. Kindly contact your project admin",
   children,
   passThrough = true,
+  renderTooltip,
+  allowedLabel,
   ...props
 }) => {
   const permission = useProjectPermission();
@@ -28,6 +34,10 @@ export const ProjectPermissionCan: FunctionComponent<Props> = ({
 
         if (!isAllowed && passThrough) {
           return <Tooltip content={label}>{finalChild}</Tooltip>;
+        }
+
+        if (isAllowed && renderTooltip) {
+          return <Tooltip content={allowedLabel}>{finalChild}</Tooltip>;
         }
 
         if (!isAllowed) return null;

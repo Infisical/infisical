@@ -11,7 +11,7 @@ import { useToggle } from "@app/hooks";
 import { TFormSchema } from "./OrgRoleModifySection.utils";
 
 type Props = {
-  formName: keyof Omit<TFormSchema["permissions"], "workspace">;
+  formName: keyof Omit<Exclude<TFormSchema["permissions"], undefined>, "workspace">;
   isNonEditable?: boolean;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;
@@ -33,6 +33,31 @@ const PERMISSIONS = [
   { action: "edit", label: "Modify" },
   { action: "delete", label: "Remove" }
 ] as const;
+
+const SECRET_SCANNING_PERMISSIONS = [
+  { action: "read", label: "View risks" },
+  { action: "create", label: "Add integrations" },
+  { action: "edit", label: "Edit risk status" },
+  { action: "delete", label: "Remove integrations" }
+] as const;
+
+const BILLING_PERMISSIONS = [
+  { action: "read", label: "View bills" },
+  { action: "create", label: "Add payment methods" },
+  { action: "edit", label: "Edit payments" },
+  { action: "delete", label: "Remove payments" }
+] as const;
+
+const getPermissionList = (option: Props["formName"]) => {
+  switch (option) {
+    case "secret-scanning":
+      return SECRET_SCANNING_PERMISSIONS;
+    case "billing":
+      return BILLING_PERMISSIONS;
+    default:
+      return PERMISSIONS;
+  }
+};
 
 export const SimpleLevelPermissionOption = ({
   isNonEditable,
@@ -138,7 +163,7 @@ export const SimpleLevelPermissionOption = ({
         className="overflow-hidden grid gap-8 grid-flow-col auto-cols-min"
       >
         {isCustom &&
-          PERMISSIONS.map(({ action, label }) => (
+          getPermissionList(formName).map(({ action, label }) => (
             <Controller
               name={`permissions.${formName}.${action}`}
               key={`permissions.${formName}.${action}`}

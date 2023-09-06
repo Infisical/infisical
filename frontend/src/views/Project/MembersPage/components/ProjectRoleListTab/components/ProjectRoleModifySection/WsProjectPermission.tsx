@@ -23,8 +23,8 @@ enum Permission {
 }
 
 const PERMISSIONS = [
-  { action: "edit", label: "Update" },
-  { action: "delete", label: "Remove" }
+  { action: "edit", label: "Update workspace details" },
+  { action: "delete", label: "Delete workspace" }
 ] as const;
 
 export const WsProjectPermission = ({ isNonEditable, setValue, control }: Props) => {
@@ -80,8 +80,8 @@ export const WsProjectPermission = ({ isNonEditable, setValue, control }: Props)
           <FontAwesomeIcon icon={faPuzzlePiece} className="text-4xl" />
         </div>
         <div className="flex-grow flex flex-col">
-          <div className="font-medium mb-1 text-lg">Workspace</div>
-          <div className="text-xs font-light">Workspace control actions</div>
+          <div className="font-medium mb-1 text-lg">Project</div>
+          <div className="text-xs font-light">Project control actions</div>
         </div>
         <div>
           <Select

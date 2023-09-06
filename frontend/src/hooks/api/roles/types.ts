@@ -15,40 +15,16 @@ export type TRole<T extends string | undefined> = {
   updatedAt: string;
 };
 
-export type TPermission = TWorkspacePermission | TGeneralPermission;
-
-type TGeneralPermission = {
+export type TPermission = {
   conditions?: Record<string, any>;
-  action: "read" | "edit" | "create" | "delete";
-  subject: "member" | "role" | "incident-contact" | "sso" | "billing" | "settings";
+  action: string;
+  subject: string;
 };
 
-type TWorkspacePermission = {
+export type TProjectPermission = {
   conditions?: Record<string, any>;
-  action: "read" | "create";
-  subject: "workspace";
-};
-
-export type TProjectPermission = TProjectGeneralPermission | TProjectWorkspacePermission;
-
-type TProjectGeneralPermission = {
-  conditions?: Record<string, any>;
-  action: "read" | "edit" | "create" | "delete";
-  subject:
-    | "member"
-    | "role"
-    | "settings"
-    | "secrets"
-    | "environments"
-    | "folders"
-    | "secret-imports"
-    | "service-tokens";
-};
-
-type TProjectWorkspacePermission = {
-  conditions?: Record<string, any>;
-  action: "delete" | "edit";
-  subject: "workspace";
+  action: string;
+  subject: string;
 };
 
 export type TCreateRoleDTO<T extends string | undefined> = {

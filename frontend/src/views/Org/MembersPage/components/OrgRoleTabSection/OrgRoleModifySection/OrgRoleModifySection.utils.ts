@@ -16,37 +16,37 @@ export const formSchema = z.object({
   name: z.string().trim(),
   description: z.string().trim().optional(),
   slug: z.string().trim(),
-  permissions: z.object({
-    workspace: z
-      .object({
-        read: z.boolean().optional(),
-        create: z.boolean().optional()
-      })
-      .optional(),
-    member: generalPermissionSchema,
-    role: generalPermissionSchema,
-    settings: generalPermissionSchema,
-    "service-account": generalPermissionSchema,
-    "incident-contact": generalPermissionSchema,
-    "secret-scanning": generalPermissionSchema,
-    sso: generalPermissionSchema,
-    billing: generalPermissionSchema
-  })
+  permissions: z
+    .object({
+      workspace: z
+        .object({
+          read: z.boolean().optional(),
+          create: z.boolean().optional()
+        })
+        .optional(),
+      member: generalPermissionSchema,
+      role: generalPermissionSchema,
+      settings: generalPermissionSchema,
+      "service-account": generalPermissionSchema,
+      "incident-contact": generalPermissionSchema,
+      "secret-scanning": generalPermissionSchema,
+      sso: generalPermissionSchema,
+      billing: generalPermissionSchema
+    })
+    .optional()
 });
 
 export type TFormSchema = z.infer<typeof formSchema>;
 
 // convert role permission to form compatiable  data structure
 export const rolePermission2Form = (permissions: TPermission[] = []) => {
-  const formVal: Partial<TFormSchema["permissions"]> = {};
-
+  // any because if it set it as form type due to the discriminated union type of ts
+  // i would have to write a if loop with both conditions same
+  const formVal: Record<string, any> = {};
   permissions.forEach((permission) => {
     const { subject, action } = permission;
     if (!formVal?.[subject]) formVal[subject] = {};
-
-    // akhilmhdh: this is typecast as  something other than workspace key else i would need an if loop with same condition on both side
-    const key = subject as keyof TFormSchema["permissions"];
-    (formVal[key] as Exclude<TFormSchema["permissions"]["member"], undefined>)[action] = true;
+    formVal[subject][action] = true;
   });
 
   return formVal;
@@ -54,19 +54,13 @@ export const rolePermission2Form = (permissions: TPermission[] = []) => {
 
 export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   const permissions: TPermission[] = [];
-  (Object.keys(formVal) as Array<keyof typeof formVal>).forEach((rule) => {
-    // all these type annotations are due to Object.keys of ts cannot infer and put it just a string[]
-    // quite annoying i know
-    const actions = Object.keys(formVal[rule] || {}) as Array<
-      keyof z.infer<typeof generalPermissionSchema>
-    >;
-
-    actions.forEach((action) => {
-      // akhilmhdh: set it as any due to the union type bug i would end up writing an if else with same condition on both side
-      if (formVal?.[rule]?.[action as keyof typeof formVal.workspace]) {
-        permissions.push({ subject: rule, action } as any);
+  Object.entries(formVal || {}).forEach(([rule, actions]) => {
+    Object.entries(actions).forEach(([action, isAllowed]) => {
+      if (isAllowed) {
+        permissions.push({ subject: rule, action });
       }
     });
   });
+
   return permissions;
 };

@@ -44,6 +44,14 @@ router.post(
   workspaceController.createWorkspace
 );
 
+router.delete(
+  "/:workspaceId",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  workspaceController.deleteWorkspace
+);
+
 router.post(
   "/:workspaceId/name",
   requireAuth({

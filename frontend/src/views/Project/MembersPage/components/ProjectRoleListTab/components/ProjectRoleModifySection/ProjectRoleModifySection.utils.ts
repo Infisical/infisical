@@ -29,39 +29,41 @@ export const formSchema = z.object({
   name: z.string().trim(),
   description: z.string().trim().optional(),
   slug: z.string().trim(),
-  permissions: z.object({
-    secrets: z.record(multiEnvPermissionSchema).optional(),
-    folders: z.record(multiEnvPermissionSchema).optional(),
-    "secret-imports": z.record(multiEnvPermissionSchema).optional(),
-    member: generalPermissionSchema,
-    role: generalPermissionSchema,
-    integrations: generalPermissionSchema,
-    webhooks: generalPermissionSchema,
-    "service-tokens": generalPermissionSchema,
-    settings: generalPermissionSchema,
-    environments: generalPermissionSchema,
-    tags: generalPermissionSchema,
-    "audit-logs": generalPermissionSchema,
-    "ip-allowlist": generalPermissionSchema,
-    workspace: z
-      .object({
-        edit: z.boolean().optional(),
-        delete: z.boolean().optional()
-      })
-      .optional(),
-    "secret-rollback": z
-      .object({
-        read: z.boolean().optional(),
-        create: z.boolean().optional()
-      })
-      .optional()
-  })
+  permissions: z
+    .object({
+      secrets: z.record(multiEnvPermissionSchema).optional(),
+      folders: z.record(multiEnvPermissionSchema).optional(),
+      "secret-imports": z.record(multiEnvPermissionSchema).optional(),
+      member: generalPermissionSchema,
+      role: generalPermissionSchema,
+      integrations: generalPermissionSchema,
+      webhooks: generalPermissionSchema,
+      "service-tokens": generalPermissionSchema,
+      settings: generalPermissionSchema,
+      environments: generalPermissionSchema,
+      tags: generalPermissionSchema,
+      "audit-logs": generalPermissionSchema,
+      "ip-allowlist": generalPermissionSchema,
+      workspace: z
+        .object({
+          edit: z.boolean().optional(),
+          delete: z.boolean().optional()
+        })
+        .optional(),
+      "secret-rollback": z
+        .object({
+          read: z.boolean().optional(),
+          create: z.boolean().optional()
+        })
+        .optional()
+    })
+    .optional()
 });
 
 export type TFormSchema = z.infer<typeof formSchema>;
 
 const multiEnvApi2Form = (
-  formVal: TFormSchema["permissions"]["secrets"],
+  formVal: Record<string, { secretPath?: string } & { [key: string]: boolean }>,
   permission: TProjectPermission
 ) => {
   const isCustomRule = Boolean(permission?.conditions?.environment);
@@ -76,28 +78,26 @@ const multiEnvApi2Form = (
   if (formVal && !formVal?.[secretEnv]) {
     formVal[secretEnv] = { read: false, edit: false, create: false, delete: false, secretPath };
   }
-  formVal![secretEnv]![permission.action] = true;
+
+  formVal[secretEnv][permission.action] = true;
 };
 
 // convert role permission to form compatiable  data structure
 export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
-  const formVal: Partial<TFormSchema["permissions"]> = {};
+  // any because if it set it as form type due to the discriminated union type of ts
+  // i would have to write a if loop with both conditions same
+  const formVal: Record<string, any> = {};
 
   permissions.forEach((permission) => {
     const { subject, action } = permission;
     if (!formVal?.[subject]) formVal[subject] = {};
 
     if (["secrets", "folders", "secret-imports"].includes(subject)) {
-      multiEnvApi2Form(formVal[subject] as TFormSchema["permissions"]["secrets"], permission);
+      multiEnvApi2Form(formVal[subject], permission);
     } else {
       // everything else follows same pattern
       // formVal[settings][read | write] = true
-      formVal[
-        subject as keyof Omit<
-          TFormSchema["permissions"],
-          "secrets" | "workspace" | "secret-rollback"
-        >
-      ]![action] = true;
+      formVal[subject][action] = true;
     }
   });
 
@@ -106,7 +106,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 
 const multiEnvForm2Api = (
   permissions: TProjectPermission[],
-  formVal: TFormSchema["permissions"]["secrets"],
+  formVal: Record<string, { secretPath?: string } & { [key: string]: boolean }>,
   subject: (typeof MULTI_ENV_KEY)[number]
 ) => {
   const isFullAccess = PERMISSION_ACTIONS.every((action) => formVal?.all?.[action]);
@@ -142,24 +142,16 @@ const multiEnvForm2Api = (
 export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   const permissions: TProjectPermission[] = [];
   MULTI_ENV_KEY.forEach((formName) => {
-    multiEnvForm2Api(permissions, JSON.parse(JSON.stringify(formVal[formName] || {})), formName);
+    multiEnvForm2Api(permissions, JSON.parse(JSON.stringify(formVal?.[formName] || {})), formName);
   });
   // other than workspace everything else follows same
   // if in future there is a different follow the above on how workspace is done
-  (Object.keys(formVal) as Array<keyof typeof formVal>)
-    .filter((key) => !["secret-imports", "folders", "secrets"].includes(key))
-    .forEach((rule) => {
-      // all these type annotations are due to Object.keys of ts cannot infer and put it just a string[]
-      // quite annoying i know
-      const actions = Object.keys(formVal[rule] || {}) as Array<
-        keyof z.infer<typeof generalPermissionSchema>
-      >;
-      actions.forEach((action) => {
-        // akhilmhdh: set it as any due to the union type bug i would end up writing an if else with same condition on both side
-        if (formVal[rule]?.[action as keyof typeof formVal.workspace]) {
-          permissions.push({ subject: rule, action } as any);
-        }
-      });
+  Object.entries(formVal || {}).forEach(([rule, actions]) => {
+    Object.entries(actions).forEach(([action, isAllowed]) => {
+      if (isAllowed) {
+        permissions.push({ subject: rule, action });
+      }
     });
+  });
   return permissions;
 };
