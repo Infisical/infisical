@@ -41,6 +41,20 @@ const SECRET_SCANNING_PERMISSIONS = [
   { action: "delete", label: "Remove integrations" }
 ] as const;
 
+const INCIDENT_CONTACTS_PERMISSIONS = [
+  { action: "read", label: "View contacts" },
+  { action: "create", label: "Add new contacts" },
+  { action: "edit", label: "Edit contacts" },
+  { action: "delete", label: "Remove contacts" }
+] as const;
+
+const MEMBERS_PERMISSIONS = [
+  { action: "read", label: "View all members" },
+  { action: "create", label: "Invite members" },
+  { action: "edit", label: "Edit members" },
+  { action: "delete", label: "Remove members" }
+] as const;
+
 const BILLING_PERMISSIONS = [
   { action: "read", label: "View bills" },
   { action: "create", label: "Add payment methods" },
@@ -54,6 +68,10 @@ const getPermissionList = (option: Props["formName"]) => {
       return SECRET_SCANNING_PERMISSIONS;
     case "billing":
       return BILLING_PERMISSIONS;
+    case "incident-contact":
+      return INCIDENT_CONTACTS_PERMISSIONS;
+    case "member":
+      return MEMBERS_PERMISSIONS
     default:
       return PERMISSIONS;
   }

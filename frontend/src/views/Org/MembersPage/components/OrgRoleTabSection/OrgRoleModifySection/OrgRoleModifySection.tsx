@@ -35,20 +35,20 @@ type Props = {
 
 const SIMPLE_PERMISSION_OPTIONS = [
   {
-    title: "Members",
-    subtitle: "Project member management control",
+    title: "Members management",
+    subtitle: "Invite, view and remove members from the organization",
     icon: faUsers,
     formName: "member"
   },
   {
-    title: "Billing",
-    subtitle: "Billing management control",
+    title: "Billing & usage",
+    subtitle: "Modify organization subscription plan",
     icon: faMoneyBill,
     formName: "billing"
   },
   {
-    title: "Role",
-    subtitle: "Org role management control",
+    title: "Role management",
+    subtitle: "Create, modify and remove organization roles",
     icon: faUserCog,
     formName: "role"
   },
@@ -59,8 +59,8 @@ const SIMPLE_PERMISSION_OPTIONS = [
     formName: "incident-contact"
   },
   {
-    title: "Settings",
-    subtitle: "Settings management control",
+    title: "Organization profile",
+    subtitle: "View & update organization metadata such as name",
     icon: faCog,
     formName: "settings"
   },
@@ -72,7 +72,7 @@ const SIMPLE_PERMISSION_OPTIONS = [
   },
   {
     title: "SSO",
-    subtitle: "SSO management control",
+    subtitle: "Define organization level SSO requirements",
     icon: faSignIn,
     formName: "sso"
   }
@@ -155,7 +155,7 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
           </Button>
         </div>
         <p className="mb-8 text-gray-400">
-          Roles are used to grant access to particular resources in your organization
+          Organization-level roles allow you to define permissions for resources at a high level across the organization
         </p>
         <div className="flex flex-col space-y-6">
           <FormControl

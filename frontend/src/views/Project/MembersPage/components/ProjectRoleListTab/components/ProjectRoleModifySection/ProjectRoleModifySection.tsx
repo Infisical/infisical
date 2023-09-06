@@ -186,7 +186,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
           </Button>
         </div>
         <p className="mb-8 text-gray-400">
-          Roles are used to grant access to particular resources in your organization
+          Project-level roles allow you to define permissions for resources within projects at a granular level
         </p>
         <div className="flex flex-col space-y-6">
           <FormControl

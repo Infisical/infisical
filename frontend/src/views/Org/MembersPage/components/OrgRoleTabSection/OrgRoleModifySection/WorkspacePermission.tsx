@@ -24,8 +24,8 @@ enum Permission {
 }
 
 const PERMISSIONS = [
-  { action: "read", label: "View" },
-  { action: "create", label: "Create" }
+  { action: "read", label: "View projects" },
+  { action: "create", label: "Create new projects" }
 ] as const;
 
 export const WorkspacePermission = ({ isNonEditable, setValue, control }: Props) => {
@@ -87,7 +87,7 @@ export const WorkspacePermission = ({ isNonEditable, setValue, control }: Props)
         <div className="flex-grow flex flex-col">
           <div className="font-medium mb-1 text-lg">Project</div>
           <div className="text-xs font-light">
-            More fine granined project access control can be defined with project level roles
+            View and create new projects in this organization
           </div>
         </div>
         <div>
