@@ -93,7 +93,6 @@ export const ProjectRoleList = ({ isRolesLoading, roles = [], onSelectRole }: Pr
               <Tr>
                 <Th>Name</Th>
                 <Th>Slug</Th>
-                <Th>Created At</Th>
                 <Th aria-label="actions" />
               </Tr>
             </THead>
@@ -108,10 +107,7 @@ export const ProjectRoleList = ({ isRolesLoading, roles = [], onSelectRole }: Pr
                     <Td>{name}</Td>
                     <Td>{slug}</Td>
                     <Td>
-                      {createdAt ? format(new Date(createdAt), "yyyy-MM-dd, hh:mm aaa") : "-"}
-                    </Td>
-                    <Td>
-                      <div className="flex space-x-2 items-center">
+                      <div className="flex space-x-2 justify-end">
                         <ProjectPermissionCan
                           I={ProjectPermissionActions.Edit}
                           a={ProjectPermissionSub.Role}

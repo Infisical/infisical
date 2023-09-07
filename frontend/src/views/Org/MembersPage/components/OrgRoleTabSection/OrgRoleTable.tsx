@@ -84,7 +84,6 @@ export const OrgRoleTable = ({ isRolesLoading, roles = [], onSelectRole }: Props
               <Tr>
                 <Th>Name</Th>
                 <Th>Slug</Th>
-                <Th>Created At</Th>
                 <Th aria-label="actions" />
               </Tr>
             </THead>
@@ -98,11 +97,8 @@ export const OrgRoleTable = ({ isRolesLoading, roles = [], onSelectRole }: Props
                   <Tr key={`role-list-${id}`}>
                     <Td>{name}</Td>
                     <Td>{slug}</Td>
-                    <Td>
-                      {createdAt ? format(new Date(createdAt), "yyyy-MM-dd, hh:mm aaa") : "-"}
-                    </Td>
-                    <Td>
-                      <div className="flex space-x-2 items-center">
+                    <Td className="flex justify-end">
+                      <div className="flex space-x-2">
                         <OrgPermissionCan
                           I={OrgPermissionActions.Edit}
                           a={OrgPermissionSubjects.Role}
