@@ -40,7 +40,7 @@ export const GetSecretImportsV1 = z.object({
   query: z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
-    folderId: z.string().trim()
+    folderId: z.string().trim().default("root")
   })
 });
 

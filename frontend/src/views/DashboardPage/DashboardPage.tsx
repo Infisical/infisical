@@ -3,7 +3,6 @@ import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
-import { Can } from "@casl/react";
 import {
   closestCenter,
   DndContext,
@@ -927,10 +926,9 @@ export const DashboardPage = () => {
                   <DropdownMenuContent align="end" className="left-20 z-[60] mt-1 w-[10.8rem]">
                     <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
                       <div className="w-full pb-1">
-                        <Can
-                          ability={permission}
-                          I={ProjectPermissionActions.Delete}
-                          a={ProjectPermissionSub.SecretRollback}
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Create}
+                          a={ProjectPermissionSub.Folders}
                         >
                           {(isAllowed) => (
                             <Button
@@ -944,7 +942,7 @@ export const DashboardPage = () => {
                               Add Folder
                             </Button>
                           )}
-                        </Can>
+                        </ProjectPermissionCan>
                       </div>
                       <div className="w-full">
                         <ProjectPermissionCan

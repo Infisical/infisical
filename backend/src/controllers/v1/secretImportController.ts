@@ -275,7 +275,9 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
 };
 
 export const getSecretImports = async (req: Request, res: Response) => {
-  const { workspaceId, environment, folderId } = req.query;
+  const {
+    query: { workspaceId, environment, folderId }
+  } = await validateRequest(reqValidator.GetSecretImportsV1, req);
   const importSecDoc = await SecretImport.findOne({
     workspace: workspaceId,
     environment,
@@ -325,11 +327,10 @@ export const getSecretImports = async (req: Request, res: Response) => {
 };
 
 export const getAllSecretsFromImport = async (req: Request, res: Response) => {
-  const { workspaceId, environment, folderId } = req.query as {
-    workspaceId: string;
-    environment: string;
-    folderId: string;
-  };
+  const {
+    query: { workspaceId, environment, folderId }
+  } = await validateRequest(reqValidator.GetAllSecretsFromImportV1, req);
+
   const importSecDoc = await SecretImport.findOne({
     workspace: workspaceId,
     environment,
