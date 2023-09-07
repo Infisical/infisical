@@ -97,7 +97,7 @@ export const SecretEditRow = ({
     // when changing from personal override to shared secret
     if (watchOverrideAction === SecretActionType.Deleted) {
       await onSecretDelete(environment, secretName, "personal");
-      reset({}, { keepValues: false });
+      reset({valueOverride: undefined}, { keepValues: false });
     }
 
     if ((secretValue || secretValue === "") && secretName) {
