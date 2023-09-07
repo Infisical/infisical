@@ -678,7 +678,8 @@ export const backfillPermission = async () => {
   await Membership.updateMany(
     {
       deniedPermissions: {
-        $exists: true
+        $exists: true,
+        $ne: []
       },
       role: MEMBER
     },
