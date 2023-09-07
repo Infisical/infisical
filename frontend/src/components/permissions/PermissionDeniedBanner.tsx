@@ -27,10 +27,10 @@ export const PermissionDeniedBanner = ({ containerClassName, className, children
           <FontAwesomeIcon icon={faLock} size="6x" />
         </div>
         <div>
-          <div className="text-4xl font-medium mb-2">Permission Denied</div>
+          <div className="text-4xl font-medium mb-2">Access Restricted</div>
           {children || (
             <div className="text-sm">
-              You do not have permission. <br /> Kindly contact your organization administrator
+              Your role has limited permissions, please <br/> contact your administrator to gain access
             </div>
           )}
         </div>

@@ -69,7 +69,7 @@ export const CloudIntegrationSection = ({
                 ) {
                   createNotification({
                     type: "error",
-                    text: "Permission Denied. Kindly contact your project admin"
+                    text: "You do not have permission to create an integration"
                   });
                   return;
                 }

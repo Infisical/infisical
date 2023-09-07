@@ -14,7 +14,7 @@ type Props = {
 } & BoundCanProps<TOrgPermission>;
 
 export const OrgPermissionCan: FunctionComponent<Props> = ({
-  label = "Permission Denied. Kindly contact your org admin",
+  label = "Access restricted",
   children,
   passThrough = true,
   renderTooltip,

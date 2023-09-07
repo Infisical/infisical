@@ -18,7 +18,7 @@ type Props = {
 } & BoundCanProps<any>;
 
 export const ProjectPermissionCan: FunctionComponent<Props> = ({
-  label = "Permission Denied. Kindly contact your project admin",
+  label = "Access restricted",
   children,
   passThrough = true,
   renderTooltip,
