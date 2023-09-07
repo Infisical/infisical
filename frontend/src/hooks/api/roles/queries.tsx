@@ -28,11 +28,6 @@ const glob: JsInterpreter<FieldCondition<string>> = (node, object, context) => {
   const secretPath = context.get(object, node.field);
   const permissionSecretGlobPath = node.value;
   if (!secretPath) return false;
-  // console.log(
-  //   secretPath,
-  //   picomatch.isMatch(secretPath, permissionSecretGlobPath, { strictSlashes: false }),
-  //   permissionSecretGlobPath
-  // );
   return picomatch.isMatch(secretPath, permissionSecretGlobPath, { strictSlashes: false });
 };
 
@@ -102,7 +97,7 @@ export const useGetUserProjectPermissions = ({ workspaceId }: TGetUserProjectPer
     enabled: Boolean(workspaceId),
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(data);
-      const ability = createMongoAbility<ProjectPermissionSet>(rule);
+      const ability = createMongoAbility<ProjectPermissionSet>(rule, { conditionsMatcher });
       return ability;
     }
   });

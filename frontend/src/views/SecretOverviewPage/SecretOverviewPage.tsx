@@ -81,7 +81,7 @@ export const SecretOverviewPage = () => {
   const workspaceId = currentWorkspace?._id as string;
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
   const [searchFilter, setSearchFilter] = useState("");
-  const secretPath = router.query?.secretPath as string;
+  const secretPath = (router.query?.secretPath as string) || "/";
   const permission = useProjectPermission();
 
   useEffect(() => {
