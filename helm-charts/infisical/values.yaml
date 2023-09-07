@@ -269,6 +269,12 @@ mongodb:
     ## @param mongodb.auth.rootPassword Database root user password
     ##
     rootPassword: root
+
+    ## @param auth.existingSecret Existing secret with MongoDB(&reg;) credentials (keys: `mongodb-passwords`, `mongodb-root-password`, `mongodb-metrics-password`, `mongodb-replica-set-key`)
+    ## NOTE: When it's set the previous parameters are ignored.
+    ##
+    existingSecret: ""
+
   ## MongoDB persistence configuration
   ##
   persistence:
