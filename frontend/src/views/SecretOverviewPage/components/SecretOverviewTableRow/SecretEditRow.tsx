@@ -71,7 +71,7 @@ export const SecretEditRow = ({
   })
 
   const handleFormReset = () => {
-    reset({ keepValues: false });
+    reset({}, { keepValues: false });
   };
 
   const handleCopySecretToClipboard = async () => {
@@ -97,7 +97,7 @@ export const SecretEditRow = ({
     // when changing from personal override to shared secret
     if (watchOverrideAction === SecretActionType.Deleted) {
       await onSecretDelete(environment, secretName, "personal");
-      reset({ keepValues: false });
+      reset({}, { keepValues: false });
     }
 
     if ((secretValue || secretValue === "") && secretName) {
@@ -140,7 +140,7 @@ export const SecretEditRow = ({
   };
 
   useEffect(() => {
-    reset({ keepValues: false });
+    reset({}, { keepValues: false });
   }, [overriddenValue])
 
   return (
