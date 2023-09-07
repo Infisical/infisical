@@ -1,6 +1,7 @@
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { faCheck, faCopy, faTrash, faXmark, faCodeBranch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useEffect } from "react";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { IconButton, SecretInput, Tooltip } from "@app/components/v2";
@@ -70,7 +71,7 @@ export const SecretEditRow = ({
   })
 
   const handleFormReset = () => {
-    reset({keepDirtyValues: false});
+    reset({ keepValues: false });
   };
 
   const handleCopySecretToClipboard = async () => {
@@ -96,6 +97,7 @@ export const SecretEditRow = ({
     // when changing from personal override to shared secret
     if (watchOverrideAction === SecretActionType.Deleted) {
       await onSecretDelete(environment, secretName, "personal");
+      reset({ keepValues: false });
     }
 
     if ((secretValue || secretValue === "") && secretName) {
@@ -105,7 +107,7 @@ export const SecretEditRow = ({
         await onSecretUpdate(environment, secretName, secretValue, type);
       }
     }
-    reset({ value });
+    reset({ value, valueOverride });
   };
 
   const handleDeleteSecret = async () => {
@@ -136,6 +138,10 @@ export const SecretEditRow = ({
       );
     }
   };
+
+  useEffect(() => {
+    reset({ keepValues: false });
+  }, [overriddenValue])
 
   return (
     <div className="group flex w-full cursor-text space-x-2 items-center">
