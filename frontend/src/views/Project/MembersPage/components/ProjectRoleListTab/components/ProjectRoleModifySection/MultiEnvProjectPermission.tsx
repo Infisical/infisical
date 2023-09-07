@@ -153,7 +153,7 @@ export const MultiEnvProjectPermission = ({
                         control={control}
                         render={({ field }) => (
                           /* eslint-disable-next-line no-template-curly-in-string */
-                          <FormControl helperText="Ex pattern: /, /**, /{folder1,folder2}">
+                          <FormControl helperText="Supports glob path pattern string">
                             <Input
                               {...field}
                               className="w-full overflow-ellipsis"
