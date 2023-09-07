@@ -73,7 +73,7 @@ const multiEnvApi2Form = (
   }
 
   const secretEnv = permission?.conditions?.environment || "all";
-  const secretPath = permission?.conditions?.secretPath;
+  const secretPath = permission?.conditions?.secretPath?.$glob;
   // initialize
   if (formVal && !formVal?.[secretEnv]) {
     formVal[secretEnv] = { read: false, edit: false, create: false, delete: false, secretPath };
@@ -109,6 +109,8 @@ const multiEnvForm2Api = (
   formVal: Record<string, { secretPath?: string } & { [key: string]: boolean }>,
   subject: (typeof MULTI_ENV_KEY)[number]
 ) => {
+  if (!formVal) return;
+
   const isFullAccess = PERMISSION_ACTIONS.every((action) => formVal?.all?.[action]);
   // if any of them is set in all push it without any  condition
   PERMISSION_ACTIONS.forEach((action) => {
@@ -130,7 +132,8 @@ const multiEnvForm2Api = (
           // if not full access for an action
           if (!formVal?.all?.[action] && action !== "secretPath" && formVal?.[slug]?.[action]) {
             const conditions: Record<string, unknown> = { environment: slug };
-            if (formVal[slug]?.secretPath) conditions.secretPath = formVal?.[slug]?.secretPath;
+            if (formVal[slug]?.secretPath)
+              conditions.secretPath = { $glob: formVal?.[slug]?.secretPath };
 
             permissions.push({ action, subject, conditions });
           }
@@ -141,17 +144,22 @@ const multiEnvForm2Api = (
 
 export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   const permissions: TProjectPermission[] = [];
-  MULTI_ENV_KEY.forEach((formName) => {
-    multiEnvForm2Api(permissions, JSON.parse(JSON.stringify(formVal?.[formName] || {})), formName);
-  });
   // other than workspace everything else follows same
   // if in future there is a different follow the above on how workspace is done
   Object.entries(formVal || {}).forEach(([rule, actions]) => {
-    Object.entries(actions).forEach(([action, isAllowed]) => {
-      if (isAllowed) {
-        permissions.push({ subject: rule, action });
-      }
-    });
+    if (MULTI_ENV_KEY.includes(rule as (typeof MULTI_ENV_KEY)[number])) {
+      multiEnvForm2Api(
+        permissions,
+        JSON.parse(JSON.stringify(actions || {})),
+        rule as (typeof MULTI_ENV_KEY)[number]
+      );
+    } else {
+      Object.entries(actions).forEach(([action, isAllowed]) => {
+        if (isAllowed) {
+          permissions.push({ subject: rule, action });
+        }
+      });
+    }
   });
   return permissions;
 };

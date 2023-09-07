@@ -13,6 +13,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import NavHeader from "@app/components/navigation/NavHeader";
+import { PermissionDeniedBanner } from "@app/components/permissions";
 import {
   Button,
   EmptyState,
@@ -36,7 +37,6 @@ import {
   useProjectPermission,
   useWorkspace
 } from "@app/context";
-import { withProjectPermission } from "@app/hoc";
 import {
   useCreateSecretV3,
   useDeleteSecretV3,
@@ -50,7 +50,7 @@ import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
 
-const SecretOverview = () => {
+export const SecretOverviewPage = () => {
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
   const router = useRouter();
@@ -91,11 +91,20 @@ const SecretOverview = () => {
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 
   const userAvailableEnvs =
-    currentWorkspace?.environments?.filter(({ slug }) =>
-      permission.can(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, { environment: slug, secretPath: secretPath || "/" })
-      )
+    currentWorkspace?.environments?.filter(
+      ({ slug }) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment: slug, secretPath })
+        ) ||
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Folders, { environment: slug, secretPath })
+        ) ||
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.SecretImports, { environment: slug, secretPath })
+        )
     ) || [];
 
   const {
@@ -371,18 +380,23 @@ const SecretOverview = () => {
                   onClick={handleFolderClick}
                 />
               ))}
-              {filteredSecretNames.map((key, index) => (
-                <SecretOverviewTableRow
-                  onSecretCreate={handleSecretCreate}
-                  onSecretDelete={handleSecretDelete}
-                  onSecretUpdate={handleSecretUpdate}
-                  key={`overview-${key}-${index + 1}`}
-                  environments={userAvailableEnvs}
-                  secretKey={key}
-                  getSecretByKey={getSecretByKey}
-                  expandableColWidth={expandableTableWidth}
-                />
-              ))}
+              {userAvailableEnvs?.length > 0 ? (
+                filteredSecretNames.map((key, index) => (
+                  <SecretOverviewTableRow
+                    secretPath={secretPath}
+                    onSecretCreate={handleSecretCreate}
+                    onSecretDelete={handleSecretDelete}
+                    onSecretUpdate={handleSecretUpdate}
+                    key={`overview-${key}-${index + 1}`}
+                    environments={userAvailableEnvs}
+                    secretKey={key}
+                    getSecretByKey={getSecretByKey}
+                    expandableColWidth={expandableTableWidth}
+                  />
+                ))
+              ) : (
+                <PermissionDeniedBanner />
+              )}
             </TBody>
             <TFoot>
               <Tr className="sticky bottom-0 z-10 border-0 bg-mineshaft-800">
@@ -414,8 +428,3 @@ const SecretOverview = () => {
     </div>
   );
 };
-
-export const SecretOverviewPage = withProjectPermission(SecretOverview, {
-  action: ProjectPermissionActions.Read,
-  subject: ProjectPermissionSub.Secrets
-});

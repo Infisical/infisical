@@ -133,6 +133,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
   const handleRoleUpdate = async (el: TFormSchema) => {
     if (!role?._id) return;
 
+    console.log(el);
     try {
       await updateRole({
         orgId,

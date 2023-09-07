@@ -7,7 +7,6 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { withPermission } from "@app/hoc";
 import { useRenameOrg } from "@app/hooks/api";
 
 const formSchema = yup.object({
@@ -16,77 +15,70 @@ const formSchema = yup.object({
 
 type FormData = yup.InferType<typeof formSchema>;
 
-export const OrgNameChangeSection = withPermission(
-  (): JSX.Element => {
-    const { currentOrg } = useOrganization();
-    const { createNotification } = useNotificationContext();
-    const { handleSubmit, control, reset } = useForm<FormData>({
-      resolver: yupResolver(formSchema)
-    });
-    const { mutateAsync, isLoading } = useRenameOrg();
+export const OrgNameChangeSection = (): JSX.Element => {
+  const { currentOrg } = useOrganization();
+  const { createNotification } = useNotificationContext();
+  const { handleSubmit, control, reset } = useForm<FormData>({
+    resolver: yupResolver(formSchema)
+  });
+  const { mutateAsync, isLoading } = useRenameOrg();
 
-    useEffect(() => {
-      if (currentOrg) {
-        reset({ name: currentOrg.name });
-      }
-    }, [currentOrg]);
+  useEffect(() => {
+    if (currentOrg) {
+      reset({ name: currentOrg.name });
+    }
+  }, [currentOrg]);
 
-    const onFormSubmit = async ({ name }: FormData) => {
-      try {
-        if (!currentOrg?._id) return;
-        if (name === "") return;
+  const onFormSubmit = async ({ name }: FormData) => {
+    try {
+      if (!currentOrg?._id) return;
+      if (name === "") return;
 
-        await mutateAsync({ orgId: currentOrg?._id, newOrgName: name });
-        createNotification({
-          text: "Successfully renamed organization",
-          type: "success"
-        });
-      } catch (error) {
-        console.error(error);
-        createNotification({
-          text: "Failed to rename organization",
-          type: "error"
-        });
-      }
-    };
+      await mutateAsync({ orgId: currentOrg?._id, newOrgName: name });
+      createNotification({
+        text: "Successfully renamed organization",
+        type: "success"
+      });
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: "Failed to rename organization",
+        type: "error"
+      });
+    }
+  };
 
-    return (
-      <form
-        onSubmit={handleSubmit(onFormSubmit)}
-        className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
-      >
-        <p className="text-xl font-semibold text-mineshaft-100 mb-4">Organization name</p>
-        <div className="mb-2 max-w-md">
-          <Controller
-            defaultValue=""
-            render={({ field, fieldState: { error } }) => (
-              <FormControl isError={Boolean(error)} errorText={error?.message}>
-                <Input placeholder="Acme Corp" {...field} />
-              </FormControl>
-            )}
-            control={control}
-            name="name"
-          />
-        </div>
-        <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
-          {(isAllowed) => (
-            <Button
-              isLoading={isLoading}
-              isDisabled={!isAllowed}
-              colorSchema="primary"
-              variant="outline_bg"
-              type="submit"
-            >
-              Save
-            </Button>
+  return (
+    <form
+      onSubmit={handleSubmit(onFormSubmit)}
+      className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
+    >
+      <p className="text-xl font-semibold text-mineshaft-100 mb-4">Organization name</p>
+      <div className="mb-2 max-w-md">
+        <Controller
+          defaultValue=""
+          render={({ field, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message}>
+              <Input placeholder="Acme Corp" {...field} />
+            </FormControl>
           )}
-        </OrgPermissionCan>
-      </form>
-    );
-  },
-  {
-    action: OrgPermissionActions.Read,
-    subject: OrgPermissionSubjects.Settings,
-    containerClassName: "mb-4"
-  }
-);
+          control={control}
+          name="name"
+        />
+      </div>
+      <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
+        {(isAllowed) => (
+          <Button
+            isLoading={isLoading}
+            isDisabled={!isAllowed}
+            colorSchema="primary"
+            variant="outline_bg"
+            type="submit"
+          >
+            Save
+          </Button>
+        )}
+      </OrgPermissionCan>
+    </form>
+  );
+};

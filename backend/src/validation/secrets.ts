@@ -189,7 +189,7 @@ export const BatchSecretsV2 = z.object({
     workspaceId: z.string().trim(),
     folderId: z.string().trim().default("root"),
     environment: z.string().trim(),
-    secretPath: z.string().trim().optional(),
+    secretPath: z.string().trim().default("/"),
     requests: z
       .discriminatedUnion("method", [
         z.object({
@@ -328,7 +328,7 @@ export const CreateSecretV3 = z.object({
     secretCommentCiphertext: z.string().trim().optional(),
     secretCommentIV: z.string().trim().optional(),
     secretCommentTag: z.string().trim().optional(),
-    metadata: z.record(z.string()).optional(),
+    metadata: z.record(z.string()).optional()
   }),
   params: z.object({
     secretName: z.string().trim()

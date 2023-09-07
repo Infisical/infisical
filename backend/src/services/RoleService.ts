@@ -3,6 +3,7 @@ import { MembershipOrg } from "../models";
 import { IRole } from "../models/role";
 import { BadRequestError, UnauthorizedRequestError } from "../utils/errors";
 import { ACCEPTED } from "../variables";
+import { conditionsMatcher } from "./ProjectRoleService";
 
 export enum OrgPermissionActions {
   Read = "read",
@@ -74,7 +75,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Billing);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Billing);
 
-  return build();
+  return build({ conditionsMatcher });
 };
 
 export const adminPermissions = buildAdminPermission();
@@ -92,7 +93,7 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
 
-  return build();
+  return build({ conditionsMatcher });
 };
 
 export const memberPermissions = buildMemberPermission();
@@ -119,7 +120,9 @@ export const getUserOrgPermissions = async (userId: string, orgId: string) => {
   if (membership.role === "member") return { permission: memberPermissions, membership };
 
   if (membership.role === "custom") {
-    const permission = createMongoAbility<OrgPermissionSet>(membership.customRole.permissions);
+    const permission = createMongoAbility<OrgPermissionSet>(membership.customRole.permissions, {
+      conditionsMatcher
+    });
     return { permission, membership };
   }
 

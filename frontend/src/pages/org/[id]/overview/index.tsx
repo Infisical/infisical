@@ -838,16 +838,26 @@ const OrganizationPage = withPermission(
                 <Controller
                   control={control}
                   name="addMembers"
-                  defaultValue
+                  defaultValue={false}
                   render={({ field: { onBlur, value, onChange } }) => (
-                    <Checkbox
-                      id="add-project-layout"
-                      isChecked={value}
-                      onCheckedChange={onChange}
-                      onBlur={onBlur}
+                    <OrgPermissionCan
+                      I={OrgPermissionActions.Read}
+                      a={OrgPermissionSubjects.Member}
                     >
-                      Add all members of my organization to this project
-                    </Checkbox>
+                      {(isAllowed) => (
+                        <div>
+                          <Checkbox
+                            id="add-project-layout"
+                            isChecked={value}
+                            onCheckedChange={onChange}
+                            isDisabled={!isAllowed}
+                            onBlur={onBlur}
+                          >
+                            Add all members of my organization to this project
+                          </Checkbox>
+                        </div>
+                      )}
+                    </OrgPermissionCan>
                   )}
                 />
               </div>

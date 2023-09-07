@@ -3,11 +3,31 @@ import {
   ForcedSubject,
   MongoAbility,
   RawRuleOf,
+  buildMongoQueryMatcher,
   createMongoAbility
 } from "@casl/ability";
 import { Membership } from "../models";
 import { IRole } from "../models/role";
 import { BadRequestError, UnauthorizedRequestError } from "../utils/errors";
+import { FieldCondition, FieldInstruction, JsInterpreter } from "@ucast/mongo2js";
+import picomatch from "picomatch";
+
+const $glob: FieldInstruction<string> = {
+  type: "field",
+  validate(instruction, value) {
+    if (typeof value !== "string") {
+      throw new Error(`"${instruction.name}" expects value to be a string`);
+    }
+  }
+};
+
+const glob: JsInterpreter<FieldCondition<string>> = (node, object, context) => {
+  const secretPath = context.get(object, node.field);
+  const permissionSecretGlobPath = node.value;
+  return picomatch.isMatch(secretPath, permissionSecretGlobPath, { strictSlashes: false });
+};
+
+export const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
 
 export enum ProjectPermissionActions {
   Read = "read",
@@ -36,7 +56,7 @@ export enum ProjectPermissionSub {
 
 type SubjectFields = {
   environment: string;
-  secretPath?: string;
+  secretPath: string;
 };
 
 export type ProjectPermissionSet =
@@ -144,7 +164,7 @@ const buildAdminPermission = () => {
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Workspace);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Workspace);
 
-  return build();
+  return build({ conditionsMatcher });
 };
 
 export const adminProjectPermissions = buildAdminPermission();
@@ -180,7 +200,7 @@ const buildMemberPermission = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
 
-  return build();
+  return build({ conditionsMatcher });
 };
 
 export const memberProjectPermissions = buildMemberPermission();
@@ -203,7 +223,7 @@ const buildViewerPermission = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
 
-  return build();
+  return build({ conditionsMatcher });
 };
 
 export const viewerProjectPermission = buildViewerPermission();
@@ -228,7 +248,9 @@ export const getUserProjectPermissions = async (userId: string, workspaceId: str
   if (membership.role === "viewer") return { permission: viewerProjectPermission, membership };
 
   if (membership.role === "custom") {
-    const permission = createMongoAbility<ProjectPermissionSet>(membership.customRole.permissions);
+    const permission = createMongoAbility<ProjectPermissionSet>(membership.customRole.permissions, {
+      conditionsMatcher
+    });
     return { permission, membership };
   }
 

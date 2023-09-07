@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { subject } from "@casl/ability";
 import { faEdit, faFolder, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -9,6 +10,8 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 type Props = {
   folders?: Array<{ id: string; name: string }>;
   search?: string;
+  environment: string;
+  secretPath: string;
   onFolderUpdate: (folderId: string, name: string) => void;
   onFolderDelete: (folderId: string, name: string) => void;
   onFolderOpen: (folderId: string) => void;
@@ -20,7 +23,9 @@ export const FolderSection = memo(
     onFolderDelete: handleFolderDelete,
     onFolderOpen: handleFolderOpen,
     search = "",
-    folders = []
+    folders = [],
+    environment,
+    secretPath
   }: Props) => {
     return (
       <>
@@ -51,7 +56,7 @@ export const FolderSection = memo(
                 <div className="duration-0 flex h-10 w-16 items-center justify-end space-x-2.5 overflow-hidden border-l border-mineshaft-600 transition-all">
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
-                    a={ProjectPermissionSub.Folders}
+                    a={subject(ProjectPermissionSub.Folders, { environment, secretPath })}
                   >
                     {(isAllowed) => (
                       <div className="opacity-0 group-hover:opacity-100">
@@ -72,7 +77,7 @@ export const FolderSection = memo(
                   </ProjectPermissionCan>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Delete}
-                    a={ProjectPermissionSub.Folders}
+                    a={subject(ProjectPermissionSub.Folders, { environment, secretPath })}
                   >
                     {(isAllowed) => (
                       <div className="opacity-0 group-hover:opacity-100">

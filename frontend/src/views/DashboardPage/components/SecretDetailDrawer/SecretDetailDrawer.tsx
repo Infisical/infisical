@@ -1,4 +1,5 @@
 import { useFormContext, useWatch } from "react-hook-form";
+import { subject } from "@casl/ability";
 import { faCircle, faCircleDot, faShuffle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -23,6 +24,8 @@ import { GenRandomNumber } from "./GenRandomNumber";
 
 type Props = {
   isDrawerOpen: boolean;
+  environment: string;
+  secretPath: string;
   onOpenChange: (isOpen: boolean) => void;
   index: number;
   isReadOnly?: boolean;
@@ -41,7 +44,9 @@ export const SecretDetailDrawer = ({
   isReadOnly,
   onSecretDelete,
   onSave,
-  onEnvCompare
+  onEnvCompare,
+  environment,
+  secretPath
 }: Props): JSX.Element => {
   const [canRevealSecVal, setCanRevealSecVal] = useToggle();
   const [canRevealSecOverride, setCanRevealSecOverride] = useToggle();
@@ -89,7 +94,7 @@ export const SecretDetailDrawer = ({
             <div className="flex w-full space-x-2">
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
-                a={ProjectPermissionSub.Secrets}
+                a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
               >
                 {(isAllowed) => (
                   <Button isFullWidth onClick={onSave} isDisabled={isReadOnly || !isAllowed}>
@@ -98,8 +103,8 @@ export const SecretDetailDrawer = ({
                 )}
               </ProjectPermissionCan>
               <ProjectPermissionCan
-                I={ProjectPermissionActions.Edit}
-                a={ProjectPermissionSub.Secrets}
+                I={ProjectPermissionActions.Delete}
+                a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
               >
                 {(isAllowed) => (
                   <Button

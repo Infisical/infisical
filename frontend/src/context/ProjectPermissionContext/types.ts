@@ -27,7 +27,7 @@ export enum ProjectPermissionSub {
 
 type SubjectFields = {
   environment: string;
-  secretPath?: string;
+  secretPath: string;
 };
 
 export type ProjectPermissionSet =

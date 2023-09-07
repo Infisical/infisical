@@ -7,6 +7,7 @@ import { twMerge } from "tailwind-merge";
 
 import {
   Checkbox,
+  FormControl,
   Input,
   Select,
   SelectItem,
@@ -68,7 +69,7 @@ export const MultiEnvProjectPermission = ({
   const handlePermissionChange = (val: Permission) => {
     switch (val) {
       case Permission.NoAccess:
-        setValue(`permissions.${formName}`, {}, { shouldDirty: true });
+        setValue(`permissions.${formName}`, undefined, { shouldDirty: true });
         break;
       case Permission.FullAccess:
         setValue(
@@ -151,7 +152,14 @@ export const MultiEnvProjectPermission = ({
                         name={`permissions.${formName}.${slug}.secretPath`}
                         control={control}
                         render={({ field }) => (
-                          <Input {...field} className="w-full overflow-ellipsis" />
+                          /* eslint-disable-next-line no-template-curly-in-string */
+                          <FormControl helperText="Ex pattern: /, /**, /{folder1,folder2}">
+                            <Input
+                              {...field}
+                              className="w-full overflow-ellipsis"
+                              placeholder="Glob patterns are supported"
+                            />
+                          </FormControl>
                         )}
                       />
                     </Td>

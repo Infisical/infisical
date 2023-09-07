@@ -11,7 +11,9 @@ export const CreateRoleSchema = z.object({
       .object({
         subject: z.string().trim(),
         action: z.string().trim(),
-        conditions: z.record(z.union([z.string().trim(), z.number()])).optional()
+        conditions: z
+          .record(z.union([z.string().trim(), z.number(), z.object({ $glob: z.string() })]))
+          .optional()
       })
       .array()
   })
@@ -31,7 +33,9 @@ export const UpdateRoleSchema = z.object({
       .object({
         subject: z.string().trim(),
         action: z.string().trim(),
-        conditions: z.record(z.union([z.string().trim(), z.number()])).optional()
+        conditions: z
+          .record(z.union([z.string().trim(), z.number(), z.object({ $glob: z.string() })]))
+          .optional()
       })
       .array()
       .optional()

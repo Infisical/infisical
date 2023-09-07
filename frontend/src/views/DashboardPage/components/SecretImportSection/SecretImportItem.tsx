@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { subject } from "@casl/ability";
 import { useSortable } from "@dnd-kit/sortable";
 import {
   faFileImport,
@@ -11,11 +12,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { EmptyState, IconButton, SecretInput, TableContainer, Tooltip } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub,useWorkspace  } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 type Props = {
   onDelete: (environment: string, secretPath: string) => void;
+  environment: string;
+  secretPath: string;
   importedEnv: string;
   importedSecPath: string;
   importedSecrets: { key: string; value: string; overriden: { env: string; secretPath: string } }[];
@@ -40,7 +43,9 @@ export const SecretImportItem = ({
   importedSecPath,
   onDelete,
   importedSecrets = [],
-  searchTerm = ""
+  searchTerm = "",
+  secretPath,
+  environment
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle();
   const { attributes, listeners, transform, transition, setNodeRef, isDragging } = useSortable({
@@ -114,7 +119,7 @@ export const SecretImportItem = ({
             </div>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Delete}
-              a={ProjectPermissionSub.SecretImports}
+              a={subject(ProjectPermissionSub.SecretImports, { environment, secretPath })}
             >
               {(isAllowed) => (
                 <div className="opacity-0 group-hover:opacity-100">

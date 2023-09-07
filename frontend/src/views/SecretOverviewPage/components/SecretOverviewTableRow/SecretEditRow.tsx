@@ -1,4 +1,5 @@
 import { Controller, useForm } from "react-hook-form";
+import { subject } from "@casl/ability";
 import { faCheck, faCopy, faTrash, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -14,6 +15,7 @@ type Props = {
   isCreatable?: boolean;
   isVisible?: boolean;
   environment: string;
+  secretPath: string;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
   onSecretUpdate: (env: string, key: string, value: string) => Promise<void>;
   onSecretDelete: (env: string, key: string) => Promise<void>;
@@ -27,6 +29,7 @@ export const SecretEditRow = ({
   onSecretCreate,
   onSecretDelete,
   environment,
+  secretPath,
   isVisible
 }: Props) => {
   const {
@@ -95,7 +98,7 @@ export const SecretEditRow = ({
           <>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Create}
-              a={ProjectPermissionSub.Secrets}
+              a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
             >
               {(isAllowed) => (
                 <div>

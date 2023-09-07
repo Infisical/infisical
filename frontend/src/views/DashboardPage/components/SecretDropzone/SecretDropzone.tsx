@@ -1,6 +1,7 @@
 import { ChangeEvent, DragEvent, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { subject } from "@casl/ability";
 import { faSquareCheck } from "@fortawesome/free-regular-svg-icons";
 import {
   faClone,
@@ -78,6 +79,8 @@ type Props = {
   environments?: { name: string; slug: string }[];
   workspaceId: string;
   decryptFileKey: UserWsKeyPair;
+  environment: string;
+  secretPath: string;
 };
 
 export const SecretDropzone = ({
@@ -86,7 +89,9 @@ export const SecretDropzone = ({
   onAddNewSecret,
   environments = [],
   workspaceId,
-  decryptFileKey
+  decryptFileKey,
+  environment,
+  secretPath
 }: Props): JSX.Element => {
   const { t } = useTranslation();
   const [isDragActive, setDragActive] = useToggle();
@@ -109,16 +114,16 @@ export const SecretDropzone = ({
     defaultValues: { secretPath: "/", environment: environments?.[0]?.slug }
   });
 
-  const secretPath = watch("secretPath");
+  const envCopySecPath = watch("secretPath");
   const selectedEnvSlug = watch("environment");
-  const debouncedSecretPath = useDebounce(secretPath);
+  const debouncedEnvCopySecretPath = useDebounce(envCopySecPath);
 
   const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
     workspaceId,
     env: selectedEnvSlug,
-    secretPath: debouncedSecretPath,
+    secretPath: debouncedEnvCopySecretPath,
     isPaused:
-      !(Boolean(workspaceId) && Boolean(selectedEnvSlug) && Boolean(debouncedSecretPath)) &&
+      !(Boolean(workspaceId) && Boolean(selectedEnvSlug) && Boolean(debouncedEnvCopySecretPath)) &&
       !popUp.importSecEnv.isOpen,
     decryptFileKey
   });
@@ -126,7 +131,7 @@ export const SecretDropzone = ({
   useEffect(() => {
     setValue("secrets", {});
     setSearchFilter("");
-  }, [debouncedSecretPath]);
+  }, [debouncedEnvCopySecretPath]);
 
   const handleDrag = (e: DragEvent) => {
     e.preventDefault();
@@ -238,7 +243,7 @@ export const SecretDropzone = ({
             </div>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Create}
-              a={ProjectPermissionSub.Secrets}
+              a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
             >
               {(isAllowed) => (
                 <input
@@ -271,16 +276,22 @@ export const SecretDropzone = ({
                 }}
               >
                 <ModalTrigger asChild>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Create}
-                    a={ProjectPermissionSub.Secrets}
-                  >
-                    {(isAllowed) => (
-                      <Button isDisabled={!isAllowed} variant="star" size={isSmaller ? "xs" : "sm"}>
-                        Copy Secrets From An Environment
-                      </Button>
-                    )}
-                  </ProjectPermissionCan>
+                  <div>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Create}
+                      a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                    >
+                      {(isAllowed) => (
+                        <Button
+                          isDisabled={!isAllowed}
+                          variant="star"
+                          size={isSmaller ? "xs" : "sm"}
+                        >
+                          Copy Secrets From An Environment
+                        </Button>
+                      )}
+                    </ProjectPermissionCan>
+                  </div>
                 </ModalTrigger>
                 <ModalContent
                   className="max-w-2xl"
@@ -416,7 +427,7 @@ export const SecretDropzone = ({
               {!isSmaller && (
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
-                  a={ProjectPermissionSub.Secrets}
+                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
                 >
                   {(isAllowed) => (
                     <Button variant="star" onClick={onAddNewSecret} isDisabled={!isAllowed}>

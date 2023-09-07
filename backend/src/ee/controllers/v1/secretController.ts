@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { Request, Response } from "express";
 import { validateRequest } from "../../../helpers/validation";
-import { Secret } from "../../../models";
+import { Folder, Secret } from "../../../models";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -11,6 +11,7 @@ import { BadRequestError } from "../../../utils/errors";
 import * as reqValidator from "../../../validation";
 import { SecretVersion } from "../../models";
 import { EESecretService } from "../../services";
+import { getFolderWithPathFromId } from "../../../services/FolderService";
 
 /**
  * Return secret versions for secret with id [secretId]
@@ -164,10 +165,6 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
     ProjectPermissionActions.Create,
     ProjectPermissionSub.SecretRollback
   );
-  ForbiddenError.from(permission).throwUnlessCan(
-    ProjectPermissionActions.Edit,
-    subject(ProjectPermissionSub.Secrets, { environment: toBeUpdatedSec.environment })
-  );
 
   // validate secret version
   const oldSecretVersion = await SecretVersion.findOne({
@@ -193,6 +190,15 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
     folder,
     keyEncoding
   } = oldSecretVersion;
+
+  let secretPath = "/";
+  const folders = await Folder.findOne({ workspace, environment });
+  if (folders)
+    secretPath = getFolderWithPathFromId(folders.nodes, folder || "root")?.folderPath || "/";
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Edit,
+    subject(ProjectPermissionSub.Secrets, { environment: toBeUpdatedSec.environment, secretPath })
+  );
 
   // update secret
   const secret = await Secret.findByIdAndUpdate(
