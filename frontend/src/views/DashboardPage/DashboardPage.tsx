@@ -333,6 +333,10 @@ export const DashboardPage = () => {
       permission.cannot(
         ProjectPermissionActions.Edit,
         subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      ) &&
+      permission.cannot(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
       );
 
   const canDoRollback = !isReadOnly;

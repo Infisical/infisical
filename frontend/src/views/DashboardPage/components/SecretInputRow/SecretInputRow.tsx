@@ -304,10 +304,6 @@ export const SecretInputRow = memo(
                       (isOverridden ? isAddOnly : shouldBeBlockedInAddOnly)
                     }
                     {...field}
-                    onChange={(val) => {
-                      console.log(val);
-                      field.onChange(val);
-                    }}
                   />
                 )}
               />

@@ -163,19 +163,19 @@ export const batchSecrets = async (req: Request, res: Response) => {
   // not using service token  using auth
   if (!(req.authData.authPayload instanceof ServiceTokenData)) {
     const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    if (!createSecrets.length)
+    if (createSecrets.length)
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Create,
         subject(ProjectPermissionSub.Secrets, { environment, secretPath })
       );
 
-    if (!updateSecrets.length)
+    if (updateSecrets.length)
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Edit,
         subject(ProjectPermissionSub.Secrets, { environment, secretPath })
       );
 
-    if (!deleteSecrets.length)
+    if (deleteSecrets.length)
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Delete,
         subject(ProjectPermissionSub.Secrets, { environment, secretPath })
