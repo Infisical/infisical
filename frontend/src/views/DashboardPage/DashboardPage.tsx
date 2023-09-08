@@ -337,10 +337,21 @@ export const DashboardPage = () => {
       permission.cannot(
         ProjectPermissionActions.Create,
         subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      ) &&
+      permission.cannot(
+        ProjectPermissionActions.Delete,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
       );
 
   const canDoRollback = !isReadOnly;
-  const isSubmitDisabled = isReadOnly || (!isRollbackMode && !isDirty) || isSubmitting;
+  const isSubmitDisabled =
+    isReadOnly ||
+    // not in rollback mode and no form has changed
+    (!isRollbackMode && !isDirty) ||
+    // in rollback mode and don't have permission to do it
+    (isRollbackMode &&
+      permission.cannot(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback)) ||
+    isSubmitting;
 
   useEffect(() => {
     if (!isSnapshotChanging && Boolean(snapshotId)) {
@@ -455,7 +466,6 @@ export const DashboardPage = () => {
       await onSecretRollback();
       return;
     }
-    console.log(userSec);
     // just closing this if save is triggered from drawer
     handlePopUpClose("secretDetails");
     // encrypt and format the secrets to batch api format
@@ -471,7 +481,6 @@ export const DashboardPage = () => {
       reset();
       return;
     }
-    console.log(batchedSecret);
     try {
       await batchSecretOp({
         requests: batchedSecret,
@@ -990,35 +999,25 @@ export const DashboardPage = () => {
                 Go back
               </Button>
             )}
-            <ProjectPermissionCan
-              I={
-                isRollbackMode
-                  ? ProjectPermissionActions.Create
-                  : (ProjectPermissionActions.Edit as any)
+
+            <Tooltip
+              isOpen={
+                !isSubmitting && isSubmitDisabled && isReadOnly && !isDirty ? undefined : false
               }
-              a={
-                isRollbackMode
-                  ? ProjectPermissionSub.SecretRollback
-                  : subject(ProjectPermissionSub.Secrets, {
-                      environment,
-                      secretPath
-                    })
-              }
+              content="Access restricted"
             >
-              {(isAllowed) => (
-                <Button
-                  isDisabled={isSubmitDisabled || !isAllowed}
-                  isLoading={isSubmitting}
-                  leftIcon={<FontAwesomeIcon icon={isRollbackMode ? faClockRotateLeft : faCheck} />}
-                  onClick={handleSubmit(onSaveSecret)}
-                  className="h-10 text-black"
-                  color="primary"
-                  variant="solid"
-                >
-                  {isRollbackMode ? "Rollback" : "Save Changes"}
-                </Button>
-              )}
-            </ProjectPermissionCan>
+              <Button
+                isDisabled={isSubmitDisabled}
+                isLoading={isSubmitting}
+                leftIcon={<FontAwesomeIcon icon={isRollbackMode ? faClockRotateLeft : faCheck} />}
+                onClick={handleSubmit(onSaveSecret)}
+                className="h-10 text-black"
+                color="primary"
+                variant="solid"
+              >
+                {isRollbackMode ? "Rollback" : "Save Changes"}
+              </Button>
+            </Tooltip>
           </div>
         </div>
         <div
