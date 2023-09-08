@@ -243,6 +243,8 @@ export const SecretOverviewPage = () => {
     folders?.some(({ isLoading }) => !isLoading) && secrets?.some(({ isLoading }) => !isLoading)
   );
 
+  const canViewOverviewPage = Boolean(userAvailableEnvs.length);
+
   const filteredSecretNames = secKeys
     ?.filter((name) => name.toUpperCase().includes(searchFilter.toUpperCase()))
     .sort((a, b) => (sortDir === "asc" ? a.localeCompare(b) : b.localeCompare(a)));
@@ -347,7 +349,7 @@ export const SecretOverviewPage = () => {
               </Tr>
             </THead>
             <TBody>
-              {isTableLoading && (
+              {canViewOverviewPage && isTableLoading && (
                 <TableSkeleton
                   columns={userAvailableEnvs.length + 1}
                   innerKey="secret-overview-loading"

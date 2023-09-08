@@ -43,10 +43,10 @@ export const withPermission = <T extends {}, J extends TOrgPermission>(
               <FontAwesomeIcon icon={faLock} size="6x" />
             </div>
             <div>
-              <div className="text-4xl font-medium mb-2">Permission Denied</div>
+              <div className="text-4xl font-medium mb-2">Access Restricted</div>
               <div className="text-sm">
-                You do not have permission to this page. <br /> Kindly contact your organization
-                administrator
+                Your role has limited permissions, please <br /> You do not have permission to this
+                page.
               </div>
             </div>
           </div>
