@@ -36,9 +36,7 @@ export const MembersPage = withPermission(
           <Tabs defaultValue={TabSections.Member}>
             <TabList>
               <Tab value={TabSections.Member}>Members</Tab>
-              {process.env.NEXT_PUBLIC_NEW_PERMISSION_FLAG === "true" && (
-                <Tab value={TabSections.Roles}>Roles</Tab>
-              )}
+              <Tab value={TabSections.Roles}>Roles</Tab>
             </TabList>
             <TabPanel value={TabSections.Member}>
               <motion.div

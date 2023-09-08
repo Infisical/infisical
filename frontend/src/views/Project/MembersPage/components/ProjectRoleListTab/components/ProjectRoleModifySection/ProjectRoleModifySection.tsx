@@ -21,8 +21,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import { Button, FormControl, Input } from "@app/components/v2";
-import { useOrganization, useWorkspace } from "@app/context";
+import { Button, FormControl, Input, UpgradePlanModal } from "@app/components/v2";
+import { useOrganization, useSubscription, useWorkspace } from "@app/context";
+import { usePopUp } from "@app/hooks";
 import { useCreateRole, useUpdateRole } from "@app/hooks/api";
 import { TRole } from "@app/hooks/api/roles/types";
 
@@ -108,6 +109,8 @@ type Props = {
 export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
   const [searchPermission, setSearchPermission] = useState("");
 
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["upgradePlan"] as const);
+
   const isNonEditable = ["admin", "member", "viewer"].includes(role?.slug || "");
   const isNewRole = !role?.slug;
 
@@ -115,6 +118,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?._id || "";
   const { currentWorkspace } = useWorkspace();
+  const { subscription } = useSubscription();
   const workspaceId = currentWorkspace?._id || "";
 
   const {
@@ -133,7 +137,6 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
   const handleRoleUpdate = async (el: TFormSchema) => {
     if (!role?._id) return;
 
-    console.log(el);
     try {
       await updateRole({
         orgId,
@@ -151,6 +154,11 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
   };
 
   const handleFormSubmit = async (el: TFormSchema) => {
+    if (subscription && !subscription?.rbac) {
+      handlePopUpOpen("upgradePlan");
+      return;
+    }
+
     if (!isNewRole) {
       await handleRoleUpdate(el);
       return;
@@ -187,7 +195,8 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
           </Button>
         </div>
         <p className="mb-8 text-gray-400">
-          Project-level roles allow you to define permissions for resources within projects at a granular level
+          Project-level roles allow you to define permissions for resources within projects at a
+          granular level
         </p>
         <div className="flex flex-col space-y-6">
           <FormControl
@@ -302,6 +311,17 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
           </Button>
         </div>
       </form>
+      {subscription && (
+        <UpgradePlanModal
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          text={
+            subscription.slug === null
+              ? "You can use RBAC under an Enterprise license"
+              : "You can use RBAC if you switch to Infisical's Team Plan."
+          }
+        />
+      )}
     </div>
   );
 };
