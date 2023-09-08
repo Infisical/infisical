@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { faEdit, faMagnifyingGlass, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { format } from "date-fns";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -90,7 +89,7 @@ export const OrgRoleTable = ({ isRolesLoading, roles = [], onSelectRole }: Props
             <TBody>
               {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
               {roles?.map((role) => {
-                const { _id: id, name, createdAt, slug } = role;
+                const { _id: id, name, slug } = role;
                 const isNonMutatable = ["owner", "admin", "member"].includes(slug);
 
                 return (
