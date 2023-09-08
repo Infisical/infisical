@@ -38,10 +38,9 @@ export default function SecretScanning() {
     linkInstallation()
   },[queryParams.state, queryParams.installation_id])
 
-  // change uri back to https://github.com/apps/infisical-radar/installations...
   const generateNewIntegrationSession = async () => {
     const session = await createSecretScanningSession(String(localStorage.getItem("orgData.id")))
-    router.push(`https://github.com/apps/infisical-radar-dev2/installations/new?state=${session.sessionId}`)
+    router.push(`https://github.com/apps/infisical-radar/installations/new?state=${session.sessionId}`)
   }
 
   return (
