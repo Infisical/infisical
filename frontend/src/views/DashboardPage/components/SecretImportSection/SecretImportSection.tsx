@@ -59,13 +59,23 @@ export const computeImportedSecretRows = (
 type Props = {
   secrets?: DecryptedSecret[];
   importedSecrets?: TImportedSecrets;
+  environment: string;
+  secretPath: string;
   onSecretImportDelete: (env: string, secPath: string) => void;
   items: { id: string; environment: string; secretPath: string }[];
   searchTerm: string;
 };
 
 export const SecretImportSection = memo(
-  ({ secrets = [], importedSecrets = [], onSecretImportDelete, items = [], searchTerm = "" }: Props) => {
+  ({
+    secrets = [],
+    environment,
+    secretPath,
+    importedSecrets = [],
+    onSecretImportDelete,
+    items = [],
+    searchTerm = ""
+  }: Props) => {
     const { currentWorkspace } = useWorkspace();
     const environments = currentWorkspace?.environments || [];
 
@@ -82,6 +92,8 @@ export const SecretImportSection = memo(
               secrets,
               environments
             )}
+            secretPath={secretPath}
+            environment={environment}
             onDelete={onSecretImportDelete}
             importedSecPath={impSecPath}
             searchTerm={searchTerm}

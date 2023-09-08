@@ -14,6 +14,8 @@ import {
   getSiteURL
 } from "../../config";
 import { ActorType } from "../../ee/models";
+import { validateRequest } from "../../helpers/validation";
+import * as reqValidator from "../../validation/auth";
 
 /**
  * Password reset step 1: Send email verification link to email [email]
@@ -23,7 +25,9 @@ import { ActorType } from "../../ee/models";
  * @returns
  */
 export const emailPasswordReset = async (req: Request, res: Response) => {
-  const email: string = req.body.email;
+  const {
+    body: { email }
+  } = await validateRequest(reqValidator.EmailPasswordResetV1, req);
 
   const user = await User.findOne({ email }).select("+publicKey");
   if (!user || !user?.publicKey) {
@@ -62,7 +66,9 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
  * @returns
  */
 export const emailPasswordResetVerify = async (req: Request, res: Response) => {
-  const { email, code } = req.body;
+  const {
+    body: { email, code }
+  } = await validateRequest(reqValidator.EmailPasswordResetVerifyV1, req);
 
   const user = await User.findOne({ email }).select("+publicKey");
   if (!user || !user?.publicKey) {
@@ -103,8 +109,10 @@ export const emailPasswordResetVerify = async (req: Request, res: Response) => {
  */
 export const srp1 = async (req: Request, res: Response) => {
   // return salt, serverPublicKey as part of first step of SRP protocol
+  const {
+    body: { clientPublicKey }
+  } = await validateRequest(reqValidator.Srp1V1, req);
 
-  const { clientPublicKey } = req.body;
   const user = await User.findOne({
     email: req.user.email
   }).select("+salt +verifier");
@@ -149,16 +157,18 @@ export const srp1 = async (req: Request, res: Response) => {
  */
 export const changePassword = async (req: Request, res: Response) => {
   const {
-    clientProof,
-    protectedKey,
-    protectedKeyIV,
-    protectedKeyTag,
-    encryptedPrivateKey,
-    encryptedPrivateKeyIV,
-    encryptedPrivateKeyTag,
-    salt,
-    verifier
-  } = req.body;
+    body: {
+      clientProof,
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
+      encryptedPrivateKey,
+      encryptedPrivateKeyIV,
+      encryptedPrivateKeyTag,
+      salt,
+      verifier
+    }
+  } = await validateRequest(reqValidator.ChangePasswordV1, req);
 
   const user = await User.findOne({
     email: req.user.email
@@ -208,10 +218,7 @@ export const changePassword = async (req: Request, res: Response) => {
           }
         );
 
-        if (
-          req.authData.actor.type === ActorType.USER &&
-          req.authData.tokenVersionId
-        ) {
+        if (req.authData.actor.type === ActorType.USER && req.authData.tokenVersionId) {
           await clearTokens(req.authData.tokenVersionId);
         }
 
@@ -246,8 +253,9 @@ export const createBackupPrivateKey = async (req: Request, res: Response) => {
   // create/change backup private key
   // requires verifying [clientProof] as part of second step of SRP protocol
   // as initiated in /srp1
-
-  const { clientProof, encryptedPrivateKey, iv, tag, salt, verifier } = req.body;
+  const {
+    body: { clientProof, encryptedPrivateKey, salt, verifier, iv, tag }
+  } = await validateRequest(reqValidator.CreateBackupPrivateKeyV1, req);
   const user = await User.findOne({
     email: req.user.email
   }).select("+salt +verifier");
@@ -325,15 +333,17 @@ export const getBackupPrivateKey = async (req: Request, res: Response) => {
 
 export const resetPassword = async (req: Request, res: Response) => {
   const {
-    protectedKey,
-    protectedKeyIV,
-    protectedKeyTag,
-    encryptedPrivateKey,
-    encryptedPrivateKeyIV,
-    encryptedPrivateKeyTag,
-    salt,
-    verifier
-  } = req.body;
+    body: {
+      encryptedPrivateKey,
+      protectedKeyTag,
+      protectedKey,
+      protectedKeyIV,
+      salt,
+      verifier,
+      encryptedPrivateKeyIV,
+      encryptedPrivateKeyTag
+    }
+  } = await validateRequest(reqValidator.ResetPasswordV1, req);
 
   await User.findByIdAndUpdate(
     req.user._id.toString(),

@@ -17,6 +17,8 @@ import {
   getJwtRefreshSecret
 } from "../../config";
 import { ActorType } from "../../ee/models";
+import { validateRequest } from "../../helpers/validation";
+import * as reqValidator from "../../validation/auth";
 
 declare module "jsonwebtoken" {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -32,7 +34,9 @@ declare module "jsonwebtoken" {
  * @returns
  */
 export const login1 = async (req: Request, res: Response) => {
-  const { email, clientPublicKey }: { email: string; clientPublicKey: string } = req.body;
+  const {
+    body: { email, clientPublicKey }
+  } = await validateRequest(reqValidator.Login1V1, req);
 
   const user = await User.findOne({
     email
@@ -76,7 +80,10 @@ export const login1 = async (req: Request, res: Response) => {
  * @returns
  */
 export const login2 = async (req: Request, res: Response) => {
-  const { email, clientProof } = req.body;
+  const {
+    body: { email, clientProof }
+  } = await validateRequest(reqValidator.Login2V1, req);
+
   const user = await User.findOne({
     email
   }).select("+salt +verifier +publicKey +encryptedPrivateKey +iv +tag");

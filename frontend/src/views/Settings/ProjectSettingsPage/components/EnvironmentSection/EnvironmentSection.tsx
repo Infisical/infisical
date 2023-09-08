@@ -2,15 +2,16 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { PermissionDeniedBanner, ProjectPermissionCan } from "@app/components/permissions";
+import { Button, DeleteActionModal, UpgradePlanModal } from "@app/components/v2";
 import {
-  Button,
-  DeleteActionModal,
-  UpgradePlanModal
-} from "@app/components/v2";
-import { useSubscription,useWorkspace } from "@app/context";
-import {
-  useDeleteWsEnvironment
-} from "@app/hooks/api";
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProjectPermission,
+  useSubscription,
+  useWorkspace
+} from "@app/context";
+import { useDeleteWsEnvironment } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddEnvironmentModal } from "./AddEnvironmentModal";
@@ -21,11 +22,15 @@ export const EnvironmentSection = () => {
   const { createNotification } = useNotificationContext();
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
+  const permision = useProjectPermission();
 
   const deleteWsEnvironment = useDeleteWsEnvironment();
 
-  const isMoreEnvironmentsAllowed = (subscription?.environmentLimit && currentWorkspace?.environments) ? (currentWorkspace.environments.length < subscription.environmentLimit) : true;
-  
+  const isMoreEnvironmentsAllowed =
+    subscription?.environmentLimit && currentWorkspace?.environments
+      ? currentWorkspace.environments.length < subscription.environmentLimit
+      : true;
+
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "createEnv",
     "updateEnv",
@@ -36,7 +41,7 @@ export const EnvironmentSection = () => {
   const onEnvDeleteSubmit = async (environmentSlug: string) => {
     try {
       if (!currentWorkspace?._id) return;
-      
+
       await deleteWsEnvironment.mutateAsync({
         workspaceID: currentWorkspace._id,
         environmentSlug
@@ -46,7 +51,7 @@ export const EnvironmentSection = () => {
         text: "Successfully deleted environment",
         type: "success"
       });
-      
+
       handlePopUpClose("deleteEnv");
     } catch (err) {
       console.error(err);
@@ -60,37 +65,46 @@ export const EnvironmentSection = () => {
   return (
     <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
       <div className="flex justify-between mb-8">
-        <p className="text-xl font-semibold text-mineshaft-100">
-          Environments
-        </p>
+        <p className="text-xl font-semibold text-mineshaft-100">Environments</p>
         <div>
-          <Button
-            colorSchema="secondary"
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={() => {
-              if (isMoreEnvironmentsAllowed) {
-                handlePopUpOpen("createEnv");
-              } else {
-                handlePopUpOpen("upgradePlan");
-              }
-            }}
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.Environments}
           >
-            Create environment
-          </Button>
+            {(isAllowed) => (
+              <Button
+                colorSchema="secondary"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => {
+                  if (isMoreEnvironmentsAllowed) {
+                    handlePopUpOpen("createEnv");
+                  } else {
+                    handlePopUpOpen("upgradePlan");
+                  }
+                }}
+                isDisabled={!isAllowed}
+              >
+                Create environment
+              </Button>
+            )}
+          </ProjectPermissionCan>
         </div>
       </div>
       <p className="text-gray-400 mb-8">
-        Choose which environments will show up in your dashboard like development, staging, production
+        Choose which environments will show up in your dashboard like development, staging,
+        production
       </p>
-      <EnvironmentTable 
-        handlePopUpOpen={handlePopUpOpen}
-      />
-      <AddEnvironmentModal 
+      {permision.can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments) ? (
+        <EnvironmentTable handlePopUpOpen={handlePopUpOpen} />
+      ) : (
+        <PermissionDeniedBanner />
+      )}
+      <AddEnvironmentModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <UpdateEnvironmentModal 
+      <UpdateEnvironmentModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
