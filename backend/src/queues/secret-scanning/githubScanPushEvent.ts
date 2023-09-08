@@ -41,9 +41,10 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
   // Scan the .infisicalignore file (if it exists) & extract the fingerprints
   const infisicalIgnoreFileContents = await checkIfInfisicalIgnoreFile(octokit, owner, repo);
 
-  const newInfisicalIgnoreFindingsToUpdate: string[] = [];
-  const existingUnresolvedFindings: number[] = [];
   const newFindingsToUpdate: any[] = [];
+  const existingUnresolvedFingerprints: string[] = [];
+  const existingResolvedFingerprints: string[] = [];
+  const hashedSecretFindings: string[] = [];
 
   for (const commit of commits) {
     for (const filepath of [...commit.added, ...commit.modified]) {
@@ -58,8 +59,6 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
         const fileContent = Buffer.from(data.content, "base64").toString();
 
         const findings = await scanContentAndGetFindings(`\n${fileContent}`); // extra line to count lines correctly
-        const existingResolvedFingerprints: string[] = [];
-        const hashedSecretFindings: string[] = [];
 
         for (const finding of findings) {
           const fingerPrintWithCommitId = `${commit.id}:${filepath}:${finding.RuleID}:${finding.StartLine}`;
@@ -86,8 +85,6 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
             ]
           }).select("+hashedSecret")
         
-          let unresolvedFindingsCount = 0;
-
           for (const existingFinding of existingFindingsInFile) {
             hashedSecretFindings.push(existingFinding.hashedSecret)
 
@@ -95,8 +92,7 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
             if (existingFinding && existingFinding.status !== RiskStatus.UNRESOLVED) {
               existingResolvedFingerprints.push(existingFinding.fingerprint);
             } else if (existingFinding && existingFinding.status === RiskStatus.UNRESOLVED) {
-              unresolvedFindingsCount += 1;
-              existingUnresolvedFindings.push(unresolvedFindingsCount);
+              existingUnresolvedFingerprints.push(existingFinding.fingerprint);
             }
           }
 
@@ -122,31 +118,7 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
               hashedSecret: hashResult,
             },
           });
-        }
-
-        // check .infisicalignore file
-        const ignoreFingerprints = [];
-
-        for (const infisicalIgnoreFingerprint of infisicalIgnoreFileContents) {
-          if (infisicalIgnoreFingerprint.exists) {
-            const content = infisicalIgnoreFingerprint.content;
-            if (content) {
-              const fingerprints = content.split("\n");
-              // Collect individual fingerprints in the array
-              ignoreFingerprints.push(...fingerprints);
-            }
-          }
-        }
-
-        // Loop through unresolved existing fingerprints and .infisicalignore fingerprints to find matches
-        for (const ignoreFingerprint of ignoreFingerprints) {
-          for (const existingUnresolvedFingerprint of existingResolvedFingerprints)
-            if (ignoreFingerprint === existingUnresolvedFingerprint) {
-              // Collect to batch update as false positives
-              newInfisicalIgnoreFindingsToUpdate.push(ignoreFingerprint)
-            }
-        }
-        
+        }       
       } catch (error) {
         done(new Error(`gitHubHistoricalScanning.process: unable to fetch content for [filepath=${filepath}] because [error=${error}]`), null)
       }
@@ -160,6 +132,29 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
         data,
       { upsert: true }
     ).lean();
+  }
+
+  // now go through the .infisicalignore file & extract fingerprints
+  const ignoreFingerprints: string[] = [];
+
+  for (const infisicalIgnoreFingerprint of infisicalIgnoreFileContents) {
+    if (infisicalIgnoreFingerprint.exists) {
+      const content = infisicalIgnoreFingerprint.content;
+      if (content) {
+        const fingerprints = content.split("\n");
+        ignoreFingerprints.push(...fingerprints);
+      }
+    }
+  }
+
+  // only update the fingerprints that haven't been flagged explicity on the frontend
+  const newInfisicalIgnoreFindingsToUpdate: string[] = [];
+
+  for (const ignoreFingerprint of ignoreFingerprints) {
+    for (const existingUnresolvedFingerprint of existingUnresolvedFingerprints)
+      if (ignoreFingerprint === existingUnresolvedFingerprint) {
+        newInfisicalIgnoreFindingsToUpdate.push(ignoreFingerprint)
+      }
   }
 
   // batch update found .infisicalignore findings (to false positives) 
@@ -194,7 +189,7 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
   const usersToNotify = pusher?.email ? [pusher.email, ...adminOrOwnerEmails] : [...adminOrOwnerEmails]
 
   const numberOfNewSecrets = newFindingsToUpdate.length;
-  const numberOfUnresolvedSecrets = existingUnresolvedFindings.length;
+  const numberOfUnresolvedSecrets = existingUnresolvedFingerprints.length - newInfisicalIgnoreFindingsToUpdate.length;
 
   if (numberOfNewSecrets || numberOfUnresolvedSecrets) {
     let subjectLine = "Incident alert:";
@@ -237,7 +232,7 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
     });
   }
 
-  done(null, {newFindingsToUpdate, existingUnresolvedFindings})
+  done(null, {newFindingsToUpdate, existingUnresolvedFingerprints, newInfisicalIgnoreFindingsToUpdate})
 
 })
 
