@@ -1,6 +1,7 @@
 import Queue, { Job } from "bull";
-import { ProbotOctokit } from "probot"
+import { ProbotOctokit } from "probot";
 import { Commit } from "@octokit/webhooks-types";
+import { createHash } from "crypto";
 import TelemetryService from "../../services/TelemetryService";
 import { sendMail } from "../../helpers";
 import GitRisks, { RiskStatus } from "../../ee/models/gitRisks";
@@ -8,7 +9,7 @@ import { MembershipOrg, User } from "../../models";
 import { ADMIN, OWNER } from "../../variables";
 import { convertKeysToLowercase, scanContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
-import { SecretMatch } from "../../ee/services/GithubSecretScanning/types";
+import { checkIfInfisicalIgnoreFile } from "./checkInfisicalIgnoreFile";
 
 export const githubPushEventSecretScan = new Queue("github-push-event-secret-scanning", "redis://redis:6379");
 
@@ -23,7 +24,7 @@ type TScanPushEventQueueDetails = {
     id: number,
     fullName: string,
   },
-  installationId: number
+  installationId: number,
 }
 
 githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => {
@@ -37,11 +38,12 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
     },
   });
 
-  const uniqueFingerprints: string[] = [];
-  const newFindingsByFingerprint: { [key: string]: SecretMatch; } = {}
-  const existingUnresolvedFindingsByFingerprint: { [key: string]: SecretMatch; } = {}
-  const existingUnrevokedFindingsByFingerprint: { [key: string]: SecretMatch; } = {}
+  // Scan the .infisicalignore file (if it exists) & extract the fingerprints
+  const infisicalIgnoreFileContents = await checkIfInfisicalIgnoreFile(octokit, owner, repo);
 
+  const newInfisicalIgnoreFindingsToUpdate: string[] = [];
+  const existingUnresolvedFindings: number[] = [];
+  const newFindingsToUpdate: any[] = [];
 
   for (const commit of commits) {
     for (const filepath of [...commit.added, ...commit.modified]) {
@@ -56,10 +58,51 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
         const fileContent = Buffer.from(data.content, "base64").toString();
 
         const findings = await scanContentAndGetFindings(`\n${fileContent}`); // extra line to count lines correctly
+        const existingResolvedFingerprints: string[] = [];
+        const hashedSecretFindings: string[] = [];
 
         for (const finding of findings) {
           const fingerPrintWithCommitId = `${commit.id}:${filepath}:${finding.RuleID}:${finding.StartLine}`;
           const fingerPrintWithoutCommitId = `${filepath}:${finding.RuleID}:${finding.StartLine}`;
+
+          // Create a SHA3-512 hash of the secret & immediately clear the secret from memory
+          let secret = finding.Secret;
+          const sha512Hash = createHash("sha3-512");
+          sha512Hash.update(secret);
+          const hashResult = sha512Hash.digest("hex");
+          secret = "";
+
+          // check if the hashed secret has already been processed
+          if(hashedSecretFindings.includes(hashResult)) {
+            continue;
+          }
+
+          // Check if the hashed secret is in the same repository & bulk process if more than one
+          // TODO: the user should be notified if the hashed secret is also in another part of the repo...
+          const existingFindingsInFile = await GitRisks.find({
+            $and: [
+              { hashedSecret: hashResult },
+              { repositoryId: repository.id },
+            ]
+          }).select("+hashedSecret")
+        
+          let unresolvedFindingsCount = 0;
+
+          for (const existingFinding of existingFindingsInFile) {
+            hashedSecretFindings.push(existingFinding.hashedSecret)
+
+            // skip all resolved findings (false positives, revoked & unrevoked)
+            if (existingFinding && existingFinding.status !== RiskStatus.UNRESOLVED) {
+              existingResolvedFingerprints.push(existingFinding.fingerprint);
+            } else if (existingFinding && existingFinding.status === RiskStatus.UNRESOLVED) {
+              unresolvedFindingsCount += 1;
+              existingUnresolvedFindings.push(unresolvedFindingsCount);
+            }
+          }
+
+          if (existingFindingsInFile.length > 0) {
+            continue;
+          }
 
           finding.Fingerprint = fingerPrintWithCommitId;
           finding.FingerPrintWithoutCommitId = fingerPrintWithoutCommitId;
@@ -68,52 +111,70 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
           finding.Author = commit.author.name;
           finding.Email = commit?.author?.email ? commit?.author?.email : "";
 
-          uniqueFingerprints.push(fingerPrintWithCommitId);
-          newFindingsByFingerprint[fingerPrintWithCommitId] = finding;
+          newFindingsToUpdate.push({
+            fingerprint: finding.Fingerprint,
+            data: {
+              ...convertKeysToLowercase(finding),
+              installationId: installationId,
+              organization: organizationId,
+              repositoryFullName: repository.fullName,
+              repositoryId: repository.id,
+              hashedSecret: hashResult,
+            },
+          });
         }
+
+        // check .infisicalignore file
+        const ignoreFingerprints = [];
+
+        for (const infisicalIgnoreFingerprint of infisicalIgnoreFileContents) {
+          if (infisicalIgnoreFingerprint.exists) {
+            const content = infisicalIgnoreFingerprint.content;
+            if (content) {
+              const fingerprints = content.split("\n");
+              // Collect individual fingerprints in the array
+              ignoreFingerprints.push(...fingerprints);
+            }
+          }
+        }
+
+        // Loop through unresolved existing fingerprints and .infisicalignore fingerprints to find matches
+        for (const ignoreFingerprint of ignoreFingerprints) {
+          for (const existingUnresolvedFingerprint of existingResolvedFingerprints)
+            if (ignoreFingerprint === existingUnresolvedFingerprint) {
+              // Collect to batch update as false positives
+              newInfisicalIgnoreFindingsToUpdate.push(ignoreFingerprint)
+            }
+        }
+        
       } catch (error) {
         done(new Error(`gitHubHistoricalScanning.process: unable to fetch content for [filepath=${filepath}] because [error=${error}]`), null)
       }
     }
   }
 
-  const existingFindings = await GitRisks.find({
-    fingerprint: { $in: uniqueFingerprints },
-  });
+  // batch update all new findings
+  for (const { fingerprint, data } of newFindingsToUpdate) {
+    await GitRisks.findOneAndUpdate(
+      { fingerprint },
+        data,
+      { upsert: true }
+    ).lean();
+  }
 
-  // Sort findings into risk status groups for: 
-  // 1. user notification (new findings and exisiting unresolved & unrevoked findings)
-  // 2. telemetry (new findings only)
-  for (const existingFinding of existingFindings) {
-    const fingerprint = existingFinding.fingerprint;
-
-    // skip false positive & existing resolved (revoked) findings
-    if (existingFinding.status === RiskStatus.RESOLVED_FALSE_POSITIVE || existingFinding.status === RiskStatus.RESOLVED_REVOKED) {
-      continue;
-    }
-
-    if (existingFinding.status === RiskStatus.RESOLVED_NOT_REVOKED) {
-      existingUnrevokedFindingsByFingerprint[fingerprint] = newFindingsByFingerprint[fingerprint];
-    }
-
-    if (existingFinding.status === RiskStatus.UNRESOLVED) {
-      existingUnresolvedFindingsByFingerprint[fingerprint] = newFindingsByFingerprint[fingerprint];
+  // batch update found .infisicalignore findings (to false positives) 
+  // (Assumption: user flags these in .infisicalignore as false positives)
+  for (const processedFingerprint of newInfisicalIgnoreFindingsToUpdate) {
+    // Only update findings with fingerprints that matched
+    if (newInfisicalIgnoreFindingsToUpdate.includes(processedFingerprint)) {
+      await GitRisks.findOneAndUpdate(
+        { fingerprint: processedFingerprint },
+        { status: RiskStatus.RESOLVED_FALSE_POSITIVE },
+        { upsert: true }
+      ).lean();
     }
   }
 
-  // change to update (only new findings)
-  for (const key in newFindingsByFingerprint) {
-    await GitRisks.findOneAndUpdate({ fingerprint: newFindingsByFingerprint[key].Fingerprint },
-      {
-        ...convertKeysToLowercase(newFindingsByFingerprint[key]),
-        installationId: installationId,
-        organization: organizationId,
-        repositoryFullName: repository.fullName,
-        repositoryId: repository.id
-      }, {
-      upsert: true
-    }).lean()
-  }
   // get emails of admins
   const adminsOfWork = await MembershipOrg.find({
     organization: organizationId,
@@ -132,31 +193,23 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
   const adminOrOwnerEmails = userEmails.map(userObject => userObject.email)
   const usersToNotify = pusher?.email ? [pusher.email, ...adminOrOwnerEmails] : [...adminOrOwnerEmails]
 
-  const numberOfNewSecrets = Object.keys(newFindingsByFingerprint).length;
-  const numberOfUnresolvedSecrets = Object.keys(existingUnresolvedFindingsByFingerprint).length;
-  const numberOfUnrevokedResolvedSecrets = Object.keys(existingUnrevokedFindingsByFingerprint).length;
-  const numberOfTotalLeakedSecrets = numberOfNewSecrets + numberOfUnresolvedSecrets + numberOfUnrevokedResolvedSecrets;
+  const numberOfNewSecrets = newFindingsToUpdate.length;
+  const numberOfUnresolvedSecrets = existingUnresolvedFindings.length;
 
-  if (numberOfTotalLeakedSecrets) {
+  if (numberOfNewSecrets || numberOfUnresolvedSecrets) {
     let subjectLine = "Incident alert:";
     const messages = [];
 
-    // keep subject line concise if one or more NEW secrets are detected
     if (numberOfNewSecrets > 0) {
       messages.push(`${numberOfNewSecrets} new leaked ${numberOfNewSecrets === 1 ? "secret" : "secrets"}`);
     }
 
-    // otherwise be more specific
-    if (numberOfUnresolvedSecrets > 0 && numberOfUnrevokedResolvedSecrets === 0) {
+    if (numberOfUnresolvedSecrets > 0) {
       messages.push(`${numberOfUnresolvedSecrets} unresolved leaked ${numberOfUnresolvedSecrets === 1 ? "secret" : "secrets"}`);
     }
 
-    if (numberOfUnrevokedResolvedSecrets > 0 && numberOfUnresolvedSecrets === 0) {
-      messages.push(`${numberOfUnrevokedResolvedSecrets} unrevoked leaked ${numberOfUnrevokedResolvedSecrets === 1 ? "secret" : "secrets"}`);
-    }
-
     if (messages.length > 0) {
-      subjectLine += ` ${messages.join(" & ")} found in Github repository ${repository.fullName}`;
+      subjectLine += ` ${messages.join(" & ")} found in GitHub repository: ${repository.fullName}`;
       
       await sendMail({
         template: "secretLeakIncident.handlebars",
@@ -165,8 +218,6 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
         substitutions: {
           numberOfNewSecrets,
           numberOfUnresolvedSecrets,
-          numberOfUnrevokedResolvedSecrets,
-          numberOfTotalLeakedSecrets,
           pusher_email: pusher.email,
           pusher_name: pusher.name
         }
@@ -181,12 +232,12 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
       distinctId: pusher.email,
       properties: {
         numberOfCommitsScanned: commits.length,
-        numberOfRisksFound: Object.keys(newFindingsByFingerprint).length, // only capture telemetry for new findings
+        numberOfRisksFound: numberOfNewSecrets, //  capture telemetry for new findings
       }
     });
   }
 
-  done(null, {uniqueFingerprints, newFindingsByFingerprint, existingUnresolvedFindingsByFingerprint, existingUnrevokedFindingsByFingerprint})
+  done(null, {newFindingsToUpdate, existingUnresolvedFindings})
 
 })
 
@@ -203,4 +254,3 @@ export const scanGithubPushEventForSecretLeaks = (pushEventPayload: TScanPushEve
     }
   })
 }
-

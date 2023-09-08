@@ -1,13 +1,15 @@
 import Queue, { Job } from "bull";
 import { ProbotOctokit } from "probot"
+import { createHash } from "crypto";
 import TelemetryService from "../../services/TelemetryService";
 import { sendMail } from "../../helpers";
-import GitRisks from "../../ee/models/gitRisks";
+import GitRisks, { RiskStatus } from "../../ee/models/gitRisks";
 import { MembershipOrg, User } from "../../models";
 import { ADMIN, OWNER } from "../../variables";
 import { convertKeysToLowercase, scanFullRepoContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
 import { SecretMatch } from "../../ee/services/GithubSecretScanning/types";
+import { checkIfInfisicalIgnoreFile } from "./checkInfisicalIgnoreFile";
 
 export const githubFullRepositorySecretScan = new Queue("github-full-repository-secret-scanning", "redis://redis:6379");
 
@@ -22,26 +24,75 @@ type TScanPushEventQueueDetails = {
 
 githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback) => {
   const { organizationId, repository, installationId }: TScanPushEventQueueDetails = job.data
+  const [owner, repo] = repository.fullName.split("/");
+
   try {
     const octokit = new ProbotOctokit({
         auth: {
         appId: await getSecretScanningGitAppId(),
         privateKey: await getSecretScanningPrivateKey(),
         installationId: installationId
-        },
+      },
     });
+
+    // Scan the .infisicalignore file (if it exists) & extract the fingerprints
+    const infisicalIgnoreFileContents = await checkIfInfisicalIgnoreFile(octokit, owner, repo);
+    const batchUpdateOperations: any[] = [];
     const findings : SecretMatch[] = await scanFullRepoContentAndGetFindings(octokit, installationId, repository.fullName)
+
     for (const finding of findings) {
-      await GitRisks.findOneAndUpdate({ fingerprint: finding.Fingerprint}, 
-        {
-        ...convertKeysToLowercase(finding),
-        installationId: installationId,
-        organization: organizationId,
-        repositoryFullName: repository.fullName,
-        repositoryId: repository.id
-      }, {
-        upsert: true
-      }).lean()
+
+      // Create a SHA3-512 hash of the secret & immediately clear the plaintext secret from memory
+      // Used in push events to collate all SHA-3 hashes of the secret in the same repo's file (prevents case where the secret moves)
+      // Also useful to append to the fingerprint (eventually) & for user audit secret scanning log table .csv download
+      let secret = finding.Secret;
+      const sha512Hash = createHash("sha3-512");
+      sha512Hash.update(secret);
+      const hashResult = sha512Hash.digest("hex");
+      secret = "";
+      
+      const updateOperation = {
+        updateOne: {
+          filter: { fingerprint: finding.Fingerprint },
+          update: {
+            ...convertKeysToLowercase(finding),
+            installationId: installationId,
+            organization: organizationId,
+            repositoryFullName: repository.fullName,
+            repositoryId: repository.id,
+            hashedSecret: hashResult,
+          },
+          upsert: true,
+        },
+      };
+
+      batchUpdateOperations.push(updateOperation);
+    }
+
+    await GitRisks.bulkWrite(batchUpdateOperations);
+
+    // check .infisicalignore file
+    const newInfisicalIgnoreFindingsToUpdate: any[] = [];
+
+    for (const infisicalIgnoreFingerprint of infisicalIgnoreFileContents) {
+      if (infisicalIgnoreFingerprint.exists) {
+        const content = infisicalIgnoreFingerprint.content;
+        if (content) {
+          const fingerprints = content.split("\n");
+          newInfisicalIgnoreFindingsToUpdate.push(...fingerprints);
+        }
+      }
+    }
+
+    // batch update found .infisicalignore findings (to false positives)
+    for (const processedFingerprint of newInfisicalIgnoreFindingsToUpdate) {
+      if (newInfisicalIgnoreFindingsToUpdate.includes(processedFingerprint)) {
+        await GitRisks.findOneAndUpdate(
+          { fingerprint: processedFingerprint },
+          { status: RiskStatus.RESOLVED_FALSE_POSITIVE },
+          { upsert: true }
+        ).lean();   
+       }
     }
 
     // get emails of admins

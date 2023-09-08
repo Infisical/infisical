@@ -16,6 +16,7 @@ export type GitRisks = {
   endColumn: string;
   match: string;
   secret: string;
+  hashedSecret: string; // new value to efficiently find same secret in a commit/ same repo file
   file: string;
   symlinkFile: string;
   commit: string;
@@ -128,8 +129,13 @@ const gitRisks = new Schema<GitRisks>({
   },
   status: {
     type: String,
+    enum: RiskStatus,
     default: RiskStatus.UNRESOLVED,
-  }
+  }, 
+  hashedSecret: {
+    type: String, // SHA3-512 hash of the secret
+    select: false,
+  },
 }, { timestamps: true });
 
 const GitRisks = model<GitRisks>("GitRisks", gitRisks);
