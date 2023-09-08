@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/router";
 import {
@@ -14,6 +14,11 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { OrgPermissionCan } from "@app/components/permissions";
+import {
+  decryptAssymmetric,
+  encryptAssymmetric
+} from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   DeleteActionModal,
@@ -37,26 +42,31 @@ import {
   Tr,
   UpgradePlanModal
 } from "@app/components/v2";
-import { useOrganization, useWorkspace } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription,
+  useUser,
+  useWorkspace
+} from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
-import { useGetSSOConfig } from "@app/hooks/api";
+import {
+  useAddUserToOrg,
+  useDeleteOrgMembership,
+  useGetOrgUsers,
+  useGetSSOConfig,
+  useGetUserWorkspaceMemberships,
+  useGetUserWsKey,
+  useUpdateOrgUserRole,
+  useUploadWsKey
+} from "@app/hooks/api";
+import { TRole } from "@app/hooks/api/roles/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
-import { OrgUser, Workspace } from "@app/hooks/api/types";
 
 type Props = {
-  members?: OrgUser[];
-  workspaceMemberships?: Record<string, Workspace[]>;
-  orgName: string;
-  isLoading?: boolean;
-  isMoreUserNotAllowed: boolean;
-  onRemoveMember: (userId: string) => Promise<void>;
-  onInviteMember: (email: string) => Promise<void>;
-  onRoleChange: (membershipId: string, role: string) => Promise<void>;
-  onGrantAccess: (userId: string, publicKey: string) => Promise<void>;
-  // the current user id to block remove org button
-  userId: string;
-  completeInviteLink: string | undefined;
-  setCompleteInviteLink: Dispatch<SetStateAction<string | undefined>>;
+  roles?: TRole<undefined>[];
+  isRolesLoading?: boolean;
 };
 
 const addMemberFormSchema = yup.object({
@@ -65,27 +75,21 @@ const addMemberFormSchema = yup.object({
 
 type TAddMemberForm = yup.InferType<typeof addMemberFormSchema>;
 
-export const OrgMembersTable = ({
-  members = [],
-  workspaceMemberships = {},
-  orgName,
-  isMoreUserNotAllowed,
-  onRemoveMember,
-  onInviteMember,
-  onGrantAccess,
-  onRoleChange,
-  userId,
-  isLoading,
-  completeInviteLink,
-  setCompleteInviteLink
-}: Props) => {
+export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
   const router = useRouter();
   const { createNotification } = useNotificationContext();
+
   const { currentOrg } = useOrganization();
-  const { data: ssoConfig, isLoading: isLoadingSSOConfig } = useGetSSOConfig(currentOrg?._id ?? "");
+  const { workspaces, currentWorkspace } = useWorkspace();
+  const { user } = useUser();
+  const userId = user?._id || "";
+  const orgId = currentOrg?._id || "";
+  const workspaceId = currentWorkspace?._id || "";
+
+  const { data: ssoConfig, isLoading: isLoadingSSOConfig } = useGetSSOConfig(orgId);
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
   const { data: serverDetails } = useFetchServerStatus();
-  const { workspaces } = useWorkspace();
+
   const [isInviteLinkCopied, setInviteLinkCopied] = useToggle(false);
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addMember",
@@ -93,6 +97,23 @@ export const OrgMembersTable = ({
     "upgradePlan",
     "setUpEmail"
   ] as const);
+  const { subscription } = useSubscription();
+
+  const { data: members, isLoading: isMembersLoading } = useGetOrgUsers(orgId);
+  const { data: workspaceMemberships, isLoading: IsWsMembershipLoading } =
+    useGetUserWorkspaceMemberships(orgId);
+  const { data: wsKey } = useGetUserWsKey(workspaceId);
+
+  const removeUserOrgMembership = useDeleteOrgMembership();
+  const addUserToOrg = useAddUserToOrg();
+  const updateOrgUserRole = useUpdateOrgUserRole();
+  const uploadWsKey = useUploadWsKey();
+
+  const [completeInviteLink, setCompleteInviteLink] = useState<string | undefined>("");
+
+  const isMoreUsersNotAllowed = subscription?.memberLimit
+    ? subscription.membersUsed >= subscription.memberLimit
+    : false;
 
   useEffect(() => {
     if (router.query.action === "invite") {
@@ -108,32 +129,100 @@ export const OrgMembersTable = ({
   } = useForm<TAddMemberForm>({ resolver: yupResolver(addMemberFormSchema) });
 
   const onAddMember = async ({ email }: TAddMemberForm) => {
-    await onInviteMember(email);
+    if (!currentOrg?._id) return;
+
+    try {
+      const { data } = await addUserToOrg.mutateAsync({
+        organizationId: currentOrg?._id,
+        inviteeEmail: email
+      });
+      setCompleteInviteLink(data?.completeInviteLink);
+      // only show this notification when email is configured.
+      // A [completeInviteLink] will not be sent if smtp is configured
+      if (!data.completeInviteLink) {
+        createNotification({
+          text: "Successfully invited user to the organization.",
+          type: "success"
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: "Failed to invite user to org",
+        type: "error"
+      });
+    }
     if (serverDetails?.emailConfigured) {
       handlePopUpClose("addMember");
     }
-
     reset();
   };
 
+  const onAddUserToOrg = async (email: string) => {
+    if (!currentOrg?._id) return;
+
+    try {
+      const { data } = await addUserToOrg.mutateAsync({
+        organizationId: currentOrg?._id,
+        inviteeEmail: email
+      });
+      setCompleteInviteLink(data?.completeInviteLink);
+
+      // only show this notification when email is configured. A [completeInviteLink] will not be sent if smtp is configured
+      if (!data.completeInviteLink) {
+        createNotification({
+          text: "Successfully invited user to the organization.",
+          type: "success"
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: "Failed to invite user to org",
+        type: "error"
+      });
+    }
+  };
+
   const onRemoveOrgMemberApproved = async () => {
-    const orgMembershipId = (popUp?.removeMember?.data as { id: string })?.id;
-    await onRemoveMember(orgMembershipId);
+    const membershipId = (popUp?.removeMember?.data as { id: string })?.id;
+    if (!currentOrg?._id) return;
+
+    try {
+      await removeUserOrgMembership.mutateAsync({ orgId: currentOrg?._id, membershipId });
+      createNotification({
+        text: "Successfully removed user from org",
+        type: "success"
+      });
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: "Failed to remove user from the organization",
+        type: "error"
+      });
+    }
     handlePopUpClose("removeMember");
   };
 
   const isIamOwner = useMemo(
-    () => members.find(({ user }) => userId === user?._id)?.role === "owner",
+    () => members?.find(({ user: u }) => userId === u?._id)?.role === "owner",
     [userId, members]
+  );
+
+  const findRoleFromId = useCallback(
+    (roleId: string) => {
+      return roles.find(({ _id: id }) => id === roleId);
+    },
+    [roles]
   );
 
   const filterdUser = useMemo(
     () =>
-      members.filter(
-        ({ user, inviteEmail }) =>
-          user?.firstName?.toLowerCase().includes(searchMemberFilter) ||
-          user?.lastName?.toLowerCase().includes(searchMemberFilter) ||
-          user?.email?.toLowerCase().includes(searchMemberFilter) ||
+      members?.filter(
+        ({ user: u, inviteEmail }) =>
+          u?.firstName?.toLowerCase().includes(searchMemberFilter) ||
+          u?.lastName?.toLowerCase().includes(searchMemberFilter) ||
+          u?.email?.toLowerCase().includes(searchMemberFilter) ||
           inviteEmail?.includes(searchMemberFilter)
       ),
     [members, searchMemberFilter]
@@ -147,10 +236,64 @@ export const OrgMembersTable = ({
     return () => clearTimeout(timer);
   }, [isInviteLinkCopied]);
 
+  const onRoleChange = async (membershipId: string, role: string) => {
+    if (!currentOrg?._id) return;
+
+    try {
+      await updateOrgUserRole.mutateAsync({ organizationId: currentOrg?._id, membershipId, role });
+      createNotification({
+        text: "Successfully updated user role",
+        type: "success"
+      });
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: "Failed to update user role",
+        type: "error"
+      });
+    }
+  };
+
+  const onGrantAccess = async (grantedUserId: string, publicKey: string) => {
+    try {
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
+      if (!PRIVATE_KEY || !wsKey) return;
+
+      // assymmetrically decrypt symmetric key with local private key
+      const key = decryptAssymmetric({
+        ciphertext: wsKey.encryptedKey,
+        nonce: wsKey.nonce,
+        publicKey: wsKey.sender.publicKey,
+        privateKey: PRIVATE_KEY
+      });
+
+      const { ciphertext, nonce } = encryptAssymmetric({
+        plaintext: key,
+        publicKey,
+        privateKey: PRIVATE_KEY
+      });
+
+      await uploadWsKey.mutateAsync({
+        userId: grantedUserId,
+        nonce,
+        encryptedKey: ciphertext,
+        workspaceId: currentWorkspace?._id || ""
+      });
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to grant access to user",
+        type: "error"
+      });
+    }
+  };
+
   const copyTokenToClipboard = () => {
     navigator.clipboard.writeText(completeInviteLink as string);
     setInviteLinkCopied.on();
   };
+
+  const isLoading = isMembersLoading || IsWsMembershipLoading || isRolesLoading;
 
   return (
     <div className="w-full">
@@ -163,27 +306,32 @@ export const OrgMembersTable = ({
             placeholder="Search members..."
           />
         </div>
-        <Button
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          onClick={() => {
-            if (!isLoadingSSOConfig && ssoConfig && ssoConfig.isActive) {
-              createNotification({
-                text: "You cannot invite users when SAML SSO is configured for your organization",
-                type: "error"
-              });
+        <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+          {(isAllowed) => (
+            <Button
+              isDisabled={!isAllowed}
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() => {
+                if (!isLoadingSSOConfig && ssoConfig && ssoConfig.isActive) {
+                  createNotification({
+                    text: "You cannot invite users when SAML SSO is configured for your organization",
+                    type: "error"
+                  });
 
-              return;
-            }
+                  return;
+                }
 
-            if (isMoreUserNotAllowed) {
-              handlePopUpOpen("upgradePlan");
-            } else {
-              handlePopUpOpen("addMember");
-            }
-          }}
-        >
-          Add Member
-        </Button>
+                if (isMoreUsersNotAllowed) {
+                  handlePopUpOpen("upgradePlan");
+                } else {
+                  handlePopUpOpen("addMember");
+                }
+              }}
+            >
+              Add Member
+            </Button>
+          )}
+        </OrgPermissionCan>
       </div>
       <div>
         <TableContainer>
@@ -200,106 +348,134 @@ export const OrgMembersTable = ({
             <TBody>
               {isLoading && <TableSkeleton columns={5} innerKey="org-members" />}
               {!isLoading &&
-                filterdUser.map(({ user, inviteEmail, role, _id: orgMembershipId, status }) => {
-                  const name = user ? `${user.firstName} ${user.lastName}` : "-";
-                  const email = user?.email || inviteEmail;
-                  const userWs = workspaceMemberships?.[user?._id];
+                filterdUser?.map(
+                  ({ user: u, inviteEmail, role, customRole, _id: orgMembershipId, status }) => {
+                    const name = u ? `${u.firstName} ${u.lastName}` : "-";
+                    const email = u?.email || inviteEmail;
+                    const userWs = workspaceMemberships?.[u?._id];
 
-                  return (
-                    <Tr key={`org-membership-${orgMembershipId}`} className="w-full">
-                      <Td>{name}</Td>
-                      <Td>{email}</Td>
-                      <Td>
-                        {status === "accepted" && (
-                          <Select
-                            defaultValue={role}
-                            isDisabled={userId === user?._id}
-                            className="w-40 bg-mineshaft-600"
-                            dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
-                            onValueChange={(selectedRole) =>
-                              onRoleChange(orgMembershipId, selectedRole)
-                            }
+                    return (
+                      <Tr key={`org-membership-${orgMembershipId}`} className="w-full">
+                        <Td>{name}</Td>
+                        <Td>{email}</Td>
+                        <Td>
+                          <OrgPermissionCan
+                            I={OrgPermissionActions.Edit}
+                            a={OrgPermissionSubjects.Member}
                           >
-                            {(isIamOwner || role === "owner") && (
-                              <SelectItem value="owner">owner</SelectItem>
+                            {(isAllowed) => (
+                              <>
+                                {status === "accepted" && (
+                                  <Select
+                                    defaultValue={
+                                      role === "custom" ? findRoleFromId(customRole)?.slug : role
+                                    }
+                                    isDisabled={userId === u?._id || !isAllowed}
+                                    className="w-40 bg-mineshaft-600"
+                                    dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
+                                    onValueChange={(selectedRole) =>
+                                      onRoleChange(orgMembershipId, selectedRole)
+                                    }
+                                  >
+                                    {roles
+                                      .filter(({ slug }) =>
+                                        slug === "owner" ? isIamOwner || role === "owner" : true
+                                      )
+                                      .map(({ slug, name: roleName }) => (
+                                        <SelectItem value={slug} key={`owner-option-${slug}`}>
+                                          {roleName}
+                                        </SelectItem>
+                                      ))}
+                                  </Select>
+                                )}
+                                {(status === "invited" || status === "verified") &&
+                                  serverDetails?.emailConfigured && (
+                                    <Button
+                                      isDisabled={!isAllowed}
+                                      className="w-40"
+                                      colorSchema="primary"
+                                      variant="outline_bg"
+                                      onClick={() => onAddUserToOrg(email)}
+                                    >
+                                      Resend Invite
+                                    </Button>
+                                  )}
+                                {status === "completed" && (
+                                  <Button
+                                    colorSchema="secondary"
+                                    isDisabled={!isAllowed}
+                                    onClick={() => onGrantAccess(u?._id, u?.publicKey)}
+                                  >
+                                    Grant Access
+                                  </Button>
+                                )}
+                              </>
                             )}
-                            <SelectItem value="admin">admin</SelectItem>
-                            <SelectItem value="member">member</SelectItem>
-                          </Select>
-                        )}
-                        {(status === "invited" || status === "verified") &&
-                          serverDetails?.emailConfigured && (
-                            <Button
-                              className="w-40"
-                              colorSchema="primary"
-                              variant="outline_bg"
-                              onClick={() => onInviteMember(email)}
-                            >
-                              Resend Invite
-                            </Button>
-                          )}
-                        {status === "completed" && (
-                          <Button
-                            colorSchema="secondary"
-                            onClick={() => onGrantAccess(user?._id, user?.publicKey)}
-                          >
-                            Grant Access
-                          </Button>
-                        )}
-                      </Td>
-                      <Td>
-                        {userWs ? (
-                          userWs?.map(({ name: wsName, _id }) => (
-                            <Tag key={`user-${user._id}-workspace-${_id}`} className="my-1">
-                              {wsName}
-                            </Tag>
-                          ))
-                        ) : (
-                          <div className="flex flex-row">
-                            {(status === "invited" || status === "verified") &&
-                            serverDetails?.emailConfigured ? (
-                              <Tag colorSchema="red">
-                                This user hasn&apos;t accepted the invite yet
+                          </OrgPermissionCan>
+                        </Td>
+                        <Td>
+                          {userWs ? (
+                            userWs?.map(({ name: wsName, _id }) => (
+                              <Tag key={`user-${u._id}-workspace-${_id}`} className="my-1">
+                                {wsName}
                               </Tag>
-                            ) : (
-                              <Tag colorSchema="red">
-                                This user isn&apos;t part of any projects yet
-                              </Tag>
-                            )}
-                            {router.query.id !== "undefined" &&
-                              !(
-                                (status === "invited" || status === "verified") &&
-                                serverDetails?.emailConfigured
-                              ) && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    router.push(`/project/${workspaces[0]?._id}/members`)
-                                  }
-                                  className="w-max cursor-pointer rounded-sm bg-mineshaft px-1.5 py-0.5 text-sm duration-200 hover:bg-primary hover:text-black"
-                                >
-                                  <FontAwesomeIcon icon={faPlus} className="mr-1" />
-                                  Add to projects
-                                </button>
+                            ))
+                          ) : (
+                            <div className="flex flex-row">
+                              {(status === "invited" || status === "verified") &&
+                              serverDetails?.emailConfigured ? (
+                                <Tag colorSchema="red">
+                                  This user hasn&apos;t accepted the invite yet
+                                </Tag>
+                              ) : (
+                                <Tag colorSchema="red">
+                                  This user isn&apos;t part of any projects yet
+                                </Tag>
                               )}
-                          </div>
-                        )}
-                      </Td>
-                      <Td>
-                        {userId !== user?._id && (
-                          <IconButton
-                            ariaLabel="delete"
-                            colorSchema="danger"
-                            isDisabled={userId === user?._id}
-                            onClick={() => handlePopUpOpen("removeMember", { id: orgMembershipId })}
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </IconButton>
-                        )}
-                      </Td>
-                    </Tr>
-                  );
-                })}
+                              {router.query.id !== "undefined" &&
+                                !(
+                                  (status === "invited" || status === "verified") &&
+                                  serverDetails?.emailConfigured
+                                ) && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      router.push(`/project/${workspaces[0]?._id}/members`)
+                                    }
+                                    className="w-max cursor-pointer rounded-sm bg-mineshaft px-1.5 py-0.5 text-sm duration-200 hover:bg-primary hover:text-black"
+                                  >
+                                    <FontAwesomeIcon icon={faPlus} className="mr-1" />
+                                    Add to projects
+                                  </button>
+                                )}
+                            </div>
+                          )}
+                        </Td>
+                        <Td>
+                          {userId !== u?._id && (
+                            <OrgPermissionCan
+                              I={OrgPermissionActions.Delete}
+                              a={OrgPermissionSubjects.Member}
+                            >
+                              {(isAllowed) => (
+                                <IconButton
+                                  ariaLabel="delete"
+                                  colorSchema="danger"
+                                  isDisabled={userId === u?._id || !isAllowed}
+                                  onClick={() =>
+                                    handlePopUpOpen("removeMember", { id: orgMembershipId })
+                                  }
+                                >
+                                  <FontAwesomeIcon icon={faTrash} />
+                                </IconButton>
+                              )}
+                            </OrgPermissionCan>
+                          )}
+                        </Td>
+                      </Tr>
+                    );
+                  }
+                )}
             </TBody>
           </Table>
           {!isLoading && filterdUser?.length === 0 && (
@@ -315,7 +491,7 @@ export const OrgMembersTable = ({
         }}
       >
         <ModalContent
-          title={`Invite others to ${orgName}`}
+          title={`Invite others to ${currentOrg?.name}`}
           subTitle={
             <div>
               {!completeInviteLink && (

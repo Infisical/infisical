@@ -1,6 +1,10 @@
 @tailwind base;
 @tailwind components;
 
+html {
+  @apply overflow-hidden;
+}
+
 .rdp-day,
 .rdp-nav_button {
   @apply rounded-md hover:text-mineshaft-500;
@@ -108,7 +112,13 @@
   }
 }
 .tags-conic-bg {
-  background: conic-gradient(rgb(235, 87, 87), rgb(242, 201, 76), rgb(76, 183, 130), rgb(78, 167, 252), rgb(250, 96, 122));
+  background: conic-gradient(
+    rgb(235, 87, 87),
+    rgb(242, 201, 76),
+    rgb(76, 183, 130),
+    rgb(78, 167, 252),
+    rgb(250, 96, 122)
+  );
 }
 
 .show-tags {

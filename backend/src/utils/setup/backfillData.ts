@@ -3,13 +3,7 @@ import crypto from "crypto";
 import { Types } from "mongoose";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../crypto";
 import { EESecretService } from "../../ee/services";
-import {
-  IPType,
-  ISecretVersion,
-  SecretSnapshot,
-  SecretVersion,
-  TrustedIP
-} from "../../ee/models";
+import { IPType, ISecretVersion, SecretSnapshot, SecretVersion, TrustedIP } from "../../ee/models";
 import {
   AuthMethod,
   BackupPrivateKey,
@@ -18,6 +12,7 @@ import {
   ISecret,
   Integration,
   IntegrationAuth,
+  Membership,
   Organization,
   Secret,
   SecretBlindIndexData,
@@ -30,7 +25,9 @@ import { client, getEncryptionKey, getRootEncryptionKey } from "../../config";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_BASE64,
-  ENCODING_SCHEME_UTF8
+  ENCODING_SCHEME_UTF8,
+  MEMBER,
+  VIEWER
 } from "../../variables";
 import { InternalServerError } from "../errors";
 
@@ -582,7 +579,7 @@ export const backfillTrustedIps = async () => {
         filter: {
           workspace: Types.ObjectId;
           ipAddress: string;
-        },
+        };
         update: {
           workspace: Types.ObjectId;
           ipAddress: string;
@@ -590,9 +587,9 @@ export const backfillTrustedIps = async () => {
           prefix: number;
           isActive: boolean;
           comment: string;
-        },
+        };
         upsert: boolean;
-      }
+      };
     }[] = [];
 
     workspaceIdsToAddTrustedIp.forEach((workspaceId) => {
@@ -638,7 +635,7 @@ export const backfillTrustedIps = async () => {
     await TrustedIP.bulkWrite(operations);
     console.log("Backfill: Trusted IPs complete");
   }
-}
+};
 
 export const backfillUserAuthMethods = async () => {
   await User.updateMany(
@@ -654,7 +651,6 @@ export const backfillUserAuthMethods = async () => {
       authMethods: [AuthMethod.EMAIL]
     }
   );
-
 
   const documentsToUpdate = await User.find({
     authProvider: { $exists: true },
@@ -676,4 +672,24 @@ export const backfillUserAuthMethods = async () => {
       }
     );
   }
-}
+};
+
+export const backfillPermission = async () => {
+  await Membership.updateMany(
+    {
+      deniedPermissions: {
+        $exists: true,
+        $ne: []
+      },
+      role: MEMBER
+    },
+    [
+      {
+        $set: {
+          role: VIEWER
+        }
+      }
+    ]
+  );
+  console.log("Backfill: Finishing converting old denied permission in workspace to viewers");
+};
