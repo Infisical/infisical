@@ -32,17 +32,20 @@ class IntegrationService {
         integration,
         code,
         environment,
+        url
     }: {
         workspaceId: string;
         integration: string;
         code: string;
         environment: string;
+        url?: string;
     }) {
         return await handleOAuthExchangeHelper({
             workspaceId,
             integration,
             code,
             environment,
+            url
         });
     }
 

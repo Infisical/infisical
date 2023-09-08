@@ -130,17 +130,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { t } = useTranslation();
 
-  useEffect(() => {
-    const handleRouteChange = () => {
-      window.Intercom("update");
-    };
-
-    router.events.on("routeChangeComplete", handleRouteChange);
-
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, []);
 
   const logout = useLogoutUser();
   const logOutUser = async () => {

@@ -43,14 +43,14 @@ frontend:
   replicaCount: 2
   image:
     repository: infisical/frontend
-    tag: "v0.26.0" # <--- frontend version 
+    tag: "v0.34.2" # <--- frontend version 
     pullPolicy: Always
 
 backend:
   replicaCount: 2
   image:
     repository: infisical/backend
-    tag: "v0.26.0" # <--- backend version 
+    tag: "v0.34.2" # <--- backend version 
     pullPolicy: Always
 ```
 
@@ -111,14 +111,14 @@ frontend:
   replicaCount: 2
   image:
     repository: infisical/frontend
-    tag: "v0.26.0" # <--- frontend version 
+    tag: "v0.34.2" # <--- frontend version 
     pullPolicy: Always
 
 backend:
   replicaCount: 2
   image:
     repository: infisical/backend
-    tag: "v0.26.0" # <--- backend version 
+    tag: "v0.34.2" # <--- backend version 
     pullPolicy: Always
 
 backendEnvironmentVariables:
@@ -144,7 +144,7 @@ ingress:
     replicaCount: 4
     image:
       repository: infisical/frontend
-      tag: "v0.1.3"
+      tag: "v0.34.2" # <--- frontend version 
       pullPolicy: IfNotPresent
     kubeSecretRef: null
     service:
@@ -160,7 +160,7 @@ ingress:
     replicaCount: 4
     image:
       repository: infisical/backend
-      tag: "v0.1.3"
+      tag: "v0.34.2" # <--- backend version 
       pullPolicy: IfNotPresent
     kubeSecretRef: null
     service:

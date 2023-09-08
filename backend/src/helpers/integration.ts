@@ -5,11 +5,11 @@ import { BotService } from "../services";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
+  INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_NETLIFY,
   INTEGRATION_VERCEL,
-  INTEGRATION_GCP_SECRET_MANAGER,
 } from "../variables";
-import { BadRequestError, InternalServerError, UnauthorizedRequestError } from "../utils/errors";
+import { InternalServerError, UnauthorizedRequestError } from "../utils/errors";
 import { IntegrationAuthMetadata } from "../models/integrationAuth/types";
 
 interface Update {
@@ -36,12 +36,14 @@ export const handleOAuthExchangeHelper = async ({
   workspaceId,
   integration,
   code,
-  environment
+  environment,
+  url
 }: {
   workspaceId: string;
   integration: string;
   code: string;
   environment: string;
+  url?: string;
 }) => {
   const bot = await Bot.findOne({
     workspace: workspaceId,
@@ -53,7 +55,8 @@ export const handleOAuthExchangeHelper = async ({
   // exchange code for access and refresh tokens
   const res = await exchangeCode({
     integration,
-    code
+    code,
+    url
   });
 
   const update: Update = {
@@ -67,6 +70,7 @@ export const handleOAuthExchangeHelper = async ({
       break;
     case INTEGRATION_NETLIFY:
       update.accountId = res.accountId;
+      break;
     case INTEGRATION_GCP_SECRET_MANAGER:
       update.metadata = {
         authMethod: "oauth2"

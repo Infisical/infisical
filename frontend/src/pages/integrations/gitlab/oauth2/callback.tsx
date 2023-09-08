@@ -15,13 +15,18 @@ export default function GitLabOAuth2CallbackPage() {
     (async () => {
       try {
         // validate state
-        if (state !== localStorage.getItem("latestCSRFToken")) return;
+        const [csrfToken, url] = (state as string).split("|", 2);
+        
+        if (csrfToken !== localStorage.getItem("latestCSRFToken")) return;
         localStorage.removeItem("latestCSRFToken");
 
         const integrationAuth = await mutateAsync({
           workspaceId: localStorage.getItem("projectData.id") as string,
           code: code as string,
-          integration: "gitlab"
+          integration: "gitlab",
+          ...(url === "" ? {} : {
+            url
+          })
         });
 
         router.push(`/integrations/gitlab/create?integrationAuthId=${integrationAuth._id}`);
