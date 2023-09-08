@@ -72,6 +72,8 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
     await GitRisks.bulkWrite(batchUpdateOperations);
 
     // check .infisicalignore file
+    // TODO: check if the corresponding fingerprint has already been updated to false positive in the db
+
     const newInfisicalIgnoreFindingsToUpdate: any[] = [];
 
     for (const infisicalIgnoreFingerprint of infisicalIgnoreFileContents) {
