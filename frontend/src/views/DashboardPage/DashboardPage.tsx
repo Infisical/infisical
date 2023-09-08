@@ -451,6 +451,7 @@ export const DashboardPage = () => {
       await onSecretRollback();
       return;
     }
+    console.log(userSec);
     // just closing this if save is triggered from drawer
     handlePopUpClose("secretDetails");
     // encrypt and format the secrets to batch api format
@@ -466,6 +467,7 @@ export const DashboardPage = () => {
       reset();
       return;
     }
+    console.log(batchedSecret);
     try {
       await batchSecretOp({
         requests: batchedSecret,

@@ -65,6 +65,20 @@ export const batchSecrets = async (req: Request, res: Response) => {
     body: { secretPath, folderId }
   } = validatedData;
 
+  const secretIds = requests
+    .filter(({ method }) => method !== "POST")
+    // akhilmhdh: ts is dumb
+    .map((el) => new Types.ObjectId((el.secret as any)._id));
+
+  const oldSecrets = await Secret.find({
+    _id: {
+      $in: secretIds
+    }
+  });
+  if (oldSecrets.length != secretIds.length) {
+    throw BadRequestError({ message: "Failed to validate non-existent secrets" });
+  }
+
   const createSecrets: any[] = [];
   const updateSecrets: any[] = [];
   const deleteSecrets: { _id: Types.ObjectId; secretName: string }[] = [];
@@ -98,20 +112,6 @@ export const batchSecrets = async (req: Request, res: Response) => {
       secretPath,
       requiredPermissions: [PERMISSION_WRITE_SECRETS]
     });
-  } else {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
   }
 
   for await (const request of requests) {
@@ -159,6 +159,27 @@ export const batchSecrets = async (req: Request, res: Response) => {
         });
         break;
     }
+  }
+  // not using service token  using auth
+  if (!(req.authData.authPayload instanceof ServiceTokenData)) {
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    if (!createSecrets.length)
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+
+    if (!updateSecrets.length)
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+
+    if (!deleteSecrets.length)
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Delete,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
   }
 
   // handle create secrets
@@ -229,7 +250,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
   // handle update secrets
   let updatedSecrets: ISecret[] = [];
-  if (updateSecrets.length > 0 && req.secrets) {
+  if (updateSecrets.length > 0 && oldSecrets) {
     // construct object containing all secrets
     let listedSecretsObj: {
       [key: string]: {
@@ -238,7 +259,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
       };
     } = {};
 
-    listedSecretsObj = req.secrets.reduce(
+    listedSecretsObj = oldSecrets.reduce(
       (obj: any, secret: ISecret) => ({
         ...obj,
         [secret._id.toString()]: secret
@@ -250,7 +271,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
       updateOne: {
         filter: {
           _id: new Types.ObjectId(u._id),
-          workspace: new Types.ObjectId(workspaceId)
+          workspace: new Types.ObjectId(workspaceId),
+          environment
         },
         update: {
           $inc: {
@@ -264,7 +286,6 @@ export const batchSecrets = async (req: Request, res: Response) => {
         }
       }
     }));
-
     await Secret.bulkWrite(updateOperations);
 
     const secretVersions = updateSecrets.map(
@@ -372,7 +393,9 @@ export const batchSecrets = async (req: Request, res: Response) => {
     await Secret.deleteMany({
       _id: {
         $in: deleteSecretIds
-      }
+      },
+      workspace: new Types.ObjectId(workspaceId),
+      environment
     });
 
     await EESecretService.markDeletedSecretVersions({
