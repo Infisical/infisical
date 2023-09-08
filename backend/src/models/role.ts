@@ -48,6 +48,8 @@ const roleSchema = new Schema<IRole>(
   }
 );
 
+roleSchema.index({ organization: 1, workspace: 1 });
+
 const Role = model<IRole>("Role", roleSchema);
 
 export default Role;
