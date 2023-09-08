@@ -14,6 +14,7 @@ export type GitRisks = {
   endColumn: string;
   match: string;
   secret: string;
+  hashedSecret: string; // SHA3-512 hash (can be used on frontend in secret scanning table and .csv download)
   file: string;
   symlinkFile: string;
   commit: string;

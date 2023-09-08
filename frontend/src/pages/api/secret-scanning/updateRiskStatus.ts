@@ -22,8 +22,8 @@ export const updateRiskStatus = async (organizationId: string, riskId: string, s
       const data = await res.json();
       return data;
     } 
-      console.error("Failed to update risk status");
-      console.error("Response:", res);
+      console.log("Failed to update risk status");
+      console.log("Response:", res);
       return undefined;
     
   } catch (err) {

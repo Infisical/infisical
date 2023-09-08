@@ -1,6 +1,8 @@
 import { FC, useEffect, useState } from "react";
-import { faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faDownload } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
   Button,
   EmptyState,
@@ -17,6 +19,7 @@ import timeSince from "@app/ee/utilities/timeSince";
 import { getRisksByOrganization } from "@app/pages/api/secret-scanning/getRisksByOrganization";
 import { GitRisks, RiskStatus } from "@app/pages/api/secret-scanning/types";
 
+import { generateCSV } from "./generateCSV";
 import { RiskStatusSelection } from "./RiskStatusSelection";
 
 enum RiskStatusFilter {
@@ -34,6 +37,7 @@ export const SecretScanningLogsTable: FC = () => {
   const [repositoryFilter, setRepositoryFilter] = useState<string>();
   const [secretTypeFilter, setSecretTypeFilter] = useState<string>();
   const [statusFilter, setStatusFilter] = useState<RiskStatusFilter>(RiskStatusFilter.All);
+  const { createNotification } = useNotificationContext();
 
   useEffect(() => {
     const fetchRisks = async () => {
@@ -94,7 +98,7 @@ export const SecretScanningLogsTable: FC = () => {
     setSecretTypeFilter("");
   };
 
-  const sortByDate = (a: GitRisks, b: GitRisks) => {
+  const sortByDateFound = (a: GitRisks, b: GitRisks) => {
     const dateA = new Date(a.createdAt).getTime();
     const dateB = new Date(b.createdAt).getTime();
 
@@ -109,69 +113,106 @@ export const SecretScanningLogsTable: FC = () => {
     setSortOrder(sortOrder === "asc" ? "desc" : "asc");
   };
 
+  const downloadSecretScanLogTableAsCSV = (): void => {
+    try {
+      setIsLoading(true);
+      if (filteredRisks) {
+        const csvText = generateCSV(filteredRisks);
+        const blob = new Blob([csvText], { type: "text/csv" });
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.setAttribute("download", "infisical-radar-report.csv");
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        createNotification({
+          text: "Successfully downloaded Infisical Radar report",
+          type: "success"
+        });
+      }
+    } catch (err) {
+      console.error("Error downloading Infisical Radar report", err);
+      createNotification({
+        text: "Failed to download Infisical Radar report. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <>
-      <div className="mb-4">
-        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-        <label htmlFor="riskStatusSelect">Risk Status</label>
-        <select
-          id="riskStatusSelect"
-          onChange={(e) => setStatusFilter(e.target.value as RiskStatusFilter)}
-          value={statusFilter}
-          aria-labelledby="riskStatusSelect"
-        >
-          {Object.values(RiskStatusFilter).map((filterOption) => (
-            <option key={filterOption} value={filterOption}>
-              {filterOption}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="mb-4">
-        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-        <label htmlFor="sourceSelect">Source (Repository)</label>
-        <select
-          id="sourceSelect"
-          onChange={(e) => setRepositoryFilter(e.target.value)}
-          value={repositoryFilter}
-          aria-labelledby="sourceSelect"
-        >
-          <option value="">All</option>
-          {repositoryOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="mb-4">
-        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-        <label htmlFor="secretTypeSelect">Secret Type</label>
-        <select
-          id="secretTypeSelect"
-          onChange={(e) => setSecretTypeFilter(e.target.value)}
-          value={secretTypeFilter}
-          aria-labelledby="secretTypeSelect"
-        >
-          <option value="">All</option>
-          {secretTypeOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="mb-4">
-        <Button type="button" onClick={handleClearFilters}>
-          Clear filters
-        </Button>
+      <div className="flex flex-wrap justify-center mb-4">
+        <div className="mb-4">
+          Download .csv <FontAwesomeIcon icon={faDownload} onClick={() => downloadSecretScanLogTableAsCSV()} />
+        </div>
+        <div className="mb-4 mr-4">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+          <label htmlFor="riskStatusSelect">Risk Status</label>
+          <select
+            id="riskStatusSelect"
+            onChange={(e) => setStatusFilter(e.target.value as RiskStatusFilter)}
+            value={statusFilter}
+            aria-labelledby="riskStatusSelect"
+          >
+            {Object.values(RiskStatusFilter).map((filterOption) => (
+              <option key={filterOption} value={filterOption}>
+                {filterOption}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="mb-4 mr-4">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+          <label htmlFor="sourceSelect">Source (Repository)</label>
+          <select
+            id="sourceSelect"
+            onChange={(e) => setRepositoryFilter(e.target.value)}
+            value={repositoryFilter}
+            aria-labelledby="sourceSelect"
+          >
+            <option value="">All</option>
+            {repositoryOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="mb-4 mr-4">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+          <label htmlFor="secretTypeSelect">Secret Type</label>
+          <select
+            id="secretTypeSelect"
+            onChange={(e) => setSecretTypeFilter(e.target.value)}
+            value={secretTypeFilter}
+            aria-labelledby="secretTypeSelect"
+          >
+            <option value="">All</option>
+            {secretTypeOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="mb-4">
+          <Button type="button" onClick={handleClearFilters}>
+            Clear filters
+          </Button>
+        </div>
       </div>
       <TableContainer className="mt-8">
         <Table>
           <THead>
             <Tr>
-              <Th className="flex-1" onClick={toggleSortOrder}>
-                Date {sortOrder === "asc" ? "↑" : "↓"}
+              <Th
+                className="flex-1"
+                onClick={() => toggleSortOrder()}
+              >
+                Date (Found) {(sortOrder === "asc" ? "↑" : "↓")}
               </Th>
               <Th className="flex-1">Secret Type</Th>
               <Th className="flex-1">View Risk</Th>
@@ -185,7 +226,7 @@ export const SecretScanningLogsTable: FC = () => {
               filteredRisks &&
               filteredRisks
                 .slice()
-                .sort(sortByDate)
+                .sort(sortByDateFound)
                 .map((risk) => {
                 const riskStatusInfo = riskStatusConfig[risk.status] || {};
                 return (
