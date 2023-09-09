@@ -9,7 +9,6 @@ import { SecretScanningLogsTable } from "@app/views/SecretScanning/components";
 import { createSecretScanningSession } from "@app/pages/api/secret-scanning/createSecretScanningSession";
 import { getInstallationStatus } from "@app/pages/api/secret-scanning/getInstallationStatus";
 import { linkGitAppInstallationWithOrganization } from "@app/pages/api/secret-scanning/linkGitAppInstallationWithOrganization";
-import { SecretScanningLogsTable } from "@app/views/SecretScanning/components";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
 
