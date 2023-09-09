@@ -50,7 +50,7 @@ const SecretScanning = withPermission(
     }, [queryParams.state, queryParams.installation_id]);
 
     const generateNewIntegrationSession = async () => {
-      const session = await createNewIntegrationSession(String(localStorage.getItem("orgData.id")));
+      const session = await createSecretScanningSession(String(localStorage.getItem("orgData.id")));
       router.push(
         `https://github.com/apps/infisical-radar/installations/new?state=${session.sessionId}`
       );
