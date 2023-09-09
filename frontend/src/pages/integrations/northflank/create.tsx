@@ -29,7 +29,7 @@ export default function NorthflankCreateIntegrationPage() {
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
   const [targetAppId, setTargetAppId] = useState("");
-  const [targetSecretGroupId, setTargetSecretGroupId] = useState<string | null>(null);
+  const [targetSecretGroupId, setTargetSecretGroupId] = useState<string>("");
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -88,13 +88,7 @@ export default function NorthflankCreateIntegrationPage() {
         app: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId)?.name,
         appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: null,
-        targetEnvironmentId: null,
-        targetService: null,
         targetServiceId: targetSecretGroupId,
-        owner: null,
-        path: null,
-        region: null,
         secretPath
       });
 
@@ -160,7 +154,7 @@ export default function NorthflankCreateIntegrationPage() {
             )}
           </Select>
         </FormControl>
-        {targetSecretGroupId && integrationAuthSecretGroups && (
+        {targetSecretGroupId !== "" && integrationAuthSecretGroups && (
           <FormControl label="Secret Group" className="mt-4">
             <Select
               value={targetSecretGroupId}

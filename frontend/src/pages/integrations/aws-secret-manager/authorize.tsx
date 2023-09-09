@@ -37,9 +37,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "aws-secret-manager",
         accessId: accessKey,
-        accessToken: accessSecretKey,
-        url: null,
-        namespace: null
+        accessToken: accessSecretKey
       });
 
       setAccessKey("");
