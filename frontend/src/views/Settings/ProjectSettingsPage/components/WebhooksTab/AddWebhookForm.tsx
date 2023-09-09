@@ -92,7 +92,7 @@ export const AddWebhookForm = ({
               icon={
                 <Tooltip
                   isOpen={showTip}
-                  onOpenChange={() => setShowTip(false)}
+                  onOpenChange={setShowTip}
                   content={
                     <div>
                       <h4 className="mb-2">Here are some examples of glob patterns:</h4>
@@ -115,12 +115,11 @@ export const AddWebhookForm = ({
                   position="right"
                   className="text-xs"
                 >
-                  <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[1px] border-white">
-                    <FontAwesomeIcon
-                      icon={faInfo}
-                      onClick={() => setShowTip(true)}
-                      className="h-2 w-2"
-                    />
+                  <div
+                    className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[1px] border-white"
+                    onMouseEnter={() => setShowTip(true)}
+                  >
+                    <FontAwesomeIcon icon={faInfo} className="h-2 w-2" />
                   </div>
                 </Tooltip>
               }
