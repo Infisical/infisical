@@ -192,7 +192,7 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
           >
             <Input {...register("description")} isReadOnly={isNonEditable} />
           </FormControl>
-          <div className="flex justify-between items-center pt-4 border-t border-t-mineshaft-800">
+          <div className="flex justify-between items-center pt-6 border-t border-t-mineshaft-800">
             <div>
               <h2 className="text-xl font-medium">Add Permission</h2>
             </div>
