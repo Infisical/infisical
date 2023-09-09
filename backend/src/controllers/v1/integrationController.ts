@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { IWorkspace, Integration, Folder, IntegrationAuth } from "../../models";
+import { Folder, IWorkspace, Integration, IntegrationAuth } from "../../models";
 import { EventService } from "../../services";
 import { eventStartIntegration } from "../../events";
 import { getFolderByPath } from "../../services/FolderService";
@@ -38,7 +38,8 @@ export const createIntegration = async (req: Request, res: Response) => {
       targetServiceId,
       integrationAuthId,
       targetEnvironment,
-      targetEnvironmentId
+      targetEnvironmentId,
+      metadata
     }
   } = await validateRequest(reqValidator.CreateIntegrationV1, req);
 
@@ -52,7 +53,7 @@ export const createIntegration = async (req: Request, res: Response) => {
 
   const { permission } = await getUserProjectPermissions(
     req.user._id,
-    integrationAuth.workspace.toString()
+    integrationAuth.workspace._id.toString()
   );
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Create,
@@ -91,7 +92,8 @@ export const createIntegration = async (req: Request, res: Response) => {
     region,
     secretPath,
     integration: integrationAuth.integration,
-    integrationAuth: new Types.ObjectId(integrationAuthId)
+    integrationAuth: new Types.ObjectId(integrationAuthId),
+    metadata
   }).save();
 
   if (integration) {

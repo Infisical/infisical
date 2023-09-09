@@ -98,12 +98,6 @@ export default function GitLabCreateIntegrationPage() {
         appId: String(targetAppId),
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: targetEnvironment === "" ? "*" : targetEnvironment,
-        targetEnvironmentId: null,
-        targetService: null,
-        targetServiceId: null,
-        owner: null,
-        path: null,
-        region: null,
         secretPath
       });
 

@@ -98,11 +98,6 @@ export default function AWSParameterStoreCreateIntegrationPage() {
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: null,
-        targetEnvironmentId: null,
-        targetService: null,
-        targetServiceId: null,
-        owner: null,
         path,
         region: selectedAWSRegion,
         secretPath

@@ -98,12 +98,6 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         isActive: true,
         app: targetSecretName.trim(),
         sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: null,
-        targetEnvironmentId: null,
-        targetService: null,
-        targetServiceId: null,
-        owner: null,
-        path: null,
         region: selectedAWSRegion,
         secretPath
       });

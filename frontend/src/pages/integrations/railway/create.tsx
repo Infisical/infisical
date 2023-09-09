@@ -108,11 +108,8 @@ export default function RailwayCreateIntegrationPage() {
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: targetEnvironment.name,
         targetEnvironmentId: targetEnvironment.environmentId,
-        targetService: targetService ? targetService.name : null,
-        targetServiceId: targetService ? targetService.serviceId : null,
-        owner: null,
-        path: null,
-        region: null,
+        targetService: targetService?.name,
+        targetServiceId: targetService?.serviceId,
         secretPath
       });
 

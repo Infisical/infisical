@@ -66,13 +66,7 @@ export default function HashiCorpVaultCreateIntegrationPage() {
         isActive: true,
         app: vaultEnginePath,
         sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: null,
-        targetEnvironmentId: null,
-        targetService: null,
-        targetServiceId: null,
-        owner: null,
         path: vaultSecretPath,
-        region: null,
         secretPath
       });
 

@@ -34,9 +34,7 @@ export default function GCPSecretManagerAuthorizeIntegrationPage() {
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "gcp-secret-manager",
-        refreshToken: accessToken,
-        url: null,
-        namespace: null
+        refreshToken: accessToken
       });
 
       setIsLoading(false);

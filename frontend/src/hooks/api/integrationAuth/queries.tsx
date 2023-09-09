@@ -408,8 +408,8 @@ export const useSaveIntegrationAccessToken = () => {
       refreshToken?: string;
       accessId?: string;
       accessToken?: string;
-      url: string | null;
-      namespace: string | null;
+      url?: string;
+      namespace?: string;
     }) => {
       const { data: { integrationAuth } } = await apiRequest.post("/api/v1/integration-auth/access-token", {
         workspaceId,

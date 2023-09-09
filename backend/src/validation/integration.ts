@@ -64,18 +64,21 @@ export const validateClientForIntegration = async ({
 export const CreateIntegrationV1 = z.object({
   body: z.object({
     integrationAuthId: z.string().trim(),
-    app: z.string().trim(),
+    app: z.string().trim().optional(),
     isActive: z.boolean(),
-    appId: z.string().trim(),
+    appId: z.string().trim().optional(),
     secretPath: z.string().trim().default("/"),
     sourceEnvironment: z.string().trim(),
-    targetEnvironment: z.string().trim(),
-    targetEnvironmentId: z.string().trim(),
-    targetService: z.string().trim(),
-    targetServiceId: z.string().trim(),
-    owner: z.string().trim(),
-    path: z.string().trim(),
-    region: z.string().trim()
+    targetEnvironment: z.string().trim().optional(),
+    targetEnvironmentId: z.string().trim().optional(),
+    targetService: z.string().trim().optional(),
+    targetServiceId: z.string().trim().optional(),
+    owner: z.string().trim().optional(),
+    path: z.string().trim().optional(),
+    region: z.string().trim().optional(),
+    metadata: z.object({
+      secretSuffix: z.string().optional()
+    }).optional()
   })
 });
 

@@ -64,12 +64,6 @@ export default function CloudflarePagesIntegrationPage() {
                 appId: targetAppId,
                 sourceEnvironment: selectedSourceEnvironment,
                 targetEnvironment,
-                targetEnvironmentId: null,
-                targetService: null,
-                targetServiceId: null,
-                owner: null,
-                path: null,
-                region: null,
                 secretPath: "/",
             });
 
