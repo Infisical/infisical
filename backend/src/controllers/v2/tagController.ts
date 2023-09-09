@@ -1,42 +1,58 @@
+import { ForbiddenError } from "@casl/ability";
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Membership, Secret, Tag } from "../../models";
-import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
+import { Secret, Tag } from "../../models";
+import { BadRequestError } from "../../utils/errors";
+import { validateRequest } from "../../helpers/validation";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  getUserProjectPermissions
+} from "../../services/ProjectRoleService";
+import * as reqValidator from "../../validation/tags";
 
 export const createWorkspaceTag = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
-  const { name, slug, tagColor } = req.body;
-  
+  const {
+    body: { name, slug },
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.CreateWorkspaceTagsV2, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.Tags
+  );
+
   const tagToCreate = {
-      name,
-      tagColor,
-      workspace: new Types.ObjectId(workspaceId),
-      slug,
-      user: new Types.ObjectId(req.user._id),
-    };
-  
+    name,
+    workspace: new Types.ObjectId(workspaceId),
+    slug,
+    user: new Types.ObjectId(req.user._id)
+  };
+
   const createdTag = await new Tag(tagToCreate).save();
-  
+
   res.json(createdTag);
 };
 
 export const deleteWorkspaceTag = async (req: Request, res: Response) => {
-  const { tagId } = req.params;
+  const {
+    params: { tagId }
+  } = await validateRequest(reqValidator.DeleteWorkspaceTagsV2, req);
 
   const tagFromDB = await Tag.findById(tagId);
   if (!tagFromDB) {
     throw BadRequestError();
   }
 
-  // can only delete if the request user is one that belongs to the same workspace as the tag
-  const membership = await Membership.findOne({
-    user: req.user,
-    workspace: tagFromDB.workspace
-  });
-
-  if (!membership) {
-    UnauthorizedRequestError({ message: "Failed to validate membership" });
-  }
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    tagFromDB.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.Tags
+  );
 
   const result = await Tag.findByIdAndDelete(tagId);
 
@@ -47,12 +63,19 @@ export const deleteWorkspaceTag = async (req: Request, res: Response) => {
 };
 
 export const getWorkspaceTags = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
-  
-  const workspaceTags = await Tag.find({ 
-    workspace: new Types.ObjectId(workspaceId) 
+  const {
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.GetWorkspaceTagsV2, req);
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Tags
+  );
+
+  const workspaceTags = await Tag.find({
+    workspace: new Types.ObjectId(workspaceId)
   });
-  
+
   return res.json({
     workspaceTags
   });

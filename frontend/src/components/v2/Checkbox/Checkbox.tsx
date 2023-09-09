@@ -45,7 +45,7 @@ export const Checkbox = ({
           <FontAwesomeIcon icon={faCheck} size="sm" />
         </CheckboxPrimitive.Indicator>
       </CheckboxPrimitive.Root>
-      <label className="text-sm" htmlFor={id}>
+      <label className="text-sm whitespace-nowrap" htmlFor={id}>
         {children}
         {isRequired && <span className="pl-1 text-red">*</span>}
       </label>

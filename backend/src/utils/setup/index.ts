@@ -11,6 +11,7 @@ import {
   backfillBots,
   backfillEncryptionMetadata,
   backfillIntegration,
+  backfillPermission,
   backfillSecretBlindIndexData,
   backfillSecretFolders,
   backfillSecretVersions,
@@ -24,12 +25,7 @@ import {
   reencryptBotPrivateKeys,
   reencryptSecretBlindIndexDataSalts
 } from "./reencryptData";
-import {
-  getMongoURL,
-  getNodeEnv,
-  getRedisUrl,
-  getSentryDSN
-} from "../../config";
+import { getMongoURL, getNodeEnv, getRedisUrl, getSentryDSN } from "../../config";
 import { initializePassport } from "../auth";
 
 /**
@@ -43,8 +39,10 @@ import { initializePassport } from "../auth";
  * - Re-encrypting data
  */
 export const setup = async () => {
-  if (await getRedisUrl() === undefined || await getRedisUrl() === "") {
-    console.error("WARNING: Redis is not yet configured. Infisical may not function as expected without it.")
+  if ((await getRedisUrl()) === undefined || (await getRedisUrl()) === "") {
+    console.error(
+      "WARNING: Redis is not yet configured. Infisical may not function as expected without it."
+    );
   }
 
   await validateEncryptionKeysConfig();
@@ -86,6 +84,7 @@ export const setup = async () => {
   await backfillServiceTokenMultiScope();
   await backfillTrustedIps();
   await backfillUserAuthMethods();
+  await backfillPermission();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY

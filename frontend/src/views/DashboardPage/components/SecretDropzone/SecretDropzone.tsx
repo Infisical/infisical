@@ -1,6 +1,7 @@
 import { ChangeEvent, DragEvent, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { subject } from "@casl/ability";
 import { faSquareCheck } from "@fortawesome/free-regular-svg-icons";
 import {
   faClone,
@@ -15,6 +16,7 @@ import { twMerge } from "tailwind-merge";
 import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { ProjectPermissionCan } from "@app/components/permissions";
 // TODO:(akhilmhdh) convert all the util functions like this into a lib folder grouped by functionality
 import { parseDotEnv } from "@app/components/utilities/parseDotEnv";
 import {
@@ -32,6 +34,7 @@ import {
   Skeleton,
   Tooltip
 } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useDebounce, usePopUp, useToggle } from "@app/hooks";
 import { useGetProjectSecrets } from "@app/hooks/api";
 import { UserWsKeyPair } from "@app/hooks/api/types";
@@ -76,6 +79,8 @@ type Props = {
   environments?: { name: string; slug: string }[];
   workspaceId: string;
   decryptFileKey: UserWsKeyPair;
+  environment: string;
+  secretPath: string;
 };
 
 export const SecretDropzone = ({
@@ -84,7 +89,9 @@ export const SecretDropzone = ({
   onAddNewSecret,
   environments = [],
   workspaceId,
-  decryptFileKey
+  decryptFileKey,
+  environment,
+  secretPath
 }: Props): JSX.Element => {
   const { t } = useTranslation();
   const [isDragActive, setDragActive] = useToggle();
@@ -107,16 +114,16 @@ export const SecretDropzone = ({
     defaultValues: { secretPath: "/", environment: environments?.[0]?.slug }
   });
 
-  const secretPath = watch("secretPath");
+  const envCopySecPath = watch("secretPath");
   const selectedEnvSlug = watch("environment");
-  const debouncedSecretPath = useDebounce(secretPath);
+  const debouncedEnvCopySecretPath = useDebounce(envCopySecPath);
 
   const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
     workspaceId,
     env: selectedEnvSlug,
-    secretPath: debouncedSecretPath,
+    secretPath: debouncedEnvCopySecretPath,
     isPaused:
-      !(Boolean(workspaceId) && Boolean(selectedEnvSlug) && Boolean(debouncedSecretPath)) &&
+      !(Boolean(workspaceId) && Boolean(selectedEnvSlug) && Boolean(debouncedEnvCopySecretPath)) &&
       !popUp.importSecEnv.isOpen,
     decryptFileKey
   });
@@ -124,7 +131,7 @@ export const SecretDropzone = ({
   useEffect(() => {
     setValue("secrets", {});
     setSearchFilter("");
-  }, [debouncedSecretPath]);
+  }, [debouncedEnvCopySecretPath]);
 
   const handleDrag = (e: DragEvent) => {
     e.preventDefault();
@@ -175,7 +182,7 @@ export const SecretDropzone = ({
 
     e.dataTransfer.dropEffect = "copy";
     setDragActive.off();
-    parseFile(e.dataTransfer.files[0], e.dataTransfer?.files?.[0]?.type === "application/json");
+    parseFile(e.dataTransfer.files[0]);
   };
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -234,13 +241,21 @@ export const SecretDropzone = ({
             <div>
               <p className="">{t(isSmaller ? "common.drop-zone-keys" : "common.drop-zone")}</p>
             </div>
-            <input
-              id="fileSelect"
-              type="file"
-              className="absolute h-full w-full cursor-pointer opacity-0"
-              accept=".txt,.env,.yml,.yaml,.json"
-              onChange={handleFileUpload}
-            />
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Create}
+              a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            >
+              {(isAllowed) => (
+                <input
+                  id="fileSelect"
+                  disabled={!isAllowed}
+                  type="file"
+                  className="absolute h-full w-full cursor-pointer opacity-0"
+                  accept=".txt,.env,.yml,.yaml,.json"
+                  onChange={handleFileUpload}
+                />
+              )}
+            </ProjectPermissionCan>
             <div
               className={twMerge(
                 "flex w-full flex-row items-center justify-center py-4",
@@ -261,9 +276,22 @@ export const SecretDropzone = ({
                 }}
               >
                 <ModalTrigger asChild>
-                  <Button variant="star" size={isSmaller ? "xs" : "sm"}>
-                    Copy Secrets From An Environment
-                  </Button>
+                  <div>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Create}
+                      a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                    >
+                      {(isAllowed) => (
+                        <Button
+                          isDisabled={!isAllowed}
+                          variant="star"
+                          size={isSmaller ? "xs" : "sm"}
+                        >
+                          Copy Secrets From An Environment
+                        </Button>
+                      )}
+                    </ProjectPermissionCan>
+                  </div>
                 </ModalTrigger>
                 <ModalContent
                   className="max-w-2xl"
@@ -397,9 +425,16 @@ export const SecretDropzone = ({
                 </ModalContent>
               </Modal>
               {!isSmaller && (
-                <Button variant="star" onClick={onAddNewSecret}>
-                  Add a new secret
-                </Button>
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Create}
+                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                >
+                  {(isAllowed) => (
+                    <Button variant="star" onClick={onAddNewSecret} isDisabled={!isAllowed}>
+                      Add a new secret
+                    </Button>
+                  )}
+                </ProjectPermissionCan>
               )}
             </div>
           </div>

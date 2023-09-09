@@ -504,11 +504,6 @@ export const getSecretsHelper = async ({
 }: GetSecretsParams) => {
   let secrets: ISecret[] = [];
   // if using service token filter towards the folderId by secretpath
-  if (authData.authPayload instanceof ServiceTokenData) {
-    if (!isValidScope(authData.authPayload, environment, secretPath)) {
-      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
-    }
-  }
 
   if (!folderId) {
     folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
@@ -575,11 +570,11 @@ export const getSecretsHelper = async ({
   const postHogClient = await TelemetryService.getPostHogClient();
 
   // reduce the number of events captured
-  let shouldRecordK8Event = false
+  let shouldRecordK8Event = false;
   if (authData.userAgent == K8_USER_AGENT_NAME) {
     const randomNumber = Math.random();
     if (randomNumber > 0.9) {
-      shouldRecordK8Event = true
+      shouldRecordK8Event = true;
     }
   }
 
@@ -588,7 +583,7 @@ export const getSecretsHelper = async ({
 
   if (postHogClient && atLeastOneNonSignUpSecret) {
     const shouldCapture = authData.userAgent !== K8_USER_AGENT_NAME || shouldRecordK8Event;
-    const approximateForNoneCapturedEvents = secrets.length * 10
+    const approximateForNoneCapturedEvents = secrets.length * 10;
 
     if (shouldCapture) {
       postHogClient.capture({
@@ -633,11 +628,7 @@ export const getSecretHelper = async ({
   });
   let secret: ISecret | null = null;
   // if using service token filter towards the folderId by secretpath
-  if (authData.authPayload instanceof ServiceTokenData) {
-    if (!isValidScope(authData.authPayload, environment, secretPath)) {
-      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
-    }
-  }
+
   const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
 
   // try getting personal secret first (if exists)
@@ -751,12 +742,6 @@ export const updateSecretHelper = async ({
   });
 
   let secret: ISecret | null = null;
-  // if using service token filter towards the folderId by secretpath
-  if (authData.authPayload instanceof ServiceTokenData) {
-    if (!isValidScope(authData.authPayload, environment, secretPath)) {
-      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
-    }
-  }
   const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
 
   if (type === SECRET_SHARED) {
@@ -916,12 +901,6 @@ export const deleteSecretHelper = async ({
     workspaceId: new Types.ObjectId(workspaceId)
   });
 
-  // if using service token filter towards the folderId by secretpath
-  if (authData.authPayload instanceof ServiceTokenData) {
-    if (!isValidScope(authData.authPayload, environment, secretPath)) {
-      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
-    }
-  }
   const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
 
   let secrets: ISecret[] = [];

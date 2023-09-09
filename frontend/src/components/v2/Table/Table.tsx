@@ -79,7 +79,7 @@ export const Tr = ({
 }: TrProps): JSX.Element => (
   <tr
     className={twMerge(
-      "cursor-default border border-solid border-mineshaft-600",
+      "cursor-default border-b last:border-b-0 border-solid border-mineshaft-600",
       isHoverable && "hover:bg-mineshaft-600",
       isSelectable && "cursor-pointer",
       className
@@ -126,7 +126,7 @@ export type TdProps = {
 } & TdHTMLAttributes<HTMLTableCellElement>;
 
 export const Td = ({ children, className, ...props }: TdProps): JSX.Element => (
-  <td className={twMerge("px-5 py-2 text-left", className)} {...props}>
+  <td className={twMerge("px-5 py-3 text-left", className)} {...props}>
     {children}
   </td>
 );

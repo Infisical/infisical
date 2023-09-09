@@ -1,6 +1,7 @@
 import { faTags, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   EmptyState,
   IconButton,
@@ -13,7 +14,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useGetWsTags } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -53,18 +54,26 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
                 <Td>{name}</Td>
                 <Td>{slug}</Td>
                 <Td className="flex items-center justify-end">
-                  <IconButton
-                    onClick={() =>
-                      handlePopUpOpen("deleteTagConfirmation", {
-                        name,
-                        id: _id
-                      })
-                    }
-                    colorSchema="danger"
-                    ariaLabel="update"
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Delete}
+                    a={ProjectPermissionSub.Tags}
                   >
-                    <FontAwesomeIcon icon={faTrashCan} />
-                  </IconButton>
+                    {(isAllowed) => (
+                      <IconButton
+                        onClick={() =>
+                          handlePopUpOpen("deleteTagConfirmation", {
+                            name,
+                            id: _id
+                          })
+                        }
+                        colorSchema="danger"
+                        ariaLabel="update"
+                        isDisabled={!isAllowed}
+                      >
+                        <FontAwesomeIcon icon={faTrashCan} />
+                      </IconButton>
+                    )}
+                  </ProjectPermissionCan>
                 </Td>
               </Tr>
             ))}

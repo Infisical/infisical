@@ -37,6 +37,7 @@ import {
   membership as v1MembershipRouter,
   organization as v1OrganizationRouter,
   password as v1PasswordRouter,
+  role as v1RoleRouter,
   secretImport as v1SecretImportRouter,
   secret as v1SecretRouter,
   secretsFolder as v1SecretsFolder,
@@ -173,6 +174,7 @@ const main = async () => {
   app.use("/api/v1/secret-scanning", v1SecretScanningRouter);
   app.use("/api/v1/webhooks", v1WebhooksRouter);
   app.use("/api/v1/secret-imports", v1SecretImportRouter);
+  app.use("/api/v1/roles", v1RoleRouter);
 
   // v2 routes (improvements)
   app.use("/api/v2/signup", v2SignupRouter);
