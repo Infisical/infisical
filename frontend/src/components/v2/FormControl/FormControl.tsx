@@ -18,7 +18,7 @@ export const FormLabel = ({ id, label, isRequired, icon }: FormLabelProps) => (
   >
     {label}
     {isRequired && <span className="ml-1 text-red">*</span>}
-    {icon && <span className="ml-2 cursor-pointer text-white">{icon}</span>}
+    {icon && <span className="ml-2 text-mineshaft-300 hover:text-mineshaft-200 cursor-default">{icon}</span>}
   </Label.Root>
 );
 

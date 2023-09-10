@@ -116,7 +116,7 @@ export const AddWebhookForm = ({
                   className="text-xs"
                 >
                   <div
-                    className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[1px] border-white"
+                    className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[1px] border-mineshaft-300"
                     onMouseEnter={() => setShowTip(true)}
                   >
                     <FontAwesomeIcon icon={faInfo} className="h-2 w-2" />
