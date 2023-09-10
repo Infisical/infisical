@@ -38,9 +38,7 @@ export default function LaravelForgeCreateIntegrationPage() {
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "laravel-forge",
         accessId: serverId,
-        accessToken: apiKey,
-        url: null,
-        namespace: null
+        accessToken: apiKey
       });
 
       setIsLoading(false);

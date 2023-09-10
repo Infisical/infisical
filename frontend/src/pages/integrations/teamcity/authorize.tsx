@@ -39,7 +39,6 @@ export default function TeamCityCreateIntegrationPage() {
         integration: "teamcity",
         accessToken: apiKey,
         url: serverUrl,
-        namespace: null
       });
 
       setIsLoading(false);

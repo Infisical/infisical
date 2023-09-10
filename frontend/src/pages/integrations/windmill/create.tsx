@@ -67,13 +67,6 @@ export default function WindmillCreateIntegrationPage() {
         app: targetApp,
         appId: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp)?.appId,
         sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: null,
-        targetEnvironmentId: null,
-        targetService: null,
-        targetServiceId: null,
-        owner: null,
-        path: null,
-        region: null,
         secretPath
       });
 

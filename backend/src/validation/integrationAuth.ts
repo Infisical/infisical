@@ -79,11 +79,11 @@ export const OauthExchangeV1 = z.object({
 export const SaveIntegrationAccessTokenV1 = z.object({
   body: z.object({
     workspaceId: z.string().trim(),
+    integration: z.string().trim(),
     accessId: z.string().trim().optional(),
     accessToken: z.string().trim().optional(),
-    url: z.string().url().trim(),
-    namespace: z.string().trim(),
-    integration: z.string().trim(),
+    url: z.string().url().trim().optional(),
+    namespace: z.string().trim().optional(),
     refreshToken:z.string().trim().optional()
   })
 });
@@ -93,8 +93,8 @@ export const GetIntegrationAuthAppsV1 = z.object({
     integrationAuthId: z.string().trim()
   }),
   query: z.object({
-    teamId: z.string().trim(),
-    workspaceSlug: z.string().trim()
+    teamId: z.string().trim().optional(),
+    workspaceSlug: z.string().trim().optional()
   })
 });
 
