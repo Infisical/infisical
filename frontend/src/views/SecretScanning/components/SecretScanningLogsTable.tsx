@@ -1,8 +1,7 @@
 import { FC, useEffect, useState } from "react";
-import { faCheck, faDownload } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faFilterCircleXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
   Button,
   EmptyState,
@@ -19,25 +18,26 @@ import timeSince from "@app/ee/utilities/timeSince";
 import { getRisksByOrganization } from "@app/pages/api/secret-scanning/getRisksByOrganization";
 import { GitRisks, RiskStatus } from "@app/pages/api/secret-scanning/types";
 
-import { generateCSV } from "./generateCSV";
+import { DownloadSecretScanningTable } from "./DownloadSecretScanningTable";
 import { RiskStatusSelection } from "./RiskStatusSelection";
 
 enum RiskStatusFilter {
-  NeedsAttention = "Needs Attention",
-  Resolved = "Resolved",
-  All = "All",
+  ALL = "All",
+  NEEDS_ATTENTION = "Needs Attention",
+  RESOLVED = "Resolved",
 }
 
 export const SecretScanningLogsTable: FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [gitRisks, setGitRisks] = useState<GitRisks[]>([]);
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [repositoryOptions, setRepositoryOptions] = useState<string[]>([]);
   const [secretTypeOptions, setSecretTypeOptions] = useState<string[]>([]);
-  const [repositoryFilter, setRepositoryFilter] = useState<string>();
+  const [repositoryOptions, setRepositoryOptions] = useState<string[]>([]);
+  const [authorOptions, setAuthorOptions] = useState<string[]>([]);
   const [secretTypeFilter, setSecretTypeFilter] = useState<string>();
-  const [statusFilter, setStatusFilter] = useState<RiskStatusFilter>(RiskStatusFilter.All);
-  const { createNotification } = useNotificationContext();
+  const [repositoryFilter, setRepositoryFilter] = useState<string>();
+  const [authorFilter, setAuthorFilter] = useState<string>();
+  const [statusFilter, setStatusFilter] = useState<RiskStatusFilter>(RiskStatusFilter.ALL);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     const fetchRisks = async () => {
@@ -46,9 +46,11 @@ export const SecretScanningLogsTable: FC = () => {
       setGitRisks(risks);
 
       const repositoryNames = Array.from(new Set(risks.map((risk) => risk.repositoryFullName)));
+      const authorNames = Array.from(new Set(risks.map((risk) => risk.author)));
       const secretTypes = Array.from(new Set(risks.map((risk) => risk.ruleID)));
 
       setRepositoryOptions(repositoryNames);
+      setAuthorOptions(authorNames);
       setSecretTypeOptions(secretTypes);
 
       setIsLoading(false);
@@ -59,9 +61,9 @@ export const SecretScanningLogsTable: FC = () => {
 
   const generateRiskStatusConfig = () => {
     const config = {} as Record<RiskStatus, { filterCategory: RiskStatusFilter; label: RiskStatusFilter }>;
-    config[RiskStatus.UNRESOLVED] = { filterCategory: RiskStatusFilter.NeedsAttention, label: RiskStatusFilter.NeedsAttention };
+    config[RiskStatus.UNRESOLVED] = { filterCategory: RiskStatusFilter.NEEDS_ATTENTION, label: RiskStatusFilter.NEEDS_ATTENTION };
     [RiskStatus.RESOLVED_FALSE_POSITIVE, RiskStatus.RESOLVED_NOT_REVOKED, RiskStatus.RESOLVED_REVOKED].forEach(status => {
-      config[status] = { filterCategory: RiskStatusFilter.Resolved, label: RiskStatusFilter.Resolved };
+      config[status] = { filterCategory: RiskStatusFilter.RESOLVED, label: RiskStatusFilter.RESOLVED };
     });
     return config;
   };
@@ -71,7 +73,7 @@ export const SecretScanningLogsTable: FC = () => {
   const filteredRisks = gitRisks.filter((risk) => {
     const selectedFilterCategory = riskStatusConfig[risk.status]?.filterCategory;
     
-    if (selectedFilterCategory && statusFilter !== RiskStatusFilter.All) {
+    if (selectedFilterCategory && statusFilter !== RiskStatusFilter.ALL) {
       if (selectedFilterCategory !== statusFilter) {
         return false;
       }
@@ -79,6 +81,12 @@ export const SecretScanningLogsTable: FC = () => {
 
     if (repositoryFilter && risk.repositoryFullName) {
       if (!risk.repositoryFullName.includes(repositoryFilter)) {
+        return false;
+      }
+    }
+
+    if (authorFilter && risk.author) {
+      if (!risk.author.includes(authorFilter)) {
         return false;
       }
     }
@@ -93,8 +101,9 @@ export const SecretScanningLogsTable: FC = () => {
   });
 
   const handleClearFilters = () => {
-    setStatusFilter(RiskStatusFilter.All);
+    setStatusFilter(RiskStatusFilter.ALL);
     setRepositoryFilter("");
+    setAuthorFilter("");
     setSecretTypeFilter("");
   };
 
@@ -113,95 +122,96 @@ export const SecretScanningLogsTable: FC = () => {
     setSortOrder(sortOrder === "asc" ? "desc" : "asc");
   };
 
-  const downloadSecretScanLogTableAsCSV = (): void => {
-    try {
-      setIsLoading(true);
-      if (filteredRisks) {
-        const csvText = generateCSV(filteredRisks);
-        const blob = new Blob([csvText], { type: "text/csv" });
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = downloadUrl;
-        link.setAttribute("download", "infisical-radar-report.csv");
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        createNotification({
-          text: "Successfully downloaded Infisical Radar report",
-          type: "success"
-        });
-      }
-    } catch (err) {
-      console.error("Error downloading Infisical Radar report", err);
-      createNotification({
-        text: "Failed to download Infisical Radar report. Please try again.",
-        type: "error"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <>
-      <div className="flex flex-wrap justify-center mb-4">
-        <div className="mb-4">
-          Download .csv <FontAwesomeIcon icon={faDownload} onClick={() => downloadSecretScanLogTableAsCSV()} />
+      <div className="flex justify-between items-center">
+        <div className="flex items-center">
+          <div className="mb-4 mr-4">
+            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+            <label htmlFor="secretTypeSelect" className="w-40 mr-4">Secret Type</label>
+            <select
+              id="secretTypeSelect"
+              onChange={(e) => setSecretTypeFilter(e.target.value)}
+              value={secretTypeFilter}
+              className="block w-full py-2 px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All</option>
+              {secretTypeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-4 mr-4">
+            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+            <label htmlFor="sourceSelect" className="w-40 mr-4">Source (Repository)</label>
+            <select
+              id="sourceSelect"
+              onChange={(e) => setRepositoryFilter(e.target.value)}
+              value={repositoryFilter}
+              className="block w-full py-2 px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All</option>
+              {repositoryOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-4 mr-4">
+            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+            <label htmlFor="authorSelect" className="w-40 mr-4">Author</label>
+            <select
+              id="authorSelect"
+              onChange={(e) => setAuthorFilter(e.target.value)}
+              value={authorFilter}
+              className="block w-full py-2 px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All</option>
+              {authorOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-4 mr-4">
+            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+            <label htmlFor="riskStatusSelect" className="w-40 mr-4">Risk Status</label>
+            <select
+              id="riskStatusSelect"
+              onChange={(e) => setStatusFilter(e.target.value as RiskStatusFilter)}
+              value={statusFilter}
+              className="block w-full py-2 px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              {Object.values(RiskStatusFilter).map((filterOption) => (
+                <option key={filterOption} value={filterOption}>
+                  {filterOption}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="mb-4 mr-4">
-          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-          <label htmlFor="riskStatusSelect">Risk Status</label>
-          <select
-            id="riskStatusSelect"
-            onChange={(e) => setStatusFilter(e.target.value as RiskStatusFilter)}
-            value={statusFilter}
-            aria-labelledby="riskStatusSelect"
-          >
-            {Object.values(RiskStatusFilter).map((filterOption) => (
-              <option key={filterOption} value={filterOption}>
-                {filterOption}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mb-4 mr-4">
-          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-          <label htmlFor="sourceSelect">Source (Repository)</label>
-          <select
-            id="sourceSelect"
-            onChange={(e) => setRepositoryFilter(e.target.value)}
-            value={repositoryFilter}
-            aria-labelledby="sourceSelect"
-          >
-            <option value="">All</option>
-            {repositoryOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mb-4 mr-4">
-          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-          <label htmlFor="secretTypeSelect">Secret Type</label>
-          <select
-            id="secretTypeSelect"
-            onChange={(e) => setSecretTypeFilter(e.target.value)}
-            value={secretTypeFilter}
-            aria-labelledby="secretTypeSelect"
-          >
-            <option value="">All</option>
-            {secretTypeOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mb-4">
-          <Button type="button" onClick={handleClearFilters}>
-            Clear filters
-          </Button>
+      </div>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center">
+          <div className="mb-4 mr-4">
+            <DownloadSecretScanningTable filteredRisks={filteredRisks}/>
+          </div>
+          <div className="mb-4 mr-4">
+            <Button
+              isLoading={false}
+              colorSchema="primary"
+              variant="outline_bg"
+              type="button"
+              leftIcon={<FontAwesomeIcon icon={faFilterCircleXmark} className="mr-2" />}
+              onClick={handleClearFilters}
+            >
+              Clear filters
+            </Button>
+          </div>
         </div>
       </div>
       <TableContainer className="mt-8">
