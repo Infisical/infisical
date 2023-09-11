@@ -4,7 +4,7 @@ import { tmpdir } from "os";
 import { join } from "path"
 import { SecretMatch } from "./types";
 
-export async function scanFullRepoContentAndGetFindings(octokit: any, installationId: number, repositoryFullName: string): Promise<SecretMatch[]> {
+export async function scanFullRepoContentAndGetFindings(octokit: any, installationId: string, repositoryFullName: string): Promise<SecretMatch[]> {
   const tempFolder = await createTempFolder();
   const findingsPath = join(tempFolder, "findings.json");
   const repoPath = join(tempFolder, "repo.git")

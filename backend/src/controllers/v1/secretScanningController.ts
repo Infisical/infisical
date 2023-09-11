@@ -22,7 +22,7 @@ export const createInstallationSession = async (req: Request, res: Response) => 
   const sessionId = crypto.randomBytes(16).toString("hex");
   const {
     params: { organizationId }
-  } = await validateRequest(reqValidator.CreateInstalLSessionv1, req);
+  } = await validateRequest(reqValidator.CreateInstallSessionv1, req);
 
   const organization = await Organization.findById(organizationId);
   if (!organization) {
@@ -91,7 +91,7 @@ export const linkInstallationToOrganization = async (req: Request, res: Response
     auth: {
       appId: await getSecretScanningGitAppId(),
       privateKey: await getSecretScanningPrivateKey(),
-      installationId: installationId.toString()
+      installationId: installationId
     },
   });
 

@@ -10,20 +10,16 @@ import { convertKeysToLowercase, scanFullRepoContentAndGetFindings } from "../..
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
 import { SecretMatch } from "../../ee/services/GithubSecretScanning/types";
 import { checkIfInfisicalIgnoreFile } from "./checkInfisicalIgnoreFile";
+import { TScanFullRepoQueueDetails } from "./types";
 
 export const githubFullRepositorySecretScan = new Queue("github-full-repository-secret-scanning", "redis://redis:6379");
 
-type TScanPushEventQueueDetails = {
-  organizationId: string,
-  installationId: number, 
-  repository: {
-    id: number,
-    fullName: string,
-  },
-}
-
-githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback) => {
-  const { organizationId, repository, installationId }: TScanPushEventQueueDetails = job.data
+  githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback) => {
+    const {
+    organizationId,
+    repository,
+    installationId
+  }: TScanFullRepoQueueDetails = job.data;
   const [owner, repo] = repository.fullName.split("/");
 
   try {
@@ -31,7 +27,7 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
         auth: {
         appId: await getSecretScanningGitAppId(),
         privateKey: await getSecretScanningPrivateKey(),
-        installationId: installationId
+        installationId: installationId,
       },
     });
 
@@ -42,14 +38,10 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
 
     for (const finding of findings) {
 
-      // Create a SHA3-512 hash of the secret & immediately clear the plaintext secret from memory
-      // Used in push events to collate all SHA-3 hashes of the secret in the same repo's file (prevents case where the secret moves)
-      // Also useful to append to the fingerprint (eventually) & for user audit secret scanning log table .csv download
-      let secret = finding.Secret;
+      // Create a SHA3-512 hash of the secret (used for new pushes to more efficiently check repo)
       const sha512Hash = createHash("sha3-512");
-      sha512Hash.update(secret);
+      sha512Hash.update(finding.Secret);
       const hashResult = sha512Hash.digest("hex");
-      secret = "";
       
       const updateOperation = {
         updateOne: {
@@ -72,7 +64,6 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
     await GitRisks.bulkWrite(batchUpdateOperations);
 
     // check .infisicalignore file
-    // TODO: check if the corresponding fingerprint has already been updated to false positive in the db
 
     const newInfisicalIgnoreFindingsToUpdate: any[] = [];
 
@@ -141,7 +132,7 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
   }
 })
 
-export const scanGithubFullRepoForSecretLeaks = (pushEventPayload: TScanPushEventQueueDetails) => {
+export const scanGithubFullRepoForSecretLeaks = (pushEventPayload: TScanFullRepoQueueDetails) => {
   githubFullRepositorySecretScan.add(pushEventPayload, {
     attempts: 3,
     backoff: {

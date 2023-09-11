@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-export const CreateInstalLSessionv1 = z.object({
+export const CreateInstallSessionv1 = z.object({
   params: z.object({ organizationId: z.string().trim() })
 });
 
 export const LinkInstallationToOrgv1 = z.object({
   body: z.object({
-    installationId: z.number(),
+    installationId: z.string().trim(),
     sessionId: z.string().trim()
   })
 });

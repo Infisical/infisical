@@ -1,6 +1,5 @@
 import Queue, { Job } from "bull";
 import { ProbotOctokit } from "probot";
-import { Commit } from "@octokit/webhooks-types";
 import { createHash } from "crypto";
 import TelemetryService from "../../services/TelemetryService";
 import { sendMail } from "../../helpers";
@@ -10,41 +9,35 @@ import { ADMIN, OWNER } from "../../variables";
 import { convertKeysToLowercase, scanContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
 import { checkIfInfisicalIgnoreFile } from "./checkInfisicalIgnoreFile";
+import { TScanPushEventQueueDetails } from "./types";
 
 export const githubPushEventSecretScan = new Queue("github-push-event-secret-scanning", "redis://redis:6379");
 
-type TScanPushEventQueueDetails = {
-  organizationId: string,
-  commits: Commit[]
-  pusher: {
-    name: string,
-    email: string | null
-  },
-  repository: {
-    id: number,
-    fullName: string,
-  },
-  installationId: number,
-}
+  githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => {
+    const {
+      organizationId,
+      commits,
+      pusher,
+      repository,
+      installationId
+    }: TScanPushEventQueueDetails = job.data;
 
-githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => {
-  const { organizationId, commits, pusher, repository, installationId }: TScanPushEventQueueDetails = job.data
   const [owner, repo] = repository.fullName.split("/");
   const octokit = new ProbotOctokit({
     auth: {
       appId: await getSecretScanningGitAppId(),
       privateKey: await getSecretScanningPrivateKey(),
-      installationId: installationId
+      installationId: installationId,
     },
   });
 
   // Scan the .infisicalignore file (if it exists) & extract the fingerprints
   const infisicalIgnoreFileContents = await checkIfInfisicalIgnoreFile(octokit, owner, repo);
 
-  const newFindingsToUpdate: any[] = [];
+  const hashedSecretFindings: string[] = [];
   const existingUnresolvedFingerprints: string[] = [];
   const existingResolvedFingerprints: string[] = [];
-  const hashedSecretFindings: string[] = [];
+  const newFindingsToUpdate: any[] = [];
 
   for (const commit of commits) {
     for (const filepath of [...commit.added, ...commit.modified]) {
@@ -57,21 +50,18 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
 
         const data: any = fileContentsResponse.data;
         const fileContent = Buffer.from(data.content, "base64").toString();
-
         const findings = await scanContentAndGetFindings(`\n${fileContent}`); // extra line to count lines correctly
 
         for (const finding of findings) {
           const fingerPrintWithCommitId = `${commit.id}:${filepath}:${finding.RuleID}:${finding.StartLine}`;
           const fingerPrintWithoutCommitId = `${filepath}:${finding.RuleID}:${finding.StartLine}`;
 
-          // Create a SHA3-512 hash of the secret & immediately clear the secret from memory
-          let secret = finding.Secret;
+          // Create a SHA3-512 hash of the secret
           const sha512Hash = createHash("sha3-512");
-          sha512Hash.update(secret);
+          sha512Hash.update(finding.Secret);
           const hashResult = sha512Hash.digest("hex");
-          secret = "";
 
-          // check if the hashed secret has already been processed
+          // Check if the hashed secret has already been processed
           if(hashedSecretFindings.includes(hashResult)) {
             continue;
           }
@@ -118,7 +108,8 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
               hashedSecret: hashResult,
             },
           });
-        }       
+        }  
+       
       } catch (error) {
         done(new Error(`gitHubHistoricalScanning.process: unable to fetch content for [filepath=${filepath}] because [error=${error}]`), null)
       }
@@ -135,39 +126,36 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
   }
 
   // now go through the .infisicalignore file & extract fingerprints
-  const ignoreFingerprints: string[] = [];
+  const ignoreFileFingerprints: string[] = [];
 
   for (const infisicalIgnoreFingerprint of infisicalIgnoreFileContents) {
     if (infisicalIgnoreFingerprint.exists) {
       const content = infisicalIgnoreFingerprint.content;
       if (content) {
         const fingerprints = content.split("\n");
-        ignoreFingerprints.push(...fingerprints);
+        ignoreFileFingerprints.push(...fingerprints);
       }
     }
   }
 
-  // only update the fingerprints that haven't been flagged explicity on the frontend
+  // check if the ignore file fingerprint has already been flagged on the frontend
   const newInfisicalIgnoreFindingsToUpdate: string[] = [];
 
-  for (const ignoreFingerprint of ignoreFingerprints) {
-    for (const existingUnresolvedFingerprint of existingUnresolvedFingerprints)
-      if (ignoreFingerprint === existingUnresolvedFingerprint) {
-        newInfisicalIgnoreFindingsToUpdate.push(ignoreFingerprint)
+  for (const ignoreFileFingerprint of ignoreFileFingerprints) {
+    for (const existingUnresolvedFingerprint of existingUnresolvedFingerprints) {
+      if (ignoreFileFingerprint === existingUnresolvedFingerprint) {
+        newInfisicalIgnoreFindingsToUpdate.push(ignoreFileFingerprint);
       }
+    }
   }
 
-  // batch update found .infisicalignore findings (to false positives) 
-  // (Assumption: user flags these in .infisicalignore as false positives)
+  // batch update ignore findings to false positives
   for (const processedFingerprint of newInfisicalIgnoreFindingsToUpdate) {
-    // Only update findings with fingerprints that matched
-    if (newInfisicalIgnoreFindingsToUpdate.includes(processedFingerprint)) {
-      await GitRisks.findOneAndUpdate(
-        { fingerprint: processedFingerprint },
-        { status: RiskStatus.RESOLVED_FALSE_POSITIVE },
-        { upsert: true }
-      ).lean();
-    }
+    await GitRisks.findOneAndUpdate(
+      { fingerprint: processedFingerprint },
+      { status: RiskStatus.RESOLVED_FALSE_POSITIVE },
+      { upsert: true }
+    ).lean();
   }
 
   // get emails of admins

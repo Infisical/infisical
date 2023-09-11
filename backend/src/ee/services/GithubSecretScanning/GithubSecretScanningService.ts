@@ -40,7 +40,7 @@ export default async (app: Probot) => {
       pusher: { name: pusher.name, email: pusher.email },
       repository: { fullName: repository.full_name, id: repository.id },
       organizationId: installationLinkToOrgExists.organizationId,
-      installationId: installation.id
+      installationId: installation.id.toString()
     })
   });
 };
