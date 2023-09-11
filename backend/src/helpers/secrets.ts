@@ -578,8 +578,10 @@ export const getSecretsHelper = async ({
     }
   }
 
-  const numberOfSignupSecrets = (secrets.filter((secret) => secret?.metadata?.source === "signup")).length;
-  const atLeastOneNonSignUpSecret = (secrets.length - numberOfSignupSecrets > 0)
+  const numberOfSignupSecrets = secrets.filter(
+    (secret) => secret?.metadata?.source === "signup"
+  ).length;
+  const atLeastOneNonSignUpSecret = secrets.length - numberOfSignupSecrets > 0;
 
   if (postHogClient && atLeastOneNonSignUpSecret) {
     const shouldCapture = authData.userAgent !== K8_USER_AGENT_NAME || shouldRecordK8Event;

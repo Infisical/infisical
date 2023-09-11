@@ -7,7 +7,7 @@ import { containsGlobPatterns, repackageSecretToRaw } from "../../helpers/secret
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
 import { Folder, IServiceTokenData } from "../../models";
-import { getFolderByPath } from "../../services/FolderService";
+import { getFolderByPath, getFolderWithPathFromId } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/secrets";
@@ -27,9 +27,13 @@ import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variabl
  * @param res
  */
 export const getSecretsRaw = async (req: Request, res: Response) => {
+  const validatedData = await validateRequest(reqValidator.GetSecretsRawV3, req);
   let {
-    query: { secretPath, environment, workspaceId, include_imports: includeImports, folderId }
-  } = await validateRequest(reqValidator.GetSecretsRawV3, req);
+    query: { secretPath, environment, workspaceId }
+  } = validatedData;
+  const {
+    query: { folderId, include_imports: includeImports }
+  } = validatedData;
 
   // if the service token has single scope, it will get all secrets for that scope by default
   const serviceTokenDetails: IServiceTokenData = req?.serviceTokenData;
@@ -42,6 +46,13 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
     secretPath = scope.secretPath;
     environment = scope.environment;
     workspaceId = serviceTokenDetails.workspace.toString();
+  }
+
+  if (folderId && folderId !== "root") {
+    const folder = await Folder.findOne({ workspace: workspaceId, environment });
+    if (!folder) throw BadRequestError({ message: "Folder not found" });
+
+    secretPath = getFolderWithPathFromId(folder.nodes, folderId).folderPath;
   }
 
   if (req.user?._id) {
@@ -367,9 +378,21 @@ export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
  * @param res
  */
 export const getSecrets = async (req: Request, res: Response) => {
+  const validatedData = await validateRequest(reqValidator.GetSecretsV3, req);
   const {
-    query: { secretPath, environment, workspaceId, include_imports: includeImports, folderId }
-  } = await validateRequest(reqValidator.GetSecretsV3, req);
+    query: { environment, workspaceId, include_imports: includeImports, folderId }
+  } = validatedData;
+
+  let {
+    query: { secretPath }
+  } = validatedData;
+
+  if (folderId && folderId !== "root") {
+    const folder = await Folder.findOne({ workspace: workspaceId, environment });
+    if (!folder) throw BadRequestError({ message: "Folder not found" });
+
+    secretPath = getFolderWithPathFromId(folder.nodes, folderId).folderPath;
+  }
 
   if (req.user?._id) {
     const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
