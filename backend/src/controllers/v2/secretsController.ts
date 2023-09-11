@@ -89,15 +89,17 @@ export const batchSecrets = async (req: Request, res: Response) => {
     workspaceId: new Types.ObjectId(workspaceId)
   });
 
-  const folders = await Folder.findOne({ workspace: workspaceId, environment });
-
-  if (secretPath) {
+  if (secretPath !== "/") {
     folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
   }
 
-  if (folders && folderId !== "root") {
+  if (folderId !== "root") {
+    const folders = await Folder.findOne({ workspace: workspaceId, environment });
+    if (!folders) throw BadRequestError({ message: "Folder not found" });
+
     const folder = searchByFolderIdWithDir(folders.nodes, folderId as string);
     if (!folder?.folder) throw BadRequestError({ message: "Folder not found" });
+
     secretPath = path.join(
       "/",
       ...folder.dir.map(({ name }) => name).filter((name) => name !== "root")
