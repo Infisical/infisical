@@ -43,7 +43,8 @@ frontend:
     ## @param frontend.image.pullPolicy Backend image pullPolicy
     ##
     pullPolicy: IfNotPresent
-  ## container resource specifications [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+  ## @param frontend.resources.limits.memory container memory limit [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+  ## @param frontend.resources.requests.cpu container CPU request [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
   ##
   resources:
     limits:
@@ -109,7 +110,8 @@ backend:
     ## @param backend.image.pullPolicy Backend image pullPolicy
     ##
     pullPolicy: IfNotPresent
-  ## container resource specifications [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+  ## @param backend.resources.limits.memory container memory limit [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+  ## @param backend.resources.requests.cpu container CPU request [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
   ##
   resources:
     limits:
