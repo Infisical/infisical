@@ -5,7 +5,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../../services/ProjectRoleService";
+} from "../../services/ProjectRoleService";
 import * as reqValidator from "../../../validation/secretSnapshot";
 import { ISecretVersion, SecretSnapshot, TFolderRootVersionSchema } from "../../models";
 

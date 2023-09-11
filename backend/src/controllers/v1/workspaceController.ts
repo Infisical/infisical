@@ -18,7 +18,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../services/RoleService";
+} from "../../ee/services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation";
@@ -26,7 +26,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../services/ProjectRoleService";
+} from "../../ee/services/ProjectRoleService";
 
 /**
  * Return public keys of members of workspace with id [workspaceId]
