@@ -47,11 +47,6 @@
       "url": "internals"
     },
     {
-      "name": "Security",
-      "icon": "shield-halved",
-      "url": "security"
-    },
-    {
       "name": "SDKs",
       "icon": "puzzle-piece",
       "url": "sdks"
@@ -358,7 +353,8 @@
       "group": "Internals",
       "pages": [
         "internals/overview",
-        "internals/architecture",
+        "internals/components",
+        "internals/flows",
         "internals/security",
         "internals/service-tokens"
       ]
