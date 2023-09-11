@@ -42,9 +42,9 @@
   },
   "anchors": [
     {
-      "name": "Security",
-      "icon": "shield-halved",
-      "url": "security"
+      "name": "Internals",
+      "icon": "sitemap",
+      "url": "internals"
     },
     {
       "name": "SDKs",
@@ -347,6 +347,16 @@
           "group": "Service Tokens",
           "pages": ["api-reference/endpoints/service-tokens/get"]
         }
+      ]
+    },
+    {
+      "group": "Internals",
+      "pages": [
+        "internals/overview",
+        "internals/components",
+        "internals/flows",
+        "internals/security",
+        "internals/service-tokens"
       ]
     },
     {
