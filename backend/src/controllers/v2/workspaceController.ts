@@ -11,6 +11,14 @@ import { EventService, TelemetryService } from "../../services";
 import { eventPushSecrets } from "../../events";
 import { EEAuditLogService } from "../../ee/services";
 import { EventType } from "../../ee/models";
+import { validateRequest } from "../../helpers/validation";
+import * as reqValidator from "../../validation";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  getUserProjectPermissions
+} from "../../services/ProjectRoleService";
+import { ForbiddenError } from "@casl/ability";
 
 interface V2PushSecret {
   type: string; // personal or shared
@@ -181,15 +189,17 @@ export const getWorkspaceKey = async (req: Request, res: Response) => {
         }
     }   
     */
-  const { workspaceId } = req.params;
-  
+  const {
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.GetWorkspaceKeyV2, req);
+
   const key = await Key.findOne({
     workspace: workspaceId,
     receiver: req.user._id
   }).populate("sender", "+publicKey");
 
   if (!key) throw new Error("Failed to find workspace key");
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -258,7 +268,15 @@ export const getWorkspaceMemberships = async (req: Request, res: Response) => {
         }
     }   
     */
-  const { workspaceId } = req.params;
+  const {
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.GetWorkspaceMembershipsV2, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Member
+  );
 
   const memberships = await Membership.find({
     workspace: workspaceId
@@ -329,8 +347,16 @@ export const updateWorkspaceMembership = async (req: Request, res: Response) => 
         }
     }   
     */
-  const { membershipId } = req.params;
-  const { role } = req.body;
+  const {
+    params: { workspaceId, membershipId },
+    body: { role }
+  } = await validateRequest(reqValidator.UpdateWorkspaceMembershipsV2, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Member
+  );
 
   const membership = await Membership.findByIdAndUpdate(
     membershipId,
@@ -390,7 +416,15 @@ export const deleteWorkspaceMembership = async (req: Request, res: Response) => 
         }
     }   
     */
-  const { membershipId } = req.params;
+  const {
+    params: { workspaceId, membershipId }
+  } = await validateRequest(reqValidator.DeleteWorkspaceMembershipsV2, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.Member
+  );
 
   const membership = await Membership.findByIdAndDelete(membershipId);
 
@@ -413,8 +447,16 @@ export const deleteWorkspaceMembership = async (req: Request, res: Response) => 
  * @returns
  */
 export const toggleAutoCapitalization = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
-  const { autoCapitalization } = req.body;
+  const {
+    params: { workspaceId },
+    body: { autoCapitalization }
+  } = await validateRequest(reqValidator.ToggleAutoCapitalizationV2, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Settings
+  );
 
   const workspace = await Workspace.findOneAndUpdate(
     {

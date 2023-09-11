@@ -39,9 +39,7 @@ export default function AWSParameterStoreAuthorizeIntegrationPage() {
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "aws-parameter-store",
         accessId: accessKey,
-        accessToken: accessSecretKey,
-        url: null,
-        namespace: null
+        accessToken: accessSecretKey
       });
 
       setAccessKey("");

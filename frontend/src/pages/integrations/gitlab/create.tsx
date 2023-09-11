@@ -95,15 +95,9 @@ export default function GitLabCreateIntegrationPage() {
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId)?.name,
-        appId: targetAppId,
+        appId: String(targetAppId),
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: targetEnvironment === "" ? "*" : targetEnvironment,
-        targetEnvironmentId: null,
-        targetService: null,
-        targetServiceId: null,
-        owner: null,
-        path: null,
-        region: null,
         secretPath
       });
 

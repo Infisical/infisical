@@ -83,7 +83,7 @@ export default function VercelCreateIntegrationPage() {
 
       if (!targetApp || !targetApp.appId) return;
 
-      const path = targetEnvironment === "preview" && targetBranch !== "" ? targetBranch : null;
+      const path = targetEnvironment === "preview" && targetBranch !== "" ? targetBranch : undefined;
 
       await mutateAsync({
         integrationAuthId: integrationAuth?._id,
@@ -92,12 +92,7 @@ export default function VercelCreateIntegrationPage() {
         appId: targetApp.appId,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment,
-        targetEnvironmentId: null,
-        targetService: null,
-        targetServiceId: null,
-        owner: null,
         path,
-        region: null,
         secretPath
       });
 

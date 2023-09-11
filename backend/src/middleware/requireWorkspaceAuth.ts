@@ -9,24 +9,18 @@ type req = "params" | "body" | "query";
  * on request params.
  * @param {Object} obj
  * @param {String[]} obj.acceptedRoles - accepted workspace roles for JWT auth
- * @param {String[]} obj.location - location of [workspaceId] on request (e.g. params, body) for parsing
+ * @param {String} obj.locationWorkspaceId - location of [workspaceId] on request (e.g. params, body) for parsing
  */
 const requireWorkspaceAuth = ({
 	acceptedRoles,
 	locationWorkspaceId,
 	locationEnvironment = undefined,
 	requiredPermissions = [],
-	requireBlindIndicesEnabled = false,
-	requireE2EEOff = false,
-	checkIPAllowlist = false
 }: {
 	acceptedRoles: Array<"admin" | "member">;
 	locationWorkspaceId: req;
 	locationEnvironment?: req | undefined;
 	requiredPermissions?: string[];
-	requireBlindIndicesEnabled?: boolean;
-	requireE2EEOff?: boolean;
-	checkIPAllowlist?: boolean;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
 		const workspaceId = req[locationWorkspaceId]?.workspaceId;
@@ -38,10 +32,7 @@ const requireWorkspaceAuth = ({
 			workspaceId: new Types.ObjectId(workspaceId),
 			environment,
 			acceptedRoles,
-			requiredPermissions,
-			requireBlindIndicesEnabled,
-			requireE2EEOff,
-			checkIPAllowlist
+			requiredPermissions
 		});
 		
 		if (membership) {

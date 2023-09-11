@@ -25,7 +25,6 @@ import {
   userHasWriteOnlyAbility
 } from "../../ee/helpers/checkMembershipPermissions";
 import _ from "lodash";
-import { BatchSecret, BatchSecretRequest } from "../../types/secret";
 import {
   getFolderByPath,
   getFolderIdFromServiceToken,
@@ -35,6 +34,18 @@ import {
 import { isValidScope } from "../../helpers/secrets";
 import path from "path";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
+import { validateRequest } from "../../helpers/validation";
+import {
+  BatchSecretsV2,
+  GetSecretsV2,
+  validateServiceTokenDataClientForWorkspace
+} from "../../validation";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  getUserProjectPermissions
+} from "../../services/ProjectRoleService";
+import { ForbiddenError, subject } from "@casl/ability";
 
 /**
  * Peform a batch of any specified CUD secret operations
@@ -46,22 +57,31 @@ export const batchSecrets = async (req: Request, res: Response) => {
   const channel = getUserAgentType(req.headers["user-agent"]);
   const postHogClient = await TelemetryService.getPostHogClient();
 
+  const validatedData = await validateRequest(BatchSecretsV2, req);
   const {
-    workspaceId,
-    environment,
-    requests
-  }: {
-    workspaceId: string;
-    environment: string;
-    requests: BatchSecretRequest[];
-  } = req.body;
+    body: { workspaceId, environment, requests }
+  } = validatedData;
+  let {
+    body: { secretPath, folderId }
+  } = validatedData;
 
-  let secretPath = req.body.secretPath as string;
-  let folderId = req.body.folderId as string;
+  const secretIds = requests
+    .filter(({ method }) => method !== "POST")
+    // akhilmhdh: ts is dumb
+    .map((el) => new Types.ObjectId((el.secret as any)._id));
 
-  const createSecrets: BatchSecret[] = [];
-  const updateSecrets: BatchSecret[] = [];
-  const deleteSecrets: { _id: Types.ObjectId, secretName: string; }[] = [];
+  const oldSecrets = await Secret.find({
+    _id: {
+      $in: secretIds
+    }
+  });
+  if (oldSecrets.length != secretIds.length) {
+    throw BadRequestError({ message: "Failed to validate non-existent secrets" });
+  }
+
+  const createSecrets: any[] = [];
+  const updateSecrets: any[] = [];
+  const deleteSecrets: { _id: Types.ObjectId; secretName: string }[] = [];
   const actions: IAction[] = [];
 
   // get secret blind index salt
@@ -70,16 +90,6 @@ export const batchSecrets = async (req: Request, res: Response) => {
   });
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
-
-  if (req.authData.authPayload instanceof ServiceTokenData) {
-    const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, secretPath);
-
-    // in service token when not giving secretpath folderid must be root
-    // this is to avoid giving folderid when service tokens are used
-    if ((!secretPath && folderId !== "root") || (secretPath && !isValidScopeAccess)) {
-      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
-    }
-  }
 
   if (secretPath) {
     folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
@@ -92,6 +102,16 @@ export const batchSecrets = async (req: Request, res: Response) => {
       "/",
       ...folder.dir.map(({ name }) => name).filter((name) => name !== "root")
     );
+  }
+
+  if (req.authData.authPayload instanceof ServiceTokenData) {
+    await validateServiceTokenDataClientForWorkspace({
+      serviceTokenData: req.authData.authPayload,
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      secretPath,
+      requiredPermissions: [PERMISSION_WRITE_SECRETS]
+    });
   }
 
   for await (const request of requests) {
@@ -110,7 +130,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
           version: 1,
           user: request.secret.type === SECRET_PERSONAL ? req.user : undefined,
           environment,
-          workspace: new Types.ObjectId(workspaceId),
+          workspace: workspaceId,
           folder: folderId,
           secretBlindIndex,
           algorithm: ALGORITHM_AES_256_GCM,
@@ -125,7 +145,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
         updateSecrets.push({
           ...request.secret,
-          _id: new Types.ObjectId(request.secret._id),
+          _id: request.secret._id,
           secretBlindIndex,
           folder: folderId,
           algorithm: ALGORITHM_AES_256_GCM,
@@ -133,15 +153,39 @@ export const batchSecrets = async (req: Request, res: Response) => {
         });
         break;
       case "DELETE":
-        deleteSecrets.push({ _id: new Types.ObjectId(request.secret._id), secretName: request.secret.secretName });
+        deleteSecrets.push({
+          _id: new Types.ObjectId(request.secret._id),
+          secretName: request.secret.secretName
+        });
         break;
     }
+  }
+  // not using service token  using auth
+  if (!(req.authData.authPayload instanceof ServiceTokenData)) {
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    if (createSecrets.length)
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+
+    if (updateSecrets.length)
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+
+    if (deleteSecrets.length)
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Delete,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
   }
 
   // handle create secrets
   let createdSecrets: ISecret[] = [];
   if (createSecrets.length > 0) {
-    createdSecrets = await Secret.insertMany(createSecrets);
+    createdSecrets = (await Secret.insertMany(createSecrets)) as any;
     // (EE) add secret versions for new secrets
     await EESecretService.addSecretVersions({
       secretVersions: createdSecrets.map((n: any) => {
@@ -206,7 +250,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
   // handle update secrets
   let updatedSecrets: ISecret[] = [];
-  if (updateSecrets.length > 0 && req.secrets) {
+  if (updateSecrets.length > 0 && oldSecrets) {
     // construct object containing all secrets
     let listedSecretsObj: {
       [key: string]: {
@@ -215,7 +259,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
       };
     } = {};
 
-    listedSecretsObj = req.secrets.reduce(
+    listedSecretsObj = oldSecrets.reduce(
       (obj: any, secret: ISecret) => ({
         ...obj,
         [secret._id.toString()]: secret
@@ -227,7 +271,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
       updateOne: {
         filter: {
           _id: new Types.ObjectId(u._id),
-          workspace: new Types.ObjectId(workspaceId)
+          workspace: new Types.ObjectId(workspaceId),
+          environment
         },
         update: {
           $inc: {
@@ -241,7 +286,6 @@ export const batchSecrets = async (req: Request, res: Response) => {
         }
       }
     }));
-
     await Secret.bulkWrite(updateOperations);
 
     const secretVersions = updateSecrets.map(
@@ -332,23 +376,26 @@ export const batchSecrets = async (req: Request, res: Response) => {
   if (deleteSecrets.length > 0) {
     const deleteSecretIds: Types.ObjectId[] = deleteSecrets.map((s) => s._id);
 
-    const deletedSecretsObj = (await Secret.find({
-      _id: {
-        $in: deleteSecretIds
-      }
-    }))
-      .reduce(
-        (obj: any, secret: ISecret) => ({
-          ...obj,
-          [secret._id.toString()]: secret
-        }),
-        {}
-      );
+    const deletedSecretsObj = (
+      await Secret.find({
+        _id: {
+          $in: deleteSecretIds
+        }
+      })
+    ).reduce(
+      (obj: any, secret: ISecret) => ({
+        ...obj,
+        [secret._id.toString()]: secret
+      }),
+      {}
+    );
 
     await Secret.deleteMany({
       _id: {
         $in: deleteSecretIds
-      }
+      },
+      workspace: new Types.ObjectId(workspaceId),
+      environment
     });
 
     await EESecretService.markDeletedSecretVersions({
@@ -781,10 +828,13 @@ export const getSecrets = async (req: Request, res: Response) => {
     }   
     */
 
-  const { tagSlugs, secretPath, include_imports } = req.query;
-  let { folderId } = req.query;
-  const workspaceId = req.query.workspaceId as string;
-  const environment = req.query.environment as string;
+  const validatedData = await validateRequest(GetSecretsV2, req);
+  const {
+    query: { tagSlugs, secretPath, include_imports, workspaceId, environment }
+  } = validatedData;
+  let {
+    query: { folderId }
+  } = validatedData;
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
 
@@ -926,7 +976,7 @@ export const getSecrets = async (req: Request, res: Response) => {
 
   // TODO(akhilmhdh) - secret-imp change this to org type
   let importedSecrets: any[] = [];
-  if (include_imports === "true") {
+  if (include_imports) {
     importedSecrets = await getAllImportedSecrets(workspaceId, environment, folderId as string);
   }
 
@@ -970,17 +1020,17 @@ export const getSecrets = async (req: Request, res: Response) => {
   const postHogClient = await TelemetryService.getPostHogClient();
 
   // reduce the number of events captured
-  let shouldRecordK8Event = false
+  let shouldRecordK8Event = false;
   if (req.authData.userAgent == K8_USER_AGENT_NAME) {
     const randomNumber = Math.random();
     if (randomNumber > 0.9) {
-      shouldRecordK8Event = true
+      shouldRecordK8Event = true;
     }
   }
 
   if (postHogClient) {
     const shouldCapture = req.authData.userAgent !== K8_USER_AGENT_NAME || shouldRecordK8Event;
-    const approximateForNoneCapturedEvents = secrets.length * 10
+    const approximateForNoneCapturedEvents = secrets.length * 10;
 
     if (shouldCapture) {
       postHogClient.capture({
@@ -1104,10 +1154,10 @@ export const updateSecrets = async (req: Request, res: Response) => {
           tags,
           ...(secretCommentCiphertext !== undefined && secretCommentIV && secretCommentTag
             ? {
-              secretCommentCiphertext,
-              secretCommentIV,
-              secretCommentTag
-            }
+                secretCommentCiphertext,
+                secretCommentIV,
+                secretCommentTag
+              }
             : {})
         }
       }

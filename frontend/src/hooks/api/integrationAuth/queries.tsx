@@ -367,16 +367,19 @@ export const useAuthorizeIntegration = () => {
     mutationFn: async ({
       workspaceId,
       code,
-      integration
+      integration,
+      url
     }: {
       workspaceId: string;
       code: string;
       integration: string;
+      url?: string;
     }) => {
       const { data: { integrationAuth } } = await apiRequest.post("/api/v1/integration-auth/oauth-token", {
         workspaceId,
         code,
-        integration
+        integration,
+        url
       });
 
       return integrationAuth;
@@ -405,8 +408,8 @@ export const useSaveIntegrationAccessToken = () => {
       refreshToken?: string;
       accessId?: string;
       accessToken?: string;
-      url: string | null;
-      namespace: string | null;
+      url?: string;
+      namespace?: string;
     }) => {
       const { data: { integrationAuth } } = await apiRequest.post("/api/v1/integration-auth/access-token", {
         workspaceId,
