@@ -62,6 +62,18 @@ var runCmd = &cobra.Command{
 			}
 		}
 
+		secretsPath, err := cmd.Flags().GetString("path")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		if !cmd.Flags().Changed("path") {
+			pathFromWorkspace := util.GetPathFromWorkspaceFile()
+			if pathFromWorkspace != "" {
+				secretsPath = pathFromWorkspace
+			}
+		}
+
 		infisicalToken, err := cmd.Flags().GetString("token")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -78,11 +90,6 @@ var runCmd = &cobra.Command{
 		}
 
 		tagSlugs, err := cmd.Flags().GetString("tags")
-		if err != nil {
-			util.HandleError(err, "Unable to parse flag")
-		}
-
-		secretsPath, err := cmd.Flags().GetString("path")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
 		}
