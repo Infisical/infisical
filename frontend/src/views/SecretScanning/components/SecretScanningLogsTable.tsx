@@ -15,12 +15,12 @@ import {
   Tr
 } from "@app/components/v2";
 import timeSince from "@app/ee/utilities/timeSince";
-import { getRisksByOrganization } from "@app/pages/api/secret-scanning/getRisksByOrganization";
-import { GitRisks, RiskStatus } from "@app/pages/api/secret-scanning/types";
+import { getRisksByOrganization } from "@app/hooks/api";
 
 import { ConfigureInfisicalRadar } from "./ConfigureInfisicalRadar";
 import { DownloadSecretScanningTable } from "./DownloadSecretScanningTable";
 import { RiskStatusSelection } from "./RiskStatusSelection";
+import { GitRisks,RiskStatus } from "./types";
 
 enum RiskStatusFilter {
   ALL = "All",
@@ -102,10 +102,12 @@ export const SecretScanningLogsTable: FC = () => {
   });
 
   const handleClearFilters = () => {
+    setIsLoading(true);
     setStatusFilter(RiskStatusFilter.ALL);
     setRepositoryFilter("");
     setAuthorFilter("");
     setSecretTypeFilter("");
+    setIsLoading(false);
   };
 
   const sortByDateFound = (a: GitRisks, b: GitRisks) => {

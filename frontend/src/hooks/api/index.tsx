@@ -10,6 +10,7 @@ export * from "./roles";
 export * from "./secretFolders";
 export * from "./secretImports";
 export * from "./secrets";
+export * from "./secretScanning";
 export * from "./secretSnapshots";
 export * from "./serviceAccounts";
 export * from "./serviceTokens";

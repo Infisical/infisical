@@ -4,13 +4,10 @@ import { useRouter } from "next/router";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
-import { SecretScanningLogsTable } from "@app/views/SecretScanning/components";
-
-import { createSecretScanningSession } from "@app/pages/api/secret-scanning/createSecretScanningSession";
-import { getInstallationStatus } from "@app/pages/api/secret-scanning/getInstallationStatus";
-import { linkGitAppInstallationWithOrganization } from "@app/pages/api/secret-scanning/linkGitAppInstallationWithOrganization";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
+import { createSecretScanningSession, getInstallationStatus, linkGitAppInstallationWithOrganization } from "@app/hooks/api";
+import { SecretScanningLogsTable } from "@app/views/SecretScanning/components";
 
 const SecretScanning = withPermission(
   () => {
@@ -18,28 +15,28 @@ const SecretScanning = withPermission(
     const queryParams = router.query;
     const [integrationEnabled, setIntegrationStatus] = useState(false);
 
-    useEffect(() => {
-      const linkInstallation = async () => {
-        if (
-          typeof queryParams.state === "string" &&
-          typeof queryParams.installation_id === "string"
-        ) {
-          try {
-            const isLinked = await linkGitAppInstallationWithOrganization(
-              queryParams.installation_id as string,
-              queryParams.state as string
-            );
-            if (isLinked) {
-              router.reload();
-            }
-
-            console.log("installation verification complete");
-          } catch (e) {
-            console.log("app installation is stale, start new session", e);
+    const linkInstallation = async () => {
+      if (
+        typeof queryParams.state === "string" &&
+        typeof queryParams.installation_id === "string"
+      ) {
+        try {
+          const isLinked = await linkGitAppInstallationWithOrganization(
+            queryParams.installation_id as string,
+            queryParams.state as string
+          );
+          if (isLinked) {
+            router.reload();
           }
-        }
-      };
 
+          console.log("installation verification complete");
+        } catch (e) {
+          console.log("app installation is stale, start a new session", e);
+        }
+      }
+    };
+
+    useEffect(() => {
       const fetchInstallationStatus = async () => {
         const status = await getInstallationStatus(String(localStorage.getItem("orgData.id")));
         setIntegrationStatus(status);
@@ -47,12 +44,13 @@ const SecretScanning = withPermission(
 
       fetchInstallationStatus();
       linkInstallation();
+
     }, [queryParams.state, queryParams.installation_id]);
 
     const generateNewIntegrationSession = async () => {
-      const session = await createSecretScanningSession(String(localStorage.getItem("orgData.id")));
+      const sessionId = await createSecretScanningSession(String(localStorage.getItem("orgData.id")));
       router.push(
-        `https://github.com/apps/infisical-radar/installations/new?state=${session.sessionId}`
+        `https://github.com/apps/infisical-radar/installations/new?state=${sessionId}`
       );
     };
 

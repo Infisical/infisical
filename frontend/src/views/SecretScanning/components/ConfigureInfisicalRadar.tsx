@@ -48,7 +48,7 @@ export const ConfigureInfisicalRadar: FC = () => {
   };
 
   return (
-    <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.SecretScanning}>
+    <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.SecretScanning}>
       {(isAllowed: boolean) => (
         <Button
           isLoading={false}
