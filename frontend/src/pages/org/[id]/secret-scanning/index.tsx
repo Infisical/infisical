@@ -9,6 +9,8 @@ import { withPermission } from "@app/hoc";
 import { createSecretScanningSession, getInstallationStatus, linkGitAppInstallationWithOrganization } from "@app/hooks/api";
 import { SecretScanningLogsTable } from "@app/views/SecretScanning/components";
 
+export const INFISICAL_RADAR_GITHUB_URL = "https://github.com/apps/infisical-radar";
+
 const SecretScanning = withPermission(
   () => {
     const router = useRouter();
@@ -50,7 +52,7 @@ const SecretScanning = withPermission(
     const generateNewIntegrationSession = async () => {
       const sessionId = await createSecretScanningSession(String(localStorage.getItem("orgData.id")));
       router.push(
-        `https://github.com/apps/infisical-radar/installations/new?state=${sessionId}`
+        `${INFISICAL_RADAR_GITHUB_URL}/installations/new?state=${sessionId}`
       );
     };
 

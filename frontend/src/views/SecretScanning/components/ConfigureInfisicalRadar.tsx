@@ -6,9 +6,7 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-
-const INFISICAL_RADAR_GITHUB_URL: string = "https://github.com/settings/installations/41531710";
-const PAGE_REDIRECT_TIMEOUT: number = 500;
+import { INFISICAL_RADAR_GITHUB_URL } from "@app/pages/org/[id]/secret-scanning";
 
 export const ConfigureInfisicalRadar: FC = () => {
   const { createNotification } = useNotificationContext();
@@ -30,7 +28,7 @@ export const ConfigureInfisicalRadar: FC = () => {
         if (redirectWindow) {
           redirectWindow.location.href = INFISICAL_RADAR_GITHUB_URL;
         }
-      }, PAGE_REDIRECT_TIMEOUT);
+      }, 500);
 
       clearTimeout(redirectTimeout);
       if (redirectWindow) {
