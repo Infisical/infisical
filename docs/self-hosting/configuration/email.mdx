@@ -25,6 +25,36 @@ If you choose to setup email service, you need to configure the following SMTP [
 Below you will find details on how to configure common email providers:
 
 <AccordionGroup>
+<Accordion title="Resend">
+1. Create an account on [Resend](https://resend.com).
+2. Add a [Domain](https://resend.com/domains).
+
+![adding resend domain](../../images/email-resend-create-domain.png)
+
+3. Create an [API Key](https://resend.com/api-keys).
+
+![creating resend api key](../../images/email-resend-create-key.png)
+
+4. Go to the [SMTP page](https://resend.com/settings/smtp) and copy the values.
+
+![go to resend smtp settings](../../images/email-resend-smtp-settings.png)
+
+5. With the API Key, you can now set your SMTP environment variables variables:
+
+```
+SMTP_HOST=smtp.resend.com
+SMTP_USERNAME=resend
+SMTP_PASSWORD=YOUR_API_KEY
+SMTP_PORT=587
+SMTP_SECURE=true
+SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
+SMTP_FROM_NAME=Infisical
+```
+  <Info>
+    Remember that you will need to restart Infisical for this to work properly.
+  </Info>
+</Accordion>
+
 <Accordion title="Twilio SendGrid">
 
 1. Create an account and configure [SendGrid](https://sendgrid.com) to send emails.
