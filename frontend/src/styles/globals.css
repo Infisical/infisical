@@ -1,10 +1,6 @@
 @tailwind base;
 @tailwind components;
 
-html {
-  @apply overflow-hidden;
-}
-
 .rdp-day,
 .rdp-nav_button {
   @apply rounded-md hover:text-mineshaft-500;
@@ -16,7 +12,7 @@ html {
 }
 
 .rdp-day_today {
-  @apply bg-primary/50 hover:bg-primary-600 text-mineshaft-500;
+  @apply bg-primary/50 text-mineshaft-500 hover:bg-primary-600;
 }
 
 @tailwind utilities;
