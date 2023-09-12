@@ -24,6 +24,7 @@ import {
   secretSnapshot as eeSecretSnapshotRouter,
   users as eeUsersRouter,
   workspace as eeWorkspaceRouter,
+  roles as v1RoleRouter,
   secretScanning as v1SecretScanningRouter
 } from "./ee/routes/v1";
 import {
@@ -173,6 +174,7 @@ const main = async () => {
   app.use("/api/v1/secret-scanning", v1SecretScanningRouter);
   app.use("/api/v1/webhooks", v1WebhooksRouter);
   app.use("/api/v1/secret-imports", v1SecretImportRouter);
+  app.use("/api/v1/roles", v1RoleRouter);
 
   // v2 routes (improvements)
   app.use("/api/v2/signup", v2SignupRouter);

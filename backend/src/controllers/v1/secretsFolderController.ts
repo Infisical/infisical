@@ -1,10 +1,12 @@
+import { ForbiddenError, subject } from "@casl/ability";
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { EventType, FolderVersion } from "../../ee/models";
 import { EEAuditLogService, EESecretService } from "../../ee/services";
-import { validateMembership } from "../../helpers/membership";
 import { isValidScope } from "../../helpers/secrets";
-import { Folder, Secret, ServiceTokenData } from "../../models";
+import { validateRequest } from "../../helpers/validation";
+import { Secret, ServiceTokenData } from "../../models";
+import { Folder } from "../../models/folder";
 import {
   appendFolder,
   deleteFolderById,
@@ -15,12 +17,20 @@ import {
   getParentFromFolderId,
   validateFolderName
 } from "../../services/FolderService";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  getUserProjectPermissions
+} from "../../ee/services/ProjectRoleService";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import { ADMIN, MEMBER } from "../../variables";
+import * as reqValidator from "../../validation/folders";
 
 // verify workspace id/environment
 export const createFolder = async (req: Request, res: Response) => {
-  const { workspaceId, environment, folderName, parentFolderId } = req.body;
+  const {
+    body: { workspaceId, environment, folderName, parentFolderId }
+  } = await validateRequest(reqValidator.CreateFolderV1, req);
+
   if (!validateFolderName(folderName)) {
     throw BadRequestError({
       message: "Folder name cannot contain spaces. Only underscore and dashes"
@@ -32,8 +42,20 @@ export const createFolder = async (req: Request, res: Response) => {
     environment
   }).lean();
 
+  if (req.user) {
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const secretPath =
+      folders && parentFolderId
+        ? getFolderWithPathFromId(folders.nodes, parentFolderId).folderPath
+        : "/";
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Folders, { environment, secretPath })
+    );
+  }
+
   // space has no folders initialized
-  
+
   if (!folders) {
     if (req.authData.authPayload instanceof ServiceTokenData) {
       // root check
@@ -62,10 +84,10 @@ export const createFolder = async (req: Request, res: Response) => {
     });
     await folderVersion.save();
     await EESecretService.takeSecretSnapshot({
-      workspaceId,
+      workspaceId: new Types.ObjectId(workspaceId),
       environment
     });
-    
+
     await EEAuditLogService.createAuditLog(
       req.authData,
       {
@@ -86,9 +108,9 @@ export const createFolder = async (req: Request, res: Response) => {
   }
 
   const folder = appendFolder(folders.nodes, { folderName, parentFolderId });
-  
+
   await Folder.findByIdAndUpdate(folders._id, folders);
-  
+
   const { folder: parentFolder, folderPath: parentFolderPath } = getFolderWithPathFromId(
     folders.nodes,
     parentFolderId || "root"
@@ -116,13 +138,13 @@ export const createFolder = async (req: Request, res: Response) => {
   await folderVersion.save();
 
   await EESecretService.takeSecretSnapshot({
-    workspaceId,
+    workspaceId: new Types.ObjectId(workspaceId),
     environment,
     folderId: parentFolderId
   });
-  
-  const {folderPath} = getFolderWithPathFromId(folders.nodes, folder.id);
-  
+
+  const { folderPath } = getFolderWithPathFromId(folders.nodes, folder.id);
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -143,8 +165,11 @@ export const createFolder = async (req: Request, res: Response) => {
 };
 
 export const updateFolderById = async (req: Request, res: Response) => {
-  const { folderId } = req.params;
-  const { name, workspaceId, environment } = req.body;
+  const {
+    body: { workspaceId, environment, name },
+    params: { folderId }
+  } = await validateRequest(reqValidator.UpdateFolderV1, req);
+
   if (!validateFolderName(name)) {
     throw BadRequestError({
       message: "Folder name cannot contain spaces. Only underscore and dashes"
@@ -156,21 +181,21 @@ export const updateFolderById = async (req: Request, res: Response) => {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
 
-  if (!(req.authData.authPayload instanceof ServiceTokenData)) {
-    // check that user is a member of the workspace
-    await validateMembership({
-      userId: req.user._id.toString(),
-      workspaceId,
-      acceptedRoles: [ADMIN, MEMBER]
-    });
-  }
-
   const parentFolder = getParentFromFolderId(folders.nodes, folderId);
   if (!parentFolder) {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
+
+  if (req.user) {
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const secretPath = getFolderWithPathFromId(folders.nodes, parentFolder.id).folderPath;
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Folders, { environment, secretPath })
+    );
+  }
+
   const folder = parentFolder.children.find(({ id }) => id === folderId);
-  
   if (!folder) {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
@@ -197,13 +222,13 @@ export const updateFolderById = async (req: Request, res: Response) => {
   await folderVersion.save();
 
   await EESecretService.takeSecretSnapshot({
-    workspaceId,
+    workspaceId: new Types.ObjectId(workspaceId),
     environment,
     folderId: parentFolder.id
   });
 
-  const {folderPath} = getFolderWithPathFromId(folders.nodes, folder.id);
-  
+  const { folderPath } = getFolderWithPathFromId(folders.nodes, folder.id);
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -228,37 +253,35 @@ export const updateFolderById = async (req: Request, res: Response) => {
 };
 
 export const deleteFolder = async (req: Request, res: Response) => {
-  const { folderId } = req.params;
-  const { workspaceId, environment } = req.body;
+  const {
+    params: { folderId },
+    body: { environment, workspaceId }
+  } = await validateRequest(reqValidator.DeleteFolderV1, req);
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
   if (!folders) {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
 
-  if (!(req.authData.authPayload instanceof ServiceTokenData)) {
-    // check that user is a member of the workspace
-    await validateMembership({
-      userId: req.user._id.toString(),
-      workspaceId,
-      acceptedRoles: [ADMIN, MEMBER]
-    });
-  }
-
-  const {folderPath} = getFolderWithPathFromId(folders.nodes, folderId);
-
   const delOp = deleteFolderById(folders.nodes, folderId);
   if (!delOp) {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
   const { deletedNode: delFolder, parent: parentFolder } = delOp;
+  const { folderPath: secretPath } = getFolderWithPathFromId(folders.nodes, parentFolder.id);
 
   if (req.authData.authPayload instanceof ServiceTokenData) {
-    const { folderPath: secretPath } = getFolderWithPathFromId(folders.nodes, parentFolder.id);
     const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, secretPath);
     if (!isValidScopeAccess) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
+  } else {
+    // check that user is a member of the workspace
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Delete,
+      subject(ProjectPermissionSub.Folders, { environment, secretPath })
+    );
   }
 
   parentFolder.version += 1;
@@ -280,7 +303,7 @@ export const deleteFolder = async (req: Request, res: Response) => {
   }
 
   await EESecretService.takeSecretSnapshot({
-    workspaceId,
+    workspaceId: new Types.ObjectId(workspaceId),
     environment,
     folderId: parentFolder.id
   });
@@ -288,12 +311,12 @@ export const deleteFolder = async (req: Request, res: Response) => {
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
-      type: EventType.DELETE_FOLDER ,
+      type: EventType.DELETE_FOLDER,
       metadata: {
         environment,
         folderId,
         folderName: delFolder.name,
-        folderPath
+        folderPath: secretPath
       }
     },
     {
@@ -306,26 +329,28 @@ export const deleteFolder = async (req: Request, res: Response) => {
 
 // TODO: validate workspace
 export const getFolders = async (req: Request, res: Response) => {
-  const { workspaceId, environment, parentFolderId, parentFolderPath } = req.query as {
-    workspaceId: string;
-    environment: string;
-    parentFolderId?: string;
-    parentFolderPath?: string;
-  };
+  const {
+    query: { workspaceId, environment, parentFolderId, parentFolderPath }
+  } = await validateRequest(reqValidator.GetFoldersV1, req);
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
+
+  if (req.user) {
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const secretPath =
+      folders && parentFolderId
+        ? getFolderWithPathFromId(folders.nodes, parentFolderId).folderPath
+        : parentFolderPath || "/";
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Folders, { environment, secretPath })
+    );
+  }
+
   if (!folders) {
     res.send({ folders: [], dir: [] });
     return;
-  }
-
-  if (!(req.authData.authPayload instanceof ServiceTokenData)) {
-    // check that user is a member of the workspace
-    await validateMembership({
-      userId: req.user._id.toString(),
-      workspaceId,
-      acceptedRoles: [ADMIN, MEMBER]
-    });
   }
 
   // if instead of parentFolderId given a path like /folder1/folder2

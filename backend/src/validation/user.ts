@@ -1,39 +1,30 @@
 import fs from "fs";
 import path from "path";
 import { Types } from "mongoose";
-import {
-	IOrganization, 
-	ISecret,
-	IServiceAccount,
-	IUser,
-	Membership,
-} from "../models";
+import { IOrganization, ISecret, IServiceAccount, IUser, Membership } from "../models";
 import { validateMembership } from "../helpers/membership";
 import _ from "lodash";
 import { BadRequestError, UnauthorizedRequestError, ValidationError } from "../utils/errors";
-import {
-	validateMembershipOrg,
-} from "../helpers/membershipOrg";
-import {
-	PERMISSION_READ_SECRETS,
-	PERMISSION_WRITE_SECRETS,
-} from "../variables";
+import { validateMembershipOrg } from "../helpers/membershipOrg";
+import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../variables";
+import { AuthMethod } from "../models";
+import { z } from "zod";
 
 /**
  * Validate that email [email] is not disposable
  * @param email - email to validate
  */
 export const validateUserEmail = (email: string) => {
-	const emailDomain = email.split("@")[1];
-	const disposableEmails = fs.readFileSync(
-		path.resolve(__dirname, "../data/" + "disposable_emails.txt"),
-		"utf8"
-	).split("\n");	
-	
-	if (disposableEmails.includes(emailDomain)) throw ValidationError({
-		message: "Failed to validate email as non-disposable",
-	});
-}
+  const emailDomain = email.split("@")[1];
+  const disposableEmails = fs
+    .readFileSync(path.resolve(__dirname, "../data/" + "disposable_emails.txt"), "utf8")
+    .split("\n");
+
+  if (disposableEmails.includes(emailDomain))
+    throw ValidationError({
+      message: "Failed to validate email as non-disposable"
+    });
+};
 
 /**
  * Validate that user (client) can access workspace
@@ -46,48 +37,53 @@ export const validateUserEmail = (email: string) => {
  * @param {String[]} requiredPermissions - required permissions as part of the endpoint
  */
 export const validateUserClientForWorkspace = async ({
-	user,
-	workspaceId,
-	environment,
-	acceptedRoles,
-	requiredPermissions,
+  user,
+  workspaceId,
+  environment,
+  acceptedRoles,
+  requiredPermissions
 }: {
-	user: IUser;
-	workspaceId: Types.ObjectId;
-	environment?: string;
-	acceptedRoles: Array<"admin" | "member">;
-	requiredPermissions?: string[];
+  user: IUser;
+  workspaceId: Types.ObjectId;
+  environment?: string;
+  acceptedRoles: Array<"admin" | "member">;
+  requiredPermissions?: string[];
 }) => {
-	
-	// validate user membership in workspace
-	const membership = await validateMembership({
-        userId: user._id,
-        workspaceId,
-		acceptedRoles,
-    });
-	
-	let runningIsDisallowed = false;
-	requiredPermissions?.forEach((requiredPermission: string) => {
-		switch (requiredPermission) {
-			case PERMISSION_READ_SECRETS:
-				runningIsDisallowed = _.some(membership.deniedPermissions, { environmentSlug: environment, ability: PERMISSION_READ_SECRETS });
-				break;
-			case PERMISSION_WRITE_SECRETS:
-				runningIsDisallowed = _.some(membership.deniedPermissions, { environmentSlug: environment, ability: PERMISSION_WRITE_SECRETS });
-				break;
-			default:
-				break;
-		}
-		
-		if (runningIsDisallowed) {
-			throw UnauthorizedRequestError({
-				message: `Failed permissions authorization for workspace environment action : ${requiredPermission}`,
-			});	
-		}
-	});
-	
-	return membership;
-}
+  // validate user membership in workspace
+  const membership = await validateMembership({
+    userId: user._id,
+    workspaceId,
+    acceptedRoles
+  });
+
+  let runningIsDisallowed = false;
+  requiredPermissions?.forEach((requiredPermission: string) => {
+    switch (requiredPermission) {
+      case PERMISSION_READ_SECRETS:
+        runningIsDisallowed = _.some(membership.deniedPermissions, {
+          environmentSlug: environment,
+          ability: PERMISSION_READ_SECRETS
+        });
+        break;
+      case PERMISSION_WRITE_SECRETS:
+        runningIsDisallowed = _.some(membership.deniedPermissions, {
+          environmentSlug: environment,
+          ability: PERMISSION_WRITE_SECRETS
+        });
+        break;
+      default:
+        break;
+    }
+
+    if (runningIsDisallowed) {
+      throw UnauthorizedRequestError({
+        message: `Failed permissions authorization for workspace environment action : ${requiredPermission}`
+      });
+    }
+  });
+
+  return membership;
+};
 
 /**
  * Validate that user (client) can access secret [secret]
@@ -98,32 +94,35 @@ export const validateUserClientForWorkspace = async ({
  * @param {String[]} requiredPermissions - required permissions as part of the endpoint
  */
 export const validateUserClientForSecret = async ({
-	user,
-	secret,
-	acceptedRoles,
-	requiredPermissions,
+  user,
+  secret,
+  acceptedRoles,
+  requiredPermissions
 }: {
-	user: IUser;
-	secret: ISecret;
-	acceptedRoles?: Array<"admin" | "member">;
-	requiredPermissions?: string[];
+  user: IUser;
+  secret: ISecret;
+  acceptedRoles?: Array<"admin" | "member">;
+  requiredPermissions?: string[];
 }) => {
-	const membership = await validateMembership({
-		userId: user._id,
-		workspaceId: secret.workspace,
-		acceptedRoles,
-	});
-	
-	if (requiredPermissions?.includes(PERMISSION_WRITE_SECRETS)) {
-		const isDisallowed = _.some(membership.deniedPermissions, { environmentSlug: secret.environment, ability: PERMISSION_WRITE_SECRETS });
+  const membership = await validateMembership({
+    userId: user._id,
+    workspaceId: secret.workspace,
+    acceptedRoles
+  });
 
-		if (isDisallowed) {
-			throw UnauthorizedRequestError({
-				message: "You do not have the required permissions to perform this action", 
-			});
-		}
-	}
-}
+  if (requiredPermissions?.includes(PERMISSION_WRITE_SECRETS)) {
+    const isDisallowed = _.some(membership.deniedPermissions, {
+      environmentSlug: secret.environment,
+      ability: PERMISSION_WRITE_SECRETS
+    });
+
+    if (isDisallowed) {
+      throw UnauthorizedRequestError({
+        message: "You do not have the required permissions to perform this action"
+      });
+    }
+  }
+};
 
 /**
  * Validate that user (client) can access secrets [secrets]
@@ -134,41 +133,44 @@ export const validateUserClientForSecret = async ({
  * @param {String[]} requiredPermissions - required permissions as part of the endpoint
  */
 export const validateUserClientForSecrets = async ({
-	user,
-	secrets,
-	requiredPermissions,
+  user,
+  secrets,
+  requiredPermissions
 }: {
-	user: IUser;
-	secrets: ISecret[];
-	requiredPermissions?: string[];
+  user: IUser;
+  secrets: ISecret[];
+  requiredPermissions?: string[];
 }) => {
-	
-	// TODO: add acceptedRoles?
+  // TODO: add acceptedRoles?
 
-	const userMemberships = await Membership.find({ user: user._id })
-	const userMembershipById = _.keyBy(userMemberships, "workspace");
-	const workspaceIdsSet = new Set(userMemberships.map((m) => m.workspace.toString()));
+  const userMemberships = await Membership.find({ user: user._id });
+  const userMembershipById = _.keyBy(userMemberships, "workspace");
+  const workspaceIdsSet = new Set(userMemberships.map((m) => m.workspace.toString()));
 
-	// for each secret check if the secret belongs to a workspace the user is a member of
-	secrets.forEach((secret: ISecret) => {
-		if (!workspaceIdsSet.has(secret.workspace.toString())) {
-			throw BadRequestError({
-				message: "Failed authorization for the secret",
-			});
-		}
+  // for each secret check if the secret belongs to a workspace the user is a member of
+  secrets.forEach((secret: ISecret) => {
+    if (!workspaceIdsSet.has(secret.workspace.toString())) {
+      throw BadRequestError({
+        message: "Failed authorization for the secret"
+      });
+    }
 
-		if (requiredPermissions?.includes(PERMISSION_WRITE_SECRETS)) {
-			const deniedMembershipPermissions = userMembershipById[secret.workspace.toString()].deniedPermissions;
-			const isDisallowed = _.some(deniedMembershipPermissions, { environmentSlug: secret.environment, ability: PERMISSION_WRITE_SECRETS });
+    if (requiredPermissions?.includes(PERMISSION_WRITE_SECRETS)) {
+      const deniedMembershipPermissions =
+        userMembershipById[secret.workspace.toString()].deniedPermissions;
+      const isDisallowed = _.some(deniedMembershipPermissions, {
+        environmentSlug: secret.environment,
+        ability: PERMISSION_WRITE_SECRETS
+      });
 
-			if (isDisallowed) {
-				throw UnauthorizedRequestError({
-					message: "You do not have the required permissions to perform this action", 
-				});
-			}
-		}
-	});
-}
+      if (isDisallowed) {
+        throw UnauthorizedRequestError({
+          message: "You do not have the required permissions to perform this action"
+        });
+      }
+    }
+  });
+};
 
 /**
  * Validate that user (client) can access service account [serviceAccount]
@@ -179,25 +181,25 @@ export const validateUserClientForSecrets = async ({
  * @param {String[]} requiredPermissions - required permissions as part of the endpoint
  */
 export const validateUserClientForServiceAccount = async ({
-	user,
-	serviceAccount,
-	requiredPermissions,
+  user,
+  serviceAccount,
+  requiredPermissions
 }: {
-	user: IUser;
-	serviceAccount: IServiceAccount;
-	requiredPermissions?: string[];
+  user: IUser;
+  serviceAccount: IServiceAccount;
+  requiredPermissions?: string[];
 }) => {
-	if (!serviceAccount.user.equals(user._id)) {
-		// case: user who created service account is not the
-		// same user that is on the request
-		await validateMembershipOrg({
-			userId: user._id,
-			organizationId: serviceAccount.organization,
-			acceptedRoles: [],
-			acceptedStatuses: [],
-		});
-	}
-}
+  if (!serviceAccount.user.equals(user._id)) {
+    // case: user who created service account is not the
+    // same user that is on the request
+    await validateMembershipOrg({
+      userId: user._id,
+      organizationId: serviceAccount.organization,
+      acceptedRoles: [],
+      acceptedStatuses: []
+    });
+  }
+};
 
 /**
  * Validate that user (client) can access organization [organization]
@@ -206,22 +208,54 @@ export const validateUserClientForServiceAccount = async ({
  * @param {Organization} obj.organization - organization to validate against
  */
 export const validateUserClientForOrganization = async ({
-	user,
-	organization,
-	acceptedRoles,
-	acceptedStatuses,
+  user,
+  organization,
+  acceptedRoles,
+  acceptedStatuses
 }: {
-	user: IUser;
-	organization: IOrganization;
-	acceptedRoles: Array<"owner" | "admin" | "member">;
-	acceptedStatuses: Array<"invited" | "accepted">;
+  user: IUser;
+  organization: IOrganization;
+  acceptedRoles: Array<"owner" | "admin" | "member">;
+  acceptedStatuses: Array<"invited" | "accepted">;
 }) => {
-	const membershipOrg = await validateMembershipOrg({
-		userId: user._id,
-		organizationId: organization._id,
-		acceptedRoles,
-		acceptedStatuses,
-	});
-	
-	return membershipOrg;
-}
+  const membershipOrg = await validateMembershipOrg({
+    userId: user._id,
+    organizationId: organization._id,
+    acceptedRoles,
+    acceptedStatuses
+  });
+
+  return membershipOrg;
+};
+
+export const UpdateMyMfaEnabledV2 = z.object({
+  body: z.object({
+    isMfaEnabled: z.boolean()
+  })
+});
+
+export const UpdateNameV2 = z.object({
+  body: z.object({
+    firstName: z.string().trim(),
+    lastName: z.string().trim()
+  })
+});
+
+export const UpdateAuthMethodsV2 = z.object({
+  body: z.object({
+    authMethods: z.nativeEnum(AuthMethod).array().min(1)
+  })
+});
+
+export const CreateApiKeyV2 = z.object({
+  body: z.object({
+    name: z.string().trim(),
+    expiresIn: z.number()
+  })
+});
+
+export const DeleteApiKeyV2 = z.object({
+  params: z.object({
+    apiKeyDataId: z.string().trim()
+  })
+});

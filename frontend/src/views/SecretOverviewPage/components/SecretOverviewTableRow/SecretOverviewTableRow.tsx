@@ -19,6 +19,7 @@ import { SecretEditRow } from "./SecretEditRow";
 
 type Props = {
   secretKey: string;
+  secretPath: string;
   environments: { name: string; slug: string }[];
   expandableColWidth: number;
   getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
@@ -36,6 +37,7 @@ export enum SecretActionType {
 export const SecretOverviewTableRow = ({
   secretKey,
   environments = [],
+  secretPath,
   getSecretByKey,
   onSecretUpdate,
   onSecretCreate,
@@ -83,9 +85,11 @@ export const SecretOverviewTableRow = ({
             >
               <div className="h-full w-full border-r border-mineshaft-600 py-[0.85rem] px-5">
                 <div className="flex justify-center relative">
-                  {!isSecretEmpty &&  <Tooltip content={isSecretPresent ? "Present secret" : "Missing secret"}>
-                    <FontAwesomeIcon icon={isSecretPresent ? faCheck : faXmark} />
-                  </Tooltip>}
+                  {!isSecretEmpty && (
+                    <Tooltip content={isSecretPresent ? "Present secret" : "Missing secret"}>
+                      <FontAwesomeIcon icon={isSecretPresent ? faCheck : faXmark} />
+                    </Tooltip>
+                  )}
                   {isSecretEmpty && (
                     <Tooltip content="Empty value">
                       <FontAwesomeIcon icon={faCircle} />
@@ -156,6 +160,7 @@ export const SecretOverviewTableRow = ({
                           </td>
                           <td className="col-span-2 h-8 w-full">
                             <SecretEditRow
+                              secretPath={secretPath}
                               isVisible={isSecretVisible}
                               secretName={secretKey}
                               defaultValue={secret?.value}

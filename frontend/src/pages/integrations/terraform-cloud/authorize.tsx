@@ -38,9 +38,7 @@ export default function TerraformCloudCreateIntegrationPage() {
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "terraform-cloud",
         accessId: workspacesId,
-        accessToken: apiKey,
-        url: null,
-        namespace: null
+        accessToken: apiKey
       });
 
       setIsLoading(false);

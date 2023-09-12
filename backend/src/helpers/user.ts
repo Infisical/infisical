@@ -1,7 +1,4 @@
-import {
-	IUser, 
-	User,
-} from "../models";
+import { IUser, User } from "../models";
 import { sendMail } from "./nodemailer";
 
 /**
@@ -12,10 +9,10 @@ import { sendMail } from "./nodemailer";
  */
 export const setupAccount = async ({ email }: { email: string }) => {
   const user = await new User({
-    email,
+    email
   }).save();
 
-	return user;
+  return user;
 };
 
 /**
@@ -37,36 +34,36 @@ export const setupAccount = async ({ email }: { email: string }) => {
  * @returns {Object} user - the completed user
  */
 export const completeAccount = async ({
-	userId,
-	firstName,
-	lastName,
-	encryptionVersion,
-	protectedKey,
-	protectedKeyIV,
-	protectedKeyTag,
-	publicKey,
-	encryptedPrivateKey,
-	encryptedPrivateKeyIV,
-	encryptedPrivateKeyTag,
-	salt,
-	verifier,
+  userId,
+  firstName,
+  lastName,
+  encryptionVersion,
+  protectedKey,
+  protectedKeyIV,
+  protectedKeyTag,
+  publicKey,
+  encryptedPrivateKey,
+  encryptedPrivateKeyIV,
+  encryptedPrivateKeyTag,
+  salt,
+  verifier
 }: {
-	userId: string;
-	firstName: string;
-	lastName: string;
-	encryptionVersion: number;
-	protectedKey: string;
-	protectedKeyIV: string;
-	protectedKeyTag: string;
-	publicKey: string;
-	encryptedPrivateKey: string;
-	encryptedPrivateKeyIV: string;
-	encryptedPrivateKeyTag: string;
-	salt: string;
-	verifier: string;
+  userId: string;
+  firstName: string;
+  lastName?: string;
+  encryptionVersion: number;
+  protectedKey: string;
+  protectedKeyIV: string;
+  protectedKeyTag: string;
+  publicKey: string;
+  encryptedPrivateKey: string;
+  encryptedPrivateKeyIV: string;
+  encryptedPrivateKeyTag: string;
+  salt: string;
+  verifier: string;
 }) => {
   const options = {
-    new: true,
+    new: true
   };
   const user = await User.findByIdAndUpdate(
     userId,
@@ -82,12 +79,12 @@ export const completeAccount = async ({
       iv: encryptedPrivateKeyIV,
       tag: encryptedPrivateKeyTag,
       salt,
-      verifier,
+      verifier
     },
     options
   );
 
-	return user;
+  return user;
 };
 
 /**
@@ -98,38 +95,42 @@ export const completeAccount = async ({
  * @param {String} obj.userAgent - login user-agent
  */
 export const checkUserDevice = async ({
-	user,
-	ip,
-	userAgent,
+  user,
+  ip,
+  userAgent
 }: {
-	user: IUser;
-	ip: string;
-	userAgent: string;
+  user: IUser;
+  ip: string;
+  userAgent: string;
 }) => {
-	const isDeviceSeen = user.devices.some((device) => device.ip === ip && device.userAgent === userAgent);
-		
-	if (!isDeviceSeen) {
-		// case: unseen login ip detected for user
-		// -> notify user about the sign-in from new ip 
-		
-		user.devices = user.devices.concat([{
-			ip: String(ip),
-			userAgent,
-		}]);
-		
-		await user.save();
+  const isDeviceSeen = user.devices.some(
+    (device) => device.ip === ip && device.userAgent === userAgent
+  );
 
-		// send MFA code [code] to [email]
-		await sendMail({
-			template: "newDevice.handlebars",
-			subjectLine: "Successful login from new device",
-			recipients: [user.email],
-			substitutions: {
-				email: user.email,
-				timestamp: new Date().toString(),
-				ip,
-				userAgent,
-			},
-		}); 
-	}
-}
+  if (!isDeviceSeen) {
+    // case: unseen login ip detected for user
+    // -> notify user about the sign-in from new ip
+
+    user.devices = user.devices.concat([
+      {
+        ip: String(ip),
+        userAgent
+      }
+    ]);
+
+    await user.save();
+
+    // send MFA code [code] to [email]
+    await sendMail({
+      template: "newDevice.handlebars",
+      subjectLine: "Successful login from new device",
+      recipients: [user.email],
+      substitutions: {
+        email: user.email,
+        timestamp: new Date().toString(),
+        ip,
+        userAgent
+      }
+    });
+  }
+};

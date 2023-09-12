@@ -1,10 +1,13 @@
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { faCheck, faCopy, faTrash, faXmark, faCodeBranch } from "@fortawesome/free-solid-svg-icons";
+import { subject } from "@casl/ability";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect } from "react";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { IconButton, SecretInput, Tooltip } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 type Props = {
@@ -16,6 +19,7 @@ type Props = {
   isCreatable?: boolean;
   isVisible?: boolean;
   environment: string;
+  secretPath: string;
   onSecretCreate: (env: string, key: string, value: string, type: string) => Promise<void>;
   onSecretUpdate: (env: string, key: string, value: string, type: string) => Promise<void>;
   onSecretDelete: (env: string, key: string, type: string) => Promise<void>;
@@ -38,6 +42,7 @@ export const SecretEditRow = ({
   onSecretCreate,
   onSecretDelete,
   environment,
+  secretPath,
   isVisible
 }: Props) => {
   const {
@@ -165,19 +170,26 @@ export const SecretEditRow = ({
       <div className="flex w-16 justify-center space-x-1.5 transition-all">
         {isDirty ? (
           <>
-            <div>
-              <Tooltip content="save">
-                <IconButton
-                  variant="plain"
-                  ariaLabel="submit-value"
-                  className="h-full"
-                  isDisabled={isSubmitting}
-                  onClick={handleSubmit(handleFormSubmit)}
-                >
-                  <FontAwesomeIcon icon={faCheck} />
-                </IconButton>
-              </Tooltip>
-            </div>
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Create}
+              a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            >
+              {(isAllowed) => (
+                <div>
+                  <Tooltip content="save">
+                    <IconButton
+                      variant="plain"
+                      ariaLabel="submit-value"
+                      className="h-full"
+                      isDisabled={isSubmitting || !isAllowed}
+                      onClick={handleSubmit(handleFormSubmit)}
+                    >
+                      <FontAwesomeIcon icon={faCheck} />
+                    </IconButton>
+                  </Tooltip>
+                </div>
+              )}
+            </ProjectPermissionCan>
             <div>
               <Tooltip content="cancel">
                 <IconButton
@@ -206,31 +218,48 @@ export const SecretEditRow = ({
                 </IconButton>
               </Tooltip>
             </div>
-            {!isCreatable && <div className="opacity-0 group-hover:opacity-100">
-              <Tooltip content="Override with a personal value">
-                <IconButton
-                  variant="plain"
-                  className={isOverridden ? "text-primary" : ""}
-                  onClick={onSecretOverride}
-                  ariaLabel="info"
-                >
-                  <FontAwesomeIcon icon={faCodeBranch} />
-                </IconButton>
-                </Tooltip>
-            </div>}
-            <div className="opacity-0 group-hover:opacity-100">
-              <Tooltip content="Delete">
-                <IconButton
-                  variant="plain"
-                  ariaLabel="delete-value"
-                  className="h-full"
-                  onClick={handleDeleteSecret}
-                  isDisabled={isDeleting}
-                >
-                  <FontAwesomeIcon icon={faTrash} />
-                </IconButton>
-              </Tooltip>
-            </div>
+            {!isCreatable && 
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Edit}
+                a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+              >
+                {(isAllowed) => (
+                  <div className="opacity-0 group-hover:opacity-100">
+                    <Tooltip content="Override with a personal value">
+                      <IconButton
+                        variant="plain"
+                        className={isOverridden ? "text-primary" : ""}
+                        onClick={onSecretOverride}
+                        isDisabled={isSubmitting || !isAllowed}
+                        ariaLabel="info"
+                      >
+                        <FontAwesomeIcon icon={faCodeBranch} />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+                )}
+              </ProjectPermissionCan>
+            }
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Delete}
+              a={ProjectPermissionSub.Secrets}
+            >
+              {(isAllowed) => (
+                <div className="opacity-0 group-hover:opacity-100">
+                  <Tooltip content="Delete">
+                    <IconButton
+                      variant="plain"
+                      ariaLabel="delete-value"
+                      className="h-full"
+                      onClick={handleDeleteSecret}
+                      isDisabled={isDeleting || !isAllowed}
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
+                    </IconButton>
+                  </Tooltip>
+                </div>
+              )}
+            </ProjectPermissionCan>
           </>
         )}
       </div>

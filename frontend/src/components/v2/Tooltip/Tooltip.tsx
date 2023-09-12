@@ -10,6 +10,7 @@ export type TooltipProps = Omit<TooltipPrimitive.TooltipContentProps, "open" | "
   asChild?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
   defaultOpen?: boolean;
+  position?: "top" | "bottom" | "left" | "right";
 };
 
 export const Tooltip = ({
@@ -20,6 +21,7 @@ export const Tooltip = ({
   defaultOpen,
   className,
   asChild = true,
+  position = "top",
   ...props
 }: TooltipProps) => (
   <TooltipPrimitive.Root
@@ -30,7 +32,7 @@ export const Tooltip = ({
   >
     <TooltipPrimitive.Trigger asChild={asChild}>{children}</TooltipPrimitive.Trigger>
     <TooltipPrimitive.Content
-      side="top"
+      side={position}
       align="center"
       sideOffset={5}
       {...props}

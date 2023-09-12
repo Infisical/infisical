@@ -34,7 +34,7 @@
     <img src="https://img.shields.io/github/commit-activity/m/infisical/infisical" alt="git commit activity" />
   </a>
   <a href="https://cloudsmith.io/~infisical/repos/">
-    <img src="https://img.shields.io/badge/Downloads-821.8k-orange" alt="Cloudsmith downloads" />
+    <img src="https://img.shields.io/badge/Downloads-1.38M-orange" alt="Cloudsmith downloads" />
   </a>
   <a href="https://infisical.com/slack">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />

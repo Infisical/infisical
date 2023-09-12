@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
 import { EncryptedSecret } from "../secrets/types";
+import { TWorkspaceUser } from "../users/types";
 import {
   CreateEnvironmentDTO,
   CreateWorkspaceDTO,
@@ -173,16 +174,17 @@ export const createWorkspace = ({
   workspaceName
 }: CreateWorkspaceDTO): Promise<{ data: { workspace: Workspace } }> => {
   return apiRequest.post("/api/v1/workspace", { workspaceName, organizationId });
-}
+};
 
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{ data: { workspace: Workspace } }, {}, CreateWorkspaceDTO>({
-    mutationFn: async ({ organizationId, workspaceName }) => createWorkspace({
-      organizationId,
-      workspaceName
-    }),
+    mutationFn: async ({ organizationId, workspaceName }) =>
+      createWorkspace({
+        organizationId,
+        workspaceName
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }
@@ -296,32 +298,30 @@ export const useGetWorkspaceUsers = (workspaceId: string) => {
   return useQuery({
     queryKey: workspaceKeys.getWorkspaceUsers(workspaceId),
     queryFn: async () => {
-      const { data: { users } } = await apiRequest.get(
+      const {
+        data: { users }
+      } = await apiRequest.get<{ users: TWorkspaceUser[] }>(
         `/api/v1/workspace/${workspaceId}/users`
       );
       return users;
     },
     enabled: true
   });
-}
+};
 
 export const useAddUserToWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      email,
-      workspaceId
-    }: {
-      email: string;
-      workspaceId: string;
-    }) => {
-      const { data: { invitee, latestKey } } = await apiRequest.post(`/api/v1/workspace/${workspaceId}/invite-signup`, { email });
-      
-      return ({
+    mutationFn: async ({ email, workspaceId }: { email: string; workspaceId: string }) => {
+      const {
+        data: { invitee, latestKey }
+      } = await apiRequest.post(`/api/v1/workspace/${workspaceId}/invite-signup`, { email });
+
+      return {
         invitee,
         latestKey
-      });
+      };
     },
     onSuccess: (_, dto) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(dto.workspaceId));
@@ -334,7 +334,9 @@ export const useDeleteUserFromWorkspace = () => {
 
   return useMutation({
     mutationFn: async (membershipId: string) => {
-      const { data: { deletedMembership } } = await apiRequest.delete(`/api/v1/membership/${membershipId}`);
+      const {
+        data: { deletedMembership }
+      } = await apiRequest.delete(`/api/v1/membership/${membershipId}`);
       return deletedMembership;
     },
     onSuccess: (res) => {
@@ -346,14 +348,10 @@ export const useDeleteUserFromWorkspace = () => {
 export const useUpdateUserWorkspaceRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      membershipId,
-      role
-    }: {
-      membershipId: string;
-      role: string;
-    }) => {
-      const { data: { membership } } = await apiRequest.post(`/api/v1/membership/${membershipId}/change-role`, {
+    mutationFn: async ({ membershipId, role }: { membershipId: string; role: string }) => {
+      const {
+        data: { membership }
+      } = await apiRequest.post(`/api/v1/membership/${membershipId}/change-role`, {
         role
       });
       return membership;
