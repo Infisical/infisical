@@ -18,6 +18,7 @@ import timeSince from "@app/ee/utilities/timeSince";
 import { getRisksByOrganization } from "@app/pages/api/secret-scanning/getRisksByOrganization";
 import { GitRisks, RiskStatus } from "@app/pages/api/secret-scanning/types";
 
+import { ConfigureInfisicalRadar } from "./ConfigureInfisicalRadar";
 import { DownloadSecretScanningTable } from "./DownloadSecretScanningTable";
 import { RiskStatusSelection } from "./RiskStatusSelection";
 
@@ -211,6 +212,9 @@ export const SecretScanningLogsTable: FC = () => {
             >
               Clear filters
             </Button>
+          </div>
+          <div className="mb-4 mr-4">
+            <ConfigureInfisicalRadar/>
           </div>
         </div>
       </div>
