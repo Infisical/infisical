@@ -1,6 +1,7 @@
 import Queue, { Job } from "bull";
 import { ProbotOctokit } from "probot";
 import { createHash } from "crypto";
+
 import TelemetryService from "../../services/TelemetryService";
 import { sendMail } from "../../helpers";
 import GitRisks, { RiskStatus } from "../../ee/models/gitRisks";
@@ -8,8 +9,9 @@ import { MembershipOrg, User } from "../../models";
 import { ADMIN, OWNER } from "../../variables";
 import { convertKeysToLowercase, scanContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
-import { checkIfInfisicalIgnoreFile } from "./checkInfisicalIgnoreFile";
+
 import { TScanPushEventQueueDetails } from "./types";
+import { scanAndProcessInfisicalIgnoreFile } from "./scanAndProcessInfisicalIgnoreFile";
 
 export const githubPushEventSecretScan = new Queue("github-push-event-secret-scanning", "redis://redis:6379");
 
@@ -30,9 +32,6 @@ export const githubPushEventSecretScan = new Queue("github-push-event-secret-sca
       installationId: installationId,
     },
   });
-
-  // Scan the .infisicalignore file (if it exists) & extract the fingerprints
-  const infisicalIgnoreFileContents = await checkIfInfisicalIgnoreFile(octokit, owner, repo);
 
   const hashedSecretFindings: string[] = [];
   const existingUnresolvedFingerprints: string[] = [];
@@ -125,38 +124,7 @@ export const githubPushEventSecretScan = new Queue("github-push-event-secret-sca
     ).lean();
   }
 
-  // now go through the .infisicalignore file & extract fingerprints
-  const ignoreFileFingerprints: string[] = [];
-
-  for (const infisicalIgnoreFingerprint of infisicalIgnoreFileContents) {
-    if (infisicalIgnoreFingerprint.exists) {
-      const content = infisicalIgnoreFingerprint.content;
-      if (content) {
-        const fingerprints = content.split("\n");
-        ignoreFileFingerprints.push(...fingerprints);
-      }
-    }
-  }
-
-  // check if the ignore file fingerprint has already been flagged on the frontend
-  const newInfisicalIgnoreFindingsToUpdate: string[] = [];
-
-  for (const ignoreFileFingerprint of ignoreFileFingerprints) {
-    for (const existingUnresolvedFingerprint of existingUnresolvedFingerprints) {
-      if (ignoreFileFingerprint === existingUnresolvedFingerprint) {
-        newInfisicalIgnoreFindingsToUpdate.push(ignoreFileFingerprint);
-      }
-    }
-  }
-
-  // batch update ignore findings to false positives
-  for (const processedFingerprint of newInfisicalIgnoreFindingsToUpdate) {
-    await GitRisks.findOneAndUpdate(
-      { fingerprint: processedFingerprint },
-      { status: RiskStatus.RESOLVED_FALSE_POSITIVE },
-      { upsert: true }
-    ).lean();
-  }
+  const processedInfisicalIgnoreCount = await scanAndProcessInfisicalIgnoreFile(octokit, owner, repo, existingUnresolvedFingerprints)
 
   // get emails of admins
   const adminsOfWork = await MembershipOrg.find({
@@ -177,7 +145,7 @@ export const githubPushEventSecretScan = new Queue("github-push-event-secret-sca
   const usersToNotify = pusher?.email ? [pusher.email, ...adminOrOwnerEmails] : [...adminOrOwnerEmails]
 
   const numberOfNewSecrets = newFindingsToUpdate.length;
-  const numberOfUnresolvedSecrets = existingUnresolvedFingerprints.length - newInfisicalIgnoreFindingsToUpdate.length;
+  const numberOfUnresolvedSecrets = existingUnresolvedFingerprints.length - processedInfisicalIgnoreCount;
 
   if (numberOfNewSecrets || numberOfUnresolvedSecrets) {
     let subjectLine = "Incident alert:";
@@ -220,7 +188,7 @@ export const githubPushEventSecretScan = new Queue("github-push-event-secret-sca
     });
   }
 
-  done(null, {newFindingsToUpdate, existingUnresolvedFingerprints, newInfisicalIgnoreFindingsToUpdate})
+  done(null, {newFindingsToUpdate, existingUnresolvedFingerprints})
 
 })
 

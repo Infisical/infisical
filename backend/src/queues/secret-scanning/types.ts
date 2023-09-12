@@ -18,3 +18,8 @@ export type TScanPushEventQueueDetails = TScanQueueDetailsBase & {
     email: string | null
   },
 };
+
+export interface GitHubRepoFileContent {
+  content: string | null;
+  errorMessage?: string;
+}

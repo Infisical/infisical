@@ -1,16 +1,18 @@
 import Queue, { Job } from "bull";
 import { ProbotOctokit } from "probot"
 import { createHash } from "crypto";
+
 import TelemetryService from "../../services/TelemetryService";
 import { sendMail } from "../../helpers";
-import GitRisks, { RiskStatus } from "../../ee/models/gitRisks";
+import GitRisks from "../../ee/models/gitRisks";
 import { MembershipOrg, User } from "../../models";
 import { ADMIN, OWNER } from "../../variables";
 import { convertKeysToLowercase, scanFullRepoContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
 import { SecretMatch } from "../../ee/services/GithubSecretScanning/types";
-import { checkIfInfisicalIgnoreFile } from "./checkInfisicalIgnoreFile";
+
 import { TScanFullRepoQueueDetails } from "./types";
+import { scanAndProcessInfisicalIgnoreFile } from "./scanAndProcessInfisicalIgnoreFile";
 
 export const githubFullRepositorySecretScan = new Queue("github-full-repository-secret-scanning", "redis://redis:6379");
 
@@ -31,10 +33,8 @@ export const githubFullRepositorySecretScan = new Queue("github-full-repository-
       },
     });
 
-    // Scan the .infisicalignore file (if it exists) & extract the fingerprints
-    const infisicalIgnoreFileContents = await checkIfInfisicalIgnoreFile(octokit, owner, repo);
-    const batchUpdateOperations: any[] = [];
     const findings : SecretMatch[] = await scanFullRepoContentAndGetFindings(octokit, installationId, repository.fullName)
+    const batchUpdateOperations: any[] = [];
 
     for (const finding of findings) {
 
@@ -63,30 +63,7 @@ export const githubFullRepositorySecretScan = new Queue("github-full-repository-
 
     await GitRisks.bulkWrite(batchUpdateOperations);
 
-    // check .infisicalignore file
-
-    const newInfisicalIgnoreFindingsToUpdate: any[] = [];
-
-    for (const infisicalIgnoreFingerprint of infisicalIgnoreFileContents) {
-      if (infisicalIgnoreFingerprint.exists) {
-        const content = infisicalIgnoreFingerprint.content;
-        if (content) {
-          const fingerprints = content.split("\n");
-          newInfisicalIgnoreFindingsToUpdate.push(...fingerprints);
-        }
-      }
-    }
-
-    // batch update found .infisicalignore findings (to false positives)
-    for (const processedFingerprint of newInfisicalIgnoreFindingsToUpdate) {
-      if (newInfisicalIgnoreFindingsToUpdate.includes(processedFingerprint)) {
-        await GitRisks.findOneAndUpdate(
-          { fingerprint: processedFingerprint },
-          { status: RiskStatus.RESOLVED_FALSE_POSITIVE },
-          { upsert: true }
-        ).lean();   
-       }
-    }
+    const processedInfisicalIgnoreCount = await scanAndProcessInfisicalIgnoreFile(octokit, owner, repo)
 
     // get emails of admins
     const adminsOfWork = await MembershipOrg.find({
@@ -104,6 +81,7 @@ export const githubFullRepositorySecretScan = new Queue("github-full-repository-
     }).select("email").lean()
 
     const usersToNotify = userEmails.map(userObject => userObject.email)
+    const numberOfNewSecrets = findings.length - processedInfisicalIgnoreCount
 
     if (findings.length) {
       await sendMail({
@@ -111,7 +89,7 @@ export const githubFullRepositorySecretScan = new Queue("github-full-repository-
         subjectLine: `Incident alert: leaked secrets found in Github repository ${repository.fullName}`,
         recipients: usersToNotify,
         substitutions: {
-          numberOfSecrets: findings.length,
+          numberOfSecrets: numberOfNewSecrets, // don't notify if secrets were marked in .infisicalignore file
         }
       });
     }
@@ -122,7 +100,7 @@ export const githubFullRepositorySecretScan = new Queue("github-full-repository-
         event: "historical cloud secret scan",
         distinctId: repository.fullName,
         properties: {
-          numberOfRisksFound: findings.length,
+          numberOfRisksFound: numberOfNewSecrets, // only capture telemetry for new secrets
         }
       });
     }

@@ -1,17 +1,13 @@
-export interface InfisicalIgnoreFile {
-  exists: boolean;
-  content: string | null;
-  errorMessage?: string;
-}
+import { GitHubRepoFileContent } from "./types";
 
-export const checkIfInfisicalIgnoreFile = async (
+export const scanGitHubRepoFile = async (
   octokit: any,
   owner: string,
-  repo: string
-): Promise<InfisicalIgnoreFile[]> => {
+  repo: string,
+  path: string,
+): Promise<GitHubRepoFileContent[]> => {
   try {
 
-    const path = ".infisicalignore";
     const fileContentsResponse = await octokit.repos.getContent({
       owner,
       repo,
@@ -22,7 +18,6 @@ export const checkIfInfisicalIgnoreFile = async (
     if (!data || !data.content) {
       return [
         {
-          exists: false,
           content: null,
         },
       ];
@@ -31,7 +26,6 @@ export const checkIfInfisicalIgnoreFile = async (
 
     return [
       {
-        exists: true,
         content: fileContent,
       },
     ];
@@ -39,19 +33,16 @@ export const checkIfInfisicalIgnoreFile = async (
     if (error.response && error.response.status === 404) {
       return [
         {
-          exists: false,
           content: null,
         },
       ];
     } else {
       return [
         {
-          exists: false,
           content: null,
-          errorMessage: `Error checking .infisicalignore file: ${error.message}`,
+          errorMessage: `Error checking GitHub repository file: ${repo}/${path}, ${error.message}`,
         },
       ];
     }
   }
 };
-
