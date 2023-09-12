@@ -24,6 +24,7 @@ import {
   secretSnapshot as eeSecretSnapshotRouter,
   users as eeUsersRouter,
   workspace as eeWorkspaceRouter,
+  roles as v1RoleRouter,
   secretScanning as v1SecretScanningRouter
 } from "./ee/routes/v1";
 import {
@@ -37,7 +38,6 @@ import {
   membership as v1MembershipRouter,
   organization as v1OrganizationRouter,
   password as v1PasswordRouter,
-  role as v1RoleRouter,
   secretImport as v1SecretImportRouter,
   secret as v1SecretRouter,
   secretsFolder as v1SecretsFolder,

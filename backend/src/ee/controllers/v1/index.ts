@@ -7,15 +7,17 @@ import * as workspaceController from "./workspaceController";
 import * as actionController from "./actionController";
 import * as membershipController from "./membershipController";
 import * as cloudProductsController from "./cloudProductsController";
+import * as roleController from "./roleController";
 
 export {
-    secretController,
-    secretSnapshotController,
-    organizationsController,
-    ssoController,
-    usersController,
-    workspaceController,
-    actionController,
-    membershipController,
-    cloudProductsController,
-}
+  secretController,
+  secretSnapshotController,
+  organizationsController,
+  ssoController,
+  usersController,
+  workspaceController,
+  actionController,
+  membershipController,
+  cloudProductsController,
+  roleController
+};

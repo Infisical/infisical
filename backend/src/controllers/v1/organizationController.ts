@@ -17,7 +17,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../services/RoleService";
+} from "../../ee/services/RoleService";
 import { OrganizationNotFoundError } from "../../utils/errors";
 import { ForbiddenError } from "@casl/ability";
 

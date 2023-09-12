@@ -15,7 +15,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../services/ProjectRoleService";
+} from "../../ee/services/ProjectRoleService";
 import { ForbiddenError, subject } from "@casl/ability";
 import { validateServiceTokenDataClientForWorkspace } from "../../validation";
 import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variables";

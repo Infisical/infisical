@@ -6,7 +6,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../../services/ProjectRoleService";
+} from "../../services/ProjectRoleService";
 import { BadRequestError } from "../../../utils/errors";
 import * as reqValidator from "../../../validation";
 import { SecretVersion } from "../../models";

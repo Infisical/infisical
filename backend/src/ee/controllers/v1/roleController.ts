@@ -6,7 +6,7 @@ import {
   GetUserPermission,
   GetUserProjectPermission,
   UpdateRoleSchema
-} from "../../validation";
+} from "../../validation/role";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -22,9 +22,9 @@ import {
   getUserOrgPermissions,
   memberPermissions
 } from "../../services/RoleService";
-import { BadRequestError } from "../../utils/errors";
+import { BadRequestError } from "../../../utils/errors";
 import Role from "../../models/role";
-import { validateRequest } from "../../helpers/validation";
+import { validateRequest } from "../../../helpers/validation";
 import { packRules } from "@casl/ability/extra";
 
 export const createRole = async (req: Request, res: Response) => {
