@@ -1,1 +1,3 @@
 .github/resources/docker-compose.be-test.yml:generic-api-key:16
+.github/resources/docker-compose.be-test.yml:generic-api-key:99
+.github/resources/docker-compose.be-test.yml:generic-api-key:12
