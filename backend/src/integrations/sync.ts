@@ -336,7 +336,7 @@ const syncSecretsGCPSecretManager = async ({
     });
     
     const res: GCPSMListSecretsRes = (await standardRequest.get(
-      `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1beta1/projects/${integration.appId}/secrets`,
+      `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets?filter=labels.managed-by=infisical`,
       {
         params,
         headers: {
@@ -391,6 +391,9 @@ const syncSecretsGCPSecretManager = async ({
         {
           replication: {
             automatic: {}
+          },
+          labels: {
+            "managed-by": "infisical"
           }
         },
         {
