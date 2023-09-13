@@ -1,6 +1,10 @@
 import { ChangeEvent, forwardRef, InputHTMLAttributes, ReactNode } from "react";
+import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { cva, VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
+
+import { useToggle } from "@app/hooks";
 
 type Props = {
   placeholder?: string;
@@ -116,3 +120,30 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 );
 
 Input.displayName = "Input";
+
+export type PasswordInputProps = Omit<InputProps, "type" | "rightIcon">;
+
+export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
+  (props, ref): JSX.Element => {
+    const [showPassword, setShowPassword] = useToggle(false);
+
+    return (
+      <Input
+        {...props}
+        ref={ref}
+        type={showPassword ? "text" : "password"}
+        rightIcon={
+          <button
+            aria-label={showPassword ? "hide password" : "show password"}
+            type="button"
+            onClick={() => setShowPassword.toggle()}
+          >
+            <FontAwesomeIcon aria-hidden icon={showPassword ? faEyeSlash : faEye} />
+          </button>
+        }
+      />
+    );
+  }
+);
+
+PasswordInput.displayName = "PasswordInput";
