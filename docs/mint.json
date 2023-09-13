@@ -332,6 +332,15 @@
           ]
         },
         {
+          "group": "Folders",
+          "pages": [
+            "api-reference/endpoints/folders/list",
+            "api-reference/endpoints/folders/create",
+            "api-reference/endpoints/folders/update",
+            "api-reference/endpoints/folders/delete"
+          ]
+        },
+        {
           "group": "Secrets",
           "pages": [
             "api-reference/endpoints/secrets/list",
@@ -341,6 +350,15 @@
             "api-reference/endpoints/secrets/delete",
             "api-reference/endpoints/secrets/versions",
             "api-reference/endpoints/secrets/rollback-version"
+          ]
+        },
+        {
+          "group": "Secret imports",
+          "pages": [
+            "api-reference/endpoints/secret-imports/list",
+            "api-reference/endpoints/secret-imports/create",
+            "api-reference/endpoints/secret-imports/update",
+            "api-reference/endpoints/secret-imports/delete"
           ]
         },
         {

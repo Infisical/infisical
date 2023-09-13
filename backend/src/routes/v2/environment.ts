@@ -7,7 +7,7 @@ import { AuthMode } from "@app/variables";
 router.post(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
   environmentController.createWorkspaceEnvironment
 );
@@ -15,7 +15,7 @@ router.post(
 router.put(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
   environmentController.renameWorkspaceEnvironment
 );
@@ -31,7 +31,7 @@ router.patch(
 router.delete(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
   environmentController.deleteWorkspaceEnvironment
 );
@@ -39,7 +39,7 @@ router.delete(
 router.get(
   "/:workspaceId/environments",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
   environmentController.getAllAccessibleEnvironmentsOfWorkspace
 );

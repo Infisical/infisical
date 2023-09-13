@@ -1,13 +1,13 @@
 import express from "express";
+const router = express.Router();
+import { requireAuth } from "@app/middleware";
 import {
   createFolder,
   deleteFolder,
   getFolders,
   updateFolderById
 } from "@app/controllers/v1/secretsFolderController";
-import { requireAuth } from "@app/middleware";
 import { AuthMode } from "@app/variables";
-const router = express.Router();
 
 router.post(
   "/",
