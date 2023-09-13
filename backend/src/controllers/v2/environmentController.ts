@@ -7,19 +7,19 @@ import {
   ServiceToken,
   ServiceTokenData,
   Workspace
-} from "../../models";
-import { EventType, SecretVersion } from "../../ee/models";
-import { EEAuditLogService, EELicenseService } from "../../ee/services";
-import { BadRequestError, WorkspaceNotFoundError } from "../../utils/errors";
+} from "@app/models";
+import { EventType, SecretVersion } from "@app/ee/models";
+import { EEAuditLogService, EELicenseService } from "@app/ee/services";
+import { BadRequestError, WorkspaceNotFoundError } from "@app/utils/errors";
 import _ from "lodash";
-import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variables";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/environments";
+import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "@app/variables";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/environments";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
+} from "@app/ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 
 /**

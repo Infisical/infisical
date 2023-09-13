@@ -5,9 +5,9 @@ import {
   requireSecretsAuth,
   requireWorkspaceAuth,
   validateRequest
-} from "../../middleware";
+} from "@app/middleware";
 import { body } from "express-validator";
-import { secretsController } from "../../controllers/v2";
+import { secretsController } from "@app/controllers/v2";
 import {
   ADMIN,
   AuthMode,
@@ -16,7 +16,7 @@ import {
   PERMISSION_WRITE_SECRETS,
   SECRET_PERSONAL,
   SECRET_SHARED
-} from "../../variables";
+} from "@app/variables";
 
 router.post(
   // TODO endpoint: strongly consider deprecation in favor of a single operation experience on dashboard

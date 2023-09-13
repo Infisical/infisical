@@ -1,9 +1,9 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth, requireSignupAuth } from "../../middleware";
-import { passwordController } from "../../controllers/v1";
-import { passwordLimiter } from "../../helpers/rateLimiter";
-import { AuthMode } from "../../variables";
+import { requireAuth, requireSignupAuth } from "@app/middleware";
+import { passwordController } from "@app/controllers/v1";
+import { passwordLimiter } from "@app/helpers/rateLimiter";
+import { AuthMode } from "@app/variables";
 
 router.post(
   "/srp1",

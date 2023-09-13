@@ -1,25 +1,25 @@
 import { Request, Response } from "express";
-import GitAppInstallationSession from "../../ee/models/gitAppInstallationSession";
+import GitAppInstallationSession from "@app/ee/models/gitAppInstallationSession";
 import crypto from "crypto";
 import { Types } from "mongoose";
-import { OrganizationNotFoundError, UnauthorizedRequestError } from "../../utils/errors";
-import GitAppOrganizationInstallation from "../../ee/models/gitAppOrganizationInstallation";
-import { scanGithubFullRepoForSecretLeaks } from "../../queues/secret-scanning/githubScanFullRepository";
-import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
+import { OrganizationNotFoundError, UnauthorizedRequestError } from "@app/utils/errors";
+import GitAppOrganizationInstallation from "@app/ee/models/gitAppOrganizationInstallation";
+import { scanGithubFullRepoForSecretLeaks } from "@app/queues/secret-scanning/githubScanFullRepository";
+import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "@app/config";
 import GitRisks, {
   STATUS_RESOLVED_FALSE_POSITIVE,
   STATUS_RESOLVED_NOT_REVOKED,
   STATUS_RESOLVED_REVOKED
-} from "../../ee/models/gitRisks";
+} from "@app/ee/models/gitRisks";
 import { ProbotOctokit } from "probot";
-import { Organization } from "../../models";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/secretScanning";
+import { Organization } from "@app/models";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/secretScanning";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../ee/services/RoleService";
+} from "@app/ee/services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 
 export const createInstallationSession = async (req: Request, res: Response) => {

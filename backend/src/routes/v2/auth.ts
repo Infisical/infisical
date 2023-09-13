@@ -1,9 +1,9 @@
 import express from "express";
 const router = express.Router();
 import { body } from "express-validator";
-import { requireMfaAuth, validateRequest } from "../../middleware";
-import { authController } from "../../controllers/v2";
-import { authLimiter } from "../../helpers/rateLimiter";
+import { requireMfaAuth, validateRequest } from "@app/middleware";
+import { authController } from "@app/controllers/v2";
+import { authLimiter } from "@app/helpers/rateLimiter";
 
 router.post(
   // TODO: deprecate (moved to api/v3/auth/login1)

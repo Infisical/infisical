@@ -1,8 +1,8 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth } from "../../middleware";
-import { usersController } from "../../controllers/v2";
-import { AuthMode } from "../../variables";
+import { requireAuth } from "@app/middleware";
+import { usersController } from "@app/controllers/v2";
+import { AuthMode } from "@app/variables";
 
 router.get(
   "/me",

@@ -1,8 +1,8 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth } from "../../middleware";
-import { AuthMode } from "../../variables";
-import { integrationController } from "../../controllers/v1";
+import { requireAuth } from "@app/middleware";
+import { AuthMode } from "@app/variables";
+import { integrationController } from "@app/controllers/v1";
 
 router.post(
   "/",

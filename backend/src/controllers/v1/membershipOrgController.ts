@@ -1,28 +1,28 @@
 import { Types } from "mongoose";
 import { Request, Response } from "express";
-import { MembershipOrg, Organization, User } from "../../models";
-import { SSOConfig } from "../../ee/models";
-import { deleteMembershipOrg as deleteMemberFromOrg } from "../../helpers/membershipOrg";
-import { createToken } from "../../helpers/auth";
-import { updateSubscriptionOrgQuantity } from "../../helpers/organization";
-import { sendMail } from "../../helpers/nodemailer";
-import { TokenService } from "../../services";
-import { EELicenseService } from "../../ee/services";
-import { ACCEPTED, INVITED, MEMBER, TOKEN_EMAIL_ORG_INVITATION } from "../../variables";
-import * as reqValidator from "../../validation/membershipOrg";
+import { MembershipOrg, Organization, User } from "@app/models";
+import { SSOConfig } from "@app/ee/models";
+import { deleteMembershipOrg as deleteMemberFromOrg } from "@app/helpers/membershipOrg";
+import { createToken } from "@app/helpers/auth";
+import { updateSubscriptionOrgQuantity } from "@app/helpers/organization";
+import { sendMail } from "@app/helpers/nodemailer";
+import { TokenService } from "@app/services";
+import { EELicenseService } from "@app/ee/services";
+import { ACCEPTED, INVITED, MEMBER, TOKEN_EMAIL_ORG_INVITATION } from "@app/variables";
+import * as reqValidator from "@app/validation/membershipOrg";
 import {
   getJwtSignupLifetime,
   getJwtSignupSecret,
   getSiteURL,
   getSmtpConfigured
-} from "../../config";
-import { validateUserEmail } from "../../validation";
-import { validateRequest } from "../../helpers/validation";
+} from "@app/config";
+import { validateUserEmail } from "@app/validation";
+import { validateRequest } from "@app/helpers/validation";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../ee/services/RoleService";
+} from "@app/ee/services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 
 /**

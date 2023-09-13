@@ -2,8 +2,8 @@
 import crypto from "crypto";
 import { Types } from "mongoose";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../crypto";
-import { EESecretService } from "../../ee/services";
-import { IPType, ISecretVersion, SecretSnapshot, SecretVersion, TrustedIP } from "../../ee/models";
+import { EESecretService } from "@app/ee/services";
+import { IPType, ISecretVersion, SecretSnapshot, SecretVersion, TrustedIP } from "@app/ee/models";
 import {
   AuthMethod,
   BackupPrivateKey,
@@ -19,16 +19,16 @@ import {
   ServiceTokenData,
   User,
   Workspace
-} from "../../models";
-import { generateKeyPair } from "../../utils/crypto";
-import { client, getEncryptionKey, getRootEncryptionKey } from "../../config";
+} from "@app/models";
+import { generateKeyPair } from "@app/utils/crypto";
+import { client, getEncryptionKey, getRootEncryptionKey } from "@app/config";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_BASE64,
   ENCODING_SCHEME_UTF8,
   MEMBER,
   VIEWER
-} from "../../variables";
+} from "@app/variables";
 import { InternalServerError } from "../errors";
 
 /**

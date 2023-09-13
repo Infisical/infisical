@@ -1,24 +1,24 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { EventService, SecretService } from "../../services";
-import { eventPushSecrets } from "../../events";
-import { BotService } from "../../services";
-import { containsGlobPatterns, repackageSecretToRaw } from "../../helpers/secrets";
-import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
-import { getAllImportedSecrets } from "../../services/SecretImportService";
-import { Folder, IServiceTokenData } from "../../models";
-import { getFolderByPath, getFolderWithPathFromId } from "../../services/FolderService";
-import { BadRequestError } from "../../utils/errors";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/secrets";
+import { EventService, SecretService } from "@app/services";
+import { eventPushSecrets } from "@app/events";
+import { BotService } from "@app/services";
+import { containsGlobPatterns, repackageSecretToRaw } from "@app/helpers/secrets";
+import { encryptSymmetric128BitHexKeyUTF8 } from "@app/utils/crypto";
+import { getAllImportedSecrets } from "@app/services/SecretImportService";
+import { Folder, IServiceTokenData } from "@app/models";
+import { getFolderByPath, getFolderWithPathFromId } from "@app/services/FolderService";
+import { BadRequestError } from "@app/utils/errors";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/secrets";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
+} from "@app/ee/services/ProjectRoleService";
 import { ForbiddenError, subject } from "@casl/ability";
-import { validateServiceTokenDataClientForWorkspace } from "../../validation";
-import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variables";
+import { validateServiceTokenDataClientForWorkspace } from "@app/validation";
+import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "@app/variables";
 
 /**
  * Return secrets for workspace with id [workspaceId] and environment

@@ -1,10 +1,10 @@
 import express from "express";
 const router = express.Router();
 import passport from "passport";
-import { requireAuth } from "../../../middleware";
-import { ssoController } from "../../controllers/v1";
-import { authLimiter } from "../../../helpers/rateLimiter";
-import { AuthMode } from "../../../variables";
+import { requireAuth } from "@app/middleware";
+import { ssoController } from "@app/ee/controllers/v1";
+import { authLimiter } from "@app/helpers/rateLimiter";
+import { AuthMode } from "@app/variables";
 
 router.get("/redirect/google", authLimiter, (req, res, next) => {
   passport.authenticate("google", {

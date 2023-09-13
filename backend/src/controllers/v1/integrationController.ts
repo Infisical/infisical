@@ -1,20 +1,20 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Folder, IWorkspace, Integration, IntegrationAuth } from "../../models";
-import { EventService } from "../../services";
-import { eventStartIntegration } from "../../events";
-import { getFolderByPath } from "../../services/FolderService";
-import { BadRequestError } from "../../utils/errors";
-import { EEAuditLogService } from "../../ee/services";
-import { EventType } from "../../ee/models";
-import { syncSecretsToActiveIntegrationsQueue } from "../../queues/integrations/syncSecretsToThirdPartyServices";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/integration";
+import { Folder, IWorkspace, Integration, IntegrationAuth } from "@app/models";
+import { EventService } from "@app/services";
+import { eventStartIntegration } from "@app/events";
+import { getFolderByPath } from "@app/services/FolderService";
+import { BadRequestError } from "@app/utils/errors";
+import { EEAuditLogService } from "@app/ee/services";
+import { EventType } from "@app/ee/models";
+import { syncSecretsToActiveIntegrationsQueue } from "@app/queues/integrations/syncSecretsToThirdPartyServices";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/integration";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
+} from "@app/ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 
 /**

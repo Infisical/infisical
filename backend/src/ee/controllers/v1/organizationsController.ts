@@ -1,18 +1,18 @@
 import { Types } from "mongoose";
 import { Request, Response } from "express";
-import { getLicenseServerUrl } from "../../../config";
-import { licenseServerKeyRequest } from "../../../config/request";
-import { EELicenseService } from "../../services";
-import { validateRequest } from "../../../helpers/validation";
-import * as reqValidator from "../../../validation/organization";
+import { getLicenseServerUrl } from "@app/config";
+import { licenseServerKeyRequest } from "@app/config/request";
+import { EELicenseService } from "@app/ee/services";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/organization";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../services/RoleService";
+} from "@app/ee/services/RoleService";
 import { ForbiddenError } from "@casl/ability";
-import { Organization } from "../../../models";
-import { OrganizationNotFoundError } from "../../../utils/errors";
+import { Organization } from "@app/models";
+import { OrganizationNotFoundError } from "@app/utils/errors";
 
 export const getOrganizationPlansTable = async (req: Request, res: Response) => {
   const {

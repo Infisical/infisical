@@ -1,11 +1,6 @@
 import { Types } from "mongoose";
-import { Secret } from "../../models";
-import {
-  FolderVersion,
-  ISecretVersion,
-  SecretSnapshot,
-  SecretVersion,
-} from "../models";
+import { Secret } from "@app/models";
+import { FolderVersion, ISecretVersion, SecretSnapshot, SecretVersion } from "../models";
 
 /**
  * Save a secret snapshot that is a copy of the current state of secrets in workspace with id
@@ -18,7 +13,7 @@ import {
 const takeSecretSnapshotHelper = async ({
   workspaceId,
   environment,
-  folderId = "root",
+  folderId = "root"
 }: {
   workspaceId: Types.ObjectId;
   environment: string;
@@ -30,7 +25,7 @@ const takeSecretSnapshotHelper = async ({
       {
         workspace: workspaceId,
         environment,
-        folder: folderId,
+        folder: folderId
       },
       "_id"
     ).lean()
@@ -43,30 +38,30 @@ const takeSecretSnapshotHelper = async ({
           environment,
           workspace: new Types.ObjectId(workspaceId),
           secret: {
-            $in: secretIds,
-          },
-        },
+            $in: secretIds
+          }
+        }
       },
       {
         $group: {
           _id: "$secret",
           version: { $max: "$version" },
-          versionId: { $max: "$_id" }, // secret version id
-        },
+          versionId: { $max: "$_id" } // secret version id
+        }
       },
       {
-        $sort: { version: -1 },
-      },
+        $sort: { version: -1 }
+      }
     ]).exec()
   ).map((s) => s.versionId);
   const latestFolderVersion = await FolderVersion.findOne({
     environment,
     workspace: workspaceId,
-    "nodes.id": folderId,
+    "nodes.id": folderId
   }).sort({ "nodes.version": -1 });
 
   const latestSecretSnapshot = await SecretSnapshot.findOne({
-    workspace: workspaceId,
+    workspace: workspaceId
   }).sort({ version: -1 });
 
   const secretSnapshot = await new SecretSnapshot({
@@ -75,7 +70,7 @@ const takeSecretSnapshotHelper = async ({
     version: latestSecretSnapshot ? latestSecretSnapshot.version + 1 : 1,
     secretVersions: latestSecretVersions,
     folderId,
-    folderVersion: latestFolderVersion,
+    folderVersion: latestFolderVersion
   }).save();
 
   return secretSnapshot;
@@ -88,7 +83,7 @@ const takeSecretSnapshotHelper = async ({
  * @returns {SecretVersion[]} newSecretVersions - new secret versions
  */
 const addSecretVersionsHelper = async ({
-  secretVersions,
+  secretVersions
 }: {
   secretVersions: ISecretVersion[];
 }) => {
@@ -97,26 +92,18 @@ const addSecretVersionsHelper = async ({
   return newSecretVersions;
 };
 
-const markDeletedSecretVersionsHelper = async ({
-  secretIds,
-}: {
-  secretIds: Types.ObjectId[];
-}) => {
+const markDeletedSecretVersionsHelper = async ({ secretIds }: { secretIds: Types.ObjectId[] }) => {
   await SecretVersion.updateMany(
     {
-      secret: { $in: secretIds },
+      secret: { $in: secretIds }
     },
     {
-      isDeleted: true,
+      isDeleted: true
     },
     {
-      new: true,
+      new: true
     }
   );
 };
 
-export {
-  takeSecretSnapshotHelper,
-  addSecretVersionsHelper,
-  markDeletedSecretVersionsHelper,
-};
+export { takeSecretSnapshotHelper, addSecretVersionsHelper, markDeletedSecretVersionsHelper };

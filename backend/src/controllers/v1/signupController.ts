@@ -1,17 +1,17 @@
 import { Request, Response } from "express";
-import { AuthMethod, User } from "../../models";
-import { checkEmailVerification, sendEmailVerification } from "../../helpers/signup";
-import { createToken } from "../../helpers/auth";
-import { BadRequestError } from "../../utils/errors";
+import { AuthMethod, User } from "@app/models";
+import { checkEmailVerification, sendEmailVerification } from "@app/helpers/signup";
+import { createToken } from "@app/helpers/auth";
+import { BadRequestError } from "@app/utils/errors";
 import {
   getInviteOnlySignup,
   getJwtSignupLifetime,
   getJwtSignupSecret,
   getSmtpConfigured
-} from "../../config";
-import { validateUserEmail } from "../../validation";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/auth";
+} from "@app/config";
+import { validateUserEmail } from "@app/validation";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/auth";
 
 /**
  * Signup step 1: Initialize account for user under email [email] and send a verification code

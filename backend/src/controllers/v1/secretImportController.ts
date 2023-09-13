@@ -1,22 +1,22 @@
 import { Request, Response } from "express";
-import { isValidScope } from "../../helpers";
-import { Folder, SecretImport, ServiceTokenData } from "../../models";
-import { getAllImportedSecrets } from "../../services/SecretImportService";
-import { getFolderWithPathFromId } from "../../services/FolderService";
+import { isValidScope } from "@app/helpers";
+import { Folder, SecretImport, ServiceTokenData } from "@app/models";
+import { getAllImportedSecrets } from "@app/services/SecretImportService";
+import { getFolderWithPathFromId } from "@app/services/FolderService";
 import {
   BadRequestError,
   ResourceNotFoundError,
   UnauthorizedRequestError
-} from "../../utils/errors";
-import { EEAuditLogService } from "../../ee/services";
-import { EventType } from "../../ee/models";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/secretImports";
+} from "@app/utils/errors";
+import { EEAuditLogService } from "@app/ee/services";
+import { EventType } from "@app/ee/models";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/secretImports";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
+} from "@app/ee/services/ProjectRoleService";
 import { ForbiddenError, subject } from "@casl/ability";
 
 export const createSecretImport = async (req: Request, res: Response) => {

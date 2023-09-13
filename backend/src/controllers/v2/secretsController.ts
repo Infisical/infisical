@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 import { Request, Response } from "express";
-import { Folder, ISecret, Secret, ServiceTokenData, Tag } from "../../models";
-import { AuditLog, EventType, IAction, SecretVersion } from "../../ee/models";
+import { Folder, ISecret, Secret, ServiceTokenData, Tag } from "@app/models";
+import { AuditLog, EventType, IAction, SecretVersion } from "@app/ee/models";
 import {
   ACTION_ADD_SECRETS,
   ACTION_DELETE_SECRETS,
@@ -11,40 +11,40 @@ import {
   ENCODING_SCHEME_UTF8,
   K8_USER_AGENT_NAME,
   SECRET_PERSONAL
-} from "../../variables";
-import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import { EventService } from "../../services";
-import { eventPushSecrets } from "../../events";
-import { EEAuditLogService, EELogService, EESecretService } from "../../ee/services";
-import { SecretService, TelemetryService } from "../../services";
-import { getUserAgentType } from "../../utils/posthog";
-import { PERMISSION_WRITE_SECRETS } from "../../variables";
+} from "@app/variables";
+import { BadRequestError, UnauthorizedRequestError } from "@app/utils/errors";
+import { EventService } from "@app/services";
+import { eventPushSecrets } from "@app/events";
+import { EEAuditLogService, EELogService, EESecretService } from "@app/ee/services";
+import { SecretService, TelemetryService } from "@app/services";
+import { getUserAgentType } from "@app/utils/posthog";
+import { PERMISSION_WRITE_SECRETS } from "@app/variables";
 import {
   userHasNoAbility,
   userHasWorkspaceAccess,
   userHasWriteOnlyAbility
-} from "../../ee/helpers/checkMembershipPermissions";
+} from "@app/ee/helpers/checkMembershipPermissions";
 import _ from "lodash";
 import {
   getFolderByPath,
   getFolderIdFromServiceToken,
   searchByFolderId,
   searchByFolderIdWithDir
-} from "../../services/FolderService";
-import { isValidScope } from "../../helpers/secrets";
+} from "@app/services/FolderService";
+import { isValidScope } from "@app/helpers/secrets";
 import path from "path";
-import { getAllImportedSecrets } from "../../services/SecretImportService";
-import { validateRequest } from "../../helpers/validation";
+import { getAllImportedSecrets } from "@app/services/SecretImportService";
+import { validateRequest } from "@app/helpers/validation";
 import {
   BatchSecretsV2,
   GetSecretsV2,
   validateServiceTokenDataClientForWorkspace
-} from "../../validation";
+} from "@app/validation";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
+} from "@app/ee/services/ProjectRoleService";
 import { ForbiddenError, subject } from "@casl/ability";
 
 /**

@@ -1,6 +1,6 @@
 import express from "express";
-import { authController } from "../../controllers/v3";
-import { authLimiter } from "../../helpers/rateLimiter";
+import { authController } from "@app/controllers/v3";
+import { authLimiter } from "@app/helpers/rateLimiter";
 
 const router = express.Router();
 

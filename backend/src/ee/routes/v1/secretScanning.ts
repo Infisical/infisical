@@ -1,14 +1,14 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth } from "../../../middleware";
+import { requireAuth } from "@app/middleware";
 import {
   createInstallationSession,
   getCurrentOrganizationInstallationStatus,
   getRisksForOrganization,
   linkInstallationToOrganization,
   updateRisksStatus
-} from "../../../controllers/v1/secretScanningController";
-import { AuthMode } from "../../../variables";
+} from "@app/controllers/v1/secretScanningController";
+import { AuthMode } from "@app/variables";
 
 router.post(
   "/create-installation-session/organization/:organizationId",

@@ -1,19 +1,19 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { client, getRootEncryptionKey } from "../../config";
-import { Webhook } from "../../models";
-import { getWebhookPayload, triggerWebhookRequest } from "../../services/WebhookService";
-import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
-import { EEAuditLogService } from "../../ee/services";
-import { EventType } from "../../ee/models";
-import { ALGORITHM_AES_256_GCM, ENCODING_SCHEME_BASE64 } from "../../variables";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/webhooks";
+import { client, getRootEncryptionKey } from "@app/config";
+import { Webhook } from "@app/models";
+import { getWebhookPayload, triggerWebhookRequest } from "@app/services/WebhookService";
+import { BadRequestError, ResourceNotFoundError } from "@app/utils/errors";
+import { EEAuditLogService } from "@app/ee/services";
+import { EventType } from "@app/ee/models";
+import { ALGORITHM_AES_256_GCM, ENCODING_SCHEME_BASE64 } from "@app/variables";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/webhooks";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
+} from "@app/ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 
 export const createWebhook = async (req: Request, res: Response) => {

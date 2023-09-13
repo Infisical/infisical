@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { standardRequest } from "../../config/request";
-import { getApps, getTeams, revokeAccess } from "../../integrations";
-import { Bot, IntegrationAuth, Workspace } from "../../models";
-import { EventType } from "../../ee/models";
-import { IntegrationService } from "../../services";
-import { EEAuditLogService } from "../../ee/services";
+import { standardRequest } from "@app/config/request";
+import { getApps, getTeams, revokeAccess } from "@app/integrations";
+import { Bot, IntegrationAuth, Workspace } from "@app/models";
+import { EventType } from "@app/ee/models";
+import { IntegrationService } from "@app/services";
+import { EEAuditLogService } from "@app/ee/services";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
@@ -16,17 +16,17 @@ import {
   INTEGRATION_SET,
   INTEGRATION_VERCEL_API_URL,
   getIntegrationOptions as getIntegrationOptionsFunc
-} from "../../variables";
-import { exchangeRefresh } from "../../integrations";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/integrationAuth";
+} from "@app/variables";
+import { exchangeRefresh } from "@app/integrations";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/integrationAuth";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
+} from "@app/ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
-import { getIntegrationAuthAccessHelper } from "../../helpers";
+import { getIntegrationAuthAccessHelper } from "@app/helpers";
 import { ObjectId } from "mongodb";
 
 /***

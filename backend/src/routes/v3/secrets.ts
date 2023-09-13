@@ -1,14 +1,8 @@
 import express from "express";
 const router = express.Router();
-import {
-  requireAuth,
-  requireBlindIndicesEnabled,
-  requireE2EEOff
-} from "../../middleware";
-import { secretsController } from "../../controllers/v3";
-import {
-  AuthMode
-} from "../../variables";
+import { requireAuth, requireBlindIndicesEnabled, requireE2EEOff } from "@app/middleware";
+import { secretsController } from "@app/controllers/v3";
+import { AuthMode } from "@app/variables";
 
 router.get(
   "/raw",

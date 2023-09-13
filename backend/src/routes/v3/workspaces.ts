@@ -1,8 +1,8 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth } from "../../middleware";
-import { workspacesController } from "../../controllers/v3";
-import { AuthMode } from "../../variables";
+import { requireAuth } from "@app/middleware";
+import { workspacesController } from "@app/controllers/v3";
+import { AuthMode } from "@app/variables";
 
 // -- migration to blind indices endpoints
 

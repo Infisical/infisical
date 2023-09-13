@@ -1,8 +1,8 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth, validateRequest } from "../../../middleware";
-import { cloudProductsController } from "../../controllers/v1";
-import { AuthMode } from "../../../variables";
+import { requireAuth, validateRequest } from "@app/middleware";
+import { cloudProductsController } from "@app/ee/controllers/v1";
+import { AuthMode } from "@app/variables";
 
 router.get(
   "/",

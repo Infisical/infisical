@@ -1,8 +1,8 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth } from "../../../middleware";
-import { organizationsController } from "../../controllers/v1";
-import { AuthMode } from "../../../variables";
+import { requireAuth } from "@app/middleware";
+import { organizationsController } from "@app/ee/controllers/v1";
+import { AuthMode } from "@app/variables";
 
 router.get(
   "/:organizationId/plans/table",

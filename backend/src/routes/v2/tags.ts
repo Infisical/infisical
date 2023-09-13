@@ -1,8 +1,8 @@
 import express from "express";
 const router = express.Router();
-import { tagController } from "../../controllers/v2";
-import { requireAuth } from "../../middleware";
-import { AuthMode } from "../../variables";
+import { tagController } from "@app/controllers/v2";
+import { requireAuth } from "@app/middleware";
+import { AuthMode } from "@app/variables";
 
 router.get(
   "/:workspaceId/tags",

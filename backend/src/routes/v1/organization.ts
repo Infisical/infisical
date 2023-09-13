@@ -1,8 +1,8 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth } from "../../middleware";
-import { AuthMode } from "../../variables";
-import { organizationController } from "../../controllers/v1";
+import { requireAuth } from "@app/middleware";
+import { AuthMode } from "@app/variables";
+import { organizationController } from "@app/controllers/v1";
 
 router.get(
   // TODO endpoint: deprecate (moved to api/v2/users/me/organizations)

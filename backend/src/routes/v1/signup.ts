@@ -1,7 +1,7 @@
 import express from "express";
 const router = express.Router();
-import { signupController } from "../../controllers/v1";
-import { authLimiter } from "../../helpers/rateLimiter";
+import { signupController } from "@app/controllers/v1";
+import { authLimiter } from "@app/helpers/rateLimiter";
 
 // TODO: consider moving to users/v3/signup
 

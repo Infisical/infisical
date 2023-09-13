@@ -1,9 +1,9 @@
 import express from "express";
 const router = express.Router();
 import { param } from "express-validator";
-import { requireAuth, validateRequest } from "../../middleware";
-import { membershipOrgController } from "../../controllers/v1";
-import { AuthMode } from "../../variables";
+import { requireAuth, validateRequest } from "@app/middleware";
+import { membershipOrgController } from "@app/controllers/v1";
+import { AuthMode } from "@app/variables";
 
 router.post(
   // TODO endpoint: check dashboard

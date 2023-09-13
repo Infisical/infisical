@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { PipelineStage, Types } from "mongoose";
-import { Folder, Membership, Secret, ServiceTokenData, TFolderSchema, User } from "../../../models";
+import { Folder, Membership, Secret, ServiceTokenData, TFolderSchema, User } from "@app/models";
 import {
   ActorType,
   AuditLog,
@@ -15,14 +15,14 @@ import {
   TFolderRootVersionSchema,
   TrustedIP,
   UserActor
-} from "../../models";
-import { EESecretService } from "../../services";
-import { getLatestSecretVersionIds } from "../../helpers/secretVersion";
-// import Folder, { TFolderSchema } from "../../../models/folder";
-import { searchByFolderId } from "../../../services/FolderService";
-import { EEAuditLogService, EELicenseService } from "../../services";
-import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
-import { validateRequest } from "../../../helpers/validation";
+} from "@app/ee/models";
+import { EESecretService } from "@app/ee/services";
+import { getLatestSecretVersionIds } from "@app/ee/helpers/secretVersion";
+// import Folder, { TFolderSchema } from "@app/models/folder";
+import { searchByFolderId } from "@app/services/FolderService";
+import { EEAuditLogService, EELicenseService } from "@app/ee/services";
+import { extractIPDetails, isValidIpOrCidr } from "@app/utils/ip";
+import { validateRequest } from "@app/helpers/validation";
 import {
   AddWorkspaceTrustedIpV1,
   DeleteWorkspaceTrustedIpV1,
@@ -34,12 +34,12 @@ import {
   GetWorkspaceTrustedIpsV1,
   RollbackWorkspaceSecretSnapshotV1,
   UpdateWorkspaceTrustedIpV1
-} from "../../../validation";
+} from "@app/validation";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../services/ProjectRoleService";
+} from "@app/ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 
 /**

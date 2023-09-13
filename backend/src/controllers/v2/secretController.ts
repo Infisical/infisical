@@ -5,22 +5,22 @@ import {
   ModifySecretRequestBody,
   SanitizedSecretForCreate,
   SanitizedSecretModify
-} from "../../types/secret";
+} from "@app/types/secret";
 const { ValidationError } = mongoose.Error;
 import {
   ValidationError as RouteValidationError,
   UnauthorizedRequestError
-} from "../../utils/errors";
+} from "@app/utils/errors";
 import { AnyBulkWriteOperation } from "mongodb";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
   SECRET_PERSONAL,
   SECRET_SHARED
-} from "../../variables";
-import { TelemetryService } from "../../services";
-import { ISecret, Secret, User } from "../../models";
-import { AccountNotFoundError } from "../../utils/errors";
+} from "@app/variables";
+import { TelemetryService } from "@app/services";
+import { ISecret, Secret, User } from "@app/models";
+import { AccountNotFoundError } from "@app/utils/errors";
 
 /**
  * Create secret for workspace with id [workspaceId] and environment [environment]
@@ -140,7 +140,10 @@ export const deleteSecrets = async (req: Request, res: Response) => {
   const { workspaceId, environmentName } = req.params;
   const secretIdsToDelete: string[] = req.body.secretIds;
 
-  const secretIdsUserCanDelete = await Secret.find({ workspace: workspaceId, environment: environmentName }, { _id: 1 });
+  const secretIdsUserCanDelete = await Secret.find(
+    { workspace: workspaceId, environment: environmentName },
+    { _id: 1 }
+  );
 
   const secretsUserCanDeleteSet: Set<string> = new Set(
     secretIdsUserCanDelete.map((objectId) => objectId._id.toString())
@@ -219,7 +222,10 @@ export const updateSecrets = async (req: Request, res: Response) => {
   const postHogClient = await TelemetryService.getPostHogClient();
   const { workspaceId, environmentName } = req.params;
   const secretsModificationsRequested: ModifySecretRequestBody[] = req.body.secrets;
-  const secretIdsUserCanModify = await Secret.find({ workspace: workspaceId, environment: environmentName }, { _id: 1 });
+  const secretIdsUserCanModify = await Secret.find(
+    { workspace: workspaceId, environment: environmentName },
+    { _id: 1 }
+  );
 
   const secretsUserCanModifySet: Set<string> = new Set(
     secretIdsUserCanModify.map((objectId) => objectId._id.toString())
@@ -307,17 +313,16 @@ export const updateSecret = async (req: Request, res: Response) => {
   const singleModificationUpdate = await Secret.updateOne(
     { _id: secretModificationsRequested._id, workspace: workspaceId },
     { $inc: { version: 1 }, $set: sanitizedSecret }
-  )
-    .catch((error) => {
-      if (error instanceof ValidationError) {
-        throw RouteValidationError({
-          message: "Unable to apply modifications, please try again",
-          stack: error.stack
-        });
-      }
+  ).catch((error) => {
+    if (error instanceof ValidationError) {
+      throw RouteValidationError({
+        message: "Unable to apply modifications, please try again",
+        stack: error.stack
+      });
+    }
 
-      throw error;
-    });
+    throw error;
+  });
 
   if (postHogClient) {
     postHogClient.capture({
@@ -368,13 +373,12 @@ export const getSecrets = async (req: Request, res: Response) => {
     environment,
     $or: [{ user: userId }, { user: { $exists: false } }],
     type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
-  })
-    .catch((err) => {
-      throw RouteValidationError({
-        message: "Failed to get secrets, please try again",
-        stack: err.stack
-      });
-    })
+  }).catch((err) => {
+    throw RouteValidationError({
+      message: "Failed to get secrets, please try again",
+      stack: err.stack
+    });
+  });
 
   if (postHogClient) {
     postHogClient.capture({

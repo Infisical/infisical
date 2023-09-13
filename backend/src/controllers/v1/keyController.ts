@@ -1,16 +1,16 @@
 import { Types } from "mongoose";
 import { Request, Response } from "express";
-import { Key } from "../../models";
-import { findMembership } from "../../helpers/membership";
-import { EventType } from "../../ee/models";
-import { EEAuditLogService } from "../../ee/services";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/key";
+import { Key } from "@app/models";
+import { findMembership } from "@app/helpers/membership";
+import { EventType } from "@app/ee/models";
+import { EEAuditLogService } from "@app/ee/services";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/key";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
+} from "@app/ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 
 /**

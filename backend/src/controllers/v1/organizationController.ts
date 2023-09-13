@@ -5,20 +5,20 @@ import {
   MembershipOrg,
   Organization,
   Workspace
-} from "../../models";
-import { createOrganization as create } from "../../helpers/organization";
-import { addMembershipsOrg } from "../../helpers/membershipOrg";
-import { ACCEPTED, OWNER } from "../../variables";
-import { getLicenseServerUrl, getSiteURL } from "../../config";
-import { licenseServerKeyRequest } from "../../config/request";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/organization";
+} from "@app/models";
+import { createOrganization as create } from "@app/helpers/organization";
+import { addMembershipsOrg } from "@app/helpers/membershipOrg";
+import { ACCEPTED, OWNER } from "@app/variables";
+import { getLicenseServerUrl, getSiteURL } from "@app/config";
+import { licenseServerKeyRequest } from "@app/config/request";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/organization";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../ee/services/RoleService";
-import { OrganizationNotFoundError } from "../../utils/errors";
+} from "@app/ee/services/RoleService";
+import { OrganizationNotFoundError } from "@app/utils/errors";
 import { ForbiddenError } from "@casl/ability";
 
 export const getOrganizations = async (req: Request, res: Response) => {

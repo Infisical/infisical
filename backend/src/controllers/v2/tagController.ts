@@ -1,15 +1,15 @@
 import { ForbiddenError } from "@casl/ability";
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Secret, Tag } from "../../models";
-import { BadRequestError } from "../../utils/errors";
-import { validateRequest } from "../../helpers/validation";
+import { Secret, Tag } from "@app/models";
+import { BadRequestError } from "@app/utils/errors";
+import { validateRequest } from "@app/helpers/validation";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
-import * as reqValidator from "../../validation/tags";
+} from "@app/ee/services/ProjectRoleService";
+import * as reqValidator from "@app/validation/tags";
 
 export const createWorkspaceTag = async (req: Request, res: Response) => {
   const {

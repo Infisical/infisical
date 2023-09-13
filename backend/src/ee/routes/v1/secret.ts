@@ -1,10 +1,8 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth } from "../../../middleware";
-import { secretController } from "../../controllers/v1";
-import {
-  AuthMode
-} from "../../../variables";
+import { requireAuth } from "@app/middleware";
+import { secretController } from "@app/ee/controllers/v1";
+import { AuthMode } from "@app/variables";
 
 router.get(
   "/:secretId/secret-versions",

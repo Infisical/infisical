@@ -6,9 +6,9 @@ import {
   buildMongoQueryMatcher,
   createMongoAbility
 } from "@casl/ability";
-import { Membership } from "../../models";
+import { Membership } from "@app/models";
 import { IRole } from "../models/role";
-import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
+import { BadRequestError, UnauthorizedRequestError } from "@app/utils/errors";
 import { FieldCondition, FieldInstruction, JsInterpreter } from "@ucast/mongo2js";
 import picomatch from "picomatch";
 

@@ -1,8 +1,8 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth } from "../../../middleware";
-import { AuthMode } from "../../../variables";
-import { secretSnapshotController } from "../../controllers/v1";
+import { requireAuth } from "@app/middleware";
+import { AuthMode } from "@app/variables";
+import { secretSnapshotController } from "@app/ee/controllers/v1";
 
 router.get(
   "/:secretSnapshotId",

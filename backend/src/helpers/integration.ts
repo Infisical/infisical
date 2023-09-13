@@ -7,7 +7,7 @@ import {
   ENCODING_SCHEME_UTF8,
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_NETLIFY,
-  INTEGRATION_VERCEL,
+  INTEGRATION_VERCEL
 } from "../variables";
 import { InternalServerError, UnauthorizedRequestError } from "../utils/errors";
 import { IntegrationAuthMetadata } from "../models/integrationAuth/types";
@@ -17,7 +17,7 @@ interface Update {
   integration: string;
   teamId?: string;
   accountId?: string;
-  metadata?: IntegrationAuthMetadata
+  metadata?: IntegrationAuthMetadata;
 }
 
 /**
@@ -74,7 +74,7 @@ export const handleOAuthExchangeHelper = async ({
     case INTEGRATION_GCP_SECRET_MANAGER:
       update.metadata = {
         authMethod: "oauth2"
-      }
+      };
       break;
   }
 
@@ -254,7 +254,7 @@ export const setIntegrationAuthRefreshHelper = async ({
       new: true
     }
   );
-  
+
   if (!integrationAuth) throw InternalServerError();
 
   return integrationAuth;
@@ -283,7 +283,7 @@ export const setIntegrationAuthAccessHelper = async ({
   let integrationAuth = await IntegrationAuth.findById(integrationAuthId);
 
   if (!integrationAuth) throw new Error("Failed to find integration auth");
-  
+
   let encryptedAccessTokenObj;
   let encryptedAccessIdObj;
 

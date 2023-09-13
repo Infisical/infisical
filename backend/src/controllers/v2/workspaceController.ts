@@ -1,23 +1,23 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Key, Membership, ServiceTokenData, Workspace } from "../../models";
+import { Key, Membership, ServiceTokenData, Workspace } from "@app/models";
 import {
   pullSecrets as pull,
   v2PushSecrets as push,
   reformatPullSecrets
-} from "../../helpers/secret";
-import { pushKeys } from "../../helpers/key";
-import { EventService, TelemetryService } from "../../services";
-import { eventPushSecrets } from "../../events";
-import { EEAuditLogService } from "../../ee/services";
-import { EventType } from "../../ee/models";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation";
+} from "@app/helpers/secret";
+import { pushKeys } from "@app/helpers/key";
+import { EventService, TelemetryService } from "@app/services";
+import { eventPushSecrets } from "@app/events";
+import { EEAuditLogService } from "@app/ee/services";
+import { EventType } from "@app/ee/models";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
+} from "@app/ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 
 interface V2PushSecret {

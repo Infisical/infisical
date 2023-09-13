@@ -1,8 +1,8 @@
 import * as Sentry from "@sentry/node";
-import { DatabaseService, TelemetryService } from "../../services";
-import { setTransporter } from "../../helpers/nodemailer";
-import { EELicenseService } from "../../ee/services";
-import { initSmtp } from "../../services/smtp";
+import { DatabaseService, TelemetryService } from "@app/services";
+import { setTransporter } from "@app/helpers/nodemailer";
+import { EELicenseService } from "@app/ee/services";
+import { initSmtp } from "@app/services/smtp";
 import { createTestUserForDevelopment } from "../addDevelopmentUser";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import { validateEncryptionKeysConfig } from "./validateConfig";
@@ -25,7 +25,7 @@ import {
   reencryptBotPrivateKeys,
   reencryptSecretBlindIndexDataSalts
 } from "./reencryptData";
-import { getMongoURL, getNodeEnv, getRedisUrl, getSentryDSN } from "../../config";
+import { getMongoURL, getNodeEnv, getRedisUrl, getSentryDSN } from "@app/config";
 import { initializePassport } from "../auth";
 
 /**

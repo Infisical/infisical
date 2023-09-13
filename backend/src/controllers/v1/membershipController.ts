@@ -1,23 +1,23 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { IUser, Key, Membership, MembershipOrg, User, Workspace } from "../../models";
-import { EventType } from "../../ee/models";
-import { deleteMembership as deleteMember, findMembership } from "../../helpers/membership";
-import { sendMail } from "../../helpers/nodemailer";
-import { ACCEPTED, ADMIN, CUSTOM, MEMBER, VIEWER } from "../../variables";
-import { getSiteURL } from "../../config";
-import { EEAuditLogService } from "../../ee/services";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/membership";
+import { IUser, Key, Membership, MembershipOrg, User, Workspace } from "@app/models";
+import { EventType } from "@app/ee/models";
+import { deleteMembership as deleteMember, findMembership } from "@app/helpers/membership";
+import { sendMail } from "@app/helpers/nodemailer";
+import { ACCEPTED, ADMIN, CUSTOM, MEMBER, VIEWER } from "@app/variables";
+import { getSiteURL } from "@app/config";
+import { EEAuditLogService } from "@app/ee/services";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/membership";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
+} from "@app/ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
-import Role from "../../ee/models/role";
-import { BadRequestError } from "../../utils/errors";
-import { InviteUserToWorkspaceV1 } from "../../validation/workspace";
+import Role from "@app/ee/models/role";
+import { BadRequestError } from "@app/utils/errors";
+import { InviteUserToWorkspaceV1 } from "@app/validation/workspace";
 
 /**
  * Check that user is a member of workspace with id [workspaceId]

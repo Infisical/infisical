@@ -1,11 +1,8 @@
 import express from "express";
 const router = express.Router();
-import {
-  requireAuth,
-  requireOrganizationAuth
-} from "../../middleware";
-import { ACCEPTED, ADMIN, AuthMode, OWNER } from "../../variables";
-import { organizationsController } from "../../controllers/v2";
+import { requireAuth, requireOrganizationAuth } from "@app/middleware";
+import { ACCEPTED, ADMIN, AuthMode, OWNER } from "@app/variables";
+import { organizationsController } from "@app/controllers/v2";
 
 // TODO: /POST to create membership
 

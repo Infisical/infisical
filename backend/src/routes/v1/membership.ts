@@ -1,8 +1,8 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth } from "../../middleware";
-import { membershipController } from "../../controllers/v1";
-import { AuthMode } from "../../variables";
+import { requireAuth } from "@app/middleware";
+import { membershipController } from "@app/controllers/v1";
+import { AuthMode } from "@app/variables";
 
 // note: ALL DEPRECIATED (moved to api/v2/workspace/:workspaceId/memberships/:membershipId)
 // TODO endpoint: consider moving these endpoints to be under /workspace to be more RESTful

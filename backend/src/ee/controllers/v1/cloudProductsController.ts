@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
-import { EELicenseService } from "../../services";
-import { getLicenseServerUrl } from "../../../config";
-import { licenseServerKeyRequest } from "../../../config/request";
-import { validateRequest } from "../../../helpers/validation";
-import * as reqValidator from "../../../validation/cloudProducts";
+import { EELicenseService } from "@app/ee/services";
+import { getLicenseServerUrl } from "@app/config";
+import { licenseServerKeyRequest } from "@app/config/request";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/cloudProducts";
 
 /**
  * Return available cloud product information.

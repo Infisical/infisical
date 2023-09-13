@@ -1,5 +1,5 @@
 import { Assign, Omit } from "utility-types";
-import { ISecret } from "../../models";
+import { ISecret } from "@app/models";
 
 // Everything is required, except the omitted types
 export type CreateSecretRequestBody = Omit<

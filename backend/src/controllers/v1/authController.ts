@@ -3,22 +3,22 @@ import jwt from "jsonwebtoken";
 import * as bigintConversion from "bigint-conversion";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const jsrp = require("jsrp");
-import { LoginSRPDetail, TokenVersion, User } from "../../models";
-import { clearTokens, createToken, issueAuthTokens } from "../../helpers/auth";
-import { checkUserDevice } from "../../helpers/user";
-import { ACTION_LOGIN, ACTION_LOGOUT } from "../../variables";
-import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import { EELogService } from "../../ee/services";
-import { getUserAgentType } from "../../utils/posthog";
+import { LoginSRPDetail, TokenVersion, User } from "@app/models";
+import { clearTokens, createToken, issueAuthTokens } from "@app/helpers/auth";
+import { checkUserDevice } from "@app/helpers/user";
+import { ACTION_LOGIN, ACTION_LOGOUT } from "@app/variables";
+import { BadRequestError, UnauthorizedRequestError } from "@app/utils/errors";
+import { EELogService } from "@app/ee/services";
+import { getUserAgentType } from "@app/utils/posthog";
 import {
   getHttpsEnabled,
   getJwtAuthLifetime,
   getJwtAuthSecret,
   getJwtRefreshSecret
-} from "../../config";
-import { ActorType } from "../../ee/models";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/auth";
+} from "@app/config";
+import { ActorType } from "@app/ee/models";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/auth";
 
 declare module "jsonwebtoken" {
   export interface UserIDJwtPayload extends jwt.JwtPayload {

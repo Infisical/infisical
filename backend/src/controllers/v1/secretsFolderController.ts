@@ -1,12 +1,12 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { EventType, FolderVersion } from "../../ee/models";
-import { EEAuditLogService, EESecretService } from "../../ee/services";
-import { isValidScope } from "../../helpers/secrets";
-import { validateRequest } from "../../helpers/validation";
-import { Secret, ServiceTokenData } from "../../models";
-import { Folder } from "../../models/folder";
+import { EventType, FolderVersion } from "@app/ee/models";
+import { EEAuditLogService, EESecretService } from "@app/ee/services";
+import { isValidScope } from "@app/helpers/secrets";
+import { validateRequest } from "@app/helpers/validation";
+import { Secret, ServiceTokenData } from "@app/models";
+import { Folder } from "@app/models/folder";
 import {
   appendFolder,
   deleteFolderById,
@@ -16,14 +16,14 @@ import {
   getFolderWithPathFromId,
   getParentFromFolderId,
   validateFolderName
-} from "../../services/FolderService";
+} from "@app/services/FolderService";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
-import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import * as reqValidator from "../../validation/folders";
+} from "@app/ee/services/ProjectRoleService";
+import { BadRequestError, UnauthorizedRequestError } from "@app/utils/errors";
+import * as reqValidator from "@app/validation/folders";
 
 // verify workspace id/environment
 export const createFolder = async (req: Request, res: Response) => {

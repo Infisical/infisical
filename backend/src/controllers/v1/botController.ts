@@ -1,16 +1,16 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Bot, BotKey } from "../../models";
-import { createBot } from "../../helpers/bot";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/bot";
+import { Bot, BotKey } from "@app/models";
+import { createBot } from "@app/helpers/bot";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/bot";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
+} from "@app/ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
-import { BadRequestError } from "../../utils/errors";
+import { BadRequestError } from "@app/utils/errors";
 
 interface BotKey {
   encryptedKey: string;

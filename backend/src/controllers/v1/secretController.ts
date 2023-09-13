@@ -1,15 +1,15 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Key } from "../../models";
+import { Key } from "@app/models";
 import {
   pullSecrets as pull,
   v1PushSecrets as push,
   reformatPullSecrets
-} from "../../helpers/secret";
-import { pushKeys } from "../../helpers/key";
-import { eventPushSecrets } from "../../events";
-import { EventService } from "../../services";
-import { TelemetryService } from "../../services";
+} from "@app/helpers/secret";
+import { pushKeys } from "@app/helpers/key";
+import { eventPushSecrets } from "@app/events";
+import { EventService } from "@app/services";
+import { TelemetryService } from "@app/services";
 
 interface PushSecret {
   ciphertextKey: string;

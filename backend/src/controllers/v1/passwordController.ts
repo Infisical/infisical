@@ -2,20 +2,15 @@ import { Request, Response } from "express";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const jsrp = require("jsrp");
 import * as bigintConversion from "bigint-conversion";
-import { BackupPrivateKey, LoginSRPDetail, User } from "../../models";
-import { clearTokens, createToken, sendMail } from "../../helpers";
-import { TokenService } from "../../services";
-import { TOKEN_EMAIL_PASSWORD_RESET } from "../../variables";
-import { BadRequestError } from "../../utils/errors";
-import {
-  getHttpsEnabled,
-  getJwtSignupLifetime,
-  getJwtSignupSecret,
-  getSiteURL
-} from "../../config";
-import { ActorType } from "../../ee/models";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/auth";
+import { BackupPrivateKey, LoginSRPDetail, User } from "@app/models";
+import { clearTokens, createToken, sendMail } from "@app/helpers";
+import { TokenService } from "@app/services";
+import { TOKEN_EMAIL_PASSWORD_RESET } from "@app/variables";
+import { BadRequestError } from "@app/utils/errors";
+import { getHttpsEnabled, getJwtSignupLifetime, getJwtSignupSecret, getSiteURL } from "@app/config";
+import { ActorType } from "@app/ee/models";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/auth";
 
 /**
  * Password reset step 1: Send email verification link to email [email]

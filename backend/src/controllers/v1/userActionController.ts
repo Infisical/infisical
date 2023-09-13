@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import { validateRequest } from "../../helpers/validation";
-import { UserAction } from "../../models";
-import * as reqValidator from "../../validation/action";
+import { validateRequest } from "@app/helpers/validation";
+import { UserAction } from "@app/models";
+import * as reqValidator from "@app/validation/action";
 
 /**
  * Add user action [action]

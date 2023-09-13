@@ -2,10 +2,10 @@ import { Request, Response } from "express";
 import { Types } from "mongoose";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
-import { APIKeyData, AuthMethod, MembershipOrg, TokenVersion, User } from "../../models";
-import { getSaltRounds } from "../../config";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation";
+import { APIKeyData, AuthMethod, MembershipOrg, TokenVersion, User } from "@app/models";
+import { getSaltRounds } from "@app/config";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation";
 
 /**
  * Return the current user.

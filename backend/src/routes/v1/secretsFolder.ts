@@ -4,9 +4,9 @@ import {
   deleteFolder,
   getFolders,
   updateFolderById
-} from "../../controllers/v1/secretsFolderController";
-import { requireAuth } from "../../middleware";
-import { AuthMode } from "../../variables";
+} from "@app/controllers/v1/secretsFolderController";
+import { requireAuth } from "@app/middleware";
+import { AuthMode } from "@app/variables";
 const router = express.Router();
 
 router.post(

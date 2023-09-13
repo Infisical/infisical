@@ -1,18 +1,18 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
-import { ServiceTokenData } from "../../models";
-import { getSaltRounds } from "../../config";
-import { BadRequestError } from "../../utils/errors";
-import { ActorType, EventType } from "../../ee/models";
-import { EEAuditLogService } from "../../ee/services";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/serviceTokenData";
+import { ServiceTokenData } from "@app/models";
+import { getSaltRounds } from "@app/config";
+import { BadRequestError } from "@app/utils/errors";
+import { ActorType, EventType } from "@app/ee/models";
+import { EEAuditLogService } from "@app/ee/services";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/serviceTokenData";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
+} from "@app/ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 import { Types } from "mongoose";
 

@@ -1,27 +1,29 @@
 import Queue, { Job } from "bull";
-import { Integration, IntegrationAuth } from "../../models";
-import { BotService } from "../../services";
-import { getIntegrationAuthAccessHelper } from "../../helpers";
-import { syncSecrets } from "../../integrations/sync"
-
+import { Integration, IntegrationAuth } from "@app/models";
+import { BotService } from "@app/services";
+import { getIntegrationAuthAccessHelper } from "@app/helpers";
+import { syncSecrets } from "@app/integrations/sync";
 
 type TSyncSecretsToThirdPartyServices = {
-  workspaceId: string
-  environment?: string
-}
+  workspaceId: string;
+  environment?: string;
+};
 
-export const syncSecretsToThirdPartyServices = new Queue("sync-secrets-to-third-party-services", process.env.REDIS_URL as string);
+export const syncSecretsToThirdPartyServices = new Queue(
+  "sync-secrets-to-third-party-services",
+  process.env.REDIS_URL as string
+);
 
 syncSecretsToThirdPartyServices.process(async (job: Job) => {
-  const { workspaceId, environment }: TSyncSecretsToThirdPartyServices = job.data
+  const { workspaceId, environment }: TSyncSecretsToThirdPartyServices = job.data;
   const integrations = await Integration.find({
     workspace: workspaceId,
     ...(environment
       ? {
-        environment
-      }
+          environment
+        }
       : {}),
-    isActive: true,
+    isActive: true
   });
 
   // for each workspace integration, sync/push secrets
@@ -39,7 +41,7 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
       for (const key in secrets) {
         const newKey = key + integration.metadata?.secretSuffix;
         suffixedSecrets[newKey] = secrets[key];
-      }      
+      }
     }
 
     const integrationAuth = await IntegrationAuth.findById(integration.integrationAuth);
@@ -60,13 +62,15 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
       accessToken: access.accessToken
     });
   }
-})
+});
 
 syncSecretsToThirdPartyServices.on("error", (error) => {
-  console.log("QUEUE ERROR:", error) // eslint-disable-line
-})
+  console.log("QUEUE ERROR:", error); // eslint-disable-line
+});
 
-export const syncSecretsToActiveIntegrationsQueue = (jobDetails: TSyncSecretsToThirdPartyServices) => {
+export const syncSecretsToActiveIntegrationsQueue = (
+  jobDetails: TSyncSecretsToThirdPartyServices
+) => {
   syncSecretsToThirdPartyServices.add(jobDetails, {
     attempts: 5,
     backoff: {
@@ -77,6 +81,5 @@ export const syncSecretsToActiveIntegrationsQueue = (jobDetails: TSyncSecretsToT
     removeOnFail: {
       count: 20 // keep the most recent 20 jobs
     }
-  })
-}
-
+  });
+};

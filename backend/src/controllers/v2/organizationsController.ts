@@ -1,18 +1,18 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Membership, MembershipOrg, ServiceAccount, Workspace } from "../../models";
-import { deleteMembershipOrg } from "../../helpers/membershipOrg";
-import { updateSubscriptionOrgQuantity } from "../../helpers/organization";
-import Role from "../../ee/models/role";
-import { BadRequestError } from "../../utils/errors";
-import { CUSTOM } from "../../variables";
-import * as reqValidator from "../../validation/organization";
-import { validateRequest } from "../../helpers/validation";
+import { Membership, MembershipOrg, ServiceAccount, Workspace } from "@app/models";
+import { deleteMembershipOrg } from "@app/helpers/membershipOrg";
+import { updateSubscriptionOrgQuantity } from "@app/helpers/organization";
+import Role from "@app/ee/models/role";
+import { BadRequestError } from "@app/utils/errors";
+import { CUSTOM } from "@app/variables";
+import * as reqValidator from "@app/validation/organization";
+import { validateRequest } from "@app/helpers/validation";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../ee/services/RoleService";
+} from "@app/ee/services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 
 /**

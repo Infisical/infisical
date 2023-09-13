@@ -1,17 +1,17 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { Request, Response } from "express";
-import { validateRequest } from "../../../helpers/validation";
-import { Folder, Secret } from "../../../models";
+import { validateRequest } from "@app/helpers/validation";
+import { Folder, Secret } from "@app/models";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../services/ProjectRoleService";
-import { BadRequestError } from "../../../utils/errors";
-import * as reqValidator from "../../../validation";
-import { SecretVersion } from "../../models";
-import { EESecretService } from "../../services";
-import { getFolderWithPathFromId } from "../../../services/FolderService";
+} from "@app/ee/services/ProjectRoleService";
+import { BadRequestError } from "@app/utils/errors";
+import * as reqValidator from "@app/validation";
+import { SecretVersion } from "@app/ee/models";
+import { EESecretService } from "@app/ee/services";
+import { getFolderWithPathFromId } from "@app/services/FolderService";
 
 /**
  * Return secret versions for secret with id [secretId]

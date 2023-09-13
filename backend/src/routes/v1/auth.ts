@@ -1,9 +1,9 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth, validateRequest } from "../../middleware";
-import { authController } from "../../controllers/v1";
-import { authLimiter } from "../../helpers/rateLimiter";
-import { AuthMode } from "../../variables";
+import { requireAuth, validateRequest } from "@app/middleware";
+import { authController } from "@app/controllers/v1";
+import { authLimiter } from "@app/helpers/rateLimiter";
+import { AuthMode } from "@app/variables";
 
 router.post("/token", validateRequest, authController.getNewToken);
 

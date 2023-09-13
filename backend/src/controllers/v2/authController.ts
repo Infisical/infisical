@@ -3,18 +3,18 @@ import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import * as bigintConversion from "bigint-conversion";
 const jsrp = require("jsrp");
-import { LoginSRPDetail, User } from "../../models";
-import { createToken, issueAuthTokens } from "../../helpers/auth";
-import { checkUserDevice } from "../../helpers/user";
-import { sendMail } from "../../helpers/nodemailer";
-import { TokenService } from "../../services";
-import { EELogService } from "../../ee/services";
-import { BadRequestError, InternalServerError } from "../../utils/errors";
-import { ACTION_LOGIN, TOKEN_EMAIL_MFA } from "../../variables";
-import { getUserAgentType } from "../../utils/posthog"; // TODO: move this
-import { getHttpsEnabled, getJwtMfaLifetime, getJwtMfaSecret } from "../../config";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/auth";
+import { LoginSRPDetail, User } from "@app/models";
+import { createToken, issueAuthTokens } from "@app/helpers/auth";
+import { checkUserDevice } from "@app/helpers/user";
+import { sendMail } from "@app/helpers/nodemailer";
+import { TokenService } from "@app/services";
+import { EELogService } from "@app/ee/services";
+import { BadRequestError, InternalServerError } from "@app/utils/errors";
+import { ACTION_LOGIN, TOKEN_EMAIL_MFA } from "@app/variables";
+import { getUserAgentType } from "@app/utils/posthog"; // TODO: move this
+import { getHttpsEnabled, getJwtMfaLifetime, getJwtMfaSecret } from "@app/config";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/auth";
 
 declare module "jsonwebtoken" {
   export interface UserIDJwtPayload extends jwt.JwtPayload {

@@ -1,13 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 import { Request, Response } from "express";
-import { validateRequest } from "../../../helpers/validation";
+import { validateRequest } from "@app/helpers/validation";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../services/ProjectRoleService";
-import * as reqValidator from "../../../validation/secretSnapshot";
-import { ISecretVersion, SecretSnapshot, TFolderRootVersionSchema } from "../../models";
+} from "@app/ee/services/ProjectRoleService";
+import * as reqValidator from "@app/validation/secretSnapshot";
+import { ISecretVersion, SecretSnapshot, TFolderRootVersionSchema } from "@app/ee/models";
 
 /**
  * Return secret snapshot with id [secretSnapshotId]

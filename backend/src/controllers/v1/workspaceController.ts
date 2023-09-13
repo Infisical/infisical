@@ -8,25 +8,25 @@ import {
   Organization,
   ServiceToken,
   Workspace
-} from "../../models";
-import { createWorkspace as create, deleteWorkspace as deleteWork } from "../../helpers/workspace";
-import { EELicenseService } from "../../ee/services";
-import { addMemberships } from "../../helpers/membership";
-import { ADMIN } from "../../variables";
-import { OrganizationNotFoundError } from "../../utils/errors";
+} from "@app/models";
+import { createWorkspace as create, deleteWorkspace as deleteWork } from "@app/helpers/workspace";
+import { EELicenseService } from "@app/ee/services";
+import { addMemberships } from "@app/helpers/membership";
+import { ADMIN } from "@app/variables";
+import { OrganizationNotFoundError } from "@app/utils/errors";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../ee/services/RoleService";
+} from "@app/ee/services/RoleService";
 import { ForbiddenError } from "@casl/ability";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
+} from "@app/ee/services/ProjectRoleService";
 
 /**
  * Return public keys of members of workspace with id [workspaceId]

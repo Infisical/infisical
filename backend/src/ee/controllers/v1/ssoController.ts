@@ -1,20 +1,20 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { BotOrgService } from "../../../services";
-import { SSOConfig } from "../../models";
-import { AuthMethod, MembershipOrg, User } from "../../../models";
-import { getSSOConfigHelper } from "../../helpers/organizations";
-import { client } from "../../../config";
-import { ResourceNotFoundError } from "../../../utils/errors";
-import { getSiteURL } from "../../../config";
-import { EELicenseService } from "../../services";
-import * as reqValidator from "../../../validation/sso";
-import { validateRequest } from "../../../helpers/validation";
+import { BotOrgService } from "@app/services";
+import { SSOConfig } from "@app/ee/models";
+import { AuthMethod, MembershipOrg, User } from "@app/models";
+import { getSSOConfigHelper } from "@app/ee/helpers/organizations";
+import { client } from "@app/config";
+import { ResourceNotFoundError } from "@app/utils/errors";
+import { getSiteURL } from "@app/config";
+import { EELicenseService } from "@app/ee/services";
+import * as reqValidator from "@app/validation/sso";
+import { validateRequest } from "@app/helpers/validation";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../services/RoleService";
+} from "@app/ee/services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 
 /**

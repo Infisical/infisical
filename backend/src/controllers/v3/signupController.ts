@@ -1,18 +1,18 @@
 import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
 import * as Sentry from "@sentry/node";
-import { MembershipOrg, User } from "../../models";
-import { completeAccount } from "../../helpers/user";
-import { initializeDefaultOrg } from "../../helpers/signup";
-import { issueAuthTokens, validateProviderAuthToken } from "../../helpers/auth";
-import { ACCEPTED, INVITED } from "../../variables";
-import { standardRequest } from "../../config/request";
-import { getHttpsEnabled, getJwtSignupSecret, getLoopsApiKey } from "../../config";
-import { BadRequestError } from "../../utils/errors";
-import { TelemetryService } from "../../services";
-import { AuthMethod } from "../../models";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/auth";
+import { MembershipOrg, User } from "@app/models";
+import { completeAccount } from "@app/helpers/user";
+import { initializeDefaultOrg } from "@app/helpers/signup";
+import { issueAuthTokens, validateProviderAuthToken } from "@app/helpers/auth";
+import { ACCEPTED, INVITED } from "@app/variables";
+import { standardRequest } from "@app/config/request";
+import { getHttpsEnabled, getJwtSignupSecret, getLoopsApiKey } from "@app/config";
+import { BadRequestError } from "@app/utils/errors";
+import { TelemetryService } from "@app/services";
+import { AuthMethod } from "@app/models";
+import { validateRequest } from "@app/helpers/validation";
+import * as reqValidator from "@app/validation/auth";
 
 /**
  * Complete setting up user by adding their personal and auth information as part of the

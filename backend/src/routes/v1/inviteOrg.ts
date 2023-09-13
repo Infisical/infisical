@@ -1,9 +1,9 @@
 import express from "express";
 const router = express.Router();
 import { body } from "express-validator";
-import { requireAuth, validateRequest } from "../../middleware";
-import { membershipOrgController } from "../../controllers/v1";
-import { AuthMode } from "../../variables";
+import { requireAuth, validateRequest } from "@app/middleware";
+import { membershipOrgController } from "@app/controllers/v1";
+import { AuthMode } from "@app/variables";
 
 // TODO endpoint: consider moving these endpoints to be under /organization to be more RESTful
 

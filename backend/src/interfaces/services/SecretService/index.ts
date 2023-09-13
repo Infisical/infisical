@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { AuthData } from "../../middleware";
+import { AuthData } from "@app/interfaces/middleware";
 
 export interface CreateSecretParams {
   secretName: string;
@@ -19,7 +19,7 @@ export interface CreateSecretParams {
   secretPath: string;
   metadata?: {
     source?: string;
-  }
+  };
 }
 
 export interface GetSecretsParams {

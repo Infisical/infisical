@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { validateRequest } from "../../helpers/validation";
-import { Secret } from "../../models";
-import { SecretService } from "../../services";
-import { getUserProjectPermissions } from "../../ee/services/ProjectRoleService";
-import { UnauthorizedRequestError } from "../../utils/errors";
-import * as reqValidator from "../../validation/workspace";
+import { validateRequest } from "@app/helpers/validation";
+import { Secret } from "@app/models";
+import { SecretService } from "@app/services";
+import { getUserProjectPermissions } from "@app/ee/services/ProjectRoleService";
+import { UnauthorizedRequestError } from "@app/utils/errors";
+import * as reqValidator from "@app/validation/workspace";
 
 /**
  * Return whether or not all secrets in workspace with id [workspaceId]

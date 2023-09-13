@@ -1,7 +1,7 @@
 import express from "express";
-import { roleController } from "../../controllers/v1";
-import { requireAuth } from "../../../middleware";
-import { AuthMode } from "../../../variables";
+import { roleController } from "@app/ee/controllers/v1";
+import { requireAuth } from "@app/middleware";
+import { AuthMode } from "@app/variables";
 
 const router = express.Router();
 

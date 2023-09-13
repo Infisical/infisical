@@ -10,7 +10,7 @@ const router = express.Router();
 //     requireServiceAccountWorkspacePermissionAuth,
 //     requireWorkspaceAuth,
 //     validateRequest,
-// } from "../../middleware";
+// } from "@app/middleware";
 // import { body, param, query } from "express-validator";
 // import {
 //     ACCEPTED,
@@ -18,8 +18,8 @@ const router = express.Router();
 //     MEMBER,
 //     OWNER,
 //     AuthMode
-// } from "../../variables";
-// import { serviceAccountsController } from "../../controllers/v2";
+// } from "@app/variables";
+// import { serviceAccountsController } from "@app/controllers/v2";
 
 // router.get( // TODO: check
 //     "/me",
@@ -123,7 +123,7 @@ const router = express.Router();
 //         acceptedRoles: [ADMIN, MEMBER],
 //         locationWorkspaceId: "body",
 //     }),
-//     serviceAccountsController.addServiceAccountWorkspacePermission 
+//     serviceAccountsController.addServiceAccountWorkspacePermission
 // );
 
 // router.delete(
@@ -137,7 +137,7 @@ const router = express.Router();
 //     requireServiceAccountAuth({
 //         acceptedRoles: [OWNER, ADMIN],
 //         acceptedStatuses: [ACCEPTED],
-//     }), 
+//     }),
 //     requireServiceAccountWorkspacePermissionAuth({
 //         acceptedRoles: [OWNER, ADMIN],
 //         acceptedStatuses: [ACCEPTED],
@@ -154,7 +154,7 @@ const router = express.Router();
 //     requireServiceAccountAuth({
 //         acceptedRoles: [OWNER, ADMIN],
 //         acceptedStatuses: [ACCEPTED],
-//     }), 
+//     }),
 //     serviceAccountsController.getServiceAccountKeys
 // );
 

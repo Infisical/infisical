@@ -1,9 +1,9 @@
 import express from "express";
 const router = express.Router();
 import { body, param, query } from "express-validator";
-import { requireAuth, requireWorkspaceAuth, validateRequest } from "../../middleware";
-import { ADMIN, AuthMode, MEMBER } from "../../variables";
-import { workspaceController } from "../../controllers/v2";
+import { requireAuth, requireWorkspaceAuth, validateRequest } from "@app/middleware";
+import { ADMIN, AuthMode, MEMBER } from "@app/variables";
+import { workspaceController } from "@app/controllers/v2";
 
 router.post(
   // TODO endpoint: deprecate (moved to POST v3/secrets)
