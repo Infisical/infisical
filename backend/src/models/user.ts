@@ -9,6 +9,11 @@ export enum AuthMethod {
 	JUMPCLOUD_SAML = "jumpcloud-saml",
 }
 
+export enum MfaMethod {
+	EMAIL = "email",
+	AUTH_APP = "auth-app",
+}
+
 export interface IUser extends Document {
 	_id: Types.ObjectId;
 	authProvider?: AuthMethod;
@@ -27,7 +32,10 @@ export interface IUser extends Document {
 	salt?: string;
 	verifier?: string;
 	isMfaEnabled: boolean;
-	mfaMethods: boolean;
+  mfaMethods?: MfaMethod[]; // note: changed from boolean (need to deprecate this properly!!!)
+	mfaPreference?: MfaMethod;
+	authAppSecretKey?: string;
+	mfaRecoveryCodes?: string[];	
 	devices: {
 		ip: string;
 		userAgent: string;
@@ -106,6 +114,17 @@ const userSchema = new Schema<IUser>(
 		},
 		mfaMethods: [{
 			type: String,
+		}],
+		mfaPreference: { // need to hande situation of existing users with MFA email configured
+			type: String,
+		},
+		authAppSecretKey: { // plaintext base32
+			type: String,
+			select: false,
+		},
+		mfaRecoveryCodes: [{ // plaintext base32
+			type: String,
+			select: false,
 		}],
 		devices: {
 			type: [{

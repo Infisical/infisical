@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import * as bigintConversion from "bigint-conversion";
 const jsrp = require("jsrp");
-import { LoginSRPDetail, User } from "../../models";
+import { LoginSRPDetail, User, MfaMethod } from "../../models";
 import { createToken, issueAuthTokens } from "../../helpers/auth";
 import { checkUserDevice } from "../../helpers/user";
 import { sendMail } from "../../helpers/nodemailer";
@@ -266,6 +266,116 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
   );
 
   if (!user) throw new Error("Failed to find user");
+
+  await LoginSRPDetail.deleteOne({ userId: user.id });
+
+  await checkUserDevice({
+    user,
+    ip: req.realIP,
+    userAgent: req.headers["user-agent"] ?? ""
+  });
+
+  // issue tokens
+  const tokens = await issueAuthTokens({
+    userId: user._id,
+    ip: req.realIP,
+    userAgent: req.headers["user-agent"] ?? ""
+  });
+
+  // store (refresh) token in httpOnly cookie
+  res.cookie("jid", tokens.refreshToken, {
+    httpOnly: true,
+    path: "/",
+    sameSite: "strict",
+    secure: await getHttpsEnabled()
+  });
+
+  interface VerifyMfaTokenRes {
+    encryptionVersion: number;
+    protectedKey?: string;
+    protectedKeyIV?: string;
+    protectedKeyTag?: string;
+    token: string;
+    publicKey: string;
+    encryptedPrivateKey: string;
+    iv: string;
+    tag: string;
+  }
+
+  interface VerifyMfaTokenRes {
+    encryptionVersion: number;
+    protectedKey?: string;
+    protectedKeyIV?: string;
+    protectedKeyTag?: string;
+    token: string;
+    publicKey: string;
+    encryptedPrivateKey: string;
+    iv: string;
+    tag: string;
+  }
+
+  const resObj: VerifyMfaTokenRes = {
+    encryptionVersion: user.encryptionVersion,
+    token: tokens.token,
+    publicKey: user.publicKey as string,
+    encryptedPrivateKey: user.encryptedPrivateKey as string,
+    iv: user.iv as string,
+    tag: user.tag as string
+  };
+
+  if (user?.protectedKey && user?.protectedKeyIV && user?.protectedKeyTag) {
+    resObj.protectedKey = user.protectedKey;
+    resObj.protectedKeyIV = user.protectedKeyIV;
+    resObj.protectedKeyTag = user.protectedKeyTag;
+  }
+
+  const loginAction = await EELogService.createAction({
+    name: ACTION_LOGIN,
+    userId: user._id
+  });
+
+  loginAction &&
+    (await EELogService.createLog({
+      userId: user._id,
+      actions: [loginAction],
+      channel: getUserAgentType(req.headers["user-agent"]),
+      ipAddress: req.realIP
+    }));
+
+  return res.status(200).send(resObj);
+};
+
+/**
+ * Verify MFA token [mfaToken] and issue JWT and refresh tokens if the
+ * MFA token [mfaToken] is valid
+ * @param req
+ * @param res
+ */
+export const verifyMfaToken = async (req: Request, res: Response) => {
+  const {
+    body: { email, mfaToken }
+  } = await validateRequest(reqValidator.VerifyMfaTokenV2, req);
+
+  await TokenService.validateToken({
+    type: TOKEN_EMAIL_MFA,
+    email,
+    token: mfaToken
+  });
+
+  const user = await User.findOne({
+    email
+  }).select(
+    "+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag +devices"
+  );
+
+  if (!user) throw new Error("Failed to find user");
+
+  // This function handles the legacy case where the user already has MFA configured
+  // but has not setup their prefered method
+  if(user.mfaMethods?.length === 1 && !user.mfaMethods?.includes(MfaMethod.AUTH_APP)) {
+    user.mfaPreference = MfaMethod.EMAIL;
+    await user.save();
+  };
 
   await LoginSRPDetail.deleteOne({ userId: user.id });
 
