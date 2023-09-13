@@ -1,5 +1,4 @@
 export * from "./user";
-export * from "./role";
 export * from "./workspace";
 export * from "./bot";
 export * from "./integration";

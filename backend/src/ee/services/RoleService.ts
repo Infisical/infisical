@@ -1,8 +1,8 @@
 import { AbilityBuilder, MongoAbility, RawRuleOf, createMongoAbility } from "@casl/ability";
-import { MembershipOrg } from "../models";
+import { MembershipOrg } from "../../models";
 import { IRole } from "../models/role";
-import { BadRequestError, UnauthorizedRequestError } from "../utils/errors";
-import { ACCEPTED } from "../variables";
+import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
+import { ACCEPTED } from "../../variables";
 import { conditionsMatcher } from "./ProjectRoleService";
 
 export enum OrgPermissionActions {

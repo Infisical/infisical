@@ -4,9 +4,13 @@ import crypto from "crypto";
 import { Types } from "mongoose";
 import { OrganizationNotFoundError, UnauthorizedRequestError } from "../../utils/errors";
 import GitAppOrganizationInstallation from "../../ee/models/gitAppOrganizationInstallation";
-import { scanGithubFullRepoForSecretLeaks  } from "../../queues/secret-scanning/githubScanFullRepository"
+import { scanGithubFullRepoForSecretLeaks } from "../../queues/secret-scanning/githubScanFullRepository";
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
-import GitRisks, { STATUS_RESOLVED_FALSE_POSITIVE, STATUS_RESOLVED_NOT_REVOKED, STATUS_RESOLVED_REVOKED } from "../../ee/models/gitRisks";
+import GitRisks, {
+  STATUS_RESOLVED_FALSE_POSITIVE,
+  STATUS_RESOLVED_NOT_REVOKED,
+  STATUS_RESOLVED_REVOKED
+} from "../../ee/models/gitRisks";
 import { ProbotOctokit } from "probot";
 import { Organization } from "../../models";
 import { validateRequest } from "../../helpers/validation";
@@ -15,7 +19,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../services/RoleService";
+} from "../../ee/services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 
 export const createInstallationSession = async (req: Request, res: Response) => {
@@ -92,15 +96,21 @@ export const linkInstallationToOrganization = async (req: Request, res: Response
       appId: await getSecretScanningGitAppId(),
       privateKey: await getSecretScanningPrivateKey(),
       installationId: installationId.toString()
-    },
+    }
   });
 
-  const { data: { repositories }}= await octokit.apps.listReposAccessibleToInstallation()
+  const {
+    data: { repositories }
+  } = await octokit.apps.listReposAccessibleToInstallation();
   for (const repository of repositories) {
-    scanGithubFullRepoForSecretLeaks({organizationId: installationSession.organization.toString(), installationId, repository: {id: repository.id, fullName: repository.full_name}})
+    scanGithubFullRepoForSecretLeaks({
+      organizationId: installationSession.organization.toString(),
+      installationId,
+      repository: { id: repository.id, fullName: repository.full_name }
+    });
   }
-  res.json(installationLink)
-}
+  res.json(installationLink);
+};
 
 export const getCurrentOrganizationInstallationStatus = async (req: Request, res: Response) => {
   const { organizationId } = req.params;

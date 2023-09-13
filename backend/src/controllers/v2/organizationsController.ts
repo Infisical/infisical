@@ -3,7 +3,7 @@ import { Types } from "mongoose";
 import { Membership, MembershipOrg, ServiceAccount, Workspace } from "../../models";
 import { deleteMembershipOrg } from "../../helpers/membershipOrg";
 import { updateSubscriptionOrgQuantity } from "../../helpers/organization";
-import Role from "../../models/role";
+import Role from "../../ee/models/role";
 import { BadRequestError } from "../../utils/errors";
 import { CUSTOM } from "../../variables";
 import * as reqValidator from "../../validation/organization";
@@ -12,7 +12,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../services/RoleService";
+} from "../../ee/services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 
 /**

@@ -6,7 +6,7 @@ import { EEAuditLogService, EESecretService } from "../../ee/services";
 import { isValidScope } from "../../helpers/secrets";
 import { validateRequest } from "../../helpers/validation";
 import { Secret, ServiceTokenData } from "../../models";
-import {Folder} from "../../models/folder";
+import { Folder } from "../../models/folder";
 import {
   appendFolder,
   deleteFolderById,
@@ -21,7 +21,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../services/ProjectRoleService";
+} from "../../ee/services/ProjectRoleService";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import * as reqValidator from "../../validation/folders";
 

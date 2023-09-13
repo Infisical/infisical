@@ -39,7 +39,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../../services/ProjectRoleService";
+} from "../../services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 
 /**
