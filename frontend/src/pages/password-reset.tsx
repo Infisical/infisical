@@ -67,7 +67,6 @@ export default function PasswordReset() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Remove this??? (redundant due to submit button disable if any primaryPasswordErrors?)
     // Primary password check 
     const primaryPasswordError = await primaryPasswordCheck({
       password: newPassword,
