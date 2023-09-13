@@ -10,7 +10,8 @@ import queryString from "query-string";
 
 import Button from "@app/components/basic/buttons/Button";
 import InputField from "@app/components/basic/InputField";
-import passwordCheck from "@app/components/utilities/checks/password/PasswordCheck";
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { breachedPasswordCheck, PasswordErrors,primaryPasswordCheck } from "@app/components/utilities/checks/password/checkPassword";
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
 import { useResetPassword, useVerifyPasswordResetCode } from "@app/hooks/api";
 import { getBackupEncryptedPrivateKey } from "@app/hooks/api/auth/queries";
@@ -21,21 +22,15 @@ import { deriveArgonKey } from "../components/utilities/cryptography/crypto";
 const client = new jsrp.client();
 
 export default function PasswordReset() {
-  const [verificationToken, setVerificationToken] = useState("");
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [backupKey, setBackupKey] = useState("");
-  const [privateKey, setPrivateKey] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [backupKeyError, setBackupKeyError] = useState(false);
-  const [passwordErrorTooShort, setPasswordErrorTooShort] = useState(false);
-  const [passwordErrorTooLong, setPasswordErrorTooLong] = useState(false);
-  const [passwordErrorNoLetterChar, setPasswordErrorNoLetterChar] = useState(false);
-  const [passwordErrorNoNumOrSpecialChar, setPasswordErrorNoNumOrSpecialChar] = useState(false);
-  const [passwordErrorRepeatedChar, setPasswordErrorRepeatedChar] = useState(false);
-  const [passwordErrorEscapeChar, setPasswordErrorEscapeChar] = useState(false);
-  const [passwordErrorLowEntropy, setPasswordErrorLowEntropy] = useState(false);
-  const [passwordErrorBreached, setPasswordErrorBreached] = useState(false);
+  const [verificationToken, setVerificationToken] = useState<string>("");
+  const [step, setStep] = useState<number>(1);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [backupKey, setBackupKey] = useState<string>("");
+  const [privateKey, setPrivateKey] = useState<string>("");
+  const [newPassword, setNewPassword] = useState<string>("");
+  const [backupKeyError, setBackupKeyError] = useState<boolean>(false);
+  const [primaryPasswordErrors, setPrimaryPasswordErrors] = useState<Omit<PasswordErrors, "breached">>({});
+  const { createNotification } = useNotificationContext();
 
   const router = useRouter();
 
@@ -70,80 +65,96 @@ export default function PasswordReset() {
   // If everything is correct, reset the password
   const resetPasswordHandler = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const errorCheck = await passwordCheck({
+    setIsLoading(true);
+
+    // Remove this??? (redundant due to submit button disable if any primaryPasswordErrors?)
+    // Primary password check 
+    const primaryPasswordError = await primaryPasswordCheck({
       password: newPassword,
-      setPasswordErrorTooShort,
-      setPasswordErrorTooLong,
-      setPasswordErrorNoLetterChar,
-      setPasswordErrorNoNumOrSpecialChar,
-      setPasswordErrorRepeatedChar,
-      setPasswordErrorEscapeChar,
-      setPasswordErrorLowEntropy,
-      setPasswordErrorBreached
+      setPrimaryPasswordErrors
     });
 
-    if (!errorCheck) {
-      client.init(
-        {
-          username: email,
-          password: newPassword
-        },
-        async () => {
-          client.createVerifier(async (err: any, result: { salt: string; verifier: string }) => {
-            const derivedKey = await deriveArgonKey({
-              password: newPassword,
-              salt: result.salt,
-              mem: 65536,
-              time: 3,
-              parallelism: 1,
-              hashLen: 32
-            });
-
-            if (!derivedKey) throw new Error("Failed to derive key from password");
-
-            const key = crypto.randomBytes(32);
-
-            // create encrypted private key by encrypting the private
-            // key with the symmetric key [key]
-            const {
-              ciphertext: encryptedPrivateKey,
-              iv: encryptedPrivateKeyIV,
-              tag: encryptedPrivateKeyTag
-            } = Aes256Gcm.encrypt({
-              text: privateKey,
-              secret: key
-            });
-
-            // create the protected key by encrypting the symmetric key
-            // [key] with the derived key
-            const {
-              ciphertext: protectedKey,
-              iv: protectedKeyIV,
-              tag: protectedKeyTag
-            } = Aes256Gcm.encrypt({
-              text: key.toString("hex"),
-              secret: Buffer.from(derivedKey.hash)
-            });
-
-            await resetPasswordMutateAsync({
-              protectedKey,
-              protectedKeyIV,
-              protectedKeyTag,
-              encryptedPrivateKey,
-              encryptedPrivateKeyIV,
-              encryptedPrivateKeyTag,
-              salt: result.salt,
-              verifier: result.verifier,
-              verificationToken
-            });
-
-            router.push("/login");
-
-            setLoading(false);
-          });
-        }
-      );
+    if (primaryPasswordError) {
+      setNewPassword("");
+      setIsLoading(false);
+      return;
     }
+
+    // Secondary password check (currently the breached password API check)
+    const { isBreached, errorMessage } = await breachedPasswordCheck({ password: newPassword });
+
+    if (isBreached) {
+      setNewPassword("");
+      createNotification({
+        text: errorMessage || "New password has previously appeared in a data breach and should never be used. Please choose a stronger password.",
+        type: "error"
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // passed all validation checks - proceed to attempt password change
+
+    client.init(
+      {
+        username: email,
+        password: newPassword
+      },
+      async () => {
+        client.createVerifier(async (err: any, result: { salt: string; verifier: string }) => {
+          const derivedKey = await deriveArgonKey({
+            password: newPassword,
+            salt: result.salt,
+            mem: 65536,
+            time: 3,
+            parallelism: 1,
+            hashLen: 32
+          });
+
+          if (!derivedKey) throw new Error("Failed to derive key from password");
+
+          const key = crypto.randomBytes(32);
+
+          // create encrypted private key by encrypting the private
+          // key with the symmetric key [key]
+          const {
+            ciphertext: encryptedPrivateKey,
+            iv: encryptedPrivateKeyIV,
+            tag: encryptedPrivateKeyTag
+          } = Aes256Gcm.encrypt({
+            text: privateKey,
+            secret: key
+          });
+
+          // create the protected key by encrypting the symmetric key
+          // [key] with the derived key
+          const {
+            ciphertext: protectedKey,
+            iv: protectedKeyIV,
+            tag: protectedKeyTag
+          } = Aes256Gcm.encrypt({
+            text: key.toString("hex"),
+            secret: Buffer.from(derivedKey.hash)
+          });
+
+          await resetPasswordMutateAsync({
+            protectedKey,
+            protectedKeyIV,
+            protectedKeyTag,
+            encryptedPrivateKey,
+            encryptedPrivateKeyIV,
+            encryptedPrivateKeyTag,
+            salt: result.salt,
+            verifier: result.verifier,
+            verificationToken
+          });
+
+          router.push("/login");
+
+          setIsLoading(false);
+        });
+      }
+    );
   };
 
   // Click a button to confirm email
@@ -228,157 +239,51 @@ export default function PasswordReset() {
       <div className="mt-4 flex max-h-24 w-full items-center justify-center rounded-lg md:mt-0 md:max-h-28 md:p-2">
         <InputField
           label="New Password"
-          onChangeHandler={(password) => {
+          onChangeHandler={async (password: string) => {
             setNewPassword(password);
-            passwordCheck({
+            await primaryPasswordCheck({
               password,
-              setPasswordErrorTooShort,
-              setPasswordErrorTooLong,
-              setPasswordErrorNoLetterChar,
-              setPasswordErrorNoNumOrSpecialChar,
-              setPasswordErrorRepeatedChar,
-              setPasswordErrorEscapeChar,
-              setPasswordErrorLowEntropy,
-              setPasswordErrorBreached
+              setPrimaryPasswordErrors
             });
           }}
           type="password"
           value={newPassword}
           isRequired
-          error={
-            passwordErrorTooShort &&
-            passwordErrorTooLong &&
-            passwordErrorNoLetterChar &&
-            passwordErrorNoNumOrSpecialChar &&
-            passwordErrorRepeatedChar &&
-            passwordErrorEscapeChar &&
-            passwordErrorLowEntropy &&
-            passwordErrorBreached
-          }
+          error={Object.keys(primaryPasswordErrors).length > 0}
           autoComplete="new-password"
           id="new-password"
         />
       </div>
-      {passwordErrorTooShort ||
-      passwordErrorTooLong ||
-      passwordErrorNoLetterChar ||
-      passwordErrorNoNumOrSpecialChar ||
-      passwordErrorRepeatedChar ||
-      passwordErrorEscapeChar ||
-      passwordErrorLowEntropy ||
-      passwordErrorBreached ? (
-        <div className="mx-2 mt-3 mb-2 flex w-full max-w-md flex-col items-start rounded-md bg-white/5 px-2 py-2">
-          <div className="mb-1 text-sm text-gray-400">Password should contain:</div>
-          <div className="ml-1 flex flex-row items-center justify-start">
-            {passwordErrorTooShort ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-            ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-            )}
-            <div className={`${passwordErrorTooShort ? "text-gray-400" : "text-gray-600"} text-sm`}>
-              at least 14 characters
-            </div>
-          </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
-            {passwordErrorTooLong ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-            ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-            )}
-            <div className={`${passwordErrorTooLong ? "text-gray-400" : "text-gray-600"} text-sm`}>
-              at most 100 characters
-            </div>
-          </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
-            {passwordErrorNoLetterChar ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-            ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-            )}
-            <div
-              className={`${passwordErrorNoLetterChar ? "text-gray-400" : "text-gray-600"} text-sm`}
-            >
-              at least 1 letter character
-            </div>
-          </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
-            {passwordErrorNoNumOrSpecialChar ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-            ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-            )}
-            <div
-              className={`${passwordErrorNoNumOrSpecialChar ? "text-gray-400" : "text-gray-600"} text-sm`}
-            >
-              at least 1 number or special character
-            </div>
-          </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
-              {passwordErrorRepeatedChar ? (
+        {Object.keys(primaryPasswordErrors).length > 0 ? (
+          <div className="mx-2 mt-3 mb-2 flex w-full max-w-md flex-col items-start rounded-md bg-white/5 px-2 py-2">
+            <div className="mb-1 text-sm text-gray-400">Password should contain at least:</div>
+            {Object.keys(primaryPasswordErrors).map((key) => {
+              const errorMessage = primaryPasswordErrors[key as keyof Omit<PasswordErrors, "breached">];
+              const errorIcon = errorMessage ? (
                 <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
               ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-              )}
-              <div
-                className={`${
-                  passwordErrorRepeatedChar ? "text-gray-400" : "text-gray-600"
-                } text-sm`}
-              >
-                at most 3 repeated, consecutive characters
-              </div>
+                <FontAwesomeIcon icon={faCheck} className="text-md mr-2.5 text-primary" />
+              );
+
+              return (
+                <div className="ml-1 flex flex-row items-center justify-start" key={key}>
+                  <div>{errorIcon}</div>
+                  <p className={`text-sm ${errorMessage ? "text-gray-400" : "text-gray-600"}`}>{errorMessage}</p>
+                </div>
+              );
+            })}
           </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
-              {passwordErrorEscapeChar ? (
-                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-              )}
-              <div
-                className={`${
-                  passwordErrorEscapeChar ? "text-gray-400" : "text-gray-600"
-                } text-sm`}
-              >
-                No escape characters allowed.
-              </div>
-          </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
-              {passwordErrorLowEntropy ? (
-                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-              )}
-              <div
-                className={`${passwordErrorLowEntropy ? "text-gray-400" : "text-gray-600"} text-sm`}
-              >
-                Password contains personal info.
-              </div>
-          </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
-              {passwordErrorBreached ? (
-                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-              )}
-              <div
-                className={`${
-                  passwordErrorBreached ? "text-gray-400" : "text-gray-600"
-                } text-sm`}
-              >
-                Password was found in a data breach.
-              </div>
-          </div>
-        </div>
-      ) : (
-        <div className="py-2" />
-      )}
+          ): (
+          <div className="py-2" />
+        )}
       <div className="mx-auto mt-4 flex max-h-20 w-full max-w-md flex-col items-center justify-center text-sm md:p-2">
         <div className="text-l m-8 mt-6 px-8 py-3 text-lg">
           <Button
             type="submit"
             text="Submit New Password"
-            onButtonPressed={() => setLoading(true)}
+            onButtonPressed={() => setIsLoading(true)}
             size="lg"
-            loading={loading}
+            loading={isLoading}
           />
         </div>
       </div>

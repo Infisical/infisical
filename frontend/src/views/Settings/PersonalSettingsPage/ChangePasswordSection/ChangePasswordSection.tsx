@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { FC, useState } from "react";
+import { Controller, SubmitHandler,useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -8,20 +8,9 @@ import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import attemptChangePassword from "@app/components/utilities/attemptChangePassword";
-import checkPassword from "@app/components/utilities/checks/password/checkPassword";
+import { breachedPasswordCheck, PasswordErrors,primaryPasswordCheck } from "@app/components/utilities/checks/password/checkPassword";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useUser } from "@app/context";
-
-type Errors = {
-  tooShort?: string;
-  tooLong?: string;
-  noLetterChar?: string;
-  noNumOrSpecialChar?: string;
-  repeatedChar?: string;
-  escapeChar?: string;
-  lowEntropy?: string;
-  breached?: string;
-};
 
 const schema = yup
   .object({
@@ -32,32 +21,73 @@ const schema = yup
 
 export type FormData = yup.InferType<typeof schema>;
 
-export const ChangePasswordSection = () => {
+export const ChangePasswordSection: FC = () => {
   const { t } = useTranslation();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const { createNotification } = useNotificationContext();
   const { user } = useUser();
-  const { reset, control, handleSubmit } = useForm({
+  const { reset, control, handleSubmit } = useForm<FormData>({
     defaultValues: {
       oldPassword: "",
       newPassword: ""
     },
     resolver: yupResolver(schema)
   });
-  const [errors, setErrors] = useState<Errors>({});
-  const [isLoading, setIsLoading] = useState(false);
+  const [primaryPasswordErrors, setPrimaryPasswordErrors] = useState<Omit<PasswordErrors, "breached">>({});
+  const [newPasswordValue, setNewPasswordValue] = useState<string>("");
 
-  const onFormSubmit = async ({ oldPassword, newPassword }: FormData) => {
+  const onFormSubmit: SubmitHandler<FormData> = async ({ oldPassword, newPassword }) => {
     try {
-      if (!user?.email) return;
+      setIsLoading(true);
 
-      const errorCheck = await checkPassword({
+      // validate user/organization info
+      if (!user?.email) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Remove this??? (redundant due to submit button disable if any primaryPasswordErrors?)
+      // Primary password check
+      const primaryPasswordError = await primaryPasswordCheck({
         password: newPassword,
-        setErrors
+        setPrimaryPasswordErrors
       });
 
-      if (errorCheck) return;
+      let primaryPasswordErrorsTimeout;
 
+      if (primaryPasswordError) {
+        setNewPasswordValue("");
+        reset({newPassword: ""});
+        setIsLoading(false);
+
+        if (primaryPasswordErrorsTimeout) {
+          clearTimeout(primaryPasswordErrorsTimeout);
+        }
+
+        primaryPasswordErrorsTimeout = setTimeout(() => {
+          setPrimaryPasswordErrors({});
+        }, 4000);
+
+        return;
+      }
+
+      // Secondary password check
+      const { isBreached, errorMessage } = await breachedPasswordCheck({ password: newPassword });
+
+      if (isBreached) {
+        createNotification({
+          text: errorMessage || "New password has previously appeared in a data breach and should never be used. Please choose a stronger password.",
+          type: "error"
+        });
+        setNewPasswordValue("");
+        reset({newPassword: ""});
+        setIsLoading(false);
+        return;
+      }
+
+      // passed all validation checks - proceed to attempt password change
       setIsLoading(true);
+
       await attemptChangePassword({
         email: user.email,
         currentPassword: oldPassword,
@@ -71,6 +101,8 @@ export const ChangePasswordSection = () => {
       });
 
       reset();
+      setNewPasswordValue("");
+      setPrimaryPasswordErrors({});
       window.location.href = "/login";
     } catch (err) {
       console.error(err);
@@ -79,6 +111,10 @@ export const ChangePasswordSection = () => {
         text: "Failed to change password",
         type: "error"
       });
+
+      reset();
+      setNewPasswordValue("");
+      setPrimaryPasswordErrors({});
     }
   };
 
@@ -107,7 +143,7 @@ export const ChangePasswordSection = () => {
       </div>
       <div className="max-w-md">
         <Controller
-          defaultValue=""
+          defaultValue={newPasswordValue}
           render={({ field, fieldState: { error } }) => (
             <FormControl isError={Boolean(error)} errorText={error?.message}>
               <Input
@@ -122,17 +158,17 @@ export const ChangePasswordSection = () => {
           name="newPassword"
         />
       </div>
-      {Object.keys(errors).length > 0 && (
+      {Object.keys(primaryPasswordErrors).length > 0 && (
         <div className="my-4 flex max-w-md flex-col items-start rounded-md bg-white/5 px-2 py-2">
           <div className="mb-2 text-sm text-gray-400">{t("section.password.validate-base")}</div>
-          {Object.keys(errors).map((key) => {
-            if (errors[key as keyof Errors]) {
+          {Object.keys(primaryPasswordErrors).map((key) => {
+            if (primaryPasswordErrors[key as keyof Omit<PasswordErrors, "breached">]) {
               return (
                 <div className="items-top ml-1 flex flex-row justify-start" key={key}>
                   <div>
                     <FontAwesomeIcon icon={faXmark} className="text-md ml-0.5 mr-2.5 text-red" />
                   </div>
-                  <p className="text-sm text-gray-400">{errors[key as keyof Errors]}</p>
+                  <p className="text-sm text-gray-400">{primaryPasswordErrors[key as keyof Omit<PasswordErrors, "breached">]}</p>
                 </div>
               );
             }
@@ -141,7 +177,12 @@ export const ChangePasswordSection = () => {
           })}
         </div>
       )}
-      <Button type="submit" colorSchema="secondary" isLoading={isLoading} isDisabled={isLoading}>
+      <Button 
+        type="submit"
+        colorSchema="secondary"
+        isLoading={isLoading}
+        isDisabled={Object.keys(primaryPasswordErrors).length > 0 || isLoading}
+      >
         Save
       </Button>
     </form>

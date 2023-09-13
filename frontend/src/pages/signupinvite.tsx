@@ -16,7 +16,8 @@ import { encodeBase64 } from "tweetnacl-util";
 
 import Button from "@app/components/basic/buttons/Button";
 import InputField from "@app/components/basic/InputField";
-import checkPassword from "@app/components/utilities/checks/password/checkPassword";
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { breachedPasswordCheck, PasswordErrors,primaryPasswordCheck} from "@app/components/utilities/checks/password/checkPassword";
 import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
 import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 import issueBackupKey from "@app/components/utilities/cryptography/issueBackupKey";
@@ -28,28 +29,18 @@ import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
 
-type Errors = {
-  tooShort?: string;
-  tooLong?: string;
-  noLetterChar?: string;
-  noNumOrSpecialChar?: string;
-  repeatedChar?: string;
-  escapeChar?: string;
-  lowEntropy?: string;
-  breached?: string;
-};
-
 export default function SignupInvite() {
-  const [password, setPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [firstNameError, setFirstNameError] = useState(false);
-  const [lastNameError, setLastNameError] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(1);
-  const [backupKeyError, setBackupKeyError] = useState(false);
-  const [backupKeyIssued, setBackupKeyIssued] = useState(false);
-  const [errors, setErrors] = useState<Errors>({});
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [password, setPassword] = useState<string>("");
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
+  const [firstNameError, setFirstNameError] = useState<boolean>(false);
+  const [lastNameError, setLastNameError] = useState<boolean>(false);
+  const [step, setStep] = useState<number>(1);
+  const [backupKeyError, setBackupKeyError] = useState<boolean>(false);
+  const [backupKeyIssued, setBackupKeyIssued] = useState<boolean>(false);
+  const [primaryPasswordErrors, setPrimaryPasswordErrors] = useState<Omit<PasswordErrors, "breached">>({});
+  const { createNotification } = useNotificationContext();
 
   const router = useRouter();
   const parsedUrl = queryString.parse(router.asPath.split("?")[1]);
@@ -58,15 +49,18 @@ export default function SignupInvite() {
   const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
 
   // Verifies if the information that the users entered (name, workspace) is there, and if the password matched the criteria.
-  const signupErrorCheck = async () => {
+  const signupErrorCheck = async (): Promise<void> => {
     setIsLoading(true);
     let errorCheck = false;
+
+    // validate user/organization info
     if (!firstName) {
       setFirstNameError(true);
       errorCheck = true;
     } else {
       setFirstNameError(false);
     }
+
     if (!lastName) {
       setLastNameError(true);
       errorCheck = true;
@@ -74,107 +68,131 @@ export default function SignupInvite() {
       setLastNameError(false);
     }
 
-    errorCheck = await checkPassword({
+    // early return if invalid user info is entered
+    // TODO: expand this for additional checks (eg. max 100 chars)
+    if(errorCheck) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Primary password check 
+    const primaryPasswordError = await primaryPasswordCheck({
       password,
-      setErrors
+      setPrimaryPasswordErrors
     });
 
-    if (!errorCheck) {
-      // Generate a random pair of a public and a private key
-      const pair = nacl.box.keyPair();
-      const secretKeyUint8Array = pair.secretKey;
-      const publicKeyUint8Array = pair.publicKey;
-      const privateKey = encodeBase64(secretKeyUint8Array);
-      const publicKey = encodeBase64(publicKeyUint8Array);
-
-      localStorage.setItem("PRIVATE_KEY", privateKey);
-
-      client.init(
-        {
-          username: email,
-          password
-        },
-        async () => {
-          client.createVerifier(async (err, result) => {
-            try {
-              const derivedKey = await deriveArgonKey({
-                password,
-                salt: result.salt,
-                mem: 65536,
-                time: 3,
-                parallelism: 1,
-                hashLen: 32
-              });
-
-              if (!derivedKey) throw new Error("Failed to derive key from password");
-
-              const key = crypto.randomBytes(32);
-
-              // create encrypted private key by encrypting the private
-              // key with the symmetric key [key]
-              const {
-                ciphertext: encryptedPrivateKey,
-                iv: encryptedPrivateKeyIV,
-                tag: encryptedPrivateKeyTag
-              } = Aes256Gcm.encrypt({
-                text: privateKey,
-                secret: key
-              });
-
-              // create the protected key by encrypting the symmetric key
-              // [key] with the derived key
-              const {
-                ciphertext: protectedKey,
-                iv: protectedKeyIV,
-                tag: protectedKeyTag
-              } = Aes256Gcm.encrypt({
-                text: key.toString("hex"),
-                secret: Buffer.from(derivedKey.hash)
-              });
-
-              const { token: jwtToken } = await completeAccountSignupInvite({
-                email,
-                firstName,
-                lastName,
-                protectedKey,
-                protectedKeyIV,
-                protectedKeyTag,
-                publicKey,
-                encryptedPrivateKey,
-                encryptedPrivateKeyIV,
-                encryptedPrivateKeyTag,
-                salt: result.salt,
-                verifier: result.verifier
-              });
-
-              // unset temporary signup JWT token and set JWT token
-              SecurityClient.setSignupToken("");
-              SecurityClient.setToken(jwtToken);
-
-              saveTokenToLocalStorage({
-                publicKey,
-                encryptedPrivateKey,
-                iv: encryptedPrivateKeyIV,
-                tag: encryptedPrivateKeyTag,
-                privateKey
-              });
-
-              const userOrgs = await fetchOrganizations();
-
-              const orgId = userOrgs[0]._id;
-              localStorage.setItem("orgData.id", orgId);
-
-              setStep(3);
-            } catch (error) {
-              setIsLoading(false);
-              console.error(error);
-            }
-          });
-        }
-      );
-    } else {
+    if (primaryPasswordError) {
+      setPassword("");
       setIsLoading(false);
+      return;
     }
+
+    // Secondary password check (currently the breached password API check)
+    const { isBreached, errorMessage } = await breachedPasswordCheck({ password });
+
+    if (isBreached) {
+      setPassword("");
+      createNotification({
+        text: errorMessage || "New password has previously appeared in a data breach and should never be used. Please choose a stronger password.",
+        type: "error"
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // No errors - proceed with account creation
+    // Generate a random pair of a public and a private key
+    const pair = nacl.box.keyPair();
+    const secretKeyUint8Array = pair.secretKey;
+    const publicKeyUint8Array = pair.publicKey;
+    const privateKey = encodeBase64(secretKeyUint8Array);
+    const publicKey = encodeBase64(publicKeyUint8Array);
+
+    localStorage.setItem("PRIVATE_KEY", privateKey);
+
+    client.init(
+      {
+        username: email,
+        password
+      },
+      async () => {
+        client.createVerifier(async (err, result) => {
+          try {
+            const derivedKey = await deriveArgonKey({
+              password,
+              salt: result.salt,
+              mem: 65536,
+              time: 3,
+              parallelism: 1,
+              hashLen: 32
+            });
+
+            if (!derivedKey) throw new Error("Failed to derive key from password");
+
+            const key = crypto.randomBytes(32);
+
+            // create encrypted private key by encrypting the private
+            // key with the symmetric key [key]
+            const {
+              ciphertext: encryptedPrivateKey,
+              iv: encryptedPrivateKeyIV,
+              tag: encryptedPrivateKeyTag
+            } = Aes256Gcm.encrypt({
+              text: privateKey,
+              secret: key
+            });
+
+            // create the protected key by encrypting the symmetric key
+            // [key] with the derived key
+            const {
+              ciphertext: protectedKey,
+              iv: protectedKeyIV,
+              tag: protectedKeyTag
+            } = Aes256Gcm.encrypt({
+              text: key.toString("hex"),
+              secret: Buffer.from(derivedKey.hash)
+            });
+
+            const { token: jwtToken } = await completeAccountSignupInvite({
+              email,
+              firstName,
+              lastName,
+              protectedKey,
+              protectedKeyIV,
+              protectedKeyTag,
+              publicKey,
+              encryptedPrivateKey,
+              encryptedPrivateKeyIV,
+              encryptedPrivateKeyTag,
+              salt: result.salt,
+              verifier: result.verifier
+            });
+
+            // unset temporary signup JWT token and set JWT token
+            SecurityClient.setSignupToken("");
+            SecurityClient.setToken(jwtToken);
+
+            saveTokenToLocalStorage({
+              publicKey,
+              encryptedPrivateKey,
+              iv: encryptedPrivateKeyIV,
+              tag: encryptedPrivateKeyTag,
+              privateKey
+            });
+
+            const userOrgs = await fetchOrganizations();
+
+            const orgId = userOrgs[0]._id;
+            localStorage.setItem("orgData.id", orgId);
+
+            setStep(3);
+          } catch (error) {
+            setIsLoading(false);
+            console.error(error);
+          }
+        });
+      }
+    );
   };
 
   // Step 4 of the sign up process (download the emergency kit pdf)
@@ -251,31 +269,31 @@ export default function SignupInvite() {
       <div className="mt-2 flex max-h-60 w-full flex-col items-center justify-center rounded-lg md:p-2">
         <InputField
           label="Password"
-          onChangeHandler={(pass) => {
+          onChangeHandler={async (pass: string) => {
             setPassword(pass);
-            checkPassword({
+            await primaryPasswordCheck({
               password: pass,
-              setErrors
+              setPrimaryPasswordErrors
             });
           }}
           type="password"
           value={password}
           isRequired
-          error={Object.keys(errors).length > 0}
+          error={Object.keys(primaryPasswordErrors).length > 0}
           autoComplete="new-password"
           id="new-password"
         />
-        {Object.keys(errors).length > 0 && (
+        {Object.keys(primaryPasswordErrors).length > 0 && (
           <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
             <div className="mb-2 text-sm text-gray-400">Password should contain at least:</div>
-            {Object.keys(errors).map((key) => {
-              if (errors[key as keyof Errors]) {
+            {Object.keys(primaryPasswordErrors).map((key) => {
+              if (primaryPasswordErrors[key as keyof Omit<PasswordErrors, "breached">]) {
                 return (
                   <div className="items-top ml-1 flex flex-row justify-start" key={key}>
                     <div>
                       <FontAwesomeIcon icon={faXmark} className="text-md ml-0.5 mr-2.5 text-red" />
                     </div>
-                    <p className="text-sm text-gray-400">{errors[key as keyof Errors]}</p>
+                    <p className="text-sm text-gray-400">{primaryPasswordErrors[key as keyof Omit<PasswordErrors, "breached">]}</p>
                   </div>
                 );
               }
