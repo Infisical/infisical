@@ -6,9 +6,7 @@ import {
   faArrowLeft,
   faBook,
   faCog,
-  faFolder,
   faKey,
-  faLink,
   faLock,
   faMagnifyingGlass,
   faNetworkWired,
@@ -244,30 +242,8 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
               setValue={setValue}
               icon={faLock}
               title="Secrets"
-              subtitle="Secret management control"
+              subtitle="Create, modify and remove secrets, folders and secret imports"
               formName="secrets"
-            />
-          </div>
-          <div>
-            <MultiEnvProjectPermission
-              isNonEditable={isNonEditable}
-              control={control}
-              setValue={setValue}
-              icon={faFolder}
-              title="Folders"
-              subtitle="Folder management control"
-              formName="folders"
-            />
-          </div>
-          <div>
-            <MultiEnvProjectPermission
-              isNonEditable={isNonEditable}
-              control={control}
-              setValue={setValue}
-              icon={faLink}
-              title="Secret Imports"
-              subtitle="Secret import management control"
-              formName="secret-imports"
             />
           </div>
           <div key="permission-ws">

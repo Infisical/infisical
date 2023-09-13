@@ -258,21 +258,7 @@ export const DashboardPage = () => {
     ?.map(({ name }) => name)
     .join("/")}`;
 
-  const userAvailableEnvs = currentWorkspace?.environments?.filter(
-    ({ slug }) =>
-      permission.can(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, { environment: slug, secretPath })
-      ) ||
-      permission.can(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Folders, { environment: slug, secretPath })
-      ) ||
-      permission.can(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.SecretImports, { environment: slug, secretPath })
-      )
-  );
+  const userAvailableEnvs = currentWorkspace?.environments || [];
 
   // This is for dnd-kit. As react-query state mutation async
   // This will act as a placeholder to avoid a glitching animation on dropping items
@@ -943,7 +929,7 @@ export const DashboardPage = () => {
                       <div className="w-full pb-1">
                         <ProjectPermissionCan
                           I={ProjectPermissionActions.Create}
-                          a={ProjectPermissionSub.Folders}
+                          a={ProjectPermissionSub.Secrets}
                         >
                           {(isAllowed) => (
                             <Button
@@ -962,7 +948,7 @@ export const DashboardPage = () => {
                       <div className="w-full">
                         <ProjectPermissionCan
                           I={ProjectPermissionActions.Edit}
-                          a={subject(ProjectPermissionSub.SecretImports, {
+                          a={subject(ProjectPermissionSub.Secrets, {
                             environment,
                             secretPath
                           })}
