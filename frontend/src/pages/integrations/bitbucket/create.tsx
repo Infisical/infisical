@@ -91,11 +91,6 @@ export default function BitBucketCreateIntegrationPage() {
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: targetEnvironment.name,
         targetEnvironmentId: targetEnvironment.slug,
-        targetService: null,
-        targetServiceId: null,
-        owner: null,
-        path: null,
-        region: null,
         secretPath
       });
 

@@ -28,9 +28,7 @@ export default function NorthflankCreateIntegrationPage() {
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "northflank",
-        accessToken: apiKey,
-        url: null,
-        namespace: null
+        accessToken: apiKey
       });
 
       setIsLoading(false);

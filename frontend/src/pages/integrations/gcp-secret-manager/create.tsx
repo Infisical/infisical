@@ -67,13 +67,6 @@ export default function GCPSecretManagerCreateIntegrationPage() {
         app: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId)?.name,
         appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: null,
-        targetEnvironmentId: null,
-        targetService: null,
-        targetServiceId: null,
-        owner: null,
-        path: null,
-        region: null,
         secretPath
       });
 
@@ -83,7 +76,7 @@ export default function GCPSecretManagerCreateIntegrationPage() {
       console.error(err);
     }
   };
-
+  
   return integrationAuth &&
     workspace &&
     selectedSourceEnvironment &&

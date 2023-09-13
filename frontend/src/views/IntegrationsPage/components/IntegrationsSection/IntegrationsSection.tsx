@@ -2,6 +2,7 @@ import { faArrowRight, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { integrationSlugNameMapping } from "public/data/frequentConstants";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DeleteActionModal,
   EmptyState,
@@ -13,6 +14,7 @@ import {
   Skeleton,
   Tooltip
 } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { TIntegration } from "@app/hooks/api/types";
 
@@ -125,18 +127,26 @@ export const IntegrationsSection = ({
                 )}
               </div>
               <div className="flex cursor-default items-center">
-                <div className="ml-2 opacity-80 duration-200 hover:opacity-100">
-                  <Tooltip content="Remove Integration">
-                    <IconButton
-                      onClick={() => handlePopUpOpen("deleteConfirmation", integration)}
-                      ariaLabel="delete"
-                      colorSchema="danger"
-                      variant="star"
-                    >
-                      <FontAwesomeIcon icon={faXmark} className="px-0.5" />
-                    </IconButton>
-                  </Tooltip>
-                </div>
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Delete}
+                  a={ProjectPermissionSub.Integrations}
+                >
+                  {(isAllowed) => (
+                    <div className="ml-2 opacity-80 duration-200 hover:opacity-100">
+                      <Tooltip content="Remove Integration">
+                        <IconButton
+                          onClick={() => handlePopUpOpen("deleteConfirmation", integration)}
+                          ariaLabel="delete"
+                          isDisabled={!isAllowed}
+                          colorSchema="danger"
+                          variant="star"
+                        >
+                          <FontAwesomeIcon icon={faXmark} className="px-0.5" />
+                        </IconButton>
+                      </Tooltip>
+                    </div>
+                  )}
+                </ProjectPermissionCan>
               </div>
             </div>
           ))}

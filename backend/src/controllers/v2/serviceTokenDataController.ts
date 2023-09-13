@@ -6,6 +6,15 @@ import { getSaltRounds } from "../../config";
 import { BadRequestError } from "../../utils/errors";
 import { ActorType, EventType } from "../../ee/models";
 import { EEAuditLogService } from "../../ee/services";
+import { validateRequest } from "../../helpers/validation";
+import * as reqValidator from "../../validation/serviceTokenData";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  getUserProjectPermissions
+} from "../../ee/services/ProjectRoleService";
+import { ForbiddenError } from "@casl/ability";
+import { Types } from "mongoose";
 
 /**
  * Return service token data associated with service token on request
@@ -63,7 +72,14 @@ export const getServiceTokenData = async (req: Request, res: Response) => {
 export const createServiceTokenData = async (req: Request, res: Response) => {
   let serviceTokenData;
 
-  const { name, workspaceId, encryptedKey, iv, tag, expiresIn, permissions, scopes } = req.body;
+  const {
+    body: { workspaceId, permissions, tag, encryptedKey, scopes, name, expiresIn, iv }
+  } = await validateRequest(reqValidator.CreateServiceTokenV2, req);
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.ServiceTokens
+  );
 
   const secret = crypto.randomBytes(16).toString("hex");
   const secretHash = await bcrypt.hash(secret, await getSaltRounds());
@@ -75,7 +91,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
   }
 
   let user;
-  
+
   if (req.authData.actor.type === ActorType.USER) {
     user = req.authData.authPayload._id;
   }
@@ -100,7 +116,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
   if (!serviceTokenData) throw new Error("Failed to find service token data");
 
   const serviceToken = `st.${serviceTokenData._id.toString()}.${secret}`;
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -111,7 +127,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
       }
     },
     {
-      workspaceId
+      workspaceId: new Types.ObjectId(workspaceId)
     }
   );
 
@@ -128,14 +144,29 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
  * @returns
  */
 export const deleteServiceTokenData = async (req: Request, res: Response) => {
-  const { serviceTokenDataId } = req.params;
+  const {
+    params: { serviceTokenDataId }
+  } = await validateRequest(reqValidator.DeleteServiceTokenV2, req);
 
-  const serviceTokenData = await ServiceTokenData.findByIdAndDelete(serviceTokenDataId);
-  
-  if (!serviceTokenData) return res.status(200).send({
-    message: "Failed to delete service token"
-  });
-  
+  let serviceTokenData = await ServiceTokenData.findById(serviceTokenDataId);
+  if (!serviceTokenData) throw BadRequestError({ message: "Service token not found" });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    serviceTokenData.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.ServiceTokens
+  );
+
+  serviceTokenData = await ServiceTokenData.findByIdAndDelete(serviceTokenDataId);
+
+  if (!serviceTokenData)
+    return res.status(200).send({
+      message: "Failed to delete service token"
+    });
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {

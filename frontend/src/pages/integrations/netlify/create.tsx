@@ -76,12 +76,6 @@ export default function NetlifyCreateIntegrationPage() {
         appId: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp)?.appId,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment,
-        targetEnvironmentId: null,
-        targetService: null,
-        targetServiceId: null,
-        owner: null,
-        path: null,
-        region: null,
         secretPath
       });
 

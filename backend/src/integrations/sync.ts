@@ -2015,7 +2015,6 @@ const syncSecretsCheckly = async ({
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
-  
   const getSecretsRes = (
     await standardRequest.get(`${INTEGRATION_CHECKLY_API_URL}/v1/variables`, {
       headers: {

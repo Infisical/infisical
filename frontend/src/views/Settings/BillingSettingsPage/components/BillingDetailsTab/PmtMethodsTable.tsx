@@ -1,6 +1,7 @@
 import { faCreditCard, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   EmptyState,
   IconButton,
@@ -13,7 +14,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useOrganization } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteOrgPmtMethod, useGetOrgPmtMethods } from "@app/hooks/api";
 
 export const PmtMethodsTable = () => {
@@ -52,17 +53,25 @@ export const PmtMethodsTable = () => {
                 <Td>{last4}</Td>
                 <Td>{`${exp_month}/${exp_year}`}</Td>
                 <Td>
-                  <IconButton
-                    onClick={async () => {
-                      await handleDeletePmtMethodBtnClick(_id);
-                    }}
-                    size="lg"
-                    colorSchema="danger"
-                    variant="plain"
-                    ariaLabel="update"
+                  <OrgPermissionCan
+                    I={OrgPermissionActions.Delete}
+                    a={OrgPermissionSubjects.Billing}
                   >
-                    <FontAwesomeIcon icon={faXmark} />
-                  </IconButton>
+                    {(isAllowed) => (
+                      <IconButton
+                        onClick={async () => {
+                          await handleDeletePmtMethodBtnClick(_id);
+                        }}
+                        size="lg"
+                        isDisabled={!isAllowed}
+                        colorSchema="danger"
+                        variant="plain"
+                        ariaLabel="update"
+                      >
+                        <FontAwesomeIcon icon={faXmark} />
+                      </IconButton>
+                    )}
+                  </OrgPermissionCan>
                 </Td>
               </Tr>
             ))}

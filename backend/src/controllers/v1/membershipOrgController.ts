@@ -8,14 +8,8 @@ import { updateSubscriptionOrgQuantity } from "../../helpers/organization";
 import { sendMail } from "../../helpers/nodemailer";
 import { TokenService } from "../../services";
 import { EELicenseService } from "../../ee/services";
-import {
-  ACCEPTED,
-  ADMIN,
-  INVITED,
-  MEMBER,
-  OWNER,
-  TOKEN_EMAIL_ORG_INVITATION
-} from "../../variables";
+import { ACCEPTED, INVITED, MEMBER, TOKEN_EMAIL_ORG_INVITATION } from "../../variables";
+import * as reqValidator from "../../validation/membershipOrg";
 import {
   getJwtSignupLifetime,
   getJwtSignupSecret,
@@ -23,6 +17,13 @@ import {
   getSmtpConfigured
 } from "../../config";
 import { validateUserEmail } from "../../validation";
+import { validateRequest } from "../../helpers/validation";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  getUserOrgPermissions
+} from "../../ee/services/RoleService";
+import { ForbiddenError } from "@casl/ability";
 
 /**
  * Delete organization membership with id [membershipOrgId] from organization
@@ -31,7 +32,9 @@ import { validateUserEmail } from "../../validation";
  * @returns
  */
 export const deleteMembershipOrg = async (req: Request, _res: Response) => {
-  const { membershipOrgId } = req.params;
+  const {
+    params: { membershipOrgId }
+  } = await validateRequest(reqValidator.DelOrgMembershipv1, req);
 
   // check if organization membership to delete exists
   const membershipOrgToDelete = await MembershipOrg.findOne({
@@ -42,21 +45,14 @@ export const deleteMembershipOrg = async (req: Request, _res: Response) => {
     throw new Error("Failed to delete organization membership that doesn't exist");
   }
 
-  // check if user is a member and admin of the organization
-  // whose membership we wish to delete
-  const membershipOrg = await MembershipOrg.findOne({
-    user: req.user._id,
-    organization: membershipOrgToDelete.organization
-  });
-
-  if (!membershipOrg) {
-    throw new Error("Failed to validate organization membership");
-  }
-
-  if (membershipOrg.role !== OWNER && membershipOrg.role !== ADMIN) {
-    // user is not an admin member of the organization
-    throw new Error("Insufficient role for deleting organization membership");
-  }
+  const { permission, membership: membershipOrg } = await getUserOrgPermissions(
+    req.user._id,
+    membershipOrgToDelete.organization.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    OrgPermissionActions.Delete,
+    OrgPermissionSubjects.Member
+  );
 
   // delete organization membership
   await deleteMemberFromOrg({
@@ -96,22 +92,20 @@ export const changeMembershipOrgRole = async (req: Request, res: Response) => {
  */
 export const inviteUserToOrganization = async (req: Request, res: Response) => {
   let inviteeMembershipOrg, completeInviteLink;
-  const { organizationId, inviteeEmail } = req.body;
+  const {
+    body: { inviteeEmail, organizationId }
+  } = await validateRequest(reqValidator.InviteUserToOrgv1, req);
+
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    OrgPermissionActions.Create,
+    OrgPermissionSubjects.Member
+  );
+
   const host = req.headers.host;
   const siteUrl = `${req.protocol}://${host}`;
-
-  // validate membership
-  const membershipOrg = await MembershipOrg.findOne({
-    user: req.user._id,
-    organization: new Types.ObjectId(organizationId)
-  });
-
-  if (!membershipOrg) {
-    throw new Error("Failed to validate organization membership");
-  }
-
   const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
-  
+
   const ssoConfig = await SSOConfig.findOne({
     organization: new Types.ObjectId(organizationId)
   });
@@ -119,9 +113,8 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
   if (ssoConfig && ssoConfig.isActive) {
     // case: SAML SSO is enabled for the organization
     return res.status(400).send({
-      message:
-        "Failed to invite member due to SAML SSO configured for organization"
-    }); 
+      message: "Failed to invite member due to SAML SSO configured for organization"
+    });
   }
 
   if (plan.memberLimit !== null) {
@@ -231,7 +224,10 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
  */
 export const verifyUserToOrganization = async (req: Request, res: Response) => {
   let user;
-  const { email, organizationId, code } = req.body;
+
+  const {
+    body: { organizationId, email, code }
+  } = await validateRequest(reqValidator.VerifyUserToOrgv1, req);
 
   user = await User.findOne({ email }).select("+publicKey");
 

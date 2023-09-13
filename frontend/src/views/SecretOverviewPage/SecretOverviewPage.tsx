@@ -2,11 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faArrowDown, faArrowUp, faFolderBlank, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { subject } from "@casl/ability";
+import {
+  faArrowDown,
+  faArrowUp,
+  faFolderBlank,
+  faMagnifyingGlass
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import NavHeader from "@app/components/navigation/NavHeader";
+import { PermissionDeniedBanner } from "@app/components/permissions";
 import {
   Button,
   EmptyState,
@@ -23,13 +30,18 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { useOrganization, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProjectPermission,
+  useWorkspace
+} from "@app/context";
 import {
   useCreateSecretV3,
   useDeleteSecretV3,
   useGetFoldersByEnv,
   useGetProjectSecretsAllEnv,
-  useGetUserWsEnvironments,
   useGetUserWsKey,
   useUpdateSecretV3
 } from "@app/hooks/api";
@@ -69,7 +81,8 @@ export const SecretOverviewPage = () => {
   const workspaceId = currentWorkspace?._id as string;
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
   const [searchFilter, setSearchFilter] = useState("");
-  const secretPath = router.query?.secretPath as string;
+  const secretPath = (router.query?.secretPath as string) || "/";
+  const permission = useProjectPermission();
 
   useEffect(() => {
     if (!isWorkspaceLoading && !workspaceId && router.isReady) {
@@ -77,11 +90,22 @@ export const SecretOverviewPage = () => {
     }
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 
-  const { data: wsEnv, isLoading: isEnvListLoading } = useGetUserWsEnvironments({
-    workspaceId
-  });
-
-  const userAvailableEnvs = wsEnv?.filter(({ isReadDenied }) => !isReadDenied) || [];
+  const userAvailableEnvs =
+    currentWorkspace?.environments?.filter(
+      ({ slug }) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, { environment: slug, secretPath })
+        ) ||
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Folders, { environment: slug, secretPath })
+        ) ||
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.SecretImports, { environment: slug, secretPath })
+        )
+    ) || [];
 
   const {
     data: secrets,
@@ -207,7 +231,7 @@ export const SecretOverviewPage = () => {
     }
   };
 
-  if (isEnvListLoading) {
+  if (isWorkspaceLoading) {
     return (
       <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
         <img src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
@@ -219,9 +243,11 @@ export const SecretOverviewPage = () => {
     folders?.some(({ isLoading }) => !isLoading) && secrets?.some(({ isLoading }) => !isLoading)
   );
 
-  const filteredSecretNames = secKeys?.filter((name) =>
-    name.toUpperCase().includes(searchFilter.toUpperCase())
-  ).sort((a, b) => sortDir === "asc" ? a.localeCompare(b) : b.localeCompare(a));
+  const canViewOverviewPage = Boolean(userAvailableEnvs.length);
+
+  const filteredSecretNames = secKeys
+    ?.filter((name) => name.toUpperCase().includes(searchFilter.toUpperCase()))
+    .sort((a, b) => (sortDir === "asc" ? a.localeCompare(b) : b.localeCompare(a)));
   const filteredFolderNames = folderNames?.filter((name) =>
     name.toLowerCase().includes(searchFilter.toLowerCase())
   );
@@ -280,7 +306,12 @@ export const SecretOverviewPage = () => {
                 <Th className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0">
                   <div className="flex items-center border-b border-r border-mineshaft-600 px-5 pt-4 pb-3.5">
                     Name
-                    <IconButton variant="plain" className="ml-2" ariaLabel="sort" onClick={() => setSortDir(prev => prev === "asc" ? "desc" : "asc")}>
+                    <IconButton
+                      variant="plain"
+                      className="ml-2"
+                      ariaLabel="sort"
+                      onClick={() => setSortDir((prev) => (prev === "asc" ? "desc" : "asc"))}
+                    >
                       <FontAwesomeIcon icon={sortDir === "asc" ? faArrowDown : faArrowUp} />
                     </IconButton>
                   </div>
@@ -318,7 +349,7 @@ export const SecretOverviewPage = () => {
               </Tr>
             </THead>
             <TBody>
-              {isTableLoading && (
+              {canViewOverviewPage && isTableLoading && (
                 <TableSkeleton
                   columns={userAvailableEnvs.length + 1}
                   innerKey="secret-overview-loading"
@@ -351,18 +382,23 @@ export const SecretOverviewPage = () => {
                   onClick={handleFolderClick}
                 />
               ))}
-              {filteredSecretNames.map((key, index) => (
-                <SecretOverviewTableRow
-                  onSecretCreate={handleSecretCreate}
-                  onSecretDelete={handleSecretDelete}
-                  onSecretUpdate={handleSecretUpdate}
-                  key={`overview-${key}-${index + 1}`}
-                  environments={userAvailableEnvs}
-                  secretKey={key}
-                  getSecretByKey={getSecretByKey}
-                  expandableColWidth={expandableTableWidth}
-                />
-              ))}
+              {userAvailableEnvs?.length > 0 ? (
+                filteredSecretNames.map((key, index) => (
+                  <SecretOverviewTableRow
+                    secretPath={secretPath}
+                    onSecretCreate={handleSecretCreate}
+                    onSecretDelete={handleSecretDelete}
+                    onSecretUpdate={handleSecretUpdate}
+                    key={`overview-${key}-${index + 1}`}
+                    environments={userAvailableEnvs}
+                    secretKey={key}
+                    getSecretByKey={getSecretByKey}
+                    expandableColWidth={expandableTableWidth}
+                  />
+                ))
+              ) : (
+                <PermissionDeniedBanner />
+              )}
             </TBody>
             <TFoot>
               <Tr className="sticky bottom-0 z-10 border-0 bg-mineshaft-800">

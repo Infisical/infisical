@@ -28,7 +28,13 @@ export interface BatchSecretRequest {
 }
 
 export interface BatchSecret {
-  _id: string;
+  version?: number;
+  _id?: string;
+  user?: string;
+  environment: string;
+  workspace?: string;
+  algorithm?: string;
+  keyEncoding?: string;
   type: "shared" | "personal";
   secretName: string;
   secretBlindIndex: string;
@@ -42,5 +48,5 @@ export interface BatchSecret {
   secretCommentIV: string;
   secretCommentTag: string;
   tags: string[];
-  folder: string
+  folder: string;
 }

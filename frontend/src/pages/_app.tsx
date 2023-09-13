@@ -17,7 +17,9 @@ import { TooltipProvider } from "@app/components/v2";
 import { publicPaths } from "@app/const";
 import {
   AuthProvider,
+  OrgPermissionProvider,
   OrgProvider,
+  ProjectPermissionProvider,
   SubscriptionProvider,
   UserProvider,
   WorkspaceProvider
@@ -95,17 +97,21 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
       <TooltipProvider>
         <AuthProvider>
           <OrgProvider>
-            <WorkspaceProvider>
-              <SubscriptionProvider>
-                <UserProvider>
-                  <NotificationProvider>
-                    <AppLayout>
-                      <Component {...pageProps} />
-                    </AppLayout>
-                  </NotificationProvider>
-                </UserProvider>
-              </SubscriptionProvider>
-            </WorkspaceProvider>
+            <OrgPermissionProvider>
+              <WorkspaceProvider>
+                <ProjectPermissionProvider>
+                  <SubscriptionProvider>
+                    <UserProvider>
+                      <NotificationProvider>
+                        <AppLayout>
+                          <Component {...pageProps} />
+                        </AppLayout>
+                      </NotificationProvider>
+                    </UserProvider>
+                  </SubscriptionProvider>
+                </ProjectPermissionProvider>
+              </WorkspaceProvider>
+            </OrgPermissionProvider>
           </OrgProvider>
         </AuthProvider>
       </TooltipProvider>

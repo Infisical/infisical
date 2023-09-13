@@ -42,9 +42,9 @@
   },
   "anchors": [
     {
-      "name": "Security",
-      "icon": "shield-halved",
-      "url": "security"
+      "name": "Internals",
+      "icon": "sitemap",
+      "url": "internals"
     },
     {
       "name": "SDKs",
@@ -332,6 +332,15 @@
           ]
         },
         {
+          "group": "Folders",
+          "pages": [
+            "api-reference/endpoints/folders/list",
+            "api-reference/endpoints/folders/create",
+            "api-reference/endpoints/folders/update",
+            "api-reference/endpoints/folders/delete"
+          ]
+        },
+        {
           "group": "Secrets",
           "pages": [
             "api-reference/endpoints/secrets/list",
@@ -344,9 +353,28 @@
           ]
         },
         {
+          "group": "Secret imports",
+          "pages": [
+            "api-reference/endpoints/secret-imports/list",
+            "api-reference/endpoints/secret-imports/create",
+            "api-reference/endpoints/secret-imports/update",
+            "api-reference/endpoints/secret-imports/delete"
+          ]
+        },
+        {
           "group": "Service Tokens",
           "pages": ["api-reference/endpoints/service-tokens/get"]
         }
+      ]
+    },
+    {
+      "group": "Internals",
+      "pages": [
+        "internals/overview",
+        "internals/components",
+        "internals/flows",
+        "internals/security",
+        "internals/service-tokens"
       ]
     },
     {

@@ -1,16 +1,32 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { client, getRootEncryptionKey } from "../../config";
-import { validateMembership } from "../../helpers";
 import { Webhook } from "../../models";
 import { getWebhookPayload, triggerWebhookRequest } from "../../services/WebhookService";
 import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
 import { EEAuditLogService } from "../../ee/services";
 import { EventType } from "../../ee/models";
-import { ADMIN, ALGORITHM_AES_256_GCM, ENCODING_SCHEME_BASE64, MEMBER } from "../../variables";
+import { ALGORITHM_AES_256_GCM, ENCODING_SCHEME_BASE64 } from "../../variables";
+import { validateRequest } from "../../helpers/validation";
+import * as reqValidator from "../../validation/webhooks";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  getUserProjectPermissions
+} from "../../ee/services/ProjectRoleService";
+import { ForbiddenError } from "@casl/ability";
 
 export const createWebhook = async (req: Request, res: Response) => {
-  const { webhookUrl, webhookSecretKey, environment, workspaceId, secretPath } = req.body;
+  const {
+    body: { webhookUrl, webhookSecretKey, environment, workspaceId, secretPath }
+  } = await validateRequest(reqValidator.CreateWebhookV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.Webhooks
+  );
+
   const webhook = new Webhook({
     workspace: workspaceId,
     environment,
@@ -29,7 +45,7 @@ export const createWebhook = async (req: Request, res: Response) => {
   }
 
   await webhook.save();
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -43,7 +59,7 @@ export const createWebhook = async (req: Request, res: Response) => {
       }
     },
     {
-      workspaceId
+      workspaceId: new Types.ObjectId(workspaceId)
     }
   );
 
@@ -54,19 +70,24 @@ export const createWebhook = async (req: Request, res: Response) => {
 };
 
 export const updateWebhook = async (req: Request, res: Response) => {
-  const { webhookId } = req.params;
-  const { isDisabled } = req.body;
+  const {
+    body: { isDisabled },
+    params: { webhookId }
+  } = await validateRequest(reqValidator.UpdateWebhookV1, req);
+
   const webhook = await Webhook.findById(webhookId);
   if (!webhook) {
     throw BadRequestError({ message: "Webhook not found!!" });
   }
 
-  // check that user is a member of the workspace
-  await validateMembership({
-    userId: req.user._id.toString(),
-    workspaceId: webhook.workspace,
-    acceptedRoles: [ADMIN, MEMBER]
-  });
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    webhook.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Webhooks
+  );
 
   if (typeof isDisabled !== undefined) {
     webhook.isDisabled = isDisabled;
@@ -97,19 +118,24 @@ export const updateWebhook = async (req: Request, res: Response) => {
 };
 
 export const deleteWebhook = async (req: Request, res: Response) => {
-  const { webhookId } = req.params;
+  const {
+    params: { webhookId }
+  } = await validateRequest(reqValidator.DeleteWebhookV1, req);
   let webhook = await Webhook.findById(webhookId);
 
   if (!webhook) {
     throw ResourceNotFoundError({ message: "Webhook not found!!" });
   }
 
-  await validateMembership({
-    userId: req.user._id.toString(),
-    workspaceId: webhook.workspace,
-    acceptedRoles: [ADMIN, MEMBER]
-  });
-  
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    webhook.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.Webhooks
+  );
+
   webhook = await Webhook.findByIdAndDelete(webhookId);
 
   if (!webhook) {
@@ -139,17 +165,23 @@ export const deleteWebhook = async (req: Request, res: Response) => {
 };
 
 export const testWebhook = async (req: Request, res: Response) => {
-  const { webhookId } = req.params;
+  const {
+    params: { webhookId }
+  } = await validateRequest(reqValidator.TestWebhookV1, req);
+
   const webhook = await Webhook.findById(webhookId);
   if (!webhook) {
     throw BadRequestError({ message: "Webhook not found!!" });
   }
 
-  await validateMembership({
-    userId: req.user._id.toString(),
-    workspaceId: webhook.workspace,
-    acceptedRoles: [ADMIN, MEMBER]
-  });
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    webhook.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Webhooks
+  );
 
   try {
     await triggerWebhookRequest(
@@ -182,7 +214,15 @@ export const testWebhook = async (req: Request, res: Response) => {
 };
 
 export const listWebhooks = async (req: Request, res: Response) => {
-  const { environment, workspaceId, secretPath } = req.query;
+  const {
+    query: { environment, workspaceId, secretPath }
+  } = await validateRequest(reqValidator.ListWebhooksV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Webhooks
+  );
 
   const optionalFilters: Record<string, string> = {};
   if (environment) optionalFilters.environment = environment as string;

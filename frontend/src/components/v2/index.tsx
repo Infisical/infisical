@@ -1,3 +1,4 @@
+export * from "./Accordion";
 export * from "./Button";
 export * from "./Card";
 export * from "./Checkbox";
@@ -21,6 +22,7 @@ export * from "./Skeleton";
 export * from "./Spinner";
 export * from "./Switch";
 export * from "./Table";
+export * from "./Tabs";
 export * from "./Tag";
 export * from "./TextArea";
 export * from "./Tooltip";

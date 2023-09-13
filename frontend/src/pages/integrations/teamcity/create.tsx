@@ -77,13 +77,8 @@ export default function TeamCityCreateIntegrationPage() {
         app: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId)?.name,
         appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: targetEnvironment ? targetEnvironment.name : null,
-        targetEnvironmentId: targetEnvironment ? targetEnvironment.buildConfigId : null,
-        targetService: null,
-        targetServiceId: null,
-        owner: null,
-        path: null,
-        region: null,
+        targetEnvironment: targetEnvironment?.name,
+        targetEnvironmentId: targetEnvironment?.buildConfigId,
         secretPath
       });
 

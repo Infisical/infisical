@@ -1,6 +1,8 @@
 {
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.319.0",
+    "@casl/ability": "^6.5.0",
+    "@casl/mongoose": "^7.2.1",
     "@godaddy/terminus": "^4.12.0",
     "@node-saml/passport-saml": "^4.0.4",
     "@octokit/rest": "^19.0.5",
@@ -8,6 +10,7 @@
     "@sentry/tracing": "^7.48.0",
     "@types/crypto-js": "^4.1.1",
     "@types/libsodium-wrappers": "^0.7.10",
+    "@ucast/mongo2js": "^1.3.4",
     "argon2": "^0.30.3",
     "aws-sdk": "^2.1364.0",
     "axios": "^1.3.5",
@@ -43,14 +46,14 @@
     "query-string": "^7.1.3",
     "rate-limit-mongo": "^2.3.2",
     "rimraf": "^3.0.2",
-    "swagger-autogen": "^2.22.0",
     "swagger-ui-express": "^4.6.2",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "typescript": "^4.9.3",
     "utility-types": "^3.10.0",
     "winston": "^3.8.2",
-    "winston-loki": "^6.0.7"
+    "winston-loki": "^6.0.6",
+    "zod": "^3.21.4"
   },
   "name": "infisical-api",
   "version": "1.0.0",
@@ -110,6 +113,7 @@
     "npm": "^8.19.3",
     "smee-client": "^1.2.3",
     "supertest": "^6.3.3",
+    "swagger-autogen": "^2.23.5",
     "ts-jest": "^29.0.3",
     "ts-node": "^10.9.1"
   },

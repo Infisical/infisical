@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { standardRequest } from "../../config/request";
 import { getApps, getTeams, revokeAccess } from "../../integrations";
-import { Bot, IntegrationAuth } from "../../models";
+import { Bot, IntegrationAuth, Workspace } from "../../models";
 import { EventType } from "../../ee/models";
 import { IntegrationService } from "../../services";
 import { EEAuditLogService } from "../../ee/services";
@@ -18,18 +18,40 @@ import {
   getIntegrationOptions as getIntegrationOptionsFunc
 } from "../../variables";
 import { exchangeRefresh } from "../../integrations";
+import { validateRequest } from "../../helpers/validation";
+import * as reqValidator from "../../validation/integrationAuth";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  getUserProjectPermissions
+} from "../../ee/services/ProjectRoleService";
+import { ForbiddenError } from "@casl/ability";
+import { getIntegrationAuthAccessHelper } from "../../helpers";
+import { ObjectId } from "mongodb";
 
 /***
  * Return integration authorization with id [integrationAuthId]
  */
 export const getIntegrationAuth = async (req: Request, res: Response) => {
-  const { integrationAuthId } = req.params;
+  const {
+    params: { integrationAuthId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthV1, req);
+
   const integrationAuth = await IntegrationAuth.findById(integrationAuthId);
 
   if (!integrationAuth)
     return res.status(400).send({
       message: "Failed to find integration authorization"
     });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
 
   return res.status(200).send({
     integrationAuth
@@ -51,15 +73,19 @@ export const getIntegrationOptions = async (req: Request, res: Response) => {
  * @returns
  */
 export const oAuthExchange = async (req: Request, res: Response) => {
-  const { 
-    workspaceId, 
-    code, 
-    integration,
-    url
-  } = req.body;
+  const {
+    body: { integration, workspaceId, code, url }
+  } = await validateRequest(reqValidator.OauthExchangeV1, req);
   if (!INTEGRATION_SET.has(integration)) throw new Error("Failed to validate integration");
 
-  const environments = req.membership.workspace?.environments || [];
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.Integrations
+  );
+
+  const workspace = await Workspace.findById(workspaceId);
+  const environments = workspace?.environments || [];
   if (environments.length === 0) {
     throw new Error("Failed to get environments");
   }
@@ -99,25 +125,16 @@ export const oAuthExchange = async (req: Request, res: Response) => {
 export const saveIntegrationToken = async (req: Request, res: Response) => {
   // TODO: refactor
   // TODO: check if access token is valid for each integration
-
   let integrationAuth;
   const {
-    workspaceId,
-    accessId,
-    refreshToken,
-    accessToken,
-    url,
-    namespace,
-    integration
-  }: {
-    workspaceId: string;
-    accessId: string | undefined;
-    refreshToken: string | undefined;
-    accessToken: string | undefined;
-    url: string;
-    namespace: string;
-    integration: string;
-  } = req.body;
+    body: { workspaceId, integration, url, accessId, namespace, accessToken, refreshToken }
+  } = await validateRequest(reqValidator.SaveIntegrationAccessTokenV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.Integrations
+  );
 
   const bot = await Bot.findOne({
     workspace: new Types.ObjectId(workspaceId),
@@ -138,18 +155,20 @@ export const saveIntegrationToken = async (req: Request, res: Response) => {
       namespace,
       algorithm: ALGORITHM_AES_256_GCM,
       keyEncoding: ENCODING_SCHEME_UTF8,
-      ...(integration === INTEGRATION_GCP_SECRET_MANAGER ? {
-        metadata: {
-          authMethod: "serviceAccount"
-        }
-      } : {})
+      ...(integration === INTEGRATION_GCP_SECRET_MANAGER
+        ? {
+            metadata: {
+              authMethod: "serviceAccount"
+            }
+          }
+        : {})
     },
     {
       new: true,
       upsert: true
     }
   );
-  
+
   // encrypt and save integration access details
   if (refreshToken) {
     await exchangeRefresh({
@@ -169,7 +188,7 @@ export const saveIntegrationToken = async (req: Request, res: Response) => {
   }
 
   if (!integrationAuth) throw new Error("Failed to save integration access token");
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -195,13 +214,29 @@ export const saveIntegrationToken = async (req: Request, res: Response) => {
  * @returns
  */
 export const getIntegrationAuthApps = async (req: Request, res: Response) => {
-  const teamId = req.query.teamId as string;
-  const workspaceSlug = req.query.workspaceSlug as string;
+  const {
+    params: { integrationAuthId },
+    query: { teamId, workspaceSlug }
+  } = await validateRequest(reqValidator.GetIntegrationAuthAppsV1, req);
+
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth, accessToken, accessId } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
 
   const apps = await getApps({
-    integrationAuth: req.integrationAuth,
-    accessToken: req.accessToken,
-    accessId: req.accessId,
+    integrationAuth: integrationAuth,
+    accessToken: accessToken,
+    accessId: accessId,
     ...(teamId && { teamId }),
     ...(workspaceSlug && { workspaceSlug })
   });
@@ -218,9 +253,27 @@ export const getIntegrationAuthApps = async (req: Request, res: Response) => {
  * @returns
  */
 export const getIntegrationAuthTeams = async (req: Request, res: Response) => {
+  const {
+    params: { integrationAuthId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthTeamsV1, req);
+
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
+
   const teams = await getTeams({
-    integrationAuth: req.integrationAuth,
-    accessToken: req.accessToken
+    integrationAuth: integrationAuth,
+    accessToken: accessToken
   });
 
   return res.status(200).send({
@@ -235,7 +288,24 @@ export const getIntegrationAuthTeams = async (req: Request, res: Response) => {
  * @param res
  */
 export const getIntegrationAuthVercelBranches = async (req: Request, res: Response) => {
-  const appId = req.query.appId as string;
+  const {
+    params: { integrationAuthId },
+    query: { appId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthVercelBranchesV1, req);
+
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
 
   interface VercelBranch {
     ref: string;
@@ -245,9 +315,9 @@ export const getIntegrationAuthVercelBranches = async (req: Request, res: Respon
 
   const params = new URLSearchParams({
     projectId: appId,
-    ...(req.integrationAuth.teamId
+    ...(integrationAuth.teamId
       ? {
-          teamId: req.integrationAuth.teamId
+          teamId: integrationAuth.teamId
         }
       : {})
   });
@@ -260,7 +330,7 @@ export const getIntegrationAuthVercelBranches = async (req: Request, res: Respon
       {
         params,
         headers: {
-          Authorization: `Bearer ${req.accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           "Accept-Encoding": "application/json"
         }
       }
@@ -281,7 +351,24 @@ export const getIntegrationAuthVercelBranches = async (req: Request, res: Respon
  * @param res
  */
 export const getIntegrationAuthRailwayEnvironments = async (req: Request, res: Response) => {
-  const appId = req.query.appId as string;
+  const {
+    params: { integrationAuthId },
+    query: { appId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthRailwayEnvironmentsV1, req);
+
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
 
   interface RailwayEnvironment {
     node: {
@@ -331,7 +418,7 @@ export const getIntegrationAuthRailwayEnvironments = async (req: Request, res: R
       },
       {
         headers: {
-          Authorization: `Bearer ${req.accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json"
         }
       }
@@ -357,7 +444,24 @@ export const getIntegrationAuthRailwayEnvironments = async (req: Request, res: R
  * @param res
  */
 export const getIntegrationAuthRailwayServices = async (req: Request, res: Response) => {
-  const appId = req.query.appId as string;
+  const {
+    params: { integrationAuthId },
+    query: { appId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthRailwayServicesV1, req);
+
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
 
   interface RailwayService {
     node: {
@@ -422,7 +526,7 @@ export const getIntegrationAuthRailwayServices = async (req: Request, res: Respo
       },
       {
         headers: {
-          Authorization: `Bearer ${req.accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json"
         }
       }
@@ -446,7 +550,6 @@ export const getIntegrationAuthRailwayServices = async (req: Request, res: Respo
  * @returns
  */
 export const getIntegrationAuthBitBucketWorkspaces = async (req: Request, res: Response) => {
-  
   interface WorkspaceResponse {
     size: number;
     page: number;
@@ -466,31 +569,46 @@ export const getIntegrationAuthBitBucketWorkspaces = async (req: Request, res: R
     updated_on: string;
   }
 
+  const {
+    params: { integrationAuthId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthBitbucketWorkspacesV1, req);
+
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
+
   const workspaces: Workspace[] = [];
   let hasNextPage = true;
-  let workspaceUrl = `${INTEGRATION_BITBUCKET_API_URL}/2.0/workspaces`
+  let workspaceUrl = `${INTEGRATION_BITBUCKET_API_URL}/2.0/workspaces`;
 
   while (hasNextPage) {
-    const { data }: { data: WorkspaceResponse } = await standardRequest.get(
-      workspaceUrl,
-      {
-        headers: {
-          Authorization: `Bearer ${req.accessToken}`,
-          "Accept-Encoding": "application/json"
-        }
+    const { data }: { data: WorkspaceResponse } = await standardRequest.get(workspaceUrl, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
       }
-    );
-    
+    });
+
     if (data?.values.length > 0) {
       data.values.forEach((workspace) => {
-        workspaces.push(workspace)
-      })
+        workspaces.push(workspace);
+      });
     }
 
     if (data.next) {
-      workspaceUrl = data.next
+      workspaceUrl = data.next;
     } else {
-      hasNextPage = false
+      hasNextPage = false;
     }
   }
 
@@ -501,13 +619,30 @@ export const getIntegrationAuthBitBucketWorkspaces = async (req: Request, res: R
 
 /**
  * Return list of secret groups for Northflank project with id [appId]
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const getIntegrationAuthNorthflankSecretGroups = async (req: Request, res: Response) => {
-  const appId = req.query.appId as string;
-  
+  const {
+    params: { integrationAuthId },
+    query: { appId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthNorthflankSecretGroupsV1, req);
+
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
+
   interface NorthflankSecretGroup {
     id: string;
     name: string;
@@ -515,43 +650,41 @@ export const getIntegrationAuthNorthflankSecretGroups = async (req: Request, res
     priority: number;
     projectId: string;
   }
-  
+
   interface SecretGroup {
     name: string;
     groupId: string;
   }
-  
+
   const secretGroups: SecretGroup[] = [];
 
-  if (appId && appId !== "") { 
+  if (appId && appId !== "") {
     let page = 1;
     const perPage = 10;
     let hasMorePages = true;
-    
-    while(hasMorePages) {
+
+    while (hasMorePages) {
       const params = new URLSearchParams({
         page: String(page),
         per_page: String(perPage),
-        filter: "all",
+        filter: "all"
       });
 
       const {
         data: {
-          data: {
-            secrets
-          }
+          data: { secrets }
         }
-      } = await standardRequest.get<{ data: { secrets: NorthflankSecretGroup[] }}>(
+      } = await standardRequest.get<{ data: { secrets: NorthflankSecretGroup[] } }>(
         `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects/${appId}/secrets`,
         {
           params,
           headers: {
-            Authorization: `Bearer ${req.accessToken}`,
-            "Accept-Encoding": "application/json",
-          },
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
         }
       );
-      
+
       secrets.forEach((a: any) => {
         secretGroups.push({
           name: a.name,
@@ -566,21 +699,37 @@ export const getIntegrationAuthNorthflankSecretGroups = async (req: Request, res
       page++;
     }
   }
-  
+
   return res.status(200).send({
     secretGroups
   });
-}
+};
 
 /**
  * Return list of build configs for TeamCity project with id [appId]
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: Response) => {
-  const appId = req.query.appId as string;
-  
+  const {
+    params: { integrationAuthId, appId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthTeamCityBuildConfigsV1, req);
+
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
+
   interface TeamCityBuildConfig {
     id: string;
     name: string;
@@ -589,27 +738,29 @@ export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: 
     href: string;
     webUrl: string;
   }
-  
+
   interface GetTeamCityBuildConfigsRes {
     count: number;
     href: string;
     buildType: TeamCityBuildConfig[];
   }
-  
 
   if (appId && appId !== "") {
-    const { data: { buildType } } = (
-      await standardRequest.get<GetTeamCityBuildConfigsRes>(`${req.integrationAuth.url}/app/rest/buildTypes`, {
+    const {
+      data: { buildType }
+    } = await standardRequest.get<GetTeamCityBuildConfigsRes>(
+      `${req.integrationAuth.url}/app/rest/buildTypes`,
+      {
         params: {
           locator: `project:${appId}`
         },
         headers: {
           Authorization: `Bearer ${req.accessToken}`,
-          Accept: "application/json",
-        },
-      })
+          Accept: "application/json"
+        }
+      }
     );
-    
+
     return res.status(200).send({
       buildConfigs: buildType.map((buildConfig) => ({
         name: buildConfig.name,
@@ -617,11 +768,11 @@ export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: 
       }))
     });
   }
-  
+
   return res.status(200).send({
     buildConfigs: []
   });
-}
+};
 
 /**
  * Delete integration authorization with id [integrationAuthId]
@@ -630,30 +781,48 @@ export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: 
  * @returns
  */
 export const deleteIntegrationAuth = async (req: Request, res: Response) => {
-  const integrationAuth = await revokeAccess({
-    integrationAuth: req.integrationAuth,
-    accessToken: req.accessToken
+  const {
+    params: { integrationAuthId }
+  } = await validateRequest(reqValidator.DeleteIntegrationAuthV1, req);
+
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
   });
-  
-  if (!integrationAuth) return res.status(400).send({
-    message: "Failed to find integration authorization"
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.Integrations
+  );
+
+  const deletedIntegrationAuth = await revokeAccess({
+    integrationAuth: integrationAuth,
+    accessToken: accessToken
   });
+
+  if (!deletedIntegrationAuth)
+    return res.status(400).send({
+      message: "Failed to find integration authorization"
+    });
 
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
       type: EventType.UNAUTHORIZE_INTEGRATION,
       metadata: {
-        integration: integrationAuth.integration
+        integration: deletedIntegrationAuth.integration
       }
     },
     {
-      workspaceId: integrationAuth.workspace
+      workspaceId: deletedIntegrationAuth.workspace
     }
   );
 
   return res.status(200).send({
-    integrationAuth
+    integrationAuth: deletedIntegrationAuth
   });
 };
-

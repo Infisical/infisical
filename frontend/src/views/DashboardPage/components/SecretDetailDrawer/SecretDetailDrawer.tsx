@@ -1,7 +1,9 @@
 import { useFormContext, useWatch } from "react-hook-form";
+import { subject } from "@casl/ability";
 import { faCircle, faCircleDot, faShuffle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   Drawer,
@@ -14,6 +16,7 @@ import {
   Switch,
   TextArea
 } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 import { FormData, SecretActionType } from "../../DashboardPage.utils";
@@ -21,6 +24,8 @@ import { GenRandomNumber } from "./GenRandomNumber";
 
 type Props = {
   isDrawerOpen: boolean;
+  environment: string;
+  secretPath: string;
   onOpenChange: (isOpen: boolean) => void;
   index: number;
   isReadOnly?: boolean;
@@ -39,7 +44,9 @@ export const SecretDetailDrawer = ({
   isReadOnly,
   onSecretDelete,
   onSave,
-  onEnvCompare
+  onEnvCompare,
+  environment,
+  secretPath
 }: Props): JSX.Element => {
   const [canRevealSecVal, setCanRevealSecVal] = useToggle();
   const [canRevealSecOverride, setCanRevealSecOverride] = useToggle();
@@ -85,20 +92,34 @@ export const SecretDetailDrawer = ({
               </Button>
             </div>
             <div className="flex w-full space-x-2">
-              <Button isFullWidth onClick={onSave} isDisabled={isReadOnly}>
-                Save Changes
-              </Button>
-              <Button
-                colorSchema="danger"
-                isDisabled={isReadOnly}
-                onClick={() => {
-                  const secret = getValues(`secrets.${index}`);
-                  
-                  onSecretDelete(index, secret.key, secret._id, secret.idOverride);
-                }}
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Edit}
+                a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
               >
-                Delete
-              </Button>
+                {(isAllowed) => (
+                  <Button isFullWidth onClick={onSave} isDisabled={isReadOnly || !isAllowed}>
+                    Save Changes
+                  </Button>
+                )}
+              </ProjectPermissionCan>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Delete}
+                a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+              >
+                {(isAllowed) => (
+                  <Button
+                    colorSchema="danger"
+                    isDisabled={isReadOnly || !isAllowed}
+                    onClick={() => {
+                      const secret = getValues(`secrets.${index}`);
+
+                      onSecretDelete(index, secret.key, secret._id, secret.idOverride);
+                    }}
+                  >
+                    Delete
+                  </Button>
+                )}
+              </ProjectPermissionCan>
             </div>
           </div>
         }

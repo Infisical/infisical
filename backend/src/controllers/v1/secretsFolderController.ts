@@ -1,10 +1,12 @@
+import { ForbiddenError, subject } from "@casl/ability";
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { EventType, FolderVersion } from "../../ee/models";
 import { EEAuditLogService, EESecretService } from "../../ee/services";
-import { validateMembership } from "../../helpers/membership";
 import { isValidScope } from "../../helpers/secrets";
-import { Folder, Secret, ServiceTokenData } from "../../models";
+import { validateRequest } from "../../helpers/validation";
+import { Secret, ServiceTokenData } from "../../models";
+import { Folder } from "../../models/folder";
 import {
   appendFolder,
   deleteFolderById,
@@ -15,12 +17,99 @@ import {
   getParentFromFolderId,
   validateFolderName
 } from "../../services/FolderService";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  getUserProjectPermissions
+} from "../../ee/services/ProjectRoleService";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import { ADMIN, MEMBER } from "../../variables";
+import * as reqValidator from "../../validation/folders";
 
-// verify workspace id/environment
+/**
+ * Create folder with name [folderName] for workspace with id [workspaceId]
+ * and environment [environment]
+ * @param req
+ * @param res
+ * @returns
+ */
 export const createFolder = async (req: Request, res: Response) => {
-  const { workspaceId, environment, folderName, parentFolderId } = req.body;
+  /* 
+    #swagger.summary = 'Create a folder'
+    #swagger.description = 'Create a new folder in a specified workspace and environment'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+    #swagger.requestBody = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "workspaceId": {
+                            "type": "string",
+                            "description": "ID of the workspace where the folder will be created",
+                            "example": "someWorkspaceId"
+                        },
+                        "environment": {
+                            "type": "string",
+                            "description": "Environment where the folder will reside",
+                            "example": "production"
+                        },
+                        "folderName": {
+                            "type": "string",
+                            "description": "Name of the folder to be created",
+                            "example": "my_folder"
+                        },
+                        "parentFolderId": {
+                            "type": "string",
+                            "description": "ID of the parent folder under which this folder will be created. If not specified, it will be created at the root level.",
+                            "example": "someParentFolderId"
+                        }
+                    },
+                    "required": ["workspaceId", "environment", "folderName"]
+                }
+            }
+        }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "folder": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "example": "someFolderId"
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "example": "my_folder"
+                                }
+                            },
+                            "description": "Details of the created folder"
+                        }
+                    }
+                }
+            }
+        }
+    }
+    #swagger.responses[400] = {
+        description: "Bad Request. For example, 'Folder name cannot contain spaces. Only underscore and dashes'"
+    }
+    #swagger.responses[401] = {
+        description: "Unauthorized request. For example, 'Folder Permission Denied'"
+    }
+  */
+  const {
+    body: { workspaceId, environment, folderName, parentFolderId }
+  } = await validateRequest(reqValidator.CreateFolderV1, req);
+
   if (!validateFolderName(folderName)) {
     throw BadRequestError({
       message: "Folder name cannot contain spaces. Only underscore and dashes"
@@ -32,8 +121,20 @@ export const createFolder = async (req: Request, res: Response) => {
     environment
   }).lean();
 
+  if (req.user) {
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const secretPath =
+      folders && parentFolderId
+        ? getFolderWithPathFromId(folders.nodes, parentFolderId).folderPath
+        : "/";
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Folders, { environment, secretPath })
+    );
+  }
+
   // space has no folders initialized
-  
+
   if (!folders) {
     if (req.authData.authPayload instanceof ServiceTokenData) {
       // root check
@@ -62,10 +163,10 @@ export const createFolder = async (req: Request, res: Response) => {
     });
     await folderVersion.save();
     await EESecretService.takeSecretSnapshot({
-      workspaceId,
+      workspaceId: new Types.ObjectId(workspaceId),
       environment
     });
-    
+
     await EEAuditLogService.createAuditLog(
       req.authData,
       {
@@ -86,9 +187,9 @@ export const createFolder = async (req: Request, res: Response) => {
   }
 
   const folder = appendFolder(folders.nodes, { folderName, parentFolderId });
-  
+
   await Folder.findByIdAndUpdate(folders._id, folders);
-  
+
   const { folder: parentFolder, folderPath: parentFolderPath } = getFolderWithPathFromId(
     folders.nodes,
     parentFolderId || "root"
@@ -116,13 +217,13 @@ export const createFolder = async (req: Request, res: Response) => {
   await folderVersion.save();
 
   await EESecretService.takeSecretSnapshot({
-    workspaceId,
+    workspaceId: new Types.ObjectId(workspaceId),
     environment,
     folderId: parentFolderId
   });
-  
-  const {folderPath} = getFolderWithPathFromId(folders.nodes, folder.id);
-  
+
+  const { folderPath } = getFolderWithPathFromId(folders.nodes, folder.id);
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -142,9 +243,99 @@ export const createFolder = async (req: Request, res: Response) => {
   return res.json({ folder });
 };
 
+/**
+ * Update folder with id [folderId]
+ * @param req
+ * @param res
+ * @returns
+ */
 export const updateFolderById = async (req: Request, res: Response) => {
-  const { folderId } = req.params;
-  const { name, workspaceId, environment } = req.body;
+  /* 
+    #swagger.summary = 'Update a folder by ID'
+    #swagger.description = 'Update the name of a folder in a specified workspace and environment by its ID'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+    #swagger.parameters['folderId'] = {
+        "description": "ID of the folder to be updated",
+        "required": true,
+        "type": "string",
+        "in": "path"
+    }
+
+    #swagger.requestBody = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "workspaceId": {
+                            "type": "string",
+                            "description": "ID of the workspace where the folder is located",
+                            "example": "someWorkspaceId"
+                        },
+                        "environment": {
+                            "type": "string",
+                            "description": "Environment where the folder is located",
+                            "example": "production"
+                        },
+                        "name": {
+                            "type": "string",
+                            "description": "New name for the folder",
+                            "example": "updated_folder_name"
+                        }
+                    },
+                    "required": ["workspaceId", "environment", "name"]
+                }
+            }
+        }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string",
+                            "example": "Successfully updated folder"
+                        },
+                        "folder": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "example": "updated_folder_name"
+                                },
+                                "id": {
+                                    "type": "string",
+                                    "example": "someFolderId"
+                                }
+                            },
+                            "description": "Details of the updated folder"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #swagger.responses[400] = {
+        description: "Bad Request. Reasons can include 'The folder doesn't exist' or 'Folder name cannot contain spaces. Only underscore and dashes'"
+    }
+
+    #swagger.responses[401] = {
+        description: "Unauthorized request. For example, 'Folder Permission Denied'"
+    }
+  */
+  const {
+    body: { workspaceId, environment, name },
+    params: { folderId }
+  } = await validateRequest(reqValidator.UpdateFolderV1, req);
+
   if (!validateFolderName(name)) {
     throw BadRequestError({
       message: "Folder name cannot contain spaces. Only underscore and dashes"
@@ -156,21 +347,21 @@ export const updateFolderById = async (req: Request, res: Response) => {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
 
-  if (!(req.authData.authPayload instanceof ServiceTokenData)) {
-    // check that user is a member of the workspace
-    await validateMembership({
-      userId: req.user._id.toString(),
-      workspaceId,
-      acceptedRoles: [ADMIN, MEMBER]
-    });
-  }
-
   const parentFolder = getParentFromFolderId(folders.nodes, folderId);
   if (!parentFolder) {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
+
+  if (req.user) {
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const secretPath = getFolderWithPathFromId(folders.nodes, parentFolder.id).folderPath;
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Folders, { environment, secretPath })
+    );
+  }
+
   const folder = parentFolder.children.find(({ id }) => id === folderId);
-  
   if (!folder) {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
@@ -197,13 +388,13 @@ export const updateFolderById = async (req: Request, res: Response) => {
   await folderVersion.save();
 
   await EESecretService.takeSecretSnapshot({
-    workspaceId,
+    workspaceId: new Types.ObjectId(workspaceId),
     environment,
     folderId: parentFolder.id
   });
 
-  const {folderPath} = getFolderWithPathFromId(folders.nodes, folder.id);
-  
+  const { folderPath } = getFolderWithPathFromId(folders.nodes, folder.id);
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -227,38 +418,121 @@ export const updateFolderById = async (req: Request, res: Response) => {
   });
 };
 
+/**
+ * Delete folder with id [folderId]
+ * @param req
+ * @param res
+ * @returns
+ */
 export const deleteFolder = async (req: Request, res: Response) => {
-  const { folderId } = req.params;
-  const { workspaceId, environment } = req.body;
+  /* 
+    #swagger.summary = 'Delete a folder by ID'
+    #swagger.description = 'Delete the specified folder from a specified workspace and environment using its ID'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+    #swagger.parameters['folderId'] = {
+        "description": "ID of the folder to be deleted",
+        "required": true,
+        "type": "string",
+        "in": "path"
+    }
+
+    #swagger.requestBody = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "workspaceId": {
+                            "type": "string",
+                            "description": "ID of the workspace where the folder is located",
+                            "example": "someWorkspaceId"
+                        },
+                        "environment": {
+                            "type": "string",
+                            "description": "Environment where the folder is located",
+                            "example": "production"
+                        }
+                    },
+                    "required": ["workspaceId", "environment"]
+                }
+            }
+        }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string",
+                            "example": "successfully deleted folders"
+                        },
+                        "folders": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "example": "someFolderId"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "example": "someFolderName"
+                                    }
+                                }
+                            },
+                            "description": "List of IDs and names of the deleted folders"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #swagger.responses[400] = {
+        description: "Bad Request. Reasons can include 'The folder doesn't exist'"
+    }
+
+    #swagger.responses[401] = {
+        description: "Unauthorized request. For example, 'Folder Permission Denied'"
+    }
+  */
+  const {
+    params: { folderId },
+    body: { environment, workspaceId }
+  } = await validateRequest(reqValidator.DeleteFolderV1, req);
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
   if (!folders) {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
 
-  if (!(req.authData.authPayload instanceof ServiceTokenData)) {
-    // check that user is a member of the workspace
-    await validateMembership({
-      userId: req.user._id.toString(),
-      workspaceId,
-      acceptedRoles: [ADMIN, MEMBER]
-    });
-  }
-
-  const {folderPath} = getFolderWithPathFromId(folders.nodes, folderId);
-
   const delOp = deleteFolderById(folders.nodes, folderId);
   if (!delOp) {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
   const { deletedNode: delFolder, parent: parentFolder } = delOp;
+  const { folderPath: secretPath } = getFolderWithPathFromId(folders.nodes, parentFolder.id);
 
   if (req.authData.authPayload instanceof ServiceTokenData) {
-    const { folderPath: secretPath } = getFolderWithPathFromId(folders.nodes, parentFolder.id);
     const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, secretPath);
     if (!isValidScopeAccess) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
+  } else {
+    // check that user is a member of the workspace
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Delete,
+      subject(ProjectPermissionSub.Folders, { environment, secretPath })
+    );
   }
 
   parentFolder.version += 1;
@@ -280,7 +554,7 @@ export const deleteFolder = async (req: Request, res: Response) => {
   }
 
   await EESecretService.takeSecretSnapshot({
-    workspaceId,
+    workspaceId: new Types.ObjectId(workspaceId),
     environment,
     folderId: parentFolder.id
   });
@@ -288,12 +562,12 @@ export const deleteFolder = async (req: Request, res: Response) => {
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
-      type: EventType.DELETE_FOLDER ,
+      type: EventType.DELETE_FOLDER,
       metadata: {
         environment,
         folderId,
         folderName: delFolder.name,
-        folderPath
+        folderPath: secretPath
       }
     },
     {
@@ -304,28 +578,126 @@ export const deleteFolder = async (req: Request, res: Response) => {
   res.send({ message: "successfully deleted folders", folders: delFolderIds });
 };
 
-// TODO: validate workspace
+/**
+ * Get folders for workspace with id [workspaceId] and environment [environment]
+ * considering [parentFolderId] and [parentFolderPath]
+ * @param req
+ * @param res
+ * @returns
+ */
 export const getFolders = async (req: Request, res: Response) => {
-  const { workspaceId, environment, parentFolderId, parentFolderPath } = req.query as {
-    workspaceId: string;
-    environment: string;
-    parentFolderId?: string;
-    parentFolderPath?: string;
-  };
+  /*
+    #swagger.summary = 'Retrieve folders based on specific conditions'
+    #swagger.description = 'Fetches folders from the specified workspace and environment, optionally providing either a parentFolderId or a parentFolderPath to narrow down results'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+    #swagger.parameters['workspaceId'] = {
+        "description": "ID of the workspace from which the folders are to be fetched",
+        "required": true,
+        "type": "string",
+        "in": "query"
+    }
+
+    #swagger.parameters['environment'] = {
+        "description": "Environment where the folder is located",
+        "required": true,
+        "type": "string",
+        "in": "query"
+    }
+
+    #swagger.parameters['parentFolderId'] = {
+        "description": "ID of the parent folder",
+        "required": false,
+        "type": "string",
+        "in": "query"
+    }
+
+    #swagger.parameters['parentFolderPath'] = {
+        "description": "Path of the parent folder, like /folder1/folder2",
+        "required": false,
+        "type": "string",
+        "in": "query"
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "folders": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "example": "someFolderId"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "example": "someFolderName"
+                                    }
+                                }
+                            },
+                            "description": "List of folders"
+                        },
+                        "dir": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "parentFolderName"
+                                    },
+                                    "id": {
+                                        "type": "string",
+                                        "example": "parentFolderId"
+                                    }
+                                }
+                            },
+                            "description": "List of directories"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #swagger.responses[400] = {
+        description: "Bad Request. For instance, 'The folder doesn't exist'"
+    }
+
+    #swagger.responses[401] = {
+        description: "Unauthorized request. For example, 'Folder Permission Denied'"
+    }
+  */
+  const {
+    query: { workspaceId, environment, parentFolderId, parentFolderPath }
+  } = await validateRequest(reqValidator.GetFoldersV1, req);
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
+
+  if (req.user) {
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const secretPath =
+      folders && parentFolderId
+        ? getFolderWithPathFromId(folders.nodes, parentFolderId).folderPath
+        : parentFolderPath || "/";
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Folders, { environment, secretPath })
+    );
+  }
+
   if (!folders) {
     res.send({ folders: [], dir: [] });
     return;
-  }
-
-  if (!(req.authData.authPayload instanceof ServiceTokenData)) {
-    // check that user is a member of the workspace
-    await validateMembership({
-      userId: req.user._id.toString(),
-      workspaceId,
-      acceptedRoles: [ADMIN, MEMBER]
-    });
   }
 
   // if instead of parentFolderId given a path like /folder1/folder2

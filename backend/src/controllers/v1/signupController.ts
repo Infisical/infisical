@@ -10,6 +10,8 @@ import {
   getSmtpConfigured
 } from "../../config";
 import { validateUserEmail } from "../../validation";
+import { validateRequest } from "../../helpers/validation";
+import * as reqValidator from "../../validation/auth";
 
 /**
  * Signup step 1: Initialize account for user under email [email] and send a verification code
@@ -19,7 +21,9 @@ import { validateUserEmail } from "../../validation";
  * @returns
  */
 export const beginEmailSignup = async (req: Request, res: Response) => {
-  const email: string = req.body.email;
+  const {
+    body: { email }
+  } = await validateRequest(reqValidator.BeginEmailSignUpV1, req);
 
   // validate that email is not disposable
   validateUserEmail(email);
@@ -50,7 +54,9 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
  */
 export const verifyEmailSignup = async (req: Request, res: Response) => {
   let user;
-  const { email, code } = req.body;
+  const {
+    body: { email, code }
+  } = await validateRequest(reqValidator.VerifyEmailSignUpV1, req);
 
   // initialize user account
   user = await User.findOne({ email }).select("+publicKey");
