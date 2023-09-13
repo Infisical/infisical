@@ -16,7 +16,7 @@ import integration from "./integration";
 import integrationAuth from "./integrationAuth";
 import secretsFolder from "./secretsFolder";
 import webhooks from "./webhook";
-import secretImport from "./secretImport";
+import secretImps from "./secretImps";
 import role from "./role";
 
 export {
@@ -38,6 +38,6 @@ export {
   integrationAuth,
   secretsFolder,
   webhooks,
-  secretImport,
+  secretImps,
   role
 };
