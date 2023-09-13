@@ -6,7 +6,8 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-import { INFISICAL_RADAR_GITHUB_URL } from "@app/pages/org/[id]/secret-scanning";
+
+const INFISICAL_RADAR_GITHUB_URL = "https://github.com/apps/infisical-radar";
 
 export const ConfigureInfisicalRadar: FC = () => {
   const { createNotification } = useNotificationContext();
