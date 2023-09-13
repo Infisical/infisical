@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
+    "paths": {
+      "@app/*": ["./src/*"]
+    },
     "target": "es2016",
     "lib": ["es6", "es2021"],
     "module": "commonjs",
@@ -13,10 +16,7 @@
     "strict": true,
     "noImplicitAny": true,
     "skipLibCheck": true,
-    "typeRoots": ["./src/types", "./node_modules/@types"],
-    "paths": {
-      "@app/*": ["./src/*"]
-    }
+    "typeRoots": ["./src/types", "./node_modules/@types"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules"]
