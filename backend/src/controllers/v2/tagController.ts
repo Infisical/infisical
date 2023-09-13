@@ -8,7 +8,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../services/ProjectRoleService";
+} from "../../ee/services/ProjectRoleService";
 import * as reqValidator from "../../validation/tags";
 
 export const createWorkspaceTag = async (req: Request, res: Response) => {

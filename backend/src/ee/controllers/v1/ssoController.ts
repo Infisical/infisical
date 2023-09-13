@@ -14,7 +14,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../../services/RoleService";
+} from "../../services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 
 /**

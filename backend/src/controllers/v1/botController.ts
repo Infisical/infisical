@@ -8,7 +8,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../services/ProjectRoleService";
+} from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 import { BadRequestError } from "../../utils/errors";
 

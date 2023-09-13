@@ -3,7 +3,7 @@ import { Types } from "mongoose";
 import { validateRequest } from "../../helpers/validation";
 import { Secret } from "../../models";
 import { SecretService } from "../../services";
-import { getUserProjectPermissions } from "../../services/ProjectRoleService";
+import { getUserProjectPermissions } from "../../ee/services/ProjectRoleService";
 import { UnauthorizedRequestError } from "../../utils/errors";
 import * as reqValidator from "../../validation/workspace";
 

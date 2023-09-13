@@ -22,7 +22,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../services/RoleService";
+} from "../../ee/services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 
 /**

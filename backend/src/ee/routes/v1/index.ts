@@ -7,15 +7,17 @@ import workspace from "./workspace";
 import action from "./action";
 import cloudProducts from "./cloudProducts";
 import secretScanning from "./secretScanning";
+import roles from "./role";
 
 export {
-    secret,
-    secretSnapshot,
-    organizations,
-    sso,
-    users,
-    workspace,
-    action,
-    cloudProducts,
-    secretScanning
-}
+  secret,
+  secretSnapshot,
+  organizations,
+  sso,
+  users,
+  workspace,
+  action,
+  cloudProducts,
+  secretScanning,
+  roles
+};

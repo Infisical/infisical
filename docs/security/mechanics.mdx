@@ -11,7 +11,7 @@ The 256-bit key is used to encrypt the private key; the 256-bit key itself is th
 
 The encrypted private key, protected key, user identifier information, and SRP details are forwarded to the server.
 
-Once authenticated via SRP, a user is issued a JWT and refresh token. The JWT token is stored in browser memory under a write-only class `SecurityClient` that appends the token to all future outbound requests requiring authentication. The refresh token is stored in an `HttpOnly` cookie and included in future requests to `/api/token` for JWT token renewal. This design side-steps potential XSS attacks on local storage.
+Once authenticated via SRP, a user is issued a JWT and refresh token. The JWT token is stored in browser memory and is appended to all future outbound requests requiring authentication. The refresh token is stored in an `HttpOnly` cookie and included in future requests to `/api/token` for JWT token renewal. This design side-steps potential XSS attacks on local storage.
 
 <Info>
   Infisical authenticates users using the SRP protocol. With SRP, the server can

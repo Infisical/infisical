@@ -1,22 +1,24 @@
 import { Request, Response } from "express";
-import GitAppInstallationSession from "../../ee/models/gitAppInstallationSession";
 import crypto from "crypto";
 import { Types } from "mongoose";
-import { OrganizationNotFoundError, UnauthorizedRequestError } from "../../utils/errors";
-import GitAppOrganizationInstallation from "../../ee/models/gitAppOrganizationInstallation";
-import { scanGithubFullRepoForSecretLeaks  } from "../../queues/secret-scanning/githubScanFullRepository"
-import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
-import GitRisks from "../../ee/models/gitRisks";
 import { ProbotOctokit } from "probot";
+import { ForbiddenError } from "@casl/ability";
+
+import GitAppInstallationSession from "../../ee/models/gitAppInstallationSession";
+import GitAppOrganizationInstallation from "../../ee/models/gitAppOrganizationInstallation";
+import GitRisks from "../../ee/models/gitRisks";
 import { Organization } from "../../models";
+
+import { scanGithubFullRepoForSecretLeaks } from "../../queues/secret-scanning/githubScanFullRepository";
+import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
+import { OrganizationNotFoundError, UnauthorizedRequestError } from "../../utils/errors";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/secretScanning";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../services/RoleService";
-import { ForbiddenError } from "@casl/ability";
+} from "../../ee/services/RoleService";
 
 export const createInstallationSession = async (req: Request, res: Response) => {
   const sessionId = crypto.randomBytes(16).toString("hex");
@@ -95,12 +97,18 @@ export const linkInstallationToOrganization = async (req: Request, res: Response
     },
   });
 
-  const { data: { repositories }}= await octokit.apps.listReposAccessibleToInstallation()
+  const {
+    data: { repositories }
+  } = await octokit.apps.listReposAccessibleToInstallation();
   for (const repository of repositories) {
-    scanGithubFullRepoForSecretLeaks({organizationId: installationSession.organization.toString(), installationId, repository: {id: repository.id, fullName: repository.full_name}})
+    scanGithubFullRepoForSecretLeaks({
+      organizationId: installationSession.organization.toString(),
+      installationId,
+      repository: { id: repository.id, fullName: repository.full_name }
+    });
   }
-  res.json(installationLink)
-}
+  res.json(installationLink);
+};
 
 export const getCurrentOrganizationInstallationStatus = async (req: Request, res: Response) => {
   const { organizationId } = req.params;

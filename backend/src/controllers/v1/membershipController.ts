@@ -13,9 +13,9 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../services/ProjectRoleService";
+} from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
-import Role from "../../models/role";
+import Role from "../../ee/models/role";
 import { BadRequestError } from "../../utils/errors";
 import { InviteUserToWorkspaceV1 } from "../../validation/workspace";
 

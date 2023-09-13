@@ -24,7 +24,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../services/ProjectRoleService";
+} from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 import { getIntegrationAuthAccessHelper } from "../../helpers";
 import { ObjectId } from "mongodb";
@@ -155,18 +155,20 @@ export const saveIntegrationToken = async (req: Request, res: Response) => {
       namespace,
       algorithm: ALGORITHM_AES_256_GCM,
       keyEncoding: ENCODING_SCHEME_UTF8,
-      ...(integration === INTEGRATION_GCP_SECRET_MANAGER ? {
-        metadata: {
-          authMethod: "serviceAccount"
-        }
-      } : {})
+      ...(integration === INTEGRATION_GCP_SECRET_MANAGER
+        ? {
+            metadata: {
+              authMethod: "serviceAccount"
+            }
+          }
+        : {})
     },
     {
       new: true,
       upsert: true
     }
   );
-  
+
   // encrypt and save integration access details
   if (refreshToken) {
     await exchangeRefresh({
@@ -705,14 +707,14 @@ export const getIntegrationAuthNorthflankSecretGroups = async (req: Request, res
 
 /**
  * Return list of build configs for TeamCity project with id [appId]
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: Response) => {
   const {
-    params: { integrationAuthId,appId },
-  } = await validateRequest(reqValidator.GetIntegrationAuthTeamCityBuildConfigsV1 , req);
+    params: { integrationAuthId, appId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthTeamCityBuildConfigsV1, req);
 
   // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
   const { integrationAuth } = await getIntegrationAuthAccessHelper({
@@ -727,7 +729,7 @@ export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: 
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
   );
-  
+
   interface TeamCityBuildConfig {
     id: string;
     name: string;
@@ -736,27 +738,29 @@ export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: 
     href: string;
     webUrl: string;
   }
-  
+
   interface GetTeamCityBuildConfigsRes {
     count: number;
     href: string;
     buildType: TeamCityBuildConfig[];
   }
-  
 
   if (appId && appId !== "") {
-    const { data: { buildType } } = (
-      await standardRequest.get<GetTeamCityBuildConfigsRes>(`${req.integrationAuth.url}/app/rest/buildTypes`, {
+    const {
+      data: { buildType }
+    } = await standardRequest.get<GetTeamCityBuildConfigsRes>(
+      `${req.integrationAuth.url}/app/rest/buildTypes`,
+      {
         params: {
           locator: `project:${appId}`
         },
         headers: {
           Authorization: `Bearer ${req.accessToken}`,
-          Accept: "application/json",
-        },
-      })
+          Accept: "application/json"
+        }
+      }
     );
-    
+
     return res.status(200).send({
       buildConfigs: buildType.map((buildConfig) => ({
         name: buildConfig.name,
@@ -764,11 +768,11 @@ export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: 
       }))
     });
   }
-  
+
   return res.status(200).send({
     buildConfigs: []
   });
-}
+};
 
 /**
  * Delete integration authorization with id [integrationAuthId]

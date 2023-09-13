@@ -1,0 +1,97 @@
+---
+title: "Flows"
+description: "Infisical's core flows have strong cryptographic underpinnings"
+---
+
+## Signup
+
+When a user signs up for an account using email/password, they verify their email by correctly entering the 6-digit OTP code sent to it.
+
+After this procedure, the user creates a password that is checked against strict requirements to ensure that it has sufficient entropy; this is critical because passwords have both authentication-related and cryptographic implications in Infisical. In accordance to the [secure remote password protocol (SRP)](https://en.wikipedia.org/wiki/Secure_Remote_Password_protocol), the password is used to generate a salt and X; this is kept handy on the client side.
+
+Next, a few user-associated symmetric keys are generated for subsequent use:
+
+- The password is transformed into a 256-bit symmetric key, called the generated key, using the [Argon2id](https://en.wikipedia.org/wiki/Argon2) key derivation function. 
+- A 256-bit symmetric key, called the protected key, is generated.
+- A public-private key pair is generated. 
+
+The symmetric keys are used in sequence to encrypt the user’s private key:
+
+- The protected key is used to encrypt the private key.
+- The generated key is used to encrypt the protected key. 
+
+Finally, the encrypted private key, the protected key, salt, and X are sent to the Infisical API to be stored in the storage backend. Note that the top-level secret used to secure the user’s account and private key is their password. Therefore, it must be unknown to the Infisical API and strong by nature.
+
+## Login
+
+When a user logs in, they enter their password to authenticate with Infisical via SRP. If successful, the encrypted protected key and encrypted private key are returned to the client side.
+
+The password is then used in reverse sequence to decrypt the private key:
+
+- The password is transformed back into the generated key.
+- The generated key is used to decrypt the encrypted protected key.
+- The protected key is used to decrypt the encrypted private key.
+
+The private key is stored on the client side and kept handy.
+
+## Single sign-on
+
+When a SSO authentication method like Google, GitHub, or SAML SSO is used to login or signup to Infisical, the process is identical to logging in with email/password except that it is contingent on first successfully logging in via the authentication provider. This means, for example, a user with Google SSO enabled must first log in with Google and then enter their password for Infisical to complete logging into the platform.
+
+This approach implies that the user’s password assumes only the role of a master decryption key or secret. It also ensures that the authentication provider does not know this top-level secret, keeping the platform zero-knowledge as intended.
+
+## Account recovery
+
+When a user signs up for Infisical, they are issued a backup PDF containing a symmetric key that can be used to recover their account by decrypting a copy of that user’s private key; using the backup PDF is the only way to recover a user’s account in the event of a lockout - this is intentional by design of Infisical’s zero-knowledge architecture.
+
+We strongly encourage all users to download, print, and keep their backup PDFs in a secure location.
+
+## Secrets
+
+In Infisical, secrets belong to environments in projects, and projects belong to organizations. Each project can be thought of as a vault and has its own symmetric key, called the project key. The project key is used to encrypt the secrets contained in that project. 
+
+Similar to each user’s private key, the project key is sensitive and must remain unknown to the server to preserve the zero-knowledge aspect of Infisical; knowledge of the project key would allow the server to decrypt the secrets of that project which would be undesirable if the server is compromised.
+
+In order to preserve the zero-knowledge aspect of Infisical, each project key is encrypted on the client side before being sent to the server. More specifically, for each project, we make copies of its project key for each member of that project; each copy is encrypted under that member’s public key and only then sent off to the server for storage. A few relevant sequences:
+
+- The initial member of a project generates its project key, encrypts it under their public key, and uploads it to the server for storage.
+- When a new member is added to the project, an existing member of the project (e.g. the initial member) fetches their copy of the project key, decrypts that copy, encrypts it under the public key of the new member, and uploads it to the server for storage.
+- When a member is removed from a project, their copy of the project key is hard deleted from the storage backend.
+
+When dealing with secrets, this implies a specific sequence of decryption/encryption steps to fetch and create/update them. Assuming that we’re dealing with the Infisical Web UI, let’s start with fetching secrets which happens after the user logs in and selects a project:
+
+- The user fetches encrypted secrets back to the client side.
+- The user also fetches the encrypted project key, encrypted under their public key, for these secrets.
+- The encrypted project key is decrypted by the user’s private key which is kept handy on the client side.
+- The project key is finally used to decrypt the secrets belonging to the project.
+- The secrets are displayed to the user in the Infisical Web UI.
+
+Similarly, when a user creates/updates a secret, the reverse sequence is performed:
+
+- The user fetches the encrypted project key, encrypted under the user’s public key.
+- The project key is decrypted by the user’s private key which is kept handy on the client side.
+- The user encrypts the new/updated secret under the project key.
+- The user sends the new/updated secret to the server for storage.
+
+These sequences are performed across various Infisical clients including the web UI, CLI, SDKs, and K8s operators when dealing with the Infisical API. They are also relevant in the implementations of Infisical’s versioning features like secret versions and snapshots.
+
+## Native integrations
+
+Previously, we mentioned that Infisical is zero-knowledge; this is partly true because Infisical can be used this way. Under certain circumstances, however, a user can explicitly share their copy of the project key with the server to enable more advanced features like native integrations.
+
+The way a project key is shared with Infisical is via an abstraction that we call a bot. Each project has a bot with a public-private key pair generated on the server; the private key of each bot is symmetrically encrypted by the root encryption key of the server. This implies a few things:
+
+- The server may partake in the sharing of project keys via its own public-private keys bound to each project bot.
+- The server root encryption key must be kept secure.
+
+With that, let’s discuss native integrations. A native integrations is a connection between Infisical and a target platform like GitHub, GitLab, or Vercel that allows secrets to be synced from Infisical to the target platform using its API. Since native integrations require secrets to be sent over in plaintext, they require the server to have access to the secrets. The sequence for how integrations are implemented is fairly simple:
+
+- A user explicitly shares copy of the project key with the server via the Infisical Web UI. In this step, the user fetches the public key of the bot assigned to that project, encrypts the project key under that public key, and sends it back to the server.
+- The user selects a target platform to integrate with their project and enters details such as the source environment within the project to send secrets from as well as the project and environment in the target platform to sync secrets to.
+- The user creates the integration, triggering the first sync wherein Infisical decrypts the project’s key, uses it to decrypt the secrets of that project, and sends the secrets to the target platform.
+- Finally, on any subsequent mutations applied to the source environment of an active integration, Infisical automatically triggers a re-sync to the target platform. This keeps Infisical as a ground source-of-truth for a team’s secrets.
+
+## Resources
+
+- For in depth details, consult the code.
+- To get started with Infisical, try out the [Getting Started](https://infisical.com/docs/documentation/getting-started/introduction) overview.

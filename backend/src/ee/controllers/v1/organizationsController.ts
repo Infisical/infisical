@@ -9,7 +9,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   getUserOrgPermissions
-} from "../../../services/RoleService";
+} from "../../services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 import { Organization } from "../../../models";
 import { OrganizationNotFoundError } from "../../../utils/errors";
