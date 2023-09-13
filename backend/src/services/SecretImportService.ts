@@ -1,10 +1,5 @@
 import { Types } from "mongoose";
-import {
-  Folder,
-  ISecret,
-  Secret,
-  SecretImport
-} from "../models";
+import { Folder, ISecret, Secret, SecretImport } from "../models";
 import { getFolderByPath } from "./FolderService";
 
 type TSecretImportFid = { environment: string; folderId: string; secretPath: string };
@@ -12,7 +7,8 @@ type TSecretImportFid = { environment: string; folderId: string; secretPath: str
 export const getAllImportedSecrets = async (
   workspaceId: string,
   environment: string,
-  folderId = "root"
+  folderId = "root",
+  permissionCheckCB: (env: string, secPath: string) => boolean
 ) => {
   const secImports = await SecretImport.findOne({
     workspace: workspaceId,
@@ -23,7 +19,10 @@ export const getAllImportedSecrets = async (
   if (secImports.imports.length === 0) return [];
 
   const importedEnv: Record<string, boolean> = {}; // to get folders from all environment
-  secImports.imports.forEach((el) => (importedEnv[el.environment] = true));
+  const allowedSecretImports = secImports.imports.filter((el) =>
+    permissionCheckCB(el.environment, el.secretPath)
+  );
+  allowedSecretImports.forEach((el) => (importedEnv[el.environment] = true));
 
   const folders = await Folder.find({
     workspace: workspaceId,
@@ -31,7 +30,7 @@ export const getAllImportedSecrets = async (
   });
 
   const importedSecByFid: TSecretImportFid[] = [];
-  secImports.imports.forEach((el) => {
+  allowedSecretImports.forEach((el) => {
     const folder = folders.find((fl) => fl.environment === el.environment);
     if (folder) {
       const secPathFolder = getFolderByPath(folder.nodes, el.secretPath);

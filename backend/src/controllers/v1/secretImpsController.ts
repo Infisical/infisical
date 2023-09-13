@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { isValidScope } from "../../helpers";
-import { Folder, SecretImport, ServiceTokenData } from "../../models";
+import { Folder, IServiceTokenData, SecretImport, ServiceTokenData } from "../../models";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
 import { getFolderWithPathFromId } from "../../services/FolderService";
 import {
@@ -117,7 +117,15 @@ export const createSecretImp = async (req: Request, res: Response) => {
 
   if (req.authData.authPayload instanceof ServiceTokenData) {
     // root check
-    const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, secretPath);
+    let isValidScopeAccess = isValidScope(req.authData.authPayload, environment, secretPath);
+    if (!isValidScopeAccess) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+    isValidScopeAccess = isValidScope(
+      req.authData.authPayload,
+      secretImport.environment,
+      secretImport.secretPath
+    );
     if (!isValidScopeAccess) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
@@ -125,7 +133,14 @@ export const createSecretImp = async (req: Request, res: Response) => {
     const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, {
+        environment: secretImport.environment,
+        secretPath: secretImport.secretPath
+      })
     );
   }
 
@@ -325,7 +340,7 @@ export const updateSecretImport = async (req: Request, res: Response) => {
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.SecretImports, {
+      subject(ProjectPermissionSub.Secrets, {
         environment: importSecDoc.environment,
         secretPath
       })
@@ -454,7 +469,7 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.SecretImports, {
+      subject(ProjectPermissionSub.Secrets, {
         environment: importSecDoc.environment,
         secretPath
       })
@@ -588,7 +603,7 @@ export const getSecretImports = async (req: Request, res: Response) => {
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.SecretImports, {
+      subject(ProjectPermissionSub.Secrets, {
         environment: importSecDoc.environment,
         secretPath
       })
@@ -630,6 +645,7 @@ export const getAllSecretsFromImport = async (req: Request, res: Response) => {
     secretPath = folderPath;
   }
 
+  let permissionCheckFn: (env: string, secPath: string) => boolean; // used to pass as callback function to import secret
   if (req.authData.authPayload instanceof ServiceTokenData) {
     // check for service token validity
     const isValidScopeAccess = isValidScope(
@@ -640,17 +656,12 @@ export const getAllSecretsFromImport = async (req: Request, res: Response) => {
     if (!isValidScopeAccess) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
+    permissionCheckFn = (env: string, secPath: string) =>
+      isValidScope(req.authData.authPayload as IServiceTokenData, env, secPath);
   } else {
     const { permission } = await getUserProjectPermissions(
       req.user._id,
       importSecDoc.workspace.toString()
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.SecretImports, {
-        environment: importSecDoc.environment,
-        secretPath
-      })
     );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
@@ -659,6 +670,14 @@ export const getAllSecretsFromImport = async (req: Request, res: Response) => {
         secretPath
       })
     );
+    permissionCheckFn = (env: string, secPath: string) =>
+      permission.can(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: env,
+          secretPath: secPath
+        })
+      );
   }
 
   await EEAuditLogService.createAuditLog(
@@ -677,6 +696,11 @@ export const getAllSecretsFromImport = async (req: Request, res: Response) => {
     }
   );
 
-  const secrets = await getAllImportedSecrets(workspaceId, environment, folderId);
+  const secrets = await getAllImportedSecrets(
+    workspaceId,
+    environment,
+    folderId,
+    permissionCheckFn
+  );
   return res.status(200).json({ secrets });
 };

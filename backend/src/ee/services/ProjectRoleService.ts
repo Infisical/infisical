@@ -49,9 +49,7 @@ export enum ProjectPermissionSub {
   IpAllowList = "ip-allowlist",
   Workspace = "workspace",
   Secrets = "secrets",
-  SecretImports = "secret-imports",
-  SecretRollback = "secret-rollback",
-  Folders = "folders"
+  SecretRollback = "secret-rollback"
 }
 
 type SubjectFields = {
@@ -63,17 +61,6 @@ export type ProjectPermissionSet =
   | [
       ProjectPermissionActions,
       ProjectPermissionSub.Secrets | (ForcedSubject<ProjectPermissionSub.Secrets> & SubjectFields)
-    ]
-  | [
-      ProjectPermissionActions,
-      ProjectPermissionSub.Folders | (ForcedSubject<ProjectPermissionSub.Folders> & SubjectFields)
-    ]
-  | [
-      ProjectPermissionActions,
-      (
-        | ProjectPermissionSub.SecretImports
-        | (ForcedSubject<ProjectPermissionSub.SecretImports> & SubjectFields)
-      )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.Role]
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
@@ -97,16 +84,6 @@ const buildAdminPermission = () => {
   can(ProjectPermissionActions.Create, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Folders);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Folders);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Folders);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Folders);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretImports);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretImports);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretImports);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback);
@@ -177,15 +154,6 @@ const buildMemberPermission = () => {
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Folders);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.Folders);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Folders);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Folders);
-
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretImports);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretImports);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretImports);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback);
 
@@ -209,8 +177,6 @@ const buildViewerPermission = () => {
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Folders);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretImports);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);

@@ -979,7 +979,13 @@ export const getSecrets = async (req: Request, res: Response) => {
   // TODO(akhilmhdh) - secret-imp change this to org type
   let importedSecrets: any[] = [];
   if (include_imports) {
-    importedSecrets = await getAllImportedSecrets(workspaceId, environment, folderId as string);
+    // depreciated
+    importedSecrets = await getAllImportedSecrets(
+      workspaceId,
+      environment,
+      folderId as string,
+      () => false
+    );
   }
 
   const channel = getUserAgentType(req.headers["user-agent"]);

@@ -24,7 +24,7 @@ import { useWorkspace } from "@app/context";
 import { TFormSchema } from "./ProjectRoleModifySection.utils";
 
 type Props = {
-  formName: "secrets" | "folders" | "secret-imports";
+  formName: "secrets";
   isNonEditable?: boolean;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;
