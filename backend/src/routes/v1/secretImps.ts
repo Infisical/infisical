@@ -1,15 +1,15 @@
 import express from "express";
-import { secretImportController } from "../../controllers/v1";
-import { requireAuth } from "../../middleware";
-import { AuthMode } from "../../variables";
 const router = express.Router();
+import { requireAuth } from "../../middleware";
+import { secretImpsController } from "../../controllers/v1";
+import { AuthMode } from "../../variables";
 
 router.post(
   "/",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
-  secretImportController.createSecretImport
+  secretImpsController.createSecretImp
 );
 
 router.put(
@@ -17,7 +17,7 @@ router.put(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
-  secretImportController.updateSecretImport
+  secretImpsController.updateSecretImport
 );
 
 router.delete(
@@ -25,7 +25,7 @@ router.delete(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
-  secretImportController.deleteSecretImport
+  secretImpsController.deleteSecretImport
 );
 
 router.get(
@@ -33,7 +33,7 @@ router.get(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
-  secretImportController.getSecretImports
+  secretImpsController.getSecretImports
 );
 
 router.get(
@@ -41,7 +41,7 @@ router.get(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
-  secretImportController.getAllSecretsFromImport
+  secretImpsController.getAllSecretsFromImport
 );
 
 export default router;

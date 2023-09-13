@@ -45,8 +45,8 @@ paths:
                     items:
                       $ref: '#/components/schemas/SecretVersion'
                     description: Secret versions
-        '400':
-          description: Bad Request
+      security:
+        - apiKeyAuth: []
   /api/v1/secret/{secretId}/secret-versions/rollback:
     post:
       summary: Roll back secret to a version.
@@ -70,8 +70,8 @@ paths:
                     type: object
                     $ref: '#/components/schemas/Secret'
                     description: Secret rolled back to
-        '400':
-          description: Bad Request
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -94,8 +94,12 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
+  /api/v1/users/me/ip:
+    get:
+      description: ''
+      responses:
+        '200':
+          description: OK
   /api/v1/workspace/{workspaceId}/secret-snapshots:
     get:
       summary: Return project secret snapshot ids
@@ -132,8 +136,8 @@ paths:
                     items:
                       $ref: '#/components/schemas/SecretSnapshot'
                     description: Project secret snapshots
-        '400':
-          description: Bad Request
+      security:
+        - apiKeyAuth: []
   /api/v1/workspace/{workspaceId}/secret-snapshots/count:
     get:
       description: ''
@@ -146,8 +150,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/workspace/{workspaceId}/secret-snapshots/rollback:
     post:
       summary: >-
@@ -176,8 +178,8 @@ paths:
                     items:
                       $ref: '#/components/schemas/Secret'
                     description: Secrets rolled back to
-        '400':
-          description: Bad Request
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -245,6 +247,92 @@ paths:
                     items:
                       $ref: '#/components/schemas/Log'
                     description: Project logs
+      security:
+        - apiKeyAuth: []
+  /api/v1/workspace/{workspaceId}/audit-logs:
+    get:
+      description: ''
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/workspace/{workspaceId}/audit-logs/filters/actors:
+    get:
+      description: ''
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/workspace/{workspaceId}/trusted-ips:
+    get:
+      description: ''
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+    post:
+      description: ''
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+  /api/v1/workspace/{workspaceId}/trusted-ips/{trustedIpId}:
+    patch:
+      description: ''
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: trustedIpId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+    delete:
+      description: ''
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: trustedIpId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
         '400':
           description: Bad Request
   /api/v1/action/{actionId}:
@@ -259,74 +347,309 @@ paths:
       responses:
         '200':
           description: OK
+  /api/v1/organizations/{organizationId}/plans/table:
+    get:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/organizations/{organizationId}/plan:
+    get:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/organizations/{organizationId}/session/trial:
+    post:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/organizations/{organizationId}/plan/billing:
+    get:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/organizations/{organizationId}/plan/table:
+    get:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/organizations/{organizationId}/billing-details:
+    get:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+    patch:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/organizations/{organizationId}/billing-details/payment-methods:
+    get:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+    post:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/organizations/{organizationId}/billing-details/payment-methods/{pmtMethodId}:
+    delete:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pmtMethodId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/organizations/{organizationId}/billing-details/tax-ids:
+    get:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+    post:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/organizations/{organizationId}/billing-details/tax-ids/{taxId}:
+    delete:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: taxId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/organizations/{organizationId}/invoices:
+    get:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/organizations/{organizationId}/licenses:
+    get:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/sso/redirect/google:
+    get:
+      description: ''
+      parameters:
+        - name: callback_port
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: ''
+  /api/v1/sso/google:
+    get:
+      description: ''
+      responses:
+        default:
+          description: ''
+  /api/v1/sso/redirect/github:
+    get:
+      description: ''
+      parameters:
+        - name: callback_port
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: ''
+  /api/v1/sso/github:
+    get:
+      description: ''
+      responses:
+        default:
+          description: ''
+  /api/v1/sso/redirect/saml2/{ssoIdentifier}:
+    get:
+      description: ''
+      parameters:
+        - name: ssoIdentifier
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: callback_port
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: ''
+  /api/v1/sso/saml2/{ssoIdentifier}:
+    post:
+      description: ''
+      parameters:
+        - name: ssoIdentifier
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        default:
+          description: ''
+  /api/v1/sso/config:
+    get:
+      description: ''
+      responses:
+        '200':
+          description: OK
+    post:
+      description: ''
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+    patch:
+      description: ''
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+  /api/v1/cloud-products/:
+    get:
+      description: ''
+      responses:
+        '200':
+          description: OK
   /api/v1/signup/email/signup:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
         '403':
           description: Forbidden
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  example: any
   /api/v1/signup/email/verify:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
         '403':
           description: Forbidden
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  example: any
-                code:
-                  example: any
   /api/v1/auth/token:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/auth/login1:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  example: any
-                clientPublicKey:
-                  example: any
   /api/v1/auth/login2:
     post:
       description: ''
@@ -340,16 +663,6 @@ paths:
           description: OK
         '400':
           description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  example: any
-                clientProof:
-                  example: any
   /api/v1/auth/logout:
     post:
       description: ''
@@ -361,12 +674,15 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/auth/checkAuth:
     post:
       description: ''
-      parameters: []
+      responses:
+        '200':
+          description: OK
+  /api/v1/auth/sessions:
+    delete:
+      description: ''
       responses:
         '200':
           description: OK
@@ -382,8 +698,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/bot/{botId}/active:
     patch:
       description: ''
@@ -398,77 +712,34 @@ paths:
           description: OK
         '400':
           description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                isActive:
-                  example: any
-                botKey:
-                  example: any
   /api/v1/user/:
     get:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
   /api/v1/user-action/:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                action:
-                  example: any
     get:
       description: ''
-      parameters:
-        - name: action
-          in: query
-          schema:
-            type: string
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/organization/:
     get:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                organizationName:
-                  example: any
   /api/v1/organization/{organizationId}:
     get:
       description: ''
@@ -481,8 +752,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/organization/{organizationId}/users:
     get:
       description: ''
@@ -495,8 +764,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/organization/{organizationId}/my-workspaces:
     get:
       description: ''
@@ -509,8 +776,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/organization/{organizationId}/name:
     patch:
       description: ''
@@ -523,16 +788,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  example: any
   /api/v1/organization/{organizationId}/incidentContactOrg:
     get:
       description: ''
@@ -545,8 +800,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
     post:
       description: ''
       parameters:
@@ -558,16 +811,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  example: any
     delete:
       description: ''
       parameters:
@@ -579,16 +822,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  example: any
   /api/v1/organization/{organizationId}/customer-portal-session:
     post:
       description: ''
@@ -601,22 +834,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-  /api/v1/organization/{organizationId}/subscriptions:
-    get:
-      description: ''
-      parameters:
-        - name: organizationId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: Bad Request
   /api/v1/organization/{organizationId}/workspace-memberships:
     get:
       description: ''
@@ -641,8 +858,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/workspace/{workspaceId}/users:
     get:
       description: ''
@@ -655,35 +870,19 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/workspace/:
     get:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
         '400':
           description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                workspaceName:
-                  example: any
-                organizationId:
-                  example: any
   /api/v1/workspace/{workspaceId}:
     get:
       description: ''
@@ -696,8 +895,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
     delete:
       description: ''
       parameters:
@@ -709,8 +906,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/workspace/{workspaceId}/name:
     post:
       description: ''
@@ -723,16 +918,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  example: any
   /api/v1/workspace/{workspaceId}/invite-signup:
     post:
       description: ''
@@ -745,16 +930,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  example: any
   /api/v1/workspace/{workspaceId}/integrations:
     get:
       description: ''
@@ -767,8 +942,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/workspace/{workspaceId}/authorizations:
     get:
       description: ''
@@ -781,8 +954,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/workspace/{workspaceId}/service-tokens:
     get:
       description: ''
@@ -795,8 +966,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/membership-org/membershipOrg/{membershipOrgId}/change-role:
     post:
       description: ''
@@ -819,8 +988,8 @@ paths:
           schema:
             type: string
       responses:
-        '400':
-          description: Bad Request
+        default:
+          description: ''
   /api/v1/membership/{workspaceId}/connect:
     get:
       description: ''
@@ -833,8 +1002,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/membership/{membershipId}:
     delete:
       description: ''
@@ -847,8 +1014,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/membership/{membershipId}/change-role:
     post:
       description: ''
@@ -861,36 +1026,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                role:
-                  example: any
-  /api/v1/membership/{membershipId}/deny-permissions:
-    post:
-      description: ''
-      parameters:
-        - name: membershipId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                permissions:
-                  example: any
   /api/v1/key/{workspaceId}:
     post:
       description: ''
@@ -903,16 +1038,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                key:
-                  example: any
   /api/v1/key/{workspaceId}/latest:
     get:
       description: ''
@@ -925,8 +1050,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/invite-org/signup:
     post:
       description: ''
@@ -940,35 +1063,12 @@ paths:
           description: OK
         '400':
           description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                organizationId:
-                  example: any
-                inviteeEmail:
-                  example: any
   /api/v1/invite-org/verify:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  example: any
-                code:
-                  example: any
   /api/v1/secret/{workspaceId}:
     post:
       description: ''
@@ -981,8 +1081,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
       requestBody:
         content:
           application/json:
@@ -1016,8 +1114,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/secret/{workspaceId}/service-token:
     get:
       description: ''
@@ -1038,18 +1134,14 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/service-token/:
     get:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
@@ -1078,211 +1170,56 @@ paths:
   /api/v1/password/srp1:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                clientPublicKey:
-                  example: any
   /api/v1/password/change-password:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
         '400':
           description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                clientProof:
-                  example: any
-                protectedKey:
-                  example: any
-                protectedKeyIV:
-                  example: any
-                protectedKeyTag:
-                  example: any
-                encryptedPrivateKey:
-                  example: any
-                encryptedPrivateKeyIV:
-                  example: any
-                encryptedPrivateKeyTag:
-                  example: any
-                salt:
-                  example: any
-                verifier:
-                  example: any
   /api/v1/password/email/password-reset:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-        '403':
-          description: Forbidden
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  example: any
   /api/v1/password/email/password-reset-verify:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
         '403':
           description: Forbidden
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  example: any
-                code:
-                  example: any
   /api/v1/password/backup-private-key:
     get:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
         '400':
           description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                clientProof:
-                  example: any
-                encryptedPrivateKey:
-                  example: any
-                iv:
-                  example: any
-                tag:
-                  example: any
-                salt:
-                  example: any
-                verifier:
-                  example: any
   /api/v1/password/password-reset:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                protectedKey:
-                  example: any
-                protectedKeyIV:
-                  example: any
-                protectedKeyTag:
-                  example: any
-                encryptedPrivateKey:
-                  example: any
-                encryptedPrivateKeyIV:
-                  example: any
-                encryptedPrivateKeyTag:
-                  example: any
-                salt:
-                  example: any
-                verifier:
-                  example: any
-  /api/v1/stripe/webhook:
-    post:
-      description: ''
-      parameters:
-        - name: stripe-signature
-          in: header
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: Bad Request
   /api/v1/integration/:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                integrationAuthId:
-                  example: any
-                app:
-                  example: any
-                appId:
-                  example: any
-                isActive:
-                  example: any
-                sourceEnvironment:
-                  example: any
-                targetEnvironment:
-                  example: any
-                targetEnvironmentId:
-                  example: any
-                targetService:
-                  example: any
-                targetServiceId:
-                  example: any
-                owner:
-                  example: any
-                path:
-                  example: any
-                region:
-                  example: any
   /api/v1/integration/{integrationId}:
     patch:
       description: ''
@@ -1295,26 +1232,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                environment:
-                  example: any
-                isActive:
-                  example: any
-                app:
-                  example: any
-                appId:
-                  example: any
-                targetEnvironment:
-                  example: any
-                owner:
-                  example: any
     delete:
       description: ''
       parameters:
@@ -1326,12 +1243,15 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
+  /api/v1/integration/manual-sync:
+    post:
+      description: ''
+      responses:
+        '200':
+          description: OK
   /api/v1/integration-auth/integration-options:
     get:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
@@ -1365,47 +1285,15 @@ paths:
   /api/v1/integration-auth/oauth-token:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                workspaceId:
-                  example: any
-                code:
-                  example: any
-                integration:
-                  example: any
   /api/v1/integration-auth/access-token:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                workspaceId:
-                  example: any
-                accessId:
-                  example: any
-                accessToken:
-                  example: any
-                integration:
-                  example: any
   /api/v1/integration-auth/{integrationAuthId}/apps:
     get:
       description: ''
@@ -1415,15 +1303,9 @@ paths:
           required: true
           schema:
             type: string
-        - name: teamId
-          in: query
-          schema:
-            type: string
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v1/integration-auth/{integrationAuthId}/teams:
     get:
       description: ''
@@ -1445,10 +1327,6 @@ paths:
           required: true
           schema:
             type: string
-        - name: appId
-          in: query
-          schema:
-            type: string
       responses:
         '200':
           description: OK
@@ -1459,10 +1337,6 @@ paths:
         - name: integrationAuthId
           in: path
           required: true
-          schema:
-            type: string
-        - name: appId
-          in: query
           schema:
             type: string
       responses:
@@ -1477,8 +1351,655 @@ paths:
           required: true
           schema:
             type: string
-        - name: appId
+      responses:
+        '200':
+          description: OK
+  /api/v1/integration-auth/{integrationAuthId}/bitbucket/workspaces:
+    get:
+      description: ''
+      parameters:
+        - name: integrationAuthId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/integration-auth/{integrationAuthId}/northflank/secret-groups:
+    get:
+      description: ''
+      parameters:
+        - name: integrationAuthId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/integration-auth/{integrationAuthId}/teamcity/build-configs:
+    get:
+      description: ''
+      parameters:
+        - name: integrationAuthId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/folders/:
+    post:
+      summary: Create a folder
+      description: Create a new folder in a specified workspace and environment
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  folder:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: someFolderId
+                      name:
+                        type: string
+                        example: my_folder
+                    description: Details of the created folder
+        '400':
+          description: >-
+            Bad Request. For example, 'Folder name cannot contain spaces. Only
+            underscore and dashes'
+        '401':
+          description: Unauthorized request. For example, 'Folder Permission Denied'
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workspaceId:
+                  type: string
+                  description: ID of the workspace where the folder will be created
+                  example: someWorkspaceId
+                environment:
+                  type: string
+                  description: Environment where the folder will reside
+                  example: production
+                folderName:
+                  type: string
+                  description: Name of the folder to be created
+                  example: my_folder
+                parentFolderId:
+                  type: string
+                  description: >-
+                    ID of the parent folder under which this folder will be
+                    created. If not specified, it will be created at the root
+                    level.
+                  example: someParentFolderId
+              required:
+                - workspaceId
+                - environment
+                - folderName
+    get:
+      summary: Retrieve folders based on specific conditions
+      description: >-
+        Fetches folders from the specified workspace and environment, optionally
+        providing either a parentFolderId or a parentFolderPath to narrow down
+        results
+      parameters:
+        - name: workspaceId
+          description: ID of the workspace from which the folders are to be fetched
+          required: true
           in: query
+          schema:
+            type: string
+        - name: environment
+          description: Environment where the folder is located
+          required: true
+          in: query
+          schema:
+            type: string
+        - name: parentFolderId
+          description: ID of the parent folder
+          required: false
+          in: query
+          schema:
+            type: string
+        - name: parentFolderPath
+          description: Path of the parent folder, like /folder1/folder2
+          required: false
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  folders:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: someFolderId
+                        name:
+                          type: string
+                          example: someFolderName
+                    description: List of folders
+                  dir:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: parentFolderName
+                        id:
+                          type: string
+                          example: parentFolderId
+                    description: List of directories
+        '400':
+          description: Bad Request. For instance, 'The folder doesn't exist'
+        '401':
+          description: Unauthorized request. For example, 'Folder Permission Denied'
+      security:
+        - apiKeyAuth: []
+  /api/v1/folders/{folderId}:
+    patch:
+      summary: Update a folder by ID
+      description: >-
+        Update the name of a folder in a specified workspace and environment by
+        its ID
+      parameters:
+        - name: folderId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of the folder to be updated
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Successfully updated folder
+                  folder:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        example: updated_folder_name
+                      id:
+                        type: string
+                        example: someFolderId
+                    description: Details of the updated folder
+        '400':
+          description: >-
+            Bad Request. Reasons can include 'The folder doesn't exist' or
+            'Folder name cannot contain spaces. Only underscore and dashes'
+        '401':
+          description: Unauthorized request. For example, 'Folder Permission Denied'
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workspaceId:
+                  type: string
+                  description: ID of the workspace where the folder is located
+                  example: someWorkspaceId
+                environment:
+                  type: string
+                  description: Environment where the folder is located
+                  example: production
+                name:
+                  type: string
+                  description: New name for the folder
+                  example: updated_folder_name
+              required:
+                - workspaceId
+                - environment
+                - name
+    delete:
+      summary: Delete a folder by ID
+      description: >-
+        Delete the specified folder from a specified workspace and environment
+        using its ID
+      parameters:
+        - name: folderId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of the folder to be deleted
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: successfully deleted folders
+                  folders:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: someFolderId
+                        name:
+                          type: string
+                          example: someFolderName
+                    description: List of IDs and names of the deleted folders
+        '400':
+          description: Bad Request. Reasons can include 'The folder doesn't exist'
+        '401':
+          description: Unauthorized request. For example, 'Folder Permission Denied'
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workspaceId:
+                  type: string
+                  description: ID of the workspace where the folder is located
+                  example: someWorkspaceId
+                environment:
+                  type: string
+                  description: Environment where the folder is located
+                  example: production
+              required:
+                - workspaceId
+                - environment
+  /api/v1/secret-scanning/create-installation-session/organization/{organizationId}:
+    post:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/secret-scanning/link-installation:
+    post:
+      description: ''
+      responses:
+        '200':
+          description: OK
+  /api/v1/secret-scanning/installation-status/organization/{organizationId}:
+    get:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/secret-scanning/organization/{organizationId}/risks:
+    get:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/secret-scanning/organization/{organizationId}/risks/{riskId}/status:
+    post:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: riskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/webhooks/:
+    post:
+      description: ''
+      responses:
+        '200':
+          description: OK
+    get:
+      description: ''
+      responses:
+        '200':
+          description: OK
+  /api/v1/webhooks/{webhookId}:
+    patch:
+      description: ''
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+    delete:
+      description: ''
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/webhooks/{webhookId}/test:
+    post:
+      description: ''
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+  /api/v1/secret-imports/:
+    post:
+      summary: Create secret import
+      description: Create a new secret import for a specified workspace and environment
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: successfully created secret import
+                description: Confirmation of secret import creation
+        '400':
+          description: Bad Request. For example, 'Secret import already exist'
+        '401':
+          description: Unauthorized request. For example, 'Folder Permission Denied'
+        '404':
+          description: Resource Not Found. For example, 'Failed to find folder'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workspaceId:
+                  type: string
+                  description: ID of the workspace where the secret import will be created
+                  example: someWorkspaceId
+                environment:
+                  type: string
+                  description: Environment to import to
+                  example: production
+                folderId:
+                  type: string
+                  description: Folder ID. Use root for the root folder.
+                  example: my_folder
+                secretImport:
+                  type: object
+                  properties:
+                    environment:
+                      type: string
+                      description: Import from environment
+                      example: development
+                    secretPath:
+                      type: string
+                      description: Import from secret path
+                      example: /user/oauth
+              required:
+                - workspaceId
+                - environment
+                - folderName
+    get:
+      summary: Retrieve secret imports
+      description: >-
+        Fetches the secret imports based on the workspaceId, environment, and
+        folderId
+      parameters:
+        - name: workspaceId
+          in: query
+          description: ID of the workspace of secret imports to get
+          required: true
+          example: workspace12345
+          schema:
+            type: string
+        - name: environment
+          in: query
+          description: Environment of secret imports to get
+          required: true
+          example: production
+          schema:
+            type: string
+        - name: folderId
+          in: query
+          description: 'ID of the folder containing the secret imports. Default: root'
+          required: false
+          example: folder12345
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully retrieved secret import
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secretImport:
+                    type: object
+                    description: Details of a secret import
+        '401':
+          description: Unauthorized access due to invalid token or scope
+        '403':
+          description: Forbidden access due to insufficient permissions
+  /api/v1/secret-imports/{id}:
+    put:
+      summary: Update a secret import
+      description: >-
+        Updates an existing secret import based on the provided ID and new
+        import details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of the secret import to be updated
+          example: import12345
+      responses:
+        '200':
+          description: Successfully updated the secret import
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: successfully updated secret import
+        '400':
+          description: Bad Request - Import not found
+        '401':
+          description: Unauthorized access due to invalid token or scope
+        '403':
+          description: Forbidden access due to insufficient permissions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                secretImports:
+                  type: array
+                  description: List of new secret imports
+                  items:
+                    type: object
+                    properties:
+                      environment:
+                        type: string
+                        description: Environment of the secret import
+                        example: production
+                      secretPath:
+                        type: string
+                        description: Path of the secret import
+                        example: /path/to/secret
+                    required:
+                      - environment
+                      - secretPath
+              required:
+                - secretImports
+    delete:
+      summary: Delete secret import
+      description: Delete secret import
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of the secret import
+          example: 12345abcde
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: successfully delete secret import
+                description: Confirmation of secret import deletion
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                secretImportEnv:
+                  type: string
+                  description: Import from environment
+                  example: someWorkspaceId
+                secretImportPath:
+                  type: string
+                  description: Import from secret path
+                  example: production
+              required:
+                - id
+                - secretImportEnv
+                - secretImportPath
+  /api/v1/secret-imports/secrets:
+    get:
+      description: ''
+      responses:
+        '200':
+          description: OK
+  /api/v1/roles/:
+    post:
+      description: ''
+      responses:
+        '200':
+          description: OK
+    get:
+      description: ''
+      responses:
+        '200':
+          description: OK
+  /api/v1/roles/{id}:
+    patch:
+      description: ''
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+    delete:
+      description: ''
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/roles/organization/{orgId}/permissions:
+    get:
+      description: ''
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v1/roles/workspace/{workspaceId}/permissions:
+    get:
+      description: ''
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
           schema:
             type: string
       responses:
@@ -1487,12 +2008,14 @@ paths:
   /api/v2/signup/complete-account/signup:
     post:
       description: ''
-      parameters: []
+      parameters:
+        - name: user-agent
+          in: header
+          schema:
+            type: string
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
         '403':
           description: Forbidden
       requestBody:
@@ -1530,12 +2053,14 @@ paths:
   /api/v2/signup/complete-account/invite:
     post:
       description: ''
-      parameters: []
+      parameters:
+        - name: user-agent
+          in: header
+          schema:
+            type: string
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
         '403':
           description: Forbidden
       requestBody:
@@ -1571,12 +2096,9 @@ paths:
   /api/v2/auth/login1:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
       requestBody:
         content:
           application/json:
@@ -1613,20 +2135,9 @@ paths:
   /api/v2/auth/mfa/send:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  example: any
   /api/v2/auth/mfa/verify:
     post:
       description: ''
@@ -1638,21 +2149,10 @@ paths:
       responses:
         '200':
           description: OK
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  example: any
-                mfaToken:
-                  example: any
   /api/v2/users/me:
     get:
       summary: Retrieve the current user on the request
       description: Retrieve the current user on the request
-      parameters: []
       responses:
         '200':
           description: OK
@@ -1665,30 +2165,32 @@ paths:
                     type: object
                     $ref: '#/components/schemas/CurrentUser'
                     description: Current user on request
-        '400':
-          description: Bad Request
+      security:
+        - apiKeyAuth: []
   /api/v2/users/me/mfa:
     patch:
       description: ''
-      parameters: []
+      responses:
+        '200':
+          description: OK
+  /api/v2/users/me/name:
+    patch:
+      description: ''
+      responses:
+        '200':
+          description: OK
+  /api/v2/users/me/auth-methods:
+    put:
+      description: ''
       responses:
         '200':
           description: OK
         '400':
           description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                isMfaEnabled:
-                  example: any
   /api/v2/users/me/organizations:
     get:
       summary: Return organizations that current user is part of
       description: Return organizations that current user is part of
-      parameters: []
       responses:
         '200':
           description: OK
@@ -1702,8 +2204,42 @@ paths:
                     items:
                       $ref: '#/components/schemas/Organization'
                     description: Organizations that user is part of
-        '400':
-          description: Bad Request
+      security:
+        - apiKeyAuth: []
+  /api/v2/users/me/api-keys:
+    get:
+      description: ''
+      responses:
+        '200':
+          description: OK
+    post:
+      description: ''
+      responses:
+        '200':
+          description: OK
+  /api/v2/users/me/api-keys/{apiKeyDataId}:
+    delete:
+      description: ''
+      parameters:
+        - name: apiKeyDataId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v2/users/me/sessions:
+    get:
+      description: ''
+      responses:
+        '200':
+          description: OK
+    delete:
+      description: ''
+      responses:
+        '200':
+          description: OK
   /api/v2/organizations/{organizationId}/memberships:
     get:
       summary: Return organization memberships
@@ -1728,8 +2264,8 @@ paths:
                     items:
                       $ref: '#/components/schemas/MembershipOrg'
                     description: Memberships of organization
-        '400':
-          description: Bad Request
+      security:
+        - apiKeyAuth: []
   /api/v2/organizations/{organizationId}/memberships/{membershipId}:
     patch:
       summary: Update organization membership
@@ -1758,8 +2294,8 @@ paths:
                   membership:
                     $ref: '#/components/schemas/MembershipOrg'
                     description: Updated organization membership
-        '400':
-          description: Bad Request
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -1799,8 +2335,8 @@ paths:
                   membership:
                     $ref: '#/components/schemas/MembershipOrg'
                     description: Deleted organization membership
-        '400':
-          description: Bad Request
+      security:
+        - apiKeyAuth: []
   /api/v2/organizations/{organizationId}/workspaces:
     get:
       summary: Return projects in organization that user is part of
@@ -1825,6 +2361,8 @@ paths:
                     items:
                       $ref: '#/components/schemas/Project'
                     description: Projects of organization
+      security:
+        - apiKeyAuth: []
   /api/v2/organizations/{organizationId}/service-accounts:
     get:
       description: ''
@@ -1839,18 +2377,43 @@ paths:
           description: OK
   /api/v2/workspace/{workspaceId}/environments:
     post:
-      description: ''
+      summary: Create environment
+      description: Create environment
       parameters:
         - name: workspaceId
           in: path
           required: true
           schema:
             type: string
+          description: ID of project
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Successfully created new environment
+                  workspace:
+                    type: string
+                    example: someWorkspaceId
+                  environment:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        example: someEnvironmentName
+                      slug:
+                        type: string
+                        example: someEnvironmentSlug
+                description: Response after creating a new environment
         '400':
           description: Bad Request
+      security:
+        - apiKeyAuth: []
       requestBody:
         content:
           application/json:
@@ -1858,22 +2421,50 @@ paths:
               type: object
               properties:
                 environmentName:
-                  example: any
+                  type: string
+                  description: Name of the environment
+                  example: development
                 environmentSlug:
-                  example: any
+                  type: string
+                  description: Slug of the environment
+                  example: dev-environment
+              required:
+                - environmentName
+                - environmentSlug
     put:
-      description: ''
+      summary: Rename workspace environment
+      description: Rename a specific environment within a workspace
       parameters:
         - name: workspaceId
           in: path
           required: true
           schema:
             type: string
+          description: ID of the workspace
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Successfully update environment
+                  workspace:
+                    type: string
+                    example: someWorkspaceId
+                  environment:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        example: Staging-Renamed
+                      slug:
+                        type: string
+                        example: staging-renamed
+                description: Details of the renamed environment
       requestBody:
         content:
           application/json:
@@ -1881,12 +2472,22 @@ paths:
               type: object
               properties:
                 environmentName:
-                  example: any
+                  type: string
+                  description: New name for the environment
+                  example: Staging-Renamed
                 environmentSlug:
-                  example: any
+                  type: string
+                  description: New slug for the environment
+                  example: staging-renamed
                 oldEnvironmentSlug:
-                  example: any
-    delete:
+                  type: string
+                  description: Current slug of the environment to rename
+                  example: staging-old
+              required:
+                - environmentName
+                - environmentSlug
+                - oldEnvironmentSlug
+    patch:
       description: ''
       parameters:
         - name: workspaceId
@@ -1897,8 +2498,36 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
+    delete:
+      summary: Delete workspace environment
+      description: Delete a specific environment from a workspace
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of the workspace
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Successfully deleted environment
+                  workspace:
+                    type: string
+                    example: someWorkspaceId
+                  environment:
+                    type: string
+                    example: dev-environment
+                description: Response after deleting an environment from a workspace
+      security:
+        - apiKeyAuth: []
       requestBody:
         content:
           application/json:
@@ -1906,18 +2535,53 @@ paths:
               type: object
               properties:
                 environmentSlug:
-                  example: any
+                  type: string
+                  description: Slug of the environment to delete
+                  example: dev-environment
+              required:
+                - environmentSlug
     get:
-      description: ''
+      summary: Get all accessible environments of a workspace
+      description: >-
+        Fetch all environments that the user has access to in a specified
+        workspace
       parameters:
         - name: workspaceId
           in: path
           required: true
           schema:
             type: string
+          description: ID of the workspace
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessibleEnvironments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: Development
+                        slug:
+                          type: string
+                          example: development
+                        isWriteDenied:
+                          type: boolean
+                          example: false
+                        isReadDenied:
+                          type: boolean
+                          example: false
+                description: >-
+                  List of environments the user has access to in the specified
+                  workspace
+      security:
+        - apiKeyAuth: []
   /api/v2/workspace/{workspaceId}/tags:
     get:
       description: ''
@@ -1941,18 +2605,6 @@ paths:
       responses:
         '200':
           description: OK
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  example: any
-                tagColor:
-                  example: any
-                slug:
-                  example: any
   /api/v2/workspace/tags/{tagId}:
     delete:
       description: ''
@@ -1977,8 +2629,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
       requestBody:
         content:
           application/json:
@@ -2012,8 +2662,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v2/workspace/{workspaceId}/encrypted-key:
     get:
       summary: Return encrypted project key
@@ -2035,8 +2683,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/ProjectKey'
                 description: Encrypted project key for the given project
-        '400':
-          description: Bad Request
+      security:
+        - apiKeyAuth: []
   /api/v2/workspace/{workspaceId}/service-token-data:
     get:
       description: ''
@@ -2049,8 +2697,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
   /api/v2/workspace/{workspaceId}/memberships:
     get:
       summary: Return project memberships
@@ -2075,8 +2721,8 @@ paths:
                     items:
                       $ref: '#/components/schemas/Membership'
                     description: Memberships of project
-        '400':
-          description: Bad Request
+      security:
+        - apiKeyAuth: []
   /api/v2/workspace/{workspaceId}/memberships/{membershipId}:
     patch:
       summary: Update project membership
@@ -2105,8 +2751,8 @@ paths:
                   membership:
                     $ref: '#/components/schemas/Membership'
                     description: Updated membership
-        '400':
-          description: Bad Request
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -2144,8 +2790,8 @@ paths:
                   membership:
                     $ref: '#/components/schemas/Membership'
                     description: Deleted membership
-        '400':
-          description: Bad Request
+      security:
+        - apiKeyAuth: []
   /api/v2/workspace/{workspaceId}/auto-capitalization:
     patch:
       description: ''
@@ -2158,16 +2804,6 @@ paths:
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                autoCapitalization:
-                  example: any
   /api/v2/secret/batch-create/workspace/{workspaceId}/environment/{environment}:
     post:
       description: ''
@@ -2343,18 +2979,6 @@ paths:
       responses:
         '200':
           description: OK
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                workspaceId:
-                  example: any
-                environment:
-                  example: any
-                requests:
-                  example: any
   /api/v2/secrets/:
     post:
       summary: Create new secret(s)
@@ -2379,6 +3003,8 @@ paths:
                     description: >-
                       Newly-created secrets for the given project and
                       environment
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -2415,10 +3041,6 @@ paths:
           in: header
           schema:
             type: string
-        - name: content
-          in: query
-          schema:
-            type: string
       responses:
         '200':
           description: OK
@@ -2432,10 +3054,11 @@ paths:
                     items:
                       $ref: '#/components/schemas/Secret'
                     description: Secrets for the given project and environment
+      security:
+        - apiKeyAuth: []
     patch:
       summary: Update secret(s)
       description: Update secret(s)
-      parameters: []
       responses:
         '200':
           description: OK
@@ -2449,6 +3072,8 @@ paths:
                     items:
                       $ref: '#/components/schemas/Secret'
                     description: Updated secrets
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -2480,6 +3105,8 @@ paths:
                     items:
                       $ref: '#/components/schemas/Secret'
                     description: Deleted secrets
+      security:
+        - apiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -2494,7 +3121,6 @@ paths:
     get:
       summary: Return Infisical Token data
       description: Return Infisical Token data
-      parameters: []
       responses:
         '200':
           description: OK
@@ -2511,32 +3137,9 @@ paths:
         - bearerAuth: []
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  example: any
-                workspaceId:
-                  example: any
-                environment:
-                  example: any
-                encryptedKey:
-                  example: any
-                iv:
-                  example: any
-                tag:
-                  example: any
-                expiresIn:
-                  example: any
-                permissions:
-                  example: any
   /api/v2/service-token/{serviceTokenDataId}:
     delete:
       description: ''
@@ -2549,48 +3152,58 @@ paths:
       responses:
         '200':
           description: OK
-  /api/v2/service-accounts/me:
-    get:
-      description: ''
-      parameters: []
-      responses:
-        '200':
-          description: OK
-  /api/v2/service-accounts/{serviceAccountId}:
-    get:
-      description: ''
-      parameters:
-        - name: serviceAccountId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
-    delete:
-      description: ''
-      parameters:
-        - name: serviceAccountId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
-  /api/v2/service-accounts/:
+  /api/v3/auth/login1:
     post:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK
-  /api/v2/service-accounts/{serviceAccountId}/name:
+  /api/v3/auth/login2:
+    post:
+      description: ''
+      parameters:
+        - name: user-agent
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+  /api/v3/secrets/raw:
+    get:
+      description: ''
+      responses:
+        '200':
+          description: OK
+  /api/v3/secrets/raw/{secretName}:
+    get:
+      description: ''
+      parameters:
+        - name: secretName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+    post:
+      description: ''
+      parameters:
+        - name: secretName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
     patch:
       description: ''
       parameters:
-        - name: serviceAccountId
+        - name: secretName
           in: path
           required: true
           schema:
@@ -2598,67 +3211,10 @@ paths:
       responses:
         '200':
           description: OK
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  example: any
-  /api/v2/service-accounts/{serviceAccountId}/permissions/workspace:
-    get:
-      description: ''
-      parameters:
-        - name: serviceAccountId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
-    post:
-      description: ''
-      parameters:
-        - name: serviceAccountId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                environment:
-                  example: any
-                workspaceId:
-                  example: any
-                read:
-                  example: any
-                write:
-                  example: any
-                encryptedKey:
-                  example: any
-                nonce:
-                  example: any
-  /api/v2/service-accounts/{serviceAccountId}/permissions/workspace/{serviceAccountWorkspacePermissionId}:
     delete:
       description: ''
       parameters:
-        - name: serviceAccountId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: serviceAccountWorkspacePermissionId
+        - name: secretName
           in: path
           required: true
           schema:
@@ -2666,75 +3222,9 @@ paths:
       responses:
         '200':
           description: OK
-  /api/v2/service-accounts/{serviceAccountId}/keys:
-    get:
-      description: ''
-      parameters:
-        - name: serviceAccountId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: workspaceId
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
-  /api/v2/api-key/:
-    get:
-      description: ''
-      parameters: []
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: Bad Request
-    post:
-      description: ''
-      parameters: []
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: Bad Request
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  example: any
-                expiresIn:
-                  example: any
-  /api/v2/api-key/{apiKeyDataId}:
-    delete:
-      description: ''
-      parameters:
-        - name: apiKeyDataId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: Bad Request
   /api/v3/secrets/:
     get:
       description: ''
-      parameters:
-        - name: workspaceId
-          in: query
-          schema:
-            type: string
-        - name: environment
-          in: query
-          schema:
-            type: string
       responses:
         '200':
           description: OK
@@ -2750,54 +3240,12 @@ paths:
       responses:
         '200':
           description: OK
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                workspaceId:
-                  example: any
-                environment:
-                  example: any
-                type:
-                  example: any
-                secretKeyCiphertext:
-                  example: any
-                secretKeyIV:
-                  example: any
-                secretKeyTag:
-                  example: any
-                secretValueCiphertext:
-                  example: any
-                secretValueIV:
-                  example: any
-                secretValueTag:
-                  example: any
-                secretCommentCiphertext:
-                  example: any
-                secretCommentIV:
-                  example: any
-                secretCommentTag:
-                  example: any
     get:
       description: ''
       parameters:
         - name: secretName
           in: path
           required: true
-          schema:
-            type: string
-        - name: workspaceId
-          in: query
-          schema:
-            type: string
-        - name: environment
-          in: query
-          schema:
-            type: string
-        - name: type
-          in: query
           schema:
             type: string
       responses:
@@ -2814,24 +3262,6 @@ paths:
       responses:
         '200':
           description: OK
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                workspaceId:
-                  example: any
-                environment:
-                  example: any
-                type:
-                  example: any
-                secretValueCiphertext:
-                  example: any
-                secretValueIV:
-                  example: any
-                secretValueTag:
-                  example: any
     delete:
       description: ''
       parameters:
@@ -2843,18 +3273,6 @@ paths:
       responses:
         '200':
           description: OK
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                workspaceId:
-                  example: any
-                environment:
-                  example: any
-                type:
-                  example: any
   /api/v3/workspaces/{workspaceId}/secrets/blind-index-status:
     get:
       description: ''
@@ -2891,18 +3309,28 @@ paths:
       responses:
         '200':
           description: OK
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                secretsToUpdate:
-                  example: any
+  /api/v3/signup/complete-account/signup:
+    post:
+      description: ''
+      parameters:
+        - name: authorization
+          in: header
+          schema:
+            type: string
+        - name: user-agent
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '403':
+          description: Forbidden
   /api/status:
     get:
       description: ''
-      parameters: []
       responses:
         '200':
           description: OK

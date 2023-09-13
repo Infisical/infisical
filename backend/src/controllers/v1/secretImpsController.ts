@@ -19,7 +19,81 @@ import {
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError, subject } from "@casl/ability";
 
-export const createSecretImport = async (req: Request, res: Response) => {
+export const createSecretImp = async (req: Request, res: Response) => {
+  /* 
+    #swagger.summary = 'Create secret import'
+    #swagger.description = 'Create a new secret import for a specified workspace and environment'
+
+    #swagger.requestBody = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "workspaceId": {
+                            "type": "string",
+                            "description": "ID of the workspace where the secret import will be created",
+                            "example": "someWorkspaceId"
+                        },
+                        "environment": {
+                            "type": "string",
+                            "description": "Environment to import to",
+                            "example": "production"
+                        },
+                        "folderId": {
+                            "type": "string",
+                            "description": "Folder ID. Use root for the root folder.",
+                            "example": "my_folder"
+                        },
+                        "secretImport": {
+                            "type": "object",
+                            "properties": {
+                              "environment": {
+                                "type": "string",
+                                "description": "Import from environment",
+                                "example": "development"
+                              },
+                              "secretPath": {
+                                "type": "string",
+                                "description": "Import from secret path",
+                                "example": "/user/oauth"
+                              }
+                            }
+                        }
+                    },
+                    "required": ["workspaceId", "environment", "folderName"]
+                }
+            }
+        }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string",
+                            "example": "successfully created secret import"
+                        }
+                    },
+                    "description": "Confirmation of secret import creation"
+                }
+            }
+        }
+    }
+    #swagger.responses[400] = {
+        description: "Bad Request. For example, 'Secret import already exist'"
+    }
+    #swagger.responses[401] = {
+        description: "Unauthorized request. For example, 'Folder Permission Denied'"
+    }
+    #swagger.responses[404] = {
+        description: "Resource Not Found. For example, 'Failed to find folder'"
+    }   
+  */
+
   const {
     body: { workspaceId, environment, folderId, secretImport }
   } = await validateRequest(reqValidator.CreateSecretImportV1, req);
@@ -129,7 +203,88 @@ export const createSecretImport = async (req: Request, res: Response) => {
 
 // to keep the ordering, you must pass all the imports in here not the only updated one
 // this is because the order decide which import gets overriden
+
+/**
+ * Update secret import
+ * @param req
+ * @param res
+ * @returns
+ */
 export const updateSecretImport = async (req: Request, res: Response) => {
+  /*
+    #swagger.summary = 'Update a secret import'
+    #swagger.description = 'Updates an existing secret import based on the provided ID and new import details'
+
+    #swagger.parameters['id'] = {
+        in: 'path',
+        description: 'ID of the secret import to be updated',
+        required: true,
+        type: 'string',
+        example: 'import12345'
+    }
+
+    #swagger.requestBody = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "secretImports": {
+                            "type": "array",
+                            "description": "List of new secret imports",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "environment": {
+                                        "type": "string",
+                                        "description": "Environment of the secret import",
+                                        "example": "production"
+                                    },
+                                    "secretPath": {
+                                        "type": "string",
+                                        "description": "Path of the secret import",
+                                        "example": "/path/to/secret"
+                                    }
+                                },
+                                "required": ["environment", "secretPath"]
+                            }
+                        }
+                    },
+                    "required": ["secretImports"]
+                }
+            }
+        }
+    }
+
+    #swagger.responses[200] = {
+        description: 'Successfully updated the secret import',
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string",
+                            "example": "successfully updated secret import"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #swagger.responses[400] = {
+        description: 'Bad Request - Import not found',
+    }
+
+    #swagger.responses[403] = {
+        description: 'Forbidden access due to insufficient permissions',
+    }
+
+    #swagger.responses[401] = {
+        description: 'Unauthorized access due to invalid token or scope',
+    }
+  */
   const {
     body: { secretImports },
     params: { id }
@@ -202,7 +357,65 @@ export const updateSecretImport = async (req: Request, res: Response) => {
   return res.status(200).json({ message: "successfully updated secret import" });
 };
 
+/**
+ * Delete secret import
+ * @param req
+ * @param res
+ * @returns
+ */
 export const deleteSecretImport = async (req: Request, res: Response) => {
+  /* 
+    #swagger.summary = 'Delete secret import'
+    #swagger.description = 'Delete secret import'
+
+    #swagger.parameters['id'] = {
+        in: 'path',
+        description: 'ID of the secret import',
+        required: true,
+        type: 'string',
+        example: '12345abcde'
+    }
+
+    #swagger.requestBody = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "secretImportEnv": {
+                            "type": "string",
+                            "description": "Import from environment",
+                            "example": "someWorkspaceId"
+                        },
+                        "secretImportPath": {
+                            "type": "string",
+                            "description": "Import from secret path",
+                            "example": "production"
+                        }
+                    },
+                    "required": ["id", "secretImportEnv", "secretImportPath"]
+                }
+            }
+        }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string",
+                            "example": "successfully delete secret import"
+                        }
+                    },
+                    "description": "Confirmation of secret import deletion"
+                }
+            }
+        }
+    }
+  */
   const {
     params: { id },
     body: { secretImportEnv, secretImportPath }
@@ -274,7 +487,66 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
   return res.status(200).json({ message: "successfully delete secret import" });
 };
 
+/**
+ * Get secret imports
+ * @param req
+ * @param res
+ * @returns
+ */
 export const getSecretImports = async (req: Request, res: Response) => {
+  /*
+    #swagger.summary = 'Retrieve secret imports'
+    #swagger.description = 'Fetches the secret imports based on the workspaceId, environment, and folderId'
+
+    #swagger.parameters['workspaceId'] = {
+        in: 'query',
+        description: 'ID of the workspace of secret imports to get',
+        required: true,
+        type: 'string',
+        example: 'workspace12345'
+    }
+
+    #swagger.parameters['environment'] = {
+        in: 'query',
+        description: 'Environment of secret imports to get',
+        required: true,
+        type: 'string',
+        example: 'production'
+    }
+
+    #swagger.parameters['folderId'] = {
+        in: 'query',
+        description: 'ID of the folder containing the secret imports. Default: root',
+        required: false,
+        type: 'string',
+        example: 'folder12345'
+    }
+
+    #swagger.responses[200] = {
+        description: 'Successfully retrieved secret import',
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "secretImport": {
+                            "type": "object",
+                            "description": "Details of a secret import"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #swagger.responses[403] = {
+        description: 'Forbidden access due to insufficient permissions',
+    }
+
+    #swagger.responses[401] = {
+        description: 'Unauthorized access due to invalid token or scope',
+    }
+  */
   const {
     query: { workspaceId, environment, folderId }
   } = await validateRequest(reqValidator.GetSecretImportsV1, req);
@@ -326,6 +598,12 @@ export const getSecretImports = async (req: Request, res: Response) => {
   return res.status(200).json({ secretImport: importSecDoc });
 };
 
+/**
+ * Get all secret imports
+ * @param req
+ * @param res
+ * @returns
+ */
 export const getAllSecretsFromImport = async (req: Request, res: Response) => {
   const {
     query: { workspaceId, environment, folderId }
