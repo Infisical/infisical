@@ -9,7 +9,7 @@ import * as yup from "yup";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import attemptChangePassword from "@app/components/utilities/attemptChangePassword";
 import checkPassword from "@app/components/utilities/checks/password/checkPassword";
-import { Button, FormControl, Input } from "@app/components/v2";
+import { Button, FormControl, PasswordInput } from "@app/components/v2";
 import { useUser } from "@app/context";
 
 type Errors = {
@@ -93,12 +93,7 @@ export const ChangePasswordSection = () => {
           defaultValue=""
           render={({ field, fieldState: { error } }) => (
             <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Input
-                placeholder="Old password"
-                type="password"
-                {...field}
-                className="bg-mineshaft-800"
-              />
+              <PasswordInput placeholder="Old password" {...field} className="bg-mineshaft-800" />
             </FormControl>
           )}
           control={control}
@@ -110,12 +105,7 @@ export const ChangePasswordSection = () => {
           defaultValue=""
           render={({ field, fieldState: { error } }) => (
             <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Input
-                placeholder="New password"
-                type="password"
-                {...field}
-                className="bg-mineshaft-800"
-              />
+              <PasswordInput placeholder="New password" {...field} className="bg-mineshaft-800" />
             </FormControl>
           )}
           control={control}

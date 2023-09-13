@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { faEye, faEyeSlash, faLock } from "@fortawesome/free-solid-svg-icons";
+import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import axios from "axios";
 
@@ -11,8 +11,7 @@ import Error from "@app/components/basic/Error";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
-import { Button, Input } from "@app/components/v2";
-import { useToggle } from "@app/hooks";
+import { Button, Input, PasswordInput } from "@app/components/v2";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 
@@ -30,7 +29,6 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState(false);
-  const [showPassword, setShowPassword] = useToggle(false);
   const { data: serverDetails } = useFetchServerStatus();
   const queryParams = new URLSearchParams(window.location.search);
 
@@ -181,28 +179,14 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
         />
       </div>
       <div className="mt-4 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
-        <Input
+        <PasswordInput
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          type={showPassword ? "text" : "password"}
           placeholder="Enter your password..."
           isRequired
           autoComplete="current-password"
           id="current-password"
           className="select:-webkit-autofill:focus h-11"
-          rightIcon={
-            <button
-              aria-label={showPassword ? "hide password" : "show password"}
-              type="button"
-              onClick={() => setShowPassword.toggle()}
-            >
-              <FontAwesomeIcon
-                aria-hidden
-                icon={showPassword ? faEyeSlash : faEye}
-                className="mr-2"
-              />
-            </button>
-          }
         />
       </div>
       <div className="mt-5 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
