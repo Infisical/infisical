@@ -30,4 +30,4 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \
 
 EXPOSE 4000
 
-CMD ["npm", "run", "start"]
+CMD ["node", "build/index.js"]
