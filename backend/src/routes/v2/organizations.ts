@@ -4,7 +4,7 @@ import {
   requireAuth,
   requireOrganizationAuth
 } from "../../middleware";
-import { ACCEPTED, ADMIN, AuthMode, OWNER } from "../../variables";
+import { ACCEPTED, ADMIN, AuthMode } from "../../variables";
 import { organizationsController } from "../../controllers/v2";
 
 // TODO: /POST to create membership
@@ -48,7 +48,7 @@ router.get(
     acceptedAuthModes: [AuthMode.JWT]
   }),
   requireOrganizationAuth({
-    acceptedRoles: [OWNER, ADMIN],
+    acceptedRoles: [ADMIN],
     acceptedStatuses: [ACCEPTED]
   }),
   organizationsController.getOrganizationServiceAccounts

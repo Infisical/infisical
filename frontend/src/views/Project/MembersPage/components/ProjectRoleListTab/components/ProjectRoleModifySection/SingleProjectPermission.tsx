@@ -44,6 +44,22 @@ const PERMISSIONS = [
   { action: "delete", label: "Remove" }
 ] as const;
 
+const MEMBERS_PERMISSIONS = [
+  { action: "read", label: "View all members" },
+  { action: "create", label: "Invite members" },
+  { action: "edit", label: "Edit members" },
+  { action: "delete", label: "Remove members" }
+] as const;
+
+const getPermissionList = (option: Props["formName"]) => {
+  switch (option) {
+    case "member":
+      return MEMBERS_PERMISSIONS;
+    default:
+      return PERMISSIONS;
+  }
+};
+
 export const SingleProjectPermission = ({
   isNonEditable,
   setValue,
@@ -148,7 +164,7 @@ export const SingleProjectPermission = ({
         className="overflow-hidden grid gap-8 grid-flow-col auto-cols-min"
       >
         {isCustom &&
-          PERMISSIONS.map(({ action, label }) => (
+          getPermissionList(formName).map(({ action, label }) => (
             <Controller
               name={`permissions.${formName}.${action}`}
               key={`permissions.${formName}.${action}`}

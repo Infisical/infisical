@@ -1,6 +1,14 @@
 import { Request, Response } from "express";
 import { PipelineStage, Types } from "mongoose";
-import { Folder, Membership, Secret, ServiceTokenData, TFolderSchema, User } from "../../../models";
+import {
+  Folder,
+  Membership,
+  Secret,
+  ServiceTokenData,
+  TFolderSchema,
+  User,
+  Workspace
+} from "../../../models";
 import {
   ActorType,
   AuditLog,
@@ -41,6 +49,7 @@ import {
   getUserProjectPermissions
 } from "../../services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
+import { BadRequestError } from "../../../utils/errors";
 
 /**
  * Return secret snapshots for workspace with id [workspaceId]
@@ -781,7 +790,10 @@ export const addWorkspaceTrustedIp = async (req: Request, res: Response) => {
     ProjectPermissionSub.IpAllowList
   );
 
-  const plan = await EELicenseService.getPlan(req.workspace.organization);
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+
+  const plan = await EELicenseService.getPlan(workspace.organization);
 
   if (!plan.ipAllowlisting)
     return res.status(400).send({
@@ -844,7 +856,10 @@ export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
     ProjectPermissionSub.IpAllowList
   );
 
-  const plan = await EELicenseService.getPlan(req.workspace.organization);
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+
+  const plan = await EELicenseService.getPlan(workspace.organization);
 
   if (!plan.ipAllowlisting)
     return res.status(400).send({
@@ -933,7 +948,10 @@ export const deleteWorkspaceTrustedIp = async (req: Request, res: Response) => {
     ProjectPermissionSub.IpAllowList
   );
 
-  const plan = await EELicenseService.getPlan(req.workspace.organization);
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+
+  const plan = await EELicenseService.getPlan(workspace.organization);
 
   if (!plan.ipAllowlisting)
     return res.status(400).send({

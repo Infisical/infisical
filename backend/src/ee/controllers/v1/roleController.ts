@@ -171,18 +171,6 @@ export const getRoles = async (req: Request, res: Response) => {
   const customRoles = await Role.find({ organization: orgId, isOrgRole, workspace: workspaceId });
   // as this is shared between org and workspace switch the rule set based on it
   const roles = [
-    // owner is only in org level role
-    ...(isOrgRole
-      ? [
-          {
-            _id: "owner",
-            name: "Owner",
-            slug: "owner",
-            description: "Complete administration access over the organization.",
-            permissions: adminPermissions.rules
-          }
-        ]
-      : []),
     {
       _id: "admin",
       name: "Admin",
@@ -192,7 +180,7 @@ export const getRoles = async (req: Request, res: Response) => {
     },
     {
       _id: "member",
-      name: "Member",
+      name: isOrgRole ? "Member" : "Developer",
       slug: "member",
       description: "Non-administrative role in an organization",
       permissions: isOrgRole ? memberPermissions.rules : memberProjectPermissions.rules
