@@ -158,13 +158,39 @@ const buildMemberPermission = () => {
   can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Member);
+
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Integrations);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Integrations);
+
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
+
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.ServiceTokens);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.ServiceTokens);
+
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Settings);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Settings);
+
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Environments);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Environments);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Environments);
+
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Tags);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Tags);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Tags);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
 

@@ -13,6 +13,7 @@ import {
   Integration,
   IntegrationAuth,
   Membership,
+  MembershipOrg,
   Organization,
   Secret,
   SecretBlindIndexData,
@@ -23,10 +24,12 @@ import {
 import { generateKeyPair } from "../../utils/crypto";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../../config";
 import {
+  ADMIN,
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_BASE64,
   ENCODING_SCHEME_UTF8,
   MEMBER,
+  OWNER,
   VIEWER
 } from "../../variables";
 import { InternalServerError } from "../errors";
@@ -690,6 +693,17 @@ export const backfillPermission = async () => {
         }
       }
     ]
+  );
+
+  await MembershipOrg.updateMany(
+    {
+      role: OWNER
+    },
+    {
+      $set: {
+        role: ADMIN
+      }
+    }
   );
   console.log("Backfill: Finishing converting old denied permission in workspace to viewers");
 };
