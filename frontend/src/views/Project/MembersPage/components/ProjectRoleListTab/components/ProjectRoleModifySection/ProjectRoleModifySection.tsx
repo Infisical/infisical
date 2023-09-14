@@ -3,7 +3,6 @@ import { faElementor } from "@fortawesome/free-brands-svg-icons";
 import {
   faAnchorLock,
   faArrowLeft,
-  faBook,
   faCog,
   faKey,
   faLock,
@@ -82,12 +81,6 @@ const SINGLE_PERMISSION_LIST = [
     subtitle: "Tag management control",
     icon: faTags,
     formName: "tags"
-  },
-  {
-    title: "Audit Logs",
-    subtitle: "Audit log management control",
-    icon: faBook,
-    formName: "audit-logs"
   },
   {
     title: "IP Allowlist",

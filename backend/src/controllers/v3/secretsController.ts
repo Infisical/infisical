@@ -55,6 +55,9 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
     secretPath = getFolderWithPathFromId(folder.nodes, folderId).folderPath;
   }
 
+  if (!environment || !workspaceId)
+    throw BadRequestError({ message: "Missing environment or workspace id" });
+
   let permissionCheckFn: (env: string, secPath: string) => boolean; // used to pass as callback function to import secret
   if (req.user?._id) {
     const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
