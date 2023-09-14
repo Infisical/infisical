@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
-import SecretPathExamples from "@app/components/basic/popups/SecretPathExamples";
+import GlobPatternExamples from "@app/components/basic/popups/GlobPatternExamples";
 import {
   Checkbox,
   FormControl,
@@ -142,7 +142,7 @@ export const MultiEnvProjectPermission = ({
                   <div className="flex items-center gap-2">
                     Secret Path
                     <span className="text-xs normal-case">
-                      <SecretPathExamples />
+                      <GlobPatternExamples />
                     </span>
                   </div>
                 </Th>

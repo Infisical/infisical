@@ -15,7 +15,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { twMerge } from "tailwind-merge";
 import * as yup from "yup";
 
-import SecretPathExamples from "@app/components/basic/popups/SecretPathExamples";
+import GlobPatternExamples from "@app/components/basic/popups/GlobPatternExamples";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { ProjectPermissionCan } from "@app/components/permissions";
 // TODO:(akhilmhdh) convert all the util functions like this into a lib folder grouped by functionality
@@ -329,7 +329,7 @@ export const SecretDropzone = ({
                         label="Secret Path"
                         className="flex-grow"
                         isRequired
-                        icon={<SecretPathExamples />}
+                        icon={<GlobPatternExamples />}
                       >
                         <Input
                           {...register("secretPath")}

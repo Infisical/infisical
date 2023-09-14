@@ -3,7 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import SecretPathExamples from "@app/components/basic/popups/SecretPathExamples";
+import GlobPatternExamples from "@app/components/basic/popups/GlobPatternExamples";
 import {
   Button,
   FormControl,
@@ -86,7 +86,7 @@ export const AddWebhookForm = ({
             />
             <FormControl
               label="Secret Path"
-              icon={<SecretPathExamples />}
+              icon={<GlobPatternExamples />}
               isRequired
               isError={Boolean(errors?.secretPath)}
               errorText={errors?.secretPath?.message}
