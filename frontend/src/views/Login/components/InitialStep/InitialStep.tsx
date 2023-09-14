@@ -199,8 +199,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           variant="solid"
           isLoading={isLoading}
         >
-          {" "}
-          Continue with Email{" "}
+          Continue with Email
         </Button>
       </div>
       {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
