@@ -120,6 +120,7 @@ const getApps = async ({
       break;
     case INTEGRATION_GITLAB:
       apps = await getAppsGitlab({
+        integrationAuth,
         accessToken,
         teamId,
       });
@@ -736,12 +737,16 @@ const getAppsTerraformCloud = async ({
  * @returns {String} apps.name - name of GitLab site
  */
 const getAppsGitlab = async ({
+  integrationAuth,
   accessToken,
   teamId,
 }: {
+  integrationAuth: IIntegrationAuth;
   accessToken: string;
   teamId?: string;
 }) => {
+  const gitLabApiUrl = integrationAuth.url ? `${integrationAuth.url}/api` : INTEGRATION_GITLAB_API_URL;
+  
   const apps: App[] = [];
 
   let page = 1;
@@ -758,7 +763,7 @@ const getAppsGitlab = async ({
       });
 
       const { data } = await standardRequest.get(
-        `${INTEGRATION_GITLAB_API_URL}/v4/groups/${teamId}/projects`,
+        `${gitLabApiUrl}/v4/groups/${teamId}/projects`,
         {
           params,
           headers: {
@@ -785,7 +790,7 @@ const getAppsGitlab = async ({
     // case: fetch projects for individual in GitLab
 
     const { id } = (
-      await standardRequest.get(`${INTEGRATION_GITLAB_API_URL}/v4/user`, {
+      await standardRequest.get(`${gitLabApiUrl}/v4/user`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Accept-Encoding": "application/json",
@@ -800,7 +805,7 @@ const getAppsGitlab = async ({
       });
 
       const { data } = await standardRequest.get(
-        `${INTEGRATION_GITLAB_API_URL}/v4/users/${id}/projects`,
+        `${gitLabApiUrl}/v4/users/${id}/projects`,
         {
           params,
           headers: {
