@@ -9,7 +9,7 @@ export async function scanFullRepoContentAndGetFindings(octokit: any, installati
   const findingsPath = join(tempFolder, "findings.json");
   const repoPath = join(tempFolder, "repo.git")
   try {
-    const { data: { token }} = await octokit.apps.createInstallationAccessToken({installation_id: installationId})
+    const { data: { token } } = await octokit.apps.createInstallationAccessToken({ installation_id: installationId })
     await cloneRepo(token, repositoryFullName, repoPath)
     await runInfisicalScanOnRepo(repoPath, findingsPath);
     const findingsData = await readFindingsFile(findingsPath);
@@ -75,7 +75,7 @@ export async function cloneRepo(installationAcccessToken: string, repositoryFull
         resolve();
       }
     });
-  }) 
+  })
 }
 
 export function runInfisicalScanOnRepo(repoPath: string, outputPath: string): Promise<void> {

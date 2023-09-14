@@ -11,18 +11,17 @@ import { convertKeysToLowercase, scanContentAndGetFindings } from "../../ee/serv
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
 
 import { TScanPushEventQueueDetails } from "./types";
-import { scanAndProcessInfisicalIgnoreFile } from "./scanAndProcessInfisicalIgnoreFile";
 
 export const githubPushEventSecretScan = new Queue("github-push-event-secret-scanning", "redis://redis:6379");
 
-  githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => {
-    const {
-      organizationId,
-      commits,
-      pusher,
-      repository,
-      installationId
-    }: TScanPushEventQueueDetails = job.data;
+githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => {
+  const {
+    organizationId,
+    commits,
+    pusher,
+    repository,
+    installationId
+  }: TScanPushEventQueueDetails = job.data;
 
   const [owner, repo] = repository.fullName.split("/");
   const octokit = new ProbotOctokit({
@@ -33,10 +32,16 @@ export const githubPushEventSecretScan = new Queue("github-push-event-secret-sca
     },
   });
 
-  const hashedSecretFindings: string[] = [];
   const existingUnresolvedFingerprints: string[] = [];
-  const existingResolvedFingerprints: string[] = [];
-  const newFindingsToUpdate: any[] = [];
+  const batchRiskUpdate = [];
+
+  const allRisksMarkedFalsePositive = await GitRisks.find({
+    repositoryId: repository.id,
+    status: RiskStatus.RESOLVED_FALSE_POSITIVE
+  }).select("+hashedSecret").lean()
+
+  const existingHashedSecretsWithStatusFalsePositive = allRisksMarkedFalsePositive.map(risk => risk.hashedSecret)
+  const existingFingerprintsWithStatusFalsePositive = allRisksMarkedFalsePositive.map(risk => risk.fingerPrintWithoutCommitId)
 
   for (const commit of commits) {
     for (const filepath of [...commit.added, ...commit.modified]) {
@@ -58,36 +63,7 @@ export const githubPushEventSecretScan = new Queue("github-push-event-secret-sca
           // Create a SHA3-512 hash of the secret
           const sha512Hash = createHash("sha3-512");
           sha512Hash.update(finding.Secret);
-          const hashResult = sha512Hash.digest("hex");
-
-          // Check if the hashed secret has already been processed
-          if(hashedSecretFindings.includes(hashResult)) {
-            continue;
-          }
-
-          // Check if the hashed secret is in the same repository & bulk process if more than one
-          // TODO: the user should be notified if the hashed secret is also in another part of the repo...
-          const existingFindingsInFile = await GitRisks.find({
-            $and: [
-              { hashedSecret: hashResult },
-              { repositoryId: repository.id },
-            ]
-          }).select("+hashedSecret")
-        
-          for (const existingFinding of existingFindingsInFile) {
-            hashedSecretFindings.push(existingFinding.hashedSecret)
-
-            // skip all resolved findings (false positives, revoked & unrevoked)
-            if (existingFinding && existingFinding.status !== RiskStatus.UNRESOLVED) {
-              existingResolvedFingerprints.push(existingFinding.fingerprint);
-            } else if (existingFinding && existingFinding.status === RiskStatus.UNRESOLVED) {
-              existingUnresolvedFingerprints.push(existingFinding.fingerprint);
-            }
-          }
-
-          if (existingFindingsInFile.length > 0) {
-            continue;
-          }
+          const hashSecret = sha512Hash.digest("hex");
 
           finding.Fingerprint = fingerPrintWithCommitId;
           finding.FingerPrintWithoutCommitId = fingerPrintWithoutCommitId;
@@ -96,35 +72,48 @@ export const githubPushEventSecretScan = new Queue("github-push-event-secret-sca
           finding.Author = commit.author.name;
           finding.Email = commit?.author?.email ? commit?.author?.email : "";
 
-          newFindingsToUpdate.push({
-            fingerprint: finding.Fingerprint,
-            data: {
-              ...convertKeysToLowercase(finding),
-              installationId: installationId,
-              organization: organizationId,
-              repositoryFullName: repository.fullName,
-              repositoryId: repository.id,
-              hashedSecret: hashResult,
-            },
-          });
-        }  
-       
+          if (existingHashedSecretsWithStatusFalsePositive.includes(hashSecret) || existingFingerprintsWithStatusFalsePositive.includes(fingerPrintWithCommitId)) {
+            batchRiskUpdate.push({
+              fingerprint: finding.Fingerprint,
+              data: {
+                ...convertKeysToLowercase(finding),
+                installationId: installationId,
+                organization: organizationId,
+                repositoryFullName: repository.fullName,
+                repositoryId: repository.id,
+                hashedSecret: hashSecret,
+                status: RiskStatus.RESOLVED_FALSE_POSITIVE // set status to false positive
+              },
+            });
+          } else {
+            batchRiskUpdate.push({
+              fingerprint: finding.Fingerprint,
+              data: {
+                ...convertKeysToLowercase(finding),
+                installationId: installationId,
+                organization: organizationId,
+                repositoryFullName: repository.fullName,
+                repositoryId: repository.id,
+                hashedSecret: hashSecret,
+                status: RiskStatus.UNRESOLVED // new risk so set to unresolved
+              },
+            });
+          }
+        }
+
       } catch (error) {
         done(new Error(`gitHubHistoricalScanning.process: unable to fetch content for [filepath=${filepath}] because [error=${error}]`), null)
       }
     }
   }
 
-  // batch update all new findings
-  for (const { fingerprint, data } of newFindingsToUpdate) {
+  for (const { fingerprint, data } of batchRiskUpdate) {
     await GitRisks.findOneAndUpdate(
       { fingerprint },
-        data,
+      data,
       { upsert: true }
     ).lean();
   }
-
-  const processedInfisicalIgnoreCount = await scanAndProcessInfisicalIgnoreFile(octokit, owner, repo, existingUnresolvedFingerprints)
 
   // get emails of admins
   const adminsOfWork = await MembershipOrg.find({
@@ -144,36 +133,20 @@ export const githubPushEventSecretScan = new Queue("github-push-event-secret-sca
   const adminOrOwnerEmails = userEmails.map(userObject => userObject.email)
   const usersToNotify = pusher?.email ? [pusher.email, ...adminOrOwnerEmails] : [...adminOrOwnerEmails]
 
-  const numberOfNewSecrets = newFindingsToUpdate.length;
-  const numberOfUnresolvedSecrets = existingUnresolvedFingerprints.length - processedInfisicalIgnoreCount;
+  const totalUnresolvedRisks = batchRiskUpdate.filter(item => item.data.status === RiskStatus.UNRESOLVED).length
 
-  if (numberOfNewSecrets || numberOfUnresolvedSecrets) {
-    let subjectLine = "Incident alert:";
-    const messages = [];
-
-    if (numberOfNewSecrets > 0) {
-      messages.push(`${numberOfNewSecrets} new leaked ${numberOfNewSecrets === 1 ? "secret" : "secrets"}`);
-    }
-
-    if (numberOfUnresolvedSecrets > 0) {
-      messages.push(`${numberOfUnresolvedSecrets} unresolved leaked ${numberOfUnresolvedSecrets === 1 ? "secret" : "secrets"}`);
-    }
-
-    if (messages.length > 0) {
-      subjectLine += ` ${messages.join(" & ")} found in GitHub repository: ${repository.fullName}`;
-      
-      await sendMail({
-        template: "secretLeakIncident.handlebars",
-        subjectLine,
-        recipients: usersToNotify,
-        substitutions: {
-          numberOfNewSecrets,
-          numberOfUnresolvedSecrets,
-          pusher_email: pusher.email,
-          pusher_name: pusher.name
-        }
-      });
-    }
+  if (totalUnresolvedRisks) {
+    const subjectLine = `Incident alert: ${totalUnresolvedRisks} leaked secret(s) found in ${repository.fullName}`;
+    await sendMail({
+      template: "secretLeakIncident.handlebars",
+      subjectLine,
+      recipients: usersToNotify,
+      substitutions: {
+        numberOfUnresolvedSecrets: totalUnresolvedRisks,
+        pusher_email: pusher.email,
+        pusher_name: pusher.name
+      }
+    });
   }
 
   const postHogClient = await TelemetryService.getPostHogClient();
@@ -183,12 +156,12 @@ export const githubPushEventSecretScan = new Queue("github-push-event-secret-sca
       distinctId: pusher.email,
       properties: {
         numberOfCommitsScanned: commits.length,
-        numberOfRisksFound: numberOfNewSecrets, //  capture telemetry for new findings
+        numberOfRisksFound: totalUnresolvedRisks, //  capture telemetry for new findings
       }
     });
   }
 
-  done(null, {newFindingsToUpdate, existingUnresolvedFingerprints})
+  done(null, { totalUnresolvedRisks, existingUnresolvedFingerprints })
 
 })
 

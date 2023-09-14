@@ -12,12 +12,11 @@ import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../co
 import { SecretMatch } from "../../ee/services/GithubSecretScanning/types";
 
 import { TScanFullRepoQueueDetails } from "./types";
-import { scanAndProcessInfisicalIgnoreFile } from "./scanAndProcessInfisicalIgnoreFile";
 
 export const githubFullRepositorySecretScan = new Queue("github-full-repository-secret-scanning", "redis://redis:6379");
 
-  githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback) => {
-    const {
+githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback) => {
+  const {
     organizationId,
     repository,
     installationId
@@ -26,14 +25,14 @@ export const githubFullRepositorySecretScan = new Queue("github-full-repository-
 
   try {
     const octokit = new ProbotOctokit({
-        auth: {
+      auth: {
         appId: await getSecretScanningGitAppId(),
         privateKey: await getSecretScanningPrivateKey(),
         installationId: installationId,
       },
     });
 
-    const findings : SecretMatch[] = await scanFullRepoContentAndGetFindings(octokit, installationId, repository.fullName)
+    const findings: SecretMatch[] = await scanFullRepoContentAndGetFindings(octokit, installationId, repository.fullName)
     const batchUpdateOperations: any[] = [];
 
     for (const finding of findings) {
@@ -42,7 +41,7 @@ export const githubFullRepositorySecretScan = new Queue("github-full-repository-
       const sha512Hash = createHash("sha3-512");
       sha512Hash.update(finding.Secret);
       const hashResult = sha512Hash.digest("hex");
-      
+
       const updateOperation = {
         updateOne: {
           filter: { fingerprint: finding.Fingerprint },
@@ -63,8 +62,6 @@ export const githubFullRepositorySecretScan = new Queue("github-full-repository-
 
     await GitRisks.bulkWrite(batchUpdateOperations);
 
-    const processedInfisicalIgnoreCount = await scanAndProcessInfisicalIgnoreFile(octokit, owner, repo)
-
     // get emails of admins
     const adminsOfWork = await MembershipOrg.find({
       organization: organizationId,
@@ -81,7 +78,7 @@ export const githubFullRepositorySecretScan = new Queue("github-full-repository-
     }).select("email").lean()
 
     const usersToNotify = userEmails.map(userObject => userObject.email)
-    const numberOfNewSecrets = findings.length - processedInfisicalIgnoreCount
+    const numberOfNewSecrets = findings.length
 
     if (findings.length) {
       await sendMail({
