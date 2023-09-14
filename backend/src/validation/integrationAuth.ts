@@ -30,9 +30,9 @@ const validateClientForIntegrationAuth = async ({
   const integrationAuth = await IntegrationAuth.findById(integrationAuthId)
     .populate<{ workspace: IWorkspace }>("workspace")
     .select(
-      "+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt"
+      "+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt +metadata"
     );
-
+    
   if (!integrationAuth) throw IntegrationAuthNotFoundError();
 
   let accessToken, accessId;
