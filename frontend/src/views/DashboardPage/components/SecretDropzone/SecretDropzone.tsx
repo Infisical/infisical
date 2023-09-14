@@ -100,6 +100,7 @@ export const SecretDropzone = ({
   const { popUp, handlePopUpClose, handlePopUpToggle } = usePopUp(["importSecEnv"] as const);
   const [searchFilter, setSearchFilter] = useState("");
   const [shouldIncludeValues, setShouldIncludeValues] = useState(true);
+  const filteredEnvironments = environments.filter((env) => env.slug !== environment);
 
   const {
     handleSubmit,
@@ -111,7 +112,7 @@ export const SecretDropzone = ({
     formState: { isDirty }
   } = useForm<TFormSchema>({
     resolver: yupResolver(formSchema),
-    defaultValues: { secretPath: "/", environment: environments?.[0]?.slug }
+    defaultValues: { secretPath: "/", environment: filteredEnvironments?.[0]?.slug }
   });
 
   const envCopySecPath = watch("secretPath");
@@ -222,7 +223,7 @@ export const SecretDropzone = ({
       onDragOver={handleDrag}
       onDrop={handleDrop}
       className={twMerge(
-        "relative mx-0.5 mb-4 mt-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 py-4 text-sm px-2 text-mineshaft-200 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100",
+        "relative mx-0.5 mb-4 mt-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 py-4 px-2 text-sm text-mineshaft-200 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100",
         isDragActive && "opacity-100",
         !isSmaller && "w-full max-w-3xl flex-col space-y-4 py-20",
         isLoading && "bg-bunker-800"
@@ -234,7 +235,7 @@ export const SecretDropzone = ({
         </div>
       ) : (
         <form onSubmit={handleSubmit(handleFormSubmit)}>
-          <div className="flex items-center justify-cente flex-col space-y-2">
+          <div className="justify-cente flex flex-col items-center space-y-2">
             <div>
               <FontAwesomeIcon icon={faUpload} size={isSmaller ? "2x" : "5x"} />
             </div>
@@ -309,10 +310,10 @@ export const SecretDropzone = ({
                               value={value}
                               onValueChange={(val) => onChange(val)}
                               className="w-full border border-mineshaft-500"
-                              defaultValue={environments?.[0]?.slug}
+                              defaultValue={filteredEnvironments?.[0]?.slug}
                               position="popper"
                             >
-                              {environments.map((sourceEnvironment) => (
+                              {filteredEnvironments.map((sourceEnvironment) => (
                                 <SelectItem
                                   value={sourceEnvironment.slug}
                                   key={`source-environment-${sourceEnvironment.slug}`}
@@ -334,7 +335,7 @@ export const SecretDropzone = ({
                     <div className="border-t border-mineshaft-600 pt-4">
                       <div className="mb-4 flex items-center justify-between">
                         <div>Secrets</div>
-                        <div className="w-1/2 flex items-center space-x-2">
+                        <div className="flex w-1/2 items-center space-x-2">
                           <Input
                             placeholder="Search for secret"
                             value={searchFilter}
@@ -367,7 +368,7 @@ export const SecretDropzone = ({
                       {!isSecretsLoading && !secrets?.secrets?.length && (
                         <EmptyState title="No secrets found" icon={faKey} />
                       )}
-                      <div className="grid grid-cols-2 gap-4 max-h-64 overflow-auto thin-scrollbar ">
+                      <div className="thin-scrollbar grid max-h-64 grid-cols-2 gap-4 overflow-auto ">
                         {isSecretsLoading &&
                           Array.apply(0, Array(2)).map((_x, i) => (
                             <Skeleton
@@ -397,7 +398,7 @@ export const SecretDropzone = ({
                             />
                           ))}
                       </div>
-                      <div className="mt-6 mb-4">
+                      <div className="mt-6 mb-4 flex flex-col gap-y-2">
                         <Checkbox
                           id="populate-include-value"
                           isChecked={shouldIncludeValues}
