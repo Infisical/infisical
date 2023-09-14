@@ -43,6 +43,14 @@ frontend:
     ## @param frontend.image.pullPolicy Backend image pullPolicy
     ##
     pullPolicy: IfNotPresent
+  ## @param frontend.resources.limits.memory container memory limit [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+  ## @param frontend.resources.requests.cpu container CPU request [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+  ##
+  resources:
+    limits:
+      memory: 100Mi
+    requests:
+      cpu: 10m
   ## @param frontend.kubeSecretRef Backend secret resource reference name (containing required [frontend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))
   ##
   kubeSecretRef: ""
@@ -102,6 +110,14 @@ backend:
     ## @param backend.image.pullPolicy Backend image pullPolicy
     ##
     pullPolicy: IfNotPresent
+  ## @param backend.resources.limits.memory container memory limit [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+  ## @param backend.resources.requests.cpu container CPU request [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+  ##
+  resources:
+    limits:
+      memory: 200Mi
+    requests:
+      cpu: 150m
   ## @param backend.kubeSecretRef Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))
   ##
   kubeSecretRef: ""
