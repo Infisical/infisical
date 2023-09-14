@@ -85,7 +85,13 @@ export const IntegrationsPage = withProjectPermission(
     // details: so onsuccessfully deleting an integration auth, immediately integration list is refeteched
     // After the refetch is completed check if its empty. Then set bot active and reset the submit hook
     useEffect(() => {
-      if (isDeleteIntegrationAuthSuccess && !isIntegrationFetching && !integrations?.length) {
+      if (
+        isDeleteIntegrationAuthSuccess &&
+        !isIntegrationFetching &&
+        !isIntegrationAuthLoading &&
+        !integrations?.length &&
+        !integrationAuths?.length
+      ) {
         if (bot?._id)
           updateBotActiveStatusSync({
             isActive: false,
@@ -94,7 +100,13 @@ export const IntegrationsPage = withProjectPermission(
           });
         resetDeleteIntegrationAuth();
       }
-    }, [isIntegrationFetching, isDeleteIntegrationAuthSuccess, integrations?.length]);
+    }, [
+      isIntegrationFetching,
+      isDeleteIntegrationAuthSuccess,
+      isIntegrationAuthLoading,
+      integrationAuths?.length,
+      integrations?.length
+    ]);
 
     const handleProviderIntegration = async (provider: string) => {
       const selectedCloudIntegration = cloudIntegrations?.find(({ slug }) => provider === slug);
