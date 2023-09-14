@@ -23,8 +23,8 @@ enum Permission {
 }
 
 const PERMISSIONS = [
-  { action: "edit", label: "Update workspace details" },
-  { action: "delete", label: "Delete workspace" }
+  { action: "edit", label: "Update project details" },
+  { action: "delete", label: "Delete projects" }
 ] as const;
 
 export const WsProjectPermission = ({ isNonEditable, setValue, control }: Props) => {
