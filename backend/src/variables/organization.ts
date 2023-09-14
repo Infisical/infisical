@@ -1,5 +1,5 @@
 // membership roles
-export const OWNER = "owner";
+export const OWNER = "owner"; // depreciated
 export const ADMIN = "admin";
 export const MEMBER = "member";
 export const VIEWER = "viewer";
