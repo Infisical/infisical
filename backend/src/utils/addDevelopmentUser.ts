@@ -80,7 +80,7 @@ export const createTestUserForDevelopment = async () => {
     const testMembershipOrg = {
       _id: testMembershipOrgId,
       organization: testOrgId,
-      role: "owner",
+      role: "admin",
       status: "accepted",
       user: testUserId,
     }
@@ -121,7 +121,7 @@ export const createTestUserForDevelopment = async () => {
       const workspaceInDB = await Workspace.findById(testWorkspaceId)
       if (!workspaceInDB) {
         const workspace = await Workspace.create(testWorkspace)
-        
+
         // initialize blind index salt for workspace
         await SecretService.createSecretBlindIndexData({
           workspaceId: workspace._id,
