@@ -6,6 +6,8 @@ import { twMerge } from "tailwind-merge";
 
 import { useToggle } from "@app/hooks";
 
+import { IconButton } from "../IconButton";
+
 type Props = {
   placeholder?: string;
   isFullWidth?: boolean;
@@ -133,13 +135,15 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
         ref={ref}
         type={showPassword ? "text" : "password"}
         rightIcon={
-          <button
-            aria-label={showPassword ? "hide password" : "show password"}
-            type="button"
+          <IconButton
+            variant="plain"
+            size="md"
+            className="p-0"
+            ariaLabel={showPassword ? "hide password" : "show password"}
             onClick={() => setShowPassword.toggle()}
           >
             <FontAwesomeIcon aria-hidden icon={showPassword ? faEyeSlash : faEye} />
-          </button>
+          </IconButton>
         }
       />
     );
