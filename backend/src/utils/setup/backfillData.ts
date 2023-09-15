@@ -688,7 +688,7 @@ export const backfillUserAuthMethods = async () => {
 
 export const backfillPermission = async () => {
   const lockKey = "backfill_permission_lock";
-  const timeout = 5000; // Lock timeout in milliseconds
+  const timeout = 360000; // 6 min lock timeout in milliseconds 
   const lock = await redisClient?.set(lockKey, 1, "PX", timeout, "NX");
 
   if (lock) {
