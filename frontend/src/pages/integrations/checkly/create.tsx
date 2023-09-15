@@ -183,6 +183,10 @@ export default function ChecklyCreateIntegrationPage() {
     </div>
   ) : (
     <div className="flex justify-center items-center w-full h-full">
+      <Head>
+        <title>Set Up GCP Secret Manager Integration</title>
+        <link rel='icon' href='/infisical.ico' />
+      </Head>
       {isintegrationAuthAppsLoading ? <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" /> : <div className="max-w-md h-max p-6 border border-mineshaft-600 rounded-md bg-mineshaft-800 text-mineshaft-200 flex flex-col text-center">
         <FontAwesomeIcon icon={faBugs} className="text-6xl my-2 inlineli"/>
         <p>

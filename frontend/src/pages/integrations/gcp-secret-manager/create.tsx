@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/router";
+import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { motion } from "framer-motion";
 import queryString from "query-string";
@@ -74,7 +78,7 @@ export default function GCPSecretManagerCreateIntegrationPage() {
 
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
-  const { data: integrationAuthApps } = useGetIntegrationAuthApps({
+  const { data: integrationAuthApps, isLoading: isintegrationAuthAppsLoading } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
 
@@ -157,12 +161,32 @@ export default function GCPSecretManagerCreateIntegrationPage() {
       onSubmit={handleSubmit(onFormSubmit)}
       className="flex h-full w-full items-center justify-center"
     >
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">GCP Secret Manager Integration</CardTitle>
-        <Tabs defaultValue={TabSections.Connection}>
+      <Card className="max-w-lg rounded-md border border-mineshaft-600 mb-12">
+        <Head>
+          <title>Set Up GCP Secret Manager Integration</title>
+          <link rel='icon' href='/infisical.ico' />
+        </Head>
+        <CardTitle 
+          className="text-left px-6 text-xl mb-2" 
+          subTitle="After creating an integration you secrets will automatically sync from Infisical to GCP Secret Manager. Your GCP secrets may get overriden."
+        >
+          GCP Secret Manager Integration 
+          <Link href="https://infisical.com/docs/integrations/cloud/gcp-secret-manager" passHref>
+            <a target="_blank" rel="noopener noreferrer">
+              <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
+                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
+                Docs
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
+              </div>
+            </a>
+          </Link>
+        </CardTitle>
+        <Tabs defaultValue={TabSections.Connection} className="px-6">
           <TabList>
-            <Tab value={TabSections.Connection}>Connection</Tab>
-            <Tab value={TabSections.Options}>Options</Tab>
+            <div className="flex flex-row border-b border-mineshaft-600 w-full">
+              <Tab value={TabSections.Connection}>Connection</Tab>
+              <Tab value={TabSections.Options}>Options</Tab>
+            </div>
           </TabList>
           <TabPanel value={TabSections.Connection}>
             <motion.div
@@ -254,15 +278,7 @@ export default function GCPSecretManagerCreateIntegrationPage() {
                     )
                   }}
                 />
-                <Button
-                  className="mt-4"
-                  size="sm"
-                  type="submit"
-                  isLoading={isLoading}
-                >
-                  Create Integration
-                </Button>
-                </div>
+              </div>
             </motion.div>
           </TabPanel>
           <TabPanel value={TabSections.Options}>
@@ -298,7 +314,7 @@ export default function GCPSecretManagerCreateIntegrationPage() {
                   </FormControl>
               )}
             />
-            <div className="mt-8">
+            <div className="mt-8 mb-[2.36rem]">
               <Controller
                 control={control}
                 name="shouldLabel"
@@ -351,10 +367,39 @@ export default function GCPSecretManagerCreateIntegrationPage() {
             )}
           </TabPanel>
         </Tabs>
+        <Button
+          colorSchema="primary"
+          variant="outline_bg"
+          className="mb-8 ml-auto mr-6 w-min"
+          size="sm"
+          type="submit"
+          isLoading={isLoading}
+          // disabled={!targetAppId}
+        >
+          Create Integration
+        </Button>
       </Card>
     </form>
   ) : (
-    <div />
+    <div className="flex justify-center items-center w-full h-full">
+      <Head>
+        <title>Set Up GCP Secret Manager Integration</title>
+        <link rel='icon' href='/infisical.ico' />
+      </Head>
+      {isintegrationAuthAppsLoading ? <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" /> : <div className="max-w-md h-max p-6 border border-mineshaft-600 rounded-md bg-mineshaft-800 text-mineshaft-200 flex flex-col text-center">
+        <FontAwesomeIcon icon={faBugs} className="text-6xl my-2 inlineli"/>
+        <p>
+          Something went wrong. Please contact <a
+            className="inline underline underline-offset-4 decoration-primary-500 opacity-80 hover:opacity-100 text-mineshaft-100 duration-200 cursor-pointer"
+            target="_blank"
+            rel="noopener noreferrer"
+            href="mailto:support@infisical.com"
+          >
+            support@infisical.com
+          </a> if the issue persists.
+        </p>
+      </div>}
+    </div>
   );
 }
 
