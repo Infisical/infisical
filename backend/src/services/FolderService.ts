@@ -8,6 +8,11 @@ type TAppendFolderDTO = {
   parentFolderId?: string;
 };
 
+type TAppendFoldersDTO = {
+  folderNames: { name: string }[];
+  parentFolderId?: string;
+}
+
 type TRenameFolderDTO = {
   folderName: string;
   folderId: string;
@@ -63,6 +68,44 @@ const appendChild = (folders: TFolderSchema, folderName: string) => {
   });
   return { id, name: folderName };
 };
+
+// appendChild but for multiple folders
+const appendChildren = (folders: TFolderSchema, newFolders: { name: string }[]) => {
+  const folder = folders.children.filter(({ name }) => newFolders.includes({ name }))
+  if (folder.length > 0) {
+    throw new Error("Folder already exists")
+  }
+  const f = newFolders.map(({ name }) => {
+    const id = generateFolderId();
+    const folder = {
+      id,
+      name,
+      children: [],
+      version: 1
+    }
+    folders.children.push(folder);
+    return { id, name };
+  });
+  folders.version += 1;
+  return { folders: f }
+}
+
+// root of append children wrapper - append child but for multiple folders
+export const appendFolders = (
+  folders: TFolderSchema,
+  { folderNames, parentFolderId }: TAppendFoldersDTO
+) => {
+  const isRoot = !parentFolderId;
+
+  if (isRoot) {
+    return appendChildren(folders, folderNames);
+  }
+  const folder = searchByFolderId(folders, parentFolderId);
+  if (!folder) {
+    throw new Error("Parent Folder not found");
+  }
+  return appendChildren(folder, folderNames);
+}
 
 // root of append child wrapper
 export const appendFolder = (

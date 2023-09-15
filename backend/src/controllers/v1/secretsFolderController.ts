@@ -9,6 +9,7 @@ import { Secret, ServiceTokenData } from "../../models";
 import { Folder } from "../../models/folder";
 import {
   appendFolder,
+  appendFolders,
   deleteFolderById,
   generateFolderId,
   getAllFolderIds,
@@ -242,6 +243,151 @@ export const createFolder = async (req: Request, res: Response) => {
 
   return res.json({ folder });
 };
+
+/**
+ * Create folders with names [Array<folderName>] for workspace with id [workspaceId]
+ * and environment [environment]
+ * @param req
+ * @param res
+ * @returns
+ */
+export const createFolders = async (req: Request, res: Response) => {
+  const {
+    body: { workspaceId, environment, folderNames, parentFolderId }
+  } = await validateRequest(reqValidator.CreateFoldersV1, req);
+
+  const folders = await Folder.findOne({
+    workspace: workspaceId,
+    environment
+  }).lean();
+
+  if (req.user) {
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const secretPath =
+      folders && parentFolderId
+        ? getFolderWithPathFromId(folders.nodes, parentFolderId).folderPath
+        : "/";
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    );
+  }
+
+  // space has no folders initialized
+  if (!folders) {
+    if (req.authData.authPayload instanceof ServiceTokenData) {
+      // root check
+      const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, "/");
+      if (!isValidScopeAccess) {
+        throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+      }
+    }
+
+    // for each folderName create a child and append it
+    const children = folderNames.map(({ name }) =>
+      ({ id: generateFolderId(), name, children: [], version: 1 })
+    )
+    const id = generateFolderId();
+    const folder = new Folder({
+      workspace: workspaceId,
+      environment,
+      nodes: {
+        id: "root",
+        name: "root",
+        version: 1,
+        children
+      }
+    });
+    await folder.save();
+    const folderVersion = new FolderVersion({
+      workspace: workspaceId,
+      environment,
+      nodes: folder.nodes
+    });
+    await folderVersion.save();
+    await EESecretService.takeSecretSnapshot({
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment
+    });
+
+    await Promise.all(children.map((folder) => {
+      return EEAuditLogService.createAuditLog(
+        req.authData,
+        {
+          type: EventType.CREATE_FOLDER,
+          metadata: {
+            environment,
+            folderId: folder.id,
+            folderName: folder.name,
+            folderPath: `root/${folder.id}`
+          }
+        },
+        {
+          workspaceId: new Types.ObjectId(workspaceId)
+        }
+      );
+    }))
+
+    return res.json({ folders: children.map((folder) => ({ name: folder.name, id: folder.id })) });
+  }
+
+  const folder = appendFolders(folders.nodes, { folderNames, parentFolderId });
+
+  await Folder.findByIdAndUpdate(folders._id, folders);
+
+  const { folder: parentFolder, folderPath: parentFolderPath } = getFolderWithPathFromId(
+    folders.nodes,
+    parentFolderId || "root"
+  );
+
+  if (req.authData.authPayload instanceof ServiceTokenData) {
+    // root check
+    const isValidScopeAccess = isValidScope(
+      req.authData.authPayload,
+      environment,
+      parentFolderPath
+    );
+    if (!isValidScopeAccess) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+  }
+
+  await Folder.findByIdAndUpdate(folders._id, folders);
+
+  const folderVersion = new FolderVersion({
+    workspace: workspaceId,
+    environment,
+    nodes: parentFolder
+  });
+  await folderVersion.save();
+
+  await EESecretService.takeSecretSnapshot({
+    workspaceId: new Types.ObjectId(workspaceId),
+    environment,
+    folderId: parentFolderId
+  });
+
+  await Promise.all(folder.folders.map(async ({ id, name }) => {
+    const { folderPath } = getFolderWithPathFromId(folders.nodes, id);
+    return EEAuditLogService.createAuditLog(
+      req.authData,
+      {
+        type: EventType.CREATE_FOLDER,
+        metadata: {
+          environment,
+          folderId: id,
+          folderName: name,
+          folderPath
+        }
+      },
+      {
+        workspaceId: new Types.ObjectId(workspaceId)
+      }
+    );
+  }));
+
+  return res.json({ folder });
+}
 
 /**
  * Update folder with id [folderId]

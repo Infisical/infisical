@@ -69,6 +69,7 @@ import { useLeaveConfirm, usePopUp, useToggle } from "@app/hooks";
 import {
   useBatchSecretsOp,
   useCreateFolder,
+  useCreateProjectFolders,
   useCreateSecretImport,
   useCreateWsTag,
   useDeleteFolder,
@@ -87,8 +88,9 @@ import {
   usePerformSecretRollback,
   useRegisterUserAction,
   useUpdateFolder,
-  useUpdateSecretImport
+  useUpdateSecretImport,
 } from "@app/hooks/api";
+import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 
 import { CompareSecret } from "./components/CompareSecret";
@@ -156,6 +158,7 @@ export const DashboardPage = () => {
   const [searchFilter, setSearchFilter] = useState("");
   const [snapshotId, setSnaphotId] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [uploadedEnvFolders, setUploadedEnvFolders] = useState<Omit<TSecretFolder, "id">[]>([]);
   const deletedSecretIds = useRef<{ id: string; secretName: string }[]>([]);
   const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({ initialValue: false });
 
@@ -239,6 +242,7 @@ export const DashboardPage = () => {
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: updateFolder } = useUpdateFolder(folderId);
   const { mutateAsync: deleteFolder } = useDeleteFolder(folderId);
+  const { mutateAsync: createFolders } = useCreateProjectFolders();
 
   const { data: secretImportCfg, isFetching: isSecretImportCfgFetching } = useGetSecretImports(
     workspaceId,
@@ -313,21 +317,21 @@ export const DashboardPage = () => {
   const isReadOnly = isFoldersLoading
     ? true
     : permission.can(
-        ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      ) &&
-      permission.cannot(
-        ProjectPermissionActions.Edit,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      ) &&
-      permission.cannot(
-        ProjectPermissionActions.Create,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      ) &&
-      permission.cannot(
-        ProjectPermissionActions.Delete,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      );
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    ) &&
+    permission.cannot(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    ) &&
+    permission.cannot(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    ) &&
+    permission.cannot(
+      ProjectPermissionActions.Delete,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    );
 
   const canDoRollback = !isReadOnly;
   const isSubmitDisabled =
@@ -359,7 +363,7 @@ export const DashboardPage = () => {
     setSortDir(dir);
   };
 
-  const handleUploadedEnv = (uploadedSec: TSecOverwriteOpt["secrets"]) => {
+  const handleUploadedEnv = (uploadedSec: TSecOverwriteOpt["secrets"], uploadedFolders?: Omit<TSecretFolder, "id">[]) => {
     const sec = getValues("secrets") || [];
     const conflictingSec = sec.filter(({ key }) => Boolean(uploadedSec?.[key]));
     const conflictingSecIds = conflictingSec.reduce<Record<string, boolean>>(
@@ -383,7 +387,19 @@ export const DashboardPage = () => {
         });
       }
     });
+
     setValue("secrets", sec, { shouldDirty: true });
+
+    // get non conflicting folders
+    const existingFolders = folderData?.folders.map(f => f.name);
+    existingFolders?.push(...uploadedEnvFolders.map(f => f.name))
+    const existingSet = new Set(existingFolders)
+    const nonconflictingFolders = uploadedFolders?.filter(f => !existingSet.has(f.name))
+
+    if (nonconflictingFolders && nonconflictingFolders.length > 0) {
+      setUploadedEnvFolders([...uploadedEnvFolders, ...nonconflictingFolders])
+    }
+
     if (conflictingSec.length > 0) {
       handlePopUpOpen("uploadedSecOpts", { secrets: conflictingUploadedSec });
     }
@@ -463,17 +479,26 @@ export const DashboardPage = () => {
       secrets?.secrets
     );
     // type check
-    if (batchedSecret.length === 0) {
+    if (batchedSecret.length === 0 && uploadedEnvFolders.length === 0) {
       reset();
       return;
     }
     try {
-      await batchSecretOp({
-        requests: batchedSecret,
-        workspaceId,
-        folderId,
-        environment
-      });
+      if (batchedSecret.length > 0) {
+        await batchSecretOp({
+          requests: batchedSecret,
+          workspaceId,
+          folderId,
+          environment
+        });
+      }
+
+      if (uploadedEnvFolders.length > 0) {
+        const folderNames = [...uploadedEnvFolders]
+        await createFolders({ workspaceId, environment, folderNames, parentFolderId: folderId })
+        uploadedEnvFolders.length = 0
+
+      }
       createNotification({
         text: "Successfully saved changes",
         type: "success"
@@ -482,8 +507,12 @@ export const DashboardPage = () => {
       if (!hasUserPushed) {
         await registerUserAction(USER_ACTION_PUSH);
       }
+
+      reset();
+      return;
     } catch (error) {
       console.log(error);
+      uploadedEnvFolders.length = 0 // reset uploadedEnv folders in case of failure
       createNotification({
         text: "Failed to save changes",
         type: "error"
@@ -1007,9 +1036,8 @@ export const DashboardPage = () => {
           </div>
         </div>
         <div
-          className={`${
-            isEmptyPage ? "flex flex-col flex-grow items-center justify-center" : ""
-          } no-scrollbar::-webkit-scrollbar mt-3 flex flex-col overflow-x-hidden overflow-y-scroll no-scrollbar`}
+          className={`${isEmptyPage ? "flex flex-col flex-grow items-center justify-center" : ""
+            } no-scrollbar::-webkit-scrollbar mt-3 flex flex-col overflow-x-hidden overflow-y-scroll no-scrollbar`}
           ref={secretContainer}
         >
           {!isEmptyPage && (
@@ -1225,9 +1253,8 @@ export const DashboardPage = () => {
         isOpen={popUp.deleteSecretImport.isOpen}
         deleteKey="unlink"
         title="Do you want to remove this secret import?"
-        subTitle={`This will unlink secrets from environment ${
-          (popUp.deleteSecretImport?.data as TDeleteSecretImport)?.environment
-        } of path ${(popUp.deleteSecretImport?.data as TDeleteSecretImport)?.secretPath}?`}
+        subTitle={`This will unlink secrets from environment ${(popUp.deleteSecretImport?.data as TDeleteSecretImport)?.environment
+          } of path ${(popUp.deleteSecretImport?.data as TDeleteSecretImport)?.secretPath}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteSecretImport", isOpen)}
         onDeleteApproved={handleSecretImportDelete}
       />

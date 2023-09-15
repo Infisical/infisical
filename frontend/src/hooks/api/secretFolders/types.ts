@@ -7,6 +7,7 @@ export type GetProjectFoldersDTO = {
   workspaceId: string;
   environment: string;
   parentFolderId?: string;
+  parentFolderPath?:string;
   isPaused?: boolean;
   sortDir?: "asc" | "desc";
 };
@@ -30,6 +31,13 @@ export type CreateFolderDTO = {
   folderName: string;
   parentFolderId?: string;
 };
+
+export type CreateFoldersDTO = {
+  workspaceId: string;
+  environment: string;
+  folderNames: Omit<TSecretFolder,"id">[];
+  parentFolderId?: string;
+}
 
 export type UpdateFolderDTO = {
   workspaceId: string;

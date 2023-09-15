@@ -3,6 +3,7 @@ const router = express.Router();
 import { requireAuth } from "../../middleware";
 import {
   createFolder,
+  createFolders,
   deleteFolder,
   getFolders,
   updateFolderById
@@ -16,6 +17,14 @@ router.post(
   }),
   createFolder
 );
+
+router.post(
+  "/batch",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
+  }),
+  createFolders
+)
 
 router.patch(
   "/:folderId",

@@ -9,6 +9,15 @@ export const CreateFolderV1 = z.object({
   })
 });
 
+export const CreateFoldersV1 = z.object({
+  body: z.object({
+    workspaceId: z.string().trim(),
+    environment: z.string().trim(),
+    folderNames: z.array(z.object({ name: z.string() })),
+    parentFolderId: z.string().trim().optional()
+  })
+})
+
 export const UpdateFolderV1 = z.object({
   params: z.object({
     folderId: z.string().trim()

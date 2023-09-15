@@ -36,7 +36,8 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useDebounce, usePopUp, useToggle } from "@app/hooks";
-import { useGetProjectSecrets } from "@app/hooks/api";
+import { useGetProjectFoldersByPath,useGetProjectSecrets } from "@app/hooks/api";
+import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 import { UserWsKeyPair } from "@app/hooks/api/types";
 
 const formSchema = yup.object({
@@ -74,7 +75,7 @@ const parseJson = (src: ArrayBuffer) => {
 
 type Props = {
   isSmaller: boolean;
-  onParsedEnv: (env: Record<string, { value: string; comments: string[] }>) => void;
+  onParsedEnv: (env: Record<string, { value: string; comments: string[] }>, uploadedFolders?: Omit<TSecretFolder, "id">[]) => void;
   onAddNewSecret?: () => void;
   environments?: { name: string; slug: string }[];
   workspaceId: string;
@@ -100,6 +101,7 @@ export const SecretDropzone = ({
   const { popUp, handlePopUpClose, handlePopUpToggle } = usePopUp(["importSecEnv"] as const);
   const [searchFilter, setSearchFilter] = useState("");
   const [shouldIncludeValues, setShouldIncludeValues] = useState(true);
+  const [shouldCopySubFolders, setShouldCopySubFolders] = useState(false);
 
   const {
     handleSubmit,
@@ -127,6 +129,12 @@ export const SecretDropzone = ({
       !popUp.importSecEnv.isOpen,
     decryptFileKey
   });
+
+  const { data: folderData, isLoading: isFoldersLoading } = useGetProjectFoldersByPath({
+    workspaceId, environment: selectedEnvSlug, isPaused:
+      !(Boolean(workspaceId) && Boolean(selectedEnvSlug) && Boolean(debouncedEnvCopySecretPath)) &&
+      !popUp.importSecEnv.isOpen
+  })
 
   useEffect(() => {
     setValue("secrets", {});
@@ -200,7 +208,14 @@ export const SecretDropzone = ({
         };
       }
     });
-    onParsedEnv(secretsToBePulled);
+
+    const folders: Omit<TSecretFolder, "id">[] = [];
+    if (!isFoldersLoading && folderData?.folders && shouldCopySubFolders) {
+      const f = folderData?.folders.map((folder): Omit<TSecretFolder, "id"> => ({ name: folder.name }))
+      folders.push(...f)
+    }
+
+    onParsedEnv(secretsToBePulled, folders);
     handlePopUpClose("importSecEnv");
     reset();
   };
@@ -407,6 +422,16 @@ export const SecretDropzone = ({
                         >
                           Include secret values
                         </Checkbox>
+                        <Checkbox
+                          id="populate-include-value"
+                          isChecked={shouldCopySubFolders}
+                          onCheckedChange={(isChecked) =>
+                            setShouldCopySubFolders(isChecked as boolean)
+                          }
+                        >
+                          Include sub folders
+                        </Checkbox>
+
                       </div>
                       <div className="flex items-center space-x-2">
                         <Button
