@@ -328,15 +328,19 @@ const syncSecretsGCPSecretManager = async ({
   const pageSize = 100;
   let pageToken: string | undefined;
   let hasMorePages = true;
+
+  const filterParam = integration.metadata.secretGCPLabel 
+    ? `?filter=labels.${integration.metadata.secretGCPLabel.labelName}=${integration.metadata.secretGCPLabel.labelValue}` 
+    : "";
   
   while (hasMorePages) {
     const params = new URLSearchParams({
       pageSize: String(pageSize),
       ...(pageToken ? { pageToken } : {})
     });
-    
+
     const res: GCPSMListSecretsRes = (await standardRequest.get(
-      `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets?filter=labels.managed-by=infisical`,
+      `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets${filterParam}`,
       {
         params,
         headers: {
@@ -347,7 +351,24 @@ const syncSecretsGCPSecretManager = async ({
     )).data;
     
     if (res.secrets) {
-      gcpSecrets = gcpSecrets.concat(res.secrets);
+      const filteredSecrets = res.secrets?.filter((gcpSecret) => {
+        const arr = gcpSecret.name.split("/");
+        const key = arr[arr.length - 1];
+
+        let isValid = true;
+
+        if (integration.metadata.secretPrefix && !key.startsWith(integration.metadata.secretPrefix)) {
+          isValid = false;
+        }
+
+        if (integration.metadata.secretSuffix && !key.endsWith(integration.metadata.secretSuffix)) {
+          isValid = false;
+        }
+        
+        return isValid;
+      });
+
+      gcpSecrets = gcpSecrets.concat(filteredSecrets);
     }
     
     if (!res.nextPageToken) {
@@ -371,7 +392,7 @@ const syncSecretsGCPSecretManager = async ({
     const key = arr[arr.length - 1];
 
     const secretLatest: GCPLatestSecretVersionAccess = (await standardRequest.get(
-      `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1beta1/projects/${integration.appId}/secrets/${key}/versions/latest:access`,
+      `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets/${key}/versions/latest:access`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -379,6 +400,7 @@ const syncSecretsGCPSecretManager = async ({
         }
       }
     )).data;
+
     
     res[key] = Buffer.from(secretLatest.payload.data, "base64").toString("utf-8");
   }
@@ -387,14 +409,16 @@ const syncSecretsGCPSecretManager = async ({
     if (!(key in res)) {
       // case: create secret
       await standardRequest.post(
-        `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1beta1/projects/${integration.appId}/secrets`,
+        `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets`,
         {
           replication: {
             automatic: {}
           },
-          labels: {
-            "managed-by": "infisical"
-          }
+          ...(integration.metadata.secretGCPLabel ? {
+            labels: {
+              [integration.metadata.secretGCPLabel.labelName]: integration.metadata.secretGCPLabel.labelValue
+            }
+          } : {})
         },
         {
           params: {
@@ -408,7 +432,7 @@ const syncSecretsGCPSecretManager = async ({
       );
       
       await standardRequest.post(
-        `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1beta1/projects/${integration.appId}/secrets/${key}:addVersion`,
+        `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets/${key}:addVersion`,
         {
           payload: {
             data: Buffer.from(secrets[key].value).toString("base64")
@@ -428,7 +452,7 @@ const syncSecretsGCPSecretManager = async ({
     if (!(key in secrets)) {
       // case: delete secret
       await standardRequest.delete(
-        `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1beta1/projects/${integration.appId}/secrets/${key}`,
+        `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets/${key}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -440,7 +464,7 @@ const syncSecretsGCPSecretManager = async ({
       // case: update secret
       if (secrets[key].value !== res[key]) {
         await standardRequest.post(
-          `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1beta1/projects/${integration.appId}/secrets/${key}:addVersion`,
+          `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets/${key}:addVersion`,
           {
             payload: {
               data: Buffer.from(secrets[key].value).toString("base64")
@@ -1863,10 +1887,24 @@ const syncSecretsGitLab = async ({
   };
 
   const allEnvVariables = await getAllEnvVariables(integration?.appId, accessToken);
-  const getSecretsRes: GitLabSecret[] = allEnvVariables.filter(
-    (secret: GitLabSecret) => secret.environment_scope === integration.targetEnvironment
-  );
+  const getSecretsRes: GitLabSecret[] = allEnvVariables
+    .filter(
+      (secret: GitLabSecret) => secret.environment_scope === integration.targetEnvironment
+    )
+    .filter((gitLabSecret) => {
+      let isValid = true;
 
+      if (integration.metadata.secretPrefix && !gitLabSecret.key.startsWith(integration.metadata.secretPrefix)) {
+        isValid = false;
+      }
+
+      if (integration.metadata.secretSuffix && !gitLabSecret.key.endsWith(integration.metadata.secretSuffix)) {
+        isValid = false;
+      }
+      
+      return isValid;
+    });
+  
   for await (const key of Object.keys(secrets)) {
     const existingSecret = getSecretsRes.find((s: any) => s.key == key);
     if (!existingSecret) {

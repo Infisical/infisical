@@ -77,7 +77,12 @@ export const CreateIntegrationV1 = z.object({
     path: z.string().trim().optional(),
     region: z.string().trim().optional(),
     metadata: z.object({
-      secretSuffix: z.string().optional()
+      secretPrefix: z.string().optional(),
+      secretSuffix: z.string().optional(),
+      secretGCPLabel: z.object({
+        labelName: z.string(),
+        labelValue: z.string()
+      }).optional()
     }).optional()
   })
 });

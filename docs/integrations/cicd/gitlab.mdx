@@ -32,6 +32,16 @@ Press on the GitLab tile and grant Infisical access to your GitLab account.
 Select which Infisical environment secrets you want to sync to which GitLab repository and press create integration to start syncing secrets to GitLab.
 
 ![integrations gitlab](../../images/integrations/gitlab/integrations-gitlab-create.png)
+
+Note that the GitLab integration supports a few options in the **Options** tab:
+
+- Secret Prefix: If inputted, the prefix is appended to the front of every secret name prior to being synced.
+- Secret Suffix: If inputted, the suffix to appended to the back of every name of every secret prior to being synced.
+
+Setting a secret prefix or suffix ensures that existing secrets in GCP Secret Manager are not overwritten during the sync. As part of this process, Infisical abstains from mutating any secrets in GitLab without the specified prefix or suffix.
+
+![integrations gitlab options](../../images/integrations/gitlab/integrations-gitlab-create-options.png)
+
 ![integrations gitlab](../../images/integrations/gitlab/integrations-gitlab.png)
   </Accordion>
   <Accordion title="Pipeline">
