@@ -57,6 +57,7 @@ export const useCreateIntegration = () => {
       path?: string;
       region?: string;
       metadata?: {
+        secretPrefix?: string;
         secretSuffix?: string;
       }
     }) => {
