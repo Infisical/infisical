@@ -92,7 +92,7 @@ Windows Command Prompt:
 git clone https://github.com/Infisical/infisical && cd infisical && copy .env.example .env && docker-compose -f docker-compose.yml up
 ```
 
-Create an account at `http://localhost:80`
+Create an account at `http://localhost:8080`
 
 ### Scan and prevent secret leaks
 
