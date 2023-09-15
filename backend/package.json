@@ -28,6 +28,7 @@
     "handlebars": "^4.7.7",
     "helmet": "^5.1.1",
     "infisical-node": "^1.2.1",
+    "ioredis": "^5.3.2",
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.0",
     "jsrp": "^0.2.4",
