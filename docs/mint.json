@@ -396,7 +396,8 @@
         "contributing/overview",
         "contributing/code-of-conduct",
         "contributing/developing",
-        "contributing/pull-requests"
+        "contributing/pull-requests",
+        "contributing/faq"
       ]
     }
   ],
