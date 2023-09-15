@@ -691,7 +691,7 @@ export const backfillPermission = async () => {
       $exists: true,
       $ne: []
     },
-    role: MEMBER
+    role: MEMBER,
   })
     .populate<{ workspace: IWorkspace }>("workspace")
     .lean();
@@ -753,9 +753,6 @@ export const backfillPermission = async () => {
       $set: {
         role: CUSTOM,
         customRole: role
-      },
-      $unset: {
-        deniedPermissions: 1
       }
     });
   }
