@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
+import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/router";
+import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import queryString from "query-string";
 
 import {
@@ -29,7 +33,7 @@ export default function ChecklyCreateIntegrationPage() {
 
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
-  const { data: integrationAuthApps } = useGetIntegrationAuthApps({
+  const { data: integrationAuthApps, isLoading: isintegrationAuthAppsLoading } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
 
@@ -92,12 +96,25 @@ export default function ChecklyCreateIntegrationPage() {
     integrationAuthApps &&
     targetApp ? (
     <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
+      <Head>
+        <title>Set Up Checkly Integration</title>
+        <link rel='icon' href='/infisical.ico' />
+      </Head>
       <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
-        <CardTitle
-          className="px-6 text-left"
+        <CardTitle 
+          className="text-left px-6 text-xl" 
           subTitle="Choose which environment in Infisical you want to sync with your Checkly account."
         >
-          Checkly Integration
+          Checkly Integration 
+          <Link href="https://infisical.com/docs/integrations/cloud/checkly" passHref>
+            <a target="_blank" rel="noopener noreferrer">
+              <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
+                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
+                Docs
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
+              </div>
+            </a>
+          </Link>
         </CardTitle>
         <FormControl label="Infisical Project Environment" className="mt-4 px-6">
           <Select
@@ -165,7 +182,21 @@ export default function ChecklyCreateIntegrationPage() {
       </Card>
     </div>
   ) : (
-    <div />
+    <div className="flex justify-center items-center w-full h-full">
+      {isintegrationAuthAppsLoading ? <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" /> : <div className="max-w-md h-max p-6 border border-mineshaft-600 rounded-md bg-mineshaft-800 text-mineshaft-200 flex flex-col text-center">
+        <FontAwesomeIcon icon={faBugs} className="text-6xl my-2 inlineli"/>
+        <p>
+          Something went wrong. Please contact <a
+            className="inline underline underline-offset-4 decoration-primary-500 opacity-80 hover:opacity-100 text-mineshaft-100 duration-200 cursor-pointer"
+            target="_blank"
+            rel="noopener noreferrer"
+            href="mailto:support@infisical.com"
+          >
+            support@infisical.com
+          </a> if the issue persists.
+        </p>
+      </div>}
+    </div>
   );
 }
 

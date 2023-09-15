@@ -1,5 +1,9 @@
 import { useState } from "react";
+import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/router";
+import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
   useSaveIntegrationAccessToken
@@ -80,12 +84,31 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Vault Integration</CardTitle>
+      <Head>
+        <title>Authorize Vault Integration</title>
+        <link rel='icon' href='/infisical.ico' />
+      </Head>
+      <Card className="max-w-lg rounded-md border border-mineshaft-600 mb-12">
+        <CardTitle 
+          className="text-left px-6 text-xl" 
+          subTitle="After adding connecting to Vault, you will be prompted to set up an integration for a particular Infisical project and environment."
+        >
+          HashiCorp Vault Integration 
+          <Link href="https://infisical.com/docs/integrations/cloud/hashicorp-vault" passHref>
+            <a target="_blank" rel="noopener noreferrer">
+              <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
+                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
+                Docs
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
+              </div>
+            </a>
+          </Link>
+        </CardTitle>
         <FormControl
           label="Vault Cluster URL"
           errorText={vaultURLErrorText}
           isError={vaultURLErrorText !== "" ?? false}
+          className="px-6"
         >
           <Input placeholder="" value={vaultURL} onChange={(e) => setVaultURL(e.target.value)} />
         </FormControl>
@@ -93,6 +116,7 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
           label="Vault Namespace"
           errorText={vaultNamespaceErrorText}
           isError={vaultNamespaceErrorText !== "" ?? false}
+          className="px-6"
         >
           <Input 
                 placeholder="admin/education" 
@@ -104,6 +128,7 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
           label="Vault RoleID"
           errorText={vaultRoleIDErrorText}
           isError={vaultRoleIDErrorText !== "" ?? false}
+          className="px-6"
         >
           <Input placeholder="" value={vaultRoleID} onChange={(e) => setVaultRoleID(e.target.value)} />
         </FormControl>
@@ -111,6 +136,7 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
           label="Vault SecretID"
           errorText={vaultSecretIDErrorText}
           isError={vaultSecretIDErrorText !== "" ?? false}
+          className="px-6"
         >
           <Input 
                 placeholder="" 
@@ -120,8 +146,9 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
         </FormControl>
         <Button
           onClick={handleButtonClick}
-          color="mineshaft"
-          className="mt-4"
+          colorSchema="primary"
+          variant="outline_bg"
+          className="mb-6 mt-2 ml-auto mr-6 w-min"
           isLoading={isLoading}
         >
           Connect to Vault

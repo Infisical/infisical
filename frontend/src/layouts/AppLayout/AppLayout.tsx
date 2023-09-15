@@ -468,7 +468,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <Link href={`/integrations/${currentWorkspace?._id}`} passHref>
                         <a>
                           <MenuItem
-                            isSelected={router.asPath === `/integrations/${currentWorkspace?._id}`}
+                            isSelected={router.asPath.includes("/integrations")}
                             icon="system-outline-82-extension"
                           >
                             {t("nav.menu.integrations")}
