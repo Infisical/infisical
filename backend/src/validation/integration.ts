@@ -34,9 +34,9 @@ export const validateClientForIntegration = async ({
   if (!integration) throw IntegrationNotFoundError();
 
   const integrationAuth = await IntegrationAuth.findById(integration.integrationAuth).select(
-    "+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt"
+    "+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt metadata"
   );
-
+  
   if (!integrationAuth) throw IntegrationAuthNotFoundError();
 
   const accessToken = (

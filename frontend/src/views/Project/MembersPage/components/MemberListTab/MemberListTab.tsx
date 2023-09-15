@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import Link from "next/link";
 import { faMagnifyingGlass, faPlus, faTrash, faUsers } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -359,48 +360,57 @@ export const MemberListTab = ({ roles = [], isRolesLoading }: Props) => {
           title={t("section.members.add-dialog.add-member-to-project") as string}
           subTitle={t("section.members.add-dialog.user-will-email")}
         >
-          <form onSubmit={handleSubmit(onAddMember)}>
-            <Controller
-              control={control}
-              defaultValue={filteredOrgUsers?.[0]?.user?.email}
-              name="email"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl label="Email" isError={Boolean(error)} errorText={error?.message}>
-                  <Select
-                    position="popper"
-                    className="w-full"
-                    defaultValue={filteredOrgUsers?.[0]?.user?.email}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    {filteredOrgUsers.map(({ _id: orgUserId, user: u }) => (
-                      <SelectItem value={u?.email} key={`org-membership-join-${orgUserId}`}>
-                        {u?.email}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-            />
-            <div className="mt-8 flex items-center">
-              <Button
-                className="mr-4"
-                size="sm"
-                type="submit"
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting}
-              >
-                Add Member
-              </Button>
-              <Button
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => handlePopUpClose("addMember")}
-              >
-                Cancel
-              </Button>
+          {filteredOrgUsers.length ? (
+            <form onSubmit={handleSubmit(onAddMember)}>
+              <Controller
+                control={control}
+                defaultValue={filteredOrgUsers?.[0]?.user?.email}
+                name="email"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl label="Email" isError={Boolean(error)} errorText={error?.message}>
+                    <Select
+                      position="popper"
+                      className="w-full"
+                      defaultValue={filteredOrgUsers?.[0]?.user?.email}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      {filteredOrgUsers.map(({ _id: orgUserId, user: u }) => (
+                        <SelectItem value={u?.email} key={`org-membership-join-${orgUserId}`}>
+                          {u?.email}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
+              <div className="mt-8 flex items-center">
+                <Button
+                  className="mr-4"
+                  size="sm"
+                  type="submit"
+                  isLoading={isSubmitting}
+                  isDisabled={isSubmitting}
+                >
+                  Add Member
+                </Button>
+                <Button
+                  colorSchema="secondary"
+                  variant="plain"
+                  onClick={() => handlePopUpClose("addMember")}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex flex-col space-y-4">
+              <div>All the users in your organization are already invited.</div>
+              <Link href={`/org/${currentWorkspace?.organization}/members`}>
+                <Button variant="outline_bg">Add users to organization</Button>
+              </Link>
             </div>
-          </form>
+          )}
         </ModalContent>
       </Modal>
       <DeleteActionModal

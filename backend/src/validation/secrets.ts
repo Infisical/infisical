@@ -225,8 +225,8 @@ export const GetSecretsV2 = z.object({
 
 export const GetSecretsRawV3 = z.object({
   query: z.object({
-    workspaceId: z.string().trim(),
-    environment: z.string().trim(),
+    workspaceId: z.string().trim().optional(),
+    environment: z.string().trim().optional(),
     secretPath: z.string().trim().default("/"),
     folderId: z.string().trim().optional(),
     include_imports: z

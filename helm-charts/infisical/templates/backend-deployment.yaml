@@ -40,7 +40,9 @@ spec:
         envFrom:
         - secretRef:
             name: {{ $backend.kubeSecretRef | default (include "infisical.backend.fullname" .) }}
-
+        {{- if  $backend.resources }}
+        resources: {{- toYaml $backend.resources | nindent 12 }}
+        {{- end }}
 ---
 
 apiVersion: v1
