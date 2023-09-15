@@ -689,7 +689,7 @@ export const backfillUserAuthMethods = async () => {
 export const backfillPermission = async () => {
   const lockKey = "backfill_permission_lock";
   const timeout = 5000; // Lock timeout in milliseconds
-  const lock = await redisClient.set(lockKey, 1, "PX", timeout, "NX");
+  const lock = await redisClient?.set(lockKey, 1, "PX", timeout, "NX");
 
   if (lock) {
     try {
@@ -807,7 +807,7 @@ export const backfillPermission = async () => {
     } catch (error) {
       console.error("An error occurred when running script [backfillPermission]:", error);
     } finally {
-      await redisClient.del(lockKey);
+      await redisClient?.del(lockKey);
     }
   } else {
     console.info("Could not acquire lock for script [backfillPermission], skipping");
