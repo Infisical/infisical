@@ -10,6 +10,7 @@ import {
   Bot,
   BotOrg,
   ISecret,
+  IWorkspace,
   Integration,
   IntegrationAuth,
   Membership,
@@ -26,14 +27,20 @@ import { client, getEncryptionKey, getRootEncryptionKey } from "../../config";
 import {
   ADMIN,
   ALGORITHM_AES_256_GCM,
+  CUSTOM,
   ENCODING_SCHEME_BASE64,
   ENCODING_SCHEME_UTF8,
   MEMBER,
-  OWNER,
-  VIEWER
+  OWNER
 } from "../../variables";
 
 import { InternalServerError } from "../errors";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  memberProjectPermissions
+} from "../../ee/services/ProjectRoleService";
+import Role from "../../ee/models/role";
 
 /**
  * Backfill secrets to ensure that they're all versioned and have
@@ -679,22 +686,79 @@ export const backfillUserAuthMethods = async () => {
 };
 
 export const backfillPermission = async () => {
-  await Membership.updateMany(
-    {
-      deniedPermissions: {
-        $exists: true,
-        $ne: []
-      },
-      role: MEMBER
+  const memberships = await Membership.find({
+    deniedPermissions: {
+      $exists: true,
+      $ne: []
     },
-    [
-      {
-        $set: {
-          role: VIEWER
-        }
+    role: MEMBER
+  })
+    .populate<{ workspace: IWorkspace }>("workspace")
+    .lean();
+
+  for (const membership of memberships) {
+    // get permissions of members except secret permission
+    const customPermissions = memberProjectPermissions.rules.filter(
+      ({ subject }) => subject !== ProjectPermissionSub.Secrets
+    );
+    const secretAccessRule: Record<string, { read: boolean; write: boolean }> = {};
+
+    // iterate and record true and false ones
+    membership.deniedPermissions.forEach(({ ability, environmentSlug }) => {
+      if (!secretAccessRule?.[environmentSlug])
+        secretAccessRule[environmentSlug] = { read: true, write: true };
+      if (ability === "write") secretAccessRule[environmentSlug].write = false;
+      if (ability === "read") secretAccessRule[environmentSlug].read = false;
+    });
+
+    Object.entries(secretAccessRule).forEach(([envSlug, { read, write }]) => {
+      if (read) {
+        customPermissions.push({
+          subject: ProjectPermissionSub.Secrets,
+          action: ProjectPermissionActions.Read,
+          conditions: { environment: envSlug }
+        });
       }
-    ]
-  );
+      if (write) {
+        customPermissions.push(
+          {
+            subject: ProjectPermissionSub.Secrets,
+            action: ProjectPermissionActions.Edit,
+            conditions: { environment: envSlug }
+          },
+          {
+            subject: ProjectPermissionSub.Secrets,
+            action: ProjectPermissionActions.Delete,
+            conditions: { environment: envSlug }
+          },
+          {
+            subject: ProjectPermissionSub.Secrets,
+            action: ProjectPermissionActions.Create,
+            conditions: { environment: envSlug }
+          }
+        );
+      }
+    });
+
+    const role = new Role({
+      name: "Migrated Role",
+      organization: membership.workspace.organization,
+      workspace: membership.workspace._id,
+      isOrgRole: false,
+      slug: `custom-role-${crypto.randomBytes(3).toString("hex")}`,
+      permissions: customPermissions
+    });
+    await role.save();
+    await Membership.findByIdAndUpdate(membership._id, {
+      $set: {
+        role: CUSTOM,
+        customRole: role
+      },
+      $unset: {
+        deniedPermissions: 1
+      }
+    });
+  }
 
   await MembershipOrg.updateMany(
     {
