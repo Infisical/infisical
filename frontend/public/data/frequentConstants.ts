@@ -5,7 +5,7 @@ interface Mapping {
 const integrationSlugNameMapping: Mapping = {
   "azure-key-vault": "Azure Key Vault",
   "aws-parameter-store": "AWS Parameter Store",
-  "aws-secret-manager": "AWS Secret Manager",
+  "aws-secret-manager": "AWS Secrets Manager",
   "heroku": "Heroku",
   "vercel": "Vercel",
   "netlify": "Netlify",

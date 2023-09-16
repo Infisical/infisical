@@ -192,7 +192,7 @@ export const getIntegrationOptions = async () => {
             docsLink: "",
         },
         {
-            name: "AWS Secret Manager",
+            name: "AWS Secrets Manager",
             slug: "aws-secret-manager",
             image: "Amazon Web Services.png",
             isAvailable: true,
