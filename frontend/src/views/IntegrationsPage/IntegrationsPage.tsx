@@ -84,6 +84,8 @@ export const IntegrationsPage = withProjectPermission(
       reset: resetDeleteIntegrationAuth
     } = useDeleteIntegrationAuth();
 
+    const isIntegrationsAuthorizedEmpty = !Object.keys(integrationAuths || {}).length;
+    const isIntegrationsEmpty = !integrations?.length;
     // summary: this use effect is trigger when all integration auths are removed thus deactivate bot
     // details: so on successfully deleting an integration auth, immediately integration list is refeteched
     // After the refetch is completed check if its empty. Then set bot active and reset the submit hook for isSuccess to go back to false
@@ -92,8 +94,8 @@ export const IntegrationsPage = withProjectPermission(
         isDeleteIntegrationAuthSuccess &&
         !isIntegrationFetching &&
         !isIntegrationAuthFetching &&
-        !integrations?.length &&
-        !integrationAuths?.length
+        isIntegrationsAuthorizedEmpty &&
+        isIntegrationsEmpty
       ) {
         if (bot?._id)
           updateBotActiveStatusSync({
@@ -107,8 +109,8 @@ export const IntegrationsPage = withProjectPermission(
       isIntegrationFetching,
       isDeleteIntegrationAuthSuccess,
       isIntegrationAuthFetching,
-      integrationAuths?.length,
-      integrations?.length
+      isIntegrationsAuthorizedEmpty,
+      isIntegrationsEmpty
     ]);
 
     const handleProviderIntegration = async (provider: string) => {
