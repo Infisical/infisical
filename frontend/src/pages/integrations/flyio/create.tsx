@@ -28,6 +28,7 @@ import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 
 export default function FlyioCreateIntegrationPage() {
   const router = useRouter();
+  
   const { mutateAsync } = useCreateIntegration();
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);

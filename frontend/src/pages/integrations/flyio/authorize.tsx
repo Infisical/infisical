@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
 import {
   useSaveIntegrationAccessToken
@@ -12,37 +15,49 @@ import {
 
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
 
-export default function FlyioCreateIntegrationPage() {
+const schema = yup.object({
+  accessToken: yup.string().trim().required("Fly.io Access Token is required")
+});
+
+type FormData = yup.InferType<typeof schema>;
+
+export default function FlyioAuthorizeIntegrationPage() {
   const router = useRouter();
+
+  const {
+    control,
+    handleSubmit
+  } = useForm<FormData>({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      accessToken: ""
+    }
+  });
+
   const { mutateAsync } = useSaveIntegrationAccessToken();
   
-  const [accessToken, setAccessToken] = useState("");
-  const [accessTokenErrorText, setAccessTokenErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  const handleButtonClick = async () => {
+  
+  const onFormSubmit = async ({
+    accessToken
+  }: FormData) => {
+    console.log("onFormSubmit accessToken: ", accessToken);
     try {
-      setAccessTokenErrorText("");
-      if (accessToken.length === 0) {
-        setAccessTokenErrorText("Access token cannot be blank");
-        return;
-      }
-
       setIsLoading(true);
-
+      
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "flyio",
         accessToken
       });
-
+      
       setIsLoading(false);
-
       router.push(`/integrations/flyio/create?integrationAuthId=${integrationAuth._id}`);
     } catch (err) {
+      setIsLoading(false);
       console.error(err);
     }
-  };
+  }
 
   return (
     <div className="flex h-full w-full items-center justify-center">
@@ -69,37 +84,47 @@ export default function FlyioCreateIntegrationPage() {
               <a target="_blank" rel="noopener noreferrer">
                 <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
-                  Docs
+                    Docs
                   <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
                 </div>
               </a>
             </Link>
           </div>
         </CardTitle>
-        <FormControl
-          label="Fly.io Access Token"
-          errorText={accessTokenErrorText}
-          isError={accessTokenErrorText !== "" ?? false}
-          className="px-6"
+        <form
+          onSubmit={handleSubmit(onFormSubmit)}
+          className="px-6 text-right pb-8"
         >
-          <Input
-            placeholder=""
-            value={accessToken}
-            onChange={(e) => setAccessToken(e.target.value)}
+          <Controller
+            control={control}
+            name="accessToken"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Fly.io Access Token"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
+                <Input 
+                  {...field}
+                  placeholder="" 
+                />
+              </FormControl>
+            )}
           />
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          colorSchema="primary"
-          variant="outline_bg"
-          className="mb-6 mt-2 ml-auto mr-6 w-min"
-          isLoading={isLoading}
-        >
-          Connect to Fly.io
-        </Button>
+          <Button
+            colorSchema="primary"
+            variant="outline_bg"
+            className="mt-2 w-min"
+            size="sm"
+            type="submit"
+            isLoading={isLoading}
+          >
+            Connect to Fly.io
+          </Button>
+        </form>
       </Card>
     </div>
   );
 }
 
-FlyioCreateIntegrationPage.requireAuth = true;
+FlyioAuthorizeIntegrationPage.requireAuth = true;

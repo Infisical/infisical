@@ -608,6 +608,12 @@ const getAppsLaravelForge = async ({
  * @returns {String} apps.name - name of Fly.io apps
  */
 const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
+  interface FlyioApp {
+    id: string;
+    name: string;
+    hostname: string;
+  }
+  
   const query = `
     query($role: String) {
       apps(type: "container", first: 400, role: $role) {
@@ -620,7 +626,7 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
     }
   `;
 
-  const res = (
+  const res: FlyioApp[] = (
     await standardRequest.post(
       INTEGRATION_FLYIO_API_URL,
       {
@@ -639,8 +645,9 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
     )
   ).data.data.apps.nodes;
 
-  const apps = res.map((a: any) => ({
+  const apps = res.map((a: FlyioApp) => ({
     name: a.name,
+    appId: a.id
   }));
 
   return apps;
