@@ -34,7 +34,7 @@ export default function GitHubCreateIntegrationPage() {
 
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
-  const { data: integrationAuthApps, isLoading: isintegrationAuthAppsLoading } = useGetIntegrationAuthApps({
+  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
 
@@ -193,7 +193,7 @@ export default function GitHubCreateIntegrationPage() {
         <title>Set Up GitHub Integration</title>
         <link rel='icon' href='/infisical.ico' />
       </Head>
-      {isintegrationAuthAppsLoading ? <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" /> : <div className="max-w-md h-max p-6 border border-mineshaft-600 rounded-md bg-mineshaft-800 text-mineshaft-200 flex flex-col text-center">
+      {isIntegrationAuthAppsLoading ? <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" /> : <div className="max-w-md h-max p-6 border border-mineshaft-600 rounded-md bg-mineshaft-800 text-mineshaft-200 flex flex-col text-center">
         <FontAwesomeIcon icon={faBugs} className="text-6xl my-2 inlineli"/>
         <p>
           Something went wrong. Please contact <a
