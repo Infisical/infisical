@@ -783,12 +783,12 @@ const syncSecretsAWSParameterStore = async ({
 };
 
 /**
- * Sync/push [secrets] to AWS secret manager
+ * Sync/push [secrets] to AWS Secrets Manager
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
- * @param {String} obj.accessId - access id for AWS secret manager integration
- * @param {String} obj.accessToken - access token for AWS secret manager integration
+ * @param {String} obj.accessId - access id for AWS Secrets Manager integration
+ * @param {String} obj.accessToken - access token for AWS Secrets Manager integration
  */
 const syncSecretsAWSSecretManager = async ({
   integration,
