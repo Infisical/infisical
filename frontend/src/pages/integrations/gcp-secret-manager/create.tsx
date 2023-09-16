@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpRightFromSquare, faBookOpen, faBugs, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { motion } from "framer-motion";
@@ -159,27 +160,37 @@ export default function GCPSecretManagerCreateIntegrationPage() {
     integrationAuthApps ? (
     <form 
       onSubmit={handleSubmit(onFormSubmit)}
-      className="flex h-full w-full items-center justify-center"
+      className="flex flex-col h-full w-full items-center justify-center"
     >
-      <Card className="max-w-lg rounded-md border border-mineshaft-600 mb-12">
+      <Card className="max-w-lg rounded-md border border-mineshaft-600">
         <Head>
           <title>Set Up GCP Secret Manager Integration</title>
           <link rel='icon' href='/infisical.ico' />
         </Head>
         <CardTitle 
           className="text-left px-6 text-xl mb-2" 
-          subTitle="After creating an integration you secrets will automatically sync from Infisical to GCP Secret Manager. Your GCP secrets may get overriden."
+          subTitle="Select which environment or folder in Infisical you want to sync to GCP Secret Manager. Optionally, you can add suffixes/prefixes."
         >
-          GCP Secret Manager Integration 
-          <Link href="https://infisical.com/docs/integrations/cloud/gcp-secret-manager" passHref>
-            <a target="_blank" rel="noopener noreferrer">
-              <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
-                Docs
-                <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
-              </div>
-            </a>
-          </Link>
+          <div className="flex flex-row items-center">
+            <div className="inline flex items-center pb-0.5">
+              <Image
+                src="/images/integrations/Google Cloud Platform.png"
+                height={30}
+                width={30}
+                alt="GCP logo"
+              />
+            </div>
+            <span className="ml-1.5">GCP Secret Manager Integration </span>
+            <Link href="https://infisical.com/docs/integrations/cloud/gcp-secret-manager" passHref>
+              <a target="_blank" rel="noopener noreferrer">
+                <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
+                  Docs
+                  <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
+                </div>
+              </a>
+            </Link>
+          </div>
         </CardTitle>
         <Tabs defaultValue={TabSections.Connection} className="px-6">
           <TabList>
@@ -374,11 +385,16 @@ export default function GCPSecretManagerCreateIntegrationPage() {
           size="sm"
           type="submit"
           isLoading={isLoading}
-          // disabled={!targetAppId}
+          isDisabled={integrationAuthApps.length === 0}
         >
           Create Integration
         </Button>
       </Card>
+      <div className="border-t border-mineshaft-800 w-full max-w-md mt-6"/>
+      <div className="flex flex-col bg-mineshaft-800 border border-mineshaft-600 w-full p-4 max-w-lg mt-6 rounded-md">
+        <div className="flex flex-row items-center"><FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl"/> <span className="ml-3 text-md text-mineshaft-100">Pro Tips</span></div>
+        <span className="text-mineshaft-300 text-sm mt-4">After creating an integration, your secrets will start syncing immediately. This might cause an unexpected override of current secrets in GCP Secret Manager with secrets from Infisical.</span>
+      </div>
     </form>
   ) : (
     <div className="flex justify-center items-center w-full h-full">
