@@ -270,7 +270,6 @@ export const UpdateSecretByNameRawV3 = z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
     secretValue: z.string().trim(),
-    secretName: z.string().trim(),
     secretPath: z.string().trim().default("/"),
     type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).default(SECRET_SHARED)
   })
