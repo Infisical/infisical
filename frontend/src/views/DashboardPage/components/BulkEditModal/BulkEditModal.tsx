@@ -30,6 +30,12 @@ interface Props {
   environment: string;
   onParsedEnv: (env: Record<string, { value: string; comments: string[] }>) => void;
   handleClose: () => void;
+  onSecretDelete: (
+    index: number | undefined,
+    secretName: string,
+    id?: string,
+    overrideId?: string
+  ) => void;
 }
 
 export const BulkEditModal = ({
@@ -37,7 +43,8 @@ export const BulkEditModal = ({
   environment,
   workspaceId,
   onParsedEnv,
-  handleClose
+  handleClose,
+  onSecretDelete
 }: Props) => {
   const {
     handleSubmit,
@@ -80,7 +87,21 @@ export const BulkEditModal = ({
   }, [secrets]);
 
   const handleFormSubmit = (data: TFormSchema) => {
+    const deletedKeys = new Map(secrets?.secrets.map((val) => [val.key, val]));
     const env = parseDotEnv(data.content);
+    Object.keys(env).forEach((val) => {
+      const deletedKey = deletedKeys.get(val);
+      if (deletedKey) {
+        deletedKeys.delete(val);
+      }
+    });
+
+    if (deletedKeys.size !== 0) {
+      deletedKeys.forEach((value) => {
+        onSecretDelete(undefined, value.key, value._id);
+      });
+    }
+
     onParsedEnv(env);
     handleClose();
   };

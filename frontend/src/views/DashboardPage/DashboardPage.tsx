@@ -524,8 +524,13 @@ export const DashboardPage = () => {
 
   // record all deleted ids
   // This will make final deletion easier
+
   const onSecretDelete = useCallback(
-    (index: number, secretName: string, id?: string, overrideId?: string) => {
+    (index_: number | undefined, secretName: string, id?: string, overrideId?: string) => {
+      let index = index_;
+      if (!index_) {
+        index = fields.findIndex((val) => val.key === secretName);
+      }
       if (id)
         deletedSecretIds.current.push({
           id,
@@ -850,6 +855,7 @@ export const DashboardPage = () => {
                   ariaLabel="Bulk edit"
                   variant="outline_bg"
                   onClick={() => handlePopUpToggle("bulkEdit", true)}
+                  isDisabled={isDirty}
                 >
                   <FontAwesomeIcon icon={faEdit} />
                 </IconButton>
@@ -1273,6 +1279,7 @@ export const DashboardPage = () => {
             decryptFileKey={latestFileKey!}
             onParsedEnv={handleUploadedEnv}
             handleClose={() => handlePopUpClose("bulkEdit")}
+            onSecretDelete={onSecretDelete}
           />
         </ModalContent>
       </Modal>
