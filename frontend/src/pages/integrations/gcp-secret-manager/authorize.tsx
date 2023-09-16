@@ -43,7 +43,7 @@ export default function GCPSecretManagerAuthorizeIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/gcp-secret-manager/pat/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/gcp-secret-manager/create?integrationAuthId=${integrationAuth._id}`);
     } catch (err) {
       console.error(err);
     }

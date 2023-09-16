@@ -85,6 +85,7 @@ export default function GitLabCreateIntegrationPage() {
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
 
   const { data: integrationAuthApps, isLoading: isintegrationAuthAppsLoading } = useGetIntegrationAuthApps({
+
     integrationAuthId: (integrationAuthId as string) ?? "",
     ...(targetTeamId ? { teamId: targetTeamId } : {})
   });
