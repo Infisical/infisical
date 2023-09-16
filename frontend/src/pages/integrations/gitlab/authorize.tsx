@@ -1,37 +1,55 @@
 import crypto from "crypto";
 
-import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
 import { useGetCloudIntegrations } from "@app/hooks/api";
 
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
 
+const schema = yup.object({
+  gitLabURL: yup.string()
+});
+
+type FormData = yup.InferType<typeof schema>;
+
 export default function GitLabAuthorizeIntegrationPage() {
-    const { data: cloudIntegrations } = useGetCloudIntegrations();
-  
-    const [gitLabURL, setGitLabURL] = useState("");
-  
-    const handleIntegrateWithOAuth = () => {
-      if (!cloudIntegrations) return;
-      const integrationOption = cloudIntegrations.find((integration) => integration.slug === "gitlab");
-      
-      if (!integrationOption) return;
-      
-      const baseURL = gitLabURL.trim() === "" ? "https://gitlab.com" : gitLabURL.trim();
-      
-      const csrfToken = crypto.randomBytes(16).toString("hex");
-      localStorage.setItem("latestCSRFToken", csrfToken);
-      
-      const state = `${csrfToken}|${gitLabURL.trim() === "" ? "" : gitLabURL.trim()}`;
-      const link = `${baseURL}/oauth/authorize?client_id=${integrationOption.clientId}&redirect_uri=${window.location.origin}/integrations/gitlab/oauth2/callback&response_type=code&state=${state}`;
-      
-      window.location.assign(link);
+  const {
+    control,
+    handleSubmit
+  } = useForm<FormData>({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      gitLabURL: ""
     }
+  });
+
+  const { data: cloudIntegrations } = useGetCloudIntegrations();
+  
+  const onFormSubmit = ({
+    gitLabURL
+  }: FormData) => {
+    if (!cloudIntegrations) return;
+    const integrationOption = cloudIntegrations.find((integration) => integration.slug === "gitlab");
+    
+    if (!integrationOption) return;
+    
+    const baseURL = gitLabURL.trim() === "" ? "https://gitlab.com" : gitLabURL.trim();
+    
+    const csrfToken = crypto.randomBytes(16).toString("hex");
+    localStorage.setItem("latestCSRFToken", csrfToken);
+    
+    const state = `${csrfToken}|${gitLabURL.trim() === "" ? "" : gitLabURL.trim()}`;
+    const link = `${baseURL}/oauth/authorize?client_id=${integrationOption.clientId}&redirect_uri=${window.location.origin}/integrations/gitlab/oauth2/callback&response_type=code&state=${state}`;
+    
+    window.location.assign(link);
+  }
 
   return (
     <div className="flex h-full w-full items-center justify-center">
@@ -42,7 +60,7 @@ export default function GitLabAuthorizeIntegrationPage() {
       <Card className="max-w-lg rounded-md border border-mineshaft-600 mb-12">
         <CardTitle 
           className="text-left px-6 text-xl" 
-          subTitle="Authorize this integration to be able to sync secrets from Infisical to GitLab. If needed, specify the self-hosted GitLab URL."
+          subTitle="Authorize this integration to sync secrets from Infisical to GitLab. If no self-hosted GitLab URL is specified, then Infisical will connect you to GitLab Cloud."
         >
           <div className="flex flex-row items-center">
             <div className="inline flex items-center pb-0.5">
@@ -65,20 +83,36 @@ export default function GitLabAuthorizeIntegrationPage() {
             </Link>
           </div>
         </CardTitle>
-        <FormControl label="Self-hosted URL (optional)" className="px-6">
-            <Input 
-                placeholder="https://self-hosted-gitlab.com" 
-                value={gitLabURL} onChange={(e) => setGitLabURL(e.target.value)} 
-            />
-          </FormControl>
-        <Button
-            onClick={handleIntegrateWithOAuth}
+        <form 
+          onSubmit={handleSubmit(onFormSubmit)}
+          className="px-6 text-right pb-8"
+        >
+          <Controller
+            control={control}
+            name="gitLabURL"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Self-hosted URL (optional)"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
+                <Input 
+                  {...field}
+                  placeholder="https://self-hosted-gitlab.com" 
+                />
+              </FormControl>
+            )}
+          />
+          <Button
             colorSchema="primary"
             variant="outline_bg"
-            className="mb-6 mt-2 ml-auto mr-6 w-min"
-        > 
+            className="mt-2 w-min"
+            size="sm"
+            type="submit"
+          >
             Continue with OAuth
-        </Button>
+          </Button>
+        </form>
       </Card>
     </div>
   );

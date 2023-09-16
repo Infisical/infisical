@@ -1,6 +1,7 @@
 import crypto from "crypto";
 
 import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,6 +9,8 @@ import { useRouter } from "next/router";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
 import {
   useGetCloudIntegrations,
@@ -15,39 +18,27 @@ import {
 
 import { Button, Card, CardTitle, FormControl, TextArea } from "../../../components/v2";
 
+const schema = yup.object({
+  accessToken: yup.string().required("Service Account JSON cannot be empty")
+});
+
+type FormData = yup.InferType<typeof schema>;
+
 export default function GCPSecretManagerAuthorizeIntegrationPage() {
   const router = useRouter();
+
+  const {
+    control,
+    handleSubmit
+  } = useForm<FormData>({
+    resolver: yupResolver(schema)
+  });
+
   const { data: cloudIntegrations } = useGetCloudIntegrations();
 
   const { mutateAsync } = useSaveIntegrationAccessToken();
   
-  const [accessToken, setAccessToken] = useState("");
-  const [accessTokenErrorText, setAccessTokenErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  const handleIntegrateWithPAT = async () => {
-    try {
-      setAccessTokenErrorText("");
-      if (accessToken.length === 0) {
-        setAccessTokenErrorText("Service account JSON cannot be blank");
-        return;
-      }
-
-      setIsLoading(true);
-
-      const integrationAuth = await mutateAsync({
-        workspaceId: localStorage.getItem("projectData.id"),
-        integration: "gcp-secret-manager",
-        refreshToken: accessToken
-      });
-
-      setIsLoading(false);
-
-      router.push(`/integrations/gcp-secret-manager/create?integrationAuthId=${integrationAuth._id}`);
-    } catch (err) {
-      console.error(err);
-    }
-  };
   
   const handleIntegrateWithOAuth = () => {
     if (!cloudIntegrations) return;
@@ -60,6 +51,26 @@ export default function GCPSecretManagerAuthorizeIntegrationPage() {
     
     const link = `https://accounts.google.com/o/oauth2/auth?scope=https://www.googleapis.com/auth/cloud-platform&response_type=code&access_type=offline&state=${state}&redirect_uri=${window.location.origin}/integrations/gcp-secret-manager/oauth2/callback&client_id=${integrationOption.clientId}`;
     window.location.assign(link);
+  }
+  
+  const onFormSubmit = async ({
+    accessToken
+  }: FormData) => {
+    try {
+      setIsLoading(true);
+      
+      const integrationAuth = await mutateAsync({
+        workspaceId: localStorage.getItem("projectData.id"),
+        integration: "gcp-secret-manager",
+        refreshToken: accessToken
+      });
+      
+      setIsLoading(false);
+      router.push(`/integrations/gcp-secret-manager/create?integrationAuthId=${integrationAuth._id}`);
+    } catch (err) {
+      console.error(err);
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -94,7 +105,7 @@ export default function GCPSecretManagerAuthorizeIntegrationPage() {
             </Link>
           </div>
         </CardTitle>
-        <div className="px-7">
+        <div className="px-6">
           <Button
               colorSchema="primary" 
               variant="outline_bg"
@@ -104,35 +115,43 @@ export default function GCPSecretManagerAuthorizeIntegrationPage() {
           > 
               Continue with OAuth
           </Button>
+          <div className='w-full flex flex-row items-center my-4 py-2'>
+              <div className='w-full border-t border-mineshaft-400/40' /> 
+              <span className="mx-2 text-mineshaft-400 text-xs">or</span>
+              <div className='w-full border-t border-mineshaft-400/40' />
+          </div>
         </div>
-        <div className='w-full flex flex-row items-center my-4 py-2 px-7'>
-            <div className='w-full border-t border-mineshaft-400/40' /> 
-            <span className="mx-2 text-mineshaft-400 text-xs">or</span>
-            <div className='w-full border-t border-mineshaft-400/40' />
-        </div>
-        <FormControl
-          label="GCP Service Account JSON"
-          errorText={accessTokenErrorText}
-          isError={accessTokenErrorText !== "" ?? false}
-          className="px-6"
+        <form 
+          onSubmit={handleSubmit(onFormSubmit)}
+          className="px-6 text-right pb-8"
         >
-          <TextArea 
-            value={accessToken}
-            onChange={(e) => setAccessToken(e.target.value)}
-            placeholder=""
-            className="h-48 border border-mineshaft-600 bg-bunker-900/80"
+          <Controller
+            control={control}
+            name="accessToken"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="GCP Service Account JSON"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
+                <TextArea 
+                  {...field}
+                  className="h-48 border border-mineshaft-600 bg-bunker-900/80"
+                />
+              </FormControl>
+            )}
           />
-        </FormControl>
-        <Button
-          onClick={handleIntegrateWithPAT}
-          colorSchema="primary"
-          variant="outline_bg"
-          className="mb-8 mt-2 ml-auto mr-6 w-min"
-          isLoading={isLoading}
-        >
-          Connect to GCP Secret Manager
-        </Button>
-        
+          <Button
+            colorSchema="primary"
+            variant="outline_bg"
+            className="mt-2 w-min"
+            size="sm"
+            type="submit"
+            isLoading={isLoading}
+          >
+            Connect to GCP Secret Manager
+          </Button>
+        </form>
       </Card>
     </div>
   );

@@ -187,7 +187,8 @@ const integrationSchema = new Schema<IIntegration>(
       default: "/",
     },
     metadata: {
-      type: Schema.Types.Mixed
+      type: Schema.Types.Mixed,
+      default: {}
     }
   },
   {

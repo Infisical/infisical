@@ -4,13 +4,14 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faArrowUpRightFromSquare, faBookOpen, faBugs, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { motion } from "framer-motion";
 import queryString from "query-string";
 import * as yup from "yup";
 
+import { usePopUp } from "@app/hooks";
 import {
   useCreateIntegration
 } from "@app/hooks/api";
@@ -21,13 +22,14 @@ import {
   CardTitle,
   FormControl,
   Input,
+  Modal,
+  ModalContent,
   Select,
   SelectItem,
   Tab,
   TabList,
   TabPanel,
-  Tabs
-} from "../../../components/v2";
+  Tabs} from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById,
@@ -60,6 +62,9 @@ type FormData = yup.InferType<typeof schema>;
 
 export default function GitLabCreateIntegrationPage() {
   const router = useRouter();
+  const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
+    "confirmIntegration"
+  ] as const);
   
   const {
     control,
@@ -70,7 +75,9 @@ export default function GitLabCreateIntegrationPage() {
       resolver: yupResolver(schema),
       defaultValues: {
         targetEntity: "individual",
-        secretPath: "/"
+        secretPath: "/",
+        secretPrefix: "",
+        secretSuffix: ""
       }
   });
   const selectedSourceEnvironment = watch("selectedSourceEnvironment");
@@ -167,7 +174,14 @@ export default function GitLabCreateIntegrationPage() {
     integrationAuthApps &&
     integrationAuthTeams ? (
     <form 
-      onSubmit={handleSubmit(onFormSubmit)}
+      onSubmit={handleSubmit((data: FormData) => {
+        if (!data.secretPrefix && !data.secretSuffix) {
+          handlePopUpOpen("confirmIntegration", data); 
+          return;
+        }
+        
+        onFormSubmit(data);
+      })}
       className="flex flex-col h-full w-full items-center justify-center"
     >
       <Head>
@@ -431,11 +445,40 @@ export default function GitLabCreateIntegrationPage() {
           Create Integration
         </Button>
       </Card> 
-      <div className="border-t border-mineshaft-800 w-full max-w-md mt-6"/>
+      {/* <div className="border-t border-mineshaft-800 w-full max-w-md mt-6"/>
       <div className="flex flex-col bg-mineshaft-800 border border-mineshaft-600 w-full p-4 max-w-lg mt-6 rounded-md">
         <div className="flex flex-row items-center"><FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl"/> <span className="ml-3 text-md text-mineshaft-100">Pro Tips</span></div>
         <span className="text-mineshaft-300 text-sm mt-4">After creating an integration, your secrets will start syncing immediately. This might cause an unexpected override of current secrets in GitLab with secrets from Infisical.</span>
-      </div>
+      </div> */}
+      <Modal
+          isOpen={popUp.confirmIntegration?.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("confirmIntegration", isOpen)}
+        >
+          <ModalContent
+            title="Heads Up"
+            footerContent={
+              <div className="flex items-center space-x-2">
+                <Button onClick={() => onFormSubmit(popUp.confirmIntegration?.data as FormData)}>
+                  Continue Anyway
+                </Button>
+                <Button
+                  onClick={() => handlePopUpClose("confirmIntegration")}
+                  variant="outline_bg"
+                  colorSchema="secondary"
+                >
+                  Cancel
+                </Button>
+              </div>
+            }
+          >
+            <p>
+              You&apos;re about to overwrite any existing secrets in GitLab.
+            </p>
+            <p className="mt-4">
+              To avoid this behavior, you may consider adding a secret prefix/suffix in the options tab.
+            </p> 
+          </ModalContent>
+        </Modal>
     </form>
   ) : (
     <div className="flex justify-center items-center w-full h-full">
