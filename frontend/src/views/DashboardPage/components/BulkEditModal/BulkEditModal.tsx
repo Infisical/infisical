@@ -77,7 +77,7 @@ export const BulkEditModal = ({
     if (secrets) {
       const content = secrets?.secrets.reduce((prev, curr) => {
         if (curr.comment.length) {
-          prev += `#${curr.comment}\n`;
+          prev += `# ${curr.comment}\n`;
         }
         prev += `${curr.key}: ${curr.value}\n\n`;
         return prev;
@@ -89,6 +89,7 @@ export const BulkEditModal = ({
   const handleFormSubmit = (data: TFormSchema) => {
     const deletedKeys = new Map(secrets?.secrets.map((val) => [val.key, val]));
     const env = parseDotEnv(data.content);
+
     Object.keys(env).forEach((val) => {
       const deletedKey = deletedKeys.get(val);
       if (deletedKey) {

@@ -12,7 +12,7 @@ export function parseDotEnv(src: ArrayBuffer | string) {
   } = {};
 
   // Convert buffer to string
-  let lines = src.toString();
+  let lines = typeof src === "string" ? src : src.toString();
 
   // Convert line breaks to same format
   lines = lines.replace(/\r\n?/gm, "\n");
