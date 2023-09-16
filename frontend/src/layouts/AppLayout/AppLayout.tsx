@@ -445,7 +445,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         <a>
                           <MenuItem
                             isSelected={router.asPath.includes(
-                              `/project/${currentWorkspace?._id}/secrets/overview`
+                              `/project/${currentWorkspace?._id}/secrets`
                             )}
                             icon="system-outline-90-lock-closed"
                           >

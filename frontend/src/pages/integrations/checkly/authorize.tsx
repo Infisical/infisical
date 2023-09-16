@@ -53,7 +53,7 @@ export default function ChecklyCreateIntegrationPage() {
       <Card className="max-w-lg rounded-md border border-mineshaft-600 mb-12">
         <CardTitle 
           className="text-left px-6 text-xl" 
-          subTitle="After adding your API-key, you will be prompted to set up an integration for a particular Infisical project and environment."
+          subTitle="After adding your API key, you will be prompted to set up an integration for a particular Infisical project and environment."
         >
           <div className="flex flex-row items-center">
             <div className="inline flex items-center pb-0.5">
