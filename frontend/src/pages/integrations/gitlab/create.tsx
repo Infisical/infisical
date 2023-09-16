@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faArrowUpRightFromSquare, faBookOpen, faBugs, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { motion } from "framer-motion";
 import queryString from "query-string";
+import * as yup from "yup";
 
 import {
   useCreateIntegration
@@ -18,7 +22,11 @@ import {
   FormControl,
   Input,
   Select,
-  SelectItem
+  SelectItem,
+  Tab,
+  TabList,
+  TabPanel,
+  Tabs
 } from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
@@ -32,16 +40,49 @@ const gitLabEntities = [
   { name: "Group", value: "group" }
 ];
 
+enum TabSections {
+  Connection = "connection",
+  Options = "options"
+}
+
+const schema = yup.object({
+  targetEntity: yup.string().oneOf(gitLabEntities.map(entity => entity.value), "Invalid entity type"),
+  targetTeamId: yup.string(),
+  selectedSourceEnvironment: yup.string().required("Source environment is required"),
+  secretPath: yup.string().required("Secret path is required"),
+  targetAppId: yup.string().required("GitLab project is required"),
+  targetEnvironment: yup.string(),
+  secretPrefix: yup.string(),
+  secretSuffix: yup.string()
+});
+
+type FormData = yup.InferType<typeof schema>;
+
 export default function GitLabCreateIntegrationPage() {
   const router = useRouter();
+  
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    watch
+  } = useForm<FormData>({
+      resolver: yupResolver(schema),
+      defaultValues: {
+        targetEntity: "individual",
+        secretPath: "/"
+      }
+  });
+  const selectedSourceEnvironment = watch("selectedSourceEnvironment");
+  const targetEntity = watch("targetEntity");
+  const targetTeamId = watch("targetTeamId");
+
   const { mutateAsync } = useCreateIntegration();
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
-
-  const [targetTeamId, setTargetTeamId] = useState<string | null>(null);
 
   const { data: integrationAuthApps, isLoading: isintegrationAuthAppsLoading } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? "",
@@ -51,26 +92,20 @@ export default function GitLabCreateIntegrationPage() {
     (integrationAuthId as string) ?? ""
   );
 
-  const [targetEntity, setTargetEntity] = useState(gitLabEntities[0].value);
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
-  const [secretPath, setSecretPath] = useState("/");
-  const [targetAppId, setTargetAppId] = useState("");
-  const [targetEnvironment, setTargetEnvironment] = useState("");
-
   const [isLoading, setIsLoading] = useState(false);
-
+  
   useEffect(() => {
     if (workspace) {
-      setSelectedSourceEnvironment(workspace.environments[0].slug);
+      setValue("selectedSourceEnvironment", workspace.environments[0].slug);
     }
   }, [workspace]);
 
   useEffect(() => {
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
-        setTargetAppId(integrationAuthApps[0].appId as string);
+        setValue("targetAppId", String(integrationAuthApps[0].appId as string));
       } else {
-        setTargetAppId("none");
+        setValue("targetAppId", "none");
       }
     }
   }, [integrationAuthApps]);
@@ -80,46 +115,60 @@ export default function GitLabCreateIntegrationPage() {
       if (integrationAuthTeams) {
         if (integrationAuthTeams.length > 0) {
           // case: user is part of at least 1 group in GitLab
-          setTargetTeamId(integrationAuthTeams[0].teamId);
+          setValue("targetTeamId", String(integrationAuthTeams[0].teamId));
         } else {
           // case: user is not part of any groups in GitLab
-          setTargetTeamId("none");
+          setValue("targetTeamId", "none");
         }
       }
     } else if (targetEntity === "individual") {
-      setTargetTeamId(null);
+      setValue("targetTeamId", undefined);
     }
   }, [targetEntity, integrationAuthTeams]);
 
-  const handleButtonClick = async () => {
+  const onFormSubmit = async ({
+    selectedSourceEnvironment: sse,
+    secretPath,
+    targetAppId,
+    targetEnvironment,
+    secretPrefix,
+    secretSuffix
+  }: FormData) => {
     try {
       setIsLoading(true);
       if (!integrationAuth?._id) return;
-
+      
       await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
-        app: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId)?.name,
+        app: integrationAuthApps?.find((integrationAuthApp) => String(integrationAuthApp.appId) === targetAppId)?.name,
         appId: String(targetAppId),
-        sourceEnvironment: selectedSourceEnvironment,
+        sourceEnvironment: sse,
         targetEnvironment: targetEnvironment === "" ? "*" : targetEnvironment,
-        secretPath
+        secretPath,
+        metadata: {
+          secretPrefix,
+          secretSuffix
+        }
       });
 
       setIsLoading(false);
       router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
       console.error(err);
+      setIsLoading(false);
     }
-  };
+  }
 
   return integrationAuth &&
     workspace &&
     selectedSourceEnvironment &&
     integrationAuthApps &&
-    integrationAuthTeams &&
-    targetAppId ? (
-    <div className="flex flex-col h-full w-full items-center justify-center">
+    integrationAuthTeams ? (
+    <form 
+      onSubmit={handleSubmit(onFormSubmit)}
+      className="flex flex-col h-full w-full items-center justify-center"
+    >
       <Head>
         <title>Set Up GitLab Integration</title>
         <link rel='icon' href='/infisical.ico' />
@@ -150,115 +199,243 @@ export default function GitLabCreateIntegrationPage() {
             </Link>
           </div>
         </CardTitle>
-        <FormControl label="Project Environment" className="px-6">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
-              >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path" className="px-6">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-        <FormControl label="GitLab Integration Type" className="px-6">
-          <Select
-            value={targetEntity}
-            onValueChange={(val) => setTargetEntity(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {gitLabEntities.map((entity) => {
-              return (
-                <SelectItem value={entity.value} key={`target-entity-${entity.value}`}>
-                  {entity.name}
-                </SelectItem>
-              );
-            })}
-          </Select>
-        </FormControl>
-        {targetEntity === "group" && targetTeamId && (
-          <FormControl label="GitLab Group" className="px-6">
-            <Select
-              value={targetTeamId}
-              onValueChange={(val) => setTargetTeamId(val)}
-              className="w-full border border-mineshaft-500"
+        <Tabs defaultValue={TabSections.Connection} className="px-6">
+          <TabList>
+            <div className="flex flex-row border-b border-mineshaft-600 w-full">
+              <Tab value={TabSections.Connection}>Connection</Tab>
+              <Tab value={TabSections.Options}>Options</Tab>
+            </div>
+          </TabList>
+          <TabPanel value={TabSections.Connection}>
+            <motion.div
+              key="panel-1"
+              transition={{ duration: 0.15 }}
+              initial={{ opacity: 0, translateX: 30 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              exit={{ opacity: 0, translateX: 30 }}
             >
-              {integrationAuthTeams.length > 0 ? (
-                integrationAuthTeams.map((integrationAuthTeam) => (
-                  <SelectItem
-                    value={integrationAuthTeam.teamId}
-                    key={`target-team-${integrationAuthTeam.teamId}`}
-                  >
-                    {integrationAuthTeam.name}
-                  </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" key="target-team-none">
-                  No groups found
-                </SelectItem>
-              )}
-            </Select>
-          </FormControl>
-        )}
-        <FormControl label="GitLab Project" className="px-6">
-          <Select
-            value={targetAppId}
-            onValueChange={(val) => setTargetAppId(val)}
-            className="w-full border border-mineshaft-500"
-            isDisabled={integrationAuthApps.length === 0}
-          >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.appId as string}
-                  key={`target-app-${integrationAuthApp.appId}`}
-                >
-                  {integrationAuthApp.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No projects found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
-        <FormControl label="GitLab Environment Scope (Optional)" className="px-6">
-          <Input
-            placeholder="*"
-            value={targetEnvironment}
-            onChange={(e) => setTargetEnvironment(e.target.value)}
-          />
-        </FormControl>
+              <div>
+                <Controller
+                  control={control}
+                  name="selectedSourceEnvironment"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <FormControl
+                      label="Project Environment"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                    >
+                      <Select
+                        defaultValue={field.value}
+                        {...field}
+                        onValueChange={(e) => onChange(e)}
+                        className="w-full"
+                      >
+                        {workspace?.environments.map((sourceEnvironment) => (
+                          <SelectItem
+                            value={sourceEnvironment.slug}
+                            key={`source-environment-${sourceEnvironment.slug}`}
+                          >
+                            {sourceEnvironment.name}
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                    control={control}
+                    defaultValue=""
+                    name="secretPath"
+                    render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                            label="Secrets Path"
+                            isError={Boolean(error)}
+                            errorText={error?.message}
+                        >
+                        <Input 
+                            {...field} 
+                            placeholder="/"
+                        />
+                        </FormControl>
+                    )}
+                />
+                <Controller
+                  control={control}
+                  name="targetEntity"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                    <FormControl
+                      label="GitLab Integration Type"
+                      errorText={error?.message}
+                      isError={Boolean(error)}
+                    >
+                      <Select
+                        {...field}
+                        onValueChange={(e) => onChange(e)}
+                        className="w-full"
+                      >
+                        {gitLabEntities.map((entity) => {
+                          return (
+                            <SelectItem value={entity.value} key={`target-entity-${entity.value}`}>
+                              {entity.name}
+                            </SelectItem>
+                          );
+                        })}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+                {targetEntity === "group" && targetTeamId && (
+                  <Controller
+                    control={control}
+                    name="targetTeamId"
+                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                      <FormControl
+                        label="GitLab Group"
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                      >
+                        <Select
+                          {...field}
+                          onValueChange={(e) => onChange(e)}
+                          className="w-full"
+                        >
+                          {integrationAuthTeams.length > 0 ? (
+                            integrationAuthTeams.map((integrationAuthTeam) => 
+                            (
+                              <SelectItem
+                                value={String(integrationAuthTeam.teamId as string)}
+                                key={`target-team-${String(integrationAuthTeam.teamId)}`}
+                              >
+                                {integrationAuthTeam.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" key="target-team-none">
+                              No groups found
+                            </SelectItem>
+                          )}
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                )}
+                <Controller
+                  control={control}
+                  name="targetAppId"
+                  render={({ field: { onChange, ...field }, fieldState: { error } }) => {
+                    return (
+                      <FormControl
+                        label="GitLab Project"
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                      >
+                        <Select
+                          {...field}
+                          onValueChange={(e) => {
+                            if (e === "") return;
+                            onChange(e)
+                          }}
+                          className="w-full"
+                        >
+                          {integrationAuthApps.length > 0 ? (
+                            integrationAuthApps.map((integrationAuthApp) => (
+                              <SelectItem
+                                value={String(integrationAuthApp.appId as string)}
+                                key={`target-app-${String(integrationAuthApp.appId)}`}
+                              >
+                                {integrationAuthApp.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" key="target-app-none">
+                              No projects found
+                            </SelectItem>
+                          )}
+                        </Select>
+                      </FormControl>
+                    )}}
+                  />
+                  <Controller
+                    control={control}
+                    defaultValue=""
+                    name="targetEnvironment"
+                    render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                            label="GitLab Environment Scope (Optional)"
+                            isError={Boolean(error)}
+                            errorText={error?.message}
+                        >
+                        <Input 
+                            {...field} 
+                            placeholder="*"
+                        />
+                        </FormControl>
+                    )}
+                />
+              </div>
+            </motion.div>
+          </TabPanel>
+          <TabPanel value={TabSections.Options}>
+            <motion.div
+              key="panel-1"
+              transition={{ duration: 0.15 }}
+              initial={{ opacity: 0, translateX: -30 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              exit={{ opacity: 0, translateX: 30 }}
+              className="pb-[14.25rem]"
+            >
+              <Controller
+                control={control}
+                name="secretPrefix"
+                render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                        label="Secret Prefix"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                    >
+                    <Input 
+                        {...field} 
+                        placeholder="INFISICAL_"
+                    />
+                    </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                name="secretSuffix"
+                render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                        label="Secret Suffix"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                    >
+                    <Input 
+                        {...field} 
+                        placeholder="_INFISICAL"
+                    />
+                    </FormControl>
+                )}
+              />
+            </motion.div>
+          </TabPanel>
+        </Tabs>
         <Button
-          onClick={handleButtonClick}
           colorSchema="primary"
           variant="outline_bg"
-          className="mb-6 mt-2 ml-auto mr-6 w-min"
+          className="mb-8 ml-auto mr-6 w-min"
+          size="sm"
+          type="submit"
           isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
         >
           Create Integration
         </Button>
-      </Card>
+      </Card> 
       <div className="border-t border-mineshaft-800 w-full max-w-md mt-6"/>
       <div className="flex flex-col bg-mineshaft-800 border border-mineshaft-600 w-full p-4 max-w-lg mt-6 rounded-md">
         <div className="flex flex-row items-center"><FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl"/> <span className="ml-3 text-md text-mineshaft-100">Pro Tips</span></div>
         <span className="text-mineshaft-300 text-sm mt-4">After creating an integration, your secrets will start syncing immediately. This might cause an unexpected override of current secrets in GitLab with secrets from Infisical.</span>
       </div>
-    </div>
+    </form>
   ) : (
     <div className="flex justify-center items-center w-full h-full">
       <Head>

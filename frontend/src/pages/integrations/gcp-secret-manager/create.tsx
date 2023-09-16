@@ -293,89 +293,97 @@ export default function GCPSecretManagerCreateIntegrationPage() {
             </motion.div>
           </TabPanel>
           <TabPanel value={TabSections.Options}>
-            <Controller
-              control={control}
-              name="secretPrefix"
-              render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                      label="Secret Prefix"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                  >
-                  <Input 
-                      {...field} 
-                      placeholder="INFISICAL_"
-                  />
-                  </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="secretSuffix"
-              render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                      label="Secret Suffix"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                  >
-                  <Input 
-                      {...field} 
-                      placeholder="_INFISICAL"
-                  />
-                  </FormControl>
-              )}
-            />
-            <div className="mt-8 mb-[2.36rem]">
+            <motion.div
+              key="panel-1"
+              transition={{ duration: 0.15 }}
+              initial={{ opacity: 0, translateX: -30 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              exit={{ opacity: 0, translateX: 30 }}
+            >
               <Controller
                 control={control}
-                name="shouldLabel"
-                render={({ field: { onChange, value } }) => (
-                  <Switch
-                    id="label-gcp"
-                    onCheckedChange={(isChecked) => onChange(isChecked)}
-                    isChecked={value}
-                  >
-                    Label in GCP Secret Manager
-                  </Switch>
+                name="secretPrefix"
+                render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                        label="Secret Prefix"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                    >
+                    <Input 
+                        {...field} 
+                        placeholder="INFISICAL_"
+                    />
+                    </FormControl>
                 )}
               />
-            </div>
-            {shouldLabel && (
-              <div className="mt-8">
+              <Controller
+                control={control}
+                name="secretSuffix"
+                render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                        label="Secret Suffix"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                    >
+                    <Input 
+                        {...field} 
+                        placeholder="_INFISICAL"
+                    />
+                    </FormControl>
+                )}
+              />
+              <div className="mt-8 mb-[2.36rem]">
                 <Controller
                   control={control}
-                  name="labelName"
-                  render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                          label="Label Name"
-                          isError={Boolean(error)}
-                          errorText={error?.message}
-                      >
-                      <Input 
-                          {...field} 
-                          placeholder="managed-by"
-                      />
-                      </FormControl>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="labelValue"
-                  render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                          label="Label Name"
-                          isError={Boolean(error)}
-                          errorText={error?.message}
-                      >
-                      <Input 
-                          {...field} 
-                          placeholder="infisical"
-                      />
-                      </FormControl>
+                  name="shouldLabel"
+                  render={({ field: { onChange, value } }) => (
+                    <Switch
+                      id="label-gcp"
+                      onCheckedChange={(isChecked) => onChange(isChecked)}
+                      isChecked={value}
+                    >
+                      Label in GCP Secret Manager
+                    </Switch>
                   )}
                 />
               </div>
-            )}
+              {shouldLabel && (
+                <div className="mt-8">
+                  <Controller
+                    control={control}
+                    name="labelName"
+                    render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                            label="Label Name"
+                            isError={Boolean(error)}
+                            errorText={error?.message}
+                        >
+                        <Input 
+                            {...field} 
+                            placeholder="managed-by"
+                        />
+                        </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="labelValue"
+                    render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                            label="Label Name"
+                            isError={Boolean(error)}
+                            errorText={error?.message}
+                        >
+                        <Input 
+                            {...field} 
+                            placeholder="infisical"
+                        />
+                        </FormControl>
+                    )}
+                  />
+                </div>
+              )}
+            </motion.div>
           </TabPanel>
         </Tabs>
         <Button

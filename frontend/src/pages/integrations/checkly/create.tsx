@@ -145,58 +145,66 @@ export default function ChecklyCreateIntegrationPage() {
             </div>
           </TabList>
           <TabPanel value={TabSections.Connection}>
-            <FormControl label="Infisical Project Environment">
-              <Select
-                value={selectedSourceEnvironment}
-                onValueChange={(val) => setSelectedSourceEnvironment(val)}
-                className="w-full border border-mineshaft-500"
-              >
-                {workspace?.environments.map((sourceEnvironment) => (
-                  <SelectItem
-                    value={sourceEnvironment.slug}
-                    key={`source-environment-${sourceEnvironment.slug}`}
-                  >
-                    {sourceEnvironment.name}
-                  </SelectItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl label="Secrets Path">
-              <Input
-                value={secretPath}
-                onChange={(evt) => setSecretPath(evt.target.value)}
-                placeholder="Provide a path, default is /"
-              />
-            </FormControl>
-            <FormControl label="Checkly Account">
-              <Select
-                value={targetApp}
-                onValueChange={(val) => setTargetApp(val)}
-                className="w-full border border-mineshaft-500"
-                isDisabled={integrationAuthApps.length === 0}
-              >
-                {integrationAuthApps.length > 0 ? (
-                  integrationAuthApps.map((integrationAuthApp) => (
+            <motion.div
+              key="panel-1"
+              transition={{ duration: 0.15 }}
+              initial={{ opacity: 0, translateX: 30 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              exit={{ opacity: 0, translateX: 30 }}
+            >
+              <FormControl label="Infisical Project Environment">
+                <Select
+                  value={selectedSourceEnvironment}
+                  onValueChange={(val) => setSelectedSourceEnvironment(val)}
+                  className="w-full border border-mineshaft-500"
+                >
+                  {workspace?.environments.map((sourceEnvironment) => (
                     <SelectItem
-                      value={integrationAuthApp.name}
-                      key={`target-app-${integrationAuthApp.name}`}
+                      value={sourceEnvironment.slug}
+                      key={`source-environment-${sourceEnvironment.slug}`}
                     >
-                      {integrationAuthApp.name}
+                      {sourceEnvironment.name}
                     </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="none" key="target-app-none">
-                    No apps found
-                  </SelectItem>
-                )}
-              </Select>
-            </FormControl>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl label="Secrets Path">
+                <Input
+                  value={secretPath}
+                  onChange={(evt) => setSecretPath(evt.target.value)}
+                  placeholder="Provide a path, default is /"
+                />
+              </FormControl>
+              <FormControl label="Checkly Account">
+                <Select
+                  value={targetApp}
+                  onValueChange={(val) => setTargetApp(val)}
+                  className="w-full border border-mineshaft-500"
+                  isDisabled={integrationAuthApps.length === 0}
+                >
+                  {integrationAuthApps.length > 0 ? (
+                    integrationAuthApps.map((integrationAuthApp) => (
+                      <SelectItem
+                        value={integrationAuthApp.name}
+                        key={`target-app-${integrationAuthApp.name}`}
+                      >
+                        {integrationAuthApp.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" key="target-app-none">
+                      No apps found
+                    </SelectItem>
+                  )}
+                </Select>
+              </FormControl>
+            </motion.div>
           </TabPanel>
           <TabPanel value={TabSections.Options}>
             <motion.div
               key="panel-1"
               transition={{ duration: 0.15 }}
-              initial={{ opacity: 0, translateX: 30 }}
+              initial={{ opacity: 0, translateX: -30 }}
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: 30 }}
             >
