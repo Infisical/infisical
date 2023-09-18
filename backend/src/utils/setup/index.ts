@@ -12,6 +12,7 @@ import {
   backfillEncryptionMetadata,
   backfillIntegration,
   backfillPermission,
+  backfillRemoveDeniedPermissions,
   backfillSecretBlindIndexData,
   backfillSecretFolders,
   backfillSecretVersions,
@@ -85,6 +86,7 @@ export const setup = async () => {
   await backfillTrustedIps();
   await backfillUserAuthMethods();
   await backfillPermission();
+  await backfillRemoveDeniedPermissions();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY

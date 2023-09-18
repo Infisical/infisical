@@ -183,25 +183,6 @@ func CallIsAuthenticated(httpClient *resty.Client) bool {
 	return true
 }
 
-func CallGetAccessibleEnvironments(httpClient *resty.Client, request GetAccessibleEnvironmentsRequest) (GetAccessibleEnvironmentsResponse, error) {
-	var accessibleEnvironmentsResponse GetAccessibleEnvironmentsResponse
-	response, err := httpClient.
-		R().
-		SetResult(&accessibleEnvironmentsResponse).
-		SetHeader("User-Agent", USER_AGENT).
-		Get(fmt.Sprintf("%v/v2/workspace/%s/environments", config.INFISICAL_URL, request.WorkspaceId))
-
-	if err != nil {
-		return GetAccessibleEnvironmentsResponse{}, err
-	}
-
-	if response.IsError() {
-		return GetAccessibleEnvironmentsResponse{}, fmt.Errorf("CallGetAccessibleEnvironments: Unsuccessful response:  [response=%v] [response-code=%v] [url=%s]", response, response.StatusCode(), response.Request.URL)
-	}
-
-	return accessibleEnvironmentsResponse, nil
-}
-
 func CallGetNewAccessTokenWithRefreshToken(httpClient *resty.Client, refreshToken string) (GetNewAccessTokenWithRefreshTokenResponse, error) {
 	var newAccessToken GetNewAccessTokenWithRefreshTokenResponse
 	response, err := httpClient.
