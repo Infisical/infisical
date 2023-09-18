@@ -1,6 +1,5 @@
 /* eslint-disable react/no-danger */
-import { forwardRef, HTMLAttributes } from "react";
-import ContentEditable from "react-contenteditable";
+import { forwardRef, HTMLAttributes, useState } from "react";
 import sanitizeHtml, { DisallowedTagsModes } from "sanitize-html";
 
 import { useToggle } from "@app/hooks";
@@ -38,7 +37,7 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
   return newContent;
 };
 
-type Props = Omit<HTMLAttributes<HTMLDivElement>, "onChange" | "onBlur"> & {
+type Props = Omit<HTMLAttributes<HTMLTextAreaElement>, "onChange" | "onBlur"> & {
   value?: string | null;
   isVisible?: boolean;
   isDisabled?: boolean;
@@ -46,30 +45,44 @@ type Props = Omit<HTMLAttributes<HTMLDivElement>, "onChange" | "onBlur"> & {
   onBlur?: () => void;
 };
 
-export const SecretInput = forwardRef<HTMLDivElement, Props>(
-  ({ value, isVisible, onChange, onBlur, isDisabled, ...props }, ref) => {
+const commonClassName =
+  "font-mono text-base leading-5 caret-white border-none outline-none w-full break-all ";
+
+export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
+  ({ value, isVisible, onChange, onBlur, isDisabled, onFocus, ...props }, ref) => {
     const [isSecretFocused, setIsSecretFocused] = useToggle();
+    const [text, setText] = useState(() => value || "");
+
+    const update = (code: string) => {
+      setText(code);
+      if (onChange) {
+        onChange(code);
+      }
+    };
+
+    const onInput = (event: any) => {
+      const code = event.target.value.trim() || "";
+      update(code);
+    };
 
     return (
-      <div
-        className="thin-scrollbar relative overflow-y-auto overflow-x-hidden"
-        style={{ maxHeight: `${21 * 7}px` }}
-      >
-        <div
-          dangerouslySetInnerHTML={{
-            __html: syntaxHighlight(value, isVisible || isSecretFocused)
-          }}
-          className={`absolute top-0 left-0 z-0 h-full w-full inline-block text-ellipsis whitespace-pre-wrap break-all ${
-            !value && value !== "" && "italic text-red-600/70"
-          }`}
+      <div className="relative">
+        <pre aria-hidden className="m-0 whitespace-pre-wrap">
+          <code className={`code inline-block w-full  ${commonClassName}`}>
+            <span
+              dangerouslySetInnerHTML={{
+                __html: syntaxHighlight(text, isVisible || isSecretFocused) ?? ""
+              }}
+            />
+          </code>
+        </pre>
+
+        <textarea
+          aria-label="secret value"
           ref={ref}
-        />
-        <ContentEditable
-          className="relative z-10 h-full w-full text-ellipsis inline-block whitespace-pre-wrap  break-all text-transparent caret-white outline-none"
-          role="textbox"
-          onChange={(evt) => {
-            if (onChange) onChange(evt.currentTarget.innerText.trim());
-          }}
+          className={`textarea absolute inset-0 h-full overflow-hidden block focus:border-0 resize-none bg-transparent text-transparent ${commonClassName}`}
+          value={text}
+          onChange={onInput}
           onFocus={() => setIsSecretFocused.on()}
           disabled={isDisabled}
           spellCheck={false}
@@ -77,14 +90,6 @@ export const SecretInput = forwardRef<HTMLDivElement, Props>(
             if (onBlur) onBlur();
             setIsSecretFocused.off();
           }}
-          html={
-            isVisible || isSecretFocused
-              ? sanitizeHtml(
-                  value?.replaceAll("<", "&lt;").replaceAll(">", "&gt;") || "",
-                  sanitizeConf
-                )
-              : syntaxHighlight(value, false)
-          }
           {...props}
         />
       </div>
