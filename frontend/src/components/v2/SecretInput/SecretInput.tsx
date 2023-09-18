@@ -46,7 +46,7 @@ type Props = Omit<HTMLAttributes<HTMLTextAreaElement>, "onChange" | "onBlur"> & 
 };
 
 const commonClassName =
-  "font-mono text-sm leading-5 caret-white border-none outline-none w-full break-all ";
+  "font-mono text-sm caret-white border-none outline-none w-full break-all py-4";
 
 export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
   ({ value, isVisible, onChange, onBlur, isDisabled, onFocus, ...props }, ref) => {
@@ -67,7 +67,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     return (
       <div className="relative">
-        <pre aria-hidden className="m-0 whitespace-pre-wrap">
+        <pre aria-hidden className="m-0 " style={{ whiteSpace: "break-spaces" }}>
           <code className={`code inline-block w-full  ${commonClassName}`}>
             <span
               dangerouslySetInnerHTML={{
@@ -78,6 +78,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         </pre>
 
         <textarea
+          style={{ whiteSpace: "break-spaces" }}
           aria-label="secret value"
           ref={ref}
           className={`textarea absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent focus:border-0 ${commonClassName}`}
