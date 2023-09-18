@@ -82,7 +82,14 @@ export const CreateIntegrationV1 = z.object({
       secretGCPLabel: z.object({
         labelName: z.string(),
         labelValue: z.string()
-      }).optional()
+      }).optional(),
+      org: z.string().optional(),
+      orgId: z.string().optional(),
+      project: z.string().optional(),
+      projectId: z.string().optional(),
+      environment: z.string().optional(),
+      environmentId: z.string().optional(),
+      scope: z.string().optional()
     }).optional()
   })
 });

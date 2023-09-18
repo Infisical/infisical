@@ -52,6 +52,7 @@ import {
       | "aws-parameter-store"
       | "aws-secret-manager"
       | "checkly"
+      | "qovery"
       | "cloudflare-pages"
       | "codefresh"
       | "digital-ocean-app-platform"

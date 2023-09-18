@@ -113,6 +113,39 @@ export const GetIntegrationAuthVercelBranchesV1 = z.object({
   })
 });
 
+export const GetIntegrationAuthQoveryOrgsV1 = z.object({
+  params: z.object({
+    integrationAuthId: z.string().trim()
+  })
+});
+
+export const GetIntegrationAuthQoveryProjectsV1 = z.object({
+  params: z.object({
+    integrationAuthId: z.string().trim()
+  }),
+  query: z.object({
+    orgId: z.string().trim()
+  })
+});
+
+export const GetIntegrationAuthQoveryEnvironmentsV1 = z.object({
+  params: z.object({
+    integrationAuthId: z.string().trim()
+  }),
+  query: z.object({
+    projectId: z.string().trim()
+  })
+});
+
+export const GetIntegrationAuthQoveryScopesV1 = z.object({
+  params: z.object({
+    integrationAuthId: z.string().trim()
+  }),
+  query: z.object({
+    environmentId: z.string().trim()
+  })
+});
+
 export const GetIntegrationAuthRailwayEnvironmentsV1 = z.object({
   params: z.object({
     integrationAuthId: z.string().trim()

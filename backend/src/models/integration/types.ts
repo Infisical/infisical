@@ -8,4 +8,5 @@ export type Metadata = {
         labelName: string;
         labelValue: string;
     }
+    scope?: "Job" | "Application" | "Container";   
 }

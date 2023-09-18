@@ -18,6 +18,7 @@ import {
   INTEGRATION_LARAVELFORGE,
   INTEGRATION_NETLIFY,
   INTEGRATION_NORTHFLANK,
+  INTEGRATION_QOVERY,
   INTEGRATION_RAILWAY,
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
@@ -63,6 +64,7 @@ export interface IIntegration {
     | "travisci"
     | "supabase"
     | "checkly"
+    | "qovery"
     | "terraform-cloud"
     | "teamcity"
     | "hashicorp-vault"
@@ -162,6 +164,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_TRAVISCI,
         INTEGRATION_SUPABASE,
         INTEGRATION_CHECKLY,
+        INTEGRATION_QOVERY,
         INTEGRATION_TERRAFORM_CLOUD,
         INTEGRATION_TEAMCITY,
         INTEGRATION_HASHICORP_VAULT,

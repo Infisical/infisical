@@ -1,0 +1,39 @@
+---
+title: "Qovery"
+description: "How to sync secrets from Infisical to Qovery"
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+
+## Navigate to your project's integrations tab
+
+![integrations](../../images/integrations.png)
+
+## Enter your Qovery API Token
+
+Obtain a Qovery API Token in Settings > API Token.
+
+![integrations qovery api token](../../images/integrations-qovery-api-token.png)
+
+Press on the Qovery tile and input your Qovery API TOken to grant Infisical access to your Qovery account.
+
+![integrations qovery authorization](../../images/integrations-qovery-auth.png)
+
+<Info>
+  If this is your project's first cloud integration, then you'll have to grant
+  Infisical access to your project's environment variables. Although this step
+  breaks E2EE, it is necessary for Infisical to sync the environment variables to
+  the cloud platform.
+</Info>
+
+## Start integration
+
+Select which Infisical environment secrets you want to sync to Qovery and press create integration to start syncing secrets.
+
+![integrations Infisial settings](../../images/integrations-qovery-infisical.png)
+
+Select your Qovery organization, project, and environment to which you want to sync secrets to. Next to that, select which scope you want secrets to (Application, Job, or Container). After you are done, hit "Create Integration."
+
+![integrations Qovery settings](../../images/integrations-qovery-qovery.png)

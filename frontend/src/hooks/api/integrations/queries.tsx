@@ -59,6 +59,13 @@ export const useCreateIntegration = () => {
       metadata?: {
         secretPrefix?: string;
         secretSuffix?: string;
+        org?: string;
+        orgId?: string;
+        project?: string;
+        projectId?: string;
+        environment?: string;
+        environmentId?: string;
+        scope?: string;
       }
     }) => {
       const { data: { integration } } = await apiRequest.post("/api/v1/integration", {
