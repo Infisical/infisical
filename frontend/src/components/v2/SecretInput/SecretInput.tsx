@@ -56,12 +56,12 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const update = (code: string) => {
       setText(code);
       if (onChange) {
-        onChange(code);
+        onChange(code.trim());
       }
     };
 
     const onInput = (event: any) => {
-      const code = event.target.value.trim() || "";
+      const code = event.target.value || "";
       update(code);
     };
 
@@ -80,7 +80,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         <textarea
           aria-label="secret value"
           ref={ref}
-          className={`textarea absolute inset-0 h-full overflow-hidden block focus:border-0 resize-none bg-transparent text-transparent ${commonClassName}`}
+          className={`textarea absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent focus:border-0 ${commonClassName}`}
           value={text}
           onChange={onInput}
           onFocus={() => setIsSecretFocused.on()}
