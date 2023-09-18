@@ -1,77 +1,46 @@
+/** @type {import("eslint").Linter.Config} */
 module.exports = {
-  overrides: [
-    {
-      files: ["next.config.js"]
-    }
-  ],
   root: true,
-  env: {
-    browser: true,
-    es2021: true,
-    "es6": true
-  },
   extends: [
-    "airbnb",
-    "airbnb-typescript",
-    "airbnb/hooks",
-    "plugin:react/recommended",
-    "prettier",
-    "plugin:storybook/recommended"
+    "next",
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:prettier/recommended"
   ],
+  plugins: ["@typescript-eslint", "unused-imports", "simple-import-sort", "import"],
   parserOptions: {
-    ecmaVersion: "latest",
-    sourceType: "module",
-    project: "./tsconfig.json",
-    ecmaFeatures: {
-      jsx: true
-    },
-    tsconfigRootDir: __dirname
+    sourceType: "module"
   },
-  plugins: ["react", "prettier", "simple-import-sort", "import"],
+  env: {
+    node: true,
+    browser: true,
+    es6: true
+  },
+  parser: "@typescript-eslint/parser",
   rules: {
-    quotes: ["error", "double", { avoidEscape: true }],
-    "comma-dangle": ["error", "only-multiline"],
-    "react/react-in-jsx-scope": "off",
-    "import/prefer-default-export": "off",
-    "react-hooks/exhaustive-deps": "off",
-    "@typescript-eslint/ban-ts-comment": "warn",
-    "react/jsx-props-no-spreading": "off", // switched off for component building
-    // TODO: This rule will be switched ON after complete revamp of frontend
-    "@typescript-eslint/no-explicit-any": "off",
-    "no-console": "off",
-    "arrow-body-style": "off",
-    "no-underscore-dangle": [
-      "error",
+    "@next/next/no-html-link-for-pages": "off",
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": "off",
+    "unused-imports/no-unused-imports": "error",
+    "unused-imports/no-unused-vars": [
+      "warn",
       {
-        allow: ["_id"]
+        vars: "all",
+        varsIgnorePattern: "^_",
+        args: "after-used",
+        argsIgnorePattern: "^_",
+        destructuredArrayIgnorePattern: "^_"
       }
     ],
-    "jsx-a11y/anchor-is-valid": "off",
-    // all those <a> tags must be converted to label or a p component
-    //
-    "react/require-default-props": "off",
-    "react/jsx-filename-extension": [
-      1,
+    "@typescript-eslint/consistent-type-imports": [
+      "warn",
       {
-        extensions: [".tsx", ".ts"]
+        prefer: "type-imports",
+        fixStyle: "separate-type-imports",
+        disallowTypeAnnotations: false
       }
     ],
-    // TODO: turn this rule ON after migration. everything should use arrow functions
-    "react/function-component-definition": [
-      0,
-      {
-        namedComponents: "arrow-function"
-      }
-    ],
-    "react/no-unknown-property": [
-      "error",
-      {
-        ignore: ["jsx"]
-      }
-    ],
-    "@typescript-eslint/no-non-null-assertion": "off",
     "simple-import-sort/exports": "warn",
-    "@typescript-eslint/no-empty-function": "off",
     "simple-import-sort/imports": [
       "warn",
       {
@@ -95,13 +64,5 @@ module.exports = {
         ]
       }
     ]
-  },
-  ignorePatterns: ["next.config.js"],
-  settings: {
-    "import/resolver": {
-      typescript: {
-        project: ["./tsconfig.json"]
-      }
-    }
   }
 };
