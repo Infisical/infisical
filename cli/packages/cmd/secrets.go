@@ -198,7 +198,7 @@ var secretsSetCmd = &cobra.Command{
 			}
 
 			// Key and value from argument
-			key := strings.ToUpper(splitKeyValueFromArg[0])
+			key := splitKeyValueFromArg[0]
 			value := splitKeyValueFromArg[1]
 
 			hashedKey := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
@@ -417,7 +417,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 	secretsMap := getSecretsByKeys(secrets)
 
 	for _, secretKeyFromArg := range args {
-		if value, ok := secretsMap[strings.ToUpper(secretKeyFromArg)]; ok {
+		if value, ok := secretsMap[secretKeyFromArg]; ok {
 			requestedSecrets = append(requestedSecrets, value)
 		} else {
 			requestedSecrets = append(requestedSecrets, models.SingleEnvironmentVariable{
@@ -625,7 +625,7 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 func CenterString(s string, numStars int) string {
 	stars := strings.Repeat("*", numStars)
 	padding := (numStars - len(s)) / 2
-	cenetredTextWithStar := stars[:padding] + " " + strings.ToUpper(s) + " " + stars[padding:]
+	cenetredTextWithStar := stars[:padding] + " " + s + " " + stars[padding:]
 
 	hashes := strings.Repeat("#", len(cenetredTextWithStar)+2)
 	return fmt.Sprintf("%s \n# %s \n%s", hashes, cenetredTextWithStar, hashes)
