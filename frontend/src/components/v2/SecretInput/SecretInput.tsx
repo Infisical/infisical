@@ -66,33 +66,36 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
     };
 
     return (
-      <div className="relative">
-        <pre aria-hidden className="m-0 " style={{ whiteSpace: "break-spaces" }}>
-          <code className={`code inline-block w-full  ${commonClassName}`}>
-            <span
-              dangerouslySetInnerHTML={{
-                __html: syntaxHighlight(text, isVisible || isSecretFocused) ?? ""
-              }}
-            />
-          </code>
-        </pre>
+      <div className="overflow-auto" style={{ maxHeight: `${21 * 7}px` }}>
+        <div className="relative overflow-hidden">
+          <pre aria-hidden className="m-0 ">
+            <code className={`inline-block w-full  ${commonClassName}`}>
+              <span
+                style={{ whiteSpace: "break-spaces" }}
+                dangerouslySetInnerHTML={{
+                  __html: syntaxHighlight(text, isVisible || isSecretFocused) ?? ""
+                }}
+              />
+            </code>
+          </pre>
 
-        <textarea
-          style={{ whiteSpace: "break-spaces" }}
-          aria-label="secret value"
-          ref={ref}
-          className={`textarea absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent focus:border-0 ${commonClassName}`}
-          value={text}
-          onChange={onInput}
-          onFocus={() => setIsSecretFocused.on()}
-          disabled={isDisabled}
-          spellCheck={false}
-          onBlur={() => {
-            if (onBlur) onBlur();
-            setIsSecretFocused.off();
-          }}
-          {...props}
-        />
+          <textarea
+            style={{ whiteSpace: "break-spaces" }}
+            aria-label="secret value"
+            ref={ref}
+            className={`absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent no-scrollbar focus:border-0 ${commonClassName}`}
+            value={text}
+            onChange={onInput}
+            onFocus={() => setIsSecretFocused.on()}
+            disabled={isDisabled}
+            spellCheck={false}
+            onBlur={() => {
+              if (onBlur) onBlur();
+              setIsSecretFocused.off();
+            }}
+            {...props}
+          />
+        </div>
       </div>
     );
   }
