@@ -46,7 +46,7 @@ type Props = Omit<HTMLAttributes<HTMLTextAreaElement>, "onChange" | "onBlur"> & 
 };
 
 const commonClassName =
-  "font-mono text-sm caret-white border-none outline-none w-full break-all py-4";
+  "font-mono text-sm caret-white border-none outline-none w-full break-all pb-4";
 
 export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
   ({ value, isVisible, onChange, onBlur, isDisabled, onFocus, ...props }, ref) => {
