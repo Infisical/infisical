@@ -1,5 +1,5 @@
 import { Document, Schema, Types, model } from "mongoose";
-import { 
+import {
     ALGORITHM_AES_256_GCM,
     ENCODING_SCHEME_BASE64,
     ENCODING_SCHEME_UTF8,
@@ -52,5 +52,7 @@ const secretBlindIndexDataSchema = new Schema<ISecretBlindIndexData>(
 
     }
 );
+
+secretBlindIndexDataSchema.index({ workspace: 1 });
 
 export const SecretBlindIndexData = model<ISecretBlindIndexData>("SecretBlindIndexData", secretBlindIndexDataSchema);
