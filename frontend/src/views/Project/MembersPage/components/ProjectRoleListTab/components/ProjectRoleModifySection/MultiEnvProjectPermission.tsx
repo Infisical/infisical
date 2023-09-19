@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
+import GlobPatternExamples from "@app/components/basic/popups/GlobPatternExamples";
 import {
   Checkbox,
   FormControl,
@@ -98,7 +99,7 @@ export const MultiEnvProjectPermission = ({
   return (
     <div
       className={twMerge(
-        "px-10 py-6 bg-mineshaft-800 rounded-md",
+        "rounded-md bg-mineshaft-800 px-10 py-6",
         (selectedPermissionCategory !== Permission.NoAccess || isCustom) &&
           "border-l-2 border-primary-600"
       )}
@@ -107,8 +108,8 @@ export const MultiEnvProjectPermission = ({
         <div>
           <FontAwesomeIcon icon={icon} className="text-4xl" />
         </div>
-        <div className="flex-grow flex flex-col">
-          <div className="font-medium mb-1 text-lg">{title}</div>
+        <div className="flex flex-grow flex-col">
+          <div className="mb-1 text-lg font-medium">{title}</div>
           <div className="text-xs font-light">{subtitle}</div>
         </div>
         <div>
@@ -130,12 +131,19 @@ export const MultiEnvProjectPermission = ({
         animate={{ height: isCustom ? "auto" : 0 }}
         className="overflow-hidden"
       >
-        <TableContainer className="border-mineshaft-500 mt-6">
+        <TableContainer className="mt-6 border-mineshaft-500">
           <Table>
             <THead>
               <Tr>
                 <Th />
-                <Th className="min-w-[8rem]">Secret Path</Th>
+                <Th className="min-w-[8rem]">
+                  <div className="flex items-center gap-2">
+                    Secret Path
+                    <span className="text-xs normal-case">
+                      <GlobPatternExamples />
+                    </span>
+                  </div>
+                </Th>
                 <Th className="text-center">View</Th>
                 <Th className="text-center">Create</Th>
                 <Th className="text-center">Modify</Th>
