@@ -164,6 +164,8 @@ const fetchIntegrationAuthQoveryProjects = async ({
   integrationAuthId: string;
   orgId: string;
 }) => {
+  if (orgId === "none") return [];
+  
   const {
     data: { projects }
   } = await apiRequest.get<{ projects: Project[] }>(
@@ -185,6 +187,8 @@ const fetchIntegrationAuthQoveryEnvironments = async ({
   integrationAuthId: string;
   projectId: string;
 }) => {
+  if (projectId === "none") return [];
+
   const {
     data: { environments }
   } = await apiRequest.get<{ environments: Environment[] }>(
@@ -208,6 +212,8 @@ const fetchIntegrationAuthQoveryScopes = async ({
   environmentId: string;
   scope: "job" | "application" | "container";
 }) => {
+  if (environmentId === "none") return [];
+  
   if (scope === "application") {
     const {
       data: { apps }
