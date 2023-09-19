@@ -1,4 +1,5 @@
-import { faArrowRight, faXmark } from "@fortawesome/free-solid-svg-icons";
+import Link from "next/link";
+import { faArrowRight, faExclamationTriangle, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { integrationSlugNameMapping } from "public/data/frequentConstants";
 
@@ -14,8 +15,9 @@ import {
   Skeleton,
   Tooltip
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
+import { useGetWorkspaceBot } from "@app/hooks/api";
 import { TIntegration } from "@app/hooks/api/types";
 
 type Props = {
@@ -34,6 +36,9 @@ export const IntegrationsSection = ({
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteConfirmation"
   ] as const);
+
+  const { currentWorkspace } = useWorkspace();
+  const { data: bot } = useGetWorkspaceBot(currentWorkspace?._id ?? "");
   return (
     <div className="mb-8">
       <div className="mx-4 mb-4 mt-6 flex flex-col items-start justify-between px-2 text-xl">
@@ -45,7 +50,26 @@ export const IntegrationsSection = ({
           <Skeleton className="h-28" />
         </div>
       )}
-      {!isLoading && !integrations.length && (
+
+      {!bot?.isActive && (
+        <div className="px-6 py-4">
+          <EmptyState
+            icon={faExclamationTriangle}
+            className="rounded-md border border-mineshaft-700 pt-8 pb-4"
+            title={
+              <>
+                No active integrations found. Enable End-to-End Encryption in{" "}
+                <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>
+                  <a className="underline underline-offset-2">project settings </a>
+                </Link>
+                .{" "}
+              </>
+            }
+          />
+        </div>
+      )}
+
+      {!isLoading && !integrations.length && bot?.isActive && (
         <div className="mx-6">
           <EmptyState
             className="rounded-md border border-mineshaft-700 pt-8 pb-4"
@@ -53,7 +77,7 @@ export const IntegrationsSection = ({
           />
         </div>
       )}
-      {!isLoading && (
+      {!isLoading && bot?.isActive && (
         <div className="flex flex-col space-y-4 p-6 pt-0">
           {integrations?.map((integration) => (
             <div
@@ -117,7 +141,7 @@ export const IntegrationsSection = ({
                     </div>
                   </div>
                 )}
-                {(integration.integration === "checkly") && (
+                {integration.integration === "checkly" && (
                   <div className="ml-2 flex flex-col">
                     <FormLabel label="Secret Suffix" />
                     <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
