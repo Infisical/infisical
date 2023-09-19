@@ -8,7 +8,7 @@ module.exports = {
   env: {
     browser: true,
     es2021: true,
-    "es6": true
+    es6: true
   },
   extends: [
     "airbnb",
@@ -29,6 +29,7 @@ module.exports = {
   },
   plugins: ["react", "prettier", "simple-import-sort", "import"],
   rules: {
+    "react/prop-types": "off",
     quotes: ["error", "double", { avoidEscape: true }],
     "comma-dangle": ["error", "only-multiline"],
     "react/react-in-jsx-scope": "off",
