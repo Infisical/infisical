@@ -2151,8 +2151,9 @@ const syncSecretsQovery = async ({
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
+  
   const getSecretsRes = (
-    await standardRequest.get(`${INTEGRATION_QOVERY_API_URL}/${integration.metadata?.scope?.toLowerCase()}/${integration.appId}/environmentVariable`, {
+    await standardRequest.get(`${INTEGRATION_QOVERY_API_URL}/${integration.scope}/${integration.appId}/environmentVariable`, {
       headers: {
         Authorization: `Token ${accessToken}`,
         "Accept-Encoding": "application/json"
@@ -2172,7 +2173,7 @@ const syncSecretsQovery = async ({
       // case: secret does not exist in qovery
       // -> add secret
       await standardRequest.post(
-        `${INTEGRATION_QOVERY_API_URL}/${integration.metadata?.scope?.toLowerCase()}/${integration.appId}/environmentVariable`,
+        `${INTEGRATION_QOVERY_API_URL}/${integration.scope}/${integration.appId}/environmentVariable`,
         {
           key,
           value: secrets[key].value
@@ -2191,7 +2192,7 @@ const syncSecretsQovery = async ({
 
       if (secrets[key].value !== getSecretsRes[key].value) {
         await standardRequest.put(
-          `${INTEGRATION_QOVERY_API_URL}/${integration.metadata?.scope?.toLowerCase()}/${integration.appId}/environmentVariable/${getSecretsRes[key].id}`,
+          `${INTEGRATION_QOVERY_API_URL}/${integration.scope}/${integration.appId}/environmentVariable/${getSecretsRes[key].id}`,
           {
             key,
             value: secrets[key].value

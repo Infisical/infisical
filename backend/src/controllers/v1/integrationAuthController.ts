@@ -406,7 +406,7 @@ export const getIntegrationAuthQoveryProjects = async (req: Request, res: Respon
     params: { integrationAuthId },
     query: { orgId }
   } = await validateRequest(reqValidator.GetIntegrationAuthQoveryProjectsV1, req);
-
+  
   // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
   const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
     integrationAuthId: new ObjectId(integrationAuthId)
@@ -420,28 +420,37 @@ export const getIntegrationAuthQoveryProjects = async (req: Request, res: Respon
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
   );
-
-  const { data } = await standardRequest.get(
-    `${INTEGRATION_QOVERY_API_URL}/organization/${orgId}/project`,
-    {
-      headers: {
-        Authorization: `Token ${accessToken}`,
-        "Accept": "application/json",
-      },
-    }
-  );
+  
+  interface Project {
+    name: string;
+    projectId: string;
+  }
 
   interface QoveryProject {
     id: string;
     name: string;
   }
+  
+  let projects: Project[] = [];
+  
+  if (orgId && orgId !== "") {
+    const { data } = await standardRequest.get(
+      `${INTEGRATION_QOVERY_API_URL}/organization/${orgId}/project`,
+      {
+        headers: {
+          Authorization: `Token ${accessToken}`,
+          "Accept": "application/json",
+        },
+      }
+    );
 
-  const projects = data.results.map((a: QoveryProject) => {
-    return {
-      name: a.name,
-      projectId: a.id,
-    };
-  });
+    projects = data.results.map((a: QoveryProject) => {
+      return {
+        name: a.name,
+        projectId: a.id,
+      };
+    });
+  }
 
   return res.status(200).send({
     projects
@@ -449,7 +458,7 @@ export const getIntegrationAuthQoveryProjects = async (req: Request, res: Respon
 };
 
 /**
- * Return list of Qovery Environments for a specific projectId
+ * Return list of Qovery environments for project with id [projectId]
  * @param req
  * @param res
  */
@@ -472,28 +481,37 @@ export const getIntegrationAuthQoveryEnvironments = async (req: Request, res: Re
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
   );
-
-  const { data } = await standardRequest.get(
-    `${INTEGRATION_QOVERY_API_URL}/project/${projectId}/environment`,
-    {
-      headers: {
-        Authorization: `Token ${accessToken}`,
-        "Accept": "application/json",
-      },
-    }
-  );
+  
+  interface Environment {
+    name: string;
+    environmentId: string;
+  }
 
   interface QoveryEnvironment {
     id: string;
     name: string;
   }
+  
+  let environments: Environment[] = [];
+  
+  if (projectId && projectId !== "" && projectId !== "none") { // TODO: fix
+    const { data } = await standardRequest.get(
+      `${INTEGRATION_QOVERY_API_URL}/project/${projectId}/environment`,
+      {
+        headers: {
+          Authorization: `Token ${accessToken}`,
+          "Accept": "application/json",
+        },
+      }
+    );
 
-  const environments = data.results.map((a: QoveryEnvironment) => {
-    return {
-      name: a.name,
-      environmentId: a.id,
-    };
-  });
+    environments = data.results.map((a: QoveryEnvironment) => {
+      return {
+        name: a.name,
+        environmentId: a.id,
+      };
+    });
+  }
 
   return res.status(200).send({
     environments
@@ -501,7 +519,7 @@ export const getIntegrationAuthQoveryEnvironments = async (req: Request, res: Re
 };
 
 /**
- * Return list of Qovery Apps for a specific environmentId
+ * Return list of Qovery apps for environment with id [environmentId]
  * @param req
  * @param res
  */
@@ -524,28 +542,37 @@ export const getIntegrationAuthQoveryApps = async (req: Request, res: Response) 
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
   );
-
-  const { data } = await standardRequest.get(
-    `${INTEGRATION_QOVERY_API_URL}/environment/${environmentId}/application`,
-    {
-      headers: {
-        Authorization: `Token ${accessToken}`,
-        "Accept": "application/json",
-      },
-    }
-  );
+  
+  interface App {
+    name: string;
+    appId: string;  
+  }
 
   interface QoveryApp {
     id: string;
     name: string;
   }
+  
+  let apps: App[] = [];
+  
+  if (environmentId && environmentId !== "") {
+    const { data } = await standardRequest.get(
+      `${INTEGRATION_QOVERY_API_URL}/environment/${environmentId}/application`,
+      {
+        headers: {
+          Authorization: `Token ${accessToken}`,
+          "Accept": "application/json",
+        },
+      }
+    );
 
-  const apps = data.results.map((a: QoveryApp) => {
-    return {
-      name: a.name,
-      appId: a.id,
-    };
-  });
+    apps = data.results.map((a: QoveryApp) => {
+      return {
+        name: a.name,
+        appId: a.id,
+      };
+    });
+  }
 
   return res.status(200).send({
     apps
@@ -553,7 +580,7 @@ export const getIntegrationAuthQoveryApps = async (req: Request, res: Response) 
 };
 
 /**
- * Return list of Qovery Containers for a specific environmentId
+ * Return list of Qovery containers for environment with id [environmentId]
  * @param req
  * @param res
  */
@@ -576,28 +603,37 @@ export const getIntegrationAuthQoveryContainers = async (req: Request, res: Resp
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
   );
-
-  const { data } = await standardRequest.get(
-    `${INTEGRATION_QOVERY_API_URL}/environment/${environmentId}/container`,
-    {
-      headers: {
-        Authorization: `Token ${accessToken}`,
-        "Accept": "application/json",
-      },
-    }
-  );
+  
+  interface Container {
+    name: string;
+    appId: string;
+  }
 
   interface QoveryContainer {
     id: string;
     name: string;
   }
+  
+  let containers: Container[] = [];
+  
+  if (environmentId && environmentId !== "") {
+    const { data } = await standardRequest.get(
+      `${INTEGRATION_QOVERY_API_URL}/environment/${environmentId}/container`,
+      {
+        headers: {
+          Authorization: `Token ${accessToken}`,
+          "Accept": "application/json",
+        },
+      }
+    );
 
-  const containers = data.results.map((a: QoveryContainer) => {
-    return {
-      name: a.name,
-      appId: a.id,
-    };
-  });
+    containers = data.results.map((a: QoveryContainer) => {
+      return {
+        name: a.name,
+        appId: a.id,
+      };
+    });
+  }
 
   return res.status(200).send({
     containers
@@ -605,7 +641,7 @@ export const getIntegrationAuthQoveryContainers = async (req: Request, res: Resp
 };
 
 /**
- * Return list of Qovery Jobs for a specific environmentId
+ * Return list of Qovery jobs for environment with id [environmentId]
  * @param req
  * @param res
  */
@@ -628,28 +664,37 @@ export const getIntegrationAuthQoveryJobs = async (req: Request, res: Response) 
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
   );
-
-  const { data } = await standardRequest.get(
-    `${INTEGRATION_QOVERY_API_URL}/environment/${environmentId}/job`,
-    {
-      headers: {
-        Authorization: `Token ${accessToken}`,
-        "Accept": "application/json",
-      },
-    }
-  );
   
+  interface Job {
+    name: string;
+    appId: string;  
+  }
+
   interface QoveryJob {
     id: string;
     name: string;
   }
+  
+  let jobs: Job[] = [];
+  
+  if (environmentId && environmentId !== "") {
+    const { data } = await standardRequest.get(
+      `${INTEGRATION_QOVERY_API_URL}/environment/${environmentId}/job`,
+      {
+        headers: {
+          Authorization: `Token ${accessToken}`,
+          "Accept": "application/json",
+        },
+      }
+    );
 
-  const jobs = data.results.map((a: QoveryJob) => {
-    return {
-      name: a.name,
-      appId: a.id,
-    };
-  });
+    jobs = data.results.map((a: QoveryJob) => {
+      return {
+        name: a.name,
+        appId: a.id,
+      };
+    });
+  }
 
   return res.status(200).send({
     jobs

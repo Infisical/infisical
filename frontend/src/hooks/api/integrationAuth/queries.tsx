@@ -52,7 +52,7 @@ const integrationAuthKeys = {
   }: {
     integrationAuthId: string;
     environmentId: string;
-    scope: "Job" | "Application" | "Container";
+    scope: "job" | "application" | "container";
   }) => [{ integrationAuthId, environmentId, scope }, "integrationAuthQoveryScopes"] as const,
   getIntegrationAuthRailwayEnvironments: ({
     integrationAuthId,
@@ -206,9 +206,9 @@ const fetchIntegrationAuthQoveryScopes = async ({
 }: {
   integrationAuthId: string;
   environmentId: string;
-  scope: "Job" | "Application" | "Container";
+  scope: "job" | "application" | "container";
 }) => {
-  if (scope === "Application") {
+  if (scope === "application") {
     const {
       data: { apps }
     } = await apiRequest.get<{ apps: App[] }>(
@@ -223,7 +223,7 @@ const fetchIntegrationAuthQoveryScopes = async ({
     return apps;
   } 
   
-  if (scope === "Container") {
+  if (scope === "container") {
     const {
       data: { containers }
     } = await apiRequest.get<{ containers: App[] }>(
@@ -238,7 +238,7 @@ const fetchIntegrationAuthQoveryScopes = async ({
     return containers;
   }
 
-  if (scope === "Job") {
+  if (scope === "job") {
     const {
       data: { jobs }
     } = await apiRequest.get<{ jobs: App[] }>(
@@ -463,7 +463,7 @@ export const useGetIntegrationAuthQoveryScopes = ({
 }: {
   integrationAuthId: string;
   environmentId: string;
-  scope: "Job" | "Application" | "Container";
+  scope: "job" | "application" | "container";
 }) => {
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthQoveryScopes({

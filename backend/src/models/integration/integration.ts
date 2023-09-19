@@ -46,6 +46,7 @@ export interface IIntegration {
   targetServiceId: string;
   path: string;
   region: string;
+  scope: string;
   secretPath: string;
   integration:
     | "azure-key-vault"
@@ -121,11 +122,13 @@ const integrationSchema = new Schema<IIntegration>(
     },
     targetService: {
       // railway-specific service
+      // qovery-specific project
       type: String,
       default: null,
     },
     targetServiceId: {
       // railway-specific service
+      // qovery specific project
       type: String,
       default: null,
     },
@@ -144,6 +147,11 @@ const integrationSchema = new Schema<IIntegration>(
       // aws-parameter-store-specific path
       type: String,
       default: null,
+    },
+    scope: {
+      // qovery-specific scope
+      type: String,
+      default: null
     },
     integration: {
       type: String,

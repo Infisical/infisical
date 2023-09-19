@@ -24,15 +24,37 @@ import {
 import {
   useCreateIntegration
 } from "@app/hooks/api";
-import { useGetIntegrationAuthQoveryEnvironments, useGetIntegrationAuthQoveryOrgs, useGetIntegrationAuthQoveryProjects, useGetIntegrationAuthQoveryScopes } from "@app/hooks/api/integrationAuth/queries";
+import {
+  useGetIntegrationAuthQoveryEnvironments, 
+  useGetIntegrationAuthQoveryOrgs, 
+  useGetIntegrationAuthQoveryProjects, 
+  useGetIntegrationAuthQoveryScopes 
+} from "@app/hooks/api/integrationAuth/queries";
 
 import { useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+
+const qoveryScopes = [
+  { label: "Application", value: "application" },
+  { label: "Container", value: "container" },
+  { label: "Job", value: "job" }
+];
 
 enum TabSections {
   InfisicalSettings = "infisicalSettings",
   QoverySettings = "qoverySettings"
 }
+
+/**
+ * Follow the logic:
+ * - Access token
+ * -> Get organizations (orgId) - select an organization
+ * -> Get projects belonging to the organization - select project
+ * -> Get environments belonging to the project - select environmnet
+ * -> Get qovery scopes / application (this is the application to sync to)
+ * 
+ * Do we even need to get organizations?
+ */
 
 export default function QoveryCreateIntegrationPage() {
   const router = useRouter();
@@ -43,39 +65,33 @@ export default function QoveryCreateIntegrationPage() {
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
 
-  const [scope, setScope] = useState("Application");
+  const [scope, setScope] = useState("application");
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
 
   const { data: integrationAuthOrgs } = useGetIntegrationAuthQoveryOrgs((integrationAuthId as string) ?? "");
-  const [targetOrg, setTargetOrg] = useState("");
   const [targetOrgId, setTargetOrgId] = useState("");
-
+  
   const { data: integrationAuthProjects } = useGetIntegrationAuthQoveryProjects({
     integrationAuthId: (integrationAuthId as string) ?? "",
     orgId: targetOrgId
   });
-  const [targetProject, setTargetProject] = useState("");
   const [targetProjectId, setTargetProjectId] = useState("");
 
   const { data: integrationAuthEnvironments } = useGetIntegrationAuthQoveryEnvironments({
     integrationAuthId: (integrationAuthId as string) ?? "",
     projectId: targetProjectId
   });
-  const [targetEnvironment, setTargetEnvironment] = useState("");
   const [targetEnvironmentId, setTargetEnvironmentId] = useState("");
 
   const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } = useGetIntegrationAuthQoveryScopes({
     integrationAuthId: (integrationAuthId as string) ?? "",
     environmentId: targetEnvironmentId,
-    scope: (scope as ("Job" | "Application" | "Container"))
+    scope: (scope as ("job" | "application" | "container"))
   });
-  const [targetApp, setTargetApp] = useState("");
   const [targetAppId, setTargetAppId] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
-
-  const scopes = ["Application", "Container", "Job"];
 
   useEffect(() => {
     if (workspace) {
@@ -86,29 +102,19 @@ export default function QoveryCreateIntegrationPage() {
   useEffect(() => {
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
-        setTargetApp(integrationAuthApps[0].name);
         setTargetAppId(String(integrationAuthApps[0].appId));
       } else {
-        setTargetApp("none");
+        setTargetAppId("none");
       }
     }
   }, [integrationAuthApps]);
 
   useEffect(() => {
-    if (integrationAuthApps) {
-      if (integrationAuthApps.length > 0) {
-        setTargetAppId(String(integrationAuthApps.filter(app => app.name === targetApp)[0].appId));
-      }
-    }
-  }, [targetApp]);
-
-  useEffect(() => {
     if (integrationAuthOrgs) {
       if (integrationAuthOrgs.length > 0) {
-        setTargetOrg(integrationAuthOrgs[0].name);
         setTargetOrgId(String(integrationAuthOrgs[0].orgId));
       } else {
-        setTargetOrg("none");
+        setTargetOrgId("none");
       }
     }
   }, [integrationAuthOrgs]);
@@ -116,10 +122,9 @@ export default function QoveryCreateIntegrationPage() {
   useEffect(() => {
     if (integrationAuthProjects) {
       if (integrationAuthProjects.length > 0) {
-        setTargetProject(integrationAuthProjects[0].name);
         setTargetProjectId(String(integrationAuthProjects[0].projectId));
       } else {
-        setTargetProject("none");
+        setTargetProjectId("none");
       }
     }
   }, [integrationAuthProjects]);
@@ -127,10 +132,9 @@ export default function QoveryCreateIntegrationPage() {
   useEffect(() => {
     if (integrationAuthEnvironments) {
       if (integrationAuthEnvironments.length > 0) {
-        setTargetEnvironment(integrationAuthEnvironments[0].name);
         setTargetEnvironmentId(String(integrationAuthEnvironments[0].environmentId));
       } else {
-        setTargetEnvironment("none");
+        setTargetEnvironmentId("none");
       }
     }
   }, [integrationAuthEnvironments]);
@@ -141,22 +145,24 @@ export default function QoveryCreateIntegrationPage() {
 
       setIsLoading(true);
 
+      const targetOrg = integrationAuthOrgs?.find((integrationAuthOrg) => integrationAuthOrg.orgId === targetOrgId)?.name;
+      const targetProject = integrationAuthProjects?.find((integrationAuthProject) => integrationAuthProject.projectId === targetProjectId)?.name;
+      const targetEnvironment = integrationAuthEnvironments?.find((integrationAuthEnvironment) => integrationAuthEnvironment.environmentId === targetEnvironmentId)?.name;
+      const targetApp = integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId)?.name;
+
       await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: targetApp,
         appId: targetAppId,
+        scope,
         sourceEnvironment: selectedSourceEnvironment,
-        secretPath,
-        metadata: {
-          scope, 
-          org: targetOrg,
-          orgId: targetOrgId,
-          project: targetProject,
-          projectId: targetProjectId,
-          environment: targetEnvironment,
-          environmentId: targetEnvironmentId,
-        }
+        targetEnvironment,
+        targetEnvironmentId,
+        targetService: targetProject,
+        targetServiceId: targetProjectId,
+        owner: targetOrg,
+        secretPath
       });
 
       setIsLoading(false);
@@ -166,7 +172,7 @@ export default function QoveryCreateIntegrationPage() {
       console.error(err);
     }
   };
-
+  
   return integrationAuth &&
     workspace &&
     selectedSourceEnvironment ? (
@@ -255,28 +261,28 @@ export default function QoveryCreateIntegrationPage() {
                   onValueChange={(val) => setScope(val)}
                   className="w-full border border-mineshaft-500"
                 >
-                  {scopes.map((tempScope) => (
+                  {qoveryScopes.map((qoveryScope) => (
                     <SelectItem
-                      value={tempScope}
-                      key={`target-app-${tempScope}`}
+                      value={qoveryScope.value}
+                      key={`target-app-${qoveryScope.value}`}
                     >
-                      {tempScope}
+                      {qoveryScope.label}
                     </SelectItem>
                   ))}
                 </Select>
               </FormControl>
               {integrationAuthOrgs && <FormControl label="Qovery Organization">
                 <Select
-                  value={targetOrg}
-                  onValueChange={(val) => setTargetOrg(val)}
+                  value={targetOrgId}
+                  onValueChange={(val) => setTargetOrgId(val)}
                   className="w-full border border-mineshaft-500"
                   isDisabled={integrationAuthOrgs.length === 0}
                 >
                   {integrationAuthOrgs.length > 0 ? (
                     integrationAuthOrgs.map((integrationAuthOrg) => (
                       <SelectItem
-                        value={integrationAuthOrg.name}
-                        key={`target-app-${integrationAuthOrg.name}`}
+                        value={integrationAuthOrg.orgId}
+                        key={`target-app-${integrationAuthOrg.orgId}`}
                       >
                         {integrationAuthOrg.name}
                       </SelectItem>
@@ -290,16 +296,16 @@ export default function QoveryCreateIntegrationPage() {
               </FormControl>}
               {integrationAuthProjects && <FormControl label="Qovery Project">
                 <Select
-                  value={targetProject}
-                  onValueChange={(val) => setTargetProject(val)}
+                  value={targetProjectId}
+                  onValueChange={(val) => setTargetProjectId(val)}
                   className="w-full border border-mineshaft-500"
                   isDisabled={integrationAuthProjects.length === 0}
                 >
                   {integrationAuthProjects.length > 0 ? (
                     integrationAuthProjects.map((integrationAuthProject) => (
                       <SelectItem
-                        value={integrationAuthProject.name}
-                        key={`target-app-${integrationAuthProject.name}`}
+                        value={integrationAuthProject.projectId}
+                        key={`target-app-${integrationAuthProject.projectId}`}
                       >
                         {integrationAuthProject.name}
                       </SelectItem>
@@ -313,16 +319,16 @@ export default function QoveryCreateIntegrationPage() {
               </FormControl>}
               {integrationAuthEnvironments && <FormControl label="Qovery Environment">
                 <Select
-                  value={targetEnvironment}
-                  onValueChange={(val) => setTargetEnvironment(val)}
+                  value={targetEnvironmentId}
+                  onValueChange={(val) => setTargetEnvironmentId(val)}
                   className="w-full border border-mineshaft-500"
                   isDisabled={integrationAuthEnvironments.length === 0}
                 >
                   {integrationAuthEnvironments.length > 0 ? (
                     integrationAuthEnvironments.map((integrationAuthEnvironment) => (
                       <SelectItem
-                        value={integrationAuthEnvironment.name}
-                        key={`target-app-${integrationAuthEnvironment.name}`}
+                        value={integrationAuthEnvironment.environmentId}
+                        key={`target-app-${integrationAuthEnvironment.environmentId}`}
                       >
                         {integrationAuthEnvironment.name}
                       </SelectItem>
@@ -336,23 +342,23 @@ export default function QoveryCreateIntegrationPage() {
               </FormControl>}
               {(scope && integrationAuthApps) && <FormControl label={`Qovery ${scope.charAt(0).toUpperCase() + scope.slice(1)}`}>
                 <Select
-                  value={targetApp}
-                  onValueChange={(val) => setTargetApp(val)}
+                  value={targetAppId}
+                  onValueChange={(val) => setTargetAppId(val)}
                   className="w-full border border-mineshaft-500"
                   isDisabled={integrationAuthApps.length === 0}
                 >
                   {integrationAuthApps.length > 0 ? (
                     integrationAuthApps.map((integrationAuthApp) => (
                       <SelectItem
-                        value={integrationAuthApp.name}
-                        key={`target-app-${integrationAuthApp.name}`}
+                        value={(integrationAuthApp.appId as string)}
+                        key={`target-app-${integrationAuthApp.appId}`}
                       >
                         {integrationAuthApp.name}
                       </SelectItem>
                     ))
                   ) : (
                     <SelectItem value="none" key="target-app-none">
-                      No {scope.toLowerCase()}s found
+                      No {scope}s found
                     </SelectItem>
                   )}
                 </Select>

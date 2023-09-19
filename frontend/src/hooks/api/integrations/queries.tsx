@@ -40,6 +40,7 @@ export const useCreateIntegration = () => {
       owner,
       path,
       region,
+      scope,
       secretPath,
       metadata
     }: {
@@ -56,16 +57,10 @@ export const useCreateIntegration = () => {
       owner?: string;
       path?: string;
       region?: string;
+      scope?: string;
       metadata?: {
         secretPrefix?: string;
         secretSuffix?: string;
-        org?: string;
-        orgId?: string;
-        project?: string;
-        projectId?: string;
-        environment?: string;
-        environmentId?: string;
-        scope?: string;
       }
     }) => {
       const { data: { integration } } = await apiRequest.post("/api/v1/integration", {
@@ -80,6 +75,7 @@ export const useCreateIntegration = () => {
         targetServiceId,
         owner,
         path,
+        scope,
         region,
         secretPath,
         metadata

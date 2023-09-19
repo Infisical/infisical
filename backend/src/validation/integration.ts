@@ -76,6 +76,7 @@ export const CreateIntegrationV1 = z.object({
     owner: z.string().trim().optional(),
     path: z.string().trim().optional(),
     region: z.string().trim().optional(),
+    scope: z.string().trim().optional(),
     metadata: z.object({
       secretPrefix: z.string().optional(),
       secretSuffix: z.string().optional(),
@@ -83,13 +84,6 @@ export const CreateIntegrationV1 = z.object({
         labelName: z.string(),
         labelValue: z.string()
       }).optional(),
-      org: z.string().optional(),
-      orgId: z.string().optional(),
-      project: z.string().optional(),
-      projectId: z.string().optional(),
-      environment: z.string().optional(),
-      environmentId: z.string().optional(),
-      scope: z.string().optional()
     }).optional()
   })
 });

@@ -101,19 +101,19 @@ export const IntegrationsSection = ({
                     <div className="ml-2 flex flex-col">
                       <FormLabel label="Org" />
                       <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
-                        {integration?.metadata?.org || "-"}
+                        {integration?.owner || "-"}
                       </div>
                     </div>
                     <div className="ml-2 flex flex-col">
                       <FormLabel label="Project" />
                       <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
-                        {integration?.metadata?.project || "-"}
+                        {integration?.targetService || "-"}
                       </div>
                     </div>
                     <div className="ml-2 flex flex-col">
                       <FormLabel label="Env" />
                       <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
-                        {integration?.metadata?.environment || "-"}
+                        {integration?.targetEnvironment || "-"}
                       </div>
                     </div>
                   </div>

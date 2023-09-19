@@ -34,6 +34,7 @@ export const createIntegration = async (req: Request, res: Response) => {
       appId,
       owner,
       region,
+      scope,
       targetService,
       targetServiceId,
       integrationAuthId,
@@ -42,7 +43,7 @@ export const createIntegration = async (req: Request, res: Response) => {
       metadata
     }
   } = await validateRequest(reqValidator.CreateIntegrationV1, req);
-
+  
   const integrationAuth = await IntegrationAuth.findById(integrationAuthId)
     .populate<{ workspace: IWorkspace }>("workspace")
     .select(
@@ -90,6 +91,7 @@ export const createIntegration = async (req: Request, res: Response) => {
     owner,
     path,
     region,
+    scope,
     secretPath,
     integration: integrationAuth.integration,
     integrationAuth: new Types.ObjectId(integrationAuthId),
