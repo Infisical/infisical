@@ -45,8 +45,7 @@ export const withPermission = <T extends {}, J extends TOrgPermission>(
             <div>
               <div className="text-4xl font-medium mb-2">Access Restricted</div>
               <div className="text-sm">
-                Your role has limited permissions, please <br /> You do not have permission to this
-                page.
+                Your role has limited permissions, please <br /> contact your admin to gain access
               </div>
             </div>
           </div>
