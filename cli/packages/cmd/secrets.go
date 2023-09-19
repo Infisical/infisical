@@ -402,7 +402,12 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
+	secretsPath, err := cmd.Flags().GetString("path")
+	if err != nil {
+		util.HandleError(err, "Unable to parse path flag")
+	}
+
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath})
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
@@ -651,10 +656,11 @@ func init() {
 
 	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	secretsCmd.AddCommand(secretsGetCmd)
+	secretsGetCmd.Flags().String("path", "/", "get secrets within a folder path")
 
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
-	secretsSetCmd.Flags().String("path", "/", "get secrets within a folder path")
+	secretsSetCmd.Flags().String("path", "/", "set secrets within a folder path")
 
 	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		util.RequireLogin()

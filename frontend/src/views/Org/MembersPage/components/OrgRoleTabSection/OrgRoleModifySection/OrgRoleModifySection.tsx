@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   faArrowLeft,
@@ -80,7 +79,6 @@ const SIMPLE_PERMISSION_OPTIONS = [
 ] as const;
 
 export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
-  const [searchPermission, setSearchPermission] = useState("");
   const { subscription } = useSubscription();
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["upgradePlan"] as const);
 
@@ -195,14 +193,6 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
           <div className="flex justify-between items-center pt-6 border-t border-t-mineshaft-800">
             <div>
               <h2 className="text-xl font-medium">Add Permission</h2>
-            </div>
-            <div className="flex-1 max-w-md">
-              <Input
-                value={searchPermission}
-                onChange={(e) => setSearchPermission(e.target.value)}
-                leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-                placeholder="Search permissions..."
-              />
             </div>
           </div>
           <div className="">

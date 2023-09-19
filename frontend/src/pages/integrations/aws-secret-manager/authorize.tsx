@@ -1,5 +1,10 @@
 import { useState } from "react";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/router";
+import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -54,12 +59,41 @@ export default function AWSSecretManagerCreateIntegrationPage() {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="mb-4 text-center">AWS Secret Manager Integration</CardTitle>
+      <Head>
+        <title>Authorize AWS Secrets Manager Integration</title>
+        <link rel='icon' href='/infisical.ico' />
+      </Head>
+      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+        <CardTitle 
+          className="text-left px-6 text-xl" 
+          subTitle="After adding the details below, you will be prompted to set up an integration for a particular Infisical project and environment."
+        >
+          <div className="flex flex-row items-center">
+            <div className="inline flex items-center">
+              <Image
+                src="/images/integrations/Amazon Web Services.png"
+                height={35}
+                width={35}
+                alt="AWS logo"
+              />
+            </div>
+            <span className="ml-1.5">AWS Secrets Manager Integration </span>
+            <Link href="https://infisical.com/docs/integrations/cloud/aws-secret-manager" passHref>
+              <a target="_blank" rel="noopener noreferrer">
+                <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
+                  Docs
+                  <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
+                </div>
+              </a>
+            </Link>
+          </div>
+        </CardTitle>
         <FormControl
           label="Access Key ID"
           errorText={accessKeyErrorText}
           isError={accessKeyErrorText !== "" ?? false}
+          className="px-6"
         >
           <Input placeholder="" value={accessKey} onChange={(e) => setAccessKey(e.target.value)} />
         </FormControl>
@@ -67,6 +101,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
           label="Secret Access Key"
           errorText={accessSecretKeyErrorText}
           isError={accessSecretKeyErrorText !== "" ?? false}
+          className="px-6"
         >
           <Input
             placeholder=""
@@ -76,11 +111,12 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         </FormControl>
         <Button
           onClick={handleButtonClick}
-          color="mineshaft"
-          className="mt-4"
+          colorSchema="primary"
+          variant="outline_bg"
+          className="mb-6 mt-2 ml-auto mr-6 w-min"
           isLoading={isLoading}
         >
-          Connect to AWS Secret Manager
+          Connect to AWS Secrets Manager
         </Button>
       </Card>
     </div>

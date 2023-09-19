@@ -16,14 +16,6 @@ export const ProjectPermissionProvider = ({ children }: Props): JSX.Element => {
   const workspaceId = currentWorkspace?._id || "";
   const { data: permission, isLoading } = useGetUserProjectPermissions({ workspaceId });
 
-  if (!permission && currentWorkspace) {
-    return (
-      <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
-        Failed to load user permissions
-      </div>
-    );
-  }
-
   if ((isLoading && currentWorkspace) || isWsLoading) {
     return (
       <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
@@ -33,6 +25,14 @@ export const ProjectPermissionProvider = ({ children }: Props): JSX.Element => {
           width={120}
           alt="infisical loading indicator"
         />
+      </div>
+    );
+  }
+
+  if (!permission && currentWorkspace) {
+    return (
+      <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
+        Failed to load user permissions
       </div>
     );
   }

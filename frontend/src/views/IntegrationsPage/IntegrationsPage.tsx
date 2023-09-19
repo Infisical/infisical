@@ -51,17 +51,20 @@ export const IntegrationsPage = withProjectPermission(
     const { data: cloudIntegrations, isLoading: isCloudIntegrationsLoading } =
       useGetCloudIntegrations();
 
-    const { data: integrationAuths, isLoading: isIntegrationAuthLoading } =
-      useGetWorkspaceAuthorizations(
-        workspaceId,
-        useCallback((data: IntegrationAuth[]) => {
-          const groupBy: Record<string, IntegrationAuth> = {};
-          data.forEach((el) => {
-            groupBy[el.integration] = el;
-          });
-          return groupBy;
-        }, [])
-      );
+    const {
+      data: integrationAuths,
+      isLoading: isIntegrationAuthLoading,
+      isFetching: isIntegrationAuthFetching
+    } = useGetWorkspaceAuthorizations(
+      workspaceId,
+      useCallback((data: IntegrationAuth[]) => {
+        const groupBy: Record<string, IntegrationAuth> = {};
+        data.forEach((el) => {
+          groupBy[el.integration] = el;
+        });
+        return groupBy;
+      }, [])
+    );
     // mutation
     const {
       data: integrations,
@@ -77,15 +80,23 @@ export const IntegrationsPage = withProjectPermission(
     const { mutateAsync: deleteIntegration } = useDeleteIntegration();
     const {
       mutateAsync: deleteIntegrationAuth,
-      isLoading: isDeleteIntegrationAuthSuccess,
+      isSuccess: isDeleteIntegrationAuthSuccess,
       reset: resetDeleteIntegrationAuth
     } = useDeleteIntegrationAuth();
 
+    const isIntegrationsAuthorizedEmpty = !Object.keys(integrationAuths || {}).length;
+    const isIntegrationsEmpty = !integrations?.length;
     // summary: this use effect is trigger when all integration auths are removed thus deactivate bot
-    // details: so onsuccessfully deleting an integration auth, immediately integration list is refeteched
-    // After the refetch is completed check if its empty. Then set bot active and reset the submit hook
+    // details: so on successfully deleting an integration auth, immediately integration list is refeteched
+    // After the refetch is completed check if its empty. Then set bot active and reset the submit hook for isSuccess to go back to false
     useEffect(() => {
-      if (isDeleteIntegrationAuthSuccess && !isIntegrationFetching && !integrations?.length) {
+      if (
+        isDeleteIntegrationAuthSuccess &&
+        !isIntegrationFetching &&
+        !isIntegrationAuthFetching &&
+        isIntegrationsAuthorizedEmpty &&
+        isIntegrationsEmpty
+      ) {
         if (bot?._id)
           updateBotActiveStatusSync({
             isActive: false,
@@ -94,7 +105,13 @@ export const IntegrationsPage = withProjectPermission(
           });
         resetDeleteIntegrationAuth();
       }
-    }, [isIntegrationFetching, isDeleteIntegrationAuthSuccess, integrations?.length]);
+    }, [
+      isIntegrationFetching,
+      isDeleteIntegrationAuthSuccess,
+      isIntegrationAuthFetching,
+      isIntegrationsAuthorizedEmpty,
+      isIntegrationsEmpty
+    ]);
 
     const handleProviderIntegration = async (provider: string) => {
       const selectedCloudIntegration = cloudIntegrations?.find(({ slug }) => provider === slug);

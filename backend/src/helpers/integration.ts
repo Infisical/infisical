@@ -160,7 +160,7 @@ export const getIntegrationAuthAccessHelper = async ({
   let accessId;
   let accessToken;
   const integrationAuth = await IntegrationAuth.findById(integrationAuthId).select(
-    "workspace integration +accessCiphertext +accessIV +accessTag +accessExpiresAt +refreshCiphertext +refreshIV +refreshTag +accessIdCiphertext +accessIdIV +accessIdTag"
+    "workspace integration +accessCiphertext +accessIV +accessTag +accessExpiresAt +refreshCiphertext +refreshIV +refreshTag +accessIdCiphertext +accessIdIV +accessIdTag metadata"
   );
 
   if (!integrationAuth)

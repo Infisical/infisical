@@ -43,6 +43,14 @@ frontend:
     ## @param frontend.image.pullPolicy Backend image pullPolicy
     ##
     pullPolicy: IfNotPresent
+  ## @param frontend.resources.limits.memory container memory limit [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+  ## @param frontend.resources.requests.cpu container CPU request [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+  ##
+  resources:
+    limits:
+      memory: 100Mi
+    requests:
+      cpu: 10m
   ## @param frontend.kubeSecretRef Backend secret resource reference name (containing required [frontend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))
   ##
   kubeSecretRef: ""
@@ -102,6 +110,14 @@ backend:
     ## @param backend.image.pullPolicy Backend image pullPolicy
     ##
     pullPolicy: IfNotPresent
+  ## @param backend.resources.limits.memory container memory limit [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+  ## @param backend.resources.requests.cpu container CPU request [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+  ##
+  resources:
+    limits:
+      memory: 200Mi
+    requests:
+      cpu: 150m
   ## @param backend.kubeSecretRef Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))
   ##
   kubeSecretRef: ""
@@ -269,6 +285,12 @@ mongodb:
     ## @param mongodb.auth.rootPassword Database root user password
     ##
     rootPassword: root
+
+    ## @param auth.existingSecret Existing secret with MongoDB(&reg;) credentials (keys: `mongodb-passwords`, `mongodb-root-password`, `mongodb-metrics-password`, `mongodb-replica-set-key`)
+    ## NOTE: When it's set the previous parameters are ignored.
+    ##
+    existingSecret: ""
+
   ## MongoDB persistence configuration
   ##
   persistence:
