@@ -52,8 +52,6 @@ export const MultiEnvProjectPermission = ({
 }: Props) => {
   const { currentWorkspace } = useWorkspace();
 
-  console.log({ currentWorkspace });
-
   const environments = currentWorkspace?.environments || [];
   const customRule = useWatch({
     control,
