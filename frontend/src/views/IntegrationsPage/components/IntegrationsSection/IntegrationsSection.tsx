@@ -5,6 +5,8 @@ import { integrationSlugNameMapping } from "public/data/frequentConstants";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
   DeleteActionModal,
   EmptyState,
   FormControl,
@@ -53,19 +55,16 @@ export const IntegrationsSection = ({
 
       {!bot?.isActive && (
         <div className="px-6 py-4">
-          <EmptyState
-            icon={faExclamationTriangle}
-            className="rounded-md border border-mineshaft-700 pt-8 pb-4"
-            title={
-              <>
-                No active integrations found. Enable End-to-End Encryption in{" "}
-                <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>
-                  <a className="underline underline-offset-2">project settings </a>
-                </Link>
-                .{" "}
-              </>
-            }
-          />
+          <Alert variant="warning">
+            <FontAwesomeIcon icon={faExclamationTriangle} />
+            <AlertDescription>
+              All the active integrations will be disabled. Disable End-to-End Encryption in{" "}
+              <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>
+                <a className="underline underline-offset-2">project settings </a>
+              </Link>
+              to re-enable it .
+            </AlertDescription>
+          </Alert>
         </div>
       )}
 
