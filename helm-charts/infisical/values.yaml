@@ -50,7 +50,7 @@ frontend:
     limits:
       memory: 100Mi
     requests:
-      cpu: 10m
+      cpu: 100m
   ## @param frontend.kubeSecretRef Backend secret resource reference name (containing required [frontend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))
   ##
   kubeSecretRef: ""

@@ -8,7 +8,7 @@ export const AccordionItem = forwardRef<HTMLDivElement, AccordionPrimitive.Accor
   ({ children, className, ...props }, forwardedRef) => (
     <AccordionPrimitive.Item
       className={twMerge(
-        "focus-within:shadow-mauve12 mt-px overflow-hidden first:mt-0 first:rounded-t last:rounded-b focus-within:relative focus-within:z-10 focus-within:shadow-[0_0_0_2px]",
+        "mt-px overflow-hidden first:mt-0 data-[state=open]:border-l data-[state=open]:border-primary transition-all border-transparent",
         className
       )}
       {...props}
@@ -27,7 +27,7 @@ export const AccordionTrigger = forwardRef<
   <AccordionPrimitive.Header className="flex">
     <AccordionPrimitive.Trigger
       className={twMerge(
-        "text-violet11 shadow-mauve6 hover:bg-mauve2 group flex h-[45px] flex-1 cursor-default items-center justify-between bg-white px-5 text-[15px] leading-none shadow-[0_1px_0] outline-none",
+        "py-2 px-4 group data-[state=open]:text-primary h-11 hover:text-primary flex flex-1 outline-none items-center justify-between ",
         className
       )}
       {...props}
@@ -36,7 +36,7 @@ export const AccordionTrigger = forwardRef<
       {children}
       <FontAwesomeIcon
         icon={faChevronDown}
-        className="text-violet10 ease-[cubic-bezier(0.87,_0,_0.13,_1)] transition-transform duration-300 group-data-[state=open]:rotate-180"
+        className="ease-[cubic-bezier(0.87,_0,_0.13,_1)] transition-transform duration-300 group-data-[state=open]:rotate-180 text-sm"
         aria-hidden
       />
     </AccordionPrimitive.Trigger>
@@ -51,13 +51,13 @@ export const AccordionContent = forwardRef<
 >(({ children, className, ...props }, forwardedRef) => (
   <AccordionPrimitive.Content
     className={twMerge(
-      "text-mauve11 bg-mauve2 data-[state=open]:animate-slideDown data-[state=closed]:animate-slideUp overflow-hidden text-[15px]",
+      "data-[state=open]:animate-slideDown data-[state=closed]:animate-slideUp overflow-hidden",
       className
     )}
     {...props}
     ref={forwardedRef}
   >
-    <div className="py-[15px] px-5">{children}</div>
+    <div className="text-sm py-2 px-4">{children}</div>
   </AccordionPrimitive.Content>
 ));
 
@@ -68,10 +68,7 @@ export const Accordion = ({
   children,
   ...props
 }: AccordionPrimitive.AccordionSingleProps | AccordionPrimitive.AccordionMultipleProps) => (
-  <AccordionPrimitive.Root
-    className="bg-mauve6 w-[300px] rounded-md shadow-[0_2px_10px] shadow-black/5"
-    {...props}
-  >
+  <AccordionPrimitive.Root {...props} className={twMerge("w-80 text-bunker-300", props.className)}>
     {children}
   </AccordionPrimitive.Root>
 );
