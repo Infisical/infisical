@@ -6,8 +6,14 @@ import {
   CreateServiceTokenDTO,
   CreateServiceTokenRes,
   DeleteServiceTokenRes,
-  ServiceToken
+  ServiceToken,
+  ServiceTokenDataV3,
+  CreateServiceTokenDataV3DTO,
+  CreateServiceTokenDataV3Res,
+  UpdateServiceTokenDataV3DTO,
+  DeleteServiceTokenDataV3DTO
 } from "./types";
+import { workspaceKeys } from "../workspace/queries";
 
 const serviceTokenKeys = {
   getAllWorkspaceServiceToken: (workspaceID: string) => [{ workspaceID }, "service-tokens"] as const
@@ -32,12 +38,11 @@ export const useGetUserWsServiceTokens = ({ workspaceID }: UseGetWorkspaceServic
 }
 
 // mutation
-export const useCreateServiceToken = () => {
+export const useCreateServiceToken = () => { // TODO: deprecate
   const queryClient = useQueryClient();
 
   return useMutation<CreateServiceTokenRes, {}, CreateServiceTokenDTO>({
     mutationFn: async (body) => {
-      console.log("useCreateServiceToken");
       const { data } = await apiRequest.post("/api/v2/service-token/", body);
       data.serviceToken += `.${body.randomBytes}`;
       return data;
@@ -59,6 +64,58 @@ export const useDeleteServiceToken = () => {
     },
     onSuccess: ({ serviceTokenData: { workspace } }) => {
       queryClient.invalidateQueries(serviceTokenKeys.getAllWorkspaceServiceToken(workspace));
+    }
+  });
+};
+
+export const useCreateServiceTokenV3 = () => {
+  const queryClient = useQueryClient();
+  return useMutation<CreateServiceTokenDataV3Res, {}, CreateServiceTokenDataV3DTO>({
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post("/api/v3/service-token/", body);
+      return data;
+    },
+    onSuccess: ({ serviceTokenData }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceServiceTokenDataV3(serviceTokenData.workspace));
+    }
+  });
+};
+
+export const useUpdateServiceTokenV3 = () => {
+  const queryClient = useQueryClient();
+  return useMutation<ServiceTokenDataV3, {}, UpdateServiceTokenDataV3DTO>({
+    mutationFn: async ({
+      serviceTokenDataId,
+      name,
+      isActive
+    }) => {
+      const { data: { serviceTokenData } } = await apiRequest.patch(`/api/v3/service-token/${serviceTokenDataId}`, {
+        name,
+        isActive
+      });
+
+      return serviceTokenData;
+    },
+    onSuccess: ({ workspace }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceServiceTokenDataV3(workspace));
+    }
+  });
+};
+
+export const useDeleteServiceTokenV3 = () => {
+  const queryClient = useQueryClient();
+  return useMutation<ServiceTokenDataV3, {}, DeleteServiceTokenDataV3DTO>({
+    mutationFn: async ({
+      serviceTokenDataId
+    }) => {
+      console.log("useDeleteServiceTokenV3");
+      const { data: { serviceTokenData } } = await apiRequest.delete(`/api/v3/service-token/${serviceTokenDataId}`);
+      console.log("useDeleteServiceTokenV3 serviceTokenData: ", serviceTokenData);
+      return serviceTokenData;
+    },
+    onSuccess: ({ workspace }) => {
+      console.log("useDeleteServiceTokenV3 onSuccess: ", workspace);
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceServiceTokenDataV3(workspace));
     }
   });
 };

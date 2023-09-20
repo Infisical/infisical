@@ -30,6 +30,7 @@ router.get(
 router.get("/redirect/github", authLimiter, (req, res, next) => {
   passport.authenticate("github", {
     session: false,
+    scope: [ 'user:email' ],
     ...(req.query.callback_port
       ? {
           state: req.query.callback_port as string
@@ -43,7 +44,8 @@ router.get(
   authLimiter,
   passport.authenticate("github", {
     failureRedirect: "/login/provider/error",
-    session: false
+    session: false,
+    scope: [ 'user:email' ]
   }),
   ssoController.redirectSSO
 );

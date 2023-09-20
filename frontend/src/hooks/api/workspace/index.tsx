@@ -19,4 +19,6 @@ export {
   useReorderWsEnvironment,
   useToggleAutoCapitalization,
   useUpdateUserWorkspaceRole,
-  useUpdateWsEnvironment} from "./queries";
+  useUpdateWsEnvironment,
+  useGetWorkspaceServiceTokenDataV3
+} from "./queries";

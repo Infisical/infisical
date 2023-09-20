@@ -49,56 +49,54 @@ export const APIKeyTable = () => {
   };
 
   return (
-    <div>
-      <TableContainer className="">
-        <Table>
-          <THead>
+    <TableContainer>
+      <Table>
+        <THead>
+          <Tr>
+            <Th className="flex-1">Name</Th>
+            <Th className="flex-1">Last active</Th>
+            <Th className="flex-1">Created</Th>
+            <Th className="flex-1">Expiration</Th>
+            <Th className="w-5" />
+          </Tr>
+        </THead>
+        <TBody>
+          {isLoading && <TableSkeleton columns={4} innerKey="api-keys" />}
+          {!isLoading &&
+            data &&
+            data.length > 0 &&
+            data.map(({ _id, name, createdAt, expiresAt, lastUsed }) => {
+              return (
+                <Tr className="h-10" key={`api-key-${_id}`}>
+                  <Td>{name}</Td>
+                  <Td>{formatDate(lastUsed)}</Td>
+                  <Td>{formatDate(createdAt)}</Td>
+                  <Td>{formatDate(expiresAt)}</Td>
+                  <Td>
+                    <IconButton
+                      onClick={async () => {
+                        await handleDeleteAPIKeyDataClick(_id);
+                      }}
+                      size="lg"
+                      colorSchema="danger"
+                      variant="plain"
+                      ariaLabel="update"
+                    >
+                      <FontAwesomeIcon icon={faXmark} />
+                    </IconButton>
+                  </Td>
+                </Tr>
+              );
+            })}
+          {!isLoading && data && data?.length === 0 && (
             <Tr>
-              <Th className="flex-1">Name</Th>
-              <Th className="flex-1">Last active</Th>
-              <Th className="flex-1">Created</Th>
-              <Th className="flex-1">Expiration</Th>
-              <Th className="w-5" />
+              <Td colSpan={5}>
+                <EmptyState title="No API Keys on file" icon={faKey} />
+              </Td>
             </Tr>
-          </THead>
-          <TBody>
-            {isLoading && <TableSkeleton columns={4} innerKey="api-keys" />}
-            {!isLoading &&
-              data &&
-              data.length > 0 &&
-              data.map(({ _id, name, createdAt, expiresAt, lastUsed }) => {
-                return (
-                  <Tr className="h-10" key={`api-key-${_id}`}>
-                    <Td>{name}</Td>
-                    <Td>{formatDate(lastUsed)}</Td>
-                    <Td>{formatDate(createdAt)}</Td>
-                    <Td>{formatDate(expiresAt)}</Td>
-                    <Td>
-                      <IconButton
-                        onClick={async () => {
-                          await handleDeleteAPIKeyDataClick(_id);
-                        }}
-                        size="lg"
-                        colorSchema="danger"
-                        variant="plain"
-                        ariaLabel="update"
-                      >
-                        <FontAwesomeIcon icon={faXmark} />
-                      </IconButton>
-                    </Td>
-                  </Tr>
-                );
-              })}
-            {!isLoading && data && data?.length === 0 && (
-              <Tr>
-                <Td colSpan={5}>
-                  <EmptyState title="No API Keys on file" icon={faKey} />
-                </Td>
-              </Tr>
-            )}
-          </TBody>
-        </Table>
-      </TableContainer>
-    </div>
+          )}
+        </TBody>
+      </Table>
+    </TableContainer>
   );
 };

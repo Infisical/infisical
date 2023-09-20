@@ -9,3 +9,4 @@ export * from "./organization";
 export * from "./secrets";
 export * from "./serviceAccount";
 export * from "./serviceTokenData";
+export * from "./serviceTokenV3";

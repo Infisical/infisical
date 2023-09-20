@@ -65,7 +65,8 @@ import {
   auth as v3AuthRouter,
   secrets as v3SecretsRouter,
   signup as v3SignupRouter,
-  workspaces as v3WorkspacesRouter
+  workspaces as v3WorkspacesRouter,
+  serviceTokenData as v3ServiceTokenDataRouter
 } from "./routes/v3";
 import { healthCheck } from "./routes/status";
 import { getLogger } from "./utils/logger";
@@ -188,13 +189,15 @@ const main = async () => {
   app.use("/api/v2/secret", v2SecretRouter); // deprecate
   app.use("/api/v2/secrets", v2SecretsRouter); // note: in the process of moving to v3/secrets
   app.use("/api/v2/service-token", v2ServiceTokenDataRouter);
-  app.use("/api/v2/service-accounts", v2ServiceAccountsRouter); // new
+  // app.use("/api/v2/service-accounts", v2ServiceAccountsRouter); // new
 
   // v3 routes (experimental)
   app.use("/api/v3/auth", v3AuthRouter);
   app.use("/api/v3/secrets", v3SecretsRouter);
   app.use("/api/v3/workspaces", v3WorkspacesRouter);
   app.use("/api/v3/signup", v3SignupRouter);
+  app.use("/api/v3/service-token", v3ServiceTokenDataRouter);
+  
 
   // api docs
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));

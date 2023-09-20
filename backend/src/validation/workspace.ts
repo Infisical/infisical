@@ -299,3 +299,9 @@ export const NameWorkspaceSecretsV3 = z.object({
       .array()
   })
 });
+
+export const GetWorkspaceServiceTokenDataV3 = z.object({
+  params: z.object({
+    workspaceId: z.string().trim()
+  })
+});
