@@ -1,5 +1,5 @@
 /* eslint-disable react/no-danger */
-import { forwardRef, HTMLAttributes, useState } from "react";
+import { forwardRef, HTMLAttributes } from "react";
 import sanitizeHtml, { DisallowedTagsModes } from "sanitize-html";
 
 import { useToggle } from "@app/hooks";
@@ -34,65 +34,49 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
       `<span class="ph-no-capture text-yellow">&#36;&#123;<span class="ph-no-capture text-yello-200/80">${b}</span>&#125;</span>`
   );
 
-  return newContent;
+  // akhilmhdh: Dont remove this br. I am still clueless how this works but weirdly enough
+  // when break is added a line break works properly
+  return `${newContent}<br/>`;
 };
 
-type Props = Omit<HTMLAttributes<HTMLTextAreaElement>, "onChange" | "onBlur"> & {
+type Props = HTMLAttributes<HTMLTextAreaElement> & {
   value?: string | null;
   isVisible?: boolean;
   isDisabled?: boolean;
-  onChange?: (val: string) => void;
-  onBlur?: () => void;
 };
 
-const commonClassName =
-  "font-mono text-sm caret-white border-none outline-none w-full break-all pb-4";
+const commonClassName = "font-mono text-sm caret-white border-none outline-none w-full break-all";
 
 export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
-  ({ value, isVisible, onChange, onBlur, isDisabled, onFocus, ...props }, ref) => {
+  ({ value, isVisible, onBlur, isDisabled, onFocus, ...props }, ref) => {
     const [isSecretFocused, setIsSecretFocused] = useToggle();
-    const [text, setText] = useState(() => value || "");
-
-    const update = (code: string) => {
-      setText(code);
-      if (onChange) {
-        onChange(code.trim());
-      }
-    };
-
-    const onInput = (event: any) => {
-      const code = event.target.value || "";
-      update(code);
-    };
 
     return (
-      <div className="overflow-auto" style={{ maxHeight: `${21 * 7}px` }}>
+      <div className="overflow-auto w-full" style={{ maxHeight: `${21 * 7}px` }}>
         <div className="relative overflow-hidden">
           <pre aria-hidden className="m-0 ">
             <code className={`inline-block w-full  ${commonClassName}`}>
               <span
                 style={{ whiteSpace: "break-spaces" }}
                 dangerouslySetInnerHTML={{
-                  __html: syntaxHighlight(text, isVisible || isSecretFocused) ?? ""
+                  __html: syntaxHighlight(value, isVisible || isSecretFocused) ?? ""
                 }}
               />
             </code>
           </pre>
-
           <textarea
             style={{ whiteSpace: "break-spaces" }}
             aria-label="secret value"
             ref={ref}
             className={`absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent no-scrollbar focus:border-0 ${commonClassName}`}
-            value={text}
-            onChange={onInput}
             onFocus={() => setIsSecretFocused.on()}
             disabled={isDisabled}
             spellCheck={false}
-            onBlur={() => {
-              if (onBlur) onBlur();
+            onBlur={(evt) => {
+              onBlur?.(evt);
               setIsSecretFocused.off();
             }}
+            value={value || ""}
             {...props}
           />
         </div>
