@@ -1,6 +1,6 @@
+import { faKey, faPencil,faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faKey, faXmark, faPencil } from "@fortawesome/free-solid-svg-icons";
-import { useWorkspace } from "@app/context";
+
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
     EmptyState,
@@ -15,38 +15,34 @@ import {
     THead,
     Tr
 } from "@app/components/v2";
+import { useWorkspace } from "@app/context";
 import {
     useGetWorkspaceServiceTokenDataV3,
-    useUpdateServiceTokenV3,
-    useDeleteServiceTokenV3
+    useUpdateServiceTokenV3
 } from "@app/hooks/api";
+import {
+    ServiceTokenV3Scope
+} from "@app/hooks/api/serviceTokens/types"
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
-export const ServiceTokenV3Table = () => {
+type Props = {
+    handlePopUpOpen: (
+      popUpName: keyof UsePopUpState<["deleteServiceTokenV3", "serviceTokenV3"]>,
+      data?: {
+        serviceTokenDataId?: string;
+        name?: string;
+        scopes?: ServiceTokenV3Scope[];
+      }
+    ) => void;
+  };
+
+export const ServiceTokenV3Table = ({
+    handlePopUpOpen
+}: Props) => {
     const { createNotification } = useNotificationContext();
     const { currentWorkspace } = useWorkspace();
     const { data, isLoading } = useGetWorkspaceServiceTokenDataV3(currentWorkspace?._id || "");
     const { mutateAsync: updateMutateAsync } = useUpdateServiceTokenV3();
-    const { mutateAsync: deleteMutateAsync } = useDeleteServiceTokenV3();
-    
-    console.log("data1: ", data);
-    
-    const handleDeleteServiceTokenData = async (serviceTokenDataId: string) => {
-        try {
-            await deleteMutateAsync({
-                serviceTokenDataId 
-            });
-            createNotification({
-                text: "Successfully deleted service token v3",
-                type: "success"
-            });
-        } catch (err) {
-            console.error(err);
-            createNotification({
-                text: "Failed to delete service token v3",
-                type: "error"
-            });
-        }
-    }
     
     const handleToggleServiceTokenDataStatus = async ({
         serviceTokenDataId,
@@ -92,10 +88,11 @@ export const ServiceTokenV3Table = () => {
                     <Tr>
                         <Th>Name</Th>
                         <Th>Status</Th>
-                        <Th>Last Active</Th>
-                        <Th>Created</Th>
-                        <Th>Expiration</Th>
-                        <Th className="w-5"></Th>
+                        <Th>Scopes</Th>
+                        <Th>Last Used</Th>
+                        <Th>Created At</Th>
+                        <Th>Expires At</Th>
+                        <Th className="w-5" />
                     </Tr>
                 </THead>
                 <TBody>
@@ -108,32 +105,48 @@ export const ServiceTokenV3Table = () => {
                         name,
                         isActive,
                         lastUsed,
+                        scopes,
                         createdAt,
-                        // expiresAt
+                        expiresAt
                     }) => {
                         return (
                             <Tr className="h-10" key={`st-v3-${_id}`}>
                                 <Td>{name}</Td>
                                 <Td>
-                                <Switch
-                                    id="test"
-                                    // id={`enable-${authMethodOpt.value}-auth`}
-                                    onCheckedChange={(value) => handleToggleServiceTokenDataStatus({
-                                        serviceTokenDataId: _id,
-                                        isActive: value
-                                    })}
-                                    isChecked={isActive}
-                                >
-                                    <p className="w-12 mr-4">{isActive ? "Active" : "Inactive"}</p>
-                                </Switch>
+                                    <Switch
+                                        id={`enable-service-token-${_id}`}
+                                        onCheckedChange={(value) => handleToggleServiceTokenDataStatus({
+                                            serviceTokenDataId: _id,
+                                            isActive: value
+                                        })}
+                                        isChecked={isActive}
+                                    >
+                                        <p className="w-12 mr-4">{isActive ? "Active" : "Inactive"}</p>
+                                    </Switch>
                                 </Td>
+                                <Td>
+                                    {scopes.map((scope) => {
+                                        return (
+                                            <p key={`service-token-${_id}-scope-${scope.environment}-${scope.secretPath}`}>
+                                                <span className="font-bold">
+                                                    {scope.permission}
+                                                </span>
+                                                {` @${scope.environment} - ${scope.secretPath}`}
+                                            </p>
+                                        );
+                                    })}
+                                </Td> 
                                 <Td>{lastUsed ? formatDate(lastUsed) : "-"}</Td>
                                 <Td>{formatDate(createdAt)}</Td>
-                                <Td>{formatDate(createdAt)}</Td>
+                                <Td>{expiresAt ? formatDate(expiresAt) : "-"}</Td>
                                 <Td className="flex justify-end">
                                     <IconButton
                                         onClick={async () => {
-                                            console.log("edit");
+                                            handlePopUpOpen("serviceTokenV3", {
+                                                serviceTokenDataId: _id,
+                                                name,
+                                                scopes,
+                                            });
                                         }}
                                         size="lg"
                                         colorSchema="primary"
@@ -143,7 +156,12 @@ export const ServiceTokenV3Table = () => {
                                         <FontAwesomeIcon icon={faPencil} />
                                     </IconButton>
                                     <IconButton
-                                        onClick={() => handleDeleteServiceTokenData(_id)}
+                                        onClick={() => {
+                                            handlePopUpOpen("deleteServiceTokenV3", {
+                                                serviceTokenDataId: _id,
+                                                name
+                                            });
+                                        }}
                                         size="lg"
                                         colorSchema="danger"
                                         variant="plain"

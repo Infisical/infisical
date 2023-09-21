@@ -29,3 +29,4 @@ export * from "./loginSRPDetail";
 export * from "./tokenVersion";
 export * from "./webhooks";
 export * from "./serviceTokenDataV3";
+export * from "./serviceTokenDataV3Key";

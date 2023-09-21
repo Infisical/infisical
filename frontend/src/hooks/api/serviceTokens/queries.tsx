@@ -2,18 +2,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { workspaceKeys } from "../workspace/queries";
 import {
+  CreateServiceTokenDataV3DTO,
+  CreateServiceTokenDataV3Res,
   CreateServiceTokenDTO,
   CreateServiceTokenRes,
+  DeleteServiceTokenDataV3DTO,
   DeleteServiceTokenRes,
   ServiceToken,
   ServiceTokenDataV3,
-  CreateServiceTokenDataV3DTO,
-  CreateServiceTokenDataV3Res,
-  UpdateServiceTokenDataV3DTO,
-  DeleteServiceTokenDataV3DTO
-} from "./types";
-import { workspaceKeys } from "../workspace/queries";
+  UpdateServiceTokenDataV3DTO} from "./types";
 
 const serviceTokenKeys = {
   getAllWorkspaceServiceToken: (workspaceID: string) => [{ workspaceID }, "service-tokens"] as const
@@ -58,7 +57,6 @@ export const useDeleteServiceToken = () => {
 
   return useMutation<DeleteServiceTokenRes, {}, string>({
     mutationFn: async (serviceTokenId) => {
-      console.log("useDeleteServiceToken");
       const { data } = await apiRequest.delete(`/api/v2/service-token/${serviceTokenId}`);
       return data;
     },
@@ -87,11 +85,15 @@ export const useUpdateServiceTokenV3 = () => {
     mutationFn: async ({
       serviceTokenDataId,
       name,
-      isActive
+      isActive,
+      scopes,
+      expiresIn
     }) => {
       const { data: { serviceTokenData } } = await apiRequest.patch(`/api/v3/service-token/${serviceTokenDataId}`, {
         name,
-        isActive
+        isActive,
+        scopes,
+        expiresIn
       });
 
       return serviceTokenData;
@@ -108,13 +110,10 @@ export const useDeleteServiceTokenV3 = () => {
     mutationFn: async ({
       serviceTokenDataId
     }) => {
-      console.log("useDeleteServiceTokenV3");
       const { data: { serviceTokenData } } = await apiRequest.delete(`/api/v3/service-token/${serviceTokenDataId}`);
-      console.log("useDeleteServiceTokenV3 serviceTokenData: ", serviceTokenData);
       return serviceTokenData;
     },
     onSuccess: ({ workspace }) => {
-      console.log("useDeleteServiceTokenV3 onSuccess: ", workspace);
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceServiceTokenDataV3(workspace));
     }
   });

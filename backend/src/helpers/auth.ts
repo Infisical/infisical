@@ -382,11 +382,15 @@ export const createToken = ({
 	secret,
 }: {
 	payload: any;
-	expiresIn: string | number;
+	expiresIn?: string | number;
 	secret: string;
 }) => {
 	return jwt.sign(payload, secret, {
-		expiresIn,
+		...(
+			(expiresIn !== undefined && expiresIn !== null) 
+			? { expiresIn } 
+			: {}
+		)
 	});
 };
 

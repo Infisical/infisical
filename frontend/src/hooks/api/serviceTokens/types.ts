@@ -36,22 +36,32 @@ export type DeleteServiceTokenRes = { serviceTokenData: ServiceToken };
 
 // --- v3
 
+export type ServiceTokenV3Scope = {
+  permission: string;
+  environment: string;
+  secretPath: string;
+};
+
 export type ServiceTokenDataV3 = {
   _id: string;
   name: string;
   workspace: string;
   isActive: boolean;
   lastUsed?: string;
+  scopes: ServiceTokenV3Scope[];
+  expiresAt?: string;
   createdAt: string;
   updatedAt: string;
 };
 
-// TODO: add scopes
-// TODO: encrypted key info
 export type CreateServiceTokenDataV3DTO = {
   name: string;
   workspaceId: string;
   publicKey: string;
+  scopes: ServiceTokenV3Scope[];
+  expiresIn?: number;
+  encryptedKey: string;
+  nonce: string;
 }
 
 export type CreateServiceTokenDataV3Res = {
@@ -61,8 +71,10 @@ export type CreateServiceTokenDataV3Res = {
 
 export type UpdateServiceTokenDataV3DTO = {
   serviceTokenDataId: string;
-  name?: string;
   isActive?: boolean;
+  name?: string;
+  scopes?: ServiceTokenV3Scope[];
+  expiresIn?: number;
 }
 
 export type DeleteServiceTokenDataV3DTO = {

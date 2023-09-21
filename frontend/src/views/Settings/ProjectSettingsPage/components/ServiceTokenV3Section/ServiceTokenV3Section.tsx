@@ -1,14 +1,47 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { AddServiceTokenV3Modal } from "./AddServiceTokenV3Modal";
-import { ServiceTokenV3Table } from "./ServiceTokenV3Table";
-import { Button } from "@app/components/v2";
+
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { 
+  Button,
+  DeleteActionModal
+} from "@app/components/v2";
+import {
+  useDeleteServiceTokenV3
+} from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { AddServiceTokenV3Modal } from "./AddServiceTokenV3Modal";
+import { ServiceTokenV3Table } from "./ServiceTokenV3Table";
+
 export const ServiceTokenV3Section = () => {
-    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-      "createServiceTokenV3"
+    const { createNotification } = useNotificationContext();
+    const { mutateAsync: deleteMutateAsync } = useDeleteServiceTokenV3();
+    const { popUp, handlePopUpOpen, handlePopUpClose,  handlePopUpToggle } = usePopUp([
+      "serviceTokenV3",
+      "deleteServiceTokenV3"
     ] as const);
+    
+    const onDeleteServiceTokenDataSubmit = async (serviceTokenDataId: string) => {
+      try {
+        await deleteMutateAsync({
+            serviceTokenDataId 
+        });
+        createNotification({
+            text: "Successfully deleted service token v3",
+            type: "success"
+        });
+        
+        handlePopUpClose("deleteServiceTokenV3");
+      } catch (err) {
+          console.error(err);
+          createNotification({
+              text: "Failed to delete service token v3",
+              type: "error"
+          });
+      }
+    }
+
     return (
         <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="flex justify-between mb-8">
@@ -19,15 +52,30 @@ export const ServiceTokenV3Section = () => {
                 colorSchema="secondary"
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("createServiceTokenV3")}
+                onClick={() => handlePopUpOpen("serviceTokenV3")}
             >
               Create ST V3
             </Button>
           </div>
-          <ServiceTokenV3Table />
+          <ServiceTokenV3Table 
+            handlePopUpOpen={handlePopUpOpen}
+          />
           <AddServiceTokenV3Modal 
             popUp={popUp}
             handlePopUpToggle={handlePopUpToggle}
+          />
+          <DeleteActionModal
+            isOpen={popUp.deleteServiceTokenV3.isOpen}
+            title={`Are you sure want to delete ${
+              (popUp?.deleteServiceTokenV3?.data as { name: string })?.name || ""
+            }?`}
+            onChange={(isOpen) => handlePopUpToggle("deleteServiceTokenV3", isOpen)}
+            deleteKey="confirm"
+            onDeleteApproved={() => 
+              onDeleteServiceTokenDataSubmit(
+                (popUp?.deleteServiceTokenV3?.data as { serviceTokenDataId: string })?.serviceTokenDataId
+              )
+            }
           />
         </div>
     );
