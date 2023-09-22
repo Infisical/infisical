@@ -29,7 +29,6 @@ module.exports = {
   },
   plugins: ["react", "prettier", "simple-import-sort", "import"],
   rules: {
-    "react/prop-types": "off",
     quotes: ["error", "double", { avoidEscape: true }],
     "comma-dangle": ["error", "only-multiline"],
     "react/react-in-jsx-scope": "off",
