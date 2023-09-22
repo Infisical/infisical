@@ -487,7 +487,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      {/* <Link href={`/project/${currentWorkspace?._id}/audit-logs`} passHref>
+                      <Link href={`/project/${currentWorkspace?._id}/audit-logs`} passHref>
                         <a>
                           <MenuItem
                             isSelected={
@@ -498,7 +498,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             Audit Logs
                           </MenuItem>
                         </a>
-                      </Link> */}
+                      </Link>
                       <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>
                         <a>
                           <MenuItem
