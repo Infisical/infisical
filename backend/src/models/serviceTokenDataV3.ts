@@ -17,7 +17,8 @@ export interface IServiceTokenDataV3 extends Document {
     workspace: Types.ObjectId;
     publicKey: string;
     isActive: boolean;
-    lastUsed: Date;
+    lastUsed?: Date;
+    expiresAt?: Date;
     scopes: Array<Scope>;
 }
 

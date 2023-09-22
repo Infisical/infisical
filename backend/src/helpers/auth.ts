@@ -7,6 +7,7 @@ import {
 	ITokenVersion,
 	IUser,
 	ServiceTokenData,
+	ServiceTokenDataV3,
 	TokenVersion,
 	User,
 } from "../models";
@@ -29,6 +30,7 @@ import {
 } from "../variables";
 import {
 	ServiceTokenAuthData,
+	ServiceTokenV3AuthData,
 	UserAuthData
 } from "../interfaces/middleware";
 
@@ -47,6 +49,9 @@ export const validateAuthMode = ({
 	headers: { [key: string]: string | string[] | undefined },
 	acceptedAuthModes: AuthMode[]
 }) => {
+	
+	// TODO: update this to accept service token v3
+	
 	const apiKey = headers["x-api-key"];
 	const authHeader = headers["authorization"];
 
@@ -75,6 +80,9 @@ export const validateAuthMode = ({
 		switch (tokenValue.split(".", 1)[0]) {
 			case "st":
 				authMode = AuthMode.SERVICE_TOKEN;
+				break;
+			case "proj_token":
+				authMode = AuthMode.SERVICE_TOKEN_V3;
 				break;
 			default:
 				authMode = AuthMode.JWT;
@@ -211,8 +219,55 @@ export const getAuthSTDPayload = async ({
 		userAgent: req.headers["user-agent"] ?? "",
 		userAgentType: getUserAgentType(req.headers["user-agent"])
 	}
+}
 
-	// return serviceTokenDataToReturn;
+/**
+ * Return service token data V3 payload corresponding to service token [authTokenValue]
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue - service token value
+ * @returns {ServiceTokenData} serviceTokenData - service token data
+ */
+ export const getAuthSTDV3Payload = async ({
+	req,
+	authTokenValue,
+}: {
+	req: Request,
+	authTokenValue: string;
+}): Promise<ServiceTokenV3AuthData> => {
+	const decodedToken = <jwt.UserIDJwtPayload>(
+		jwt.verify(authTokenValue, "hello") // TODO: change this
+	);
+
+	// perhaps turn this one into a find one and update call?
+	const serviceTokenData = await ServiceTokenDataV3.findOne({
+		_id: new Types.ObjectId(decodedToken.serviceTokenDataId),
+	});
+
+	if (!serviceTokenData) {
+		throw UnauthorizedRequestError({ 
+			message: "Failed to authenticate" // standardize auth error messages
+		});
+	} else if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
+		// case: service token expired
+		await ServiceTokenDataV3.findByIdAndDelete(serviceTokenData._id);
+		throw UnauthorizedRequestError({
+			message: "Failed to authenticate",
+		});
+	}
+	
+	return {
+		actor: {
+			type: ActorType.SERVICE, // should this be servicev3 bc the shape of it is different?
+			metadata: {
+				serviceId: serviceTokenData._id.toString(),
+				name: serviceTokenData.name
+			}
+		},
+		authPayload: serviceTokenData,
+		ipAddress: req.realIP,
+		userAgent: req.headers["user-agent"] ?? "",
+		userAgentType: getUserAgentType(req.headers["user-agent"])
+	}
 }
 
 /**

@@ -3,6 +3,7 @@ import { NextFunction, Request, Response } from "express";
 import {
 	getAuthAPIKeyPayload,
 	getAuthSTDPayload,
+	getAuthSTDV3Payload,
 	getAuthUserPayload,
 	validateAuthMode,
 } from "../helpers/auth";
@@ -49,6 +50,12 @@ const requireAuth = ({
 				});
 				req.serviceTokenData = authData.authPayload;
 				break;
+			case AuthMode.SERVICE_TOKEN_V3:
+				authData = await getAuthSTDV3Payload({
+					req,
+					authTokenValue
+				});
+				break;
 			case AuthMode.API_KEY:
 				authData = await getAuthAPIKeyPayload({
 					req,
@@ -61,9 +68,7 @@ const requireAuth = ({
 					req,
 					authTokenValue
 				});
-				// authPayload = authUserPayload.user;
 				req.user = authData.authPayload;
-				// req.tokenVersionId = authUserPayload.tokenVersionId; // TODO
 				break;
 		}
 		
