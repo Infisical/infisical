@@ -1,6 +1,6 @@
 module github.com/Infisical/infisical-merge
 
-go 1.19
+go 1.21
 
 require (
 	github.com/charmbracelet/lipgloss v0.5.0
