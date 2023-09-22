@@ -90,7 +90,9 @@ export const SecretEditRow = ({
         <Controller
           control={control}
           name="value"
-          render={({ field }) => <SecretInput {...field} isVisible={isVisible} />}
+          render={({ field }) => (
+            <SecretInput {...field} value={field.value as string} isVisible={isVisible} />
+          )}
         />
       </div>
       <div className="flex w-16 justify-center space-x-3 pl-2 transition-all">
