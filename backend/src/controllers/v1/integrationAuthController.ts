@@ -713,11 +713,12 @@ export const getIntegrationAuthNorthflankSecretGroups = async (req: Request, res
  */
 export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: Response) => {
   const {
-    params: { integrationAuthId, appId }
+    params: { integrationAuthId },
+    query: { appId }
   } = await validateRequest(reqValidator.GetIntegrationAuthTeamCityBuildConfigsV1, req);
-
+  
   // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
-  const { integrationAuth } = await getIntegrationAuthAccessHelper({
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
     integrationAuthId: new ObjectId(integrationAuthId)
   });
 
@@ -749,13 +750,13 @@ export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: 
     const {
       data: { buildType }
     } = await standardRequest.get<GetTeamCityBuildConfigsRes>(
-      `${req.integrationAuth.url}/app/rest/buildTypes`,
+      `${integrationAuth.url}/app/rest/buildTypes`,
       {
         params: {
           locator: `project:${appId}`
         },
         headers: {
-          Authorization: `Bearer ${req.accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           Accept: "application/json"
         }
       }

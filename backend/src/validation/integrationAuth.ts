@@ -153,9 +153,11 @@ export const DeleteIntegrationAuthV1 = z.object({
 });
 
 export const GetIntegrationAuthTeamCityBuildConfigsV1 = z.object({
-  params:z.object({
-    appId:z.string().trim(),
+  params: z.object({
     integrationAuthId:z.string().trim()
+  }),
+  query: z.object({
+    appId:z.string().trim()
   })
 })
 
