@@ -197,6 +197,8 @@ const fetchIntegrationAuthTeamCityBuildConfigs = async ({
   integrationAuthId: string;
   appId: string;
 }) => {
+  if (appId === "") return [];
+
   const {
     data: { buildConfigs }
   } = await apiRequest.get<{ buildConfigs: TeamCityBuildConfig[] }>(

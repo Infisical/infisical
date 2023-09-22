@@ -49,7 +49,7 @@ export default function TeamCityCreateIntegrationPage() {
     integrationAuthId: (integrationAuthId as string) ?? "",
     appId: targetAppId
   });
-
+  
   useEffect(() => {
     if (workspace) {
       setSelectedSourceEnvironment(workspace.environments[0].slug);
