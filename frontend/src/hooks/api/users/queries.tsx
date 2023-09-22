@@ -11,6 +11,7 @@ import { useUploadWsKey } from "../keys/queries";
 import { workspaceKeys } from "../workspace/queries";
 import {
   AddUserToOrgDTO,
+  AddUserToWsBatchDto,
   AddUserToWsDTO,
   AddUserToWsRes,
   APIKeyData,
@@ -105,6 +106,17 @@ export const useGetOrgUsers = (orgId: string) =>
     queryFn: () => fetchOrgUsers(orgId),
     enabled: Boolean(orgId)
   });
+
+export const useAddUserToWsBatch = () => {
+  const queryClient = useQueryClient();
+  return useMutation<{}, {}, AddUserToWsBatchDto>({
+    mutationFn: ({ email, workspaceIds }) =>
+      apiRequest.post("/api/v1/workspace/invite-signup/batch", { email, workspaceIds }),
+    onSuccess: (_, { orgId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceMemberships(orgId));
+    }
+  });
+};
 
 // mutation
 export const useAddUserToWs = () => {
