@@ -55,6 +55,12 @@ export type AddUserToWsDTO = {
   email: string;
 };
 
+export type AddUserToWsBatchDto = {
+  workspaceIds: string[];
+  email: string;
+  orgId: string;
+};
+
 export type AddUserToWsRes = {
   invitee: OrgUser["user"];
   latestKey: UserWsKeyPair;
