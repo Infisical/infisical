@@ -67,6 +67,13 @@ router.post(
   }),
   membershipController.inviteUserToWorkspace
 );
+router.post(
+  "/invite-signup/batch",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  membershipController.inviteUserToWorkspaceBatch
+);
 
 router.get(
   "/:workspaceId/integrations",

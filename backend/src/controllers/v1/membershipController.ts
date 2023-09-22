@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { IUser, Key, Membership, MembershipOrg, User, Workspace } from "../../models";
+import { IUser, Membership } from "../../models";
 import { EventType } from "../../ee/models";
 import { deleteMembership as deleteMember, findMembership } from "../../helpers/membership";
 import { sendMail } from "../../helpers/nodemailer";
-import { ACCEPTED, ADMIN, CUSTOM, MEMBER, VIEWER } from "../../variables";
+import { ADMIN, CUSTOM, MEMBER, VIEWER } from "../../variables";
 import { getSiteURL } from "../../config";
 import { EEAuditLogService } from "../../ee/services";
 import { validateRequest } from "../../helpers/validation";
@@ -12,12 +12,14 @@ import * as reqValidator from "../../validation/membership";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getUserProjectPermissions,
+  getUserProjectPermissionsAllWorkSpace
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 import Role from "../../ee/models/role";
 import { BadRequestError } from "../../utils/errors";
-import { InviteUserToWorkspaceV1 } from "../../validation/workspace";
+import { InviteUserToWorkspaceBatchV1, InviteUserToWorkspaceV1 } from "../../validation/workspace";
+import { addMemberToTheWorkspace, getInvitee } from "../../services/MemberShipService";
 
 /**
  * Check that user is a member of workspace with id [workspaceId]
@@ -198,47 +200,13 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
     ProjectPermissionSub.Member
   );
 
-  const invitee = await User.findOne({
-    email
-  }).select("+publicKey");
+  const invitee = await getInvitee(email);
 
-  if (!invitee || !invitee?.publicKey) throw new Error("Failed to validate invitee");
-
-  // validate invitee's workspace membership - ensure member isn't
-  // already a member of the workspace
-  const inviteeMembership = await Membership.findOne({
-    user: invitee._id,
-    workspace: workspaceId
-  }).populate<{ user: IUser }>("user");
-
-  if (inviteeMembership) throw new Error("Failed to add existing member of workspace");
-
-  const workspace = await Workspace.findById(workspaceId);
-  if (!workspace) throw new Error("Failed to find workspace");
-  // validate invitee's organization membership - ensure that only
-  // (accepted) organization members can be added to the workspace
-  const membershipOrg = await MembershipOrg.findOne({
-    user: invitee._id,
-    organization: workspace.organization,
-    status: ACCEPTED
+  const { workspace, latestKey } = await addMemberToTheWorkspace({
+    inviteeId: invitee._id,
+    workspaceId,
+    userId: req.user._id
   });
-
-  if (!membershipOrg) throw new Error("Failed to validate invitee's organization membership");
-
-  // get latest key
-  const latestKey = await Key.findOne({
-    workspace: workspaceId,
-    receiver: req.user._id
-  })
-    .sort({ createdAt: -1 })
-    .populate("sender", "+publicKey");
-
-  // create new workspace membership
-  await new Membership({
-    user: invitee._id,
-    workspace: workspaceId,
-    role: MEMBER
-  }).save();
 
   await sendMail({
     template: "workspaceInvitation.handlebars",
@@ -269,5 +237,83 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
   return res.status(200).send({
     invitee,
     latestKey
+  });
+};
+
+/**
+ * Add user with email [email] to workspace with ids [Array<workspaceIds>]
+ * @param req
+ * @param res
+ * @returns
+ */
+export const inviteUserToWorkspaceBatch = async (req: Request, res: Response) => {
+  const {
+    body: { email, workspaceIds }
+  } = await validateRequest(InviteUserToWorkspaceBatchV1, req);
+
+  (await getUserProjectPermissionsAllWorkSpace(req.user._id, workspaceIds)).forEach(
+    ({ permission }) => {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Create,
+        ProjectPermissionSub.Member
+      );
+    }
+  );
+
+  const invitee = await getInvitee(email);
+  const mailToSend: Promise<void>[] = [];
+  const logs: Promise<any>[] = [];
+
+  workspaceIds.forEach(async (workspaceId) => {
+    try {
+      const { workspace } = await addMemberToTheWorkspace({
+        inviteeId: invitee._id,
+        workspaceId,
+        userId: req.user._id
+      });
+
+      mailToSend.push(
+        sendMail({
+          template: "workspaceInvitation.handlebars",
+          subjectLine: "Infisical workspace invitation",
+          recipients: [invitee.email],
+          substitutions: {
+            inviterFirstName: req.user.firstName,
+            inviterEmail: req.user.email,
+            workspaceName: workspace.name,
+            callback_url: (await getSiteURL()) + "/login"
+          }
+        })
+      );
+
+      logs.push(
+        EEAuditLogService.createAuditLog(
+          req.authData,
+          {
+            type: EventType.ADD_WORKSPACE_MEMBER,
+            metadata: {
+              userId: invitee._id.toString(),
+              email: invitee.email
+            }
+          },
+          {
+            workspaceId: new Types.ObjectId(workspaceId)
+          }
+        )
+      );
+    } catch (error) {
+      return;
+    }
+  });
+
+  if (mailToSend.length) {
+    await Promise.all(mailToSend);
+  }
+  if (logs.length) {
+    await Promise.all(logs);
+  }
+
+  return res.status(200).json({
+    message: "successfully updated"
   });
 };
