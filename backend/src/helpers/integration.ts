@@ -15,6 +15,7 @@ import { IntegrationAuthMetadata } from "../models/integrationAuth/types";
 interface Update {
   workspace: string;
   integration: string;
+  url?: string;
   teamId?: string;
   accountId?: string;
   metadata?: IntegrationAuthMetadata
@@ -63,6 +64,10 @@ export const handleOAuthExchangeHelper = async ({
     workspace: workspaceId,
     integration
   };
+  
+  if (res.url) {
+    update.url = res.url;
+  }
 
   switch (integration) {
     case INTEGRATION_VERCEL:

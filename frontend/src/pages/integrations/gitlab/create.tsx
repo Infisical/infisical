@@ -84,6 +84,7 @@ export default function GitLabCreateIntegrationPage() {
   const selectedSourceEnvironment = watch("selectedSourceEnvironment");
   const targetEntity = watch("targetEntity");
   const targetTeamId = watch("targetTeamId");
+  const targetAppIdValue = watch("targetAppId");
 
   const { mutateAsync } = useCreateIntegration();
 
@@ -440,6 +441,7 @@ export default function GitLabCreateIntegrationPage() {
           size="sm"
           type="submit"
           isLoading={isLoading}
+          isDisabled={targetAppIdValue === "none"}
         >
           Create Integration
         </Button>
