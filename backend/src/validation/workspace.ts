@@ -33,9 +33,10 @@ export const validateClientForWorkspace = async ({
 }) => {
   const workspace = await Workspace.findById(workspaceId);
 
-  if (!workspace) throw WorkspaceNotFoundError({
-    message: "Failed to find workspace"
-  });
+  if (!workspace)
+    throw WorkspaceNotFoundError({
+      message: "Failed to find workspace"
+    });
 
   let membership;
   switch (authData.actor.type) {
@@ -209,6 +210,13 @@ export const InviteUserToWorkspaceV1 = z.object({
   }),
   body: z.object({
     email: z.string().trim()
+  })
+});
+
+export const InviteUserToWorkspaceBatchV1 = z.object({
+  body: z.object({
+    email: z.string().email().trim(),
+    workspaceIds: z.array(z.string()).nonempty()
   })
 });
 
