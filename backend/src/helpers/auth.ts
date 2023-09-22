@@ -257,7 +257,7 @@ export const getAuthSTDPayload = async ({
 	
 	return {
 		actor: {
-			type: ActorType.SERVICE, // should this be servicev3 bc the shape of it is different?
+			type: ActorType.SERVICE_V3, // should this be servicev3 bc the shape of it is different?
 			metadata: {
 				serviceId: serviceTokenData._id.toString(),
 				name: serviceTokenData.name

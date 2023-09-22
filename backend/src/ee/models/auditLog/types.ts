@@ -23,9 +23,15 @@ export interface ServiceActor {
     metadata: ServiceActorMetadata;
 }
 
+export interface ServiceActorV3 {
+    type: ActorType.SERVICE_V3;
+    metadata: ServiceActorMetadata;
+}
+
 export type Actor = 
     | UserActor
-    | ServiceActor;
+    | ServiceActor
+    | ServiceActorV3;
 
 interface GetSecretsEvent {
     type: EventType.GET_SECRETS;

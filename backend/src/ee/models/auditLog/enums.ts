@@ -1,6 +1,7 @@
 export enum ActorType {
     USER = "user",
-    SERVICE = "service"
+    SERVICE = "service",
+    SERVICE_V3 = "service-v3"
 }
 
 export enum UserAgentType {
