@@ -9,39 +9,39 @@ import { apiRequest } from "@app/config/request";
 
 import { DecryptedSecret } from "../secrets/types";
 import {
-  GetWorkspaceSecretSnapshotsDTO,
+  TGetSecretSnapshotsDTO,
   TSecretRollbackDTO,
-  TSnapshotSecret,
-  TSnapshotSecretProps,
-  TWorkspaceSecretSnapshot
+  TSecretSnapshot,
+  TSnapshotData,
+  TSnapshotDataProps
 } from "./types";
 
 export const secretSnapshotKeys = {
-  list: (workspaceId: string, env: string, folderId?: string) =>
-    [{ workspaceId, env, folderId }, "secret-snapshot"] as const,
-  snapshotSecrets: (snapshotId: string) => [{ snapshotId }, "secret-snapshot"] as const,
-  count: (workspaceId: string, env: string, folderId?: string) => [
-    { workspaceId, env, folderId },
+  list: ({ workspaceId, environment, directory }: Omit<TGetSecretSnapshotsDTO, "limit">) =>
+    [{ workspaceId, environment, directory }, "secret-snapshot"] as const,
+  snapshotData: (snapshotId: string) => [{ snapshotId }, "secret-snapshot"] as const,
+  count: ({ environment, workspaceId, directory }: Omit<TGetSecretSnapshotsDTO, "limit">) => [
+    { workspaceId, environment, directory },
     "count",
     "secret-snapshot"
   ]
 };
 
-const fetchWorkspaceSecretSnaphots = async (
-  workspaceId: string,
-  environment: string,
-  folderId?: string,
+const fetchWorkspaceSnaphots = async ({
+  workspaceId,
+  environment,
+  directory = "/",
   limit = 10,
   offset = 0
-) => {
-  const res = await apiRequest.get<{ secretSnapshots: TWorkspaceSecretSnapshot[] }>(
+}: TGetSecretSnapshotsDTO & { offset: number }) => {
+  const res = await apiRequest.get<{ secretSnapshots: TSecretSnapshot[] }>(
     `/api/v1/workspace/${workspaceId}/secret-snapshots`,
     {
       params: {
         limit,
         offset,
         environment,
-        folderId
+        directory
       }
     }
   );
@@ -49,32 +49,25 @@ const fetchWorkspaceSecretSnaphots = async (
   return res.data.secretSnapshots;
 };
 
-export const useGetWorkspaceSecretSnapshots = (dto: GetWorkspaceSecretSnapshotsDTO) =>
+export const useGetWorkspaceSnapshotList = (dto: TGetSecretSnapshotsDTO & { isPaused?: boolean }) =>
   useInfiniteQuery({
-    enabled: Boolean(dto.workspaceId && dto.environment),
-    queryKey: secretSnapshotKeys.list(dto.workspaceId, dto.environment, dto?.folder),
-    queryFn: ({ pageParam }) =>
-      fetchWorkspaceSecretSnaphots(
-        dto.workspaceId,
-        dto.environment,
-        dto?.folder,
-        dto.limit,
-        pageParam
-      ),
+    enabled: Boolean(dto.workspaceId && dto.environment) && !dto.isPaused,
+    queryKey: secretSnapshotKeys.list({ ...dto }),
+    queryFn: ({ pageParam }) => fetchWorkspaceSnaphots({ ...dto, offset: pageParam }),
     getNextPageParam: (lastPage, pages) =>
       lastPage.length !== 0 ? pages.length * dto.limit : undefined
   });
 
 const fetchSnapshotEncSecrets = async (snapshotId: string) => {
-  const res = await apiRequest.get<{ secretSnapshot: TSnapshotSecret }>(
+  const res = await apiRequest.get<{ secretSnapshot: TSnapshotData }>(
     `/api/v1/secret-snapshot/${snapshotId}`
   );
   return res.data.secretSnapshot;
 };
 
-export const useGetSnapshotSecrets = ({ decryptFileKey, env, snapshotId }: TSnapshotSecretProps) =>
+export const useGetSnapshotSecrets = ({ decryptFileKey, env, snapshotId }: TSnapshotDataProps) =>
   useQuery({
-    queryKey: secretSnapshotKeys.snapshotSecrets(snapshotId),
+    queryKey: secretSnapshotKeys.snapshotData(snapshotId),
     enabled: Boolean(snapshotId && decryptFileKey),
     queryFn: () => fetchSnapshotEncSecrets(snapshotId),
     select: (data) => {
@@ -117,7 +110,8 @@ export const useGetSnapshotSecrets = ({ decryptFileKey, env, snapshotId }: TSnap
             comment: secretComment,
             createdAt: encSecret.createdAt,
             updatedAt: encSecret.updatedAt,
-            type: "modified"
+            type: "modified",
+            version: encSecret.version
           };
 
           if (encSecret.type === "personal") {
@@ -147,25 +141,30 @@ export const useGetSnapshotSecrets = ({ decryptFileKey, env, snapshotId }: TSnap
 const fetchWorkspaceSecretSnaphotCount = async (
   workspaceId: string,
   environment: string,
-  folderId?: string
+  directory = "/"
 ) => {
   const res = await apiRequest.get<{ count: number }>(
     `/api/v1/workspace/${workspaceId}/secret-snapshots/count`,
     {
       params: {
         environment,
-        folderId
+        directory
       }
     }
   );
   return res.data.count;
 };
 
-export const useGetWsSnapshotCount = (workspaceId: string, env: string, folderId?: string) =>
+export const useGetWsSnapshotCount = ({
+  workspaceId,
+  environment,
+  directory,
+  isPaused
+}: Omit<TGetSecretSnapshotsDTO, "limit"> & { isPaused?: boolean }) =>
   useQuery({
-    enabled: Boolean(workspaceId && env),
-    queryKey: secretSnapshotKeys.count(workspaceId, env, folderId),
-    queryFn: () => fetchWorkspaceSecretSnaphotCount(workspaceId, env, folderId)
+    enabled: Boolean(workspaceId && environment) && !isPaused,
+    queryKey: secretSnapshotKeys.count({ workspaceId, environment, directory }),
+    queryFn: () => fetchWorkspaceSecretSnaphotCount(workspaceId, environment, directory)
   });
 
 export const usePerformSecretRollback = () => {
@@ -179,10 +178,17 @@ export const usePerformSecretRollback = () => {
       );
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, folderId }) => {
-      queryClient.invalidateQueries([{ workspaceId, environment }, "secrets"]);
-      queryClient.invalidateQueries(secretSnapshotKeys.list(workspaceId, environment, folderId));
-      queryClient.invalidateQueries(secretSnapshotKeys.count(workspaceId, environment, folderId));
+    onSuccess: (_, { workspaceId, environment, directory }) => {
+      queryClient.invalidateQueries([
+        { workspaceId, environment, secretPath: directory },
+        "secrets"
+      ]);
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.list({ workspaceId, environment, directory })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.count({ workspaceId, environment, directory })
+      );
     }
   });
 };

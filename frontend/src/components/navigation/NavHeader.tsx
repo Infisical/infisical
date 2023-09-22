@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faAngleRight } from "@fortawesome/free-solid-svg-icons";
@@ -15,7 +14,7 @@ type Props = {
   currentEnv?: string;
   userAvailableEnvs?: any[];
   onEnvChange?: (slug: string) => void;
-  folders?: Array<{ id: string; name: string }>;
+  secretPath?: string;
   isFolderMode?: boolean;
 };
 
@@ -42,19 +41,14 @@ export default function NavHeader({
   currentEnv,
   userAvailableEnvs = [],
   onEnvChange,
-  folders = [],
-  isFolderMode
+  isFolderMode,
+  secretPath = "/"
 }: Props): JSX.Element {
   const { currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
   const router = useRouter();
 
-  const isInRootFolder = isFolderMode && folders.length <= 1;
-
-  const selectedEnv = useMemo(
-    () => userAvailableEnvs?.find((uae) => uae.name === currentEnv),
-    [userAvailableEnvs, currentEnv]
-  );
+  const secretPathSegments = secretPath.split("/").filter(Boolean);
 
   return (
     <div className="flex flex-row items-center pt-6">
@@ -90,13 +84,13 @@ export default function NavHeader({
       ) : (
         <div className="text-sm text-gray-400">{pageName}</div>
       )}
-      {currentEnv && isInRootFolder && (
+      {currentEnv && secretPath === "/" && (
         <>
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
           <div className="rounded-md pl-3 hover:bg-bunker-100/10">
             <Tooltip content="Select environment">
               <Select
-                value={selectedEnv?.slug}
+                value={currentEnv}
                 onValueChange={(value) => {
                   if (value && onEnvChange) onEnvChange(value);
                 }}
@@ -113,16 +107,36 @@ export default function NavHeader({
           </div>
         </>
       )}
+      {isFolderMode && Boolean(secretPathSegments.length) && (
+        <div className="flex items-center space-x-3">
+          <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
+          <Link
+            passHref
+            legacyBehavior
+            href={{
+              pathname: "/project/[id]/secrets/v2/[env]",
+              query: { id: router.query.id, env: router.query.env }
+            }}
+          >
+            <a className="text-sm font-semibold text-primary/80 hover:text-primary">
+              {userAvailableEnvs?.find(({ slug }) => slug === currentEnv)?.name}
+            </a>
+          </Link>
+        </div>
+      )}
       {isFolderMode &&
-        folders?.map(({ id, name }, index) => {
+        secretPathSegments?.map((folderName, index) => {
           const query = { ...router.query };
-          if (name !== "root") query.folderId = id;
-          else delete query.folderId;
+          query.secretPath = secretPathSegments.slice(0, index + 1);
+
           return (
-            <div className="flex items-center space-x-3" key={`breadcrumb-folder-${id}`}>
+            <div
+              className="flex items-center space-x-3"
+              key={`breadcrumb-secret-path-${folderName}`}
+            >
               <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
-              {index + 1 === folders?.length ? (
-                <span className="text-sm font-semibold text-bunker-300">{name}</span>
+              {index + 1 === secretPathSegments?.length ? (
+                <span className="text-sm font-semibold text-bunker-300">{folderName}</span>
               ) : (
                 <Link
                   passHref
@@ -130,7 +144,7 @@ export default function NavHeader({
                   href={{ pathname: "/project/[id]/secrets/[env]", query }}
                 >
                   <a className="text-sm font-semibold text-primary/80 hover:text-primary">
-                    {name === "root" ? selectedEnv?.name : name}
+                    folderName
                   </a>
                 </Link>
               )}

@@ -1,86 +1,80 @@
 import { useCallback, useMemo } from "react";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+  UseQueryOptions
+} from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
 import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import {
-  CreateFolderDTO,
-  DeleteFolderDTO,
-  GetProjectFoldersBatchDTO,
-  GetProjectFoldersDTO,
+  TCreateFolderDTO,
+  TDeleteFolderDTO,
   TGetFoldersByEnvDTO,
+  TGetProjectFoldersDTO,
   TSecretFolder,
-  UpdateFolderDTO
+  TUpdateFolderDTO
 } from "./types";
 
 const queryKeys = {
-  getSecretFolders: (workspaceId: string, environment: string, parentFolderId?: string) =>
-    ["secret-folders", { workspaceId, environment, parentFolderId }] as const
+  getSecretFolders: ({ workspaceId, environment, directory }: TGetProjectFoldersDTO) =>
+    ["secret-folders", { workspaceId, environment, directory }] as const
 };
 
-const fetchProjectFolders = async (
-  workspaceId: string,
-  environment: string,
-  parentFolderId?: string,
-  parentFolderPath?: string
-) => {
-  const { data } = await apiRequest.get<{ folders: TSecretFolder[]; dir: TSecretFolder[] }>(
-    "/api/v1/folders",
-    {
-      params: {
-        workspaceId,
-        environment,
-        parentFolderId,
-        parentFolderPath
-      }
+const fetchProjectFolders = async (workspaceId: string, environment: string, directory = "/") => {
+  const { data } = await apiRequest.get<{ folders: TSecretFolder[] }>("/api/v1/folders", {
+    params: {
+      workspaceId,
+      environment,
+      directory
     }
-  );
-  return data;
+  });
+  return data.folders;
 };
 
 export const useGetProjectFolders = ({
   workspaceId,
-  parentFolderId,
   environment,
-  isPaused,
-  sortDir
-}: GetProjectFoldersDTO) =>
+  directory = "/",
+  options = {}
+}: TGetProjectFoldersDTO & {
+  options?: Omit<
+    UseQueryOptions<
+      TSecretFolder[],
+      unknown,
+      TSecretFolder[],
+      ReturnType<typeof queryKeys.getSecretFolders>
+    >,
+    "queryKey" | "queryFn"
+  >;
+}) =>
   useQuery({
-    queryKey: queryKeys.getSecretFolders(workspaceId, environment, parentFolderId),
-    enabled: Boolean(workspaceId) && Boolean(environment) && !isPaused,
-    queryFn: async () => fetchProjectFolders(workspaceId, environment, parentFolderId),
-    select: useCallback(
-      ({ folders, dir }: { folders: TSecretFolder[]; dir: TSecretFolder[] }) => ({
-        dir,
-        folders: folders.sort((a, b) =>
-          sortDir === "asc"
-            ? a?.name?.localeCompare(b?.name || "")
-            : b?.name?.localeCompare(a?.name || "")
-        )
-      }),
-      [sortDir]
-    )
+    ...options,
+    queryKey: queryKeys.getSecretFolders({ workspaceId, environment, directory }),
+    enabled: Boolean(workspaceId) && Boolean(environment) && (options?.enabled ?? true),
+    queryFn: async () => fetchProjectFolders(workspaceId, environment, directory)
   });
 
 export const useGetFoldersByEnv = ({
-  parentFolderPath,
+  directory = "/",
   workspaceId,
-  environments,
-  parentFolderId
+  environments
 }: TGetFoldersByEnvDTO) => {
   const folders = useQueries({
-    queries: environments.map((env) => ({
-      queryKey: queryKeys.getSecretFolders(workspaceId, env, parentFolderPath || parentFolderId),
-      queryFn: async () => fetchProjectFolders(workspaceId, env, parentFolderId, parentFolderPath),
-      enabled: Boolean(workspaceId) && Boolean(env)
+    queries: environments.map((environment) => ({
+      queryKey: queryKeys.getSecretFolders({ workspaceId, environment, directory }),
+      queryFn: async () => fetchProjectFolders(workspaceId, environment, directory),
+      enabled: Boolean(workspaceId) && Boolean(environment)
     }))
   });
 
   const folderNames = useMemo(() => {
     const names = new Set<string>();
     folders?.forEach(({ data }) => {
-      data?.folders.forEach(({ name }) => {
+      data?.forEach(({ name }) => {
         names.add(name);
       });
     });
@@ -92,9 +86,7 @@ export const useGetFoldersByEnv = ({
       const selectedEnvIndex = environments.indexOf(env);
       if (selectedEnvIndex !== -1) {
         return Boolean(
-          folders?.[selectedEnvIndex]?.data?.folders?.find(
-            ({ name: folderName }) => folderName === name
-          )
+          folders?.[selectedEnvIndex]?.data?.find(({ name: folderName }) => folderName === name)
         );
       }
       return false;
@@ -105,95 +97,78 @@ export const useGetFoldersByEnv = ({
   return { folders, folderNames, isFolderPresentInEnv };
 };
 
-export const useGetProjectFoldersBatch = ({
-  folders = [],
-  isPaused,
-  parentFolderPath
-}: GetProjectFoldersBatchDTO) =>
-  useQueries({
-    queries: folders.map(({ workspaceId, environment, parentFolderId }) => ({
-      queryKey: queryKeys.getSecretFolders(workspaceId, environment, parentFolderPath),
-      queryFn: async () =>
-        fetchProjectFolders(workspaceId, environment, parentFolderId, parentFolderPath),
-      enabled: Boolean(workspaceId) && Boolean(environment) && !isPaused,
-      select: (data: { folders: TSecretFolder[]; dir: TSecretFolder[] }) => ({
-        environment,
-        folders: data.folders,
-        dir: data.dir
-      })
-    }))
-  });
-
 export const useCreateFolder = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, CreateFolderDTO>({
+  return useMutation<{}, {}, TCreateFolderDTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post("/api/v1/folders", dto);
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, parentFolderId }) => {
+    onSuccess: (_, { workspaceId, environment, directory }) => {
       queryClient.invalidateQueries(
-        queryKeys.getSecretFolders(workspaceId, environment, parentFolderId)
+        queryKeys.getSecretFolders({ workspaceId, environment, directory })
       );
       queryClient.invalidateQueries(
-        secretSnapshotKeys.count(workspaceId, environment, parentFolderId)
+        secretSnapshotKeys.list({ workspaceId, environment, directory })
       );
       queryClient.invalidateQueries(
-        secretSnapshotKeys.list(workspaceId, environment, parentFolderId)
+        secretSnapshotKeys.count({ workspaceId, environment, directory })
       );
     }
   });
 };
 
-export const useUpdateFolder = (parentFolderId: string) => {
+export const useUpdateFolder = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, UpdateFolderDTO>({
-    mutationFn: async ({ folderId, name, environment, workspaceId }) => {
-      const { data } = await apiRequest.patch(`/api/v1/folders/${folderId}`, {
+  return useMutation<{}, {}, TUpdateFolderDTO>({
+    mutationFn: async ({ directory = "/", folderName, name, environment, workspaceId }) => {
+      const { data } = await apiRequest.patch(`/api/v1/folders/${folderName}`, {
         name,
         environment,
-        workspaceId
+        workspaceId,
+        directory
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment }) => {
+    onSuccess: (_, { workspaceId, environment, directory }) => {
       queryClient.invalidateQueries(
-        queryKeys.getSecretFolders(workspaceId, environment, parentFolderId)
+        queryKeys.getSecretFolders({ workspaceId, environment, directory })
       );
       queryClient.invalidateQueries(
-        secretSnapshotKeys.count(workspaceId, environment, parentFolderId)
+        secretSnapshotKeys.list({ workspaceId, environment, directory })
       );
       queryClient.invalidateQueries(
-        secretSnapshotKeys.list(workspaceId, environment, parentFolderId)
+        secretSnapshotKeys.count({ workspaceId, environment, directory })
       );
     }
   });
 };
 
-export const useDeleteFolder = (parentFolderId: string) => {
+export const useDeleteFolder = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{}, {}, DeleteFolderDTO>({
-    mutationFn: async ({ folderId, environment, workspaceId }) => {
-      const { data } = await apiRequest.delete(`/api/v1/folders/${folderId}`, {
+  return useMutation<{}, {}, TDeleteFolderDTO>({
+    mutationFn: async ({ directory = "/", folderName, environment, workspaceId }) => {
+      const { data } = await apiRequest.delete(`/api/v1/folders/${folderName}`, {
         data: {
           environment,
-          workspaceId
+          workspaceId,
+          directory
         }
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment }) => {
+    onSuccess: (_, { directory = "/", workspaceId, environment }) => {
       queryClient.invalidateQueries(
-        queryKeys.getSecretFolders(workspaceId, environment, parentFolderId)
+        queryKeys.getSecretFolders({ workspaceId, environment, directory })
       );
       queryClient.invalidateQueries(
-        secretSnapshotKeys.count(workspaceId, environment, parentFolderId)
+        secretSnapshotKeys.list({ workspaceId, environment, directory })
       );
       queryClient.invalidateQueries(
-        secretSnapshotKeys.list(workspaceId, environment, parentFolderId)
+        secretSnapshotKeys.count({ workspaceId, environment, directory })
       );
     }
   });

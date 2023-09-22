@@ -9,21 +9,21 @@ export const useCreateSecretImport = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TCreateSecretImportDTO>({
-    mutationFn: async ({ secretImport, environment, workspaceId, folderId }) => {
+    mutationFn: async ({ secretImport, environment, workspaceId, directory }) => {
       const { data } = await apiRequest.post("/api/v1/secret-imports", {
         secretImport,
         environment,
         workspaceId,
-        folderId
+        directory
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, folderId }) => {
+    onSuccess: (_, { workspaceId, environment, directory }) => {
       queryClient.invalidateQueries(
-        secretImportKeys.getProjectSecretImports(workspaceId, environment, folderId)
+        secretImportKeys.getProjectSecretImports({ workspaceId, environment, directory })
       );
       queryClient.invalidateQueries(
-        secretImportKeys.getSecretImportSecrets(workspaceId, environment, folderId)
+        secretImportKeys.getSecretImportSecrets({ workspaceId, environment, directory })
       );
     }
   });
@@ -33,21 +33,21 @@ export const useUpdateSecretImport = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TUpdateSecretImportDTO>({
-    mutationFn: async ({ environment, workspaceId, folderId, secretImports, id }) => {
+    mutationFn: async ({ environment, workspaceId, directory, secretImports, id }) => {
       const { data } = await apiRequest.put(`/api/v1/secret-imports/${id}`, {
         secretImports,
         environment,
         workspaceId,
-        folderId
+        directory
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, folderId }) => {
+    onSuccess: (_, { workspaceId, environment, directory }) => {
       queryClient.invalidateQueries(
-        secretImportKeys.getProjectSecretImports(workspaceId, environment, folderId)
+        secretImportKeys.getProjectSecretImports({ workspaceId, environment, directory })
       );
       queryClient.invalidateQueries(
-        secretImportKeys.getSecretImportSecrets(workspaceId, environment, folderId)
+        secretImportKeys.getSecretImportSecrets({ workspaceId, environment, directory })
       );
     }
   });
@@ -66,12 +66,12 @@ export const useDeleteSecretImport = () => {
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, folderId }) => {
+    onSuccess: (_, { workspaceId, environment, directory }) => {
       queryClient.invalidateQueries(
-        secretImportKeys.getProjectSecretImports(workspaceId, environment, folderId)
+        secretImportKeys.getProjectSecretImports({ workspaceId, environment, directory })
       );
       queryClient.invalidateQueries(
-        secretImportKeys.getSecretImportSecrets(workspaceId, environment, folderId)
+        secretImportKeys.getSecretImportSecrets({ workspaceId, environment, directory })
       );
     }
   });
