@@ -259,6 +259,7 @@ export const CreateSecretRawV3 = z.object({
     secretPath: z.string().trim().default("/"),
     secretValue: z.string().trim(),
     secretComment: z.string().trim(),
+    skipMultilineEncoding: z.boolean().optional(),
     type: z.enum([SECRET_SHARED, SECRET_PERSONAL])
   }),
   params: z.object({
@@ -275,6 +276,7 @@ export const UpdateSecretByNameRawV3 = z.object({
     environment: z.string().trim(),
     secretValue: z.string().trim(),
     secretPath: z.string().trim().default("/"),
+    skipMultilineEncoding: z.boolean().optional(),
     type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).default(SECRET_SHARED)
   })
 });
@@ -335,7 +337,8 @@ export const CreateSecretV3 = z.object({
     secretCommentCiphertext: z.string().trim().optional(),
     secretCommentIV: z.string().trim().optional(),
     secretCommentTag: z.string().trim().optional(),
-    metadata: z.record(z.string()).optional()
+    metadata: z.record(z.string()).optional(),
+    skipMultilineEncoding: z.boolean().optional()
   }),
   params: z.object({
     secretName: z.string().trim()
@@ -350,7 +353,17 @@ export const UpdateSecretByNameV3 = z.object({
     secretPath: z.string().trim().default("/"),
     secretValueCiphertext: z.string().trim(),
     secretValueIV: z.string().trim(),
-    secretValueTag: z.string().trim()
+    secretValueTag: z.string().trim(),
+    secretCommentCiphertext: z.string().trim().optional(),
+    secretCommentIV: z.string().trim().optional(),
+    secretCommentTag: z.string().trim().optional(),
+    tags: z.string().array().optional(),
+    skipMultilineEncoding: z.boolean().optional(),
+    // to update secret name
+    secretName: z.string().trim().optional(),
+    secretKeyIV: z.string().trim().optional(),
+    secretKeyTag: z.string().trim().optional(),
+    secretKeyCiphertext: z.string().trim().optional()
   }),
   params: z.object({
     secretName: z.string()
@@ -366,5 +379,69 @@ export const DeleteSecretByNameV3 = z.object({
   }),
   params: z.object({
     secretName: z.string()
+  })
+});
+
+export const CreateSecretByNameBatchV3 = z.object({
+  body: z.object({
+    workspaceId: z.string().trim(),
+    environment: z.string().trim(),
+    secretPath: z.string().trim().default("/"),
+    secrets: z
+      .object({
+        secretName: z.string().trim(),
+        type: z.enum([SECRET_SHARED, SECRET_PERSONAL]),
+        secretKeyCiphertext: z.string().trim(),
+        secretKeyIV: z.string().trim(),
+        secretKeyTag: z.string().trim(),
+        secretValueCiphertext: z.string().trim(),
+        secretValueIV: z.string().trim(),
+        secretValueTag: z.string().trim(),
+        secretCommentCiphertext: z.string().trim().optional(),
+        secretCommentIV: z.string().trim().optional(),
+        secretCommentTag: z.string().trim().optional(),
+        metadata: z.record(z.string()).optional(),
+        skipMultilineEncoding: z.boolean().optional()
+      })
+      .array()
+      .min(1)
+  })
+});
+
+export const UpdateSecretByNameBatchV3 = z.object({
+  body: z.object({
+    workspaceId: z.string().trim(),
+    environment: z.string().trim(),
+    secretPath: z.string().trim().default("/"),
+    secrets: z
+      .object({
+        secretName: z.string().trim(),
+        type: z.enum([SECRET_SHARED, SECRET_PERSONAL]),
+        secretValueCiphertext: z.string().trim(),
+        secretValueIV: z.string().trim(),
+        secretValueTag: z.string().trim(),
+        secretCommentCiphertext: z.string().trim().optional(),
+        secretCommentIV: z.string().trim().optional(),
+        secretCommentTag: z.string().trim().optional(),
+        skipMultilineEncoding: z.boolean().optional(),
+        tags: z.string().array().optional()
+      })
+      .array()
+      .min(1)
+  })
+});
+
+export const DeleteSecretByNameBatchV3 = z.object({
+  body: z.object({
+    workspaceId: z.string().trim(),
+    environment: z.string().trim(),
+    secretPath: z.string().trim().default("/"),
+    secrets: z
+      .object({
+        secretName: z.string().trim(),
+        type: z.enum([SECRET_SHARED, SECRET_PERSONAL])
+      })
+      .array()
+      .min(1)
   })
 });

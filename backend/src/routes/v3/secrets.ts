@@ -1,14 +1,8 @@
 import express from "express";
 const router = express.Router();
-import {
-  requireAuth,
-  requireBlindIndicesEnabled,
-  requireE2EEOff
-} from "../../middleware";
+import { requireAuth, requireBlindIndicesEnabled, requireE2EEOff } from "../../middleware";
 import { secretsController } from "../../controllers/v3";
-import {
-  AuthMode
-} from "../../variables";
+import { AuthMode } from "../../variables";
 
 router.get(
   "/raw",
@@ -83,6 +77,40 @@ router.get(
     locationWorkspaceId: "query"
   }),
   secretsController.getSecrets
+);
+
+// akhilmhdh: dont put batch router below the individual operation as those have arbitory name as params
+router.post(
+  "/batch",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+  }),
+  requireBlindIndicesEnabled({
+    locationWorkspaceId: "body"
+  }),
+  secretsController.createSecretByNameBatch
+);
+
+router.patch(
+  "/batch",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+  }),
+  requireBlindIndicesEnabled({
+    locationWorkspaceId: "body"
+  }),
+  secretsController.updateSecretByNameBatch
+);
+
+router.delete(
+  "/batch",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+  }),
+  requireBlindIndicesEnabled({
+    locationWorkspaceId: "body"
+  }),
+  secretsController.deleteSecretByNameBatch
 );
 
 router.post(
