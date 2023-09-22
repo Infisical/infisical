@@ -40,6 +40,8 @@ import {
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_NORTHFLANK,
   INTEGRATION_NORTHFLANK_API_URL,
+  INTEGRATION_QOVERY,
+  INTEGRATION_QOVERY_API_URL,
   INTEGRATION_RAILWAY,
   INTEGRATION_RAILWAY_API_URL,
   INTEGRATION_RENDER,
@@ -214,6 +216,13 @@ const syncSecrets = async ({
       break;
     case INTEGRATION_CHECKLY:
       await syncSecretsCheckly({
+        integration,
+        secrets,
+        accessToken
+      });
+      break;
+    case INTEGRATION_QOVERY:
+      await syncSecretsQovery({
         integration,
         secrets,
         accessToken
@@ -2124,6 +2133,97 @@ const syncSecretsCheckly = async ({
       });
     }
   }
+};
+
+/**
+ * Sync/push [secrets] to Qovery app
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Qovery integration
+ */
+const syncSecretsQovery = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+}) => {
+  
+  const getSecretsRes = (
+    await standardRequest.get(`${INTEGRATION_QOVERY_API_URL}/${integration.scope}/${integration.appId}/environmentVariable`, {
+      headers: {
+        Authorization: `Token ${accessToken}`,
+        "Accept-Encoding": "application/json"
+      }
+    })
+  ).data.results.reduce(
+    (obj: any, secret: any) => ({
+      ...obj,
+      [secret.key]: {"id": secret.id, "value": secret.value}
+    }),
+    {}
+  );
+
+  // add secrets
+  for await (const key of Object.keys(secrets)) {
+    if (!(key in getSecretsRes)) {
+      // case: secret does not exist in qovery
+      // -> add secret
+      await standardRequest.post(
+        `${INTEGRATION_QOVERY_API_URL}/${integration.scope}/${integration.appId}/environmentVariable`,
+        {
+          key,
+          value: secrets[key].value
+        },
+        {
+          headers: {
+            Authorization: `Token ${accessToken}`,
+            Accept: "application/json",
+            "Content-Type": "application/json"
+          }
+        }
+      );
+    } else {
+      // case: secret exists in qovery
+      // -> update/set secret
+
+      if (secrets[key].value !== getSecretsRes[key].value) {
+        await standardRequest.put(
+          `${INTEGRATION_QOVERY_API_URL}/${integration.scope}/${integration.appId}/environmentVariable/${getSecretsRes[key].id}`,
+          {
+            key,
+            value: secrets[key].value
+          },
+          {
+            headers: {
+              Authorization: `Token ${accessToken}`,
+              "Content-Type": "application/json",
+              Accept: "application/json"
+            }
+          }
+        );
+      }
+    }
+  }
+
+  // This one is dangerous because there might be a lot of qovery-specific secrets
+
+  // for await (const key of Object.keys(getSecretsRes)) {
+  //   if (!(key in secrets)) {
+  //     console.log(3)
+  //     // delete secret
+  //     await standardRequest.delete(`${INTEGRATION_QOVERY_API_URL}/application/${integration.appId}/environmentVariable/${getSecretsRes[key].id}`, {
+  //       headers: {
+  //         Authorization: `Token ${accessToken}`,
+  //         Accept: "application/json",
+  //         "X-Qovery-Account": integration.appId
+  //       }
+  //     });
+  //   }
+  // }
 };
 
 /**

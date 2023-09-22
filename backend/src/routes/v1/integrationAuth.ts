@@ -61,6 +61,54 @@ router.get(
 );
 
 router.get(
+  "/:integrationAuthId/qovery/orgs",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  integrationAuthController.getIntegrationAuthQoveryOrgs
+);
+
+router.get(
+  "/:integrationAuthId/qovery/projects",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  integrationAuthController.getIntegrationAuthQoveryProjects
+);
+
+router.get(
+  "/:integrationAuthId/qovery/environments",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  integrationAuthController.getIntegrationAuthQoveryEnvironments
+);
+
+router.get(
+  "/:integrationAuthId/qovery/apps",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  integrationAuthController.getIntegrationAuthQoveryApps
+);
+
+router.get(
+  "/:integrationAuthId/qovery/containers",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  integrationAuthController.getIntegrationAuthQoveryContainers
+);
+
+router.get(
+  "/:integrationAuthId/qovery/jobs",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  integrationAuthController.getIntegrationAuthQoveryJobs
+);
+
+router.get(
   "/:integrationAuthId/railway/environments",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]

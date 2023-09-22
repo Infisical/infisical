@@ -238,6 +238,7 @@
         "integrations/cloud/teamcity",
         "integrations/cloud/cloudflare-pages",
         "integrations/cloud/checkly",
+        "integrations/cloud/qovery",
         "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",
         "integrations/cloud/gcp-secret-manager",
