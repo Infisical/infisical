@@ -220,8 +220,7 @@ const buildViewerPermission = () => {
 
 export const viewerProjectPermission = buildViewerPermission();
 
-export const getUserProjectPermissions = async (userId: string, workspaceId: string) => {
-  // TODO(akhilmhdh): speed this up by pulling from cache later
+const getMembership = async (userId: string, workspaceId: string) => {
   const membership = await Membership.findOne({
     user: userId,
     workspace: workspaceId
@@ -231,6 +230,15 @@ export const getUserProjectPermissions = async (userId: string, workspaceId: str
     }>("customRole")
     .exec();
 
+  if (!membership) {
+    throw UnauthorizedRequestError({ message: "User doesn't belong to organization" });
+  }
+  return membership;
+};
+
+type getMembershipReturn = Awaited<ReturnType<typeof getMembership>>;
+
+const getPermissionFromMember = (membership: getMembershipReturn) => {
   if (!membership || (membership.role === "custom" && !membership.customRole)) {
     throw UnauthorizedRequestError({ message: "User doesn't belong to organization" });
   }
@@ -240,11 +248,38 @@ export const getUserProjectPermissions = async (userId: string, workspaceId: str
   if (membership.role === "viewer") return { permission: viewerProjectPermission, membership };
 
   if (membership.role === "custom") {
-    const permission = createMongoAbility<ProjectPermissionSet>(membership.customRole.permissions, {
-      conditionsMatcher
-    });
+    const permission = createMongoAbility<ProjectPermissionSet>(
+      membership.customRole.permissions as any,
+      {
+        conditionsMatcher
+      }
+    );
     return { permission, membership };
   }
-
   throw BadRequestError({ message: "User role not found" });
+};
+
+export const getUserProjectPermissionsAllWorkSpace = async (
+  userId: string,
+  workspaceIds: string[]
+) => {
+  const memberships = await Membership.find({
+    user: userId,
+    workspace: { $in: workspaceIds }
+  })
+    .populate<{
+      customRole: IRole & { permissions: RawRuleOf<MongoAbility<ProjectPermissionSet>>[] };
+    }>("customRole")
+    .exec();
+
+  if (!memberships || !memberships.length) {
+    throw UnauthorizedRequestError({ message: "User doesn't belong to organization" });
+  }
+
+  return memberships.map((membership) => getPermissionFromMember(membership));
+};
+
+export const getUserProjectPermissions = async (userId: string, workspaceId: string) => {
+  const member = await getMembership(userId, workspaceId);
+  return getPermissionFromMember(member);
 };
