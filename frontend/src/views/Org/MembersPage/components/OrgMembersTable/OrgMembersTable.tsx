@@ -63,6 +63,9 @@ import {
 } from "@app/hooks/api";
 import { TRole } from "@app/hooks/api/roles/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+import { Workspace } from "@app/hooks/api/types";
+
+import { AddToProjectModal } from "./addToProjectModal";
 
 type Props = {
   roles?: TRole<undefined>[];
@@ -80,7 +83,7 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
   const { createNotification } = useNotificationContext();
 
   const { currentOrg } = useOrganization();
-  const { workspaces, currentWorkspace } = useWorkspace();
+  const { currentWorkspace } = useWorkspace();
   const { user } = useUser();
   const userId = user?._id || "";
   const orgId = currentOrg?._id || "";
@@ -95,8 +98,10 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
     "addMember",
     "removeMember",
     "upgradePlan",
-    "setUpEmail"
+    "setUpEmail",
+    "addToProject"
   ] as const);
+
   const { subscription } = useSubscription();
 
   const { data: members, isLoading: isMembersLoading } = useGetOrgUsers(orgId);
@@ -295,6 +300,13 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
 
   const isLoading = isMembersLoading || IsWsMembershipLoading || isRolesLoading;
 
+  const addToProjectData = popUp?.addToProject?.data as {
+    email: string;
+    userWs: Workspace[] | undefined;
+  };
+  const selectedEmail = addToProjectData?.email;
+  const userWorkspaces = addToProjectData?.userWs;
+
   return (
     <div className="w-full">
       <div className="mb-4 flex">
@@ -432,26 +444,10 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
                                   This user isn&apos;t part of any projects yet
                                 </Tag>
                               )}
-                              {router.query.id !== "undefined" &&
-                                !(
-                                  (status === "invited" || status === "verified") &&
-                                  serverDetails?.emailConfigured
-                                ) && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      router.push(`/project/${workspaces[0]?._id}/members`)
-                                    }
-                                    className="w-max cursor-pointer rounded-sm bg-mineshaft px-1.5 py-0.5 text-sm duration-200 hover:bg-primary hover:text-black"
-                                  >
-                                    <FontAwesomeIcon icon={faPlus} className="mr-1" />
-                                    Add to projects
-                                  </button>
-                                )}
                             </div>
                           )}
                         </Td>
-                        <Td>
+                        <Td className="flex items-center justify-end gap-x-2">
                           {userId !== u?._id && (
                             <OrgPermissionCan
                               I={OrgPermissionActions.Delete}
@@ -471,6 +467,22 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
                               )}
                             </OrgPermissionCan>
                           )}
+
+                          {router.query.id !== "undefined" &&
+                            !(
+                              (status === "invited" || status === "verified") &&
+                              serverDetails?.emailConfigured
+                            ) && (
+                              <div>
+                                <Button
+                                  size="xs"
+                                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                                  onClick={() => handlePopUpOpen("addToProject", { email, userWs })}
+                                >
+                                  Add to projects
+                                </Button>
+                              </div>
+                            )}
                         </Td>
                       </Tr>
                     );
@@ -555,6 +567,19 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
             </div>
           )}
         </ModalContent>
+      </Modal>
+      <Modal
+        isOpen={popUp?.addToProject?.isOpen}
+        onOpenChange={(isOpen) => {
+          handlePopUpToggle("addToProject", isOpen);
+        }}
+      >
+        <AddToProjectModal
+          handleClose={() => handlePopUpClose("addToProject")}
+          email={selectedEmail}
+          orgId={orgId}
+          userWorkspaces={userWorkspaces}
+        />
       </Modal>
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
