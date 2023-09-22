@@ -1,8 +1,8 @@
-import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { Meta, StoryObj } from "@storybook/react";
 
-import { Alert, AlertDescription, AlertTitle } from "./Alert";
+import { Alert, AlertDescription } from "./Alert";
 
 const meta: Meta<typeof Alert> = {
   title: "Components/Alert",
@@ -14,12 +14,7 @@ export default meta;
 
 type Story = StoryObj<typeof Alert>;
 
-const ExampleComponent = () => (
-  <>
-    <AlertTitle>this is a title</AlertTitle>
-    <AlertDescription>this is a description</AlertDescription>
-  </>
-);
+const ExampleComponent = () => <AlertDescription>this is a description</AlertDescription>;
 
 export const Default: Story = {
   args: {
@@ -41,14 +36,26 @@ export const Destructive: Story = {
   }
 };
 
-export const WithIcon: Story = {
+export const WithCustomIcon: Story = {
   args: {
-    children: (
-      <>
-        <FontAwesomeIcon icon={faTriangleExclamation} />
-        <ExampleComponent />
-      </>
-    ),
-    variant: "warning"
+    children: <ExampleComponent />,
+    variant: "warning",
+    icon: <FontAwesomeIcon icon={faPlus} />
+  }
+};
+
+export const WithOutIcon: Story = {
+  args: {
+    children: <ExampleComponent />,
+    variant: "warning",
+    icon: null
+  }
+};
+
+export const WithOutTitle: Story = {
+  args: {
+    children: <ExampleComponent />,
+    variant: "warning",
+    hideTitle: true
   }
 };

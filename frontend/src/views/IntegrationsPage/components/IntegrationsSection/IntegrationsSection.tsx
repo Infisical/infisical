@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { faArrowRight, faExclamationTriangle, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { integrationSlugNameMapping } from "public/data/frequentConstants";
 
@@ -55,8 +55,7 @@ export const IntegrationsSection = ({
 
       {!bot?.isActive && (
         <div className="px-6 py-4">
-          <Alert variant="warning">
-            <FontAwesomeIcon icon={faExclamationTriangle} />
+          <Alert hideTitle variant="warning">
             <AlertDescription>
               All the active integrations will be disabled. Disable End-to-End Encryption in{" "}
               <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>

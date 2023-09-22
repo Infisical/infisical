@@ -1,12 +1,9 @@
-import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   decryptAssymmetric,
   encryptAssymmetric
 } from "@app/components/utilities/cryptography/crypto";
-import { Alert, AlertDescription, AlertTitle, Checkbox } from "@app/components/v2";
+import { Alert, AlertDescription, Checkbox } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useGetUserWsKey, useGetWorkspaceBot, useUpdateBotActiveStatus } from "@app/hooks/api";
 
@@ -107,8 +104,6 @@ export const E2EESection = () => {
             </div>
             <div>
               <Alert variant="warning">
-                <FontAwesomeIcon icon={faExclamationTriangle} />
-                <AlertTitle>Warning !</AlertTitle>
                 <AlertDescription>
                   Enabling End-to-end encryption disables all the integrations
                 </AlertDescription>
