@@ -426,13 +426,21 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
                           </OrgPermissionCan>
                         </Td>
                         <Td>
-                          {userWs ? (
-                            userWs?.map(({ name: wsName, _id }) => (
-                              <Tag key={`user-${u._id}-workspace-${_id}`} className="my-1">
+                          {userWs ? ( <>
+                            {userWs?.map(({ name: wsName, _id }) => (
+                              <Tag key={`user-${u._id}-workspace-${_id}`} className="py-[0.23rem] rounded-md">
                                 {wsName}
                               </Tag>
-                            ))
-                          ) : (
+                            ))}
+                            <Button
+                              size="xs"
+                              colorSchema="primary"
+                              variant="outline_bg"
+                              onClick={() => handlePopUpOpen("addToProject", { email, userWs })}
+                            > 
+                              <FontAwesomeIcon icon={faPlus} /> 
+                            </Button>
+                          </>) : (
                             <div className="flex flex-row">
                               {(status === "invited" || status === "verified") &&
                               serverDetails?.emailConfigured ? (
@@ -440,11 +448,28 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
                                   This user hasn&apos;t accepted the invite yet
                                 </Tag>
                               ) : (
-                                <Tag colorSchema="red">
-                                  This user isn&apos;t part of any projects yet
-                                </Tag>
-                              )}
-                            </div>
+                                (router.query.id !== "undefined") &&
+                                !(
+                                  (status === "invited" || status === "verified") &&
+                                  serverDetails?.emailConfigured
+                                ) && (
+                                  <div>
+                                    <Tag colorSchema="red">
+                                      This user isn&apos;t part of any projects yet
+                                    </Tag>
+                                    <Button
+                                      size="xs"
+                                      colorSchema="primary"
+                                      variant="outline_bg"
+                                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                                      onClick={() => handlePopUpOpen("addToProject", { email, userWs })}
+                                    >
+                                      Add to projects
+                                    </Button>
+                                  </div>
+                                )
+                            )}
+                          </div>
                           )}
                         </Td>
                         <Td className="flex items-center justify-end gap-x-2">
@@ -467,22 +492,6 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
                               )}
                             </OrgPermissionCan>
                           )}
-
-                          {router.query.id !== "undefined" &&
-                            !(
-                              (status === "invited" || status === "verified") &&
-                              serverDetails?.emailConfigured
-                            ) && (
-                              <div>
-                                <Button
-                                  size="xs"
-                                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                                  onClick={() => handlePopUpOpen("addToProject", { email, userWs })}
-                                >
-                                  Add to projects
-                                </Button>
-                              </div>
-                            )}
                         </Td>
                       </Tr>
                     );
