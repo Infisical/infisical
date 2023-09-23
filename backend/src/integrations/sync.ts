@@ -941,7 +941,11 @@ const syncSecretsVercel = async ({
       ? {
           teamId: integrationAuth.teamId
         }
-      : {})
+      : {}),
+    ...(integration?.path
+      ? {
+        gitBranch: integration?.path
+      } : {})
   };
 
   const vercelSecrets: VercelSecret[] = (
@@ -960,7 +964,7 @@ const syncSecretsVercel = async ({
 
     if (
       integration.targetEnvironment === "preview" &&
-      integration.path &&
+      secret.gitBranch &&
       integration.path !== secret.gitBranch
     ) {
       // case: secret on preview environment does not have same target git branch
@@ -969,7 +973,7 @@ const syncSecretsVercel = async ({
 
     return true;
   });
-
+  
   const res: { [key: string]: VercelSecret } = {};
 
   for await (const vercelSecret of vercelSecrets) {
