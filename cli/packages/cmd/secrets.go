@@ -188,6 +188,7 @@ var secretsSetCmd = &cobra.Command{
 		secretByKey := getSecretsByKeys(secrets)
 
 		for _, arg := range args {
+			print(arg)
 			splitKeyValueFromArg := strings.SplitN(arg, "=", 2)
 			if splitKeyValueFromArg[0] == "" || splitKeyValueFromArg[1] == "" {
 				util.PrintErrorMessageAndExit("ensure that each secret has a none empty key and value. Modify the input and try again")
@@ -214,6 +215,7 @@ var secretsSetCmd = &cobra.Command{
 			}
 
 			if existingSecret, ok := secretByKey[key]; ok {
+				// Checki if override flag was passed, if so then set type to personal
 				// case: secret exists in project so it needs to be modified
 				encryptedSecretDetails := api.Secret{
 					ID:                    existingSecret.ID,
@@ -661,6 +663,7 @@ func init() {
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
 	secretsSetCmd.Flags().String("path", "/", "set secrets within a folder path")
+	secretsSetCmd.Flags().Bool("override", false, "override existing shared secret")
 
 	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		util.RequireLogin()
