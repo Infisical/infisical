@@ -3,7 +3,6 @@ import {
   faAnglesDown,
   faCheckCircle,
   faChevronRight,
-  faClose,
   faCodeCommit,
   faDownload,
   faEye,
@@ -12,6 +11,7 @@ import {
   faFilter,
   faFolderPlus,
   faMagnifyingGlass,
+  faMinusSquare,
   faPlus,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
@@ -373,14 +373,14 @@ export const ActionBar = ({
           isMultiSelectActive && "h-16"
         )}
       >
-        <div className="text-bunker-300 flex items-center bg-mineshaft-800 mt-4 p-2 pl-4 rounded-md">
+        <div className="text-bunker-300 flex items-center bg-mineshaft-800 mt-4 py-2 px-4 rounded-md">
           <Tooltip content="Clear">
             <IconButton variant="plain" ariaLabel="clear-selection" onClick={onResetSelectedSecret}>
-              <FontAwesomeIcon icon={faClose} size="lg" />
+              <FontAwesomeIcon icon={faMinusSquare} size="lg" />
             </IconButton>
           </Tooltip>
-          <div className="text-sm ml-4 px-2 border-x border-mineshaft-600">
-            {Object.keys(selectedSecrets).length} Secrets
+          <div className="text-sm ml-4 px-2 flex-grow">
+            {Object.keys(selectedSecrets).length} Selected
           </div>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Edit}
@@ -389,15 +389,16 @@ export const ActionBar = ({
             allowedLabel="Delete"
           >
             {(isAllowed) => (
-              <IconButton
-                variant="plain"
-                ariaLabel="delete"
+              <Button
+                variant="outline_bg"
+                leftIcon={<FontAwesomeIcon icon={faTrash} />}
                 className="ml-4 text-red-700"
                 onClick={() => handlePopUpOpen("bulkDeleteSecrets")}
                 isDisabled={!isAllowed}
+                size="xs"
               >
-                <FontAwesomeIcon icon={faTrash} />
-              </IconButton>
+                Delete
+              </Button>
             )}
           </ProjectPermissionCan>
         </div>

@@ -10,7 +10,6 @@ import {
   faCopy,
   faEllipsis,
   faKey,
-  faSave,
   faTag,
   faTags
 } from "@fortawesome/free-solid-svg-icons";
@@ -449,7 +448,7 @@ export const SecretItem = memo(
                       {isSubmitting ? (
                         <Spinner className="w-4 h-4 p-0 m-0" />
                       ) : (
-                        <FontAwesomeIcon icon={faSave} size="lg" className="text-primary" />
+                        <FontAwesomeIcon icon={faCheck} size="lg" className="text-primary" />
                       )}
                     </IconButton>
                   </Tooltip>
