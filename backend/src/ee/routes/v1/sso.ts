@@ -66,6 +66,29 @@ router.get(
 );
 
 router.get(
+  "/redirect/gitlab",
+  authLimiter,
+  (req, res, next) => {
+    passport.authenticate("gitlab", {
+      session: false,
+      ...(req.query.callback_port ? {
+        state: req.query.callback_port as string
+      } : {})
+    })(req, res, next);
+  }
+)
+
+router.get(
+  "/gitlab",
+  authLimiter,
+  passport.authenticate("gitlab", {
+    failureRedirect: "/login/provider/error",
+    session: false
+  }),
+  ssoController.redirectSSO
+)
+
+router.get(
   "/redirect/saml2/:ssoIdentifier",
   authLimiter,
   (req, res, next) => {

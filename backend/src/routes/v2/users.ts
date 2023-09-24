@@ -51,7 +51,8 @@ router.put(
         return authMethods.every(provider => [
             AuthMethod.EMAIL,
             AuthMethod.GOOGLE,
-            AuthMethod.GITHUB
+            AuthMethod.GITHUB,
+            AuthMethod.GITLAB
         ].includes(provider))
     }),
     validateRequest,
