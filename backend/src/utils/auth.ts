@@ -13,8 +13,10 @@ import {
 import { createToken } from "../helpers/auth";
 import {
   getClientIdGitHubLogin,
+  getClientIdGitLabLogin,
   getClientIdGoogleLogin,
   getClientSecretGitHubLogin,
+  getClientSecretGitLabLogin,
   getClientSecretGoogleLogin,
   getJwtProviderAuthLifetime,
   getJwtProviderAuthSecret,
@@ -28,6 +30,8 @@ import { getSiteURL } from "../config";
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const GitHubStrategy = require("passport-github").Strategy;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const GitLabStrategy = require("passport-gitlab2").Strategy;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { MultiSamlStrategy } = require("@node-saml/passport-saml");
 
@@ -75,6 +79,8 @@ const initializePassport = async () => {
   const clientSecretGoogleLogin = await getClientSecretGoogleLogin();
   const clientIdGitHubLogin = await getClientIdGitHubLogin();
   const clientSecretGitHubLogin = await getClientSecretGitHubLogin();
+  const clientIdGitLabLogin = await getClientIdGitLabLogin();
+  const clientSecretGitLabLogin = await getClientSecretGitLabLogin();
 
   if (clientIdGoogleLogin && clientSecretGoogleLogin) {
     passport.use(new GoogleStrategy({
@@ -174,6 +180,59 @@ const initializePassport = async () => {
           firstName: user.firstName,
           lastName: user.lastName,
           authMethod: AuthMethod.GITHUB,
+          isUserCompleted,
+          isLinkingRequired,
+          ...(req.query.state ? {
+            callbackPort: req.query.state as string
+          } : {})
+        },
+        expiresIn: await getJwtProviderAuthLifetime(),
+        secret: await getJwtProviderAuthSecret(),
+      });
+
+      req.isUserCompleted = isUserCompleted;
+      req.providerAuthToken = providerAuthToken;
+      return done(null, profile);
+    }
+    ));
+  }
+
+  if (clientIdGitLabLogin && clientSecretGitLabLogin) {
+    passport.use(new GitLabStrategy({
+      passReqToCallback: true,
+      clientID: clientIdGitLabLogin,
+      clientSecret: clientSecretGitLabLogin,
+      callbackURL: "/api/v1/sso/gitlab"
+    },
+    async (req : express.Request, accessToken : any, refreshToken : any, profile : any, done : any) => {
+      const email = profile.emails[0].value;
+      
+      let user = await User.findOne({
+        email
+      }).select("+publicKey");
+
+      if (!user) {
+        user = await new User({
+          email: email,
+          authMethods: [AuthMethod.GITLAB],
+          firstName: profile.displayName,
+          lastName: ""
+        }).save();
+      }
+      
+      let isLinkingRequired = false;
+      if (!user.authMethods.includes(AuthMethod.GITLAB)) {
+        isLinkingRequired = true;
+      }
+
+      const isUserCompleted = !!user.publicKey;
+      const providerAuthToken = createToken({
+        payload: {
+          userId: user._id.toString(),
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          authMethod: AuthMethod.GITLAB,
           isUserCompleted,
           isLinkingRequired,
           ...(req.query.state ? {
