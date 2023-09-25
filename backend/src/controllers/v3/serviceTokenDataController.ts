@@ -4,9 +4,23 @@ import {
     ServiceTokenDataV3,
     ServiceTokenDataV3Key
 } from "../../models";
+import {
+    Scope
+} from "../../models/serviceTokenDataV3";
+import {
+    EventType
+} from "../../ee/models";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/serviceTokenV3";
 import { createToken } from "../../helpers/auth";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  getUserProjectPermissions
+} from "../../ee/services/ProjectRoleService";
+import { ForbiddenError } from "@casl/ability"; 
+import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
+import { EEAuditLogService } from "../../ee/services";
 
 /**
  * Create service token data
@@ -26,6 +40,11 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             nonce // for ServiceTokenDataV3Key
         }
     } = await validateRequest(reqValidator.CreateServiceTokenV3, req);
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Create,
+        ProjectPermissionSub.ServiceTokens
+    );
     
     let expiresAt;
     if (expiresIn) {
@@ -33,12 +52,13 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
     }
     
+    const isActive = false;
     const serviceTokenData = await new ServiceTokenDataV3({
         name,
         workspace: new Types.ObjectId(workspaceId),
         publicKey,
         scopes,
-        isActive: false,
+        isActive,
         expiresAt
     }).save();
     
@@ -57,6 +77,22 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         expiresIn,
         secret: "hello" // TODO: replace with real secret
     });
+    
+    await EEAuditLogService.createAuditLog(
+        req.authData,
+        {
+            type: EventType.CREATE_SERVICE_TOKEN_V3,
+            metadata: {
+                name,
+                isActive,
+                scopes: scopes as Array<Scope>,
+                expiresAt
+            }
+        },
+        {
+            workspaceId: new Types.ObjectId(workspaceId)
+        }
+    );
     
     return res.status(200).send({
         serviceTokenData,
@@ -81,13 +117,29 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
         }
     } = await validateRequest(reqValidator.UpdateServiceTokenV3, req);
 
+    let serviceTokenData = await ServiceTokenDataV3.findById(serviceTokenDataId);
+
+    if (!serviceTokenData) throw ResourceNotFoundError({ 
+        message: "Service token not found" 
+    });
+    
+    const { permission } = await getUserProjectPermissions(
+        req.user._id,
+        serviceTokenData.workspace.toString()
+    );
+    
+    ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        ProjectPermissionSub.ServiceTokens
+    );
+
     let expiresAt;
     if (expiresIn) {
         expiresAt = new Date();
         expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
     }
     
-    const serviceTokenData = await ServiceTokenDataV3.findByIdAndUpdate(
+    serviceTokenData = await ServiceTokenDataV3.findByIdAndUpdate(
         serviceTokenDataId,
         {
             name,
@@ -97,6 +149,26 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
         },
         {
             new: true
+        }
+    );
+    
+    if (!serviceTokenData) throw BadRequestError({
+        message: "Failed to update service token"
+    });
+
+    await EEAuditLogService.createAuditLog(
+        req.authData,
+        {
+            type: EventType.UPDATE_SERVICE_TOKEN_V3,
+            metadata: {
+                name,
+                isActive,
+                scopes: scopes as Array<Scope>,
+                expiresAt
+            }
+        },
+        {
+            workspaceId: serviceTokenData.workspace
         }
     );
 
@@ -116,13 +188,42 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
         params: { serviceTokenDataId }
     } = await validateRequest(reqValidator.DeleteServiceTokenV3, req);
     
-    const serviceTokenData = await ServiceTokenDataV3.findByIdAndDelete(serviceTokenDataId);
+    let serviceTokenData = await ServiceTokenDataV3.findById(serviceTokenDataId);
+    if (!serviceTokenData) throw ResourceNotFoundError({ 
+        message: "Service token not found" 
+    });
     
-    if (serviceTokenData) {
-        await ServiceTokenDataV3Key.findOneAndDelete({
-            serviceTokenData: serviceTokenData._id
-        });
-    }
+    const { permission } = await getUserProjectPermissions(
+        req.user._id,
+        serviceTokenData.workspace.toString()
+    );
+    
+    ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Delete,
+        ProjectPermissionSub.ServiceTokens
+    );
+    
+    serviceTokenData = await ServiceTokenDataV3.findByIdAndDelete(serviceTokenDataId);
+    
+    if (!serviceTokenData) throw BadRequestError({
+        message: "Failed to delete service token"
+    });
+    
+    await EEAuditLogService.createAuditLog(
+        req.authData,
+        {
+            type: EventType.DELETE_SERVICE_TOKEN_V3,
+            metadata: {
+                name: serviceTokenData.name,
+                isActive: serviceTokenData.isActive,
+                scopes: serviceTokenData.scopes as Array<Scope>,
+                expiresAt: serviceTokenData.expiresAt
+            }
+        },
+        {
+            workspaceId: serviceTokenData.workspace
+        }
+    );
 
     return res.status(200).send({
         serviceTokenData

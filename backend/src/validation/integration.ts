@@ -58,6 +58,10 @@ export const validateClientForIntegration = async ({
       throw UnauthorizedRequestError({
         message: "Failed service token authorization for integration"
       });
+    case ActorType.SERVICE_V3:
+      throw UnauthorizedRequestError({
+        message: "Failed service token authorization for integration"
+      });
   }
 };
 

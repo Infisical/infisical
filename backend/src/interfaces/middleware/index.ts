@@ -6,6 +6,7 @@ import {
 } from "../../models";
 import { 
     ServiceActor,
+    ServiceActorV3,
     UserActor,
     UserAgentType
 } from "../../ee/models";
@@ -23,7 +24,7 @@ export interface UserAuthData extends BaseAuthData {
 }
 
 export interface ServiceTokenV3AuthData extends BaseAuthData {
-    actor: ServiceActor;
+    actor: ServiceActorV3;
     authPayload: IServiceTokenDataV3;
 }
 

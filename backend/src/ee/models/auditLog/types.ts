@@ -2,6 +2,9 @@ import {
     ActorType,
     EventType
 } from "./enums";
+import {
+    Scope
+} from "../../../models/serviceTokenDataV3";
 
 interface UserActorMetadata {
     userId: string;
@@ -191,6 +194,36 @@ interface DeleteServiceTokenEvent {
             environment: string;
             secretPath: string;
         }>;
+    }
+}
+
+interface CreateServiceTokenV3Event {
+    type: EventType.CREATE_SERVICE_TOKEN_V3;
+    metadata: {
+        name: string;
+        isActive: boolean;
+        scopes: Array<Scope>;
+        expiresAt?: Date;
+    }
+}
+
+interface UpdateServiceTokenV3Event {
+    type: EventType.UPDATE_SERVICE_TOKEN_V3;
+    metadata: {
+        name?: string;
+        isActive?: boolean;
+        scopes?: Array<Scope>;
+        expiresAt?: Date;
+    }
+}
+
+interface DeleteServiceTokenV3Event {
+    type: EventType.DELETE_SERVICE_TOKEN_V3;
+    metadata: {
+        name: string;
+        isActive: boolean;
+        scopes: Array<Scope>;
+        expiresAt?: Date;
     }
 }
 
@@ -390,6 +423,9 @@ export type Event =
     | DeleteTrustedIPEvent
     | CreateServiceTokenEvent
     | DeleteServiceTokenEvent
+    | CreateServiceTokenV3Event
+    | UpdateServiceTokenV3Event
+    | DeleteServiceTokenV3Event
     | CreateEnvironmentEvent
     | UpdateEnvironmentEvent
     | DeleteEnvironmentEvent

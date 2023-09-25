@@ -5,7 +5,7 @@ enum Permission {
     READ_WRITE = "readWrite"
 }
 
-interface Scope {
+export interface Scope {
     environment: string;
     secretPath: string;
     permission: Permission;
