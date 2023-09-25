@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import { z } from "zod";
 
 export enum SecretActionType {
@@ -7,11 +8,16 @@ export enum SecretActionType {
 }
 
 export const formSchema = z.object({
-  key: z.string(),
-  value: z.string(),
-  idOverride: z.string().optional(),
-  valueOverride: z.string().optional(),
-  overrideAction: z.string().optional(),
+  key: z.string().trim(),
+  value: z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
+  idOverride: z.string().trim().optional(),
+  valueOverride: z
+    .string()
+    .optional()
+    .transform((val) =>
+      typeof val === "string" ? (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()) : val
+    ),
+  overrideAction: z.string().trim().optional(),
   comment: z.string().trim().optional(),
   skipMultilineEncoding: z.boolean().optional(),
   tags: z

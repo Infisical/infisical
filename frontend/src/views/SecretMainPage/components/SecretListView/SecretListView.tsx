@@ -11,6 +11,8 @@ import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
 import { UserWsKeyPair, WsTag } from "@app/hooks/api/types";
 
+import { secretSnapshotKeys } from "~/hooks/api/secretSnapshots/queries";
+
 import { Filter, GroupBy, SortDir } from "../../SecretMainPage.types";
 import { SecretDetailSidebar } from "./SecretDetaiSidebar";
 import { SecretItem } from "./SecretItem";
@@ -218,8 +220,13 @@ export const SecretListView = ({
         queryClient.invalidateQueries(
           secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
         );
+        queryClient.invalidateQueries(
+          secretSnapshotKeys.list({ workspaceId, environment, directory: secretPath })
+        );
+        queryClient.invalidateQueries(
+          secretSnapshotKeys.count({ workspaceId, environment, directory: secretPath })
+        );
         handlePopUpClose("secretDetail");
-
         createNotification({
           type: "success",
           text: "Successfully saved secrets"
@@ -241,6 +248,12 @@ export const SecretListView = ({
       await handleSecretOperation("delete", "shared", key);
       queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.list({ workspaceId, environment, directory: secretPath })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.count({ workspaceId, environment, directory: secretPath })
       );
       handlePopUpClose("deleteSecret");
       handlePopUpClose("secretDetail");

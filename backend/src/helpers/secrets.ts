@@ -1203,7 +1203,7 @@ const formatMultiValueEnv = (val?: string) => {
 export const expandSecrets = async (
   workspaceId: string,
   rootEncKey: string,
-  secrets: Record<string, { value: string; comment?: string }>
+  secrets: Record<string, { value: string; comment?: string; skipMultilineEncoding?: boolean }>
 ) => {
   const expandedSec: Record<string, string> = {};
   const interpolatedSec: Record<string, string> = {};
@@ -1221,7 +1221,10 @@ export const expandSecrets = async (
 
   for (const key of Object.keys(secrets)) {
     if (expandedSec?.[key]) {
-      secrets[key].value = formatMultiValueEnv(expandedSec[key]);
+      // should not do multi line encoding if user has set it to skip
+      secrets[key].value = secrets[key].skipMultilineEncoding
+        ? expandedSec[key]
+        : formatMultiValueEnv(expandedSec[key]);
       continue;
     }
 
@@ -1236,7 +1239,9 @@ export const expandSecrets = async (
       key
     );
 
-    secrets[key].value = formatMultiValueEnv(expandedVal);
+    secrets[key].value = secrets[key].skipMultilineEncoding
+      ? expandedVal
+      : formatMultiValueEnv(expandedVal);
   }
 
   return secrets;

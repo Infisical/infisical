@@ -257,7 +257,9 @@ export const CreateSecretRawV3 = z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
     secretPath: z.string().trim().default("/"),
-    secretValue: z.string().trim(),
+    secretValue: z
+      .string()
+      .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
     secretComment: z.string().trim(),
     skipMultilineEncoding: z.boolean().optional(),
     type: z.enum([SECRET_SHARED, SECRET_PERSONAL])
@@ -274,7 +276,9 @@ export const UpdateSecretByNameRawV3 = z.object({
   body: z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
-    secretValue: z.string().trim(),
+    secretValue: z
+      .string()
+      .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
     secretPath: z.string().trim().default("/"),
     skipMultilineEncoding: z.boolean().optional(),
     type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).default(SECRET_SHARED)
