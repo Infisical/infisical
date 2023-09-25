@@ -87,6 +87,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "checkly":
         link = `${window.location.origin}/integrations/checkly/authorize`;
         break;
+      case "qovery":
+        link = `${window.location.origin}/integrations/qovery/authorize`;
+        break;
       case "railway":
         link = `${window.location.origin}/integrations/railway/authorize`;
         break;

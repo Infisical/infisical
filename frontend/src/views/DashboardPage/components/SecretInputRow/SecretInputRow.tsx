@@ -270,7 +270,7 @@ export const SecretInputRow = memo(
           className="flex w-full flex-grow flex-row border-r border-none border-red"
           style={{ padding: "0.5rem 0 0.5rem 1rem" }}
         >
-          <div className="w-full">
+          <div className="w-full flex items-center">
             {isOverridden ? (
               <Controller
                 control={control}

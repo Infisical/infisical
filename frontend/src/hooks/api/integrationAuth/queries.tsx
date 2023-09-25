@@ -9,6 +9,8 @@ import {
   Environment, 
   IntegrationAuth, 
   NorthflankSecretGroup,
+  Org,
+  Project,
   Service, 
   Team, 
   TeamCityBuildConfig} from "./types";
@@ -27,6 +29,31 @@ const integrationAuthKeys = {
     integrationAuthId: string;
     appId: string;
   }) => [{ integrationAuthId, appId }, "integrationAuthVercelBranches"] as const,
+  getIntegrationAuthQoveryOrgs: (integrationAuthId: string) => 
+  [{ integrationAuthId }, "integrationAuthQoveryOrgs"] as const,
+  getIntegrationAuthQoveryProjects: ({
+    integrationAuthId,
+    orgId
+  }: {
+    integrationAuthId: string;
+    orgId: string;
+  }) => [{ integrationAuthId, orgId }, "integrationAuthQoveryProjects"] as const,
+  getIntegrationAuthQoveryEnvironments: ({
+    integrationAuthId,
+    projectId
+  }: {
+    integrationAuthId: string;
+    projectId: string;
+  }) => [{ integrationAuthId, projectId }, "integrationAuthQoveryEnvironments"] as const,
+  getIntegrationAuthQoveryScopes: ({
+    integrationAuthId,
+    environmentId,
+    scope
+  }: {
+    integrationAuthId: string;
+    environmentId: string;
+    scope: "job" | "application" | "container";
+  }) => [{ integrationAuthId, environmentId, scope }, "integrationAuthQoveryScopes"] as const,
   getIntegrationAuthRailwayEnvironments: ({
     integrationAuthId,
     appId
@@ -120,6 +147,121 @@ const fetchIntegrationAuthVercelBranches = async ({
   return branches;
 };
 
+const fetchIntegrationAuthQoveryOrgs = async (integrationAuthId: string) => {
+  const {
+    data: { orgs }
+  } = await apiRequest.get<{ orgs: Org[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/qovery/orgs`
+  );
+
+  return orgs;
+};
+
+const fetchIntegrationAuthQoveryProjects = async ({
+  integrationAuthId,
+  orgId
+}: {
+  integrationAuthId: string;
+  orgId: string;
+}) => {
+  if (orgId === "none") return [];
+  
+  const {
+    data: { projects }
+  } = await apiRequest.get<{ projects: Project[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/qovery/projects`,
+    {
+      params: {
+        orgId
+      }
+    }
+  );
+
+  return projects;
+};
+
+const fetchIntegrationAuthQoveryEnvironments = async ({
+  integrationAuthId,
+  projectId
+}: {
+  integrationAuthId: string;
+  projectId: string;
+}) => {
+  if (projectId === "none") return [];
+
+  const {
+    data: { environments }
+  } = await apiRequest.get<{ environments: Environment[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/qovery/environments`,
+    {
+      params: {
+        projectId
+      }
+    }
+  );
+
+  return environments;
+};
+
+const fetchIntegrationAuthQoveryScopes = async ({
+  integrationAuthId,
+  environmentId,
+  scope
+}: {
+  integrationAuthId: string;
+  environmentId: string;
+  scope: "job" | "application" | "container";
+}) => {
+  if (environmentId === "none") return [];
+  
+  if (scope === "application") {
+    const {
+      data: { apps }
+    } = await apiRequest.get<{ apps: App[] }>(
+      `/api/v1/integration-auth/${integrationAuthId}/qovery/apps`,
+      {
+        params: {
+          environmentId
+        }
+      }
+    );
+
+    return apps;
+  } 
+  
+  if (scope === "container") {
+    const {
+      data: { containers }
+    } = await apiRequest.get<{ containers: App[] }>(
+      `/api/v1/integration-auth/${integrationAuthId}/qovery/containers`,
+      {
+        params: {
+          environmentId
+        }
+      }
+    );
+
+    return containers;
+  }
+
+  if (scope === "job") {
+    const {
+      data: { jobs }
+    } = await apiRequest.get<{ jobs: App[] }>(
+      `/api/v1/integration-auth/${integrationAuthId}/qovery/jobs`,
+      {
+        params: {
+          environmentId
+        }
+      }
+    );
+
+    return jobs;
+  }
+
+  return undefined;
+};
+
 const fetchIntegrationAuthRailwayEnvironments = async ({
   integrationAuthId,
   appId
@@ -197,6 +339,8 @@ const fetchIntegrationAuthTeamCityBuildConfigs = async ({
   integrationAuthId: string;
   appId: string;
 }) => {
+  if (appId === "") return [];
+
   const {
     data: { buildConfigs }
   } = await apiRequest.get<{ buildConfigs: TeamCityBuildConfig[] }>(
@@ -264,6 +408,82 @@ export const useGetIntegrationAuthVercelBranches = ({
       fetchIntegrationAuthVercelBranches({
         integrationAuthId,
         appId
+      }),
+    enabled: true
+  });
+};
+
+export const useGetIntegrationAuthQoveryOrgs = (integrationAuthId: string) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthQoveryOrgs(integrationAuthId),
+    queryFn: () =>
+      fetchIntegrationAuthQoveryOrgs(integrationAuthId),
+    enabled: true
+  });
+};
+
+export const useGetIntegrationAuthQoveryProjects = ({
+  integrationAuthId,
+  orgId
+}: {
+  integrationAuthId: string;
+  orgId: string;
+}) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthQoveryProjects({
+      integrationAuthId,
+      orgId
+    }),
+    queryFn: () =>
+      fetchIntegrationAuthQoveryProjects({
+        integrationAuthId,
+        orgId
+      }),
+    enabled: true
+  });
+};
+
+export const useGetIntegrationAuthQoveryEnvironments = ({
+  integrationAuthId,
+  projectId
+}: {
+  integrationAuthId: string;
+  projectId: string;
+}) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthQoveryEnvironments({
+      integrationAuthId,
+      projectId
+    }),
+    queryFn: () =>
+      fetchIntegrationAuthQoveryEnvironments({
+        integrationAuthId,
+        projectId
+      }),
+    enabled: true
+  });
+};
+
+export const useGetIntegrationAuthQoveryScopes = ({
+  integrationAuthId,
+  environmentId,
+  scope
+}: {
+  integrationAuthId: string;
+  environmentId: string;
+  scope: "job" | "application" | "container";
+}) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthQoveryScopes({
+      integrationAuthId,
+      environmentId,
+      scope
+    }),
+    queryFn: () =>
+      fetchIntegrationAuthQoveryScopes({
+        integrationAuthId,
+        environmentId,
+        scope
       }),
     enabled: true
   });

@@ -19,6 +19,7 @@ const integrationSlugNameMapping: Mapping = {
   "travisci": "TravisCI",
   "supabase": "Supabase",
   "checkly": "Checkly",
+  "qovery": "Qovery",
   "terraform-cloud": "Terraform Cloud",
   "teamcity": "TeamCity",
   "hashicorp-vault": "Vault",

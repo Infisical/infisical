@@ -80,13 +80,14 @@ export const CreateIntegrationV1 = z.object({
     owner: z.string().trim().optional(),
     path: z.string().trim().optional(),
     region: z.string().trim().optional(),
+    scope: z.string().trim().optional(),
     metadata: z.object({
       secretPrefix: z.string().optional(),
       secretSuffix: z.string().optional(),
       secretGCPLabel: z.object({
         labelName: z.string(),
         labelValue: z.string()
-      }).optional()
+      }).optional(),
     }).optional()
   })
 });
