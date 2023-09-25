@@ -819,3 +819,18 @@ export const backfillPermission = async () => {
     console.info("Could not acquire lock for script [backfillPermission], skipping");
   }
 };
+
+export const migrateRoleFromOwnerToAdmin = async () => {
+  await MembershipOrg.updateMany(
+    {
+      role: OWNER
+    },
+    {
+      $set: {
+        role: ADMIN
+      }
+    }
+  );
+
+  console.info("Backfill: Finished converting owner role to member");
+}
