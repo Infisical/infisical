@@ -205,6 +205,7 @@ const initializePassport = async () => {
       callbackURL: "/api/v1/sso/gitlab"
     },
     async (req : express.Request, accessToken : any, refreshToken : any, profile : any, done : any) => {
+      
       const email = profile.emails[0].value;
       
       let user = await User.findOne({
