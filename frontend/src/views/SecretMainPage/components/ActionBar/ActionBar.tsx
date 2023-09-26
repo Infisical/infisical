@@ -1,6 +1,6 @@
 import { subject } from "@casl/ability";
 import {
-  faAnglesDown,
+  faAngleDown,
   faCheckCircle,
   faChevronRight,
   faCodeCommit,
@@ -317,11 +317,11 @@ export const ActionBar = ({
                 variant="outline_bg"
                 className="rounded-l-none bg-mineshaft-600 p-3"
               >
-                <FontAwesomeIcon icon={faAnglesDown} />
+                <FontAwesomeIcon icon={faAngleDown} />
               </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <div className="p-2 flex flex-col space-y-2">
+              <div className="p-1.5 flex flex-col space-y-1">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
                   a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
@@ -373,7 +373,7 @@ export const ActionBar = ({
           isMultiSelectActive && "h-16"
         )}
       >
-        <div className="text-bunker-300 flex items-center bg-mineshaft-800 mt-4 py-2 px-4 rounded-md">
+        <div className="text-bunker-300 flex items-center bg-mineshaft-800 mt-3.5 py-2 px-4 rounded-md border border-mineshaft-600">
           <Tooltip content="Clear">
             <IconButton variant="plain" ariaLabel="clear-selection" onClick={onResetSelectedSecret}>
               <FontAwesomeIcon icon={faMinusSquare} size="lg" />
@@ -391,8 +391,9 @@ export const ActionBar = ({
             {(isAllowed) => (
               <Button
                 variant="outline_bg"
+                colorSchema="danger"
                 leftIcon={<FontAwesomeIcon icon={faTrash} />}
-                className="ml-4 text-red-700"
+                className="ml-4"
                 onClick={() => handlePopUpOpen("bulkDeleteSecrets")}
                 isDisabled={!isAllowed}
                 size="xs"

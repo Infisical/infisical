@@ -193,11 +193,11 @@ export const SecretItem = memo(
                 id={`checkbox-${secret._id}`}
                 isChecked={isSelected}
                 onCheckedChange={() => onToggleSecretSelect(secret._id)}
-                className={twMerge("group-hover:flex hidden", isSelected && "flex")}
+                className={twMerge("group-hover:flex hidden ml-3", isSelected && "flex")}
               />
               <FontAwesomeIcon
                 icon={faKey}
-                className={twMerge("group-hover:hidden block", isSelected && "hidden")}
+                className={twMerge("group-hover:hidden block ml-3", isSelected && "hidden")}
               />
             </div>
             <div className="w-80 h-11 flex items-center px-4 py-2 flex-shrink-0">
@@ -211,7 +211,7 @@ export const SecretItem = memo(
                     autoCapitalization={currentWorkspace?.autoCapitalization}
                     variant="plain"
                     {...field}
-                    className="w-full focus:text-bunker-100 hover:ring-primary-400/50 hover:ring-1"
+                    className="w-full focus:text-bunker-100 focus:ring-transparent px-0"
                   />
                 )}
               />
@@ -232,7 +232,7 @@ export const SecretItem = memo(
                       isVisible={isVisible}
                       isReadOnly={isReadOnly}
                       {...field}
-                      containerClassName="hover:border-primary-400/50 border border-transparent px-2 py-1.5 rounded-md transition-all group-hover:mr-2"
+                      containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2"
                     />
                   )}
                 />
@@ -247,7 +247,7 @@ export const SecretItem = memo(
                       key="secret-value"
                       isVisible={isVisible}
                       {...field}
-                      containerClassName="hover:border-primary-400/50 border border-transparent px-2 py-1.5 rounded-md transition-all group-hover:mr-2"
+                      containerClassName="py-1.5 rounded-md transition-all group-hover:mr-2"
                     />
                   )}
                 />
@@ -311,10 +311,12 @@ export const SecretItem = memo(
                         </DropdownMenuItem>
                       );
                     })}
-                    <DropdownMenuItem>
+                    <DropdownMenuItem className="px-1.5">
                       <Button
                         size="xs"
                         className="w-full"
+                        colorSchema="primary"
+                        variant="outline_bg"
                         leftIcon={<FontAwesomeIcon icon={faTag} />}
                         onClick={onCreateTag}
                       >
@@ -415,6 +417,7 @@ export const SecretItem = memo(
                       <IconButton
                         ariaLabel="delete-value"
                         variant="plain"
+                        colorSchema="danger"
                         size="md"
                         className="group-hover:opacity-100 opacity-0 p-0"
                         onClick={() => onDeleteSecret(secret)}

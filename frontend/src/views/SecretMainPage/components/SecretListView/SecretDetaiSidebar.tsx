@@ -312,6 +312,8 @@ export const SecretDetailSidebar = ({
                           <Button
                             size="xs"
                             className="w-full"
+                            colorSchema="primary"
+                            variant="outline_bg"
                             leftIcon={<FontAwesomeIcon icon={faTag} />}
                             onClick={onCreateTag}
                             isDisabled={!isAllowed}

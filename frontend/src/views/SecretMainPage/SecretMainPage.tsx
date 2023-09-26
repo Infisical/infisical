@@ -257,15 +257,15 @@ export const SecretMainPage = () => {
           />
           <div
             className={twMerge(
-              "mt-6 overflow-auto thin-scrollbar bg-mineshaft-800 text-left text-bunker-300 rounded-md text-sm"
+              "mt-3 overflow-auto thin-scrollbar bg-mineshaft-800 text-left text-bunker-300 rounded-md text-sm border border-mineshaft-600"
             )}
           >
             <div className="flex flex-col ">
               {isNotEmtpy && (
                 <div className="flex font-medium border-b border-mineshaft-600">
-                  <div className="w-12 flex-shrink-0" />
+                  <div className="w-[2.8rem] px-4 py-3 flex-shrink-0" />
                   <div
-                    className="w-80 flex-shrink-0 border-r flex items-center border-mineshaft-600 px-4 py-2"
+                    className="w-80 flex-shrink-0 border-r flex items-center border-mineshaft-600 w-11 px-4 py-2"
                     role="button"
                     tabIndex={0}
                     onClick={handleSortToggle}

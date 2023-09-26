@@ -122,12 +122,13 @@ export const SecretEditRow = ({
               <Tooltip content="cancel">
                 <IconButton
                   variant="plain"
+                  colorSchema="danger"
                   ariaLabel="reset-value"
                   className="h-full"
                   onClick={handleFormReset}
                   isDisabled={isSubmitting}
                 >
-                  <FontAwesomeIcon icon={faXmark} />
+                  <FontAwesomeIcon icon={faXmark} className="hover:text-red" />
                 </IconButton>
               </Tooltip>
             </div>
