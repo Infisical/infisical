@@ -4,6 +4,14 @@ import { requireAuth } from "../../middleware";
 import { AuthMode } from "../../variables";
 import { serviceTokenDataController } from "../../controllers/v3";
 
+router.get(
+  "/me/key",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.SERVICE_TOKEN_V3]
+  }),
+  serviceTokenDataController.getServiceTokenDataKey
+);
+
 router.post(
     "/",
     requireAuth({

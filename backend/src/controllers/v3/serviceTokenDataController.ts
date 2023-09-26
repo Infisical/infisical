@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { 
+    IServiceTokenDataV3,
+    IUser,
     ServiceTokenDataV3,
     ServiceTokenDataV3Key
 } from "../../models";
@@ -23,6 +25,32 @@ import { ForbiddenError } from "@casl/ability";
 import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
 import { EEAuditLogService } from "../../ee/services";
 import { getJwtServiceTokenSecret } from "../../config";
+
+/**
+ * Return project key for service token
+ * @param req 
+ * @param res 
+ */
+export const getServiceTokenDataKey = async (req: Request, res: Response) => {
+    const key = await ServiceTokenDataV3Key.findOne({
+        serviceTokenData: (req.authData.authPayload as IServiceTokenDataV3)._id
+    }).populate<{ sender: IUser }>("sender", "publicKey");
+    
+    if (!key) throw ResourceNotFoundError({
+        message: "Failed to find project key for service token"
+    });
+    
+    const { _id, encryptedKey, nonce, sender: { publicKey } } = key;
+    
+    return res.status(200).send({
+        key: {
+            _id,
+            encryptedKey,
+            publicKey,
+            nonce
+        }
+    });
+}
 
 /**
  * Create service token data
