@@ -8,10 +8,11 @@ import {
     Scope
 } from "../../models/serviceTokenDataV3";
 import {
+    ActorType,
     EventType
 } from "../../ee/models";
 import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/serviceTokenV3";
+import * as reqValidator from "../../validation/serviceTokenDataV3";
 import { createToken } from "../../helpers/auth";
 import {
   ProjectPermissionActions,
@@ -52,9 +53,15 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
     }
     
+    let user;
+    if (req.authData.actor.type === ActorType.USER) {
+        user = req.authData.authPayload._id;
+    }
+    
     const isActive = false;
     const serviceTokenData = await new ServiceTokenDataV3({
         name,
+        user,
         workspace: new Types.ObjectId(workspaceId),
         publicKey,
         scopes,
@@ -161,7 +168,7 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
         {
             type: EventType.UPDATE_SERVICE_TOKEN_V3,
             metadata: {
-                name,
+                name: serviceTokenData.name,
                 isActive,
                 scopes: scopes as Array<Scope>,
                 expiresAt

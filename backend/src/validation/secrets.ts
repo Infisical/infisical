@@ -254,7 +254,7 @@ export const CreateSecretRawV3 = z.object({
     environment: z.string().trim(),
     secretPath: z.string().trim().default("/"),
     secretValue: z.string().trim(),
-    secretComment: z.string().trim(),
+    secretComment: z.string().trim().optional().default(""),
     type: z.enum([SECRET_SHARED, SECRET_PERSONAL])
   }),
   params: z.object({

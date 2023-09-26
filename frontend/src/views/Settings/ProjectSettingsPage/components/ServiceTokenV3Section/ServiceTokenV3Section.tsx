@@ -64,7 +64,7 @@ export const ServiceTokenV3Section = withProjectPermission(
                   onClick={() => handlePopUpOpen("serviceTokenV3")}
                   isDisabled={!isAllowed}
                 >
-                  Create ST V3
+                  Create token
                 </Button>
               )}
             </ProjectPermissionCan>

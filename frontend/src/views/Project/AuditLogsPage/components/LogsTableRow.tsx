@@ -160,6 +160,24 @@ export const LogsTableRow = ({
                         <p>{`Name: ${event.metadata.name}`}</p>
                     </Td>
                 );
+                case EventType.CREATE_SERVICE_TOKEN_V3:
+                    return (
+                        <Td>
+                            <p>{`Name: ${event.metadata.name}`}</p>
+                        </Td>
+                    );
+                case EventType.UPDATE_SERVICE_TOKEN_V3:
+                    return (
+                        <Td>
+                            <p>{`Name: ${event.metadata.name}`}</p>
+                        </Td>
+                    );
+                case EventType.DELETE_SERVICE_TOKEN_V3:
+                    return (
+                        <Td>
+                            <p>{`Name: ${event.metadata.name}`}</p>
+                        </Td>
+                    );
             case EventType.CREATE_ENVIRONMENT:
                 return (
                     <Td>

@@ -70,6 +70,7 @@ export const validateAuthMode = ({
 	if (typeof authHeader === "string") {
 		// case: treat request authentication type as via Authorization header (i.e. either JWT or service token)
 		const [tokenType, tokenValue] = <[string, string]>authHeader.split(" ", 2) ?? [null, null]
+
 		if (tokenType === null)
 			throw BadRequestError({ message: "Missing Authorization Header in the request header." });
 		if (tokenType.toLowerCase() !== "bearer")
@@ -77,18 +78,21 @@ export const validateAuthMode = ({
 		if (tokenValue === null)
 			throw BadRequestError({ message: "Missing Authorization Body in the request header." });
 
-		switch (tokenValue.split(".", 1)[0]) {
+		const parts = tokenValue.split(".");
+		
+		switch (parts[0]) {
 			case "st":
 				authMode = AuthMode.SERVICE_TOKEN;
+				authTokenValue = tokenValue;
 				break;
 			case "proj_token":
 				authMode = AuthMode.SERVICE_TOKEN_V3;
+				authTokenValue = parts.slice(1).join('.');
 				break;
 			default:
 				authMode = AuthMode.JWT;
+				authTokenValue = tokenValue;
 		}
-
-		authTokenValue = tokenValue;
 	}
 
 	if (!authMode || !authTokenValue) throw BadRequestError({ message: "Missing valid Authorization or X-API-KEY in request header." });
@@ -235,29 +239,39 @@ export const getAuthSTDPayload = async ({
 	authTokenValue: string;
 }): Promise<ServiceTokenV3AuthData> => {
 	const decodedToken = <jwt.UserIDJwtPayload>(
-		jwt.verify(authTokenValue, "hello") // TODO: change this
+		jwt.verify(authTokenValue, "hello") // TODO: replace with real secret
 	);
 
-	// perhaps turn this one into a find one and update call?
 	const serviceTokenData = await ServiceTokenDataV3.findOne({
-		_id: new Types.ObjectId(decodedToken.serviceTokenDataId),
+		_id: new Types.ObjectId(decodedToken._id),
+		isActive: true
 	});
-
+	
 	if (!serviceTokenData) {
 		throw UnauthorizedRequestError({ 
 			message: "Failed to authenticate" // standardize auth error messages
 		});
 	} else if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
 		// case: service token expired
-		await ServiceTokenDataV3.findByIdAndDelete(serviceTokenData._id);
+		// TODO: test expired token
+		await ServiceTokenDataV3.findByIdAndUpdate(
+			serviceTokenData._id,
+			{
+				isActive: false
+			},
+			{
+				new: true
+			}
+		);
+		
 		throw UnauthorizedRequestError({
 			message: "Failed to authenticate",
 		});
 	}
-	
+
 	return {
 		actor: {
-			type: ActorType.SERVICE_V3, // should this be servicev3 bc the shape of it is different?
+			type: ActorType.SERVICE_V3,
 			metadata: {
 				serviceId: serviceTokenData._id.toString(),
 				name: serviceTokenData.name

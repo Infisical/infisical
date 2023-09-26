@@ -420,7 +420,7 @@ export const AddServiceTokenV3Modal = ({
                             isLoading={isSubmitting}
                             isDisabled={isSubmitting}
                         >
-                            Create
+                            {popUp?.serviceTokenV3?.data ? "Update" : "Create"}
                         </Button>
                         <Button colorSchema="secondary" variant="plain">
                             Cancel

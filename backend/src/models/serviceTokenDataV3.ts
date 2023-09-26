@@ -1,6 +1,6 @@
 import { Document, Schema, Types, model } from "mongoose";
 
-enum Permission {
+export enum Permission {
     READ = "read",
     READ_WRITE = "readWrite"
 }
@@ -15,6 +15,7 @@ export interface IServiceTokenDataV3 extends Document {
     _id: Types.ObjectId;
     name: string;
     workspace: Types.ObjectId;
+    user: Types.ObjectId;
     publicKey: string;
     isActive: boolean;
     lastUsed?: Date;
@@ -31,6 +32,11 @@ const serviceTokenDataV3Schema = new Schema(
         workspace: {
             type: Schema.Types.ObjectId,
             ref: "Workspace",
+            required: true
+        },
+        user: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
             required: true
         },
         publicKey: {

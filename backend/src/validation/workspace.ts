@@ -57,7 +57,7 @@ export const validateClientForWorkspace = async ({
         environment,
         requiredPermissions
       });
-      break;
+      return { membership, workspace};
     case ActorType.SERVICE_V3:
       throw UnauthorizedRequestError({
         message: "Failed service token authorization for organization"

@@ -3,10 +3,22 @@ import { Types } from "mongoose";
 import { EventService, SecretService } from "../../services";
 import { eventPushSecrets } from "../../events";
 import { BotService } from "../../services";
-import { containsGlobPatterns, isValidScope, repackageSecretToRaw } from "../../helpers/secrets";
+import { 
+  containsGlobPatterns, 
+  isValidScope, 
+  isValidScopeV3,
+  repackageSecretToRaw 
+} from "../../helpers/secrets";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
-import { Folder, IServiceTokenData } from "../../models";
+import { 
+  Folder, 
+  IServiceTokenData,
+  IServiceTokenDataV3
+} from "../../models";
+import {
+  Permission
+} from "../../models/serviceTokenDataV3";
 import { getFolderByPath, getFolderWithPathFromId } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
 import { validateRequest } from "../../helpers/validation";
@@ -17,8 +29,12 @@ import {
   getUserProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError, subject } from "@casl/ability";
-import { validateServiceTokenDataClientForWorkspace } from "../../validation";
+import { 
+  validateServiceTokenDataClientForWorkspace,
+  validateServiceTokenDataV3ClientForWorkspace
+} from "../../validation";
 import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variables";
+import { ActorType } from "../../ee/models";
 
 /**
  * Return secrets for workspace with id [workspaceId] and environment
@@ -59,30 +75,52 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
     throw BadRequestError({ message: "Missing environment or workspace id" });
 
   let permissionCheckFn: (env: string, secPath: string) => boolean; // used to pass as callback function to import secret
-  if (req.user?._id) {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-    permissionCheckFn = (env: string, secPath: string) =>
-      permission.can(
+  switch (req.authData.actor.type) {
+    case ActorType.USER: {
+      const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+      ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, {
-          environment: env,
-          secretPath: secPath
-        })
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
       );
-  } else {
-    await validateServiceTokenDataClientForWorkspace({
-      serviceTokenData: req.authData.authPayload as IServiceTokenData,
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath,
-      requiredPermissions: [PERMISSION_READ_SECRETS]
-    });
-    permissionCheckFn = (env: string, secPath: string) =>
-      isValidScope(req.authData.authPayload as IServiceTokenData, env, secPath);
+      permissionCheckFn = (env: string, secPath: string) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, {
+            environment: env,
+            secretPath: secPath
+          })
+        );
+      break;
+    }
+    case ActorType.SERVICE: {
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenData,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        requiredPermissions: [PERMISSION_READ_SECRETS]
+      });
+      permissionCheckFn = (env: string, secPath: string) =>
+        isValidScope(req.authData.authPayload as IServiceTokenData, env, secPath);
+      break;
+    }
+    case ActorType.SERVICE_V3: {
+      await validateServiceTokenDataV3ClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        acceptedPermissions: [Permission.READ, Permission.READ_WRITE]
+      });
+      permissionCheckFn = (env: string, secPath: string) =>
+        isValidScopeV3({
+          authPayload: req.authData.authPayload as IServiceTokenDataV3,
+          environment: env,
+          secretPath: secPath,
+          acceptedPermissions: [Permission.READ, Permission.READ_WRITE]
+        });
+      break;
+    }
   }
 
   const secrets = await SecretService.getSecrets({
@@ -150,20 +188,35 @@ export const getSecretByNameRaw = async (req: Request, res: Response) => {
     params: { secretName }
   } = await validateRequest(reqValidator.GetSecretByNameRawV3, req);
 
-  if (req.user?._id) {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-  } else {
-    await validateServiceTokenDataClientForWorkspace({
-      serviceTokenData: req.authData.authPayload as IServiceTokenData,
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath,
-      requiredPermissions: [PERMISSION_READ_SECRETS]
-    });
+  switch (req.authData.actor.type) {
+    case ActorType.USER: {
+      const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+      break;
+    }
+    case ActorType.SERVICE: {
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenData,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        requiredPermissions: [PERMISSION_READ_SECRETS]
+      });
+      break;
+    }
+    case ActorType.SERVICE_V3: {
+      await validateServiceTokenDataV3ClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        acceptedPermissions: [Permission.READ]
+      });
+      break;
+    }
   }
 
   const secret = await SecretService.getSecret({
@@ -198,20 +251,35 @@ export const createSecretRaw = async (req: Request, res: Response) => {
     body: { secretPath, environment, workspaceId, type, secretValue, secretComment }
   } = await validateRequest(reqValidator.CreateSecretRawV3, req);
 
-  if (req.user?._id) {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-  } else {
-    await validateServiceTokenDataClientForWorkspace({
-      serviceTokenData: req.authData.authPayload as IServiceTokenData,
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath,
-      requiredPermissions: [PERMISSION_WRITE_SECRETS]
-    });
+  switch (req.authData.actor.type) {
+    case ActorType.USER: {
+      const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+      break;
+    }
+    case ActorType.SERVICE: {
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenData,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        requiredPermissions: [PERMISSION_WRITE_SECRETS]
+      });
+      break;
+    }
+    case ActorType.SERVICE_V3: {
+      await validateServiceTokenDataV3ClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        acceptedPermissions: [Permission.READ_WRITE]
+      });
+      break;
+    }
   }
 
   const key = await BotService.getWorkspaceKeyWithBot({
@@ -281,20 +349,35 @@ export const updateSecretByNameRaw = async (req: Request, res: Response) => {
     body: { secretValue, environment, secretPath, type, workspaceId }
   } = await validateRequest(reqValidator.UpdateSecretByNameRawV3, req);
 
-  if (req.user?._id) {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-  } else {
-    await validateServiceTokenDataClientForWorkspace({
-      serviceTokenData: req.authData.authPayload as IServiceTokenData,
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath,
-      requiredPermissions: [PERMISSION_WRITE_SECRETS]
-    });
+  switch (req.authData.actor.type) {
+    case ActorType.USER: {
+      const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+      break;
+    }
+    case ActorType.SERVICE: {
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenData,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        requiredPermissions: [PERMISSION_WRITE_SECRETS]
+      });
+      break;
+    }
+    case ActorType.SERVICE_V3: {
+      await validateServiceTokenDataV3ClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        acceptedPermissions: [Permission.READ_WRITE]
+      });
+      break;
+    }
   }
 
   const key = await BotService.getWorkspaceKeyWithBot({
@@ -345,20 +428,35 @@ export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
     body: { environment, secretPath, type, workspaceId }
   } = await validateRequest(reqValidator.DeleteSecretByNameRawV3, req);
 
-  if (req.user?._id) {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-  } else {
-    await validateServiceTokenDataClientForWorkspace({
-      serviceTokenData: req.authData.authPayload as IServiceTokenData,
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath,
-      requiredPermissions: [PERMISSION_WRITE_SECRETS]
-    });
+  switch (req.authData.actor.type) {
+    case ActorType.USER: {
+      const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Delete,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+      break;
+    }
+    case ActorType.SERVICE: {
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenData,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        requiredPermissions: [PERMISSION_WRITE_SECRETS]
+      });
+      break;
+    }
+    case ActorType.SERVICE_V3: {
+      await validateServiceTokenDataV3ClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        acceptedPermissions: [Permission.READ_WRITE]
+      });
+      break;
+    }
   }
 
   const { secret } = await SecretService.deleteSecret({
@@ -414,30 +512,53 @@ export const getSecrets = async (req: Request, res: Response) => {
   }
 
   let permissionCheckFn: (env: string, secPath: string) => boolean; // used to pass as callback function to import secret
-  if (req.user?._id) {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-    permissionCheckFn = (env: string, secPath: string) =>
-      permission.can(
+  
+  switch (req.authData.actor.type) {
+    case ActorType.USER: {
+      const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+      ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Read,
-        subject(ProjectPermissionSub.Secrets, {
-          environment: env,
-          secretPath: secPath
-        })
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
       );
-  } else {
-    await validateServiceTokenDataClientForWorkspace({
-      serviceTokenData: req.authData.authPayload as IServiceTokenData,
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath,
-      requiredPermissions: [PERMISSION_READ_SECRETS]
-    });
-    permissionCheckFn = (env: string, secPath: string) =>
-      isValidScope(req.authData.authPayload as IServiceTokenData, env, secPath);
+      permissionCheckFn = (env: string, secPath: string) =>
+        permission.can(
+          ProjectPermissionActions.Read,
+          subject(ProjectPermissionSub.Secrets, {
+            environment: env,
+            secretPath: secPath
+          })
+        );
+      break;
+    }
+    case ActorType.SERVICE: {
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenData,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        requiredPermissions: [PERMISSION_READ_SECRETS]
+      });
+      permissionCheckFn = (env: string, secPath: string) =>
+        isValidScope(req.authData.authPayload as IServiceTokenData, env, secPath);
+      break;
+    }
+    case ActorType.SERVICE_V3: {
+      await validateServiceTokenDataV3ClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        acceptedPermissions: [Permission.READ, Permission.READ_WRITE]
+      });
+      permissionCheckFn = (env: string, secPath: string) =>
+        isValidScopeV3({
+          authPayload: req.authData.authPayload as IServiceTokenDataV3,
+          environment: env,
+          secretPath: secPath,
+          acceptedPermissions: [Permission.READ, Permission.READ_WRITE]
+        });
+      break;
+    }
   }
 
   const secrets = await SecretService.getSecrets({
@@ -486,21 +607,36 @@ export const getSecretByName = async (req: Request, res: Response) => {
     query: { secretPath, environment, workspaceId, type },
     params: { secretName }
   } = await validateRequest(reqValidator.GetSecretByNameV3, req);
-
-  if (req.user?._id) {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-  } else {
-    await validateServiceTokenDataClientForWorkspace({
-      serviceTokenData: req.authData.authPayload as IServiceTokenData,
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath,
-      requiredPermissions: [PERMISSION_READ_SECRETS]
-    });
+  
+  switch (req.authData.actor.type) {
+    case ActorType.USER: {
+      const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+      break;
+    }
+    case ActorType.SERVICE: {
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenData,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        requiredPermissions: [PERMISSION_READ_SECRETS]
+      });
+      break;
+    }
+    case ActorType.SERVICE_V3: {
+      await validateServiceTokenDataV3ClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        acceptedPermissions: [Permission.READ]
+      });
+      break;
+    }
   }
 
   const secret = await SecretService.getSecret({
@@ -543,20 +679,35 @@ export const createSecret = async (req: Request, res: Response) => {
     params: { secretName }
   } = await validateRequest(reqValidator.CreateSecretV3, req);
 
-  if (req.user?._id) {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-  } else {
-    await validateServiceTokenDataClientForWorkspace({
-      serviceTokenData: req.authData.authPayload as IServiceTokenData,
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath,
-      requiredPermissions: [PERMISSION_WRITE_SECRETS]
-    });
+  switch (req.authData.actor.type) {
+    case ActorType.USER: {
+      const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+      break;
+    }
+    case ActorType.SERVICE: {
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenData,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        requiredPermissions: [PERMISSION_WRITE_SECRETS]
+      });
+      break;
+    }
+    case ActorType.SERVICE_V3: {
+      await validateServiceTokenDataV3ClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        acceptedPermissions: [Permission.READ_WRITE]
+      });
+      break;
+    }
   }
 
   const secret = await SecretService.createSecret({
@@ -613,22 +764,37 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     params: { secretName }
   } = await validateRequest(reqValidator.UpdateSecretByNameV3, req);
 
-  if (req.user?._id) {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-  } else {
-    await validateServiceTokenDataClientForWorkspace({
-      serviceTokenData: req.authData.authPayload as IServiceTokenData,
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath,
-      requiredPermissions: [PERMISSION_WRITE_SECRETS]
-    });
+  switch (req.authData.actor.type) {
+    case ActorType.USER: {
+      const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+      break;
+    }
+    case ActorType.SERVICE: {
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenData,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        requiredPermissions: [PERMISSION_WRITE_SECRETS]
+      });
+      break;
+    }
+    case ActorType.SERVICE_V3: {
+      await validateServiceTokenDataV3ClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        acceptedPermissions: [Permission.READ_WRITE]
+      });
+      break;
+    }
   }
-
+      
   const secret = await SecretService.updateSecret({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId),
@@ -665,20 +831,35 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
     params: { secretName }
   } = await validateRequest(reqValidator.DeleteSecretByNameV3, req);
 
-  if (req.user?._id) {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-  } else {
-    await validateServiceTokenDataClientForWorkspace({
-      serviceTokenData: req.authData.authPayload as IServiceTokenData,
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath,
-      requiredPermissions: [PERMISSION_WRITE_SECRETS]
-    });
+  switch (req.authData.actor.type) {
+    case ActorType.USER: {
+      const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Delete,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+      break;
+    }
+    case ActorType.SERVICE: {
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenData,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        requiredPermissions: [PERMISSION_WRITE_SECRETS]
+      });
+      break;
+    }
+    case ActorType.SERVICE_V3: {
+      await validateServiceTokenDataV3ClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        acceptedPermissions: [Permission.READ_WRITE]
+      });
+      break;
+    }
   }
 
   const { secret } = await SecretService.deleteSecret({
