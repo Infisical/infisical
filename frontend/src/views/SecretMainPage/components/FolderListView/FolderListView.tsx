@@ -168,7 +168,7 @@ export const FolderListView = ({
         isOpen={popUp.updateFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("updateFolder", isOpen)}
       >
-        <ModalContent title="Create Folder">
+        <ModalContent title="Edit Folder">
           <FolderForm
             isEdit
             defaultFolderName={popUp.updateFolder.data as string}

@@ -51,7 +51,6 @@ const reorderSecretGroupByUnderscore = (secrets: DecryptedSecret[], sortDir: Sor
 };
 
 const reorderSecret = (secrets: DecryptedSecret[], sortDir: SortDir, filter?: GroupBy | null) => {
-  console.log(secrets);
   if (filter === GroupBy.PREFIX) {
     return reorderSecretGroupByUnderscore(secrets, sortDir);
   }

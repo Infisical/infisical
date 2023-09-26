@@ -1,5 +1,6 @@
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
+import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
 import {
   faCheckCircle,
   faCircle,
@@ -28,7 +29,8 @@ import {
   SecretInput,
   Switch,
   Tag,
-  TextArea
+  TextArea,
+  Tooltip
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useGetSecretVersion } from "@app/hooks/api";
@@ -231,8 +233,12 @@ export const SecretDetailSidebar = ({
                         isChecked={value}
                         onBlur={onBlur}
                         isDisabled={!isAllowed}
+                        className="items-center"
                       >
                         Disable multi line encoding
+                        <Tooltip content="Infisical encodes multiline secrets by escaping newlines and wrappign in quotes. To disable, enable this option">
+                          <FontAwesomeIcon icon={faCircleQuestion} className="ml-1" size="sm" />
+                        </Tooltip>
                       </Switch>
                     )}
                   </ProjectPermissionCan>

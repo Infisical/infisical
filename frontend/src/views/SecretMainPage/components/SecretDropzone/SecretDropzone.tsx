@@ -299,27 +299,27 @@ export const SecretDropzone = ({
           title={isUploadedDuplicateSecretsEmpty ? "Confirmation" : "Duplicate Secrets!!"}
           footerContent={[
             <Button
-              key="keep-old-btn"
-              className="mr-4"
-              onClick={() => handlePopUpClose("overlapKeyWarning")}
-              variant="outline_bg"
-              isDisabled={isSubmitting}
-            >
-              Keep old
-            </Button>,
-            <Button
               isLoading={isSubmitting}
               isDisabled={isSubmitting}
               colorSchema={isUploadedDuplicateSecretsEmpty ? "primary" : "danger"}
               key="overwrite-btn"
               onClick={handleSaveSecrets}
             >
-              {isUploadedDuplicateSecretsEmpty ? "Create" : "Overwrite"}
+              {isUploadedDuplicateSecretsEmpty ? "Upload" : "Overwrite"}
+            </Button>,
+            <Button
+              key="keep-old-btn"
+              className="mr-4"
+              onClick={() => handlePopUpClose("overlapKeyWarning")}
+              variant="outline_bg"
+              isDisabled={isSubmitting}
+            >
+              Cancel
             </Button>
           ]}
         >
           {isUploadedDuplicateSecretsEmpty ? (
-            <div>Uploaded secrets will be created.</div>
+            <div>Upload secrets from this file</div>
           ) : (
             <div className="flex flex-col space-y-2 text-gray-300">
               <div>Your file contains following duplicate secrets</div>

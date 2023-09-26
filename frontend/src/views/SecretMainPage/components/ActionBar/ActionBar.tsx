@@ -170,6 +170,7 @@ export const ActionBar = ({
         environment,
         secrets: bulkDeletedSecrets.map(({ key }) => ({ secretName: key, type: "shared" }))
       });
+      onResetSelectedSecret();
       handlePopUpClose("bulkDeleteSecrets");
       createNotification({
         type: "success",
