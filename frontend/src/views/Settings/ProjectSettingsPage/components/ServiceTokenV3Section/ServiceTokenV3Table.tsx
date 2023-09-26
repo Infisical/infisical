@@ -114,16 +114,24 @@ export const ServiceTokenV3Table = ({
                             <Tr className="h-10" key={`st-v3-${_id}`}>
                                 <Td>{name}</Td>
                                 <Td>
-                                    <Switch
-                                        id={`enable-service-token-${_id}`}
-                                        onCheckedChange={(value) => handleToggleServiceTokenDataStatus({
-                                            serviceTokenDataId: _id,
-                                            isActive: value
-                                        })}
-                                        isChecked={isActive}
+                                    <ProjectPermissionCan
+                                        I={ProjectPermissionActions.Edit}
+                                        a={ProjectPermissionSub.ServiceTokens}
                                     >
-                                        <p className="w-12 mr-4">{isActive ? "Active" : "Inactive"}</p>
-                                    </Switch>
+                                        {(isAllowed) => (
+                                            <Switch
+                                                id={`enable-service-token-${_id}`}
+                                                onCheckedChange={(value) => handleToggleServiceTokenDataStatus({
+                                                    serviceTokenDataId: _id,
+                                                    isActive: value
+                                                })}
+                                                isChecked={isActive}
+                                                isDisabled={!isAllowed}
+                                            >
+                                                <p className="w-12 mr-4">{isActive ? "Active" : "Inactive"}</p>
+                                            </Switch>
+                                        )}
+                                    </ProjectPermissionCan>
                                 </Td>
                                 <Td>
                                     {scopes.map((scope) => {

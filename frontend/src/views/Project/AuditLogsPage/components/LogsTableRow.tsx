@@ -29,6 +29,13 @@ export const LogsTableRow = ({
                         <p>Service token</p>
                     </Td>
                 ); 
+            case ActorType.SERVICE_V3:
+                    return (
+                        <Td>
+                            <p>{`${actor.metadata.name}`}</p>
+                            <p>Service token V3</p>
+                        </Td>
+                    );
             default:
                 return (
                     <Td />

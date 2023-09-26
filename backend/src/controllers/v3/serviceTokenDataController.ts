@@ -22,6 +22,7 @@ import {
 import { ForbiddenError } from "@casl/ability"; 
 import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
 import { EEAuditLogService } from "../../ee/services";
+import { getJwtServiceTokenSecret } from "../../config";
 
 /**
  * Create service token data
@@ -82,7 +83,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             _id: serviceTokenData._id.toString()
         },
         expiresIn,
-        secret: "hello" // TODO: replace with real secret
+        secret: await getJwtServiceTokenSecret()
     });
     
     await EEAuditLogService.createAuditLog(

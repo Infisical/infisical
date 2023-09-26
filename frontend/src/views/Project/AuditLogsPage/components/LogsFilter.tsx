@@ -50,6 +50,12 @@ export const LogsFilter = ({
                         {actor.metadata.name}
                     </SelectItem>
                 );
+            case ActorType.SERVICE_V3:
+                return (
+                    <SelectItem value={`${actor.type}-${actor.metadata.serviceId}`} key={`service-actor-v3-filter-${actor.metadata.serviceId}`}>
+                        {actor.metadata.name}
+                    </SelectItem>
+                );
             default:
                 return (
                     <SelectItem value="actor-none" key="actor-none">

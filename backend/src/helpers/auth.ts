@@ -24,6 +24,7 @@ import {
 	getJwtProviderAuthSecret,
 	getJwtRefreshLifetime,
 	getJwtRefreshSecret,
+	getJwtServiceTokenSecret
 } from "../config";
 import {
 	AuthMode
@@ -87,7 +88,7 @@ export const validateAuthMode = ({
 				break;
 			case "proj_token":
 				authMode = AuthMode.SERVICE_TOKEN_V3;
-				authTokenValue = parts.slice(1).join('.');
+				authTokenValue = parts.slice(1).join(".");
 				break;
 			default:
 				authMode = AuthMode.JWT;
@@ -239,21 +240,28 @@ export const getAuthSTDPayload = async ({
 	authTokenValue: string;
 }): Promise<ServiceTokenV3AuthData> => {
 	const decodedToken = <jwt.UserIDJwtPayload>(
-		jwt.verify(authTokenValue, "hello") // TODO: replace with real secret
+		jwt.verify(authTokenValue, await getJwtServiceTokenSecret())
 	);
-
-	const serviceTokenData = await ServiceTokenDataV3.findOne({
-		_id: new Types.ObjectId(decodedToken._id),
-		isActive: true
-	});
+	
+	const serviceTokenData = await ServiceTokenDataV3.findOneAndUpdate(
+		{
+			_id: new Types.ObjectId(decodedToken._id),
+			isActive: true
+		},
+		{
+			lastUsed: new Date()
+		},
+		{
+			new: true
+		}
+	);
 	
 	if (!serviceTokenData) {
 		throw UnauthorizedRequestError({ 
-			message: "Failed to authenticate" // standardize auth error messages
+			message: "Failed to authenticate"
 		});
 	} else if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
 		// case: service token expired
-		// TODO: test expired token
 		await ServiceTokenDataV3.findByIdAndUpdate(
 			serviceTokenData._id,
 			{
