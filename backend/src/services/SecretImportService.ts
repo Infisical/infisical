@@ -1,8 +1,60 @@
 import { Types } from "mongoose";
+import { generateSecretBlindIndexHelper } from "../helpers";
 import { Folder, ISecret, Secret, SecretImport } from "../models";
 import { getFolderByPath } from "./FolderService";
 
 type TSecretImportFid = { environment: string; folderId: string; secretPath: string };
+
+export const getAnImportedSecret = async (
+  secretName: string,
+  workspaceId: string,
+  environment: string,
+  folderId = "root"
+) => {
+  const secretBlindIndex = await generateSecretBlindIndexHelper({
+    secretName,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  const secImports = await SecretImport.findOne({
+    workspace: workspaceId,
+    environment,
+    folderId
+  });
+  if (!secImports) return;
+  if (secImports.imports.length === 0) return;
+  const folders = await Folder.find({
+    workspace: workspaceId,
+    environment: { $in: secImports.imports.map((el) => el.environment) }
+  });
+
+  const importedSecByFid: TSecretImportFid[] = [];
+  secImports.imports.forEach((el) => {
+    const folder = folders.find((fl) => fl.environment === el.environment);
+    if (folder) {
+      const secPathFolder = getFolderByPath(folder.nodes, el.secretPath);
+      if (secPathFolder)
+        importedSecByFid.push({
+          environment: el.environment,
+          folderId: secPathFolder.id,
+          secretPath: el.secretPath
+        });
+    } else {
+      if (el.secretPath === "/") {
+        // this happens when importing with a fresh env without any folders
+        importedSecByFid.push({ environment: el.environment, folderId: "root", secretPath: "/" });
+      }
+    }
+  });
+  if (importedSecByFid.length === 0) return;
+
+  const secret = await Secret.findOne({
+    workspace: workspaceId,
+    secretBlindIndex
+  }).or(importedSecByFid.map(({ environment, folderId }) => ({ environment, folder: folderId })));
+
+  return secret;
+};
 
 export const getAllImportedSecrets = async (
   workspaceId: string,
