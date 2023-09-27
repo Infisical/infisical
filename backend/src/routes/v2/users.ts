@@ -13,14 +13,6 @@ router.get(
 );
 
 router.patch(
-  "/me/mfa",
-  requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
-  }),
-  usersController.updateMyMfaEnabled
-);
-
-router.patch(
   "/me/name",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]

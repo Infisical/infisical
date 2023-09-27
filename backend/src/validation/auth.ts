@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { validateMfaAuthAppSecretKey, validateMfaAuthAppTotp, validateMfaRecoveryCode } from "./helpers";
 
 export const BeginEmailSignUpV1 = z.object({
   body: z.object({
@@ -131,4 +132,25 @@ export const CompletedAccountSignupV3 = z.object({
     providerAuthToken: z.string().trim().optional().nullish(),
     attributionSource: z.string().trim().optional()
   })
+});
+
+export const VerifyMfaAuthAppTotpV3 = z.object({
+  body: z.object({
+    email: z.string().email().trim(),
+    userTotp: validateMfaAuthAppTotp,
+  }),
+});
+
+export const VerifyMfaAuthAppSecretKeyV3 = z.object({
+  body: z.object({
+    email: z.string().email().trim(),
+    userSecretKey: validateMfaAuthAppSecretKey,
+  }),
+});
+
+export const VerifyMfaRecoveryCodeV3 = z.object({
+  body: z.object({
+    email: z.string().email().trim(),
+    userRecoveryCode: validateMfaRecoveryCode,
+  }),
 });

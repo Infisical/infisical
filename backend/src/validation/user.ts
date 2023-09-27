@@ -228,12 +228,6 @@ export const validateUserClientForOrganization = async ({
   return membershipOrg;
 };
 
-export const UpdateMyMfaEnabledV2 = z.object({
-  body: z.object({
-    isMfaEnabled: z.boolean()
-  })
-});
-
 export const UpdateNameV2 = z.object({
   body: z.object({
     firstName: z.string().trim(),

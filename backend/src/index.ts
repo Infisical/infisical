@@ -63,6 +63,7 @@ import {
 } from "./routes/v2";
 import {
   auth as v3AuthRouter,
+  mfa as v3MfaRouter,
   secrets as v3SecretsRouter,
   signup as v3SignupRouter,
   workspaces as v3WorkspacesRouter
@@ -192,6 +193,7 @@ const main = async () => {
 
   // v3 routes (experimental)
   app.use("/api/v3/auth", v3AuthRouter);
+  app.use("/api/v3/mfa", v3MfaRouter);
   app.use("/api/v3/secrets", v3SecretsRouter);
   app.use("/api/v3/workspaces", v3WorkspacesRouter);
   app.use("/api/v3/signup", v3SignupRouter);

@@ -12,6 +12,7 @@ export enum AuthMethod {
 export enum MfaMethod {
 	EMAIL = "email",
 	AUTH_APP = "auth-app",
+	MFA_RECOVERY_CODES = "mfa-recovery-codes"
 }
 
 export interface IUser extends Document {
@@ -31,15 +32,23 @@ export interface IUser extends Document {
 	tag?: string;
 	salt?: string;
 	verifier?: string;
-	isMfaEnabled: boolean;
-  mfaMethods?: MfaMethod[]; // note: changed from boolean (need to deprecate this properly!!!)
-	mfaPreference?: MfaMethod;
-	authAppSecretKey?: string;
-	mfaRecoveryCodes?: string[];	
-	devices: {
+		devices: {
 		ip: string;
 		userAgent: string;
 	}[];
+	isMfaEnabled: boolean;
+  mfaMethods?: MfaMethod[]; // note: changed from boolean (need to deprecate this properly!!!)
+	mfaPreference?: MfaMethod;
+	authAppSecretKeyCipherText?: string,
+	authAppSecretKeyIV?: string,
+	authAppSecretKeyTag?: string,
+	mfaRecoveryCodesCipherText?: string[],
+	mfaRecoveryCodesIV?: string[],
+	mfaRecoveryCodesTag?: string[],
+	mfaRecoveryCodesCount?: {
+    startCount: number;
+    currentCount: number;
+  }[];
 }
 
 const userSchema = new Schema<IUser>(
@@ -108,25 +117,7 @@ const userSchema = new Schema<IUser>(
 			type: String,
 			select: false,
 		},
-		isMfaEnabled: {
-			type: Boolean,
-			default: false,
-		},
-		mfaMethods: [{
-			type: String,
-		}],
-		mfaPreference: { // need to hande situation of existing users with MFA email configured
-			type: String,
-		},
-		authAppSecretKey: { // plaintext base32
-			type: String,
-			select: false,
-		},
-		mfaRecoveryCodes: [{ // plaintext base32
-			type: String,
-			select: false,
-		}],
-		devices: {
+		devices: { // user devices
 			type: [{
 				ip: String,
 				userAgent: String,
@@ -134,6 +125,54 @@ const userSchema = new Schema<IUser>(
 			default: [],
 			select: false,
 		},
+		isMfaEnabled: {
+			type: Boolean,
+			default: false,
+		},
+		mfaMethods: [{ 
+			type: String,
+		}],
+		mfaPreference: {
+			type: String,
+		},
+		authAppSecretKeyCipherText: {
+			type: String,
+			select: false,
+		},
+		authAppSecretKeyIV: {
+			type: String,
+			select: false,
+		},
+		authAppSecretKeyTag: {
+			type: String,
+			select: false,
+		},
+		mfaRecoveryCodesCipherText: [{
+			type: String,
+			select: false,
+		}],
+		mfaRecoveryCodesIV: [{
+			type: String,
+			select: false,
+		}],
+		mfaRecoveryCodesTag: [{
+			type: String,
+			select: false,
+		}],
+		mfaRecoveryCodesCount: [
+			{
+				startCount: {
+					type: Number,
+					min: 4,
+					max: 16,
+				},
+				currentCount: {
+					type: Number,
+					min: 0,
+					max: 16,
+				},
+			},
+		],
 	}, 
 	{
 		timestamps: true,

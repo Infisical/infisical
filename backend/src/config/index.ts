@@ -18,7 +18,7 @@ export const getSaltRounds = async () => parseInt((await client.getSecret("SALT_
 export const getJwtAuthLifetime = async () => (await client.getSecret("JWT_AUTH_LIFETIME")).secretValue || "10d";
 export const getJwtAuthSecret = async () => (await client.getSecret("JWT_AUTH_SECRET")).secretValue;
 export const getJwtMfaLifetime = async () => (await client.getSecret("JWT_MFA_LIFETIME")).secretValue || "5m";
-export const getJwtMfaSecret = async () => (await client.getSecret("JWT_MFA_LIFETIME")).secretValue || "5m";
+export const getJwtMfaSecret = async () => (await client.getSecret("JWT_MFA_SECRET")).secretValue;
 export const getJwtRefreshLifetime = async () => (await client.getSecret("JWT_REFRESH_LIFETIME")).secretValue || "90d";
 export const getJwtRefreshSecret = async () => (await client.getSecret("JWT_REFRESH_SECRET")).secretValue;
 export const getJwtServiceSecret = async () => (await client.getSecret("JWT_SERVICE_SECRET")).secretValue;

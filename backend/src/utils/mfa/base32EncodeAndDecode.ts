@@ -1,4 +1,4 @@
-export const base32Chars = Object.freeze("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"); // RFC4648 without padding
+import { AUTH_APP_PARAMS } from "../../variables";
 
 /**
  * Encode binary data to custom base32 representation.
@@ -8,10 +8,6 @@ export const base32Chars = Object.freeze("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"); //
 export const customBase32Encode = (input: Buffer): string => {
   if (!Buffer.isBuffer(input)) {
     throw new Error("Input must be a Buffer");
-  }
-
-  if (/[^A-Z2-7]/.test(base32Chars)) {
-    throw new Error("Invalid characters in base32Chars");
   }
 
   let result = "";
@@ -24,7 +20,7 @@ export const customBase32Encode = (input: Buffer): string => {
 
     while (bits >= 5) {
       const index = (value >>> (bits - 5)) & 31;
-      result += base32Chars[index];
+      result += AUTH_APP_PARAMS.base_32_chars[index];
       value &= ~(31 << (bits - 5));
       bits -= 5;
     }
@@ -32,7 +28,7 @@ export const customBase32Encode = (input: Buffer): string => {
 
   if (bits > 0) {
     const index = (value << (5 - bits)) & 31;
-    result += base32Chars[index];
+    result += AUTH_APP_PARAMS.base_32_chars[index];
   }
 
   return result;
@@ -57,7 +53,7 @@ export const customBase32Decode = (input: string): Buffer => {
 
   for (let i = 0; i < input.length; i++) {
     const char = input.charAt(i);
-    const index = base32Chars.indexOf(char);
+    const index = AUTH_APP_PARAMS.base_32_chars.indexOf(char);
 
     if (index === -1) {
       throw new Error(`Invalid character "${char}" in input`);

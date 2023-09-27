@@ -10,3 +10,4 @@ export * from "./secret";
 export * from "./smtp";
 export * from "./token";
 export * from "./user";
+export * from "./mfa";

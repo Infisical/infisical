@@ -38,6 +38,17 @@ const authLimit = rateLimit({
   },
 });
 
+// 5 requests per 15 minutes - if this is exceeded the user should be notified by email
+const mfaLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => {
+    return req.realIP
+  },
+});
+
 // 5 requests per 1 hour
 export const passwordLimiter = rateLimit({
   // store: new MongoStore({
@@ -58,6 +69,14 @@ export const passwordLimiter = rateLimit({
 export const authLimiter = (req: any, res: any, next: any) => {
   if (process.env.NODE_ENV === "production") {
     authLimit(req, res, next);
+  } else {
+    next();
+  }
+};
+
+export const mfaLimiter = (req: any, res: any, next: any) => {
+  if (process.env.NODE_ENV === "production") {
+    mfaLimit(req, res, next);
   } else {
     next();
   }

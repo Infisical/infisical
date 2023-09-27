@@ -1,5 +1,45 @@
-import { createHmac, timingSafeEqual } from 'crypto';
-import { customBase32Decode } from './base32EncodeAndDecode';
+import { createHmac, timingSafeEqual } from "crypto";
+
+import { customBase32Decode } from "./base32EncodeAndDecode";
+import { AUTH_APP_PARAMS } from "../../variables";
+
+/**
+ * 
+ * This implementation follows RFC 6238 >>> TOTP: Time-Based One-Time Password Algorithm
+ * Read all about it here: https://datatracker.ietf.org/doc/html/rfc6238
+ * 
+ * SHA-256 is used as the hash algorithm for compatability with NIST requirements)
+ * Most major apps do however as SHA-1 gets deprecated for secure crypto operations 
+ * There is no need to implement SHA-512 here (until NIST updates guidance) 
+ * 
+ * NB. not all authenticator apps support SHA-256 in 2023! But most do...
+ * 
+ * Here is an updated list (March 2023) showing support: 
+ * https://labanskoller.se/blog/2023/03/16/mobile-authenticator-apps-algorithm-support-review-2023-edition/ 
+ * 
+ * Authenticator apps that are compatible with Infisical 
+ * 
+ * Android & iOS
+ * 
+ * Google Authenticator, Bitwarden Password Manager (requires premium account), Dashlane Authenticator, LastPass Authenticator, Oracle Mobile Authenticator, Salesforce Authenticator, Sophos Authenticator, Yubico Authenticator
+ * 
+ * Android ONLY 
+ * 
+ * Aegis 
+ * 
+ * iOS ONLY 
+ * 
+ * Okta Verify, Raivo OTP 
+ * 
+ * Comment: Infisical recommends to disable cloud syncing for two-factor codes (eg. in GOogle Authenticator)
+ * 
+ * RFC 4226 >>> HOTP: An HMAC-Based One-Time Password Algorithm 
+ * Read all about it here:  https://datatracker.ietf.org/doc/html/rfc4226 
+ * 
+ * A 6-digit code is normal and integrates with all major auth apps 
+ * 30 s period is normal & is the default/only time period setting for all major authenticator apps (NIST: max 2 min period)
+ * 
+ */
 
 const generateHotp = (secretKeyBuffer: Buffer, counter: number): string => {
   const buffer: Buffer = Buffer.alloc(8);
@@ -8,7 +48,7 @@ const generateHotp = (secretKeyBuffer: Buffer, counter: number): string => {
     counter = counter >> 8;
   }
 
-  const hmac = createHmac('sha256', secretKeyBuffer); // SHA-256 for hash algorithm
+  const hmac = createHmac(AUTH_APP_PARAMS.totp_hash_algorithm, secretKeyBuffer);
   hmac.update(buffer);
   const hmacResult: Buffer = hmac.digest();
   const offset: number = hmacResult[hmacResult.length - 1] & 0xf;
@@ -18,7 +58,7 @@ const generateHotp = (secretKeyBuffer: Buffer, counter: number): string => {
     ((hmacResult[offset + 2] & 0xff) << 8) |
     (hmacResult[offset + 3] & 0xff);
 
-  return `${code % 10 ** 6}`.padStart(6, '0'); // 6 digit code
+  return `${code % 10 ** AUTH_APP_PARAMS.totp_length}`.padStart(AUTH_APP_PARAMS.totp_length, "0");
 };
 
 const generateTotp = (dbSecretKey: string, counter: number): string => {
@@ -34,8 +74,8 @@ interface TotpVerificationInput {
 export const verifyTotp = async (input: TotpVerificationInput): Promise<boolean> => {
   const { userTotp, dbSecretKey } = input;
 
-  const currentCounter: number = Math.floor(Date.now() / 30000); // 30 seconds interval
-  const window: number = 1;
+  const currentCounter: number = Math.floor(Date.now() / AUTH_APP_PARAMS.totp_period);
+  const window = 1;
   const serverTotpCurr = generateTotp(dbSecretKey, currentCounter);
 
   const userTotpBuffer = Buffer.from(userTotp);
@@ -49,8 +89,9 @@ export const verifyTotp = async (input: TotpVerificationInput): Promise<boolean>
     return true;
   }
 
-  // In case of clock drift or the user enters a code right at the end of the period, accept the previous and next TOTP as well
+  // In case of clock drift or the user enters a code right at the end of the period, we accept the previous and next TOTP as well
   // NIST allows up to a 2 min interval (this being 3 x 30 s intervals)
+  // Standard practice. eg. GitHub follows this
 
   for (let errorWindow = 1; errorWindow <= window; errorWindow++) {
     const serverTotpPrev = generateTotp(dbSecretKey, currentCounter - errorWindow);
@@ -78,7 +119,7 @@ export const verifyTotp = async (input: TotpVerificationInput): Promise<boolean>
 }
 
 // The user may want to use the raw base32 encoded secret key instead of a TOTP...
-// eg. if they don't have access to their authenticator app  or browser extension to scan the QR code (or they feel like it)
+// eg. if they don't have access to their authenticator app or browser extension to scan the QR code (or they feel like it...)
 
 export const verifySecretKey = async (
   {
@@ -90,8 +131,9 @@ export const verifySecretKey = async (
   }
 ): Promise<boolean> => {
   try {
-    const userSecretKeyBuffer = customBase32Decode(userSecretKey);
-    const dbSecretKeyBuffer = customBase32Decode(dbSecretKey);
+
+    const userSecretKeyBuffer = Buffer.from(userSecretKey, "base64");
+    const dbSecretKeyBuffer = Buffer.from(dbSecretKey, "base64");
 
     if (userSecretKeyBuffer.length !== dbSecretKeyBuffer.length) {
       return false;
@@ -100,39 +142,6 @@ export const verifySecretKey = async (
     const isEqual = timingSafeEqual(userSecretKeyBuffer, dbSecretKeyBuffer);
     return isEqual;
   } catch (err) {
-    console.error("Error verifying secret keys:", err);
     return false;
   }
 };
-
-// This implementation follows RFC 6238 >>> TOTP: Time-Based One-Time Password Algorithm
-// Read all about it here: https://datatracker.ietf.org/doc/html/rfc6238
-
-// SHA-256 is used as the hash algorithm due to NIST requirements (this ensures FIPS compatibility)
-// Most major apps do however as SHA-1 gets deprecated for secure crypto operations
-// There is no need to implement SHA-512 here (until NIST updates guidance)
-
-// NB. not all authenticator apps support SHA-256 in 2023
-// Here is an updated list (March 2023) showing support: 
-// https://labanskoller.se/blog/2023/03/16/mobile-authenticator-apps-algorithm-support-review-2023-edition/
-
-// Authenticator apps that are compatible with Infisical //
-
-// Android & iOS //
-// Bitwarden Password Manager (requires premium account), Dashlane Authenticator, LastPass Authenticator, Oracle Mobile Authenticator, Salesforce Authenticator, Sophos Authenticator, Yubico Authenticator
-
-// Android ONLY //
-// Aegis
-
-// iOS ONLY //
-// Google Authenticator (NOT on Android...), Okta Verify, Raivo OTP
-
-// RFC 4226 >>> HOTP: An HMAC-Based One-Time Password Algorithm
-// Read all about it here:  https://datatracker.ietf.org/doc/html/rfc4226
-
-// A 6-digit code is normal and integrates with all major auth apps
-// This could be increased (eg. to 9) in the future
-// Or this could be enabled as an optional feature as NIST requirements evolve or if an org requires it
-
-// 30 s period is normal & is the default/only time period setting for all major authenticator apps
-// NIST requires max 2 min period

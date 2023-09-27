@@ -1,18 +1,53 @@
-import { sendMail } from "./nodemailer";
+import { IUser, MfaMethod } from "../models";
 
-/**
- * Send reminder to the user to download their MFA recovery codes
- * to avoid being locked out of their account (eg. if they lose access to their MFA-configured device)
- * @param {Object} obj
- * @param {String} obj.email - email
- * @returns {Boolean} success - whether or not operation was successful
- */
-export const sendEmailDownloadRecoveryCodes = async ({ email }: { email: string }) => {
-  // send mail
-  await sendMail({
-    template: "downloadRecoveryCodes.handlebars",
-    subjectLine: "[Infisical] Please download your multi-factor recovery codes",
-    recipients: [email],
-    substitutions: {},
-  });
+export const hasMultipleMfaMethods = (user: IUser): boolean => {
+  const mfaMethodsExcludingRecoveryCodes = user.mfaMethods?.filter(
+    (method) => method !== MfaMethod.MFA_RECOVERY_CODES
+  );
+
+  if (!mfaMethodsExcludingRecoveryCodes) return false;
+
+  return mfaMethodsExcludingRecoveryCodes.length > 0;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const removeAllMfaProperites = (user: any) => {
+  const propertiesToDelete = [
+    "mfaMethods",
+    "mfaPreference",
+    "authAppSecretKeyCipherText",
+    "authAppSecretKeyIV",
+    "authAppSecretKeyTag",
+    "mfaRecoveryCodesCipherText",
+    "mfaRecoveryCodesIV",
+    "mfaRecoveryCodesTag",
+    "mfaRecoveryCodesCount"
+  ];
+
+  user.isMfaEnabled = false;
+
+  for (const prop of propertiesToDelete) {
+    if (user.hasOwnProperty(prop)) { // eslint-disable-line no-prototype-builtins
+      user[prop] = undefined;
+    }
+  }
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const removeMfaRecoveryCodes = (user: any) => {
+  const propertiesToDelete = [
+    "mfaRecoveryCodesCipherText",
+    "mfaRecoveryCodesIV",
+    "mfaRecoveryCodesTag",
+    "mfaRecoveryCodesCount"
+  ];
+
+  user.mfaMethods = user.mfaMethods.filter((method: MfaMethod) => method !== MfaMethod.MFA_RECOVERY_CODES);
+
+  // this ensures we can set the code count to undefined (ie. for the last code remaining)
+  for (const prop of propertiesToDelete) { 
+    if (user.hasOwnProperty(prop)) { // eslint-disable-line no-prototype-builtins
+      user[prop] = undefined;
+    }
+  }
 };

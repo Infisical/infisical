@@ -49,38 +49,6 @@ export const getMe = async (req: Request, res: Response) => {
 };
 
 /**
- * Update the current user's MFA-enabled status [isMfaEnabled].
- * Note: Infisical currently only supports email-based 2FA only; this will expand to
- * include SMS and authenticator app modes of authentication in the future.
- * @param req
- * @param res
- * @returns
- */
-export const updateMyMfaEnabled = async (req: Request, res: Response) => {
-  const {
-    body: { isMfaEnabled }
-  } = await validateRequest(reqValidator.UpdateMyMfaEnabledV2, req);
-
-  req.user.isMfaEnabled = isMfaEnabled;
-
-  if (isMfaEnabled) {
-    // TODO: adapt this route/controller
-    // to work for different forms of MFA
-    req.user.mfaMethods = ["email"];
-  } else {
-    req.user.mfaMethods = [];
-  }
-
-  await req.user.save();
-
-  const user = req.user;
-
-  return res.status(200).send({
-    user
-  });
-};
-
-/**
  * Update name of the current user to [firstName, lastName].
  * @param req
  * @param res
