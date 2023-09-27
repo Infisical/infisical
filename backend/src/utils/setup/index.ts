@@ -18,7 +18,8 @@ import {
   backfillServiceToken,
   backfillServiceTokenMultiScope,
   backfillTrustedIps,
-  backfillUserAuthMethods
+  backfillUserAuthMethods,
+  migrateRoleFromOwnerToAdmin
 } from "./backfillData";
 import {
   reencryptBotOrgKeys,
@@ -84,7 +85,8 @@ export const setup = async () => {
   await backfillServiceTokenMultiScope();
   await backfillTrustedIps();
   await backfillUserAuthMethods();
-  await backfillPermission();
+  // await backfillPermission();
+  await migrateRoleFromOwnerToAdmin()
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY

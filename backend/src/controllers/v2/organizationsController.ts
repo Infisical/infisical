@@ -159,7 +159,12 @@ export const updateOrganizationMembership = async (req: Request, res: Response) 
   const membership = await MembershipOrg.findByIdAndUpdate(
     membershipId,
     {
-      role
+      $set: {
+        role
+      },
+      $unset: {
+        customRole: 1
+      }
     },
     {
       new: true

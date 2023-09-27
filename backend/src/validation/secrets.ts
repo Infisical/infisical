@@ -225,8 +225,8 @@ export const GetSecretsV2 = z.object({
 
 export const GetSecretsRawV3 = z.object({
   query: z.object({
-    workspaceId: z.string().trim(),
-    environment: z.string().trim(),
+    workspaceId: z.string().trim().optional(),
+    environment: z.string().trim().optional(),
     secretPath: z.string().trim().default("/"),
     folderId: z.string().trim().optional(),
     include_imports: z
@@ -244,7 +244,11 @@ export const GetSecretByNameRawV3 = z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
     secretPath: z.string().trim().default("/"),
-    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).optional()
+    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).optional(),
+    include_imports: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true")
   })
 });
 
@@ -270,7 +274,6 @@ export const UpdateSecretByNameRawV3 = z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
     secretValue: z.string().trim(),
-    secretName: z.string().trim(),
     secretPath: z.string().trim().default("/"),
     type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).default(SECRET_SHARED)
   })
@@ -306,7 +309,11 @@ export const GetSecretByNameV3 = z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
     secretPath: z.string().trim().default("/"),
-    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).optional()
+    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).optional(),
+    include_imports: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true")
   }),
   params: z.object({
     secretName: z.string().trim()

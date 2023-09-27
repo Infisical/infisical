@@ -15,6 +15,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { twMerge } from "tailwind-merge";
 import * as yup from "yup";
 
+import GlobPatternExamples from "@app/components/basic/popups/GlobPatternExamples";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { ProjectPermissionCan } from "@app/components/permissions";
 // TODO:(akhilmhdh) convert all the util functions like this into a lib folder grouped by functionality
@@ -222,7 +223,7 @@ export const SecretDropzone = ({
       onDragOver={handleDrag}
       onDrop={handleDrop}
       className={twMerge(
-        "relative mx-0.5 mb-4 mt-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 py-4 text-sm px-2 text-mineshaft-200 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100",
+        "relative mx-0.5 mb-4 mt-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 py-4 px-2 text-sm text-mineshaft-200 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100",
         isDragActive && "opacity-100",
         !isSmaller && "w-full max-w-3xl flex-col space-y-4 py-20",
         isLoading && "bg-bunker-800"
@@ -234,7 +235,7 @@ export const SecretDropzone = ({
         </div>
       ) : (
         <form onSubmit={handleSubmit(handleFormSubmit)}>
-          <div className="flex items-center justify-cente flex-col space-y-2">
+          <div className="justify-cente flex flex-col items-center space-y-2">
             <div>
               <FontAwesomeIcon icon={faUpload} size={isSmaller ? "2x" : "5x"} />
             </div>
@@ -324,7 +325,12 @@ export const SecretDropzone = ({
                           </FormControl>
                         )}
                       />
-                      <FormControl label="Secret Path" className="flex-grow" isRequired>
+                      <FormControl
+                        label="Secret Path"
+                        className="flex-grow"
+                        isRequired
+                        icon={<GlobPatternExamples />}
+                      >
                         <Input
                           {...register("secretPath")}
                           placeholder="Provide a path, default is /"
@@ -334,7 +340,7 @@ export const SecretDropzone = ({
                     <div className="border-t border-mineshaft-600 pt-4">
                       <div className="mb-4 flex items-center justify-between">
                         <div>Secrets</div>
-                        <div className="w-1/2 flex items-center space-x-2">
+                        <div className="flex w-1/2 items-center space-x-2">
                           <Input
                             placeholder="Search for secret"
                             value={searchFilter}
@@ -367,7 +373,7 @@ export const SecretDropzone = ({
                       {!isSecretsLoading && !secrets?.secrets?.length && (
                         <EmptyState title="No secrets found" icon={faKey} />
                       )}
-                      <div className="grid grid-cols-2 gap-4 max-h-64 overflow-auto thin-scrollbar ">
+                      <div className="thin-scrollbar grid max-h-64 grid-cols-2 gap-4 overflow-auto ">
                         {isSecretsLoading &&
                           Array.apply(0, Array(2)).map((_x, i) => (
                             <Skeleton

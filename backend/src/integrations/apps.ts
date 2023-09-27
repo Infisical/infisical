@@ -120,6 +120,7 @@ const getApps = async ({
       break;
     case INTEGRATION_GITLAB:
       apps = await getAppsGitlab({
+        integrationAuth,
         accessToken,
         teamId,
       });
@@ -607,6 +608,12 @@ const getAppsLaravelForge = async ({
  * @returns {String} apps.name - name of Fly.io apps
  */
 const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
+  interface FlyioApp {
+    id: string;
+    name: string;
+    hostname: string;
+  }
+  
   const query = `
     query($role: String) {
       apps(type: "container", first: 400, role: $role) {
@@ -619,7 +626,7 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
     }
   `;
 
-  const res = (
+  const res: FlyioApp[] = (
     await standardRequest.post(
       INTEGRATION_FLYIO_API_URL,
       {
@@ -638,8 +645,9 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
     )
   ).data.data.apps.nodes;
 
-  const apps = res.map((a: any) => ({
+  const apps = res.map((a: FlyioApp) => ({
     name: a.name,
+    appId: a.id
   }));
 
   return apps;
@@ -736,12 +744,16 @@ const getAppsTerraformCloud = async ({
  * @returns {String} apps.name - name of GitLab site
  */
 const getAppsGitlab = async ({
+  integrationAuth,
   accessToken,
   teamId,
 }: {
+  integrationAuth: IIntegrationAuth;
   accessToken: string;
   teamId?: string;
 }) => {
+  const gitLabApiUrl = integrationAuth.url ? `${integrationAuth.url}/api` : INTEGRATION_GITLAB_API_URL;
+  
   const apps: App[] = [];
 
   let page = 1;
@@ -758,7 +770,7 @@ const getAppsGitlab = async ({
       });
 
       const { data } = await standardRequest.get(
-        `${INTEGRATION_GITLAB_API_URL}/v4/groups/${teamId}/projects`,
+        `${gitLabApiUrl}/v4/groups/${teamId}/projects`,
         {
           params,
           headers: {
@@ -785,7 +797,7 @@ const getAppsGitlab = async ({
     // case: fetch projects for individual in GitLab
 
     const { id } = (
-      await standardRequest.get(`${INTEGRATION_GITLAB_API_URL}/v4/user`, {
+      await standardRequest.get(`${gitLabApiUrl}/v4/user`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Accept-Encoding": "application/json",
@@ -800,7 +812,7 @@ const getAppsGitlab = async ({
       });
 
       const { data } = await standardRequest.get(
-        `${INTEGRATION_GITLAB_API_URL}/v4/users/${id}/projects`,
+        `${gitLabApiUrl}/v4/users/${id}/projects`,
         {
           params,
           headers: {

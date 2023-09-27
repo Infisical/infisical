@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { faElementor } from "@fortawesome/free-brands-svg-icons";
 import {
@@ -6,11 +5,8 @@ import {
   faArrowLeft,
   faBook,
   faCog,
-  faFolder,
   faKey,
-  faLink,
   faLock,
-  faMagnifyingGlass,
   faNetworkWired,
   faPuzzlePiece,
   faTags,
@@ -107,8 +103,6 @@ type Props = {
 };
 
 export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
-  const [searchPermission, setSearchPermission] = useState("");
-
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["upgradePlan"] as const);
 
   const isNonEditable = ["admin", "member", "viewer"].includes(role?.slug || "");
@@ -182,7 +176,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
   return (
     <div>
       <form onSubmit={handleSubmit(handleFormSubmit)}>
-        <div className="flex justify-between mb-2 items-center">
+        <div className="mb-2 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-mineshaft-100">
             {isNewRole ? "New" : "Edit"} Role
           </h1>
@@ -224,17 +218,9 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
           >
             <Input {...register("description")} isReadOnly={isNonEditable} />
           </FormControl>
-          <div className="flex justify-between items-center pt-6 border-t border-t-mineshaft-800">
+          <div className="flex items-center justify-between border-t border-t-mineshaft-800 pt-6">
             <div>
               <h2 className="text-xl font-medium">Add Permission</h2>
-            </div>
-            <div className="flex-1 max-w-md">
-              <Input
-                value={searchPermission}
-                onChange={(e) => setSearchPermission(e.target.value)}
-                leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-                placeholder="Search permissions..."
-              />
             </div>
           </div>
           <div>
@@ -244,30 +230,8 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
               setValue={setValue}
               icon={faLock}
               title="Secrets"
-              subtitle="Secret management control"
+              subtitle="Create, modify and remove secrets, folders and secret imports"
               formName="secrets"
-            />
-          </div>
-          <div>
-            <MultiEnvProjectPermission
-              isNonEditable={isNonEditable}
-              control={control}
-              setValue={setValue}
-              icon={faFolder}
-              title="Folders"
-              subtitle="Folder management control"
-              formName="folders"
-            />
-          </div>
-          <div>
-            <MultiEnvProjectPermission
-              isNonEditable={isNonEditable}
-              control={control}
-              setValue={setValue}
-              icon={faLink}
-              title="Secret Imports"
-              subtitle="Secret import management control"
-              formName="secret-imports"
             />
           </div>
           <div key="permission-ws">
@@ -298,7 +262,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
             />
           </div>
         </div>
-        <div className="flex items-center space-x-4 mt-12">
+        <div className="mt-12 flex items-center space-x-4">
           <Button
             type="submit"
             isDisabled={isSubmitting || isNonEditable || !isDirty}

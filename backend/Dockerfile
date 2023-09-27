@@ -17,7 +17,7 @@ WORKDIR /app
 ENV npm_config_cache /home/node/.npm
 
 COPY package*.json ./
-RUN npm ci --only-production
+RUN npm ci --only-production && npm cache clean --force
 
 COPY --from=build /app .
 
@@ -30,4 +30,4 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \
 
 EXPOSE 4000
 
-CMD ["npm", "run", "start"]
+CMD ["node", "build/index.js"]

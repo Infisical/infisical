@@ -119,7 +119,7 @@ export const SecretImportItem = ({
             </div>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Delete}
-              a={subject(ProjectPermissionSub.SecretImports, { environment, secretPath })}
+              a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
             >
               {(isAllowed) => (
                 <div className="opacity-0 group-hover:opacity-100">

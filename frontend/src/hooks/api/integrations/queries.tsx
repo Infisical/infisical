@@ -40,6 +40,7 @@ export const useCreateIntegration = () => {
       owner,
       path,
       region,
+      scope,
       secretPath,
       metadata
     }: {
@@ -56,7 +57,9 @@ export const useCreateIntegration = () => {
       owner?: string;
       path?: string;
       region?: string;
+      scope?: string;
       metadata?: {
+        secretPrefix?: string;
         secretSuffix?: string;
       }
     }) => {
@@ -72,6 +75,7 @@ export const useCreateIntegration = () => {
         targetServiceId,
         owner,
         path,
+        scope,
         region,
         secretPath,
         metadata
