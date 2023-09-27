@@ -244,7 +244,11 @@ export const GetSecretByNameRawV3 = z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
     secretPath: z.string().trim().default("/"),
-    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).optional()
+    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).optional(),
+    include_imports: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true")
   })
 });
 
@@ -305,7 +309,11 @@ export const GetSecretByNameV3 = z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
     secretPath: z.string().trim().default("/"),
-    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).optional()
+    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).optional(),
+    include_imports: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true")
   }),
   params: z.object({
     secretName: z.string().trim()
