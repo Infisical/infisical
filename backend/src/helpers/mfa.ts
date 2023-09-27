@@ -12,42 +12,31 @@ export const hasMultipleMfaMethods = (user: IUser): boolean => {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const removeAllMfaProperites = (user: any) => {
-  const propertiesToDelete = [
-    "mfaMethods",
-    "mfaPreference",
-    "authAppSecretKeyCipherText",
-    "authAppSecretKeyIV",
-    "authAppSecretKeyTag",
-    "mfaRecoveryCodesCipherText",
-    "mfaRecoveryCodesIV",
-    "mfaRecoveryCodesTag",
-    "mfaRecoveryCodesCount"
-  ];
-
-  user.isMfaEnabled = false;
-
-  for (const prop of propertiesToDelete) {
-    if (user.hasOwnProperty(prop)) { // eslint-disable-line no-prototype-builtins
-      user[prop] = undefined;
-    }
+  try {
+    user.isMfaEnabled = false;
+    user.mfaMethods = [];
+    user.mfaPreference = undefined;
+    user.authAppSecretKeyCipherText = undefined;
+    user.authAppSecretKeyIV = undefined;
+    user.authAppSecretKeyTag = undefined;
+    user.mfaRecoveryCodesCipherText = undefined;
+    user.mfaRecoveryCodesIV = undefined;
+    user.mfaRecoveryCodesTag = undefined;
+    delete user.mfaRecoveryCodesCount;
+  } catch (err) {
+    throw new Error ("Error removing MFA recovery code properties")
   }
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const removeMfaRecoveryCodes = (user: any) => {
-  const propertiesToDelete = [
-    "mfaRecoveryCodesCipherText",
-    "mfaRecoveryCodesIV",
-    "mfaRecoveryCodesTag",
-    "mfaRecoveryCodesCount"
-  ];
-
-  user.mfaMethods = user.mfaMethods.filter((method: MfaMethod) => method !== MfaMethod.MFA_RECOVERY_CODES);
-
-  // this ensures we can set the code count to undefined (ie. for the last code remaining)
-  for (const prop of propertiesToDelete) { 
-    if (user.hasOwnProperty(prop)) { // eslint-disable-line no-prototype-builtins
-      user[prop] = undefined;
-    }
+  try {
+    user.mfaRecoveryCodesCipherText = undefined;
+    user.mfaRecoveryCodesIV = undefined;
+    user.mfaRecoveryCodesTag = undefined;
+    delete user.mfaRecoveryCodesCount;
+    user.mfaMethods = user.mfaMethods.filter((method: MfaMethod) => method !== MfaMethod.MFA_RECOVERY_CODES);
+  } catch (err) {
+    throw new Error ("Error removing MFA recovery code properties")
   }
 };
