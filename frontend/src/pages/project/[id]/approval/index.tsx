@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
 
-import { SecretApprovalListPage } from "@app/views/SecretApproval/SecretApprovalListPage";
+import { SecretApprovalPage } from "@app/views/SecretApprovalPage";
 
 const SecretApproval = () => {
   const { t } = useTranslation();
@@ -16,7 +16,7 @@ const SecretApproval = () => {
         <meta name="og:description" content={String(t("approval.og-description"))} />
       </Head>
       <div className="h-full">
-        <SecretApprovalListPage />
+        <SecretApprovalPage />
       </div>
     </>
   );
