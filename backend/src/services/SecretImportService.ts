@@ -51,7 +51,7 @@ export const getAnImportedSecret = async (
   const secret = await Secret.findOne({
     workspace: workspaceId,
     secretBlindIndex
-  }).or(importedSecByFid.map(({ environment, folderId }) => ({ environment, folder: folderId })));
+  }).or(importedSecByFid.map(({ environment, folderId }) => ({ environment, folder: folderId }))).lean()
 
   return secret;
 };
