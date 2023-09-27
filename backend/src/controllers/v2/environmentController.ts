@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import {
+  Folder,
   Integration,
   Membership,
   Secret,
@@ -21,9 +22,12 @@ import {
   getUserProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
+import { SecretImport } from "../../models";
+import { ServiceAccountWorkspacePermission } from "../../models";
+import { Webhook } from "../../models";
 
 /**
- * Create new workspace environment named [environmentName] 
+ * Create new workspace environment named [environmentName]
  * with slug [environmentSlug] under workspace with id
  * @param req
  * @param res
@@ -376,6 +380,27 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
     { workspace: workspaceId, environment: oldEnvironmentSlug },
     { environment: environmentSlug }
   );
+
+  await Folder.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+
+  await SecretImport.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+
+  await ServiceAccountWorkspacePermission.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+
+  await Webhook.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+
   await Membership.updateMany(
     {
       workspace: workspaceId,
