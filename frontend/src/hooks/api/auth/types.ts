@@ -1,17 +1,34 @@
+import { MfaMethod } from "../users/types";
+
 export type GetAuthTokenAPI = {
   token: string;
 };
 
 export type SendMfaTokenDTO = {
   email: string;
-}
+};
 
 export type VerifyMfaTokenDTO = {
   email: string;
   mfaCode: string;
-}
+};
 
-export type VerifyMfaTokenRes = {
+export type VerifyMfaAuthAppTotpDTO = {
+  userTotp: string;
+  email: string;
+};
+
+export type VerifyMfaAuthAppSecretKeyDTO = {
+  userSecretKey: string;
+  email: string;
+};
+
+export type VerifyMfaRecoveryCodeDTO = {
+  userRecoveryCode: string;
+  email: string;
+};
+
+export type VerifyMfaRes = {
   encryptionVersion: number;
   protectedKey?: string;
   protectedKeyIV?: string;
@@ -21,27 +38,30 @@ export type VerifyMfaTokenRes = {
   encryptedPrivateKey: string;
   iv: string;
   tag: string;
-}
+};
 
 export type Login1DTO = {
   email: string;
   clientPublicKey: string;
   providerAuthToken?: string;
-}
+};
 
 export type Login2DTO = {
   email: string;
   clientProof: string;
   providerAuthToken?: string;
-}
+};
 
 export type Login1Res = {
   serverPublicKey: string;
   salt: string;
-}
+};
 
 export type Login2Res = {
   mfaEnabled: boolean;
+  mfaMethods?: MfaMethod[];
+  mfaPreference?: MfaMethod;
+  userId: string,
   token: string;
   encryptionVersion?: number;
   protectedKey?: string;
@@ -51,16 +71,16 @@ export type Login2Res = {
   encryptedPrivateKey?: string;
   iv?: string;
   tag?: string;
-}
+};
 
 export type SRP1DTO = {
   clientPublicKey: string;
-}
+};
 
 export type SRPR1Res = {
   serverPublicKey: string;
   salt: string;
-}
+};
 
 export type CompleteAccountDTO = {
   email: string;
@@ -75,19 +95,19 @@ export type CompleteAccountDTO = {
   encryptedPrivateKeyTag: string;
   salt: string;
   verifier: string;
-}
+};
 
 export type CompleteAccountSignupDTO = CompleteAccountDTO & {
   providerAuthToken?: string;
   attributionSource?: string;
   organizationName: string;
-}
+};
 
 export type VerifySignupInviteDTO = {
   email: string;
   code: string;
   organizationId: string;
-}
+};
 
 export type ChangePasswordDTO = {
   clientProof: string;
@@ -99,7 +119,7 @@ export type ChangePasswordDTO = {
   encryptedPrivateKeyTag: string;
   salt: string;
   verifier: string;
-}
+};
 
 export type ResetPasswordDTO = {
   protectedKey: string;
@@ -111,7 +131,7 @@ export type ResetPasswordDTO = {
   salt: string;
   verifier: string;
   verificationToken: string;
-}
+};
 
 export type IssueBackupPrivateKeyDTO = {
   encryptedPrivateKey: string;
@@ -124,4 +144,4 @@ export type IssueBackupPrivateKeyDTO = {
 
 export type GetBackupEncryptedPrivateKeyDTO = {
   verificationToken: string;
-}
+};

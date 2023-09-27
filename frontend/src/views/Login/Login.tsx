@@ -8,8 +8,12 @@ import { getAuthToken, isLoggedIn } from "@app/reactQuery";
 
 import { 
     InitialStep,
-    MFAStep,
-    SAMLSSOStep
+    MfaAuthAppSecretKeyStep,
+    MfaAuthAppTotpStep,
+    MfaEmailStep,
+    MfaRecoveryCodeStep,
+    MfaSelectionStep,
+    SAMLSSOStep,
 } from "./components";
 
 export const Login = () => {
@@ -64,18 +68,54 @@ export const Login = () => {
                 );
             case 1:
                 return (
-                    <MFAStep 
+                    <SAMLSSOStep setStep={setStep} />
+                );
+            case 2:
+                return (
+                    <MfaSelectionStep
+                        setStep={setStep} 
+                    />
+                );
+            case 3:
+                return (
+                    <MfaEmailStep 
                         email={email}
                         password={password}
                         providerAuthToken={undefined}
                         callbackPort={queryParams.get("callback_port")}
+                        setStep={setStep} 
                     />
                 );
-            case 2:
+            case 4:
                 return (
-                    <SAMLSSOStep setStep={setStep} />
+                    <MfaAuthAppTotpStep 
+                        email={email}
+                        password={password}
+                        providerAuthToken={undefined}
+                        callbackPort={queryParams.get("callback_port")}
+                        setStep={setStep} 
+                    />
                 );
-            
+            case 5:
+                return (
+                    <MfaAuthAppSecretKeyStep 
+                        email={email}
+                        password={password}
+                        providerAuthToken={undefined}
+                        callbackPort={queryParams.get("callback_port")}
+                        setStep={setStep} 
+                    />
+                );
+            case 6:
+                return (
+                    <MfaRecoveryCodeStep 
+                        email={email}
+                        password={password}
+                        providerAuthToken={undefined}
+                        callbackPort={queryParams.get("callback_port")}
+                        setStep={setStep} 
+                    />
+                );
             default:
                 return <div />;
         }

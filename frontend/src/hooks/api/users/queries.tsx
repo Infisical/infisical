@@ -21,7 +21,7 @@ import {
   RenameUserDTO,
   TokenVersion,
   UpdateOrgUserRoleDTO,
-  User
+  User,
 } from "./types";
 
 const userKeys = {
@@ -299,24 +299,6 @@ export const useRevokeMySessions = () => {
     },
     onSuccess() {
       queryClient.invalidateQueries(userKeys.mySessions);
-    }
-  });
-};
-
-export const useUpdateMfaEnabled = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ isMfaEnabled }: { isMfaEnabled: boolean }) => {
-      const {
-        data: { user }
-      } = await apiRequest.patch("/api/v2/users/me/mfa", {
-        isMfaEnabled
-      });
-
-      return user;
-    },
-    onSuccess() {
-      queryClient.invalidateQueries(userKeys.getUser);
     }
   });
 };

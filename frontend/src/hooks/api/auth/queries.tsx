@@ -18,8 +18,11 @@ import {
   SendMfaTokenDTO,
   SRP1DTO,
   SRPR1Res,
+  VerifyMfaAuthAppSecretKeyDTO,
+  VerifyMfaAuthAppTotpDTO,
+  VerifyMfaRecoveryCodeDTO,
+  VerifyMfaRes,
   VerifyMfaTokenDTO,
-  VerifyMfaTokenRes,
   VerifySignupInviteDTO
 } from "./types";
 
@@ -103,11 +106,89 @@ export const verifyMfaToken = async ({ email, mfaCode }: { email: string; mfaCod
 };
 
 export const useVerifyMfaToken = () => {
-  return useMutation<VerifyMfaTokenRes, {}, VerifyMfaTokenDTO>({
+  return useMutation<VerifyMfaRes, {}, VerifyMfaTokenDTO>({
     mutationFn: async ({ email, mfaCode }) => {
       return verifyMfaToken({
         email,
         mfaCode
+      });
+    }
+  });
+};
+
+export const verifyMfaAuthAppTotp = async ({
+  userTotp,
+  email,
+}: {
+  userTotp: string;
+  email: string;
+}) => {
+  const { data } = await apiRequest.post("/api/v3/auth/mfa/auth-app/verify/totp", {
+    userTotp,
+    email,
+  });
+
+  return data;
+};
+
+export const useVerifyMfaAuthAppTotp = () => {
+  return useMutation<VerifyMfaRes, {}, VerifyMfaAuthAppTotpDTO>({
+    mutationFn: async ({ userTotp, email }) => {
+      return verifyMfaAuthAppTotp({
+        userTotp,
+        email,
+      });
+    }
+  });
+};
+
+export const verifyMfaAuthAppSecretKey = async ({
+  userSecretKey,
+  email
+}: {
+  userSecretKey: string;
+  email: string;
+}) => {
+  const { data } = await apiRequest.post("/api/v3/auth/mfa/auth-app/verify/key", {
+    userSecretKey,
+    email
+  });
+
+  return data;
+};
+
+export const useVerifyMfaAuthAppSecretKey = () => {
+  return useMutation<VerifyMfaRes, {}, VerifyMfaAuthAppSecretKeyDTO>({
+    mutationFn: async ({ userSecretKey, email }) => {
+      return verifyMfaAuthAppSecretKey({
+        userSecretKey,
+        email
+      });
+    }
+  });
+};
+
+export const verifyMfaRecoveryCode = async ({
+  userRecoveryCode,
+  email,
+}: {
+  userRecoveryCode: string;
+  email: string;
+}) => {
+  const { data } = await apiRequest.post("/api/v3/auth/mfa/recovery-codes/verify", {
+    userRecoveryCode,
+    email,
+  });
+
+  return data;
+};
+
+export const useVerifyMfaRecoveryCode = () => {
+  return useMutation<VerifyMfaRes, {}, VerifyMfaRecoveryCodeDTO>({
+    mutationFn: async ({ userRecoveryCode, email }) => {
+      return verifyMfaRecoveryCode({
+        userRecoveryCode,
+        email,
       });
     }
   });
@@ -240,4 +321,5 @@ export const useGetAuthToken = () =>
   useQuery(authKeys.getAuthToken, fetchAuthToken, {
     onSuccess: (data) => setAuthToken(data.token),
     retry: 0
-  });
+  }
+);

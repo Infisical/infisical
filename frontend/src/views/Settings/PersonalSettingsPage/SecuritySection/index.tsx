@@ -1,1 +1,1 @@
-export { MFASection } from "./MFASection";
+export { ConfigureMFA } from "./ConfigureMFA";

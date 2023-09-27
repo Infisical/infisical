@@ -2,8 +2,12 @@ import { useEffect, useState } from "react";
 import jwt_decode from "jwt-decode";
 
 import {
-    MFAStep,
-    PasswordStep
+    MfaAuthAppSecretKeyStep,
+    MfaAuthAppTotpStep,
+    MfaEmailStep,
+    MfaRecoveryCodeStep,
+    MfaSelectionStep,
+    PasswordStep,
 } from "./components";
 
 type Props = { 
@@ -41,12 +45,46 @@ export const LoginSSO = ({ providerAuthToken }: Props) => {
                         setStep={setStep}
                     />
                 );
-            case 2: 
+            case 2:
                 return (
-                    <MFAStep 
-                        providerAuthToken={providerAuthToken}
+                    <MfaSelectionStep
+                        setStep={setStep} 
+                    />
+                );
+            case 3:
+                return (
+                    <MfaEmailStep 
                         email={email}
                         password={password}
+                        providerAuthToken={undefined}
+                        setStep={setStep} 
+                    />
+                );
+            case 4:
+                return (
+                    <MfaAuthAppTotpStep 
+                        email={email}
+                        password={password}
+                        providerAuthToken={undefined}
+                        setStep={setStep} 
+                    />
+                );
+            case 5:
+                return (
+                    <MfaAuthAppSecretKeyStep 
+                        email={email}
+                        password={password}
+                        providerAuthToken={undefined}
+                        setStep={setStep} 
+                    />
+                );
+            case 6:
+                return (
+                    <MfaRecoveryCodeStep 
+                        email={email}
+                        password={password}
+                        providerAuthToken={undefined}
+                        setStep={setStep} 
                     />
                 );
             default:

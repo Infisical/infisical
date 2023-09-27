@@ -1,35 +1,38 @@
 /* eslint-disable prefer-destructuring */
 import jsrp from "jsrp";
 
-import { login1 , verifyMfaToken } from "@app/hooks/api/auth/queries";
+import { login1 , verifyMfaRecoveryCode } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchMyOrganizationProjects } from "@app/hooks/api/users/queries";
+// import verifyMfaToken from "@app/pages/api/auth/verifyMfaToken";
 import KeyService from "@app/services/KeyService";
 
-import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
-import SecurityClient from "./SecurityClient";
+import { saveTokenToLocalStorage } from "../saveTokenToLocalStorage";
+import SecurityClient from "../SecurityClient";
+import { IsMfaLoginSuccessful } from "./types";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
 
 /**
- * Return whether or not MFA-login is successful for user with email [email]
+ * Return whether or not MFA-login is successful for user with the authenticator app 
+ * (using the TOTP from their authenticator app ) [userTotp]
  * and MFA token [mfaToken]
  * @param {Object} obj
  * @param {String} obj.email - email of user
- * @param {String} obj.mfaToken - MFA code/token
+ * @param {String} obj.userTotp - TOTP code entered by the user from their authenticator app
  */
-const attemptLoginMfa = async ({
+export const attemptCliLoginMfaRecoveryCode = async ({
     email,
     password,
     providerAuthToken,
-    mfaToken
+    mfaRecoveryCode,
 }: {
     email: string;
     password: string;
     providerAuthToken?: string,
-    mfaToken: string;
-}): Promise<Boolean> => {
+    mfaRecoveryCode: string;
+}): Promise<IsMfaLoginSuccessful> => {
     return new Promise((resolve, reject) => {
         client.init({
             username: email,
@@ -42,20 +45,20 @@ const attemptLoginMfa = async ({
                     clientPublicKey,
                     providerAuthToken,
                 });
-                
+
                 const {
                     encryptionVersion,
                     protectedKey,
                     protectedKeyIV,
                     protectedKeyTag,
-                    token, 
-                    publicKey, 
-                    encryptedPrivateKey, 
-                    iv, 
+                    token,
+                    publicKey,
+                    encryptedPrivateKey,
+                    iv,
                     tag
-                } = await verifyMfaToken({
+                } = await verifyMfaRecoveryCode({
                     email,
-                    mfaCode: mfaToken
+                    userRecoveryCode: mfaRecoveryCode
                 });
 
                 // unset temporary (MFA) JWT token and set JWT token
@@ -74,7 +77,7 @@ const attemptLoginMfa = async ({
                     protectedKeyIV,
                     protectedKeyTag
                 });
-                
+
                 saveTokenToLocalStorage({
                     publicKey,
                     encryptedPrivateKey,
@@ -86,19 +89,23 @@ const attemptLoginMfa = async ({
                 // TODO: in the future - move this logic elsewhere
                 // because this function is about logging the user in
                 // and not initializing the login details
-                const userOrgs = await fetchOrganizations(); 
+                const userOrgs = await fetchOrganizations();
                 const orgId = userOrgs[0]._id;
                 localStorage.setItem("orgData.id", orgId);
 
                 const orgUserProjects = await fetchMyOrganizationProjects(orgId);
                 localStorage.setItem("projectData.id", orgUserProjects[0]._id);
 
-                resolve(true);
+                resolve({
+                    success: true,
+                    loginResponse:{
+                        privateKey,
+                        JTWToken: token
+                    }
+                });
             } catch (err) {
                 reject(err);
             }
         });
     });
-}
-
-export default attemptLoginMfa;
+};

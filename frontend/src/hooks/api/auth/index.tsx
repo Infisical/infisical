@@ -5,6 +5,8 @@ export {
   useSendPasswordResetEmail,
   useSendVerificationEmail,
   useVerifyEmailVerificationCode,
+  useVerifyMfaAuthAppSecretKey,
+  useVerifyMfaAuthAppTotp,
+  useVerifyMfaRecoveryCode,
   useVerifyMfaToken,
-  useVerifyPasswordResetCode
-} from "./queries";
+  useVerifyPasswordResetCode} from "./queries";

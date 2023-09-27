@@ -7,20 +7,12 @@ import { fetchMyOrganizationProjects } from "@app/hooks/api/users/queries";
 // import verifyMfaToken from "@app/pages/api/auth/verifyMfaToken";
 import KeyService from "@app/services/KeyService";
 
-import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
-import SecurityClient from "./SecurityClient";
+import { saveTokenToLocalStorage } from "../saveTokenToLocalStorage";
+import SecurityClient from "../SecurityClient";
+import { IsMfaLoginSuccessful } from "./types";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
-
-interface IsMfaLoginSuccessful {
-    success: boolean;
-    loginResponse:{ 
-        privateKey: string;
-        JTWToken: string;
-    }
-    
-}
 
 /**
  * Return whether or not MFA-login is successful for user with email [email]
@@ -29,7 +21,7 @@ interface IsMfaLoginSuccessful {
  * @param {String} obj.email - email of user
  * @param {String} obj.mfaToken - MFA code/token
  */
-const attemptLoginMfa = async ({
+export const attemptCliLoginMfaEmail = async ({
     email,
     password,
     providerAuthToken,
@@ -115,6 +107,4 @@ const attemptLoginMfa = async ({
             }
         });
     });
-}
-
-export default attemptLoginMfa;
+};

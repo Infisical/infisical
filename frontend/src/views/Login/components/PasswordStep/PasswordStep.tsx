@@ -6,12 +6,13 @@ import axios from "axios"
 import jwt_decode from "jwt-decode";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
-import attemptLogin from "@app/components/utilities/attemptLogin";
+import { attemptCliLogin } from "@app/components/utilities/login/attemptCliLogin";
+import { attemptLogin } from "@app/components/utilities/login/attemptLogin";
 import { Button, Input } from "@app/components/v2";
 import { useUpdateUserAuthMethods } from "@app/hooks/api";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
+import { MfaMethod } from "@app/hooks/api/users/types";
 
 type Props = { 
     providerAuthToken: string;
@@ -55,12 +56,30 @@ export const PasswordStep = ({
 
                 if (isCliLoginSuccessful && isCliLoginSuccessful.success) {
 
-                    if (isCliLoginSuccessful.mfaEnabled) {
-                        // case: login requires MFA step
-                        setStep(2);
-                        setIsLoading(false);
-                        return;
+                    if (isCliLoginSuccessful.mfaEnabled && isCliLoginSuccessful.mfaMethods) {
+                        // case: CLI login requires MFA step
+                        // save available MFA methods & preference to local storage
+                        localStorage.setItem("mfaMethods", JSON.stringify(isCliLoginSuccessful.mfaMethods));
+
+                        if (isCliLoginSuccessful.mfaPreference) {
+                            // Case: user has an MFA preference
+
+                            if (isCliLoginSuccessful.mfaPreference === MfaMethod.EMAIL) {
+                                setStep(3);
+                            } else if (isCliLoginSuccessful.mfaPreference === MfaMethod.AUTH_APP) {
+                                setStep(4)
+                            }
+                            setIsLoading(false);
+                            return;
+                        } 
+                            // Case: user does not have an MFA preference
+                            // Go to MFA selection step
+                            setStep(2);
+                            setIsLoading(false);
+                            return;
+                        
                     }
+
                     // case: login was successful
                     const cliUrl = `http://localhost:${callbackPort}`
 
@@ -74,22 +93,36 @@ export const PasswordStep = ({
                     // on success, router.push to cli Login Successful page
                 }
             } else {
-                const loginAttempt = await attemptLogin({
-                    email,
+                const isLoginSuccessful = await attemptLogin({
+                    email: email.toLowerCase(),
                     password,
                     providerAuthToken,
                 });
-
-                if (loginAttempt && loginAttempt.success) {
+                if (isLoginSuccessful && isLoginSuccessful.success) {
                     // case: login was successful
-
-                    if (loginAttempt.mfaEnabled) {
-                        // TODO: deal with MFA
+                    if (isLoginSuccessful.mfaEnabled && isLoginSuccessful.mfaMethods) {
                         // case: login requires MFA step
-                        setIsLoading(false);
-                        setStep(2);
-                        return;
-                    }
+                        // save available MFA methods & preference to local storage
+                        localStorage.setItem("mfaMethods", JSON.stringify(isLoginSuccessful.mfaMethods));
+
+                        if (isLoginSuccessful.mfaPreference) {
+                            // Case: user has an MFA preference
+
+                            if (isLoginSuccessful.mfaPreference === MfaMethod.EMAIL) {
+                                setStep(3);
+                            } else if (isLoginSuccessful.mfaPreference === MfaMethod.AUTH_APP) {
+                                setStep(4)
+                            }
+                            setIsLoading(false);
+                            return;
+                        } 
+                            // Case: user does not have an MFA preference
+                            // Go to MFA selection step
+                            setStep(2);
+                            setIsLoading(false);
+                            return;
+                        
+                    };
 
                     // case: login does not require MFA step
                     const userOrgs = await fetchOrganizations();

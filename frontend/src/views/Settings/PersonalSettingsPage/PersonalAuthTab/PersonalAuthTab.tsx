@@ -1,11 +1,11 @@
 import { AuthMethodSection } from "../AuthMethodSection";
 import { ChangePasswordSection } from "../ChangePasswordSection";
-import { MFASection } from "../SecuritySection";
+import { ConfigureMFA } from "../SecuritySection";
 
 export const PersonalAuthTab = () => {
     return (
         <div>
-            <MFASection />
+            <ConfigureMFA />
             <AuthMethodSection />
             <ChangePasswordSection />
         </div>

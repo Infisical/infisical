@@ -9,6 +9,17 @@ export enum AuthMethod {
   JUMPCLOUD_SAML = "jumpcloud-saml"
 }
 
+export enum MfaMethod {
+	EMAIL = "email",
+	AUTH_APP = "auth-app",
+	MFA_RECOVERY_CODES = "mfa-recovery-codes",
+}
+
+export type MfaRecoveryCodeCount = {
+	startCount: number;
+	currentCount: number;
+}
+
 export type User = {
   createdAt: Date;
   updatedAt: Date;
@@ -26,10 +37,16 @@ export type User = {
   iv?: string;
   tag?: string;
   isMfaEnabled: boolean;
+  mfaPreference?: MfaMethod;
+  mfaMethods?: MfaMethod[];
+  mfaRecoveryCodesCount?: {
+    startCount: number;
+    currentCount: number;
+  }[];
   seenIps: string[];
   _id: string;
   __v: number;
-};
+}
 
 export type OrgUser = {
   _id: string;
@@ -46,25 +63,25 @@ export type OrgUser = {
   status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];
   customRole: string;
-};
+}
 
 export type TWorkspaceUser = OrgUser;
 
 export type AddUserToWsDTO = {
   workspaceId: string;
   email: string;
-};
+}
 
 export type AddUserToWsRes = {
   invitee: OrgUser["user"];
   latestKey: UserWsKeyPair;
-};
+}
 
 export type UpdateOrgUserRoleDTO = {
   organizationId: string;
   membershipId: string;
   role: string;
-};
+}
 
 export type DeletOrgMembershipDTO = {
   membershipId: string;
@@ -74,16 +91,16 @@ export type DeletOrgMembershipDTO = {
 export type AddUserToOrgDTO = {
   inviteeEmail: string;
   organizationId: string;
-};
+}
 
 export type CreateAPIKeyRes = {
   apiKey: string;
   apiKeyData: APIKeyData;
-};
+}
 
 export type RenameUserDTO = {
   newName: string;
-};
+}
 
 export type APIKeyData = {
   _id: string;
@@ -92,7 +109,7 @@ export type APIKeyData = {
   lastUsed: string;
   createdAt: string;
   expiresAt: string;
-};
+}
 
 export type TokenVersion = {
   _id: string;
@@ -102,4 +119,4 @@ export type TokenVersion = {
   lastUsed: string;
   createdAt: string;
   updatedAt: string;
-};
+}

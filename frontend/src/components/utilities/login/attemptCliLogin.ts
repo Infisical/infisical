@@ -4,23 +4,26 @@ import jsrp from "jsrp";
 import { login1, login2 } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchMyOrganizationProjects } from "@app/hooks/api/users/queries";
+import { MfaMethod } from "@app/hooks/api/users/types";
 import KeyService from "@app/services/KeyService";
 
-import Telemetry from "./telemetry/Telemetry";
-import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
-import SecurityClient from "./SecurityClient";
+import { saveTokenToLocalStorage } from "../saveTokenToLocalStorage";
+import SecurityClient from "../SecurityClient";
+import Telemetry from "../telemetry/Telemetry";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
 
 interface IsCliLoginSuccessful {
     mfaEnabled: boolean;
+    success: boolean;
+    mfaMethods?: MfaMethod[];
+    mfaPreference?: MfaMethod;
     loginResponse?: {
         email: string;
         privateKey: string;
         JTWToken: string;
     };
-    success: boolean;
 }
 
 /**
@@ -29,7 +32,7 @@ interface IsCliLoginSuccessful {
  * @param {string} email - email of user to log in
  * @param {string} password - password of user to log in
  */
-const attemptLogin = async (
+export const attemptCliLogin = async (
     {
         email,
         password,
@@ -63,6 +66,8 @@ const attemptLogin = async (
 
                     const {
                         mfaEnabled,
+                        mfaMethods,
+                        mfaPreference,
                         encryptionVersion,
                         protectedKey,
                         protectedKeyIV,
@@ -86,8 +91,10 @@ const attemptLogin = async (
                         SecurityClient.setMfaToken(token);
 
                         resolve({
-                            mfaEnabled,
-                            success: true
+                            mfaEnabled: true,
+                            success: true,
+                            mfaMethods,
+                            mfaPreference,
                         });
                     } else if (
                         !mfaEnabled &&
@@ -157,5 +164,3 @@ const attemptLogin = async (
         );
     });
 };
-
-export default attemptLogin;
