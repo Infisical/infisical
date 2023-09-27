@@ -373,8 +373,12 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
     { environment: environmentSlug }
   );
   await ServiceTokenData.updateMany(
-    { workspace: workspaceId, environment: oldEnvironmentSlug },
-    { environment: environmentSlug }
+    {
+      workspace: workspaceId,
+      "scopes.environment": oldEnvironmentSlug
+    },
+    { $set: { "scopes.$[element].environment": environmentSlug } },
+    { arrayFilters: [{ "element.environment": oldEnvironmentSlug }] }
   );
   await Integration.updateMany(
     { workspace: workspaceId, environment: oldEnvironmentSlug },
