@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect,useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
@@ -65,15 +65,29 @@ export const MfaEmailStep = ({
 }: Props) => {
   const { createNotification } = useNotificationContext();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingResend, setIsLoadingResend] = useState(false);
-  const [mfaCode, setMfaCode] = useState("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoadingResend, setIsLoadingResend] = useState<boolean>(false);
+  const [mfaCode, setMfaCode] = useState<string>("");
   const [triesLeft, setTriesLeft] = useState<number | undefined>(undefined);
-
   const { t } = useTranslation();
 
   const sendMfaToken = useSendMfaToken();
-    const { mutateAsync: updateUserAuthMethodsMutateAsync } = useUpdateUserAuthMethods();
+  const { mutateAsync: updateUserAuthMethodsMutateAsync } = useUpdateUserAuthMethods();
+
+  // email MFA code sent on load to allow for multiple MFA methods
+  useEffect(() => {
+    async function generateAndSendMfaToken() {
+      try {
+        setIsLoading(true);
+        await sendMfaToken.mutateAsync({ email });
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    generateAndSendMfaToken();
+  }, []);
 
   const handleLoginMfa = async () => {
     try {
@@ -174,9 +188,9 @@ export const MfaEmailStep = ({
     try {
       setIsLoadingResend(true);
       await sendMfaToken.mutateAsync({ email });
-      setIsLoadingResend(false);
     } catch (err) {
       console.error(err);
+    } finally {
       setIsLoadingResend(false);
     }
   };

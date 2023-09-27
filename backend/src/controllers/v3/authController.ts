@@ -7,10 +7,9 @@ import { LoginSRPDetail, User } from "../../models";
 import { createToken, issueAuthTokens, validateProviderAuthToken } from "../../helpers/auth";
 import { checkUserDevice } from "../../helpers/user";
 import { sendMail } from "../../helpers/nodemailer";
-import { TokenService } from "../../services";
 import { EELogService } from "../../ee/services";
 import { BadRequestError, InternalServerError } from "../../utils/errors";
-import { ACTION_LOGIN, TOKEN_EMAIL_MFA } from "../../variables";
+import { ACTION_LOGIN } from "../../variables";
 import { getUserAgentType } from "../../utils/posthog"; // TODO: move this
 import { client, getEncryptionKey, getHttpsEnabled, getJwtMfaLifetime, getJwtMfaSecret, getRootEncryptionKey } from "../../config";
 import { AuthMethod, MfaMethod } from "../../models/user";
@@ -142,24 +141,6 @@ export const login2 = async (req: Request, res: Response) => {
             expiresIn: await getJwtMfaLifetime(),
             secret: await getJwtMfaSecret()
           });
-
-          // TODO: fix this so the token is only sent if email is used as the MFA method
-          if(user.mfaMethods?.includes(MfaMethod.EMAIL)) {
-            const code = await TokenService.createToken({
-              type: TOKEN_EMAIL_MFA,
-              email
-            });
-
-            // send MFA code [code] to [email]
-            await sendMail({
-              template: "emailMfa.handlebars",
-              subjectLine: "Infisical MFA code",
-              recipients: [user.email],
-              substitutions: {
-                code
-              }
-            });
-          }
 
           return res.status(200).send({
             mfaEnabled: true,
