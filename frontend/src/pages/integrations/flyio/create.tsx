@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/router";
+import { faArrowUpRightFromSquare, faBookOpen, faBugs, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import queryString from "query-string";
 
 import {
@@ -23,13 +28,14 @@ import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 
 export default function FlyioCreateIntegrationPage() {
   const router = useRouter();
+  
   const { mutateAsync } = useCreateIntegration();
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
-  const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
-  const { data: integrationAuthApps } = useGetIntegrationAuthApps({
+  const { data: integrationAuth, isLoading: isIntegrationAuthLoading } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
+  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
 
@@ -67,15 +73,7 @@ export default function FlyioCreateIntegrationPage() {
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: targetApp,
-        appId: null,
         sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: null,
-        targetEnvironmentId: null,
-        targetService: null,
-        targetServiceId: null,
-        owner: null,
-        path: null,
-        region: null,
         secretPath
       });
 
@@ -92,10 +90,38 @@ export default function FlyioCreateIntegrationPage() {
     selectedSourceEnvironment &&
     integrationAuthApps &&
     targetApp ? (
-    <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Fly.io Integration</CardTitle>
-        <FormControl label="Project Environment" className="mt-4">
+    <div className="flex flex-col h-full w-full items-center justify-center">
+      <Head>
+        <title>Set Up Fly.io Integration</title>
+        <link rel='icon' href='/infisical.ico' />
+      </Head>
+      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+        <CardTitle 
+          className="text-left px-6 text-xl" 
+          subTitle="Choose which environment or folder in Infisical you want to sync to Fly.io environment variables."
+        >
+          <div className="flex flex-row items-center">
+            <div className="inline flex items-center pb-0.5">
+              <Image
+                src="/images/integrations/Flyio.svg"
+                height={30}
+                width={30}
+                alt="Fly.io logo"
+              />
+            </div>
+            <span className="ml-2.5">Fly.io Integration </span>
+            <Link href="https://infisical.com/docs/integrations/cloud/flyio" passHref>
+              <a target="_blank" rel="noopener noreferrer">
+                <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
+                  Docs
+                  <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
+                </div>
+              </a>
+            </Link>
+          </div>
+        </CardTitle>
+        <FormControl label="Project Environment" className="px-6">
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
@@ -111,14 +137,14 @@ export default function FlyioCreateIntegrationPage() {
             ))}
           </Select>
         </FormControl>
-        <FormControl label="Secrets Path">
+        <FormControl label="Secrets Path" className="px-6">
           <Input
             value={secretPath}
             onChange={(evt) => setSecretPath(evt.target.value)}
             placeholder="Provide a path, default is /"
           />
         </FormControl>
-        <FormControl label="Fly.io App" className="mt-4">
+        <FormControl label="Fly.io App" className="px-6">
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
@@ -144,16 +170,40 @@ export default function FlyioCreateIntegrationPage() {
         <Button
           onClick={handleButtonClick}
           color="mineshaft"
-          className="mt-4"
+          variant="outline_bg"
+          className="mb-6 mt-2 ml-auto mr-6"
           isLoading={isLoading}
           isDisabled={integrationAuthApps.length === 0}
         >
           Create Integration
         </Button>
       </Card>
+      <div className="border-t border-mineshaft-800 w-full max-w-md mt-6"/>
+      <div className="flex flex-col bg-mineshaft-800 border border-mineshaft-600 w-full p-4 max-w-lg mt-6 rounded-md">
+        <div className="flex flex-row items-center"><FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl"/> <span className="ml-3 text-md text-mineshaft-100">Pro Tips</span></div>
+        <span className="text-mineshaft-300 text-sm mt-4">After creating an integration, your secrets will start syncing immediately. This might cause an unexpected override of current secrets in Fly.io with secrets from Infisical.</span>
+      </div>
     </div>
   ) : (
-    <div />
+    <div className="flex justify-center items-center w-full h-full">
+      <Head>
+        <title>Set Up Fly.io Integration</title>
+        <link rel='icon' href='/infisical.ico' />
+      </Head>
+      {isIntegrationAuthLoading || isIntegrationAuthAppsLoading ? <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" /> : <div className="max-w-md h-max p-6 border border-mineshaft-600 rounded-md bg-mineshaft-800 text-mineshaft-200 flex flex-col text-center">
+        <FontAwesomeIcon icon={faBugs} className="text-6xl my-2 inlineli"/>
+        <p>
+          Something went wrong. Please contact <a
+            className="inline underline underline-offset-4 decoration-primary-500 opacity-80 hover:opacity-100 text-mineshaft-100 duration-200 cursor-pointer"
+            target="_blank"
+            rel="noopener noreferrer"
+            href="mailto:support@infisical.com"
+          >
+            support@infisical.com
+          </a> if the issue persists.
+        </p>
+      </div>}
+    </div>
   );
 }
 

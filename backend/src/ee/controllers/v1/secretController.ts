@@ -1,7 +1,17 @@
+import { ForbiddenError, subject } from "@casl/ability";
 import { Request, Response } from "express";
-import { Secret } from "../../../models";
+import { validateRequest } from "../../../helpers/validation";
+import { Folder, Secret } from "../../../models";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  getUserProjectPermissions
+} from "../../services/ProjectRoleService";
+import { BadRequestError } from "../../../utils/errors";
+import * as reqValidator from "../../../validation";
 import { SecretVersion } from "../../models";
 import { EESecretService } from "../../services";
+import { getFolderWithPathFromId } from "../../../services/FolderService";
 
 /**
  * Return secret versions for secret with id [secretId]
@@ -54,10 +64,21 @@ export const getSecretVersions = async (req: Request, res: Response) => {
         }
     }   
     */
-  const { secretId } = req.params;
+  const {
+    params: { secretId },
+    query: { offset, limit }
+  } = await validateRequest(reqValidator.GetSecretVersionsV1, req);
 
-  const offset: number = parseInt(req.query.offset as string);
-  const limit: number = parseInt(req.query.limit as string);
+  const secret = await Secret.findById(secretId);
+  if (!secret) {
+    throw BadRequestError({ message: "Failed to find secret" });
+  }
+
+  const { permission } = await getUserProjectPermissions(req.user._id, secret.workspace.toString());
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.SecretRollback
+  );
 
   const secretVersions = await SecretVersion.find({
     secret: secretId
@@ -126,8 +147,24 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
         }
     }   
     */
-  const { secretId } = req.params;
-  const { version } = req.body;
+
+  const {
+    params: { secretId },
+    body: { version }
+  } = await validateRequest(reqValidator.RollbackSecretVersionV1, req);
+
+  const toBeUpdatedSec = await Secret.findById(secretId);
+  if (!toBeUpdatedSec) {
+    throw BadRequestError({ message: "Failed to find secret" });
+  }
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    toBeUpdatedSec.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.SecretRollback
+  );
 
   // validate secret version
   const oldSecretVersion = await SecretVersion.findOne({
@@ -153,6 +190,15 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
     folder,
     keyEncoding
   } = oldSecretVersion;
+
+  let secretPath = "/";
+  const folders = await Folder.findOne({ workspace, environment });
+  if (folders)
+    secretPath = getFolderWithPathFromId(folders.nodes, folder || "root")?.folderPath || "/";
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Edit,
+    subject(ProjectPermissionSub.Secrets, { environment: toBeUpdatedSec.environment, secretPath })
+  );
 
   // update secret
   const secret = await Secret.findByIdAndUpdate(

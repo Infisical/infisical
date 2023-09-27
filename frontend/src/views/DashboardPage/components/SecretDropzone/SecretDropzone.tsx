@@ -1,6 +1,7 @@
 import { ChangeEvent, DragEvent, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { subject } from "@casl/ability";
 import { faSquareCheck } from "@fortawesome/free-regular-svg-icons";
 import {
   faClone,
@@ -14,7 +15,9 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { twMerge } from "tailwind-merge";
 import * as yup from "yup";
 
+import GlobPatternExamples from "@app/components/basic/popups/GlobPatternExamples";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { ProjectPermissionCan } from "@app/components/permissions";
 // TODO:(akhilmhdh) convert all the util functions like this into a lib folder grouped by functionality
 import { parseDotEnv } from "@app/components/utilities/parseDotEnv";
 import {
@@ -32,6 +35,7 @@ import {
   Skeleton,
   Tooltip
 } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useDebounce, usePopUp, useToggle } from "@app/hooks";
 import { useGetProjectSecrets } from "@app/hooks/api";
 import { UserWsKeyPair } from "@app/hooks/api/types";
@@ -76,6 +80,8 @@ type Props = {
   environments?: { name: string; slug: string }[];
   workspaceId: string;
   decryptFileKey: UserWsKeyPair;
+  environment: string;
+  secretPath: string;
 };
 
 export const SecretDropzone = ({
@@ -84,7 +90,9 @@ export const SecretDropzone = ({
   onAddNewSecret,
   environments = [],
   workspaceId,
-  decryptFileKey
+  decryptFileKey,
+  environment,
+  secretPath
 }: Props): JSX.Element => {
   const { t } = useTranslation();
   const [isDragActive, setDragActive] = useToggle();
@@ -107,16 +115,16 @@ export const SecretDropzone = ({
     defaultValues: { secretPath: "/", environment: environments?.[0]?.slug }
   });
 
-  const secretPath = watch("secretPath");
+  const envCopySecPath = watch("secretPath");
   const selectedEnvSlug = watch("environment");
-  const debouncedSecretPath = useDebounce(secretPath);
+  const debouncedEnvCopySecretPath = useDebounce(envCopySecPath);
 
   const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
     workspaceId,
     env: selectedEnvSlug,
-    secretPath: debouncedSecretPath,
+    secretPath: debouncedEnvCopySecretPath,
     isPaused:
-      !(Boolean(workspaceId) && Boolean(selectedEnvSlug) && Boolean(debouncedSecretPath)) &&
+      !(Boolean(workspaceId) && Boolean(selectedEnvSlug) && Boolean(debouncedEnvCopySecretPath)) &&
       !popUp.importSecEnv.isOpen,
     decryptFileKey
   });
@@ -124,7 +132,7 @@ export const SecretDropzone = ({
   useEffect(() => {
     setValue("secrets", {});
     setSearchFilter("");
-  }, [debouncedSecretPath]);
+  }, [debouncedEnvCopySecretPath]);
 
   const handleDrag = (e: DragEvent) => {
     e.preventDefault();
@@ -175,7 +183,7 @@ export const SecretDropzone = ({
 
     e.dataTransfer.dropEffect = "copy";
     setDragActive.off();
-    parseFile(e.dataTransfer.files[0], e.dataTransfer?.files?.[0]?.type === "application/json");
+    parseFile(e.dataTransfer.files[0]);
   };
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -215,7 +223,7 @@ export const SecretDropzone = ({
       onDragOver={handleDrag}
       onDrop={handleDrop}
       className={twMerge(
-        "relative mx-0.5 mb-4 mt-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 py-4 text-sm px-2 text-mineshaft-200 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100",
+        "relative mx-0.5 mb-4 mt-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 py-4 px-2 text-sm text-mineshaft-200 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100",
         isDragActive && "opacity-100",
         !isSmaller && "w-full max-w-3xl flex-col space-y-4 py-20",
         isLoading && "bg-bunker-800"
@@ -227,20 +235,28 @@ export const SecretDropzone = ({
         </div>
       ) : (
         <form onSubmit={handleSubmit(handleFormSubmit)}>
-          <div className="flex items-center justify-cente flex-col space-y-2">
+          <div className="justify-cente flex flex-col items-center space-y-2">
             <div>
               <FontAwesomeIcon icon={faUpload} size={isSmaller ? "2x" : "5x"} />
             </div>
             <div>
               <p className="">{t(isSmaller ? "common.drop-zone-keys" : "common.drop-zone")}</p>
             </div>
-            <input
-              id="fileSelect"
-              type="file"
-              className="absolute h-full w-full cursor-pointer opacity-0"
-              accept=".txt,.env,.yml,.yaml,.json"
-              onChange={handleFileUpload}
-            />
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Create}
+              a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            >
+              {(isAllowed) => (
+                <input
+                  id="fileSelect"
+                  disabled={!isAllowed}
+                  type="file"
+                  className="absolute h-full w-full cursor-pointer opacity-0"
+                  accept=".txt,.env,.yml,.yaml,.json"
+                  onChange={handleFileUpload}
+                />
+              )}
+            </ProjectPermissionCan>
             <div
               className={twMerge(
                 "flex w-full flex-row items-center justify-center py-4",
@@ -261,9 +277,22 @@ export const SecretDropzone = ({
                 }}
               >
                 <ModalTrigger asChild>
-                  <Button variant="star" size={isSmaller ? "xs" : "sm"}>
-                    Copy Secrets From An Environment
-                  </Button>
+                  <div>
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Create}
+                      a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                    >
+                      {(isAllowed) => (
+                        <Button
+                          isDisabled={!isAllowed}
+                          variant="star"
+                          size={isSmaller ? "xs" : "sm"}
+                        >
+                          Copy Secrets From An Environment
+                        </Button>
+                      )}
+                    </ProjectPermissionCan>
+                  </div>
                 </ModalTrigger>
                 <ModalContent
                   className="max-w-2xl"
@@ -296,7 +325,12 @@ export const SecretDropzone = ({
                           </FormControl>
                         )}
                       />
-                      <FormControl label="Secret Path" className="flex-grow" isRequired>
+                      <FormControl
+                        label="Secret Path"
+                        className="flex-grow"
+                        isRequired
+                        icon={<GlobPatternExamples />}
+                      >
                         <Input
                           {...register("secretPath")}
                           placeholder="Provide a path, default is /"
@@ -306,7 +340,7 @@ export const SecretDropzone = ({
                     <div className="border-t border-mineshaft-600 pt-4">
                       <div className="mb-4 flex items-center justify-between">
                         <div>Secrets</div>
-                        <div className="w-1/2 flex items-center space-x-2">
+                        <div className="flex w-1/2 items-center space-x-2">
                           <Input
                             placeholder="Search for secret"
                             value={searchFilter}
@@ -339,7 +373,7 @@ export const SecretDropzone = ({
                       {!isSecretsLoading && !secrets?.secrets?.length && (
                         <EmptyState title="No secrets found" icon={faKey} />
                       )}
-                      <div className="grid grid-cols-2 gap-4 max-h-64 overflow-auto thin-scrollbar ">
+                      <div className="thin-scrollbar grid max-h-64 grid-cols-2 gap-4 overflow-auto ">
                         {isSecretsLoading &&
                           Array.apply(0, Array(2)).map((_x, i) => (
                             <Skeleton
@@ -397,9 +431,16 @@ export const SecretDropzone = ({
                 </ModalContent>
               </Modal>
               {!isSmaller && (
-                <Button variant="star" onClick={onAddNewSecret}>
-                  Add a new secret
-                </Button>
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Create}
+                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                >
+                  {(isAllowed) => (
+                    <Button variant="star" onClick={onAddNewSecret} isDisabled={!isAllowed}>
+                      Add a new secret
+                    </Button>
+                  )}
+                </ProjectPermissionCan>
               )}
             </div>
           </div>

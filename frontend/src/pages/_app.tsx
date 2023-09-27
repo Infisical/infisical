@@ -12,13 +12,14 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import NProgress from "nprogress";
 
 import NotificationProvider from "@app/components/context/Notifications/NotificationProvider";
-import { IntercomProvider } from "@app/components/utilities/intercom/intercomProvider";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import { TooltipProvider } from "@app/components/v2";
 import { publicPaths } from "@app/const";
 import {
   AuthProvider,
+  OrgPermissionProvider,
   OrgProvider,
+  ProjectPermissionProvider,
   SubscriptionProvider,
   UserProvider,
   WorkspaceProvider
@@ -47,7 +48,6 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
     const telemetry = new Telemetry().getInstance();
 
     const handleRouteChange = () => {
-      // (window).Intercom('update');
       if (typeof window !== "undefined") {
         telemetry.capture("$pageview");
       }
@@ -97,19 +97,21 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
       <TooltipProvider>
         <AuthProvider>
           <OrgProvider>
-            <WorkspaceProvider>
-              <SubscriptionProvider>
-                <UserProvider>
-                  <NotificationProvider>
-                    <IntercomProvider>
-                      <AppLayout>
-                        <Component {...pageProps} />
-                      </AppLayout>
-                    </IntercomProvider>
-                  </NotificationProvider>
-                </UserProvider>
-              </SubscriptionProvider>
-            </WorkspaceProvider>
+            <OrgPermissionProvider>
+              <WorkspaceProvider>
+                <ProjectPermissionProvider>
+                  <SubscriptionProvider>
+                    <UserProvider>
+                      <NotificationProvider>
+                        <AppLayout>
+                          <Component {...pageProps} />
+                        </AppLayout>
+                      </NotificationProvider>
+                    </UserProvider>
+                  </SubscriptionProvider>
+                </ProjectPermissionProvider>
+              </WorkspaceProvider>
+            </OrgPermissionProvider>
           </OrgProvider>
         </AuthProvider>
       </TooltipProvider>

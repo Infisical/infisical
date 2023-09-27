@@ -1,28 +1,37 @@
 import { Request, Response } from "express";
 import {
-	IncidentContactOrg,
-	Membership,
-	MembershipOrg,
-	Organization,
-	Workspace,
+  IncidentContactOrg,
+  Membership,
+  MembershipOrg,
+  Organization,
+  Workspace
 } from "../../models";
 import { createOrganization as create } from "../../helpers/organization";
 import { addMembershipsOrg } from "../../helpers/membershipOrg";
-import { ACCEPTED, OWNER } from "../../variables";
+import { ACCEPTED, ADMIN } from "../../variables";
 import { getLicenseServerUrl, getSiteURL } from "../../config";
 import { licenseServerKeyRequest } from "../../config/request";
+import { validateRequest } from "../../helpers/validation";
+import * as reqValidator from "../../validation/organization";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  getUserOrgPermissions
+} from "../../ee/services/RoleService";
+import { OrganizationNotFoundError } from "../../utils/errors";
+import { ForbiddenError } from "@casl/ability";
 
 export const getOrganizations = async (req: Request, res: Response) => {
   const organizations = (
     await MembershipOrg.find({
       user: req.user._id,
-      status: ACCEPTED,
+      status: ACCEPTED
     }).populate("organization")
   ).map((m) => m.organization);
 
-	return res.status(200).send({
-		organizations,
-	});
+  return res.status(200).send({
+    organizations
+  });
 };
 
 /**
@@ -33,28 +42,26 @@ export const getOrganizations = async (req: Request, res: Response) => {
  * @returns
  */
 export const createOrganization = async (req: Request, res: Response) => {
-  const { organizationName } = req.body;
-
-  if (organizationName.length < 1) {
-    throw new Error("Organization names must be at least 1-character long");
-  }
+  const {
+    body: { organizationName }
+  } = await validateRequest(reqValidator.CreateOrgv1, req);
 
   // create organization and add user as member
   const organization = await create({
     email: req.user.email,
-    name: organizationName,
+    name: organizationName
   });
 
   await addMembershipsOrg({
     userIds: [req.user._id.toString()],
     organizationId: organization._id.toString(),
-    roles: [OWNER],
-    statuses: [ACCEPTED],
+    roles: [ADMIN],
+    statuses: [ACCEPTED]
   });
 
-	return res.status(200).send({
-		organization,
-	});
+  return res.status(200).send({
+    organization
+  });
 };
 
 /**
@@ -64,10 +71,23 @@ export const createOrganization = async (req: Request, res: Response) => {
  * @returns
  */
 export const getOrganization = async (req: Request, res: Response) => {
-	const organization = req.organization
-	return res.status(200).send({
-		organization,
-	});
+  const {
+    params: { organizationId }
+  } = await validateRequest(reqValidator.GetOrgv1, req);
+
+  // ensure user has membership
+  await getUserOrgPermissions(req.user._id, organizationId);
+
+  const organization = await Organization.findById(organizationId);
+  if (!organization) {
+    throw OrganizationNotFoundError({
+      message: "Failed to find organization"
+    });
+  }
+
+  return res.status(200).send({
+    organization
+  });
 };
 
 /**
@@ -77,15 +97,23 @@ export const getOrganization = async (req: Request, res: Response) => {
  * @returns
  */
 export const getOrganizationMembers = async (req: Request, res: Response) => {
-  const { organizationId } = req.params;
+  const {
+    params: { organizationId }
+  } = await validateRequest(reqValidator.GetOrgMembersv1, req);
+
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    OrgPermissionActions.Read,
+    OrgPermissionSubjects.Member
+  );
 
   const users = await MembershipOrg.find({
-    organization: organizationId,
+    organization: organizationId
   }).populate("user", "+publicKey");
 
-	return res.status(200).send({
-		users,
-	});
+  return res.status(200).send({
+    users
+  });
 };
 
 /**
@@ -94,17 +122,22 @@ export const getOrganizationMembers = async (req: Request, res: Response) => {
  * @param res
  * @returns
  */
-export const getOrganizationWorkspaces = async (
-	req: Request,
-	res: Response
-) => {
-  const { organizationId } = req.params;
+export const getOrganizationWorkspaces = async (req: Request, res: Response) => {
+  const {
+    params: { organizationId }
+  } = await validateRequest(reqValidator.GetOrgWorkspacesv1, req);
+
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    OrgPermissionActions.Read,
+    OrgPermissionSubjects.Workspace
+  );
 
   const workspacesSet = new Set(
     (
       await Workspace.find(
         {
-          organization: organizationId,
+          organization: organizationId
         },
         "_id"
       )
@@ -113,15 +146,15 @@ export const getOrganizationWorkspaces = async (
 
   const workspaces = (
     await Membership.find({
-      user: req.user._id,
+      user: req.user._id
     }).populate("workspace")
   )
     .filter((m) => workspacesSet.has(m.workspace._id.toString()))
     .map((m) => m.workspace);
 
-	return res.status(200).send({
-		workspaces,
-	});
+  return res.status(200).send({
+    workspaces
+  });
 };
 
 /**
@@ -131,25 +164,33 @@ export const getOrganizationWorkspaces = async (
  * @returns
  */
 export const changeOrganizationName = async (req: Request, res: Response) => {
-  const { organizationId } = req.params;
-  const { name } = req.body;
+  const {
+    params: { organizationId },
+    body: { name }
+  } = await validateRequest(reqValidator.ChangeOrgNamev1, req);
+
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    OrgPermissionActions.Edit,
+    OrgPermissionSubjects.Settings
+  );
 
   const organization = await Organization.findOneAndUpdate(
     {
-      _id: organizationId,
+      _id: organizationId
     },
     {
-      name,
+      name
     },
     {
-      new: true,
+      new: true
     }
   );
 
-	return res.status(200).send({
-		message: "Successfully changed organization name",
-		organization,
-	});
+  return res.status(200).send({
+    message: "Successfully changed organization name",
+    organization
+  });
 };
 
 /**
@@ -158,19 +199,24 @@ export const changeOrganizationName = async (req: Request, res: Response) => {
  * @param res
  * @returns
  */
-export const getOrganizationIncidentContacts = async (
-	req: Request,
-	res: Response
-) => {
-  const { organizationId } = req.params;
+export const getOrganizationIncidentContacts = async (req: Request, res: Response) => {
+  const {
+    params: { organizationId }
+  } = await validateRequest(reqValidator.GetOrgIncidentContactv1, req);
+
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    OrgPermissionActions.Read,
+    OrgPermissionSubjects.IncidentAccount
+  );
 
   const incidentContactsOrg = await IncidentContactOrg.find({
-    organization: organizationId,
+    organization: organizationId
   });
 
-	return res.status(200).send({
-		incidentContactsOrg,
-	});
+  return res.status(200).send({
+    incidentContactsOrg
+  });
 };
 
 /**
@@ -179,12 +225,17 @@ export const getOrganizationIncidentContacts = async (
  * @param res
  * @returns
  */
-export const addOrganizationIncidentContact = async (
-	req: Request,
-	res: Response
-) => {
-  const { organizationId } = req.params;
-  const { email } = req.body;
+export const addOrganizationIncidentContact = async (req: Request, res: Response) => {
+  const {
+    params: { organizationId },
+    body: { email }
+  } = await validateRequest(reqValidator.CreateOrgIncideContact, req);
+
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    OrgPermissionActions.Create,
+    OrgPermissionSubjects.IncidentAccount
+  );
 
   const incidentContactOrg = await IncidentContactOrg.findOneAndUpdate(
     { email, organization: organizationId },
@@ -192,9 +243,9 @@ export const addOrganizationIncidentContact = async (
     { upsert: true, new: true }
   );
 
-	return res.status(200).send({
-		incidentContactOrg,
-	});
+  return res.status(200).send({
+    incidentContactOrg
+  });
 };
 
 /**
@@ -203,22 +254,27 @@ export const addOrganizationIncidentContact = async (
  * @param res
  * @returns
  */
-export const deleteOrganizationIncidentContact = async (
-	req: Request,
-	res: Response
-) => {
-  const { organizationId } = req.params;
-  const { email } = req.body;
+export const deleteOrganizationIncidentContact = async (req: Request, res: Response) => {
+  const {
+    params: { organizationId },
+    body: { email }
+  } = await validateRequest(reqValidator.DelOrgIncideContact, req);
+
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    OrgPermissionActions.Delete,
+    OrgPermissionSubjects.IncidentAccount
+  );
 
   const incidentContactOrg = await IncidentContactOrg.findOneAndDelete({
     email,
-    organization: organizationId,
+    organization: organizationId
   });
 
-	return res.status(200).send({
-		message: "Successfully deleted organization incident contact",
-		incidentContactOrg,
-	});
+  return res.status(200).send({
+    message: "Successfully deleted organization incident contact",
+    incidentContactOrg
+  });
 };
 
 /**
@@ -228,19 +284,41 @@ export const deleteOrganizationIncidentContact = async (
  * @param res
  * @returns
  */
-export const createOrganizationPortalSession = async (
-	req: Request,
-	res: Response
-) => {
-  const { data: { pmtMethods } } = await licenseServerKeyRequest.get(
-    `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details/payment-methods`,
+export const createOrganizationPortalSession = async (req: Request, res: Response) => {
+  const {
+    params: { organizationId }
+  } = await validateRequest(reqValidator.GetOrgPlanBillingInfov1, req);
+
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    OrgPermissionActions.Edit,
+    OrgPermissionSubjects.Billing
   );
-  
+
+  const organization = await Organization.findById(organizationId);
+  if (!organization) {
+    throw OrganizationNotFoundError({
+      message: "Failed to find organization"
+    });
+  }
+
+  const {
+    data: { pmtMethods }
+  } = await licenseServerKeyRequest.get(
+    `${await getLicenseServerUrl()}/api/license-server/v1/customers/${
+      organization.customerId
+    }/billing-details/payment-methods`
+  );
+
   if (pmtMethods.length < 1) {
     // case: organization has no payment method on file
-    // -> redirect to add payment method portal 
-    const { data: { url } } = await licenseServerKeyRequest.post(
-      `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details/payment-methods`,
+    // -> redirect to add payment method portal
+    const {
+      data: { url }
+    } = await licenseServerKeyRequest.post(
+      `${await getLicenseServerUrl()}/api/license-server/v1/customers/${
+        organization.customerId
+      }/billing-details/payment-methods`,
       {
         success_url: (await getSiteURL()) + "/dashboard",
         cancel_url: (await getSiteURL()) + "/dashboard"
@@ -250,8 +328,12 @@ export const createOrganizationPortalSession = async (
   } else {
     // case: organization has payment method on file
     // -> redirect to billing portal
-    const { data: { url } } = await licenseServerKeyRequest.post(
-      `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details/billing-portal`,
+    const {
+      data: { url }
+    } = await licenseServerKeyRequest.post(
+      `${await getLicenseServerUrl()}/api/license-server/v1/customers/${
+        organization.customerId
+      }/billing-details/billing-portal`,
       {
         return_url: (await getSiteURL()) + "/dashboard"
       }
@@ -266,36 +348,43 @@ export const createOrganizationPortalSession = async (
  * @param res
  * @returns
  */
-export const getOrganizationMembersAndTheirWorkspaces = async (
-	req: Request,
-	res: Response
-) => {
-	const { organizationId } = req.params;
+export const getOrganizationMembersAndTheirWorkspaces = async (req: Request, res: Response) => {
+  const {
+    params: { organizationId }
+  } = await validateRequest(reqValidator.GetOrgMembersv1, req);
 
-	const workspacesSet = (
-			await Workspace.find(
-				{
-					organization: organizationId,
-				},
-				"_id"
-			)
-		).map((w) => w._id.toString());
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    OrgPermissionActions.Read,
+    OrgPermissionSubjects.Member
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    OrgPermissionActions.Read,
+    OrgPermissionSubjects.Workspace
+  );
 
-	const memberships = (
-		await Membership.find({
-			workspace: { $in: workspacesSet },
-		}).populate("workspace")
-	);
-	const userToWorkspaceIds: any = {};
+  const workspacesSet = (
+    await Workspace.find(
+      {
+        organization: organizationId
+      },
+      "_id"
+    )
+  ).map((w) => w._id.toString());
 
-	memberships.forEach(membership => {
-		const user = membership.user.toString();
-		if (userToWorkspaceIds[user]) {
-			userToWorkspaceIds[user].push(membership.workspace);
-		} else {
-			userToWorkspaceIds[user] = [membership.workspace];
-		}
-	});
+  const memberships = await Membership.find({
+    workspace: { $in: workspacesSet }
+  }).populate("workspace");
+  const userToWorkspaceIds: any = {};
 
-	return res.json(userToWorkspaceIds);
+  memberships.forEach((membership) => {
+    const user = membership.user.toString();
+    if (userToWorkspaceIds[user]) {
+      userToWorkspaceIds[user].push(membership.workspace);
+    } else {
+      userToWorkspaceIds[user] = [membership.workspace];
+    }
+  });
+
+  return res.json(userToWorkspaceIds);
 };

@@ -1,6 +1,14 @@
 import { Request, Response } from "express";
 import { PipelineStage, Types } from "mongoose";
-import { Folder, Membership, Secret, ServiceTokenData, TFolderSchema, User } from "../../../models";
+import {
+  Folder,
+  Membership,
+  Secret,
+  ServiceTokenData,
+  TFolderSchema,
+  User,
+  Workspace
+} from "../../../models";
 import {
   ActorType,
   AuditLog,
@@ -22,16 +30,33 @@ import { getLatestSecretVersionIds } from "../../helpers/secretVersion";
 import { searchByFolderId } from "../../../services/FolderService";
 import { EEAuditLogService, EELicenseService } from "../../services";
 import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
+import { validateRequest } from "../../../helpers/validation";
+import {
+  AddWorkspaceTrustedIpV1,
+  DeleteWorkspaceTrustedIpV1,
+  GetWorkspaceAuditLogActorFilterOptsV1,
+  GetWorkspaceAuditLogsV1,
+  GetWorkspaceLogsV1,
+  GetWorkspaceSecretSnapshotsCountV1,
+  GetWorkspaceSecretSnapshotsV1,
+  GetWorkspaceTrustedIpsV1,
+  RollbackWorkspaceSecretSnapshotV1,
+  UpdateWorkspaceTrustedIpV1
+} from "../../../validation";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  getUserProjectPermissions
+} from "../../services/ProjectRoleService";
+import { ForbiddenError } from "@casl/ability";
+import { BadRequestError } from "../../../utils/errors";
 
 /**
  * Return secret snapshots for workspace with id [workspaceId]
  * @param req
  * @param res
  */
-export const getWorkspaceSecretSnapshots = async (
-  req: Request,
-  res: Response
-) => {
+export const getWorkspaceSecretSnapshots = async (req: Request, res: Response) => {
   /* 
     #swagger.summary = 'Return project secret snapshot ids'
     #swagger.description = 'Return project secret snapshots ids'
@@ -77,23 +102,28 @@ export const getWorkspaceSecretSnapshots = async (
         }
     }
     */
-  const { workspaceId } = req.params;
-  const { environment, folderId } = req.query;
+  const {
+    params: { workspaceId },
+    query: { environment, folderId, offset, limit }
+  } = await validateRequest(GetWorkspaceSecretSnapshotsV1, req);
 
-  const offset: number = parseInt(req.query.offset as string);
-  const limit: number = parseInt(req.query.limit as string);
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.SecretRollback
+  );
 
   const secretSnapshots = await SecretSnapshot.find({
     workspace: workspaceId,
     environment,
-    folderId: folderId || "root",
+    folderId: folderId || "root"
   })
     .sort({ createdAt: -1 })
     .skip(offset)
     .limit(limit);
 
   return res.status(200).send({
-    secretSnapshots,
+    secretSnapshots
   });
 };
 
@@ -102,21 +132,26 @@ export const getWorkspaceSecretSnapshots = async (
  * @param req
  * @param res
  */
-export const getWorkspaceSecretSnapshotsCount = async (
-  req: Request,
-  res: Response
-) => {
-  const { workspaceId } = req.params;
-  const { environment, folderId } = req.query;
+export const getWorkspaceSecretSnapshotsCount = async (req: Request, res: Response) => {
+  const {
+    params: { workspaceId },
+    query: { environment, folderId }
+  } = await validateRequest(GetWorkspaceSecretSnapshotsCountV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.SecretRollback
+  );
 
   const count = await SecretSnapshot.countDocuments({
     workspace: workspaceId,
     environment,
-    folderId: folderId || "root",
+    folderId: folderId || "root"
   });
 
   return res.status(200).send({
-    count,
+    count
   });
 };
 
@@ -126,10 +161,7 @@ export const getWorkspaceSecretSnapshotsCount = async (
  * @param res
  * @returns
  */
-export const rollbackWorkspaceSecretSnapshot = async (
-  req: Request,
-  res: Response
-) => {
+export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Response) => {
   /* 
     #swagger.summary = 'Roll back project secrets to those captured in a secret snapshot version.'
     #swagger.description = 'Roll back project secrets to those captured in a secret snapshot version.'
@@ -181,19 +213,27 @@ export const rollbackWorkspaceSecretSnapshot = async (
     }   
     */
 
-  const { workspaceId } = req.params;
-  const { version, environment, folderId = "root" } = req.body;
+  const {
+    params: { workspaceId },
+    body: { folderId, environment, version }
+  } = await validateRequest(RollbackWorkspaceSecretSnapshotV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.SecretRollback
+  );
 
   // validate secret snapshot
   const secretSnapshot = await SecretSnapshot.findOne({
     workspace: workspaceId,
     version,
     environment,
-    folderId: folderId,
+    folderId: folderId
   })
     .populate<{ secretVersions: ISecretVersion[] }>({
       path: "secretVersions",
-      select: "+secretBlindIndex",
+      select: "+secretBlindIndex"
     })
     .populate<{ folderVersion: TFolderRootVersionSchema }>("folderVersion");
 
@@ -202,13 +242,13 @@ export const rollbackWorkspaceSecretSnapshot = async (
   const snapshotFolderTree = secretSnapshot.folderVersion;
   const latestFolderTree = await Folder.findOne({
     workspace: workspaceId,
-    environment,
+    environment
   });
 
   const latestFolderVersion = await FolderVersion.findOne({
     environment,
     workspace: workspaceId,
-    "nodes.id": folderId,
+    "nodes.id": folderId
   }).sort({ "nodes.version": -1 });
 
   const oldSecretVersionsObj: Record<string, ISecretVersion> = {};
@@ -222,8 +262,7 @@ export const rollbackWorkspaceSecretSnapshot = async (
 
   // the parent node from current latest one
   // this will be modified according to the snapshot and latest snapshots
-  const newFolderTree =
-    latestFolderTree && searchByFolderId(latestFolderTree.nodes, folderId);
+  const newFolderTree = latestFolderTree && searchByFolderId(latestFolderTree.nodes, folderId);
 
   if (newFolderTree) {
     newFolderTree.children = snapshotFolderTree?.nodes?.children || [];
@@ -252,43 +291,43 @@ export const rollbackWorkspaceSecretSnapshot = async (
           workspace: new Types.ObjectId(workspaceId),
           environment,
           folderId: {
-            $in: Object.keys(groupByFolderId),
-          },
-        },
+            $in: Object.keys(groupByFolderId)
+          }
+        }
       };
       const sortByFolderIdAndVersion: PipelineStage = {
-        $sort: { folderId: 1, version: -1 },
+        $sort: { folderId: 1, version: -1 }
       };
       const pickLatestVersionOfEachFolder = {
         $group: {
           _id: "$folderId",
           latestVersion: { $first: "$version" },
           doc: {
-            $first: "$$ROOT",
-          },
-        },
+            $first: "$$ROOT"
+          }
+        }
       };
       const populateSecVersion = {
         $lookup: {
           from: SecretVersion.collection.name,
           localField: "doc.secretVersions",
           foreignField: "_id",
-          as: "doc.secretVersions",
-        },
+          as: "doc.secretVersions"
+        }
       };
       const populateFolderVersion = {
         $lookup: {
           from: FolderVersion.collection.name,
           localField: "doc.folderVersion",
           foreignField: "_id",
-          as: "doc.folderVersion",
-        },
+          as: "doc.folderVersion"
+        }
       };
       const unwindFolderVerField = {
         $unwind: {
           path: "$doc.folderVersion",
-          preserveNullAndEmptyArrays: true,
-        },
+          preserveNullAndEmptyArrays: true
+        }
       };
       const latestSnapshotsByFolders: Array<{ doc: typeof secretSnapshot }> =
         await SecretSnapshot.aggregate([
@@ -297,7 +336,7 @@ export const rollbackWorkspaceSecretSnapshot = async (
           pickLatestVersionOfEachFolder,
           populateSecVersion,
           populateFolderVersion,
-          unwindFolderVerField,
+          unwindFolderVerField
         ]);
 
       // recursive snapshotting each level
@@ -327,7 +366,7 @@ export const rollbackWorkspaceSecretSnapshot = async (
 
   // TODO: fix any
   const latestSecretVersionIds = await getLatestSecretVersionIds({
-    secretIds,
+    secretIds
   });
 
   // TODO: fix any
@@ -335,32 +374,31 @@ export const rollbackWorkspaceSecretSnapshot = async (
     await SecretVersion.find(
       {
         _id: {
-          $in: latestSecretVersionIds.map((s) => s.versionId),
-        },
+          $in: latestSecretVersionIds.map((s) => s.versionId)
+        }
       },
       "secret version"
     )
   ).reduce(
     (accumulator, s) => ({
       ...accumulator,
-      [`${s.secret.toString()}`]: s,
+      [`${s.secret.toString()}`]: s
     }),
     {}
   );
 
   const secDelQuery: Record<string, unknown> = {
     workspace: workspaceId,
-    environment,
+    environment
     // undefined means root thus collect all secrets
   };
-  if (folderId !== "root" && folderIds.length)
-    secDelQuery.folder = { $in: folderIds };
+  if (folderId !== "root" && folderIds.length) secDelQuery.folder = { $in: folderIds };
 
   // delete existing secrets
   await Secret.deleteMany(secDelQuery);
   await Folder.deleteOne({
     workspace: workspaceId,
-    environment,
+    environment
   });
 
   // add secrets
@@ -382,7 +420,7 @@ export const rollbackWorkspaceSecretSnapshot = async (
         createdAt,
         algorithm,
         keyEncoding,
-        folder: secFolderId,
+        folder: secFolderId
       } = oldSecretVersionsObj[sv];
 
       return {
@@ -405,7 +443,7 @@ export const rollbackWorkspaceSecretSnapshot = async (
         createdAt,
         algorithm,
         keyEncoding,
-        folder: secFolderId,
+        folder: secFolderId
       };
     })
   );
@@ -429,7 +467,7 @@ export const rollbackWorkspaceSecretSnapshot = async (
         secretValueTag,
         algorithm,
         keyEncoding,
-        folder: secFolderId,
+        folder: secFolderId
       }) => ({
         _id: new Types.ObjectId(),
         secret: _id,
@@ -448,7 +486,7 @@ export const rollbackWorkspaceSecretSnapshot = async (
         secretValueTag,
         algorithm,
         keyEncoding,
-        folder: secFolderId,
+        folder: secFolderId
       })
     )
   );
@@ -464,7 +502,7 @@ export const rollbackWorkspaceSecretSnapshot = async (
     const newFolderVersion = new FolderVersion({
       workspace: workspaceId,
       environment,
-      nodes: newFolderTree,
+      nodes: newFolderTree
     });
     await newFolderVersion.save();
   }
@@ -473,13 +511,11 @@ export const rollbackWorkspaceSecretSnapshot = async (
   await SecretVersion.updateMany(
     {
       secret: {
-        $in: Object.keys(oldSecretVersionsObj).map(
-          (sv) => oldSecretVersionsObj[sv].secret
-        ),
-      },
+        $in: Object.keys(oldSecretVersionsObj).map((sv) => oldSecretVersionsObj[sv].secret)
+      }
     },
     {
-      isDeleted: false,
+      isDeleted: false
     }
   );
 
@@ -487,11 +523,11 @@ export const rollbackWorkspaceSecretSnapshot = async (
   await EESecretService.takeSecretSnapshot({
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
-    folderId,
+    folderId
   });
 
   return res.status(200).send({
-    secrets,
+    secrets
   });
 };
 
@@ -568,13 +604,16 @@ export const getWorkspaceLogs = async (req: Request, res: Response) => {
         }
     }   
     */
-  const { workspaceId } = req.params;
+  const {
+    query: { limit, offset, userId, sortBy, actionNames },
+    params: { workspaceId }
+  } = await validateRequest(GetWorkspaceLogsV1, req);
 
-  const offset: number = parseInt(req.query.offset as string);
-  const limit: number = parseInt(req.query.limit as string);
-  const sortBy: string = req.query.sortBy as string;
-  const userId: string = req.query.userId as string;
-  const actionNames: string = req.query.actionNames as string;
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.AuditLogs
+  );
 
   const logs = await Log.find({
     workspace: workspaceId,
@@ -582,10 +621,10 @@ export const getWorkspaceLogs = async (req: Request, res: Response) => {
     ...(actionNames
       ? {
           actionNames: {
-            $in: actionNames.split(","),
-          },
+            $in: actionNames.split(",")
+          }
         }
-      : {}),
+      : {})
   })
     .sort({ createdAt: sortBy === "recent" ? -1 : 1 })
     .skip(offset)
@@ -594,93 +633,109 @@ export const getWorkspaceLogs = async (req: Request, res: Response) => {
     .populate("user serviceAccount serviceTokenData");
 
   return res.status(200).send({
-    logs,
+    logs
   });
 };
 
 /**
  * Return audit logs for workspace with id [workspaceId]
  * @param req
- * @param res 
+ * @param res
  */
 export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
-  const eventType = req.query.eventType;
-  const userAgentType = req.query.userAgentType;
-  const actor = req.query.actor as string | undefined;
-  const offset: number = parseInt(req.query.offset as string);
-  const limit: number = parseInt(req.query.limit as string);
-  
-  const startDate = req.query.startDate as string;
-  const endDate = req.query.endDate as string;
-  
+  const {
+    query: { limit, offset, endDate, eventType, startDate, userAgentType, actor },
+    params: { workspaceId }
+  } = await validateRequest(GetWorkspaceAuditLogsV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.AuditLogs
+  );
+
   const query = {
     workspace: new Types.ObjectId(workspaceId),
-    ...(eventType ? {
-        "event.type": eventType
-      } : {}),
-    ...(userAgentType ? {
-      userAgentType
-    } : {}),
-    ...(actor ? {
-      "actor.type": actor.split("-", 2)[0],
-      ...(actor.split("-", 2)[0] === ActorType.USER ? {
-        "actor.metadata.userId": actor.split("-", 2)[1]
-      } : {
-        "actor.metadata.serviceId": actor.split("-", 2)[1]
-      })
-    } : {}),
-    ...(startDate || endDate ? {
-      createdAt: {
-        ...(startDate && { $gte: new Date(startDate) }),
-        ...(endDate && { $lte: new Date(endDate) })
-      }
-    } : {})
-  }
-  
-  const auditLogs = await AuditLog.find(query)
-  .sort({ createdAt: -1 })
-  .skip(offset)
-  .limit(limit);
+    ...(eventType
+      ? {
+          "event.type": eventType
+        }
+      : {}),
+    ...(userAgentType
+      ? {
+          userAgentType
+        }
+      : {}),
+    ...(actor
+      ? {
+          "actor.type": actor.split("-", 2)[0],
+          ...(actor.split("-", 2)[0] === ActorType.USER
+            ? {
+                "actor.metadata.userId": actor.split("-", 2)[1]
+              }
+            : {
+                "actor.metadata.serviceId": actor.split("-", 2)[1]
+              })
+        }
+      : {}),
+    ...(startDate || endDate
+      ? {
+          createdAt: {
+            ...(startDate && { $gte: new Date(startDate) }),
+            ...(endDate && { $lte: new Date(endDate) })
+          }
+        }
+      : {})
+  };
+
+  const auditLogs = await AuditLog.find(query).sort({ createdAt: -1 }).skip(offset).limit(limit);
 
   const totalCount = await AuditLog.countDocuments(query);
-  
+
   return res.status(200).send({
     auditLogs,
     totalCount
   });
-}
+};
 
 /**
  * Return audit log actor filter options for workspace with id [workspaceId]
  * @param req
- * @param res 
+ * @param res
  */
 export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
-  
+  const {
+    params: { workspaceId }
+  } = await validateRequest(GetWorkspaceAuditLogActorFilterOptsV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.AuditLogs
+  );
+
   const userIds = await Membership.distinct("user", {
     workspace: new Types.ObjectId(workspaceId)
   });
-  const userActors: UserActor[] = (await User.find({
-    _id: {
-      $in: userIds
-    }
-  })
-  .select("email"))
-  .map((user) => ({
+  const userActors: UserActor[] = (
+    await User.find({
+      _id: {
+        $in: userIds
+      }
+    }).select("email")
+  ).map((user) => ({
     type: ActorType.USER,
     metadata: {
       userId: user._id.toString(),
       email: user.email
     }
   }));
-  
-  const serviceActors: ServiceActor[] = (await ServiceTokenData.find({
-    workspace: new Types.ObjectId(workspaceId)
-  })
-  .select("name"))
-  .map((serviceTokenData) => ({
+
+  const serviceActors: ServiceActor[] = (
+    await ServiceTokenData.find({
+      workspace: new Types.ObjectId(workspaceId)
+    }).select("name")
+  ).map((serviceTokenData) => ({
     type: ActorType.SERVICE,
     metadata: {
       serviceId: serviceTokenData._id.toString(),
@@ -691,50 +746,68 @@ export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Res
   return res.status(200).send({
     actors: [...userActors, ...serviceActors]
   });
-}
+};
 
 /**
  * Return trusted ips for workspace with id [workspaceId]
  * @param req
- * @param res 
+ * @param res
  */
 export const getWorkspaceTrustedIps = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
+  const {
+    params: { workspaceId }
+  } = await validateRequest(GetWorkspaceTrustedIpsV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.IpAllowList
+  );
 
   const trustedIps = await TrustedIP.find({
     workspace: new Types.ObjectId(workspaceId)
   });
-    
+
   return res.status(200).send({
     trustedIps
   });
-}
+};
 
 /**
  * Add a trusted ip to workspace with id [workspaceId]
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
 export const addWorkspaceTrustedIp = async (req: Request, res: Response) => {
-  const { workspaceId } = req.params;
   const {
-    ipAddress: ip,
-    comment,
-    isActive
-  } = req.body;
-  
-  const plan = await EELicenseService.getPlan(req.workspace.organization);
-  
-  if (!plan.ipAllowlisting) return res.status(400).send({
-    message: "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
-  });
-  
+    params: { workspaceId },
+    body: { comment, isActive, ipAddress: ip }
+  } = await validateRequest(AddWorkspaceTrustedIpV1, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.IpAllowList
+  );
+
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+
+  const plan = await EELicenseService.getPlan(workspace.organization);
+
+  if (!plan.ipAllowlisting)
+    return res.status(400).send({
+      message:
+        "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
+    });
+
   const isValidIPOrCidr = isValidIpOrCidr(ip);
-  
-  if (!isValidIPOrCidr) return res.status(400).send({
-    message: "The IP is not a valid IPv4, IPv6, or CIDR block"
-  });
-  
+
+  if (!isValidIPOrCidr)
+    return res.status(400).send({
+      message: "The IP is not a valid IPv4, IPv6, or CIDR block"
+    });
+
   const { ipAddress, type, prefix } = extractIPDetails(ip);
 
   const trustedIp = await new TrustedIP({
@@ -743,9 +816,9 @@ export const addWorkspaceTrustedIp = async (req: Request, res: Response) => {
     type,
     prefix,
     isActive,
-    comment,
+    comment
   }).save();
-  
+
   await EEAuditLogService.createAuditLog(
     req.authData,
     {
@@ -764,32 +837,43 @@ export const addWorkspaceTrustedIp = async (req: Request, res: Response) => {
   return res.status(200).send({
     trustedIp
   });
-}
+};
 
 /**
  * Update trusted ip with id [trustedIpId] workspace with id [workspaceId]
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
 export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
-  const { workspaceId, trustedIpId } = req.params;
   const {
-    ipAddress: ip,
-    comment
-  } = req.body;
+    params: { workspaceId, trustedIpId },
+    body: { ipAddress: ip, comment }
+  } = await validateRequest(UpdateWorkspaceTrustedIpV1, req);
 
-  const plan = await EELicenseService.getPlan(req.workspace.organization);
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.IpAllowList
+  );
 
-  if (!plan.ipAllowlisting) return res.status(400).send({
-    message: "Failed to update IP access range due to plan restriction. Upgrade plan to update IP access range."
-  });
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+
+  const plan = await EELicenseService.getPlan(workspace.organization);
+
+  if (!plan.ipAllowlisting)
+    return res.status(400).send({
+      message:
+        "Failed to update IP access range due to plan restriction. Upgrade plan to update IP access range."
+    });
 
   const isValidIPOrCidr = isValidIpOrCidr(ip);
-  
-  if (!isValidIPOrCidr) return res.status(400).send({
-    message: "The IP is not a valid IPv4, IPv6, or CIDR block"
-  });
-  
+
+  if (!isValidIPOrCidr)
+    return res.status(400).send({
+      message: "The IP is not a valid IPv4, IPv6, or CIDR block"
+    });
+
   const { ipAddress, type, prefix } = extractIPDetails(ip);
 
   const updateObject: {
@@ -799,33 +883,34 @@ export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
     prefix?: number;
     $unset?: {
       prefix: number;
-    }
+    };
   } = {
     ipAddress,
     type,
     comment
   };
-  
+
   if (prefix !== undefined) {
     updateObject.prefix = prefix;
   } else {
     updateObject.$unset = { prefix: 1 };
   }
-  
+
   const trustedIp = await TrustedIP.findOneAndUpdate(
     {
       _id: new Types.ObjectId(trustedIpId),
-      workspace: new Types.ObjectId(workspaceId),
+      workspace: new Types.ObjectId(workspaceId)
     },
     updateObject,
     {
       new: true
     }
   );
-  
-  if (!trustedIp) return res.status(400).send({
-    message: "Failed to update trusted IP"
-  });
+
+  if (!trustedIp)
+    return res.status(400).send({
+      message: "Failed to update trusted IP"
+    });
 
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -841,34 +926,48 @@ export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
       workspaceId: trustedIp.workspace
     }
   );
-  
+
   return res.status(200).send({
     trustedIp
   });
-}
+};
 
 /**
  * Delete IP access range from workspace with id [workspaceId]
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
 export const deleteWorkspaceTrustedIp = async (req: Request, res: Response) => {
-  const { workspaceId, trustedIpId } = req.params;
+  const {
+    params: { workspaceId, trustedIpId }
+  } = await validateRequest(DeleteWorkspaceTrustedIpV1, req);
 
-  const plan = await EELicenseService.getPlan(req.workspace.organization);
-  
-  if (!plan.ipAllowlisting) return res.status(400).send({
-    message: "Failed to delete IP access range due to plan restriction. Upgrade plan to delete IP access range."
-  });
-  
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.IpAllowList
+  );
+
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+
+  const plan = await EELicenseService.getPlan(workspace.organization);
+
+  if (!plan.ipAllowlisting)
+    return res.status(400).send({
+      message:
+        "Failed to delete IP access range due to plan restriction. Upgrade plan to delete IP access range."
+    });
+
   const trustedIp = await TrustedIP.findOneAndDelete({
     _id: new Types.ObjectId(trustedIpId),
     workspace: new Types.ObjectId(workspaceId)
   });
-  
-  if (!trustedIp) return res.status(400).send({
-    message: "Failed to delete trusted IP"
-  });
+
+  if (!trustedIp)
+    return res.status(400).send({
+      message: "Failed to delete trusted IP"
+    });
 
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -888,4 +987,4 @@ export const deleteWorkspaceTrustedIp = async (req: Request, res: Response) => {
   return res.status(200).send({
     trustedIp
   });
-}
+};

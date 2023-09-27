@@ -40,7 +40,7 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
     let link = "";
     switch (integrationOption.slug) {
       case "gcp-secret-manager":
-        link = `https://accounts.google.com/o/oauth2/auth?scope=https://www.googleapis.com/auth/cloud-platform&response_type=code&access_type=offline&state=${state}&redirect_uri=${window.location.origin}/integrations/gcp-secret-manager/oauth2/callback&client_id=${integrationOption.clientId}`;
+        link = `${window.location.origin}/integrations/gcp-secret-manager/authorize`;
         break;
       case "azure-key-vault":
         link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
@@ -64,7 +64,7 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
         link = `https://github.com/login/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=repo&redirect_uri=${window.location.origin}/integrations/github/oauth2/callback&state=${state}`;
         break;
       case "gitlab":
-        link = `https://gitlab.com/oauth/authorize?client_id=${integrationOption.clientId}&redirect_uri=${window.location.origin}/integrations/gitlab/oauth2/callback&response_type=code&state=${state}`;
+        link = `${window.location.origin}/integrations/gitlab/authorize`;
         break;
       case "render":
         link = `${window.location.origin}/integrations/render/authorize`;
@@ -86,6 +86,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
         break;
       case "checkly":
         link = `${window.location.origin}/integrations/checkly/authorize`;
+        break;
+      case "qovery":
+        link = `${window.location.origin}/integrations/qovery/authorize`;
         break;
       case "railway":
         link = `${window.location.origin}/integrations/railway/authorize`;

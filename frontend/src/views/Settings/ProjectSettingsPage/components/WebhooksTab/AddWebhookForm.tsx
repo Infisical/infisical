@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
+import GlobPatternExamples from "@app/components/basic/popups/GlobPatternExamples";
 import {
   Button,
   FormControl,
@@ -85,11 +86,16 @@ export const AddWebhookForm = ({
             />
             <FormControl
               label="Secret Path"
+              icon={<GlobPatternExamples />}
               isRequired
               isError={Boolean(errors?.secretPath)}
               errorText={errors?.secretPath?.message}
+              helperText="Glob patterns are used to match multiple files or directories"
             >
-              <Input placeholder="/, /**/*" {...register("secretPath")} />
+              <Input
+                placeholder="glob pattern / or /**/* or /{dir1,dir2}"
+                {...register("secretPath")}
+              />
             </FormControl>
             <FormControl
               label="Secret Key"

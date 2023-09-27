@@ -18,6 +18,7 @@ import {
   INTEGRATION_LARAVELFORGE,
   INTEGRATION_NETLIFY,
   INTEGRATION_NORTHFLANK,
+  INTEGRATION_QOVERY,
   INTEGRATION_RAILWAY,
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
@@ -45,6 +46,7 @@ export interface IIntegration {
   targetServiceId: string;
   path: string;
   region: string;
+  scope: string;
   secretPath: string;
   integration:
     | "azure-key-vault"
@@ -63,6 +65,7 @@ export interface IIntegration {
     | "travisci"
     | "supabase"
     | "checkly"
+    | "qovery"
     | "terraform-cloud"
     | "teamcity"
     | "hashicorp-vault"
@@ -119,11 +122,13 @@ const integrationSchema = new Schema<IIntegration>(
     },
     targetService: {
       // railway-specific service
+      // qovery-specific project
       type: String,
       default: null,
     },
     targetServiceId: {
       // railway-specific service
+      // qovery specific project
       type: String,
       default: null,
     },
@@ -142,6 +147,11 @@ const integrationSchema = new Schema<IIntegration>(
       // aws-parameter-store-specific path
       type: String,
       default: null,
+    },
+    scope: {
+      // qovery-specific scope
+      type: String,
+      default: null
     },
     integration: {
       type: String,
@@ -162,6 +172,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_TRAVISCI,
         INTEGRATION_SUPABASE,
         INTEGRATION_CHECKLY,
+        INTEGRATION_QOVERY,
         INTEGRATION_TERRAFORM_CLOUD,
         INTEGRATION_TEAMCITY,
         INTEGRATION_HASHICORP_VAULT,
@@ -187,7 +198,8 @@ const integrationSchema = new Schema<IIntegration>(
       default: "/",
     },
     metadata: {
-      type: Schema.Types.Mixed
+      type: Schema.Types.Mixed,
+      default: {}
     }
   },
   {

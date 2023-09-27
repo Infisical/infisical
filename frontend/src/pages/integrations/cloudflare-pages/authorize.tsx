@@ -33,9 +33,7 @@ export default function CloudflarePagesIntegrationPage() {
                 workspaceId: localStorage.getItem("projectData.id"),
                 integration: "cloudflare-pages",
                 accessId: accountId,
-                accessToken: accessKey,
-                url: null,
-                namespace: null
+                accessToken: accessKey
             });
 
             setAccessKey("");

@@ -31,6 +31,7 @@ import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { OrgPermissionCan } from "@app/components/permissions";
 import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
 import { tempLocalStorage } from "@app/components/utilities/checks/tempLocalStorage";
 import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
@@ -50,7 +51,14 @@ import {
   SelectItem,
   UpgradePlanModal
 } from "@app/components/v2";
-import { useOrganization, useSubscription, useUser, useWorkspace } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription,
+  useUser,
+  useWorkspace
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   fetchOrgUsers,
@@ -129,18 +137,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
   });
 
   const { t } = useTranslation();
-
-  useEffect(() => {
-    const handleRouteChange = () => {
-      window.Intercom("update");
-    };
-
-    router.events.on("routeChangeComplete", handleRouteChange);
-
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, []);
 
   const logout = useLogoutUser();
   const logOutUser = async () => {
@@ -406,22 +402,30 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         </div>
                         <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />
                         <div className="w-full">
-                          <Button
-                            className="w-full bg-mineshaft-700 py-2 text-bunker-200"
-                            colorSchema="primary"
-                            variant="outline_bg"
-                            size="sm"
-                            onClick={() => {
-                              if (isAddingProjectsAllowed) {
-                                handlePopUpOpen("addNewWs");
-                              } else {
-                                handlePopUpOpen("upgradePlan");
-                              }
-                            }}
-                            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                          <OrgPermissionCan
+                            I={OrgPermissionActions.Create}
+                            a={OrgPermissionSubjects.Workspace}
                           >
-                            Add Project
-                          </Button>
+                            {(isAllowed) => (
+                              <Button
+                                className="w-full bg-mineshaft-700 py-2 text-bunker-200"
+                                colorSchema="primary"
+                                variant="outline_bg"
+                                size="sm"
+                                isDisabled={!isAllowed}
+                                onClick={() => {
+                                  if (isAddingProjectsAllowed) {
+                                    handlePopUpOpen("addNewWs");
+                                  } else {
+                                    handlePopUpOpen("upgradePlan");
+                                  }
+                                }}
+                                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                              >
+                                Add Project
+                              </Button>
+                            )}
+                          </OrgPermissionCan>
                         </div>
                       </Select>
                     </div>
@@ -441,7 +445,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         <a>
                           <MenuItem
                             isSelected={router.asPath.includes(
-                              `/project/${currentWorkspace?._id}/secrets/overview`
+                              `/project/${currentWorkspace?._id}/secrets`
                             )}
                             icon="system-outline-90-lock-closed"
                           >
@@ -464,7 +468,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <Link href={`/integrations/${currentWorkspace?._id}`} passHref>
                         <a>
                           <MenuItem
-                            isSelected={router.asPath === `/integrations/${currentWorkspace?._id}`}
+                            isSelected={router.asPath.includes("/integrations")}
                             icon="system-outline-82-extension"
                           >
                             {t("nav.menu.integrations")}
@@ -495,29 +499,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      {/* <Link href={`/project/${currentWorkspace?._id}/logs`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?._id}/logs`
-                            }
-                            icon="system-outline-168-view-headline"
-                          >
-                            Audit Logs
-                          </MenuItem>
-                        </a>
-                      </Link> */}
-                      {/* <Link href={`/project/${currentWorkspace?._id}/secret-scanning`} passHref>
-                      <a>
-                        <MenuItem
-                          isSelected={router.asPath === `/project/${currentWorkspace?._id}/secret-scanning`}
-                          // icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
-                          icon="system-outline-82-extension"
-                        >
-                          Audit Logs
-                        </MenuItem>
-                      </a>
-                    </Link> */}
                       <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>
                         <a>
                           <MenuItem
@@ -734,16 +715,26 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   <Controller
                     control={control}
                     name="addMembers"
-                    defaultValue
+                    defaultValue={false}
                     render={({ field: { onBlur, value, onChange } }) => (
-                      <Checkbox
-                        id="add-project-layout"
-                        isChecked={value}
-                        onCheckedChange={onChange}
-                        onBlur={onBlur}
+                      <OrgPermissionCan
+                        I={OrgPermissionActions.Read}
+                        a={OrgPermissionSubjects.Member}
                       >
-                        Add all members of my organization to this project
-                      </Checkbox>
+                        {(isAllowed) => (
+                          <div>
+                            <Checkbox
+                              id="add-project-layout"
+                              isChecked={value}
+                              onCheckedChange={onChange}
+                              isDisabled={!isAllowed}
+                              onBlur={onBlur}
+                            >
+                              Add all members of my organization to this project
+                            </Checkbox>
+                          </div>
+                        )}
+                      </OrgPermissionCan>
                     )}
                   />
                 </div>

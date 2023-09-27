@@ -8,6 +8,7 @@ import {
   UseFormSetValue,
   useWatch
 } from "react-hook-form";
+import { subject } from "@casl/ability";
 import {
   faCheck,
   faCodeBranch,
@@ -22,26 +23,34 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { cx } from "cva";
 import { twMerge } from "tailwind-merge";
 
+// TODO:(akhilmhdh): Refactor this
+import AddTagPopoverContent from "@app/components/AddTagPopoverContent/AddTagPopoverContent";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  FormControl,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
   IconButton,
   Input,
   Popover,
+  PopoverContent,
   PopoverTrigger,
   SecretInput,
   Tag,
+  TextArea,
   Tooltip
 } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { WsTag } from "@app/hooks/api/types";
 
-import AddTagPopoverContent from "../../../../components/AddTagPopoverContent/AddTagPopoverContent";
 import { FormData, SecretActionType } from "../../DashboardPage.utils";
 
 type Props = {
   index: number;
+  environment: string;
+  secretPath: string;
   // backend generated unique id
   secUniqId?: string;
   // permission and external state's that decided to hide or show
@@ -69,6 +78,8 @@ type Props = {
 export const SecretInputRow = memo(
   ({
     index,
+    secretPath,
+    environment,
     isSecretValueHidden,
     onRowExpand,
     isReadOnly,
@@ -79,7 +90,7 @@ export const SecretInputRow = memo(
     onSecretDelete,
     searchTerm,
     control,
-    // register,
+    register,
     setValue,
     isKeyError,
     keyError,
@@ -217,7 +228,6 @@ export const SecretInputRow = memo(
         <td className="flex h-10 w-10 items-center justify-center border-none px-4">
           <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div>
         </td>
-
         <Controller
           control={control}
           defaultValue=""
@@ -260,7 +270,7 @@ export const SecretInputRow = memo(
           className="flex w-full flex-grow flex-row border-r border-none border-red"
           style={{ padding: "0.5rem 0 0.5rem 1rem" }}
         >
-          <div className="w-full">
+          <div className="w-full flex items-center">
             {isOverridden ? (
               <Controller
                 control={control}
@@ -356,16 +366,24 @@ export const SecretInputRow = memo(
                 <Popover>
                   <PopoverTrigger asChild>
                     <div className="w-0 group-hover:w-6 data-[state=open]:w-6">
-                      <Tooltip content="Add tags">
-                        <IconButton
-                          variant="plain"
-                          size="md"
-                          ariaLabel="add-tag"
-                          className="py-[0.42rem]"
-                        >
-                          <FontAwesomeIcon icon={faTags} />
-                        </IconButton>
-                      </Tooltip>
+                      <ProjectPermissionCan
+                        renderTooltip
+                        allowedLabel="Add Tags"
+                        I={ProjectPermissionActions.Edit}
+                        a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                      >
+                        {(isAllowed) => (
+                          <IconButton
+                            isDisabled={!isAllowed}
+                            variant="plain"
+                            size="md"
+                            ariaLabel="add-tags"
+                            className="py-[0.42rem]"
+                          >
+                            <FontAwesomeIcon icon={faTags} />
+                          </IconButton>
+                        )}
+                      </ProjectPermissionCan>
                     </div>
                   </PopoverTrigger>
                   <AddTagPopoverContent
@@ -385,55 +403,76 @@ export const SecretInputRow = memo(
           <div className="flex h-8 flex-row items-center pr-2">
             {!isAddOnly && (
               <div>
-                <Tooltip content="Override with a personal value">
-                  <IconButton
-                    variant="plain"
-                    className={twMerge(
-                      "mt-0.5 w-0 overflow-hidden p-0 group-hover:ml-1 group-hover:w-7",
-                      isOverridden && "ml-1 w-7 text-primary"
-                    )}
-                    onClick={onSecretOverride}
-                    size="md"
-                    isDisabled={isRollbackMode || isReadOnly}
-                    ariaLabel="info"
-                  >
-                    <div className="flex items-center space-x-1">
-                      <FontAwesomeIcon icon={faCodeBranch} className="text-base" />
-                    </div>
-                  </IconButton>
-                </Tooltip>
+                <ProjectPermissionCan
+                  renderTooltip
+                  allowedLabel="Override with a personal value"
+                  I={ProjectPermissionActions.Edit}
+                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                >
+                  {(isAllowed) => (
+                    <IconButton
+                      variant="plain"
+                      className={twMerge(
+                        "mt-0.5 w-0 overflow-hidden p-0 group-hover:ml-1 group-hover:w-7",
+                        isOverridden && "ml-1 w-7 text-primary"
+                      )}
+                      onClick={onSecretOverride}
+                      size="md"
+                      isDisabled={isRollbackMode || isReadOnly || !isAllowed}
+                      ariaLabel="info"
+                    >
+                      <div className="flex items-center space-x-1">
+                        <FontAwesomeIcon icon={faCodeBranch} className="text-base" />
+                      </div>
+                    </IconButton>
+                  )}
+                </ProjectPermissionCan>
               </div>
             )}
-            <Tooltip content="Comment">
-              <div className="mt-0.5 overflow-hidden ">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <IconButton
-                      className={twMerge(
-                        "w-7 overflow-hidden p-0",
-                        "w-0 group-hover:w-7 data-[state=open]:w-7",
-                        hasComment ? "w-7 text-primary" : "group-hover:w-7"
-                      )}
-                      variant="plain"
-                      size="md"
-                      ariaLabel="add-tag"
+            <div className="mt-0.5 overflow-hidden ">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div>
+                    <ProjectPermissionCan
+                      renderTooltip
+                      allowedLabel="Comment"
+                      I={ProjectPermissionActions.Edit}
+                      a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
                     >
-                      <FontAwesomeIcon icon={faComment} />
-                    </IconButton>
-                  </PopoverTrigger>
-                  <AddTagPopoverContent
-                    wsTags={wsTags}
-                    secKey={secKey || "this secret"}
-                    selectedTagIds={selectedTagIds}
-                    handleSelectTag={(wsTag: WsTag) => onSelectTag(wsTag)}
-                    handleTagOnMouseEnter={(wsTag: WsTag) => handleTagOnMouseEnter(wsTag)}
-                    handleTagOnMouseLeave={() => handleTagOnMouseLeave()}
-                    checkIfTagIsVisible={(wsTag: WsTag) => checkIfTagIsVisible(wsTag)}
-                    handleOnCreateTagOpen={() => onCreateTagOpen()}
-                  />
-                </Popover>
-              </div>
-            </Tooltip>
+                      {(isAllowed) => (
+                        <IconButton
+                          className={twMerge(
+                            "w-7 overflow-hidden p-0",
+                            "w-0 group-hover:w-7 data-[state=open]:w-7",
+                            hasComment ? "w-7 text-primary" : "group-hover:w-7"
+                          )}
+                          isDisabled={!isAllowed}
+                          variant="plain"
+                          size="md"
+                          ariaLabel="add-comment"
+                        >
+                          <FontAwesomeIcon icon={faComment} />
+                        </IconButton>
+                      )}
+                    </ProjectPermissionCan>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl"
+                  sticky="always"
+                >
+                  <FormControl label="Comment" className="mb-0">
+                    <TextArea
+                      isDisabled={isReadOnly || isRollbackMode || shouldBeBlockedInAddOnly}
+                      className="border border-mineshaft-600 text-sm"
+                      {...register(`secrets.${index}.comment`)}
+                      rows={8}
+                      cols={30}
+                    />
+                  </FormControl>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
           <div className="duration-0 flex w-16 justify-center overflow-hidden border-l border-mineshaft-600 pl-2 transition-all">
             <div className="flex h-8 items-center space-x-2.5">
@@ -453,20 +492,27 @@ export const SecretInputRow = memo(
                 </div>
               )}
               <div className="opacity-0 group-hover:opacity-100">
-                <Tooltip content="Delete">
-                  <IconButton
-                    size="lg"
-                    variant="plain"
-                    colorSchema="danger"
-                    ariaLabel="delete"
-                    isDisabled={isReadOnly || isRollbackMode}
-                    onClick={() => {
-                      onSecretDelete(index, secKey, secId, idOverride);
-                    }}
-                  >
-                    <FontAwesomeIcon icon={faXmark} />
-                  </IconButton>
-                </Tooltip>
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Delete}
+                  a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                  renderTooltip
+                  allowedLabel="Delete"
+                >
+                  {(isAllowed) => (
+                    <IconButton
+                      size="lg"
+                      variant="plain"
+                      colorSchema="danger"
+                      ariaLabel="delete"
+                      isDisabled={isReadOnly || isRollbackMode || !isAllowed}
+                      onClick={() => {
+                        onSecretDelete(index, secKey, secId, idOverride);
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faXmark} />
+                    </IconButton>
+                  )}
+                </ProjectPermissionCan>
               </div>
             </div>
           </div>

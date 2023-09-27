@@ -76,17 +76,9 @@ export default function TerraformCloudCreateIntegrationPage() {
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: targetApp,
-        appId:
-          integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp)
-            ?.appId ?? null,
+        appId: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp)?.appId,
         sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: null,
-        targetEnvironmentId: null,
         targetService: variableType,
-        targetServiceId: null,
-        owner: null,
-        path: null,
-        region: null,
         secretPath
       });
 

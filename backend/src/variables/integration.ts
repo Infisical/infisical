@@ -28,6 +28,7 @@ export const INTEGRATION_TRAVISCI = "travisci";
 export const INTEGRATION_TEAMCITY = "teamcity";
 export const INTEGRATION_SUPABASE = "supabase";
 export const INTEGRATION_CHECKLY = "checkly";
+export const INTEGRATION_QOVERY = "qovery";
 export const INTEGRATION_TERRAFORM_CLOUD = "terraform-cloud";
 export const INTEGRATION_HASHICORP_VAULT = "hashicorp-vault";
 export const INTEGRATION_CLOUDFLARE_PAGES = "cloudflare-pages";
@@ -53,6 +54,7 @@ export const INTEGRATION_SET = new Set([
     INTEGRATION_TEAMCITY,
     INTEGRATION_SUPABASE,
     INTEGRATION_CHECKLY,
+    INTEGRATION_QOVERY,
     INTEGRATION_TERRAFORM_CLOUD,
     INTEGRATION_HASHICORP_VAULT,
     INTEGRATION_CLOUDFLARE_PAGES,
@@ -68,7 +70,7 @@ export const INTEGRATION_SET = new Set([
 export const INTEGRATION_OAUTH2 = "oauth2";
 
 // integration oauth endpoints
-export const INTEGRATION_GCP_TOKEN_URL = "https://accounts.google.com/o/oauth2/token";
+export const INTEGRATION_GCP_TOKEN_URL = "https://oauth2.googleapis.com/token";
 export const INTEGRATION_AZURE_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
 export const INTEGRATION_HEROKU_TOKEN_URL = "https://id.heroku.com/oauth/token";
 export const INTEGRATION_VERCEL_TOKEN_URL =
@@ -83,6 +85,7 @@ export const INTEGRATION_BITBUCKET_TOKEN_URL = "https://bitbucket.org/site/oauth
 export const INTEGRATION_GCP_API_URL = "https://cloudresourcemanager.googleapis.com";
 export const INTEGRATION_HEROKU_API_URL = "https://api.heroku.com";
 export const INTEGRATION_GITLAB_API_URL = "https://gitlab.com/api";
+export const INTEGRATION_GITHUB_API_URL = "https://api.github.com";
 export const INTEGRATION_VERCEL_API_URL = "https://api.vercel.com";
 export const INTEGRATION_NETLIFY_API_URL = "https://api.netlify.com";
 export const INTEGRATION_RENDER_API_URL = "https://api.render.com";
@@ -93,6 +96,7 @@ export const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
 export const INTEGRATION_SUPABASE_API_URL = "https://api.supabase.com";
 export const INTEGRATION_LARAVELFORGE_API_URL = "https://forge.laravel.com";
 export const INTEGRATION_CHECKLY_API_URL = "https://api.checklyhq.com";
+export const INTEGRATION_QOVERY_API_URL = "https://api.qovery.com";
 export const INTEGRATION_TERRAFORM_CLOUD_API_URL = "https://app.terraform.io";
 export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = "https://api.cloudflare.com";
 export const INTEGRATION_BITBUCKET_API_URL = "https://api.bitbucket.org";
@@ -105,6 +109,7 @@ export const INTEGRATION_NORTHFLANK_API_URL = "https://api.northflank.com";
 export const INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME = "secretmanager.googleapis.com"
 export const INTEGRATION_GCP_SECRET_MANAGER_URL = `https://${INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME}`;
 export const INTEGRATION_GCP_SERVICE_USAGE_URL = "https://serviceusage.googleapis.com";
+export const INTEGRATION_GCP_CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
 
 export const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [
@@ -191,7 +196,7 @@ export const getIntegrationOptions = async () => {
             docsLink: "",
         },
         {
-            name: "AWS Secret Manager",
+            name: "AWS Secrets Manager",
             slug: "aws-secret-manager",
             image: "Amazon Web Services.png",
             isAvailable: true,
@@ -266,6 +271,15 @@ export const getIntegrationOptions = async () => {
             name: "Checkly",
             slug: "checkly",
             image: "Checkly.png",
+            isAvailable: true,
+            type: "pat",
+            clientId: "",
+            docsLink: "",
+        },
+        {
+            name: "Qovery",
+            slug: "qovery",
+            image: "Qovery.png",
             isAvailable: true,
             type: "pat",
             clientId: "",

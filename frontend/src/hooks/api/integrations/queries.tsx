@@ -40,23 +40,26 @@ export const useCreateIntegration = () => {
       owner,
       path,
       region,
+      scope,
       secretPath,
       metadata
     }: {
       integrationAuthId: string;
       isActive: boolean;
       secretPath: string;
-      app: string | null;
-      appId: string | null;
+      app?: string;
+      appId?: string;
       sourceEnvironment: string;
-      targetEnvironment: string | null;
-      targetEnvironmentId: string | null;
-      targetService: string | null;
-      targetServiceId: string | null;
-      owner: string | null;
-      path: string | null;
-      region: string | null;
+      targetEnvironment?: string;
+      targetEnvironmentId?: string;
+      targetService?: string;
+      targetServiceId?: string;
+      owner?: string;
+      path?: string;
+      region?: string;
+      scope?: string;
       metadata?: {
+        secretPrefix?: string;
         secretSuffix?: string;
       }
     }) => {
@@ -72,6 +75,7 @@ export const useCreateIntegration = () => {
         targetServiceId,
         owner,
         path,
+        scope,
         region,
         secretPath,
         metadata

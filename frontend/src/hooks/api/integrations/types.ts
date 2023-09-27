@@ -32,5 +32,9 @@ export type TIntegration = {
   __v: number;
   metadata?: {
     secretSuffix?: string;
+    scope: string; 
+    org: string;
+    project: string;
+    environment: string;
   }
 };

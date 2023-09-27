@@ -60,15 +60,7 @@ export default function AzureKeyVaultCreateIntegrationPage() {
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: vaultBaseUrl,
-        appId: null,
         sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: null,
-        targetEnvironmentId: null,
-        targetService: null,
-        targetServiceId: null,
-        owner: null,
-        path: null,
-        region: null,
         secretPath
       });
       setIsLoading(false);

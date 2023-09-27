@@ -28,10 +28,7 @@ export default function TravisCICreateIntegrationPage() {
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "travisci",
-        accessToken: apiKey,
-        accessId: null,
-        url: null,
-        namespace: null
+        accessToken: apiKey
       });
 
       setIsLoading(false);

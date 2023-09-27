@@ -40,7 +40,9 @@ spec:
             name: {{ $frontend.kubeSecretRef | default (include "infisical.frontend.fullname" .)  }}
         ports: 
         - containerPort: 3000
-
+        {{- if  $frontend.resources }}
+        resources: {{- toYaml $frontend.resources | nindent 12 }}
+        {{- end }}
 ---
 
 apiVersion: v1

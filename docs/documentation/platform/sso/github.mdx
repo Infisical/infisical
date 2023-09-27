@@ -1,0 +1,37 @@
+---
+title: "GitHub SSO"
+description: "Configure GitHub SSO for Infisical"
+---
+
+Using GitHub SSO on a self-hosted instance of Infisical requires configuring an OAuth2 application in GitHub and registering your instance with it.
+
+## Create an OAuth application in GitHub
+
+Navigate to your user Settings > Developer settings > OAuth Apps to create a new GitHub OAuth application.
+
+![GitHub settings](../../../images/sso/github/settings.png)
+![GitHub developer settings](../../../images/sso/github/dev-settings.png)
+![GitHub create new OAuth application](../../../images/sso/github/new-app.png)
+
+Create the OAuth application. As part of the form, set the **Homepage URL** to your self-hosted domain `https://your-domain.com`
+and the **Authorization callback URL** to `https://your-domain.com/api/v1/sso/github`.
+
+![GitHub create new OAuth application form](../../../images/sso/github/new-app-form.png)
+
+<Note>
+    If you have a GitHub organization, you can create an OAuth application under it
+    in your organization Settings > Developer settings > OAuth Apps > New Org OAuth App.
+</Note>
+
+## Add your OAuth application credentials to Infisical
+
+Obtain the **Client ID** and generate a new **Client Secret** for your GitHub OAuth application.
+
+![GCP obtain OAuth2 credentials](../../../images/sso/github/credentials.png)
+
+Back in your Infisical instance, add two new environment variables for the credentials of your GitHub OAuth application:
+
+- `CLIENT_ID_GITHUB_LOGIN`: The **Client ID** of your GitHub OAuth application.
+- `CLIENT_SECRET_GITHUB_LOGIN`: The **Client Secret** of your GitHub OAuth application.
+   
+Once added, restart your Infisical instance and log in with GitHub.

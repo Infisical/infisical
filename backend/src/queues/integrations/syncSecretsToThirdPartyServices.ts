@@ -22,7 +22,6 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
       }
       : {}),
     isActive: true,
-    app: { $ne: null }
   });
 
   // for each workspace integration, sync/push secrets
@@ -36,9 +35,12 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
     });
 
     const suffixedSecrets: any = {};
-    if (integration.metadata?.secretSuffix) {
+    if (integration.metadata) {
       for (const key in secrets) {
-        const newKey = key + integration.metadata?.secretSuffix;
+        const prefix = (integration.metadata?.secretPrefix || "");
+        const suffix = (integration.metadata?.secretSuffix || "");
+        const newKey = prefix + key + suffix;
+        
         suffixedSecrets[newKey] = secrets[key];
       }      
     }

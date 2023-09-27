@@ -3,7 +3,21 @@ import { mkdir, readFile, rm, writeFile } from "fs";
 import { tmpdir } from "os";
 import { join } from "path"
 import { SecretMatch } from "./types";
-import { Octokit } from "@octokit/rest";
+
+export async function scanFullRepoContentAndGetFindings(octokit: any, installationId: number, repositoryFullName: string): Promise<SecretMatch[]> {
+  const tempFolder = await createTempFolder();
+  const findingsPath = join(tempFolder, "findings.json");
+  const repoPath = join(tempFolder, "repo.git")
+  try {
+    const { data: { token }} = await octokit.apps.createInstallationAccessToken({installation_id: installationId})
+    await cloneRepo(token, repositoryFullName, repoPath)
+    await runInfisicalScanOnRepo(repoPath, findingsPath);
+    const findingsData = await readFindingsFile(findingsPath);
+    return JSON.parse(findingsData);
+  } finally {
+    await deleteTempFolder(tempFolder);
+  }
+}
 
 export async function scanContentAndGetFindings(textContent: string): Promise<SecretMatch[]> {
   const tempFolder = await createTempFolder();
@@ -36,11 +50,40 @@ export function createTempFolder(): Promise<string> {
   });
 }
 
+
+
 export function writeTextToFile(filePath: string, content: string): Promise<void> {
   return new Promise((resolve, reject) => {
     writeFile(filePath, content, (err) => {
       if (err) {
         reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+export async function cloneRepo(installationAcccessToken: string, repositoryFullName: string, repoPath: string): Promise<void> {
+  const cloneUrl = `https://x-access-token:${installationAcccessToken}@github.com/${repositoryFullName}.git`;
+  const command = `git clone ${cloneUrl} ${repoPath} --bare`
+  return new Promise((resolve, reject) => {
+    exec(command, (error) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
+  }) 
+}
+
+export function runInfisicalScanOnRepo(repoPath: string, outputPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const command = `cd ${repoPath} && infisical scan --exit-code=77 -r "${outputPath}"`;
+    exec(command, (error) => {
+      if (error && error.code != 77) {
+        reject(error);
       } else {
         resolve();
       }
@@ -96,30 +139,4 @@ export function convertKeysToLowercase<T>(obj: T): T {
   }
 
   return convertedObj;
-}
-
-export async function getCommits(octokit: Octokit, owner: string, repo: string) {
-  let commits: { sha: string }[] = [];
-  let page = 1;
-  while (true) {
-    const response = await octokit.repos.listCommits({
-      owner,
-      repo,
-      per_page: 100,
-      page,
-    });
-
-    commits = commits.concat(response.data);
-    if (response.data.length == 0) break;
-    page++;
-  }
-  return commits;
-}
-
-export async function getFilesFromCommit(octokit: any, owner: string, repo: string, sha: string) {
-  const response = await octokit.repos.getCommit({
-    owner,
-    repo,
-    ref: sha,
-  });
 }

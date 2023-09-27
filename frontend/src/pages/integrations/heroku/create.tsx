@@ -65,15 +65,7 @@ export default function HerokuCreateIntegrationPage() {
         integrationAuthId: integrationAuth?._id,
         isActive: true,
         app: targetApp,
-        appId: null,
         sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: null,
-        targetEnvironmentId: null,
-        targetService: null,
-        targetServiceId: null,
-        owner: null,
-        path: null,
-        region: null,
         secretPath
       });
 

@@ -23,8 +23,9 @@ import {
 } from "../config";
 import { getSSOConfigHelper } from "../ee/helpers/organizations";
 import { InternalServerError, OrganizationNotFoundError } from "./errors";
-import { ACCEPTED, INVITED, MEMBER } from "../variables";
+import { ACCEPTED, INTEGRATION_GITHUB_API_URL, INVITED, MEMBER } from "../variables";
 import { getSiteURL } from "../config";
+import { standardRequest } from "../config/request";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
@@ -149,10 +150,28 @@ const initializePassport = async () => {
       passReqToCallback: true,
       clientID: clientIdGitHubLogin,
       clientSecret: clientSecretGitHubLogin,
-      callbackURL: "/api/v1/sso/github"
+      callbackURL: "/api/v1/sso/github",
+      scope: ["user:email"]
     },
     async (req : express.Request, accessToken : any, refreshToken : any, profile : any, done : any) => {
-      const email = profile.emails[0].value;
+      interface GitHubEmail {
+        email: string;
+        primary: boolean;
+        verified: boolean;
+        visibility: null | string;
+      }
+      
+      const { data }: { data: GitHubEmail[] } = await standardRequest.get(
+        `${INTEGRATION_GITHUB_API_URL}/user/emails`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      );
+      
+      const primaryEmail = data.filter((gitHubEmail: GitHubEmail) => gitHubEmail.primary)[0];
+      const email = primaryEmail.email;
       
       let user = await User.findOne({
         email

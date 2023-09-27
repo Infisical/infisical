@@ -1,8 +1,8 @@
 import { UserWsKeyPair } from "../keys/types";
 
 export enum AuthMethod {
-	EMAIL = "email",
-	GOOGLE = "google",
+  EMAIL = "email",
+  GOOGLE = "google",
   GITHUB = "github",
   GITLAB = "gitlab",
 	OKTA_SAML = "okta-saml",
@@ -43,10 +43,13 @@ export type OrgUser = {
   };
   inviteEmail: string;
   organization: string;
-  role: "owner" | "admin" | "member";
+  role: "owner" | "admin" | "member" | "custom";
   status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];
+  customRole: string;
 };
+
+export type TWorkspaceUser = OrgUser;
 
 export type AddUserToWsDTO = {
   workspaceId: string;
@@ -77,7 +80,7 @@ export type AddUserToOrgDTO = {
 export type CreateAPIKeyRes = {
   apiKey: string;
   apiKeyData: APIKeyData;
-}
+};
 
 export type RenameUserDTO = {
   newName: string;
@@ -90,7 +93,7 @@ export type APIKeyData = {
   lastUsed: string;
   createdAt: string;
   expiresAt: string;
-}
+};
 
 export type TokenVersion = {
   _id: string;
@@ -100,4 +103,4 @@ export type TokenVersion = {
   lastUsed: string;
   createdAt: string;
   updatedAt: string;
-}
+};

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
+import { subject } from "@casl/ability";
 import {
   closestCenter,
   DndContext,
@@ -39,6 +40,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import NavHeader from "@app/components/navigation/NavHeader";
+import { PermissionDeniedBanner, ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -55,7 +57,14 @@ import {
   UpgradePlanModal
 } from "@app/components/v2";
 import { leaveConfirmDefaultMessage } from "@app/const";
-import { useOrganization, useSubscription, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProjectPermission,
+  useSubscription,
+  useWorkspace
+} from "@app/context";
 import { useLeaveConfirm, usePopUp, useToggle } from "@app/hooks";
 import {
   useBatchSecretsOp,
@@ -71,7 +80,6 @@ import {
   useGetSecretVersion,
   useGetSnapshotSecrets,
   useGetUserAction,
-  useGetUserWsEnvironments,
   useGetUserWsKey,
   useGetWorkspaceSecretSnapshots,
   useGetWsSnapshotCount,
@@ -82,7 +90,6 @@ import {
   useUpdateSecretImport
 } from "@app/hooks/api";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
-import { WorkspaceEnv } from "@app/hooks/api/types";
 
 import { CompareSecret } from "./components/CompareSecret";
 import { CreateTagModal } from "./components/CreateTagModal";
@@ -129,7 +136,8 @@ export const DashboardPage = () => {
   const router = useRouter();
   const { createNotification } = useNotificationContext();
   const queryClient = useQueryClient();
-  const envQuery = router.query.env as string;
+  const environment = router.query.env as string;
+  const permission = useProjectPermission();
 
   const secretContainer = useRef<HTMLDivElement | null>(null);
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
@@ -147,9 +155,8 @@ export const DashboardPage = () => {
   const [isSecretValueHidden, setIsSecretValueHidden] = useToggle(true);
   const [searchFilter, setSearchFilter] = useState("");
   const [snapshotId, setSnaphotId] = useState<string | null>(null);
-  const [selectedEnv, setSelectedEnv] = useState<WorkspaceEnv | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const deletedSecretIds = useRef<{ id: string; secretName: string; }[]>([]);
+  const deletedSecretIds = useRef<{ id: string; secretName: string }[]>([]);
   const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({ initialValue: false });
 
   const folderId = router.query.folderId as string;
@@ -158,7 +165,6 @@ export const DashboardPage = () => {
   const { currentWorkspace, isLoading } = useWorkspace();
   const { currentOrg } = useOrganization();
   const workspaceId = currentWorkspace?._id as string;
-  const selectedEnvSlug = selectedEnv?.slug || "";
 
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
 
@@ -172,17 +178,6 @@ export const DashboardPage = () => {
   const { data: userAction } = useGetUserAction(USER_ACTION_PUSH);
   const hasUserPushed = Boolean(userAction);
 
-  const { data: wsEnv, isLoading: isEnvListLoading } = useGetUserWsEnvironments({
-    workspaceId,
-    onSuccess: (data) => {
-      // get an env with one of the access available
-      const env = data.find(({ isReadDenied, isWriteDenied }) => !isWriteDenied || !isReadDenied);
-      if (env && data?.map((wsenv) => wsenv.slug).includes(envQuery)) {
-        setSelectedEnv(data?.filter((dp) => dp.slug === envQuery)[0]);
-      }
-    }
-  });
-
   const { data: secretVersion } = useGetSecretVersion({
     limit: 10,
     offset: 0,
@@ -192,7 +187,7 @@ export const DashboardPage = () => {
 
   const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
     workspaceId,
-    env: selectedEnvSlug,
+    env: environment,
     decryptFileKey: latestFileKey!,
     isPaused: Boolean(snapshotId),
     folderId
@@ -200,7 +195,7 @@ export const DashboardPage = () => {
 
   const { data: folderData, isLoading: isFoldersLoading } = useGetProjectFolders({
     workspaceId: workspaceId || "",
-    environment: selectedEnvSlug,
+    environment,
     parentFolderId: folderId,
     isPaused: isRollbackMode,
     sortDir
@@ -213,7 +208,7 @@ export const DashboardPage = () => {
     isFetchingNextPage
   } = useGetWorkspaceSecretSnapshots({
     workspaceId,
-    environment: selectedEnvSlug,
+    environment,
     folder: folderId,
     limit: 10
   });
@@ -224,13 +219,13 @@ export const DashboardPage = () => {
     isFetching: isSnapshotChanging
   } = useGetSnapshotSecrets({
     snapshotId: snapshotId || "",
-    env: selectedEnvSlug,
+    env: environment,
     decryptFileKey: latestFileKey!
   });
 
   const { data: snapshotCount, isLoading: isLoadingSnapshotCount } = useGetWsSnapshotCount(
     workspaceId,
-    selectedEnvSlug,
+    environment,
     folderId
   );
 
@@ -247,16 +242,23 @@ export const DashboardPage = () => {
 
   const { data: secretImportCfg, isFetching: isSecretImportCfgFetching } = useGetSecretImports(
     workspaceId,
-    selectedEnvSlug,
+    environment,
     folderId
   );
 
   const { data: importedSecrets } = useGetImportedSecrets({
     workspaceId,
     decryptFileKey: latestFileKey!,
-    environment: selectedEnvSlug,
+    environment,
     folderId
   });
+
+  const secretPath = `/${(folderData?.dir || [])
+    ?.filter(({ name }) => name !== "root")
+    ?.map(({ name }) => name)
+    .join("/")}`;
+
+  const userAvailableEnvs = currentWorkspace?.environments || [];
 
   // This is for dnd-kit. As react-query state mutation async
   // This will act as a placeholder to avoid a glitching animation on dropping items
@@ -297,7 +299,6 @@ export const DashboardPage = () => {
     resolver: yupResolver(schema)
   });
 
-
   const {
     register,
     control,
@@ -308,10 +309,35 @@ export const DashboardPage = () => {
     reset
   } = method;
   const { fields, prepend, append, remove } = useFieldArray({ control, name: "secrets" });
-  const isReadOnly = selectedEnv?.isWriteDenied;
-  const isAddOnly = selectedEnv?.isReadDenied && !selectedEnv?.isWriteDenied;
-  const canDoRollback = !isReadOnly && !isAddOnly;
-  const isSubmitDisabled = isReadOnly || (!isRollbackMode && !isDirty) || isAddOnly || isSubmitting;
+
+  const isReadOnly = isFoldersLoading
+    ? true
+    : permission.can(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      ) &&
+      permission.cannot(
+        ProjectPermissionActions.Edit,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      ) &&
+      permission.cannot(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      ) &&
+      permission.cannot(
+        ProjectPermissionActions.Delete,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+
+  const canDoRollback = !isReadOnly;
+  const isSubmitDisabled =
+    isReadOnly ||
+    // not in rollback mode and no form has changed
+    (!isRollbackMode && !isDirty) ||
+    // in rollback mode and don't have permission to do it
+    (isRollbackMode &&
+      permission.cannot(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback)) ||
+    isSubmitting;
 
   useEffect(() => {
     if (!isSnapshotChanging && Boolean(snapshotId)) {
@@ -397,12 +423,12 @@ export const DashboardPage = () => {
       await performSecretRollback({
         workspaceId,
         version: snapshotSecret.version,
-        environment: selectedEnvSlug,
+        environment,
         folderId
       });
       setValue("isSnapshotMode", false);
       setSnaphotId(null);
-      queryClient.invalidateQueries(secretKeys.getProjectSecret(workspaceId, selectedEnvSlug));
+      queryClient.invalidateQueries(secretKeys.getProjectSecret(workspaceId, environment));
       createNotification({
         text: "Successfully rollback secrets",
         type: "success"
@@ -428,18 +454,15 @@ export const DashboardPage = () => {
     }
     // just closing this if save is triggered from drawer
     handlePopUpClose("secretDetails");
-    // when add only mode remove rest of things not created
-    const sec = isAddOnly ? userSec.filter(({ _id }) => !_id) : userSec;
     // encrypt and format the secrets to batch api format
     // requests = [ {method:"", secret:""} ]
     const batchedSecret = transformSecretsToBatchSecretReq(
       deletedSecretIds.current,
       latestFileKey,
-      sec,
+      userSec,
       secrets?.secrets
     );
     // type check
-    if (!selectedEnv?.slug) return;
     if (batchedSecret.length === 0) {
       reset();
       return;
@@ -449,7 +472,7 @@ export const DashboardPage = () => {
         requests: batchedSecret,
         workspaceId,
         folderId,
-        environment: selectedEnv?.slug
+        environment
       });
       createNotification({
         text: "Successfully saved changes",
@@ -477,8 +500,7 @@ export const DashboardPage = () => {
       // eslint-disable-next-line no-alert
       if (!window.confirm(leaveConfirmDefaultMessage)) return;
     }
-    const env = wsEnv?.find((el) => el.slug === slug);
-    if (env) setSelectedEnv(env);
+
     const query: Record<string, string> = { ...router.query, env: slug };
     delete query.folderId;
     router.push({
@@ -494,24 +516,29 @@ export const DashboardPage = () => {
         secretsFromImport.push({ key: el.key, value: el.value, comment: el.comment });
       });
     });
-    downloadSecret(getValues("secrets"), secretsFromImport, selectedEnv?.slug);
+    downloadSecret(getValues("secrets"), secretsFromImport, environment);
   };
 
   // record all deleted ids
   // This will make final deletion easier
-  const onSecretDelete = useCallback((index: number, secretName: string, id?: string, overrideId?: string) => {
-    if (id) deletedSecretIds.current.push({
-      id,
-      secretName
-    });
-    if (overrideId) deletedSecretIds.current.push({
-      id: overrideId,
-      secretName
-    });
-    remove(index);
-    // just the case if this is called from drawer
-    handlePopUpClose("secretDetails");
-  }, []);
+  const onSecretDelete = useCallback(
+    (index: number, secretName: string, id?: string, overrideId?: string) => {
+      if (id)
+        deletedSecretIds.current.push({
+          id,
+          secretName
+        });
+      if (overrideId)
+        deletedSecretIds.current.push({
+          id: overrideId,
+          secretName
+        });
+      remove(index);
+      // just the case if this is called from drawer
+      handlePopUpClose("secretDetails");
+    },
+    []
+  );
 
   const onCreateWsTag = useCallback(
     async (tagName: string, tagColor: string) => {
@@ -545,12 +572,12 @@ export const DashboardPage = () => {
         pathname: router.pathname,
         query: {
           id: workspaceId,
-          env: envQuery,
+          env: environment,
           folderId: id
         }
       });
     },
-    [envQuery, workspaceId]
+    [environment, workspaceId]
   );
 
   const isEditFolder = Boolean(popUp?.folderForm?.data);
@@ -560,7 +587,7 @@ export const DashboardPage = () => {
     try {
       await createFolder({
         workspaceId,
-        environment: selectedEnv?.slug || "",
+        environment,
         folderName: name,
         parentFolderId: folderId
       });
@@ -585,7 +612,7 @@ export const DashboardPage = () => {
         await updateFolder({
           folderId: id,
           workspaceId,
-          environment: selectedEnv?.slug || "",
+          environment,
           name
         });
         createNotification({
@@ -601,7 +628,7 @@ export const DashboardPage = () => {
         });
       }
     },
-    [selectedEnv?.slug, (popUp?.folderForm?.data as TDeleteFolderForm)?.id]
+    [environment, (popUp?.folderForm?.data as TDeleteFolderForm)?.id]
   );
 
   const handleFolderDelete = useCallback(async () => {
@@ -609,7 +636,7 @@ export const DashboardPage = () => {
     try {
       deleteFolder({
         workspaceId,
-        environment: selectedEnv?.slug || "",
+        environment,
         folderId: id
       });
       createNotification({
@@ -624,18 +651,18 @@ export const DashboardPage = () => {
         type: "error"
       });
     }
-  }, [selectedEnv?.slug, (popUp?.deleteFolder?.data as TDeleteFolderForm)?.id]);
+  }, [(popUp?.deleteFolder?.data as TDeleteFolderForm)?.id]);
 
   // SECRET IMPORT SECTION
-  const handleSecretImportCreate = async (env: string, secretPath: string) => {
+  const handleSecretImportCreate = async (env: string, secPath: string) => {
     try {
       await createSecretImport({
         workspaceId,
-        environment: selectedEnv?.slug || "",
+        environment,
         folderId,
         secretImport: {
           environment: env,
-          secretPath
+          secretPath: secPath
         }
       });
       createNotification({
@@ -659,7 +686,7 @@ export const DashboardPage = () => {
       if (secretImportCfg?._id) {
         await deleteSecretImport({
           workspaceId,
-          environment: selectedEnvSlug,
+          environment,
           folderId,
           id: secretImportCfg?._id,
           secretImportEnv: importEnv,
@@ -689,7 +716,7 @@ export const DashboardPage = () => {
       setItems(newImportOrder);
       updateSecretImportSync({
         workspaceId,
-        environment: selectedEnvSlug,
+        environment,
         folderId,
         id: secretImportCfg?._id || "",
         secretImports: newImportOrder.map((el) => ({
@@ -734,17 +761,13 @@ export const DashboardPage = () => {
   const isSecretImportEmpty = !secretImportCfg?.imports?.length;
   const isEmptyPage = isFoldersEmpty && isSecretEmpty && isSecretImportEmpty;
 
-  if (isSecretsLoading || isEnvListLoading) {
+  if (isSecretsLoading) {
     return (
       <div className="container mx-auto flex h-1/2 w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
         <img src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
       </div>
     );
   }
-
-  const userAvailableEnvs = wsEnv?.filter(
-    ({ isReadDenied, isWriteDenied }) => !isReadDenied || !isWriteDenied
-  );
 
   return (
     <div className="container mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -753,7 +776,9 @@ export const DashboardPage = () => {
         <div className="relative right-6 -top-2 mb-2 ml-6">
           <NavHeader
             pageName={t("dashboard.title")}
-            currentEnv={userAvailableEnvs?.filter((envir) => envir.slug === envQuery)[0].name || ""}
+            currentEnv={
+              userAvailableEnvs?.filter((envir) => envir.slug === environment)?.[0]?.name || ""
+            }
             isFolderMode
             folders={folderData?.dir}
             isProjectRelated
@@ -816,57 +841,83 @@ export const DashboardPage = () => {
                 </IconButton>
               </Tooltip>
             </div>
-            <div className="block xl:hidden">
-              <Tooltip content="Point-in-time Recovery">
-                <IconButton
-                  ariaLabel="recovery"
-                  variant="outline_bg"
-                  onClick={() => handlePopUpOpen("secretSnapshots")}
-                >
-                  <FontAwesomeIcon icon={faCodeCommit} />
-                </IconButton>
-              </Tooltip>
-            </div>
-            <div className="hidden xl:block">
-              <Button
-                variant="outline_bg"
-                onClick={() => {
-                  if (subscription && subscription.pitRecovery) {
-                    handlePopUpOpen("secretSnapshots");
-                    return;
-                  }
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Read}
+              a={ProjectPermissionSub.SecretRollback}
+            >
+              {(isAllowed) => (
+                <div className="block xl:hidden">
+                  <Tooltip content="Point-in-time Recovery">
+                    <IconButton
+                      isDisabled={!isAllowed}
+                      ariaLabel="recovery"
+                      variant="outline_bg"
+                      onClick={() => handlePopUpOpen("secretSnapshots")}
+                    >
+                      <FontAwesomeIcon icon={faCodeCommit} />
+                    </IconButton>
+                  </Tooltip>
+                </div>
+              )}
+            </ProjectPermissionCan>
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Read}
+              a={ProjectPermissionSub.SecretRollback}
+            >
+              {(isAllowed) => (
+                <div className="hidden xl:block">
+                  <Button
+                    variant="outline_bg"
+                    onClick={() => {
+                      if (subscription && subscription.pitRecovery) {
+                        handlePopUpOpen("secretSnapshots");
+                        return;
+                      }
 
-                  handlePopUpOpen("upgradePlan");
-                }}
-                leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
-                isLoading={isLoadingSnapshotCount}
-                isDisabled={!canDoRollback}
-                className="h-10"
-              >
-                {snapshotCount} Commits
-              </Button>
-            </div>
+                      handlePopUpOpen("upgradePlan");
+                    }}
+                    leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
+                    isLoading={isLoadingSnapshotCount}
+                    isDisabled={!canDoRollback || !isAllowed}
+                    className="h-10"
+                  >
+                    {snapshotCount} Commits
+                  </Button>
+                </div>
+              )}
+            </ProjectPermissionCan>
             {!isReadOnly && !isRollbackMode && (
               <div className="flex flex-row items-center justify-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!(isReadOnly || isRollbackMode)) {
-                      if (secretContainer.current) {
-                        secretContainer.current.scroll({
-                          top: 0,
-                          behavior: "smooth"
-                        });
-                      }
-                      prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
-                      setSearchFilter("");
-                    }
-                  }}
-                  className="cursor-pointer rounded-l-md border border-mineshaft-500 bg-mineshaft-600 p-2 pr-4 text-sm font-semibold text-mineshaft-300 duration-200 hover:border-primary/40 hover:bg-primary/[0.1]"
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Create}
+                  a={subject(ProjectPermissionSub.Secrets, {
+                    secretPath,
+                    environment
+                  })}
                 >
-                  <FontAwesomeIcon icon={faPlus} className="px-2" />
-                  Add Secret
-                </button>
+                  {(isAllowed) => (
+                    <button
+                      type="button"
+                      disabled={!isAllowed}
+                      onClick={() => {
+                        if (!(isReadOnly || isRollbackMode)) {
+                          if (secretContainer.current) {
+                            secretContainer.current.scroll({
+                              top: 0,
+                              behavior: "smooth"
+                            });
+                          }
+                          prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
+                          setSearchFilter("");
+                        }
+                      }}
+                      className="cursor-pointer rounded-l-md border border-mineshaft-500 bg-mineshaft-600 p-2 pr-4 text-sm font-semibold text-mineshaft-300 duration-200 hover:border-primary/40 hover:bg-primary/[0.1]"
+                    >
+                      <FontAwesomeIcon icon={faPlus} className="px-2" />
+                      Add Secret
+                    </button>
+                  )}
+                </ProjectPermissionCan>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild className="data-[state=open]:bg-mineshaft-600">
                     <div className="cursor-pointer rounded-r-md border border-mineshaft-500 bg-mineshaft-600 p-2 text-sm text-mineshaft-300 duration-200 hover:border-primary/40 hover:bg-primary/[0.1]">
@@ -876,28 +927,45 @@ export const DashboardPage = () => {
                   <DropdownMenuContent align="end" className="left-20 z-[60] mt-1 w-[10.8rem]">
                     <div className="rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
                       <div className="w-full pb-1">
-                        <Button
-                          leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
-                          onClick={() => handlePopUpOpen("folderForm")}
-                          isDisabled={isReadOnly || isRollbackMode}
-                          variant="outline_bg"
-                          className="h-10"
-                          isFullWidth
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Create}
+                          a={ProjectPermissionSub.Secrets}
                         >
-                          Add Folder
-                        </Button>
+                          {(isAllowed) => (
+                            <Button
+                              leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
+                              onClick={() => handlePopUpOpen("folderForm")}
+                              isDisabled={isReadOnly || isRollbackMode || !isAllowed}
+                              variant="outline_bg"
+                              className="h-10"
+                              isFullWidth
+                            >
+                              Add Folder
+                            </Button>
+                          )}
+                        </ProjectPermissionCan>
                       </div>
                       <div className="w-full">
-                        <Button
-                          leftIcon={<FontAwesomeIcon icon={faFileImport} />}
-                          onClick={() => handlePopUpOpen("addSecretImport")}
-                          isDisabled={isReadOnly || isRollbackMode}
-                          variant="outline_bg"
-                          className="h-10"
-                          isFullWidth
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Edit}
+                          a={subject(ProjectPermissionSub.Secrets, {
+                            environment,
+                            secretPath
+                          })}
                         >
-                          Add Import
-                        </Button>
+                          {(isAllowed) => (
+                            <Button
+                              leftIcon={<FontAwesomeIcon icon={faFileImport} />}
+                              onClick={() => handlePopUpOpen("addSecretImport")}
+                              isDisabled={isReadOnly || isRollbackMode || !isAllowed}
+                              variant="outline_bg"
+                              className="h-10"
+                              isFullWidth
+                            >
+                              Add Import
+                            </Button>
+                          )}
+                        </ProjectPermissionCan>
                       </div>
                     </div>
                   </DropdownMenuContent>
@@ -917,17 +985,25 @@ export const DashboardPage = () => {
                 Go back
               </Button>
             )}
-            <Button
-              isDisabled={isSubmitDisabled}
-              isLoading={isSubmitting}
-              leftIcon={<FontAwesomeIcon icon={isRollbackMode ? faClockRotateLeft : faCheck} />}
-              onClick={handleSubmit(onSaveSecret)}
-              className="h-10 text-black"
-              color="primary"
-              variant="solid"
+
+            <Tooltip
+              isOpen={
+                !isSubmitting && isSubmitDisabled && isReadOnly && !isDirty ? undefined : false
+              }
+              content="Access restricted"
             >
-              {isRollbackMode ? "Rollback" : "Save Changes"}
-            </Button>
+              <Button
+                isDisabled={isSubmitDisabled}
+                isLoading={isSubmitting}
+                leftIcon={<FontAwesomeIcon icon={isRollbackMode ? faClockRotateLeft : faCheck} />}
+                onClick={handleSubmit(onSaveSecret)}
+                className="h-10 text-black"
+                color="primary"
+                variant="solid"
+              >
+                {isRollbackMode ? "Rollback" : "Save Changes"}
+              </Button>
+            </Tooltip>
           </div>
         </div>
         <div
@@ -948,6 +1024,8 @@ export const DashboardPage = () => {
                   <SecretTableHeader sortDir={sortDir} onSort={onSortSecrets} />
                   <tbody className="max-h-96 overflow-y-auto">
                     <SecretImportSection
+                      environment={environment}
+                      secretPath={secretPath}
                       onSecretImportDelete={handleSecretImportDelPopUpOpen}
                       secrets={secrets?.secrets}
                       importedSecrets={importedSecrets}
@@ -955,45 +1033,70 @@ export const DashboardPage = () => {
                       searchTerm={searchFilter}
                     />
                     <FolderSection
+                      environment={environment}
+                      secretPath={secretPath}
                       onFolderOpen={handleFolderOpen}
                       onFolderUpdate={handleFolderCreatePopUpOpen}
                       onFolderDelete={handleFolderDeletePopUpOpen}
                       folders={folderList}
                       search={searchFilter}
                     />
-                    {fields.map(({ id, _id }, index) => (
-                      <SecretInputRow
-                        key={id}
-                        secUniqId={_id}
-                        isReadOnly={isReadOnly}
-                        isRollbackMode={isRollbackMode}
-                        isAddOnly={isAddOnly}
-                        index={index}
-                        searchTerm={searchFilter}
-                        onSecretDelete={onSecretDelete}
-                        isKeyError={Boolean(errors?.secrets?.[index]?.key?.message)}
-                        keyError={errors?.secrets?.[index]?.key?.message}
-                        onRowExpand={onDrawerOpen}
-                        isSecretValueHidden={isSecretValueHidden}
-                        wsTags={wsTags}
-                        onCreateTagOpen={handleCreateTagModalOpen}
-                        register={register}
-                        control={control}
-                        setValue={setValue}
-                        autoCapitalization={currentWorkspace?.autoCapitalization}
-                      />
-                    ))}
+                    {permission.can(
+                      ProjectPermissionActions.Read,
+                      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+                    ) ? (
+                      fields.map(({ id, _id }, index) => (
+                        <SecretInputRow
+                          key={id}
+                          environment={environment}
+                          secretPath={secretPath}
+                          secUniqId={_id}
+                          isReadOnly={isReadOnly}
+                          isRollbackMode={isRollbackMode}
+                          index={index}
+                          searchTerm={searchFilter}
+                          onSecretDelete={onSecretDelete}
+                          isKeyError={Boolean(errors?.secrets?.[index]?.key?.message)}
+                          keyError={errors?.secrets?.[index]?.key?.message}
+                          onRowExpand={onDrawerOpen}
+                          isSecretValueHidden={isSecretValueHidden}
+                          wsTags={wsTags}
+                          onCreateTagOpen={handleCreateTagModalOpen}
+                          register={register}
+                          control={control}
+                          setValue={setValue}
+                          autoCapitalization={currentWorkspace?.autoCapitalization}
+                        />
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3}>
+                          <PermissionDeniedBanner />
+                        </td>
+                      </tr>
+                    )}
                     {!isReadOnly && !isRollbackMode && (
                       <tr>
                         <td colSpan={3} className="hover:bg-mineshaft-700">
-                          <button
-                            type="button"
-                            className="flex h-8 w-full cursor-default items-center justify-start pl-12 font-normal text-bunker-300"
-                            onClick={onAppendSecret}
+                          <ProjectPermissionCan
+                            I={ProjectPermissionActions.Create}
+                            a={subject(ProjectPermissionSub.Secrets, {
+                              environment,
+                              secretPath
+                            })}
                           >
-                            <FontAwesomeIcon icon={faPlus} />
-                            <span className="ml-2 w-20">Add Secret</span>
-                          </button>
+                            {(isAllowed) => (
+                              <button
+                                type="button"
+                                className="flex h-8 w-full cursor-default items-center justify-start pl-12 font-normal text-bunker-300"
+                                onClick={onAppendSecret}
+                                disabled={!isAllowed}
+                              >
+                                <FontAwesomeIcon icon={faPlus} />
+                                <span className="ml-2 w-20">Add Secret</span>
+                              </button>
+                            )}
+                          </ProjectPermissionCan>
                         </td>
                       </tr>
                     )}
@@ -1014,6 +1117,8 @@ export const DashboardPage = () => {
               onSelectSnapshot={setSnaphotId}
             />
             <SecretDetailDrawer
+              environment={environment}
+              secretPath={secretPath}
               onSave={handleSubmit(onSaveSecret)}
               isReadOnly={isReadOnly || isRollbackMode}
               onSecretDelete={onSecretDelete}
@@ -1024,8 +1129,9 @@ export const DashboardPage = () => {
               onEnvCompare={(key) => handlePopUpOpen("compareSecrets", key)}
             />
           </FormProvider>
-
           <SecretDropzone
+            environment={environment}
+            secretPath={secretPath}
             workspaceId={workspaceId}
             isSmaller={!isEmptyPage}
             onParsedEnv={handleUploadedEnv}
