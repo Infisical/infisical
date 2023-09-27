@@ -48,6 +48,7 @@ import { getAuthDataPayloadIdObj, getAuthDataPayloadUserObj } from "../utils/aut
 import { getFolderByPath, getFolderIdFromServiceToken } from "../services/FolderService";
 import picomatch from "picomatch";
 import path from "path";
+import { getAnImportedSecret } from "../services/SecretImportService";
 
 export const isValidScope = (
   authPayload: IServiceTokenData,
@@ -622,13 +623,14 @@ export const getSecretHelper = async ({
   environment,
   type,
   authData,
-  secretPath = "/"
+  secretPath = "/",
+  include_imports = true
 }: GetSecretParams) => {
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId)
   });
-  let secret: ISecret | null = null;
+  let secret: ISecret | null | undefined = null;
   // if using service token filter towards the folderId by secretpath
 
   const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
@@ -653,6 +655,11 @@ export const getSecretHelper = async ({
       folder: folderId,
       type: SECRET_SHARED
     }).lean();
+  }
+
+  if (!secret && include_imports) {
+    // if still no secret found search in imported secret and retreive
+    secret = await getAnImportedSecret(secretName, workspaceId.toString(), environment, folderId);
   }
 
   if (!secret) throw SecretNotFoundError();

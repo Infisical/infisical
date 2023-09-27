@@ -134,7 +134,8 @@ export const getSecretsBotHelper = async ({
   const importedSecrets = await getAllImportedSecrets(
     workspaceId.toString(),
     environment,
-    folderId
+    folderId,
+    () => true // integrations are setup to read all the ones
   );
 
   importedSecrets.forEach(({ secrets }) => {

@@ -270,7 +270,7 @@ export const ToggleAutoCapitalizationV2 = z.object({
     workspaceId: z.string().trim()
   }),
   body: z.object({
-    autoCapitalization: z.string().trim()
+    autoCapitalization: z.boolean()
   })
 });
 

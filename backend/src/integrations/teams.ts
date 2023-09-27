@@ -34,6 +34,7 @@ const getTeams = async ({
     switch (integrationAuth.integration) {
         case INTEGRATION_GITLAB:
             teams = await getTeamsGitLab({
+                integrationAuth,
                 accessToken,
             });
             break;
@@ -51,13 +52,17 @@ const getTeams = async ({
  * @returns {String} teams.teamId - id of team
 */
 const getTeamsGitLab = async ({
+    integrationAuth,
     accessToken,
 }: {
+    integrationAuth: IIntegrationAuth;
     accessToken: string;
 }) => {
+    const gitLabApiUrl = integrationAuth.url ? `${integrationAuth.url}/api` : INTEGRATION_GITLAB_API_URL;
+    
     let teams: Team[] = [];
     const res = (await standardRequest.get(
-        `${INTEGRATION_GITLAB_API_URL}/v4/groups`,
+        `${gitLabApiUrl}/v4/groups`,
         {
             headers: {
             Authorization: `Bearer ${accessToken}`,

@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
+import GlobPatternExamples from "@app/components/basic/popups/GlobPatternExamples";
 import {
   Button,
   FormControl,
@@ -13,8 +12,7 @@ import {
   ModalClose,
   ModalContent,
   Select,
-  SelectItem,
-  Tooltip
+  SelectItem
 } from "@app/components/v2";
 
 const formSchema = yup.object({
@@ -48,7 +46,6 @@ export const AddWebhookForm = ({
   } = useForm<TFormSchema>({
     resolver: yupResolver(formSchema)
   });
-  const [showTip, setShowTip] = useState<boolean>(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -89,40 +86,7 @@ export const AddWebhookForm = ({
             />
             <FormControl
               label="Secret Path"
-              icon={
-                <Tooltip
-                  isOpen={showTip}
-                  onOpenChange={setShowTip}
-                  content={
-                    <div>
-                      <h4 className="mb-2">Here are some examples of glob patterns:</h4>
-                      <div className="ol-listStyleType">
-                        <li>
-                          <code className="text-primary">/</code> - Matches all files and
-                          directories in the current directory
-                        </li>
-                        <li>
-                          <code className="text-primary">**/*</code> - Matches all files and
-                          directories in the current directory and its subdirectories
-                        </li>
-                        <li>
-                          <code className="text-primary">{"/{dir1,dir2}"}</code> - Matches all files
-                          and directories in dir1 and dir2
-                        </li>
-                      </div>
-                    </div>
-                  }
-                  position="right"
-                  className="text-xs"
-                >
-                  <div
-                    className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[1px] border-mineshaft-300"
-                    onMouseEnter={() => setShowTip(true)}
-                  >
-                    <FontAwesomeIcon icon={faInfo} className="h-2 w-2" />
-                  </div>
-                </Tooltip>
-              }
+              icon={<GlobPatternExamples />}
               isRequired
               isError={Boolean(errors?.secretPath)}
               errorText={errors?.secretPath?.message}

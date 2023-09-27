@@ -56,7 +56,7 @@ export const FolderSection = memo(
                 <div className="duration-0 flex h-10 w-16 items-center justify-end space-x-2.5 overflow-hidden border-l border-mineshaft-600 transition-all">
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
-                    a={subject(ProjectPermissionSub.Folders, { environment, secretPath })}
+                    a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
                   >
                     {(isAllowed) => (
                       <div className="opacity-0 group-hover:opacity-100">
@@ -77,7 +77,7 @@ export const FolderSection = memo(
                   </ProjectPermissionCan>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Delete}
-                    a={subject(ProjectPermissionSub.Folders, { environment, secretPath })}
+                    a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
                   >
                     {(isAllowed) => (
                       <div className="opacity-0 group-hover:opacity-100">

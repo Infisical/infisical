@@ -4,7 +4,7 @@ import TelemetryService from "../../services/TelemetryService";
 import { sendMail } from "../../helpers";
 import GitRisks from "../../ee/models/gitRisks";
 import { MembershipOrg, User } from "../../models";
-import { ADMIN, OWNER } from "../../variables";
+import { ADMIN } from "../../variables";
 import { convertKeysToLowercase, scanFullRepoContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
 import { SecretMatch } from "../../ee/services/GithubSecretScanning/types";
@@ -13,7 +13,7 @@ export const githubFullRepositorySecretScan = new Queue("github-full-repository-
 
 type TScanPushEventQueueDetails = {
   organizationId: string,
-  installationId: number, 
+  installationId: number,
   repository: {
     id: number,
     fullName: string,
@@ -24,22 +24,22 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
   const { organizationId, repository, installationId }: TScanPushEventQueueDetails = job.data
   try {
     const octokit = new ProbotOctokit({
-        auth: {
+      auth: {
         appId: await getSecretScanningGitAppId(),
         privateKey: await getSecretScanningPrivateKey(),
         installationId: installationId
-        },
+      },
     });
-    const findings : SecretMatch[] = await scanFullRepoContentAndGetFindings(octokit, installationId, repository.fullName)
+    const findings: SecretMatch[] = await scanFullRepoContentAndGetFindings(octokit, installationId, repository.fullName)
     for (const finding of findings) {
-      await GitRisks.findOneAndUpdate({ fingerprint: finding.Fingerprint}, 
+      await GitRisks.findOneAndUpdate({ fingerprint: finding.Fingerprint },
         {
-        ...convertKeysToLowercase(finding),
-        installationId: installationId,
-        organization: organizationId,
-        repositoryFullName: repository.fullName,
-        repositoryId: repository.id
-      }, {
+          ...convertKeysToLowercase(finding),
+          installationId: installationId,
+          organization: organizationId,
+          repositoryFullName: repository.fullName,
+          repositoryId: repository.id
+        }, {
         upsert: true
       }).lean()
     }
@@ -47,10 +47,7 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
     // get emails of admins
     const adminsOfWork = await MembershipOrg.find({
       organization: organizationId,
-      $or: [
-        { role: OWNER },
-        { role: ADMIN }
-      ]
+      role: ADMIN,
     }).lean()
 
     const userEmails = await User.find({

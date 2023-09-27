@@ -138,7 +138,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { t } = useTranslation();
 
-
   const logout = useLogoutUser();
   const logOutUser = async () => {
     try {
@@ -446,7 +445,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         <a>
                           <MenuItem
                             isSelected={router.asPath.includes(
-                              `/project/${currentWorkspace?._id}/secrets/overview`
+                              `/project/${currentWorkspace?._id}/secrets`
                             )}
                             icon="system-outline-90-lock-closed"
                           >
@@ -469,7 +468,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <Link href={`/integrations/${currentWorkspace?._id}`} passHref>
                         <a>
                           <MenuItem
-                            isSelected={router.asPath === `/integrations/${currentWorkspace?._id}`}
+                            isSelected={router.asPath.includes("/integrations")}
                             icon="system-outline-82-extension"
                           >
                             {t("nav.menu.integrations")}
@@ -500,29 +499,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      {/* <Link href={`/project/${currentWorkspace?._id}/logs`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?._id}/logs`
-                            }
-                            icon="system-outline-168-view-headline"
-                          >
-                            Audit Logs
-                          </MenuItem>
-                        </a>
-                      </Link> */}
-                      {/* <Link href={`/project/${currentWorkspace?._id}/secret-scanning`} passHref>
-                      <a>
-                        <MenuItem
-                          isSelected={router.asPath === `/project/${currentWorkspace?._id}/secret-scanning`}
-                          // icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
-                          icon="system-outline-82-extension"
-                        >
-                          Audit Logs
-                        </MenuItem>
-                      </a>
-                    </Link> */}
                       <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>
                         <a>
                           <MenuItem

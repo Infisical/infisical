@@ -8,7 +8,7 @@ import {
 } from "../../models";
 import { createOrganization as create } from "../../helpers/organization";
 import { addMembershipsOrg } from "../../helpers/membershipOrg";
-import { ACCEPTED, OWNER } from "../../variables";
+import { ACCEPTED, ADMIN } from "../../variables";
 import { getLicenseServerUrl, getSiteURL } from "../../config";
 import { licenseServerKeyRequest } from "../../config/request";
 import { validateRequest } from "../../helpers/validation";
@@ -55,7 +55,7 @@ export const createOrganization = async (req: Request, res: Response) => {
   await addMembershipsOrg({
     userIds: [req.user._id.toString()],
     organizationId: organization._id.toString(),
-    roles: [OWNER],
+    roles: [ADMIN],
     statuses: [ACCEPTED]
   });
 

@@ -1,6 +1,6 @@
 module github.com/Infisical/infisical-merge
 
-go 1.19
+go 1.21
 
 require (
 	github.com/charmbracelet/lipgloss v0.5.0
@@ -75,4 +75,4 @@ require (
 	github.com/zalando/go-keyring v0.2.3
 )
 
-replace github.com/zalando/go-keyring => github.com/Infisical/go-keyring v1.0.1
+replace github.com/zalando/go-keyring => github.com/Infisical/go-keyring v1.0.2

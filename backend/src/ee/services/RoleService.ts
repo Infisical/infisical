@@ -86,12 +86,17 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Billing);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
+
   can(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.SecretScanning);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.SecretScanning);
 
   return build({ conditionsMatcher });
 };
@@ -114,8 +119,7 @@ export const getUserOrgPermissions = async (userId: string, orgId: string) => {
     throw UnauthorizedRequestError({ message: "User doesn't belong to organization" });
   }
 
-  if (membership.role === "admin" || membership.role === "owner")
-    return { permission: adminPermissions, membership };
+  if (membership.role === "admin") return { permission: adminPermissions, membership };
 
   if (membership.role === "member") return { permission: memberPermissions, membership };
 

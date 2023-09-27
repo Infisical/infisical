@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { Types } from "mongoose";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../crypto";
 import { EESecretService } from "../../ee/services";
+import { redisClient } from "../../services/RedisService"
 import { IPType, ISecretVersion, SecretSnapshot, SecretVersion, TrustedIP } from "../../ee/models";
 import {
   AuthMethod,
@@ -10,9 +11,11 @@ import {
   Bot,
   BotOrg,
   ISecret,
+  IWorkspace,
   Integration,
   IntegrationAuth,
   Membership,
+  MembershipOrg,
   Organization,
   Secret,
   SecretBlindIndexData,
@@ -23,13 +26,22 @@ import {
 import { generateKeyPair } from "../../utils/crypto";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../../config";
 import {
+  ADMIN,
   ALGORITHM_AES_256_GCM,
+  CUSTOM,
   ENCODING_SCHEME_BASE64,
   ENCODING_SCHEME_UTF8,
   MEMBER,
-  VIEWER
+  OWNER
 } from "../../variables";
+
 import { InternalServerError } from "../errors";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  memberProjectPermissions
+} from "../../ee/services/ProjectRoleService";
+import Role from "../../ee/models/role";
 
 /**
  * Backfill secrets to ensure that they're all versioned and have
@@ -675,21 +687,150 @@ export const backfillUserAuthMethods = async () => {
 };
 
 export const backfillPermission = async () => {
-  await Membership.updateMany(
-    {
-      deniedPermissions: {
-        $exists: true,
-        $ne: []
-      },
-      role: MEMBER
-    },
-    [
-      {
-        $set: {
-          role: VIEWER
+  const lockKey = "backfill_permission_lock";
+  const timeout = 900000; // 15 min lock timeout in milliseconds 
+  const lock = await redisClient?.set(lockKey, 1, "PX", timeout, "NX");
+
+  if (lock) {
+    try {
+      console.info("Lock acquired for script [backfillPermission]");
+
+      const memberships = await Membership.find({
+        deniedPermissions: {
+          $exists: true,
+          $ne: []
+        },
+        role: MEMBER,
+      })
+        .populate<{ workspace: IWorkspace }>("workspace")
+        .lean();
+
+      // group memberships that need the same permission set
+      const roleMap = new Map<string, { membershipIds: string[], permissions: any[], organizationId: string, workspaceId: string }>();
+
+      for (const membership of memberships) {
+        // get permissions of members except secret permission
+        const customPermissions = memberProjectPermissions.rules.filter(
+          ({ subject }) => subject !== ProjectPermissionSub.Secrets
+        );
+        const secretAccessRule: Record<string, { read: boolean; write: boolean }> = {};
+
+        // iterate and record true and false ones
+        membership.deniedPermissions.forEach(({ ability, environmentSlug }) => {
+          if (!secretAccessRule?.[environmentSlug])
+            secretAccessRule[environmentSlug] = { read: true, write: true };
+          if (ability === "write") secretAccessRule[environmentSlug].write = false;
+          if (ability === "read") secretAccessRule[environmentSlug].read = false;
+        });
+
+        // environments that are not listed in deniedPermissions should be set to allowed for both read & and write
+        membership.workspace.environments.forEach(env => {
+          if (!secretAccessRule?.[env.slug]) {
+            secretAccessRule[env.slug] = { read: true, write: true };
+          }
+        })
+
+        const secretPermissions: any = [];
+        Object.entries(secretAccessRule).forEach(([envSlug, { read, write }]) => {
+          if (read) {
+            secretPermissions.push({
+              subject: ProjectPermissionSub.Secrets,
+              action: ProjectPermissionActions.Read,
+              conditions: { environment: envSlug }
+            });
+          }
+          if (write) {
+            secretPermissions.push(
+              {
+                subject: ProjectPermissionSub.Secrets,
+                action: ProjectPermissionActions.Edit,
+                conditions: { environment: envSlug }
+              },
+              {
+                subject: ProjectPermissionSub.Secrets,
+                action: ProjectPermissionActions.Delete,
+                conditions: { environment: envSlug }
+              },
+              {
+                subject: ProjectPermissionSub.Secrets,
+                action: ProjectPermissionActions.Create,
+                conditions: { environment: envSlug }
+              }
+            );
+          }
+        });
+
+        const key = `${JSON.stringify(secretPermissions)}-${membership.workspace._id.toString()}`; // group roles that have same permission with in the same workspace
+        const value = roleMap.get(key);
+        if (value) {
+          value.membershipIds.push(membership._id.toString());
+          value.organizationId = membership.workspace.organization.toString()
+          value.workspaceId = membership.workspace._id.toString()
+        } else {
+          roleMap.set(key, { membershipIds: [membership._id.toString()], permissions: [...customPermissions, ...secretPermissions], organizationId: membership.workspace.organization.toString(), workspaceId: membership.workspace._id.toString() });
         }
       }
-    ]
-  );
-  console.log("Backfill: Finishing converting old denied permission in workspace to viewers");
+
+      for (const [key, value] of roleMap.entries()) {
+        const { membershipIds, permissions, workspaceId, organizationId } = value
+        const membership_identity = crypto.randomBytes(3).toString("hex")
+        const role = new Role({
+          name: `Limited [${membership_identity.toUpperCase()}]`,
+          organization: organizationId,
+          workspace: workspaceId,
+          description: "This role was auto generated by Infisical in effort to migrate your project members to our new permission system",
+          isOrgRole: false,
+          slug: `custom-role-${membership_identity}`,
+          permissions: permissions
+        });
+
+        await role.save();
+
+        for (const id of membershipIds) {
+          await Membership.findByIdAndUpdate(id, { // document db doesn't support update many so we must loop
+            $set: {
+              role: CUSTOM,
+              customRole: role
+            }
+          });
+        }
+      }
+
+      console.info("Backfill: Finished converting old denied permission in workspace to viewers");
+
+      await MembershipOrg.updateMany(
+        {
+          role: OWNER
+        },
+        {
+          $set: {
+            role: ADMIN
+          }
+        }
+      );
+
+      console.info("Backfill: Finished converting owner role to member");
+
+    } catch (error) {
+      console.error("An error occurred when running script [backfillPermission]:", error);
+    }
+
+  } else {
+    console.info("Could not acquire lock for script [backfillPermission], skipping");
+  }
 };
+
+export const migrateRoleFromOwnerToAdmin = async () => {
+  await MembershipOrg.updateMany(
+    {
+      role: OWNER
+    },
+    {
+      $set: {
+        role: ADMIN
+      }
+    }
+  );
+
+  console.info("Backfill: Finished converting owner role to member");
+}

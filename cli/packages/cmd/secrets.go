@@ -198,7 +198,7 @@ var secretsSetCmd = &cobra.Command{
 			}
 
 			// Key and value from argument
-			key := strings.ToUpper(splitKeyValueFromArg[0])
+			key := splitKeyValueFromArg[0]
 			value := splitKeyValueFromArg[1]
 
 			hashedKey := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
@@ -402,7 +402,12 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
+	secretsPath, err := cmd.Flags().GetString("path")
+	if err != nil {
+		util.HandleError(err, "Unable to parse path flag")
+	}
+
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath})
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
@@ -412,7 +417,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 	secretsMap := getSecretsByKeys(secrets)
 
 	for _, secretKeyFromArg := range args {
-		if value, ok := secretsMap[strings.ToUpper(secretKeyFromArg)]; ok {
+		if value, ok := secretsMap[secretKeyFromArg]; ok {
 			requestedSecrets = append(requestedSecrets, value)
 		} else {
 			requestedSecrets = append(requestedSecrets, models.SingleEnvironmentVariable{
@@ -620,7 +625,7 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 func CenterString(s string, numStars int) string {
 	stars := strings.Repeat("*", numStars)
 	padding := (numStars - len(s)) / 2
-	cenetredTextWithStar := stars[:padding] + " " + strings.ToUpper(s) + " " + stars[padding:]
+	cenetredTextWithStar := stars[:padding] + " " + s + " " + stars[padding:]
 
 	hashes := strings.Repeat("#", len(cenetredTextWithStar)+2)
 	return fmt.Sprintf("%s \n# %s \n%s", hashes, cenetredTextWithStar, hashes)
@@ -651,10 +656,11 @@ func init() {
 
 	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	secretsCmd.AddCommand(secretsGetCmd)
+	secretsGetCmd.Flags().String("path", "/", "get secrets within a folder path")
 
 	secretsCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
-	secretsSetCmd.Flags().String("path", "/", "get secrets within a folder path")
+	secretsSetCmd.Flags().String("path", "/", "set secrets within a folder path")
 
 	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		util.RequireLogin()

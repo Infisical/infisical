@@ -23,7 +23,6 @@ const multiEnvPermissionSchema = z
   .optional();
 
 const PERMISSION_ACTIONS = ["read", "create", "edit", "delete"] as const;
-const MULTI_ENV_KEY = ["secrets", "folders", "secret-imports"] as const;
 
 export const formSchema = z.object({
   name: z.string().trim(),
@@ -32,8 +31,6 @@ export const formSchema = z.object({
   permissions: z
     .object({
       secrets: z.record(multiEnvPermissionSchema).optional(),
-      folders: z.record(multiEnvPermissionSchema).optional(),
-      "secret-imports": z.record(multiEnvPermissionSchema).optional(),
       member: generalPermissionSchema,
       role: generalPermissionSchema,
       integrations: generalPermissionSchema,
@@ -92,7 +89,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
     const { subject, action } = permission;
     if (!formVal?.[subject]) formVal[subject] = {};
 
-    if (["secrets", "folders", "secret-imports"].includes(subject)) {
+    if (subject === "secrets") {
       multiEnvApi2Form(formVal[subject], permission);
     } else {
       // everything else follows same pattern
@@ -107,7 +104,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
 const multiEnvForm2Api = (
   permissions: TProjectPermission[],
   formVal: Record<string, { secretPath?: string } & { [key: string]: boolean }>,
-  subject: (typeof MULTI_ENV_KEY)[number]
+  subject: "secrets"
 ) => {
   if (!formVal) return;
 
@@ -147,12 +144,8 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
   // other than workspace everything else follows same
   // if in future there is a different follow the above on how workspace is done
   Object.entries(formVal || {}).forEach(([rule, actions]) => {
-    if (MULTI_ENV_KEY.includes(rule as (typeof MULTI_ENV_KEY)[number])) {
-      multiEnvForm2Api(
-        permissions,
-        JSON.parse(JSON.stringify(actions || {})),
-        rule as (typeof MULTI_ENV_KEY)[number]
-      );
+    if (rule === "secrets") {
+      multiEnvForm2Api(permissions, JSON.parse(JSON.stringify(actions || {})), rule);
     } else {
       Object.entries(actions).forEach(([action, isAllowed]) => {
         if (isAllowed) {

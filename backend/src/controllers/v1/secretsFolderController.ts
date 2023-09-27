@@ -129,7 +129,7 @@ export const createFolder = async (req: Request, res: Response) => {
         : "/";
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.Folders, { environment, secretPath })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
   }
 
@@ -357,7 +357,7 @@ export const updateFolderById = async (req: Request, res: Response) => {
     const secretPath = getFolderWithPathFromId(folders.nodes, parentFolder.id).folderPath;
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Folders, { environment, secretPath })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
   }
 
@@ -531,7 +531,7 @@ export const deleteFolder = async (req: Request, res: Response) => {
     const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.Folders, { environment, secretPath })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
   }
 
@@ -682,18 +682,7 @@ export const getFolders = async (req: Request, res: Response) => {
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
 
-  if (req.user) {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    const secretPath =
-      folders && parentFolderId
-        ? getFolderWithPathFromId(folders.nodes, parentFolderId).folderPath
-        : parentFolderPath || "/";
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      subject(ProjectPermissionSub.Folders, { environment, secretPath })
-    );
-  }
+  if (req.user) await getUserProjectPermissions(req.user._id, workspaceId);
 
   if (!folders) {
     res.send({ folders: [], dir: [] });

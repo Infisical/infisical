@@ -19,7 +19,7 @@ export interface CreateSecretParams {
   secretPath: string;
   metadata?: {
     source?: string;
-  }
+  };
 }
 
 export interface GetSecretsParams {
@@ -37,6 +37,7 @@ export interface GetSecretParams {
   environment: string;
   type?: "shared" | "personal";
   authData: AuthData;
+  include_imports?: boolean;
 }
 
 export interface UpdateSecretParams {
