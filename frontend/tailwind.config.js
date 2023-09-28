@@ -315,7 +315,7 @@ module.exports = {
         // TODO:(akhilmhdh) remove all these unused and keep the config file as small as possible
         // Make the whole color pallelte into simpler
         bounce: "bounce 1000ms ease-in-out infinite",
-        spin: "spin 4000ms ease-in-out infinite",
+        spin: "spin 1500ms ease-in-out infinite",
         cursor: "cursor .6s linear infinite alternate",
         type: "type 2.7s ease-out .8s infinite alternate both",
         "type-reverse": "type 1.8s ease-out 0s infinite alternate-reverse both",

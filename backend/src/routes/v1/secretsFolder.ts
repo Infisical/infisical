@@ -18,7 +18,7 @@ router.post(
 );
 
 router.patch(
-  "/:folderId",
+  "/:folderName",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
@@ -26,7 +26,7 @@ router.patch(
 );
 
 router.delete(
-  "/:folderId",
+  "/:folderName",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),

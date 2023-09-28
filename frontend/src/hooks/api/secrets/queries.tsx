@@ -1,6 +1,6 @@
 /* eslint-disable no-param-reassign */
 import { useCallback, useMemo } from "react";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import {
   decryptAssymmetric,
@@ -8,218 +8,148 @@ import {
 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 
-import { secretSnapshotKeys } from "../secretSnapshots/queries";
+import { UserWsKeyPair } from "../keys/types";
 import {
-  BatchSecretDTO,
-  CreateSecretDTO,
   DecryptedSecret,
   EncryptedSecret,
   EncryptedSecretVersion,
-  GetProjectSecretsDTO,
   GetSecretVersionsDTO,
-  TGetProjectSecretsAllEnvDTO} from "./types";
+  TGetProjectSecretsAllEnvDTO,
+  TGetProjectSecretsDTO,
+  TGetProjectSecretsKey
+} from "./types";
 
 export const secretKeys = {
   // this is also used in secretSnapshot part
-  getProjectSecret: (workspaceId: string, env: string | string[], folderId?: string) => [
-    { workspaceId, env, folderId },
-    "secrets"
-  ],
-  getProjectSecretImports: (workspaceId: string, env: string | string[], folderId?: string) => [
-    { workspaceId, env, folderId },
-    "secrets-imports"
-  ],
-  getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"]
+  getProjectSecret: ({ workspaceId, environment, secretPath }: TGetProjectSecretsKey) =>
+    [{ workspaceId, environment, secretPath }, "secrets"] as const,
+  getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"] as const
 };
 
-const fetchProjectEncryptedSecrets = async (
-  workspaceId: string,
-  env: string | string[],
-  folderId?: string,
-  secretPath?: string
-) => {
+const decryptSecrets = (encryptedSecrets: EncryptedSecret[], decryptFileKey: UserWsKeyPair) => {
+  const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
+  const key = decryptAssymmetric({
+    ciphertext: decryptFileKey.encryptedKey,
+    nonce: decryptFileKey.nonce,
+    publicKey: decryptFileKey.sender.publicKey,
+    privateKey: PRIVATE_KEY
+  });
+
+  const personalSecrets: Record<string, { id: string; value: string }> = {};
+  const secrets: DecryptedSecret[] = [];
+  encryptedSecrets.forEach((encSecret) => {
+    const secretKey = decryptSymmetric({
+      ciphertext: encSecret.secretKeyCiphertext,
+      iv: encSecret.secretKeyIV,
+      tag: encSecret.secretKeyTag,
+      key
+    });
+
+    const secretValue = decryptSymmetric({
+      ciphertext: encSecret.secretValueCiphertext,
+      iv: encSecret.secretValueIV,
+      tag: encSecret.secretValueTag,
+      key
+    });
+
+    const secretComment = decryptSymmetric({
+      ciphertext: encSecret.secretCommentCiphertext,
+      iv: encSecret.secretCommentIV,
+      tag: encSecret.secretCommentTag,
+      key
+    });
+
+    const decryptedSecret: DecryptedSecret = {
+      _id: encSecret._id,
+      env: encSecret.environment,
+      key: secretKey,
+      value: secretValue,
+      tags: encSecret.tags,
+      comment: secretComment,
+      createdAt: encSecret.createdAt,
+      updatedAt: encSecret.updatedAt,
+      version: encSecret.version,
+      skipMultilineEncoding: encSecret.skipMultilineEncoding
+    };
+
+    if (encSecret.type === "personal") {
+      personalSecrets[decryptedSecret.key] = {
+        id: encSecret._id,
+        value: secretValue
+      };
+    } else {
+      secrets.push(decryptedSecret);
+    }
+  });
+
+  secrets.forEach((sec) => {
+    if (personalSecrets?.[sec.key]) {
+      sec.idOverride = personalSecrets[sec.key].id;
+      sec.valueOverride = personalSecrets[sec.key].value;
+      sec.overrideAction = "modified";
+    }
+  });
+
+  return secrets;
+};
+
+const fetchProjectEncryptedSecrets = async ({
+  workspaceId,
+  environment,
+  secretPath
+}: TGetProjectSecretsKey) => {
   const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>("/api/v3/secrets", {
     params: {
-      environment: env,
+      environment,
       workspaceId,
-      folderId: folderId || undefined,
       secretPath
     }
   });
-  
+
   return data.secrets;
 };
-
 export const useGetProjectSecrets = ({
   workspaceId,
-  env,
+  environment,
   decryptFileKey,
-  isPaused,
-  folderId,
-  secretPath
-}: GetProjectSecretsDTO) =>
+  secretPath,
+  options
+}: TGetProjectSecretsDTO & {
+  options?: Omit<
+    UseQueryOptions<
+      EncryptedSecret[],
+      unknown,
+      DecryptedSecret[],
+      ReturnType<typeof secretKeys.getProjectSecret>
+    >,
+    "queryKey" | "queryFn"
+  >;
+}) =>
   useQuery({
+    ...options,
     // wait for all values to be available
-    enabled: Boolean(decryptFileKey && workspaceId && env) && !isPaused,
-    queryKey: secretKeys.getProjectSecret(workspaceId, env, folderId || secretPath),
-    queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, folderId, secretPath),
-    select: useCallback(
-      (data: EncryptedSecret[]) => {
-        const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-        const latestKey = decryptFileKey;
-        const key = decryptAssymmetric({
-          ciphertext: latestKey.encryptedKey,
-          nonce: latestKey.nonce,
-          publicKey: latestKey.sender.publicKey,
-          privateKey: PRIVATE_KEY
-        });
-
-        const sharedSecrets: DecryptedSecret[] = [];
-        const personalSecrets: Record<string, { id: string; value: string }> = {};
-        // this used for add-only mode in dashboard
-        // type won't be there thus only one key is shown
-        const duplicateSecretKey: Record<string, boolean> = {};
-        data.forEach((encSecret: EncryptedSecret) => {
-          const secretKey = decryptSymmetric({
-            ciphertext: encSecret.secretKeyCiphertext,
-            iv: encSecret.secretKeyIV,
-            tag: encSecret.secretKeyTag,
-            key
-          });
-
-          const secretValue = decryptSymmetric({
-            ciphertext: encSecret.secretValueCiphertext,
-            iv: encSecret.secretValueIV,
-            tag: encSecret.secretValueTag,
-            key
-          });
-
-          const secretComment = decryptSymmetric({
-            ciphertext: encSecret.secretCommentCiphertext,
-            iv: encSecret.secretCommentIV,
-            tag: encSecret.secretCommentTag,
-            key
-          });
-
-          const decryptedSecret = {
-            _id: encSecret._id,
-            env: encSecret.environment,
-            key: secretKey,
-            value: secretValue,
-            tags: encSecret.tags,
-            comment: secretComment,
-            createdAt: encSecret.createdAt,
-            updatedAt: encSecret.updatedAt
-          };
-
-          if (encSecret.type === "personal") {
-            personalSecrets[`${decryptedSecret.key}-${decryptedSecret.env}`] = {
-              id: encSecret._id,
-              value: secretValue
-            };
-          } else {
-            if (!duplicateSecretKey?.[`${decryptedSecret.key}-${decryptedSecret.env}`]) {
-              sharedSecrets.push(decryptedSecret);
-            }
-            duplicateSecretKey[`${decryptedSecret.key}-${decryptedSecret.env}`] = true;
-          }
-        });
-        sharedSecrets.forEach((val) => {
-          const dupKey = `${val.key}-${val.env}`;
-          if (personalSecrets?.[dupKey]) {
-            val.idOverride = personalSecrets[dupKey].id;
-            val.valueOverride = personalSecrets[dupKey].value;
-            val.overrideAction = "modified";
-          }
-        });
-        return { secrets: sharedSecrets };
-      },
-      [decryptFileKey]
-    )
+    enabled: Boolean(decryptFileKey && workspaceId && environment) && (options?.enabled ?? true),
+    queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath }),
+    queryFn: async () => fetchProjectEncryptedSecrets({ workspaceId, environment, secretPath }),
+    select: (secrets: EncryptedSecret[]) => decryptSecrets(secrets, decryptFileKey)
   });
 
 export const useGetProjectSecretsAllEnv = ({
   workspaceId,
   envs,
   decryptFileKey,
-  folderId,
   secretPath
 }: TGetProjectSecretsAllEnvDTO) => {
   const secrets = useQueries({
-    queries: envs.map((env) => ({
-      queryKey: secretKeys.getProjectSecret(workspaceId, env, secretPath || folderId),
-      enabled: Boolean(decryptFileKey && workspaceId && env),
-      queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, folderId, secretPath),
-      select: (data: EncryptedSecret[]) => {
-        const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-        const latestKey = decryptFileKey;
-        const key = decryptAssymmetric({
-          ciphertext: latestKey.encryptedKey,
-          nonce: latestKey.nonce,
-          publicKey: latestKey.sender.publicKey,
-          privateKey: PRIVATE_KEY
-        });
-
-        const sharedSecrets: Record<string, DecryptedSecret> = {};
-        const personalSecrets: Record<string, { id: string; value: string }> = {};
-        // this used for add-only mode in dashboard
-        // type won't be there thus only one key is shown
-        const duplicateSecretKey: Record<string, boolean> = {};
-        data.forEach((encSecret: EncryptedSecret) => {
-          const secretKey = decryptSymmetric({
-            ciphertext: encSecret.secretKeyCiphertext,
-            iv: encSecret.secretKeyIV,
-            tag: encSecret.secretKeyTag,
-            key
-          });
-
-          const secretValue = decryptSymmetric({
-            ciphertext: encSecret.secretValueCiphertext,
-            iv: encSecret.secretValueIV,
-            tag: encSecret.secretValueTag,
-            key
-          });
-
-          const secretComment = decryptSymmetric({
-            ciphertext: encSecret.secretCommentCiphertext,
-            iv: encSecret.secretCommentIV,
-            tag: encSecret.secretCommentTag,
-            key
-          });
-
-          const decryptedSecret = {
-            _id: encSecret._id,
-            env: encSecret.environment,
-            key: secretKey,
-            value: secretValue,
-            tags: encSecret.tags,
-            comment: secretComment,
-            createdAt: encSecret.createdAt,
-            updatedAt: encSecret.updatedAt
-          };
-
-          if (encSecret.type === "personal") {
-            personalSecrets[decryptedSecret.key] = {
-              id: encSecret._id,
-              value: secretValue
-            };
-          } else {
-            if (!duplicateSecretKey?.[decryptedSecret.key]) {
-              sharedSecrets[decryptedSecret.key] = decryptedSecret;
-            }
-            duplicateSecretKey[decryptedSecret.key] = true;
-          }
-        });
-
-        Object.keys(sharedSecrets).forEach((val) => {
-          if (personalSecrets?.[val]) {
-            sharedSecrets[val].idOverride = personalSecrets[val].id;
-            sharedSecrets[val].valueOverride = personalSecrets[val].value;
-            sharedSecrets[val].overrideAction = "modified";
-          }
-        });
-        return sharedSecrets;
-      }
+    queries: envs.map((environment) => ({
+      queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath }),
+      enabled: Boolean(decryptFileKey && workspaceId && environment),
+      queryFn: async () => fetchProjectEncryptedSecrets({ workspaceId, environment, secretPath }),
+      select: (secs: EncryptedSecret[]) =>
+        decryptSecrets(secs, decryptFileKey).reduce<Record<string, DecryptedSecret>>(
+          (prev, curr) => ({ ...prev, [curr.key]: curr }),
+          {}
+        )
     }))
   });
 
@@ -303,46 +233,3 @@ export const useGetSecretVersion = (dto: GetSecretVersionsDTO) =>
       [dto.decryptFileKey]
     )
   });
-
-export const useBatchSecretsOp = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<{}, {}, BatchSecretDTO>({
-    mutationFn: async (dto) => {
-      const { data } = await apiRequest.post("/api/v2/secrets/batch", dto);
-      return data;
-    },
-    onSuccess: (_, dto) => {
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret(dto.workspaceId, dto.environment, dto.folderId)
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.list(dto.workspaceId, dto.environment, dto?.folderId)
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count(dto.workspaceId, dto.environment, dto?.folderId)
-      );
-    }
-  });
-};
-
-export const createSecret = async (dto: CreateSecretDTO) => {
-  const { data } = await apiRequest.post(`/api/v3/secrets/${dto.secretKey}`, dto);
-  return data;
-}
-
-export const useCreateSecret = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<{}, {}, CreateSecretDTO>({
-    mutationFn: async (dto) => {
-      const data = createSecret(dto);
-      return data;
-    },
-    onSuccess: (_, dto) => {
-      queryClient.invalidateQueries(
-        secretKeys.getProjectSecret(dto.workspaceId, dto.environment)
-      );
-    }
-  });
-};

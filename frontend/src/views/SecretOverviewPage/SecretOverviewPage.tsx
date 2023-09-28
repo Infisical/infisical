@@ -98,7 +98,7 @@ export const SecretOverviewPage = () => {
   const { folders, folderNames, isFolderPresentInEnv } = useGetFoldersByEnv({
     workspaceId,
     environments: userAvailableEnvs.map(({ slug }) => slug),
-    parentFolderPath: secretPath
+    directory: secretPath
   });
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
@@ -190,17 +190,8 @@ export const SecretOverviewPage = () => {
 
   const handleExploreEnvClick = (slug: string) => {
     const query: Record<string, string> = { ...router.query, env: slug };
-    delete query.secretPath;
-    // the dir return will have the present directory folder id
-    // use that when clicking on explore to redirect user to there
     const envIndex = userAvailableEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
-      const envFolder = folders?.[envIndex];
-      const dir = envFolder?.data?.dir?.pop();
-      if (dir) {
-        query.folderId = dir.id;
-      }
-
       router.push({
         pathname: "/project/[id]/secrets/[env]",
         query

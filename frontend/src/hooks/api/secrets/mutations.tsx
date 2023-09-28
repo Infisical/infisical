@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { MutationOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
   decryptAssymmetric,
@@ -8,8 +8,17 @@ import {
 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 
+import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import { secretKeys } from "./queries";
-import { TCreateSecretsV3DTO, TDeleteSecretsV3DTO, TUpdateSecretsV3DTO } from "./types";
+import {
+  CreateSecretDTO,
+  TCreateSecretBatchDTO,
+  TCreateSecretsV3DTO,
+  TDeleteSecretBatchDTO,
+  TDeleteSecretsV3DTO,
+  TUpdateSecretBatchDTO,
+  TUpdateSecretsV3DTO
+} from "./types";
 
 const encryptSecret = (randomBytes: string, key: string, value?: string, comment?: string) => {
   // encrypt key
@@ -55,7 +64,11 @@ const encryptSecret = (randomBytes: string, key: string, value?: string, comment
   };
 };
 
-export const useCreateSecretV3 = () => {
+export const useCreateSecretV3 = ({
+  options
+}: {
+  options?: Omit<MutationOptions<{}, {}, TCreateSecretsV3DTO>, "mutationFn">;
+} = {}) => {
   const queryClient = useQueryClient();
   return useMutation<{}, {}, TCreateSecretsV3DTO>({
     mutationFn: async ({
@@ -66,7 +79,8 @@ export const useCreateSecretV3 = () => {
       secretName,
       secretValue,
       latestFileKey,
-      secretComment
+      secretComment,
+      skipMultilineEncoding
     }) => {
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
@@ -84,20 +98,32 @@ export const useCreateSecretV3 = () => {
         environment,
         type,
         secretPath,
-        ...encryptSecret(randomBytes, secretName, secretValue, secretComment)
+        ...encryptSecret(randomBytes, secretName, secretValue, secretComment),
+        skipMultilineEncoding
       };
       const { data } = await apiRequest.post(`/api/v3/secrets/${secretName}`, reqBody);
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
       queryClient.invalidateQueries(
-        secretKeys.getProjectSecret(workspaceId, environment, secretPath)
+        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );
-    }
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      );
+    },
+    ...options
   });
 };
 
-export const useUpdateSecretV3 = () => {
+export const useUpdateSecretV3 = ({
+  options
+}: {
+  options?: Omit<MutationOptions<{}, {}, TUpdateSecretsV3DTO>, "mutationFn">;
+} = {}) => {
   const queryClient = useQueryClient();
   return useMutation<{}, {}, TUpdateSecretsV3DTO>({
     mutationFn: async ({
@@ -107,7 +133,11 @@ export const useUpdateSecretV3 = () => {
       workspaceId,
       secretName,
       secretValue,
-      latestFileKey
+      latestFileKey,
+      tags,
+      secretComment,
+      newSecretName,
+      skipMultilineEncoding
     }) => {
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
@@ -119,34 +149,40 @@ export const useUpdateSecretV3 = () => {
             privateKey: PRIVATE_KEY
           })
         : crypto.randomBytes(16).toString("hex");
-      const { secretValueIV, secretValueTag, secretValueCiphertext } = encryptSecret(
-        randomBytes,
-        secretName,
-        secretValue,
-        ""
-      );
 
       const reqBody = {
         workspaceId,
         environment,
         type,
         secretPath,
-        secretValueIV,
-        secretValueTag,
-        secretValueCiphertext
+        ...encryptSecret(randomBytes, newSecretName ?? secretName, secretValue, secretComment),
+        tags,
+        skipMultilineEncoding,
+        secretName: newSecretName
       };
       const { data } = await apiRequest.patch(`/api/v3/secrets/${secretName}`, reqBody);
       return data;
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
       queryClient.invalidateQueries(
-        secretKeys.getProjectSecret(workspaceId, environment, secretPath)
+        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );
-    }
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      );
+    },
+    ...options
   });
 };
 
-export const useDeleteSecretV3 = () => {
+export const useDeleteSecretV3 = ({
+  options
+}: {
+  options?: Omit<MutationOptions<{}, {}, TDeleteSecretsV3DTO>, "mutationFn">;
+} = {}) => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TDeleteSecretsV3DTO>({
@@ -165,8 +201,160 @@ export const useDeleteSecretV3 = () => {
     },
     onSuccess: (_, { workspaceId, environment, secretPath }) => {
       queryClient.invalidateQueries(
-        secretKeys.getProjectSecret(workspaceId, environment, secretPath)
+        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );
-    }
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      );
+    },
+    ...options
   });
+};
+
+export const useCreateSecretBatch = ({
+  options
+}: {
+  options?: Omit<MutationOptions<{}, {}, TCreateSecretBatchDTO>, "mutationFn">;
+} = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, TCreateSecretBatchDTO>({
+    mutationFn: async ({ secretPath = "/", workspaceId, environment, secrets, latestFileKey }) => {
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
+      const randomBytes = latestFileKey
+        ? decryptAssymmetric({
+            ciphertext: latestFileKey.encryptedKey,
+            nonce: latestFileKey.nonce,
+            publicKey: latestFileKey.sender.publicKey,
+            privateKey: PRIVATE_KEY
+          })
+        : crypto.randomBytes(16).toString("hex");
+
+      const reqBody = {
+        workspaceId,
+        environment,
+        secretPath,
+        secrets: secrets.map(
+          ({ secretName, secretValue, secretComment, metadata, type, skipMultilineEncoding }) => ({
+            secretName,
+            ...encryptSecret(randomBytes, secretName, secretValue, secretComment),
+            type,
+            metadata,
+            skipMultilineEncoding
+          })
+        )
+      };
+
+      const { data } = await apiRequest.post("/api/v3/secrets/batch", reqBody);
+      return data;
+    },
+    onSuccess: (_, { workspaceId, environment, secretPath }) => {
+      queryClient.invalidateQueries(
+        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      );
+    },
+    ...options
+  });
+};
+
+export const useUpdateSecretBatch = ({
+  options
+}: {
+  options?: Omit<MutationOptions<{}, {}, TUpdateSecretBatchDTO>, "mutationFn">;
+} = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, TUpdateSecretBatchDTO>({
+    mutationFn: async ({ secretPath = "/", workspaceId, environment, secrets, latestFileKey }) => {
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
+      const randomBytes = latestFileKey
+        ? decryptAssymmetric({
+            ciphertext: latestFileKey.encryptedKey,
+            nonce: latestFileKey.nonce,
+            publicKey: latestFileKey.sender.publicKey,
+            privateKey: PRIVATE_KEY
+          })
+        : crypto.randomBytes(16).toString("hex");
+
+      const reqBody = {
+        workspaceId,
+        environment,
+        secretPath,
+        secrets: secrets.map(
+          ({ secretName, secretValue, secretComment, type, tags, skipMultilineEncoding }) => ({
+            secretName,
+            ...encryptSecret(randomBytes, secretName, secretValue, secretComment),
+            type,
+            tags,
+            skipMultilineEncoding
+          })
+        )
+      };
+
+      const { data } = await apiRequest.patch("/api/v3/secrets/batch", reqBody);
+      return data;
+    },
+    onSuccess: (_, { workspaceId, environment, secretPath }) => {
+      queryClient.invalidateQueries(
+        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      );
+    },
+    ...options
+  });
+};
+
+export const useDeleteSecretBatch = ({
+  options
+}: {
+  options?: Omit<MutationOptions<{}, {}, TDeleteSecretBatchDTO>, "mutationFn">;
+} = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, TDeleteSecretBatchDTO>({
+    mutationFn: async ({ secretPath = "/", workspaceId, environment, secrets }) => {
+      const reqBody = {
+        workspaceId,
+        environment,
+        secretPath,
+        secrets
+      };
+
+      const { data } = await apiRequest.delete("/api/v3/secrets/batch", {
+        data: reqBody
+      });
+      return data;
+    },
+    onSuccess: (_, { workspaceId, environment, secretPath }) => {
+      queryClient.invalidateQueries(
+        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      );
+    },
+    ...options
+  });
+};
+
+export const createSecret = async (dto: CreateSecretDTO) => {
+  const { data } = await apiRequest.post(`/api/v3/secrets/${dto.secretKey}`, dto);
+  return data;
 };

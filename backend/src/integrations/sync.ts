@@ -65,10 +65,10 @@ import sodium from "libsodium-wrappers";
 import { standardRequest } from "../config/request";
 
 const getSecretKeyValuePair = (
-  secrets: Record<string, { value: string; comment?: string } | null>
+  secrets: Record<string, { value: string | null; comment?: string } | null>
 ) =>
-  Object.keys(secrets).reduce<Record<string, string>>((prev, key) => {
-    if (secrets[key]) prev[key] = secrets[key]?.value || "";
+  Object.keys(secrets).reduce<Record<string, string | null | undefined>>((prev, key) => {
+    prev[key] = secrets?.[key] === null ? null : secrets?.[key]?.value;
     return prev;
   }, {});
 
@@ -325,40 +325,42 @@ const syncSecretsGCPSecretManager = async ({
     name: string;
     createTime: string;
   }
-  
+
   interface GCPSMListSecretsRes {
     secrets?: GCPSecret[];
     totalSize?: number;
     nextPageToken?: string;
   }
-  
+
   let gcpSecrets: GCPSecret[] = [];
-  
+
   const pageSize = 100;
   let pageToken: string | undefined;
   let hasMorePages = true;
 
-  const filterParam = integration.metadata.secretGCPLabel 
-    ? `?filter=labels.${integration.metadata.secretGCPLabel.labelName}=${integration.metadata.secretGCPLabel.labelValue}` 
+  const filterParam = integration.metadata.secretGCPLabel
+    ? `?filter=labels.${integration.metadata.secretGCPLabel.labelName}=${integration.metadata.secretGCPLabel.labelValue}`
     : "";
-  
+
   while (hasMorePages) {
     const params = new URLSearchParams({
       pageSize: String(pageSize),
       ...(pageToken ? { pageToken } : {})
     });
 
-    const res: GCPSMListSecretsRes = (await standardRequest.get(
-      `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets${filterParam}`,
-      {
-        params,
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Accept-Encoding": "application/json"
+    const res: GCPSMListSecretsRes = (
+      await standardRequest.get(
+        `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets${filterParam}`,
+        {
+          params,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
         }
-      }
-    )).data;
-    
+      )
+    ).data;
+
     if (res.secrets) {
       const filteredSecrets = res.secrets?.filter((gcpSecret) => {
         const arr = gcpSecret.name.split("/");
@@ -366,54 +368,58 @@ const syncSecretsGCPSecretManager = async ({
 
         let isValid = true;
 
-        if (integration.metadata.secretPrefix && !key.startsWith(integration.metadata.secretPrefix)) {
+        if (
+          integration.metadata.secretPrefix &&
+          !key.startsWith(integration.metadata.secretPrefix)
+        ) {
           isValid = false;
         }
 
         if (integration.metadata.secretSuffix && !key.endsWith(integration.metadata.secretSuffix)) {
           isValid = false;
         }
-        
+
         return isValid;
       });
 
       gcpSecrets = gcpSecrets.concat(filteredSecrets);
     }
-    
+
     if (!res.nextPageToken) {
       hasMorePages = false;
     }
-    
+
     pageToken = res.nextPageToken;
   }
-  
-  const res: { [key: string]: string; } = {};
-  
+
+  const res: { [key: string]: string } = {};
+
   interface GCPLatestSecretVersionAccess {
     name: string;
     payload: {
       data: string;
-    }
+    };
   }
-  
+
   for await (const gcpSecret of gcpSecrets) {
     const arr = gcpSecret.name.split("/");
     const key = arr[arr.length - 1];
 
-    const secretLatest: GCPLatestSecretVersionAccess = (await standardRequest.get(
-      `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets/${key}/versions/latest:access`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Accept-Encoding": "application/json"
+    const secretLatest: GCPLatestSecretVersionAccess = (
+      await standardRequest.get(
+        `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets/${key}/versions/latest:access`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json"
+          }
         }
-      }
-    )).data;
+      )
+    ).data;
 
-    
     res[key] = Buffer.from(secretLatest.payload.data, "base64").toString("utf-8");
   }
-  
+
   for await (const key of Object.keys(secrets)) {
     if (!(key in res)) {
       // case: create secret
@@ -423,11 +429,14 @@ const syncSecretsGCPSecretManager = async ({
           replication: {
             automatic: {}
           },
-          ...(integration.metadata.secretGCPLabel ? {
-            labels: {
-              [integration.metadata.secretGCPLabel.labelName]: integration.metadata.secretGCPLabel.labelValue
-            }
-          } : {})
+          ...(integration.metadata.secretGCPLabel
+            ? {
+                labels: {
+                  [integration.metadata.secretGCPLabel.labelName]:
+                    integration.metadata.secretGCPLabel.labelValue
+                }
+              }
+            : {})
         },
         {
           params: {
@@ -439,7 +448,7 @@ const syncSecretsGCPSecretManager = async ({
           }
         }
       );
-      
+
       await standardRequest.post(
         `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${integration.appId}/secrets/${key}:addVersion`,
         {
@@ -456,7 +465,7 @@ const syncSecretsGCPSecretManager = async ({
       );
     }
   }
-  
+
   for await (const key of Object.keys(res)) {
     if (!(key in secrets)) {
       // case: delete secret
@@ -489,7 +498,7 @@ const syncSecretsGCPSecretManager = async ({
       }
     }
   }
-}
+};
 
 /**
  * Sync/push [secrets] to Azure Key Vault with vault URI [integration.app]
@@ -729,15 +738,12 @@ const syncSecretsAWSParameterStore = async ({
   } = {};
 
   if (parameterList) {
-    awsParameterStoreSecretsObj = parameterList.reduce(
-      (obj: any, secret: any) => {
-        return ({
-          ...obj,
-          [secret.Name.substring(integration.path.length)]: secret
-        });
-      },
-      {}
-    );
+    awsParameterStoreSecretsObj = parameterList.reduce((obj: any, secret: any) => {
+      return {
+        ...obj,
+        [secret.Name.substring(integration.path.length)]: secret
+      };
+    }, {});
   }
 
   // Identify secrets to create
@@ -1869,8 +1875,10 @@ const syncSecretsGitLab = async ({
     value: string;
     environment_scope: string;
   }
-  
-  const gitLabApiUrl = integrationAuth.url ? `${integrationAuth.url}/api` : INTEGRATION_GITLAB_API_URL;
+
+  const gitLabApiUrl = integrationAuth.url
+    ? `${integrationAuth.url}/api`
+    : INTEGRATION_GITLAB_API_URL;
 
   const getAllEnvVariables = async (integrationAppId: string, accessToken: string) => {
     const headers = {
@@ -1880,7 +1888,9 @@ const syncSecretsGitLab = async ({
     };
 
     let allEnvVariables: GitLabSecret[] = [];
-    let url: string | null = `${gitLabApiUrl}/v4/projects/${integrationAppId}/variables?per_page=100`;
+    let url:
+      | string
+      | null = `${gitLabApiUrl}/v4/projects/${integrationAppId}/variables?per_page=100`;
 
     while (url) {
       const response: any = await standardRequest.get(url, { headers });
@@ -1901,23 +1911,27 @@ const syncSecretsGitLab = async ({
 
   const allEnvVariables = await getAllEnvVariables(integration?.appId, accessToken);
   const getSecretsRes: GitLabSecret[] = allEnvVariables
-    .filter(
-      (secret: GitLabSecret) => secret.environment_scope === integration.targetEnvironment
-    )
+    .filter((secret: GitLabSecret) => secret.environment_scope === integration.targetEnvironment)
     .filter((gitLabSecret) => {
       let isValid = true;
 
-      if (integration.metadata.secretPrefix && !gitLabSecret.key.startsWith(integration.metadata.secretPrefix)) {
+      if (
+        integration.metadata.secretPrefix &&
+        !gitLabSecret.key.startsWith(integration.metadata.secretPrefix)
+      ) {
         isValid = false;
       }
 
-      if (integration.metadata.secretSuffix && !gitLabSecret.key.endsWith(integration.metadata.secretSuffix)) {
+      if (
+        integration.metadata.secretSuffix &&
+        !gitLabSecret.key.endsWith(integration.metadata.secretSuffix)
+      ) {
         isValid = false;
       }
-      
+
       return isValid;
     });
-  
+
   for await (const key of Object.keys(secrets)) {
     const existingSecret = getSecretsRes.find((s: any) => s.key == key);
     if (!existingSecret) {
@@ -2371,41 +2385,43 @@ const syncSecretsTeamCity = async ({
 
   if (integration.targetEnvironment && integration.targetEnvironmentId) {
     // case: sync to specific build-config in TeamCity project
-    const res = (await standardRequest.get<GetTeamCityBuildConfigParametersRes>(
-      `${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters`, 
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
-      }
-    ))
-    .data
-    .property
-    .filter((parameter) => !parameter.inherited)
-    .reduce((obj: any, secret: TeamCitySecret) => {
-      const secretName = secret.name.replace(/^env\./, "");
-      return {
-        ...obj,
-        [secretName]: secret.value
-      };
-    }, {});
-      
+    const res = (
+      await standardRequest.get<GetTeamCityBuildConfigParametersRes>(
+        `${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json"
+          }
+        }
+      )
+    ).data.property
+      .filter((parameter) => !parameter.inherited)
+      .reduce((obj: any, secret: TeamCitySecret) => {
+        const secretName = secret.name.replace(/^env\./, "");
+        return {
+          ...obj,
+          [secretName]: secret.value
+        };
+      }, {});
+
     for await (const key of Object.keys(secrets)) {
       if (!(key in res) || (key in res && secrets[key].value !== res[key])) {
         // case: secret does not exist in TeamCity or secret value has changed
         // -> create/update secret
-        await standardRequest.post(`${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters`,
-        {
-          name:`env.${key}`,
-          value: secrets[key].value
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json",
+        await standardRequest.post(
+          `${integrationAuth.url}/app/rest/buildTypes/${integration.targetEnvironmentId}/parameters`,
+          {
+            name: `env.${key}`,
+            value: secrets[key].value
           },
-        });
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json"
+            }
+          }
+        );
       }
     }
 

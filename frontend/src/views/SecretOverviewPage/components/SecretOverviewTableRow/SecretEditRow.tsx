@@ -90,7 +90,9 @@ export const SecretEditRow = ({
         <Controller
           control={control}
           name="value"
-          render={({ field }) => <SecretInput {...field} isVisible={isVisible} />}
+          render={({ field }) => (
+            <SecretInput {...field} value={field.value as string} isVisible={isVisible} />
+          )}
         />
       </div>
       <div className="flex w-16 justify-center space-x-3 pl-2 transition-all">
@@ -120,12 +122,13 @@ export const SecretEditRow = ({
               <Tooltip content="cancel">
                 <IconButton
                   variant="plain"
+                  colorSchema="danger"
                   ariaLabel="reset-value"
                   className="h-full"
                   onClick={handleFormReset}
                   isDisabled={isSubmitting}
                 >
-                  <FontAwesomeIcon icon={faXmark} />
+                  <FontAwesomeIcon icon={faXmark} className="hover:text-red" />
                 </IconButton>
               </Tooltip>
             </div>
