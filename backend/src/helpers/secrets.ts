@@ -1297,7 +1297,7 @@ export const createSecretBatchHelper = async ({
       secrets.map(({ secretName, type }) => ({
         secretBlindIndex: secretBlindIndexes[secretName],
         type: type,
-        ...getAuthDataPayloadUserObj(authData)
+        ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {})
       }))
     )
     .exec();

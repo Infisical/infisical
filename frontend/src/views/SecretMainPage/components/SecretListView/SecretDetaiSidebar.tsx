@@ -168,24 +168,31 @@ export const SecretDetailSidebar = ({
             <FormControl label="Key">
               <Input isDisabled {...register("key")} />
             </FormControl>
-            <Controller
-              name="value"
-              key="secret-value"
-              control={control}
-              render={({ field }) => (
-                <FormControl label="Value">
-                  <SecretInput
-                    isReadOnly={isReadOnly}
-                    key="secret-value"
-                    isDisabled={isOverridden}
-                    containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800  px-2 py-1.5"
-                    {...field}
-                    autoFocus={false}
-                  />
-                </FormControl>
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Edit}
+              a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+            >
+              {(isAllowed) => (
+                <Controller
+                  name="value"
+                  key="secret-value"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControl label="Value">
+                      <SecretInput
+                        isReadOnly={isReadOnly}
+                        key="secret-value"
+                        isDisabled={isOverridden || isAllowed}
+                        containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800  px-2 py-1.5"
+                        {...field}
+                        autoFocus={false}
+                      />
+                    </FormControl>
+                  )}
+                />
               )}
-            />
-            <div className="mb-2">
+            </ProjectPermissionCan>
+            <div className="mb-2 border-b border-mineshaft-600 pb-4">
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
                 a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
@@ -217,34 +224,6 @@ export const SecretDetailSidebar = ({
                 )}
               />
             )}
-            <div className="my-2 mb-6 border-t border-mineshaft-600 pt-4">
-              <Controller
-                control={control}
-                name="skipMultilineEncoding"
-                render={({ field: { value, onChange, onBlur } }) => (
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Edit}
-                    a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
-                  >
-                    {(isAllowed) => (
-                      <Switch
-                        id="skipmultiencoding-option"
-                        onCheckedChange={onChange}
-                        isChecked={value}
-                        onBlur={onBlur}
-                        isDisabled={!isAllowed}
-                        className="items-center"
-                      >
-                        Disable multi line encoding
-                        <Tooltip content="Infisical encodes multiline secrets by escaping newlines and wrappign in quotes. To disable, enable this option">
-                          <FontAwesomeIcon icon={faCircleQuestion} className="ml-1" size="sm" />
-                        </Tooltip>
-                      </Switch>
-                    )}
-                  </ProjectPermissionCan>
-                )}
-              />
-            </div>
             <FormControl label="Tags" className="">
               <div className="overflow-hidden grid gap-2 grid-flow-col auto-cols-min pt-2">
                 {fields.map(({ tagColor, id: formId, name, _id }) => (
@@ -341,6 +320,34 @@ export const SecretDetailSidebar = ({
                 rows={5}
               />
             </FormControl>
+            <div className="my-2 mb-6 border-b border-mineshaft-600 pb-4">
+              <Controller
+                control={control}
+                name="skipMultilineEncoding"
+                render={({ field: { value, onChange, onBlur } }) => (
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Edit}
+                    a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
+                  >
+                    {(isAllowed) => (
+                      <Switch
+                        id="skipmultiencoding-option"
+                        onCheckedChange={onChange}
+                        isChecked={value}
+                        onBlur={onBlur}
+                        isDisabled={!isAllowed}
+                        className="items-center"
+                      >
+                        Disable multi line encoding
+                        <Tooltip content="Infisical encodes multiline secrets by escaping newlines and wrappign in quotes. To disable, enable this option">
+                          <FontAwesomeIcon icon={faCircleQuestion} className="ml-1" size="sm" />
+                        </Tooltip>
+                      </Switch>
+                    )}
+                  </ProjectPermissionCan>
+                )}
+              />
+            </div>
             <div className="dark mb-4 text-sm text-bunker-300 flex-grow">
               <div className="mb-2">Version History</div>
               <div className="flex h-48 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-bunker-800 p-2 dark:[color-scheme:dark]">

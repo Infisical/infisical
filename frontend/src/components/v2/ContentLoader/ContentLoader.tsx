@@ -28,9 +28,9 @@ export const ContentLoader = ({ text, frequency = 2000 }: Props) => {
         <img src="/images/loading/loading.gif" height={210} width={240} alt="loading animation" />
       </div>
       {text && isTextArray && (
-        <AnimatePresence>
+        <AnimatePresence exitBeforeEnter>
           <motion.div
-            className="text-primary text-sm absolute bottom-1/4"
+            className="text-primary"
             key={`content-loader-${pos}`}
             initial={{ opacity: 0, translateY: 20 }}
             animate={{ opacity: 1, translateY: 0 }}

@@ -9,7 +9,7 @@ import { DecryptedSecret, UserWsKeyPair } from "@app/hooks/api/types";
 
 const typeSchema = z.object({
   key: z.string(),
-  value: z.string()
+  value: z.string().optional()
 });
 
 type TFormSchema = z.infer<typeof typeSchema>;
@@ -24,6 +24,7 @@ type Props = {
   isOpen?: boolean;
   onClose: () => void;
   onTogglePopUp: (isOpen: boolean) => void;
+  autoCapitalize?: boolean;
 };
 
 export const CreateSecretForm = ({
@@ -33,7 +34,8 @@ export const CreateSecretForm = ({
   secretPath = "/",
   isOpen,
   onClose,
-  onTogglePopUp
+  onTogglePopUp,
+  autoCapitalize = true
 }: Props) => {
   const {
     register,
@@ -54,7 +56,7 @@ export const CreateSecretForm = ({
         workspaceId,
         secretPath,
         secretName: key,
-        secretValue: value,
+        secretValue: value || "",
         secretComment: "",
         type: "shared",
         latestFileKey: decryptFileKey
@@ -82,7 +84,11 @@ export const CreateSecretForm = ({
       >
         <form onSubmit={handleSubmit(handleFormSubmit)}>
           <FormControl label="Key" isError={Boolean(errors?.key)} errorText={errors?.key?.message}>
-            <Input {...register("key")} placeholder="Type your secret name" />
+            <Input
+              {...register("key")}
+              placeholder="Type your secret name"
+              autoCapitalization={autoCapitalize}
+            />
           </FormControl>
           <Controller
             control={control}

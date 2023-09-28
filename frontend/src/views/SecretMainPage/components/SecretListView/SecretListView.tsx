@@ -13,6 +13,7 @@ import { UserWsKeyPair, WsTag } from "@app/hooks/api/types";
 
 import { secretSnapshotKeys } from "~/hooks/api/secretSnapshots/queries";
 
+import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
 import { Filter, GroupBy, SortDir } from "../../SecretMainPage.types";
 import { SecretDetailSidebar } from "./SecretDetaiSidebar";
 import { SecretItem } from "./SecretItem";
@@ -27,8 +28,6 @@ type Props = {
   sortDir?: SortDir;
   tags?: WsTag[];
   isVisible?: boolean;
-  selectedSecrets: Record<string, boolean>;
-  onToggleSecretSelect: (id: string) => void;
 };
 
 const reorderSecretGroupByUnderscore = (secrets: DecryptedSecret[], sortDir: SortDir) => {
@@ -86,9 +85,7 @@ export const SecretListView = ({
   filter,
   sortDir = SortDir.ASC,
   tags: wsTags = [],
-  isVisible,
-  selectedSecrets,
-  onToggleSecretSelect
+  isVisible
 }: Props) => {
   const { createNotification } = useNotificationContext();
   const queryClient = useQueryClient();
@@ -114,6 +111,8 @@ export const SecretListView = ({
       onSuccess: undefined
     }
   });
+  const selectedSecrets = useSelectedSecrets();
+  const { toggle: toggleSelectedSecret } = useSelectedSecretActions();
 
   const handleSecretOperation = async (
     operation: "create" | "update" | "delete",
@@ -303,7 +302,7 @@ export const SecretListView = ({
                   secretPath={secretPath}
                   tags={wsTags}
                   isSelected={selectedSecrets?.[secret._id]}
-                  onToggleSecretSelect={onToggleSecretSelect}
+                  onToggleSecretSelect={toggleSelectedSecret}
                   isVisible={isVisible}
                   secret={secret}
                   key={secret._id}

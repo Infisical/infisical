@@ -45,6 +45,7 @@ import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch } from "@app/hooks/api";
 import { DecryptedSecret, TImportedSecrets, UserWsKeyPair, WsTag } from "@app/hooks/api/types";
 
+import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
 import { Filter, GroupBy } from "../../SecretMainPage.types";
 import { CreateSecretForm } from "./CreateSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
@@ -61,14 +62,13 @@ type Props = {
   filter: Filter;
   tags?: WsTag[];
   isVisible?: boolean;
-  selectedSecrets: Record<string, boolean>;
   snapshotCount: number;
   isSnapshotCountLoading?: boolean;
+  autoCapitalization?: boolean;
   onGroupByChange: (opt?: GroupBy) => void;
   onSearchChange: (term: string) => void;
   onToggleTagFilter: (tagId: string) => void;
   onVisiblilityToggle: () => void;
-  onResetSelectedSecret: () => void;
   onClickRollbackMode: () => void;
 };
 
@@ -82,14 +82,13 @@ export const ActionBar = ({
   filter,
   tags = [],
   isVisible,
-  selectedSecrets,
   snapshotCount,
   isSnapshotCountLoading,
+  autoCapitalization,
   onSearchChange,
   onToggleTagFilter,
   onGroupByChange,
   onVisiblilityToggle,
-  onResetSelectedSecret,
   onClickRollbackMode
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
@@ -106,6 +105,8 @@ export const ActionBar = ({
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
 
+  const selectedSecrets = useSelectedSecrets();
+  const { reset: resetSelectedSecret } = useSelectedSecretActions();
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
 
   const handleFolderCreate = async (folderName: string) => {
@@ -170,7 +171,7 @@ export const ActionBar = ({
         environment,
         secrets: bulkDeletedSecrets.map(({ key }) => ({ secretName: key, type: "shared" }))
       });
-      onResetSelectedSecret();
+      resetSelectedSecret();
       handlePopUpClose("bulkDeleteSecrets");
       createNotification({
         type: "success",
@@ -376,7 +377,7 @@ export const ActionBar = ({
       >
         <div className="text-bunker-300 flex items-center bg-mineshaft-800 mt-3.5 py-2 px-4 rounded-md border border-mineshaft-600">
           <Tooltip content="Clear">
-            <IconButton variant="plain" ariaLabel="clear-selection" onClick={onResetSelectedSecret}>
+            <IconButton variant="plain" ariaLabel="clear-selection" onClick={resetSelectedSecret}>
               <FontAwesomeIcon icon={faMinusSquare} size="lg" />
             </IconButton>
           </Tooltip>
@@ -410,6 +411,7 @@ export const ActionBar = ({
         secrets={secrets}
         environment={environment}
         workspaceId={workspaceId}
+        autoCapitalize={autoCapitalization}
         secretPath={secretPath}
         decryptFileKey={decryptFileKey!}
         isOpen={popUp.addSecret.isOpen}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
@@ -34,10 +34,11 @@ import { SecretDropzone } from "./components/SecretDropzone";
 import { SecretImportListView } from "./components/SecretImportListView";
 import { SecretListView } from "./components/SecretListView";
 import { SnapshotView } from "./components/SnapshotView";
+import { StoreProvider } from "./SecretMainPage.store";
 import { Filter, GroupBy, SortDir } from "./SecretMainPage.types";
 
 const LOADER_TEXT = [
-  "Retriving and decrypting your E2EE encrypted secrets",
+  "Retriving your encrypted secrets",
   "Fetching folders",
   "Getting secret import links"
 ];
@@ -54,7 +55,6 @@ export const SecretMainPage = () => {
     tags: {},
     searchFilter: ""
   });
-  const [selectedSecret, setSelectedSecret] = useState<Record<string, boolean>>({});
 
   const [snapshotId, setSnapshotId] = useState<string | null>(null);
   const isRollbackMode = Boolean(snapshotId);
@@ -72,17 +72,6 @@ export const SecretMainPage = () => {
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretRollback
   );
-
-  useEffect(() => {
-    const onRouteChangeStart = () => {
-      setSelectedSecret({});
-    };
-
-    router.events.on("routeChangeStart", onRouteChangeStart);
-    return () => {
-      router.events.off("routeChangeStart", onRouteChangeStart);
-    };
-  }, []);
 
   const { data: decryptFileKey } = useGetUserWsKey(workspaceId);
 
@@ -187,20 +176,6 @@ export const SecretMainPage = () => {
 
   const handleToggleVisibility = useCallback(() => setIsVisible((state) => !state), []);
 
-  const handleToggleSecretSelect = useCallback(
-    (id: string) =>
-      setSelectedSecret((state) => {
-        const isChecked = Boolean(state?.[id]);
-        const newChecks = { ...state };
-        if (isChecked) delete newChecks[id];
-        else newChecks[id] = true;
-        return newChecks;
-      }),
-    []
-  );
-
-  const handleResetSecretSelect = useCallback(() => setSelectedSecret({}), []);
-
   // snapshot functions
   const handleSelectSnapshot = useCallback((snapId: string) => {
     setSnapshotId(snapId);
@@ -221,138 +196,137 @@ export const SecretMainPage = () => {
   }
 
   return (
-    <div className="container flex flex-col mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
-      <div className="relative right-6 -top-2 mb-2 ml-6">
-        <NavHeader
-          pageName={t("dashboard.title")}
-          currentEnv={environment}
-          userAvailableEnvs={currentWorkspace?.environments}
-          isFolderMode
-          secretPath={secretPath}
-          isProjectRelated
-          onEnvChange={handleEnvChange}
+    <StoreProvider>
+      <div className="container flex flex-col mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+        <div className="relative right-6 -top-2 mb-2 ml-6">
+          <NavHeader
+            pageName={t("dashboard.title")}
+            currentEnv={environment}
+            userAvailableEnvs={currentWorkspace?.environments}
+            isFolderMode
+            secretPath={secretPath}
+            isProjectRelated
+            onEnvChange={handleEnvChange}
+          />
+        </div>
+        {!isRollbackMode ? (
+          <>
+            <ActionBar
+              secrets={secrets}
+              importedSecrets={importedSecrets}
+              environment={environment}
+              workspaceId={workspaceId}
+              secretPath={secretPath}
+              isVisible={isVisible}
+              decryptFileKey={decryptFileKey!}
+              filter={filter}
+              tags={tags}
+              onVisiblilityToggle={handleToggleVisibility}
+              onGroupByChange={handleGroupByChange}
+              onSearchChange={handleSearchChange}
+              onToggleTagFilter={handleTagToggle}
+              snapshotCount={snapshotCount || 0}
+              autoCapitalization={currentWorkspace?.autoCapitalization}
+              isSnapshotCountLoading={isSnapshotCountLoading}
+              onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
+            />
+            <div
+              className={twMerge(
+                "mt-3 overflow-auto thin-scrollbar bg-mineshaft-800 text-left text-bunker-300 rounded-md text-sm border border-mineshaft-600"
+              )}
+            >
+              <div className="flex flex-col ">
+                {isNotEmtpy && (
+                  <div className="flex font-medium border-b border-mineshaft-600">
+                    <div style={{ width: "2.8rem" }} className="px-4 py-3 flex-shrink-0" />
+                    <div
+                      className="w-80 flex-shrink-0 border-r flex items-center border-mineshaft-600 px-4 py-2"
+                      role="button"
+                      tabIndex={0}
+                      onClick={handleSortToggle}
+                      onKeyDown={(evt) => {
+                        if (evt.key === "Enter") handleSortToggle();
+                      }}
+                    >
+                      Key
+                      <FontAwesomeIcon
+                        icon={sortDir === SortDir.ASC ? faArrowDown : faArrowUp}
+                        className="ml-2"
+                      />
+                    </div>
+                    <div className="flex-grow px-4 py-2">Value</div>
+                  </div>
+                )}
+                {canReadSecret && (
+                  <SecretImportListView
+                    searchTerm={filter.searchFilter}
+                    secretImports={secretImports}
+                    isFetching={isSecretImportsLoading || isSecretImportsFetching}
+                    environment={environment}
+                    workspaceId={workspaceId}
+                    secretPath={secretPath}
+                    secrets={secrets}
+                    importedSecrets={importedSecrets}
+                  />
+                )}
+                <FolderListView
+                  folders={folders}
+                  environment={environment}
+                  workspaceId={workspaceId}
+                  secretPath={secretPath}
+                  sortDir={sortDir}
+                />
+                {canReadSecret && (
+                  <SecretListView
+                    secrets={secrets}
+                    tags={tags}
+                    filter={filter}
+                    sortDir={sortDir}
+                    isVisible={isVisible}
+                    environment={environment}
+                    workspaceId={workspaceId}
+                    secretPath={secretPath}
+                    decryptFileKey={decryptFileKey!}
+                  />
+                )}
+                {!canReadSecret && folders?.length === 0 && <PermissionDeniedBanner />}
+              </div>
+            </div>
+            <SecretDropzone
+              secrets={secrets}
+              environment={environment}
+              workspaceId={workspaceId}
+              decryptFileKey={decryptFileKey!}
+              secretPath={secretPath}
+              isSmaller={isNotEmtpy}
+              environments={currentWorkspace?.environments}
+            />
+          </>
+        ) : (
+          <SnapshotView
+            snapshotId={snapshotId || ""}
+            decryptFileKey={decryptFileKey!}
+            environment={environment}
+            workspaceId={workspaceId}
+            secretPath={secretPath}
+            secrets={secrets}
+            folders={folders}
+            snapshotCount={snapshotCount}
+            onGoBack={handleResetSnapshot}
+            onClickListSnapshot={() => handlePopUpToggle("snapshots", true)}
+          />
+        )}
+        <PitDrawer
+          secretSnaphots={snapshotList}
+          snapshotId={snapshotId}
+          isDrawerOpen={popUp.snapshots.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("snapshots", isOpen)}
+          hasNextPage={hasNextSnapshotListPage}
+          fetchNextPage={fetchNextSnapshotList}
+          onSelectSnapshot={handleSelectSnapshot}
+          isFetchingNextPage={isFetchingNextSnapshotList}
         />
       </div>
-      {!isRollbackMode ? (
-        <>
-          <ActionBar
-            secrets={secrets}
-            importedSecrets={importedSecrets}
-            environment={environment}
-            workspaceId={workspaceId}
-            secretPath={secretPath}
-            isVisible={isVisible}
-            decryptFileKey={decryptFileKey!}
-            filter={filter}
-            tags={tags}
-            selectedSecrets={selectedSecret}
-            onVisiblilityToggle={handleToggleVisibility}
-            onGroupByChange={handleGroupByChange}
-            onSearchChange={handleSearchChange}
-            onToggleTagFilter={handleTagToggle}
-            onResetSelectedSecret={handleResetSecretSelect}
-            snapshotCount={snapshotCount || 0}
-            isSnapshotCountLoading={isSnapshotCountLoading}
-            onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
-          />
-          <div
-            className={twMerge(
-              "mt-3 overflow-auto thin-scrollbar bg-mineshaft-800 text-left text-bunker-300 rounded-md text-sm border border-mineshaft-600"
-            )}
-          >
-            <div className="flex flex-col ">
-              {isNotEmtpy && (
-                <div className="flex font-medium border-b border-mineshaft-600">
-                  <div className="w-[2.8rem] px-4 py-3 flex-shrink-0" />
-                  <div
-                    className="w-80 flex-shrink-0 border-r flex items-center border-mineshaft-600 w-11 px-4 py-2"
-                    role="button"
-                    tabIndex={0}
-                    onClick={handleSortToggle}
-                    onKeyDown={(evt) => {
-                      if (evt.key === "Enter") handleSortToggle();
-                    }}
-                  >
-                    Key
-                    <FontAwesomeIcon
-                      icon={sortDir === SortDir.ASC ? faArrowDown : faArrowUp}
-                      className="ml-2"
-                    />
-                  </div>
-                  <div className="flex-grow px-4 py-2">Value</div>
-                </div>
-              )}
-              {canReadSecret && (
-                <SecretImportListView
-                  searchTerm={filter.searchFilter}
-                  secretImports={secretImports}
-                  isFetching={isSecretImportsLoading || isSecretImportsFetching}
-                  environment={environment}
-                  workspaceId={workspaceId}
-                  secretPath={secretPath}
-                  secrets={secrets}
-                  importedSecrets={importedSecrets}
-                />
-              )}
-              <FolderListView
-                folders={folders}
-                environment={environment}
-                workspaceId={workspaceId}
-                secretPath={secretPath}
-                sortDir={sortDir}
-              />
-              {canReadSecret && (
-                <SecretListView
-                  secrets={secrets}
-                  tags={tags}
-                  filter={filter}
-                  sortDir={sortDir}
-                  isVisible={isVisible}
-                  environment={environment}
-                  workspaceId={workspaceId}
-                  secretPath={secretPath}
-                  decryptFileKey={decryptFileKey!}
-                  selectedSecrets={selectedSecret}
-                  onToggleSecretSelect={handleToggleSecretSelect}
-                />
-              )}
-              {!canReadSecret && folders?.length === 0 && <PermissionDeniedBanner />}
-            </div>
-          </div>
-          <SecretDropzone
-            secrets={secrets}
-            environment={environment}
-            workspaceId={workspaceId}
-            decryptFileKey={decryptFileKey!}
-            secretPath={secretPath}
-            isSmaller={isNotEmtpy}
-            environments={currentWorkspace?.environments}
-          />
-        </>
-      ) : (
-        <SnapshotView
-          snapshotId={snapshotId || ""}
-          decryptFileKey={decryptFileKey!}
-          environment={environment}
-          workspaceId={workspaceId}
-          secretPath={secretPath}
-          secrets={secrets}
-          folders={folders}
-          snapshotCount={snapshotCount}
-          onGoBack={handleResetSnapshot}
-          onClickListSnapshot={() => handlePopUpToggle("snapshots", true)}
-        />
-      )}
-      <PitDrawer
-        secretSnaphots={snapshotList}
-        snapshotId={snapshotId}
-        isDrawerOpen={popUp.snapshots.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("snapshots", isOpen)}
-        hasNextPage={hasNextSnapshotListPage}
-        fetchNextPage={fetchNextSnapshotList}
-        onSelectSnapshot={handleSelectSnapshot}
-        isFetchingNextPage={isFetchingNextSnapshotList}
-      />
-    </div>
+    </StoreProvider>
   );
 };
