@@ -105,7 +105,7 @@ export const SecretOverviewPage = () => {
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
 
-  const handleSecretCreate = async (env: string, key: string, value: string) => {
+  const handleSecretCreate = async (env: string, key: string, value: string, type: string) => {
     try {
       await createSecretV3({
         environment: env,
@@ -114,7 +114,7 @@ export const SecretOverviewPage = () => {
         secretName: key,
         secretValue: value,
         secretComment: "",
-        type: "shared",
+        type,
         latestFileKey: latestFileKey!
       });
       createNotification({
@@ -130,7 +130,7 @@ export const SecretOverviewPage = () => {
     }
   };
 
-  const handleSecretUpdate = async (env: string, key: string, value: string) => {
+  const handleSecretUpdate = async (env: string, key: string, value: string, type: string) => {
     try {
       await updateSecretV3({
         environment: env,
@@ -138,7 +138,7 @@ export const SecretOverviewPage = () => {
         secretPath,
         secretName: key,
         secretValue: value,
-        type: "shared",
+        type,
         latestFileKey: latestFileKey!
       });
       createNotification({
@@ -154,14 +154,14 @@ export const SecretOverviewPage = () => {
     }
   };
 
-  const handleSecretDelete = async (env: string, key: string) => {
+  const handleSecretDelete = async (env: string, key: string, type: string) => {
     try {
       await deleteSecretV3({
         environment: env,
         workspaceId,
         secretPath,
         secretName: key,
-        type: "shared"
+        type
       });
       createNotification({
         type: "success",
