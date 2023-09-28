@@ -9,9 +9,8 @@ import { usePopUp } from "@app/hooks";
 import { useCreateSecretV3, useDeleteSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
+import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
 import { UserWsKeyPair, WsTag } from "@app/hooks/api/types";
-
-import { secretSnapshotKeys } from "~/hooks/api/secretSnapshots/queries";
 
 import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
 import { Filter, GroupBy, SortDir } from "../../SecretMainPage.types";
@@ -194,19 +193,8 @@ export const SecretListView = ({
         ) && isSameTags;
 
       try {
-        // personal secret change
-        if (overrideAction === "deleted") await handleSecretOperation("delete", "personal", key);
-        else if (overrideAction && idOverride)
-          await handleSecretOperation("update", "personal", oldKey, {
-            value: valueOverride,
-            newKey: hasKeyChanged ? key : undefined,
-            skipMultilineEncoding: modSecret.skipMultilineEncoding
-          });
-        else if (overrideAction)
-          await handleSecretOperation("create", "personal", key, { value: valueOverride });
-
         // shared secret change
-        if (!isSharedSecUnchanged)
+        if (!isSharedSecUnchanged) {
           await handleSecretOperation("update", "shared", oldKey, {
             value,
             tags: tagIds,
@@ -214,6 +202,20 @@ export const SecretListView = ({
             newKey: hasKeyChanged ? key : undefined,
             skipMultilineEncoding: modSecret.skipMultilineEncoding
           });
+        }
+
+        // personal secret change
+        if (overrideAction === "deleted") {
+          await handleSecretOperation("delete", "personal", key);
+        } else if (overrideAction && idOverride){
+          await handleSecretOperation("update", "personal", oldKey, {
+            value: valueOverride,
+            newKey: hasKeyChanged ? key : undefined,
+            skipMultilineEncoding: modSecret.skipMultilineEncoding
+          });
+        } else if (overrideAction) {
+          await handleSecretOperation("create", "personal", key, { value: valueOverride });
+        }
 
         queryClient.invalidateQueries(
           secretKeys.getProjectSecret({ workspaceId, environment, secretPath })

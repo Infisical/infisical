@@ -210,6 +210,7 @@ export const SecretItem = memo(
                     isReadOnly={isReadOnly}
                     autoCapitalization={currentWorkspace?.autoCapitalization}
                     variant="plain"
+                    isDisabled={isOverriden}
                     {...field}
                     className="w-full focus:text-bunker-100 focus:ring-transparent px-0"
                   />

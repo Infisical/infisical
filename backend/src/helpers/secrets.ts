@@ -767,7 +767,7 @@ export const updateSecretHelper = async ({
     workspaceId: new Types.ObjectId(workspaceId)
   });
 
-  const secretBlindIndex = await generateSecretBlindIndexWithSaltHelper({
+  const oldSecretBlindIndex = await generateSecretBlindIndexWithSaltHelper({
     secretName,
     salt
   });
@@ -778,7 +778,7 @@ export const updateSecretHelper = async ({
   let newSecretNameBlindIndex = undefined;
   if (newSecretName) {
     newSecretNameBlindIndex = await generateSecretBlindIndexWithSaltHelper({
-      secretName,
+      secretName: newSecretName,
       salt
     });
     const doesSecretAlreadyExist = await Secret.exists({
@@ -788,15 +788,17 @@ export const updateSecretHelper = async ({
       folder: folderId,
       type
     });
-    if (!doesSecretAlreadyExist)
+
+    if (doesSecretAlreadyExist) {
       throw BadRequestError({ message: "Secret with the provided name already exist" });
+    }
   }
 
   if (type === SECRET_SHARED) {
     // case: update shared secret
     secret = await Secret.findOneAndUpdate(
       {
-        secretBlindIndex,
+        secretBlindIndex: oldSecretBlindIndex,
         workspace: new Types.ObjectId(workspaceId),
         environment,
         folder: folderId,
@@ -826,13 +828,10 @@ export const updateSecretHelper = async ({
 
     secret = await Secret.findOneAndUpdate(
       {
-        secretBlindIndex,
+        secretBlindIndex: oldSecretBlindIndex,
         workspace: new Types.ObjectId(workspaceId),
         environment,
         type,
-        secretKeyIV,
-        secretKeyTag,
-        secretKeyCiphertext,
         folder: folderId,
         ...getAuthDataPayloadUserObj(authData)
       },
@@ -840,13 +839,13 @@ export const updateSecretHelper = async ({
         secretValueCiphertext,
         secretValueIV,
         secretValueTag,
+        secretKeyIV,
+        secretKeyTag,
+        secretKeyCiphertext,
         tags,
         skipMultilineEncoding,
         secretBlindIndex: newSecretNameBlindIndex,
         $inc: { version: 1 }
-      },
-      {
-        new: true
       }
     );
   }
@@ -863,7 +862,7 @@ export const updateSecretHelper = async ({
     ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {}),
     environment: secret.environment,
     isDeleted: false,
-    secretBlindIndex: newSecretName ? newSecretNameBlindIndex : secretBlindIndex,
+    secretBlindIndex: newSecretName ? newSecretNameBlindIndex : oldSecretBlindIndex,
     secretKeyCiphertext: secret.secretKeyCiphertext,
     secretKeyIV: secret.secretKeyIV,
     secretKeyTag: secret.secretKeyTag,
@@ -1154,6 +1153,7 @@ const recursivelyExpandSecret = async (
 
   let interpolatedValue = interpolatedSec[key];
   if (!interpolatedValue) {
+    // eslint-disable-next-line no-console
     console.error(`Couldn't find referenced value - ${key}`);
     return "";
   }
