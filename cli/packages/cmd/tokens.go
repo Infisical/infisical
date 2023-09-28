@@ -41,7 +41,11 @@ var tokensCreateCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// get plain text workspace key
-		loggedInUserDetails, _ := util.GetCurrentLoggedInUserDetails()
+		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
+
+		if err != nil {
+			util.HandleError(err, "Unable to retrieve your logged in your details. Please login in then try again")
+		}
 
 		if loggedInUserDetails.LoginExpired {
 			util.PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
@@ -109,14 +113,13 @@ var tokensCreateCmd = &cobra.Command{
 
 		workspaceKey, err := util.GetPlainTextWorkspaceKey(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceId)
 		if err != nil {
-			fmt.Println(err)
+			util.HandleError(err, "Unable to get workspace key needed to create service token")
 		}
 
 		newWorkspaceEncryptionKey := make([]byte, 16)
 		_, err = rand.Read(newWorkspaceEncryptionKey)
 		if err != nil {
-			fmt.Println("Error generating random bytes:", err)
-			return
+			util.HandleError(err)
 		}
 
 		newWorkspaceEncryptionKeyHexFormat := hex.EncodeToString(newWorkspaceEncryptionKey)
@@ -124,7 +127,7 @@ var tokensCreateCmd = &cobra.Command{
 		// encrypt the workspace key symmetrically
 		encryptedDetails, err := crypto.EncryptSymmetric(workspaceKey, newWorkspaceEncryptionKey)
 		if err != nil {
-			fmt.Println(err)
+			util.HandleError(err)
 		}
 
 		// make a call to the api to save the encrypted symmetric key details
@@ -145,7 +148,7 @@ var tokensCreateCmd = &cobra.Command{
 		})
 
 		if err != nil {
-			fmt.Println(err)
+			util.HandleError(err, "Unable to create service token")
 		}
 
 		serviceToken := createServiceTokenResponse.ServiceToken + "." + newWorkspaceEncryptionKeyHexFormat
