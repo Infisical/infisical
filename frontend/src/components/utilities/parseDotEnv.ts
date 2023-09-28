@@ -3,16 +3,16 @@ const LINE =
 
 /**
  * Return text that is the buffer parsed
- * @param {ArrayBuffer} src - source buffer
+ * @param {ArrayBuffer | string} src - source buffer or string
  * @returns {String} text - text of buffer
  */
-export function parseDotEnv(src: ArrayBuffer) {
+export function parseDotEnv(src: ArrayBuffer | string) {
   const object: {
     [key: string]: { value: string; comments: string[] };
   } = {};
 
   // Convert buffer to string
-  let lines = src.toString();
+  let lines = typeof src === "string" ? src : src.toString();
 
   // Convert line breaks to same format
   lines = lines.replace(/\r\n?/gm, "\n");

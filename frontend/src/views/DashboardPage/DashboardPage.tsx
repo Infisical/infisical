@@ -22,6 +22,7 @@ import {
   faClockRotateLeft,
   faCodeCommit,
   faDownload,
+  faEdit,
   faEye,
   faEyeSlash,
   faFileImport,
@@ -91,6 +92,7 @@ import {
 } from "@app/hooks/api";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 
+import { BulkEditModal } from "./components/BulkEditModal";
 import { CompareSecret } from "./components/CompareSecret";
 import { CreateTagModal } from "./components/CreateTagModal";
 import {
@@ -150,6 +152,7 @@ export const DashboardPage = () => {
     "deleteFolder",
     "upgradePlan",
     "addSecretImport",
+    "bulkEdit",
     "deleteSecretImport"
   ] as const);
   const [isSecretValueHidden, setIsSecretValueHidden] = useToggle(true);
@@ -521,8 +524,13 @@ export const DashboardPage = () => {
 
   // record all deleted ids
   // This will make final deletion easier
+
   const onSecretDelete = useCallback(
-    (index: number, secretName: string, id?: string, overrideId?: string) => {
+    (index_: number | undefined, secretName: string, id?: string, overrideId?: string) => {
+      let index = index_;
+      if (!index_) {
+        index = fields.findIndex((val) => val.key === secretName);
+      }
       if (id)
         deletedSecretIds.current.push({
           id,
@@ -771,7 +779,7 @@ export const DashboardPage = () => {
 
   return (
     <div className="container mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
-      <form autoComplete="off" className="h-full flex flex-col">
+      <form autoComplete="off" className="flex h-full flex-col">
         {/* breadcrumb row */}
         <div className="relative right-6 -top-2 mb-2 ml-6">
           <NavHeader
@@ -838,6 +846,18 @@ export const DashboardPage = () => {
                   onClick={() => setIsSecretValueHidden.toggle()}
                 >
                   <FontAwesomeIcon icon={isSecretValueHidden ? faEye : faEyeSlash} />
+                </IconButton>
+              </Tooltip>
+            </div>
+            <div>
+              <Tooltip content="Bulk edit">
+                <IconButton
+                  ariaLabel="Bulk edit"
+                  variant="outline_bg"
+                  onClick={() => handlePopUpToggle("bulkEdit", true)}
+                  isDisabled={isDirty}
+                >
+                  <FontAwesomeIcon icon={faEdit} />
                 </IconButton>
               </Tooltip>
             </div>
@@ -1008,7 +1028,7 @@ export const DashboardPage = () => {
         </div>
         <div
           className={`${
-            isEmptyPage ? "flex flex-col flex-grow items-center justify-center" : ""
+            isEmptyPage ? "flex flex-grow flex-col items-center justify-center" : ""
           } no-scrollbar::-webkit-scrollbar mt-3 flex flex-col overflow-x-hidden overflow-y-scroll no-scrollbar`}
           ref={secretContainer}
         >
@@ -1019,7 +1039,7 @@ export const DashboardPage = () => {
               collisionDetection={closestCenter}
               modifiers={[restrictToVerticalAxis]}
             >
-              <TableContainer className="no-scrollbar::-webkit-scrollbar max-h-[calc(100%-120px)] no-scrollbar flex-grow">
+              <TableContainer className="no-scrollbar::-webkit-scrollbar max-h-[calc(100%-120px)] flex-grow no-scrollbar">
                 <table className="secret-table relative">
                   <SecretTableHeader sortDir={sortDir} onSort={onSortSecrets} />
                   <tbody className="max-h-96 overflow-y-auto">
@@ -1244,6 +1264,22 @@ export const DashboardPage = () => {
             workspaceId={workspaceId}
             envs={userAvailableEnvs || []}
             secretKey={popUp?.compareSecrets?.data as string}
+          />
+        </ModalContent>
+      </Modal>
+
+      <Modal
+        isOpen={popUp?.bulkEdit?.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("bulkEdit", open)}
+      >
+        <ModalContent title="Bulk edit" subTitle="Bulk edit your envs.">
+          <BulkEditModal
+            environment={environment}
+            workspaceId={workspaceId}
+            decryptFileKey={latestFileKey!}
+            onParsedEnv={handleUploadedEnv}
+            handleClose={() => handlePopUpClose("bulkEdit")}
+            onSecretDelete={onSecretDelete}
           />
         </ModalContent>
       </Modal>
