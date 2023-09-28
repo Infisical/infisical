@@ -182,7 +182,7 @@ export const SecretDetailSidebar = ({
                       <SecretInput
                         isReadOnly={isReadOnly}
                         key="secret-value"
-                        isDisabled={isOverridden || isAllowed}
+                        isDisabled={isOverridden || !isAllowed}
                         containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-bunker-800  px-2 py-1.5"
                         {...field}
                         autoFocus={false}
@@ -333,13 +333,13 @@ export const SecretDetailSidebar = ({
                       <Switch
                         id="skipmultiencoding-option"
                         onCheckedChange={onChange}
-                        isChecked={value}
+                        isChecked={!value}
                         onBlur={onBlur}
                         isDisabled={!isAllowed}
                         className="items-center"
                       >
-                        Disable multi line encoding
-                        <Tooltip content="Infisical encodes multiline secrets by escaping newlines and wrappign in quotes. To disable, enable this option">
+                        Enable multi line encoding
+                        <Tooltip content="Infisical encodes multiline secrets by escaping newlines and wrapping in quotes. To disable, enable this option">
                           <FontAwesomeIcon icon={faCircleQuestion} className="ml-1" size="sm" />
                         </Tooltip>
                       </Switch>
