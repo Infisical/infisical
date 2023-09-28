@@ -332,14 +332,17 @@ export const SecretDetailSidebar = ({
                     {(isAllowed) => (
                       <Switch
                         id="skipmultiencoding-option"
-                        onCheckedChange={onChange}
+                        onCheckedChange={(isChecked) => onChange(!isChecked)}
                         isChecked={!value}
                         onBlur={onBlur}
                         isDisabled={!isAllowed}
                         className="items-center"
                       >
                         Enable multi line encoding
-                        <Tooltip content="Infisical encodes multiline secrets by escaping newlines and wrapping in quotes. To disable, enable this option">
+                        <Tooltip
+                          content="Infisical encodes multiline secrets by escaping newlines and wrapping in quotes. To disable, enable this option"
+                          className="z-[100]"
+                        >
                           <FontAwesomeIcon icon={faCircleQuestion} className="ml-1" size="sm" />
                         </Tooltip>
                       </Switch>
