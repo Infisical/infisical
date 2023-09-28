@@ -387,3 +387,37 @@ type GetSingleSecretByNameSecretResponse struct {
 		UpdatedAt               time.Time `json:"updatedAt"`
 	} `json:"secrets"`
 }
+
+type ScopePermission struct {
+	Environment string `json:"environment"`
+	SecretPath  string `json:"secretPath"`
+}
+
+type CreateServiceTokenRequest struct {
+	Name         string            `json:"name"`
+	WorkspaceId  string            `json:"workspaceId"`
+	Scopes       []ScopePermission `json:"scopes"`
+	ExpiresIn    int               `json:"expiresIn"`
+	EncryptedKey string            `json:"encryptedKey"`
+	Iv           string            `json:"iv"`
+	Tag          string            `json:"tag"`
+	RandomBytes  string            `json:"randomBytes"`
+	Permissions  []string          `json:"permissions"`
+}
+
+type ServiceTokenData struct {
+	ID          string        `json:"_id"`
+	Name        string        `json:"name"`
+	Workspace   string        `json:"workspace"`
+	Scopes      []interface{} `json:"scopes"`
+	User        string        `json:"user"`
+	LastUsed    time.Time     `json:"lastUsed"`
+	Permissions []string      `json:"permissions"`
+	CreatedAt   time.Time     `json:"createdAt"`
+	UpdatedAt   time.Time     `json:"updatedAt"`
+}
+
+type CreateServiceTokenResponse struct {
+	ServiceToken     string           `json:"serviceToken"`
+	ServiceTokenData ServiceTokenData `json:"serviceTokenData"`
+}
