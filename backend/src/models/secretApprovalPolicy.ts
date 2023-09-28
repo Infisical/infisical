@@ -1,6 +1,6 @@
 import { Schema, Types, model } from "mongoose";
 
-export interface ISecretApproval {
+export interface ISecretApprovalPolicy {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
   environment: string;
@@ -9,7 +9,7 @@ export interface ISecretApproval {
   approvals: number;
 }
 
-const secretApprovalSchema = new Schema<ISecretApproval>(
+const secretApprovalPolicySchema = new Schema<ISecretApprovalPolicy>(
   {
     workspace: {
       type: Schema.Types.ObjectId,
@@ -41,4 +41,7 @@ const secretApprovalSchema = new Schema<ISecretApproval>(
   }
 );
 
-export const SecretApproval = model<ISecretApproval>("SecretApproval", secretApprovalSchema);
+export const SecretApprovalPolicy = model<ISecretApprovalPolicy>(
+  "SecretApprovalPolicy",
+  secretApprovalPolicySchema
+);

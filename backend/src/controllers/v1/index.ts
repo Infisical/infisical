@@ -16,7 +16,7 @@ import * as workspaceController from "./workspaceController";
 import * as secretScanningController from "./secretScanningController";
 import * as webhookController from "./webhookController";
 import * as secretImpsController from "./secretImpsController";
-import * as secretApprovalController from "./secretApprovalController";
+import * as secretApprovalPolicyController from "./secretApprovalPolicyController";
 
 export {
   authController,
@@ -37,5 +37,5 @@ export {
   secretScanningController,
   webhookController,
   secretImpsController,
-  secretApprovalController
+  secretApprovalPolicyController
 };

@@ -6,13 +6,13 @@ import {
   getUserProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { validateRequest } from "../../helpers/validation";
-import { SecretApproval } from "../../models/secretApproval";
+import { SecretApprovalPolicy } from "../../models/secretApprovalPolicy";
 import { BadRequestError } from "../../utils/errors";
 import * as reqValidator from "../../validation/secretApproval";
 
 const ERR_SECRET_APPROVAL_NOT_FOUND = BadRequestError({ message: "secret approval not found" });
 
-export const createSecretApprovalRule = async (req: Request, res: Response) => {
+export const createSecretApprovalPolicy = async (req: Request, res: Response) => {
   const {
     body: { approvals, secretPath, approvers, environment, workspaceId }
   } = await validateRequest(reqValidator.CreateSecretApprovalRule, req);
@@ -23,7 +23,7 @@ export const createSecretApprovalRule = async (req: Request, res: Response) => {
     ProjectPermissionSub.SecretApproval
   );
 
-  const secretApproval = new SecretApproval({
+  const secretApproval = new SecretApprovalPolicy({
     workspace: workspaceId,
     secretPath,
     environment,
@@ -37,13 +37,13 @@ export const createSecretApprovalRule = async (req: Request, res: Response) => {
   });
 };
 
-export const updateSecretApprovalRule = async (req: Request, res: Response) => {
+export const updateSecretApprovalPolicy = async (req: Request, res: Response) => {
   const {
     body: { approvals, approvers, secretPath },
     params: { id }
   } = await validateRequest(reqValidator.UpdateSecretApprovalRule, req);
 
-  const secretApproval = await SecretApproval.findById(id);
+  const secretApproval = await SecretApprovalPolicy.findById(id);
   if (!secretApproval) throw ERR_SECRET_APPROVAL_NOT_FOUND;
 
   const { permission } = await getUserProjectPermissions(
@@ -55,10 +55,10 @@ export const updateSecretApprovalRule = async (req: Request, res: Response) => {
     ProjectPermissionSub.SecretApproval
   );
 
-  const updatedDoc = await SecretApproval.findByIdAndUpdate(id, {
+  const updatedDoc = await SecretApprovalPolicy.findByIdAndUpdate(id, {
     approvals,
     approvers,
-    $set: secretPath === "-" ? undefined : { secretPath }
+    ...(secretPath === null ? { $unset: { secretPath: 1 } } : { secretPath })
   });
 
   return res.send({
@@ -66,12 +66,12 @@ export const updateSecretApprovalRule = async (req: Request, res: Response) => {
   });
 };
 
-export const deleteSecretApprovalRule = async (req: Request, res: Response) => {
+export const deleteSecretApprovalPolicy = async (req: Request, res: Response) => {
   const {
     params: { id }
   } = await validateRequest(reqValidator.DeleteSecretApprovalRule, req);
 
-  const secretApproval = await SecretApproval.findById(id);
+  const secretApproval = await SecretApprovalPolicy.findById(id);
   if (!secretApproval) throw ERR_SECRET_APPROVAL_NOT_FOUND;
 
   const { permission } = await getUserProjectPermissions(
@@ -83,14 +83,14 @@ export const deleteSecretApprovalRule = async (req: Request, res: Response) => {
     ProjectPermissionSub.SecretApproval
   );
 
-  const deletedDoc = await SecretApproval.findByIdAndDelete(id);
+  const deletedDoc = await SecretApprovalPolicy.findByIdAndDelete(id);
 
   return res.send({
     approval: deletedDoc
   });
 };
 
-export const getSecretApprovalRules = async (req: Request, res: Response) => {
+export const getSecretApprovalPolicy = async (req: Request, res: Response) => {
   const {
     query: { workspaceId }
   } = await validateRequest(reqValidator.GetSecretApprovalRuleList, req);
@@ -101,7 +101,7 @@ export const getSecretApprovalRules = async (req: Request, res: Response) => {
     ProjectPermissionSub.SecretApproval
   );
 
-  const doc = await SecretApproval.find({ workspace: workspaceId });
+  const doc = await SecretApprovalPolicy.find({ workspace: workspaceId });
 
   return res.send({
     approvals: doc

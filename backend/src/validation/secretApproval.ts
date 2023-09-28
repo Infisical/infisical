@@ -10,7 +10,7 @@ export const CreateSecretApprovalRule = z.object({
   body: z.object({
     workspaceId: z.string(),
     environment: z.string(),
-    secretPath: z.string().optional(),
+    secretPath: z.string().optional().nullable(),
     approvers: z.string().array().optional(),
     approvals: z.number().min(1).default(1)
   })
@@ -23,7 +23,7 @@ export const UpdateSecretApprovalRule = z.object({
   body: z.object({
     approvers: z.string().array().optional(),
     approvals: z.number().min(1).optional(),
-    secretPath: z.string().optional()
+    secretPath: z.string().optional().nullable()
   })
 });
 

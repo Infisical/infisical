@@ -35,7 +35,7 @@ type Props = {
 
 const formSchema = z.object({
   environment: z.string(),
-  secretPath: z.string().optional(),
+  secretPath: z.string().optional().nullable(),
   approvals: z.number().min(1),
   approvers: z.string().array().optional()
 });
@@ -97,7 +97,7 @@ export const SecretPolicyForm = ({
       await updateSecretApprovalPolicy({
         id: editValues?._id,
         ...data,
-        secretPath: data.secretPath ?? "-",
+        secretPath: data.secretPath || null,
         workspaceId
       });
       createNotification({
@@ -159,7 +159,7 @@ export const SecretPolicyForm = ({
             name="secretPath"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Secret Path" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} />
+                <Input {...field} value={field.value || ""} />
               </FormControl>
             )}
           />
@@ -220,7 +220,11 @@ export const SecretPolicyForm = ({
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} type="number" />
+                <Input
+                  {...field}
+                  type="number"
+                  onChange={(el) => field.onChange(parseInt(el.target.value, 10))}
+                />
               </FormControl>
             )}
           />

@@ -1,14 +1,16 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faFileShield, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
   Button,
   DeleteActionModal,
+  EmptyState,
   Table,
   TableContainer,
   TableSkeleton,
   TBody,
+  Td,
   Th,
   THead,
   Tr
@@ -95,6 +97,11 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
           <TBody>
             {isPoliciesLoading && (
               <TableSkeleton columns={4} innerKey="secret-policies" className="bg-mineshaft-700" />
+            )}
+            {!isPoliciesLoading && !policies?.length && (
+              <Td colSpan={5}>
+                <EmptyState title="No policies found" icon={faFileShield} />
+              </Td>
             )}
             {policies?.map((policy) => (
               <SecretApprovalPolicyRow

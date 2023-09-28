@@ -30,7 +30,7 @@ export interface ISecretApprovalRequest {
   }[];
 }
 
-const secretApprovalSchema = new Schema<ISecretApprovalRequest>(
+const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
   {
     approvers: [
       {
@@ -62,4 +62,7 @@ const secretApprovalSchema = new Schema<ISecretApprovalRequest>(
   }
 );
 
-export const SecretApproval = model<ISecretApprovalRequest>("SecretApproval", secretApprovalSchema);
+export const SecretApprovalRequest = model<ISecretApprovalRequest>(
+  "SecretApprovalRequest",
+  secretApprovalRequestSchema
+);

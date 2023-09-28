@@ -10,7 +10,7 @@ export type TSecretApprovalPolicy = {
 export type TCreateSecretPolicyDTO = {
   workspaceId: string;
   environment: string;
-  secretPath?: string;
+  secretPath?: string | null;
   approvers?: string[];
   approvals?: number;
 };
@@ -18,7 +18,7 @@ export type TCreateSecretPolicyDTO = {
 export type TUpdateSecretPolicyDTO = {
   id: string;
   approvers?: string[];
-  secretPath?: string;
+  secretPath?: string | null;
   approvals?: number;
   // for invalidating list
   workspaceId: string;

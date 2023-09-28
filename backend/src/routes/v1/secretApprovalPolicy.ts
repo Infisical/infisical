@@ -1,7 +1,7 @@
 import express from "express";
 const router = express.Router();
 import { requireAuth } from "../../middleware";
-import { secretApprovalController } from "../../controllers/v1";
+import { secretApprovalPolicyController } from "../../controllers/v1";
 import { AuthMode } from "../../variables";
 
 router.get(
@@ -9,7 +9,7 @@ router.get(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  secretApprovalController.getSecretApprovalRules
+  secretApprovalPolicyController.getSecretApprovalPolicy
 );
 
 router.post(
@@ -17,7 +17,7 @@ router.post(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  secretApprovalController.createSecretApprovalRule
+  secretApprovalPolicyController.createSecretApprovalPolicy
 );
 
 router.patch(
@@ -25,7 +25,7 @@ router.patch(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  secretApprovalController.updateSecretApprovalRule
+  secretApprovalPolicyController.updateSecretApprovalPolicy
 );
 
 router.delete(
@@ -33,7 +33,7 @@ router.delete(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  secretApprovalController.deleteSecretApprovalRule
+  secretApprovalPolicyController.deleteSecretApprovalPolicy
 );
 
 export default router;
