@@ -74,6 +74,11 @@ var tokensCreateCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		expireSeconds, err := cmd.Flags().GetInt("expiry-seconds")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		scopes, err := cmd.Flags().GetStringSlice("scope")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -125,7 +130,7 @@ var tokensCreateCmd = &cobra.Command{
 		newWorkspaceEncryptionKeyHexFormat := hex.EncodeToString(newWorkspaceEncryptionKey)
 
 		// encrypt the workspace key symmetrically
-		encryptedDetails, err := crypto.EncryptSymmetric(workspaceKey, newWorkspaceEncryptionKey)
+		encryptedDetails, err := crypto.EncryptSymmetric(workspaceKey, []byte(newWorkspaceEncryptionKeyHexFormat))
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -139,8 +144,8 @@ var tokensCreateCmd = &cobra.Command{
 			Name:         serviceTokenName,
 			WorkspaceId:  workspaceId,
 			Scopes:       permissions,
-			ExpiresIn:    0,
-			EncryptedKey: string(workspaceKey),
+			ExpiresIn:    expireSeconds,
+			EncryptedKey: base64.StdEncoding.EncodeToString(encryptedDetails.CipherText),
 			Iv:           base64.StdEncoding.EncodeToString(encryptedDetails.Nonce),
 			Tag:          base64.StdEncoding.EncodeToString(encryptedDetails.AuthTag),
 			RandomBytes:  newWorkspaceEncryptionKeyHexFormat,
@@ -177,6 +182,7 @@ func init() {
 	tokensCreateCmd.Flags().StringP("name", "n", "Service token generated via CLI", "Service token name")
 	tokensCreateCmd.Flags().StringSliceP("access-level", "a", []string{}, "The type of access the service token should have. Can be 'read' and or 'write'")
 	tokensCreateCmd.Flags().Bool("token-only", false, "When true, only the service token will be printed")
+	tokensCreateCmd.Flags().IntP("expiry-seconds", "e", 86400, "Set the service token's expiration time in seconds from now. To never expire set to zero. Default: 1 day ")
 
 	tokensCmd.AddCommand(tokensCreateCmd)
 
