@@ -53,6 +53,15 @@ With this command can create, view and delete service tokens.
 
     Default: `Service token generated via CLI`
   </Accordion>
+  <Accordion title="--expiry-seconds">
+    ```bash
+    infisical service-token create --scope=dev:/global --access-level=read --expiry-seconds 120
+    ```
+
+    Set the service token's expiration time in seconds from now. To never expire set to zero.
+
+    Default: `1 day`
+  </Accordion>
   <Accordion title="--access-level">
     ```bash
     infisical service-token create --scope=dev:/global --access-level=read --access-level=write
