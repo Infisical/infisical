@@ -213,7 +213,7 @@ export const getSecretByNameRaw = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ]
+        acceptedPermissions: [Permission.READ, Permission.READ_WRITE]
       });
       break;
     }
@@ -633,7 +633,7 @@ export const getSecretByName = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ]
+        acceptedPermissions: [Permission.READ, Permission.READ_WRITE]
       });
       break;
     }

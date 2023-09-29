@@ -40,11 +40,12 @@ export const getServiceTokenDataKey = async (req: Request, res: Response) => {
         message: "Failed to find project key for service token"
     });
     
-    const { _id, encryptedKey, nonce, sender: { publicKey } } = key;
+    const { _id, workspace, encryptedKey, nonce, sender: { publicKey } } = key;
     
     return res.status(200).send({
         key: {
             _id,
+            workspace,
             encryptedKey,
             publicKey,
             nonce
