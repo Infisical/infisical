@@ -207,7 +207,7 @@ export const SecretListView = ({
         // personal secret change
         if (overrideAction === "deleted") {
           await handleSecretOperation("delete", "personal", key);
-        } else if (overrideAction && idOverride){
+        } else if (overrideAction && idOverride) {
           await handleSecretOperation("update", "personal", oldKey, {
             value: valueOverride,
             newKey: hasKeyChanged ? key : undefined,
@@ -239,7 +239,7 @@ export const SecretListView = ({
         });
       }
     },
-    []
+    [environment, secretPath]
   );
 
   const handleSecretDelete = useCallback(async () => {
@@ -268,7 +268,7 @@ export const SecretListView = ({
         text: "Failed to delete secret"
       });
     }
-  }, [(popUp.deleteSecret?.data as DecryptedSecret)?.key]);
+  }, [(popUp.deleteSecret?.data as DecryptedSecret)?.key, environment, secretPath]);
 
   // for optimization on minimise re-rendering of secret items
   const onCreateTag = useCallback(() => handlePopUpOpen("createTag"), []);

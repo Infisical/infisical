@@ -17,6 +17,7 @@ import { useCreateSecretBatch, useUpdateSecretBatch } from "@app/hooks/api";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { DecryptedSecret, UserWsKeyPair } from "@app/hooks/api/types";
 
+import { PopUpNames, usePopUpAction } from "../../SecretMainPage.store";
 import { CopySecretsFromBoard } from "./CopySecretsFromBoard";
 
 const parseJson = (src: ArrayBuffer) => {
@@ -62,6 +63,7 @@ export const SecretDropzone = ({
     "overlapKeyWarning"
   ] as const);
   const queryClient = useQueryClient();
+  const { openPopUp } = usePopUpAction();
 
   const { mutateAsync: updateSecretBatch, isLoading: isUpdatingSecrets } = useUpdateSecretBatch({
     options: { onSuccess: undefined }
@@ -274,6 +276,7 @@ export const SecretDropzone = ({
                 workspaceId={workspaceId}
                 decryptFileKey={decryptFileKey}
                 secretPath={secretPath}
+                isSmaller={isSmaller}
               />
               {!isSmaller && (
                 <ProjectPermissionCan
@@ -281,7 +284,11 @@ export const SecretDropzone = ({
                   a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
                 >
                   {(isAllowed) => (
-                    <Button variant="star" isDisabled={!isAllowed}>
+                    <Button
+                      onClick={() => openPopUp(PopUpNames.CreateSecretForm)}
+                      variant="star"
+                      isDisabled={!isAllowed}
+                    >
                       Add a new secret
                     </Button>
                   )}

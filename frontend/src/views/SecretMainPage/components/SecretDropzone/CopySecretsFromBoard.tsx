@@ -41,13 +41,14 @@ const formSchema = z.object({
     .transform((val) =>
       typeof val === "string" && val.at(-1) === "/" && val.length > 1 ? val.slice(0, -1) : val
     ),
-  secrets: z.record(z.string())
+  secrets: z.record(z.string().optional().nullable())
 });
 
 type TFormSchema = z.infer<typeof formSchema>;
 
 type Props = {
   isOpen?: boolean;
+  isSmaller?: boolean;
   onToggle: (isOpen: boolean) => void;
   onParsedEnv: (env: Record<string, { value: string; comments: string[] }>) => void;
   environments?: { name: string; slug: string }[];
@@ -64,6 +65,7 @@ export const CopySecretsFromBoard = ({
   environment,
   secretPath,
   isOpen,
+  isSmaller,
   onToggle,
   onParsedEnv
 }: Props) => {
@@ -151,7 +153,7 @@ export const CopySecretsFromBoard = ({
                 onClick={() => onToggle(true)}
                 isDisabled={!isAllowed}
                 variant="star"
-                size="xs"
+                size={isSmaller ? "xs" : "sm"}
               >
                 Copy Secrets From An Environment
               </Button>
@@ -264,7 +266,7 @@ export const CopySecretsFromBoard = ({
                 Include secret values
               </Checkbox>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-4">
               <Button
                 leftIcon={<FontAwesomeIcon icon={faClone} />}
                 type="submit"
@@ -272,7 +274,7 @@ export const CopySecretsFromBoard = ({
               >
                 Paste Secrets
               </Button>
-              <Button variant="plain" colorSchema="secondary">
+              <Button variant="plain" colorSchema="secondary" onClick={() => onToggle(false)}>
                 Cancel
               </Button>
             </div>
