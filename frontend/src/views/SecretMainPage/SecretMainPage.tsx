@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
 import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
 
 import NavHeader from "@app/components/navigation/NavHeader";
 import { PermissionDeniedBanner } from "@app/components/permissions";
@@ -229,11 +228,7 @@ export const SecretMainPage = () => {
               isSnapshotCountLoading={isSnapshotCountLoading}
               onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
             />
-            <div
-              className={twMerge(
-                "mt-3 overflow-y-auto overflow-x-hidden thin-scrollbar bg-mineshaft-800 text-left text-bunker-300 rounded-md text-sm border border-mineshaft-600"
-              )}
-            >
+            <div className="mt-3 overflow-y-auto overflow-x-hidden thin-scrollbar bg-mineshaft-800 text-left text-bunker-300 rounded-md text-sm">
               <div className="flex flex-col ">
                 {isNotEmtpy && (
                   <div className="flex font-medium border-b border-mineshaft-600">

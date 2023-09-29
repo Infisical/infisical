@@ -235,7 +235,10 @@ export const ActionBar = ({
                   <DropdownMenuLabel>Apply tags to filter secrets</DropdownMenuLabel>
                   {tags.map(({ _id, name, tagColor }) => (
                     <DropdownMenuItem
-                      onClick={() => onToggleTagFilter(_id)}
+                      onClick={(evt) => {
+                        evt.preventDefault();
+                        onToggleTagFilter(_id);
+                      }}
                       key={_id}
                       icon={filter?.tags[_id] && <FontAwesomeIcon icon={faCheckCircle} />}
                       iconPos="right"
