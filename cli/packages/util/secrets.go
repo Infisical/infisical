@@ -684,3 +684,44 @@ func GetEnvelopmentBasedOnGitBranch(workspaceFile models.WorkspaceConfigFile) st
 		return ""
 	}
 }
+
+func GetPlainTextWorkspaceKey(authenticationToken string, receiverPrivateKey string, workspaceId string) ([]byte, error) {
+	httpClient := resty.New()
+	httpClient.SetAuthToken(authenticationToken).
+		SetHeader("Accept", "application/json")
+
+	request := api.GetEncryptedWorkspaceKeyRequest{
+		WorkspaceId: workspaceId,
+	}
+
+	workspaceKeyResponse, err := api.CallGetEncryptedWorkspaceKey(httpClient, request)
+	if err != nil {
+		return nil, fmt.Errorf("GetPlainTextWorkspaceKey: unable to retrieve your encrypted workspace key. [err=%v]", err)
+	}
+
+	encryptedWorkspaceKey, err := base64.StdEncoding.DecodeString(workspaceKeyResponse.EncryptedKey)
+	if err != nil {
+		return nil, fmt.Errorf("GetPlainTextWorkspaceKey: Unable to get bytes represented by the base64 for encryptedWorkspaceKey [err=%v]", err)
+	}
+
+	encryptedWorkspaceKeySenderPublicKey, err := base64.StdEncoding.DecodeString(workspaceKeyResponse.Sender.PublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("GetPlainTextWorkspaceKey: Unable to get bytes represented by the base64 for encryptedWorkspaceKeySenderPublicKey [err=%v]", err)
+	}
+
+	encryptedWorkspaceKeyNonce, err := base64.StdEncoding.DecodeString(workspaceKeyResponse.Nonce)
+	if err != nil {
+		return nil, fmt.Errorf("GetPlainTextWorkspaceKey: Unable to get bytes represented by the base64 for encryptedWorkspaceKeyNonce [err=%v]", err)
+	}
+
+	currentUsersPrivateKey, err := base64.StdEncoding.DecodeString(receiverPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("GetPlainTextWorkspaceKey: Unable to get bytes represented by the base64 for currentUsersPrivateKey [err=%v]", err)
+	}
+
+	if len(currentUsersPrivateKey) == 0 || len(encryptedWorkspaceKeySenderPublicKey) == 0 {
+		return nil, fmt.Errorf("GetPlainTextWorkspaceKey: Missing credentials for generating plainTextEncryptionKey")
+	}
+
+	return crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey), nil
+}

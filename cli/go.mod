@@ -75,4 +75,4 @@ require (
 	github.com/zalando/go-keyring v0.2.3
 )
 
-replace github.com/zalando/go-keyring => github.com/Infisical/go-keyring v1.0.1
+replace github.com/zalando/go-keyring => github.com/Infisical/go-keyring v1.0.2

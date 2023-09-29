@@ -184,7 +184,7 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
  */
 export const getSecretByNameRaw = async (req: Request, res: Response) => {
   const {
-    query: { secretPath, environment, workspaceId, type },
+    query: { secretPath, environment, workspaceId, type, include_imports },
     params: { secretName }
   } = await validateRequest(reqValidator.GetSecretByNameRawV3, req);
 
@@ -225,7 +225,8 @@ export const getSecretByNameRaw = async (req: Request, res: Response) => {
     environment,
     type,
     secretPath,
-    authData: req.authData
+    authData: req.authData,
+    include_imports
   });
 
   const key = await BotService.getWorkspaceKeyWithBot({
@@ -248,7 +249,15 @@ export const getSecretByNameRaw = async (req: Request, res: Response) => {
 export const createSecretRaw = async (req: Request, res: Response) => {
   const {
     params: { secretName },
-    body: { secretPath, environment, workspaceId, type, secretValue, secretComment }
+    body: {
+      secretPath,
+      environment,
+      workspaceId,
+      type,
+      secretValue,
+      secretComment,
+      skipMultilineEncoding
+    }
   } = await validateRequest(reqValidator.CreateSecretRawV3, req);
 
   switch (req.authData.actor.type) {
@@ -316,7 +325,8 @@ export const createSecretRaw = async (req: Request, res: Response) => {
     secretPath,
     secretCommentCiphertext: secretCommentEncrypted.ciphertext,
     secretCommentIV: secretCommentEncrypted.iv,
-    secretCommentTag: secretCommentEncrypted.tag
+    secretCommentTag: secretCommentEncrypted.tag,
+    skipMultilineEncoding
   });
 
   await EventService.handleEvent({
@@ -346,7 +356,7 @@ export const createSecretRaw = async (req: Request, res: Response) => {
 export const updateSecretByNameRaw = async (req: Request, res: Response) => {
   const {
     params: { secretName },
-    body: { secretValue, environment, secretPath, type, workspaceId }
+    body: { secretValue, environment, secretPath, type, workspaceId, skipMultilineEncoding }
   } = await validateRequest(reqValidator.UpdateSecretByNameRawV3, req);
 
   switch (req.authData.actor.type) {
@@ -398,7 +408,8 @@ export const updateSecretByNameRaw = async (req: Request, res: Response) => {
     secretValueCiphertext: secretValueEncrypted.ciphertext,
     secretValueIV: secretValueEncrypted.iv,
     secretValueTag: secretValueEncrypted.tag,
-    secretPath
+    secretPath,
+    skipMultilineEncoding
   });
 
   await EventService.handleEvent({
@@ -604,7 +615,7 @@ export const getSecrets = async (req: Request, res: Response) => {
  */
 export const getSecretByName = async (req: Request, res: Response) => {
   const {
-    query: { secretPath, environment, workspaceId, type },
+    query: { secretPath, environment, workspaceId, type, include_imports },
     params: { secretName }
   } = await validateRequest(reqValidator.GetSecretByNameV3, req);
   
@@ -645,7 +656,8 @@ export const getSecretByName = async (req: Request, res: Response) => {
     environment,
     type,
     secretPath,
-    authData: req.authData
+    authData: req.authData,
+    include_imports
   });
 
   return res.status(200).send({
@@ -674,7 +686,8 @@ export const createSecret = async (req: Request, res: Response) => {
       secretCommentTag,
       secretKeyCiphertext,
       secretValueCiphertext,
-      secretCommentCiphertext
+      secretCommentCiphertext,
+      skipMultilineEncoding
     },
     params: { secretName }
   } = await validateRequest(reqValidator.CreateSecretV3, req);
@@ -726,7 +739,8 @@ export const createSecret = async (req: Request, res: Response) => {
     secretCommentCiphertext,
     secretCommentIV,
     secretCommentTag,
-    metadata
+    metadata,
+    skipMultilineEncoding
   });
 
   await EventService.handleEvent({
@@ -759,10 +773,23 @@ export const updateSecretByName = async (req: Request, res: Response) => {
       type,
       environment,
       secretPath,
-      workspaceId
+      workspaceId,
+      tags,
+      secretCommentIV,
+      secretCommentTag,
+      secretCommentCiphertext,
+      secretName: newSecretName,
+      secretKeyIV,
+      secretKeyTag,
+      secretKeyCiphertext,
+      skipMultilineEncoding
     },
     params: { secretName }
   } = await validateRequest(reqValidator.UpdateSecretByNameV3, req);
+  
+  if (newSecretName && (!secretKeyIV || !secretKeyTag || !secretKeyCiphertext)) {
+    throw BadRequestError({ message: "Missing encrypted key" });
+  }
 
   switch (req.authData.actor.type) {
     case ActorType.USER: {
@@ -801,10 +828,19 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     environment,
     type,
     authData: req.authData,
+    newSecretName,
     secretValueCiphertext,
     secretValueIV,
     secretValueTag,
-    secretPath
+    secretPath,
+    tags,
+    secretCommentIV,
+    secretCommentTag,
+    secretCommentCiphertext,
+    skipMultilineEncoding,
+    secretKeyTag,
+    secretKeyCiphertext,
+    secretKeyIV
   });
 
   await EventService.handleEvent({
@@ -881,5 +917,152 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
 
   return res.status(200).send({
     secret
+  });
+};
+
+export const createSecretByNameBatch = async (req: Request, res: Response) => {
+  const {
+    body: { secrets, secretPath, environment, workspaceId }
+  } = await validateRequest(reqValidator.CreateSecretByNameBatchV3, req);
+
+  switch (req.authData.actor.type) {
+    case ActorType.USER: {
+      const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+      break;
+    }
+    case ActorType.SERVICE: {
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenData,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        requiredPermissions: [PERMISSION_WRITE_SECRETS]
+      });
+      break;
+    }
+    case ActorType.SERVICE_V3: {
+      await validateServiceTokenDataV3ClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        acceptedPermissions: [Permission.READ_WRITE]
+      });
+      break;
+    }
+  }
+
+  const createdSecrets = await SecretService.createSecretBatch({
+    secretPath,
+    environment,
+    workspaceId: new Types.ObjectId(workspaceId),
+    secrets,
+    authData: req.authData
+  });
+
+  return res.status(200).send({
+    secrets: createdSecrets
+  });
+};
+
+export const updateSecretByNameBatch = async (req: Request, res: Response) => {
+  const {
+    body: { secrets, secretPath, environment, workspaceId }
+  } = await validateRequest(reqValidator.UpdateSecretByNameBatchV3, req);
+
+  switch (req.authData.actor.type) {
+    case ActorType.USER: {
+      const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+      break;
+    }
+    case ActorType.SERVICE: {
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenData,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        requiredPermissions: [PERMISSION_WRITE_SECRETS]
+      });
+      break;
+    }
+    case ActorType.SERVICE_V3: {
+      await validateServiceTokenDataV3ClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        acceptedPermissions: [Permission.READ_WRITE]
+      });
+      break;
+    }
+  }
+
+  const updatedSecrets = await SecretService.updateSecretBatch({
+    secretPath,
+    environment,
+    workspaceId: new Types.ObjectId(workspaceId),
+    secrets,
+    authData: req.authData
+  });
+
+  return res.status(200).send({
+    secrets: updatedSecrets
+  });
+};
+
+export const deleteSecretByNameBatch = async (req: Request, res: Response) => {
+  const {
+    body: { secrets, secretPath, environment, workspaceId }
+  } = await validateRequest(reqValidator.DeleteSecretByNameBatchV3, req);
+
+  switch (req.authData.actor.type) {
+    case ActorType.USER: {
+      const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Delete,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+      break;
+    }
+    case ActorType.SERVICE: {
+      await validateServiceTokenDataClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenData,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        requiredPermissions: [PERMISSION_WRITE_SECRETS]
+      });
+      break;
+    }
+    case ActorType.SERVICE_V3: {
+      await validateServiceTokenDataV3ClientForWorkspace({
+        serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment,
+        secretPath,
+        acceptedPermissions: [Permission.READ_WRITE]
+      });
+      break;
+    }
+  }
+
+  const deletedSecrets = await SecretService.deleteSecretBatch({
+    secretPath,
+    environment,
+    workspaceId: new Types.ObjectId(workspaceId),
+    secrets,
+    authData: req.authData
+  });
+
+  return res.status(200).send({
+    secrets: deletedSecrets
   });
 };

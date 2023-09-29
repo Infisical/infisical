@@ -3,6 +3,5 @@ export {
   useDeleteFolder,
   useGetFoldersByEnv,
   useGetProjectFolders,
-  useGetProjectFoldersBatch,
   useUpdateFolder
 } from "./queries";

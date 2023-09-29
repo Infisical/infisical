@@ -13,7 +13,7 @@ export const githubFullRepositorySecretScan = new Queue("github-full-repository-
 
 type TScanPushEventQueueDetails = {
   organizationId: string,
-  installationId: number,
+  installationId: string,
   repository: {
     id: number,
     fullName: string,
@@ -30,7 +30,8 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
         installationId: installationId
       },
     });
-    const findings: SecretMatch[] = await scanFullRepoContentAndGetFindings(octokit, installationId, repository.fullName)
+
+    const findings: SecretMatch[] = await scanFullRepoContentAndGetFindings(octokit, installationId as any, repository.fullName)
     for (const finding of findings) {
       await GitRisks.findOneAndUpdate({ fingerprint: finding.Fingerprint },
         {

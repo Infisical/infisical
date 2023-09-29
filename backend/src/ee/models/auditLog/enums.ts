@@ -5,10 +5,10 @@ export enum ActorType {
 }
 
 export enum UserAgentType {
-    WEB = "web",
-    CLI = "cli",
-    K8_OPERATOR = "k8-operator",
-    OTHER = "other"
+  WEB = "web",
+  CLI = "cli",
+  K8_OPERATOR = "k8-operator",
+  OTHER = "other"
 }
 
 export enum EventType {
@@ -16,8 +16,11 @@ export enum EventType {
     GET_SECRET = "get-secret",
     REVEAL_SECRET = "reveal-secret",
     CREATE_SECRET = "create-secret",
+    CREATE_SECRETS = "create-secrets",
     UPDATE_SECRET = "update-secret",
+    UPDATE_SECRETS = "update-secrets",
     DELETE_SECRET = "delete-secret",
+    DELETE_SECRETS = "delete-secrets",
     GET_WORKSPACE_KEY = "get-workspace-key",
     AUTHORIZE_INTEGRATION = "authorize-integration",
     UNAUTHORIZE_INTEGRATION = "unauthorize-integration",

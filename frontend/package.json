@@ -59,6 +59,7 @@
     "cookies": "^0.8.0",
     "cva": "npm:class-variance-authority@^0.4.0",
     "date-fns": "^2.30.0",
+    "file-saver": "^2.0.5",
     "framer-motion": "^6.2.3",
     "fs": "^0.0.2",
     "gray-matter": "^4.0.3",
@@ -100,7 +101,8 @@
     "uuidv4": "^6.2.13",
     "yaml": "^2.2.2",
     "yup": "^0.32.11",
-    "zod": "^3.22.0"
+    "zod": "^3.22.0",
+    "zustand": "^4.4.1"
   },
   "devDependencies": {
     "@storybook/addon-essentials": "^7.0.23",
@@ -113,6 +115,7 @@
     "@storybook/react": "^7.0.23",
     "@storybook/testing-library": "^0.2.0",
     "@tailwindcss/typography": "^0.5.4",
+    "@types/file-saver": "^2.0.5",
     "@types/jsrp": "^0.2.4",
     "@types/node": "^18.11.9",
     "@types/picomatch": "^2.3.0",

@@ -1,1 +1,0 @@
-export {CreateTagModal} from "./CreateTagModal"
