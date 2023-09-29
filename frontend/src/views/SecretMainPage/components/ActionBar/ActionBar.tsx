@@ -43,11 +43,15 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch } from "@app/hooks/api";
-import { DecryptedSecret, TImportedSecrets, UserWsKeyPair, WsTag } from "@app/hooks/api/types";
+import { DecryptedSecret, TImportedSecrets, WsTag } from "@app/hooks/api/types";
 
-import { useSelectedSecretActions, useSelectedSecrets } from "../../SecretMainPage.store";
+import {
+  PopUpNames,
+  usePopUpAction,
+  useSelectedSecretActions,
+  useSelectedSecrets
+} from "../../SecretMainPage.store";
 import { Filter, GroupBy } from "../../SecretMainPage.types";
-import { CreateSecretForm } from "./CreateSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
 
@@ -58,13 +62,11 @@ type Props = {
   environment: string;
   workspaceId: string;
   secretPath?: string;
-  decryptFileKey: UserWsKeyPair;
   filter: Filter;
   tags?: WsTag[];
   isVisible?: boolean;
   snapshotCount: number;
   isSnapshotCountLoading?: boolean;
-  autoCapitalization?: boolean;
   onGroupByChange: (opt?: GroupBy) => void;
   onSearchChange: (term: string) => void;
   onToggleTagFilter: (tagId: string) => void;
@@ -77,14 +79,12 @@ export const ActionBar = ({
   importedSecrets = [],
   environment,
   workspaceId,
-  decryptFileKey,
   secretPath = "/",
   filter,
   tags = [],
   isVisible,
   snapshotCount,
   isSnapshotCountLoading,
-  autoCapitalization,
   onSearchChange,
   onToggleTagFilter,
   onGroupByChange,
@@ -92,7 +92,6 @@ export const ActionBar = ({
   onClickRollbackMode
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
-    "addSecret",
     "addFolder",
     "addSecretImport",
     "bulkDeleteSecrets",
@@ -101,6 +100,7 @@ export const ActionBar = ({
   ] as const);
   const { subscription } = useSubscription();
   const { createNotification } = useNotificationContext();
+  const { openPopUp } = usePopUpAction();
 
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
@@ -300,7 +300,7 @@ export const ActionBar = ({
               <Button
                 variant="outline_bg"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("addSecret")}
+                onClick={() => openPopUp(PopUpNames.CreateSecretForm)}
                 className="rounded-r-none h-10"
                 isDisabled={!isAllowed}
               >
@@ -407,17 +407,6 @@ export const ActionBar = ({
         </div>
       </div>
       {/* all the side triggers from actions like modals etc */}
-      <CreateSecretForm
-        secrets={secrets}
-        environment={environment}
-        workspaceId={workspaceId}
-        autoCapitalize={autoCapitalization}
-        secretPath={secretPath}
-        decryptFileKey={decryptFileKey!}
-        isOpen={popUp.addSecret.isOpen}
-        onClose={() => handlePopUpClose("addSecret")}
-        onTogglePopUp={(isOpen) => handlePopUpToggle("addSecret", isOpen)}
-      />
       <CreateSecretImportForm
         environment={environment}
         workspaceId={workspaceId}
