@@ -106,6 +106,7 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
     }
     case ActorType.SERVICE_V3: {
       await validateServiceTokenDataV3ClientForWorkspace({
+        authData: req.authData,
         serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
@@ -209,6 +210,7 @@ export const getSecretByNameRaw = async (req: Request, res: Response) => {
     }
     case ActorType.SERVICE_V3: {
       await validateServiceTokenDataV3ClientForWorkspace({
+        authData: req.authData,
         serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
@@ -281,6 +283,7 @@ export const createSecretRaw = async (req: Request, res: Response) => {
     }
     case ActorType.SERVICE_V3: {
       await validateServiceTokenDataV3ClientForWorkspace({
+        authData: req.authData,
         serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
@@ -380,6 +383,7 @@ export const updateSecretByNameRaw = async (req: Request, res: Response) => {
     }
     case ActorType.SERVICE_V3: {
       await validateServiceTokenDataV3ClientForWorkspace({
+        authData: req.authData,
         serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
@@ -460,6 +464,7 @@ export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
     }
     case ActorType.SERVICE_V3: {
       await validateServiceTokenDataV3ClientForWorkspace({
+        authData: req.authData,
         serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
@@ -555,6 +560,7 @@ export const getSecrets = async (req: Request, res: Response) => {
     }
     case ActorType.SERVICE_V3: {
       await validateServiceTokenDataV3ClientForWorkspace({
+        authData: req.authData,
         serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
@@ -640,6 +646,7 @@ export const getSecretByName = async (req: Request, res: Response) => {
     }
     case ActorType.SERVICE_V3: {
       await validateServiceTokenDataV3ClientForWorkspace({
+        authData: req.authData,
         serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
@@ -713,6 +720,7 @@ export const createSecret = async (req: Request, res: Response) => {
     }
     case ActorType.SERVICE_V3: {
       await validateServiceTokenDataV3ClientForWorkspace({
+        authData: req.authData,
         serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
@@ -812,6 +820,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     }
     case ActorType.SERVICE_V3: {
       await validateServiceTokenDataV3ClientForWorkspace({
+        authData: req.authData,
         serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
@@ -888,6 +897,7 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
     }
     case ActorType.SERVICE_V3: {
       await validateServiceTokenDataV3ClientForWorkspace({
+        authData: req.authData,
         serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
@@ -946,6 +956,7 @@ export const createSecretByNameBatch = async (req: Request, res: Response) => {
     }
     case ActorType.SERVICE_V3: {
       await validateServiceTokenDataV3ClientForWorkspace({
+        authData: req.authData,
         serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
@@ -995,6 +1006,7 @@ export const updateSecretByNameBatch = async (req: Request, res: Response) => {
     }
     case ActorType.SERVICE_V3: {
       await validateServiceTokenDataV3ClientForWorkspace({
+        authData: req.authData,
         serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
@@ -1044,6 +1056,7 @@ export const deleteSecretByNameBatch = async (req: Request, res: Response) => {
     }
     case ActorType.SERVICE_V3: {
       await validateServiceTokenDataV3ClientForWorkspace({
+        authData: req.authData,
         serviceTokenData: req.authData.authPayload as IServiceTokenDataV3,
         workspaceId: new Types.ObjectId(workspaceId),
         environment,

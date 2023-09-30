@@ -4,6 +4,8 @@ import { Permission } from "../models/serviceTokenDataV3";
 import { z } from "zod";
 import { UnauthorizedRequestError } from "../utils/errors";
 import { isValidScopeV3 } from "../helpers";
+import { AuthData } from "../interfaces/middleware";
+import { checkIPAgainstBlocklist } from "../utils/ip";
 
 /**
  * Validate that service token (client) can access workspace
@@ -16,19 +18,27 @@ import { isValidScopeV3 } from "../helpers";
  * @param {String[]} acceptedPermissions - accepted permissions as part of the endpoint
  */
  export const validateServiceTokenDataV3ClientForWorkspace = async ({
+  authData,
   serviceTokenData,
   workspaceId,
   environment,
   secretPath = "/",
   requiredPermissions
 }: {
+  authData: AuthData;
   serviceTokenData: IServiceTokenDataV3;
   workspaceId: Types.ObjectId;
   environment?: string;
   secretPath?: string;
   requiredPermissions: Permission[];
 }) => {
-
+  
+  // validate ST V3 IP address
+  checkIPAgainstBlocklist({
+    ipAddress: authData.ipAddress,
+    trustedIps: serviceTokenData.trustedIps
+  });
+  
   if (!serviceTokenData.workspace.equals(workspaceId)) {
     // case: invalid workspaceId passed
     throw UnauthorizedRequestError({
@@ -63,6 +73,12 @@ export const CreateServiceTokenV3 = z.object({
       })
       .array()
       .min(1),
+    trustedIps: z
+      .object({
+        ipAddress: z.string().trim(),
+      })
+      .array()
+      .min(1),
     expiresIn: z.number().optional(),
     encryptedKey: z.string().trim(),
     nonce: z.string().trim()
@@ -81,6 +97,13 @@ export const UpdateServiceTokenV3 = z.object({
         permissions: z.enum(["read", "write"]).array(),
         environment: z.string().trim(),
         secretPath: z.string().trim()
+      })
+      .array()
+      .min(1)
+      .optional(),
+    trustedIps: z
+      .object({
+        ipAddress: z.string().trim()
       })
       .array()
       .min(1)

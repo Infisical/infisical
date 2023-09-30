@@ -7,7 +7,8 @@ import {
     ServiceTokenDataV3Key
 } from "../../models";
 import {
-    Scope
+    IServiceTokenV3Scope, 
+    IServiceTokenV3TrustedIp 
 } from "../../models/serviceTokenDataV3";
 import {
     ActorType,
@@ -23,6 +24,7 @@ import {
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability"; 
 import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
+import { extractIPDetails, isValidIpOrCidr } from "../../utils/ip";
 import { EEAuditLogService } from "../../ee/services";
 import { getJwtServiceTokenSecret } from "../../config";
 
@@ -66,6 +68,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             workspaceId, 
             publicKey, 
             scopes,
+            trustedIps,
             expiresIn, 
             encryptedKey, // for ServiceTokenDataV3Key
             nonce // for ServiceTokenDataV3Key
@@ -76,6 +79,17 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         ProjectPermissionActions.Create,
         ProjectPermissionSub.ServiceTokens
     );
+    
+    // validate trusted ips
+    const reformattedTrustedIps = trustedIps.map((trustedIp) => {
+        const isValidIPOrCidr = isValidIpOrCidr(trustedIp.ipAddress);
+        
+        if (!isValidIPOrCidr) return res.status(400).send({
+            message: "The IP is not a valid IPv4, IPv6, or CIDR block"
+        });
+        
+        return extractIPDetails(trustedIp.ipAddress);
+    });
     
     let expiresAt;
     if (expiresIn) {
@@ -95,6 +109,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         workspace: new Types.ObjectId(workspaceId),
         publicKey,
         usageCount: 0,
+        trustedIps: reformattedTrustedIps,
         scopes,
         isActive,
         expiresAt
@@ -123,7 +138,8 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             metadata: {
                 name,
                 isActive,
-                scopes: scopes as Array<Scope>,
+                scopes: scopes as Array<IServiceTokenV3Scope>,
+                trustedIps: reformattedTrustedIps as Array<IServiceTokenV3TrustedIp>,
                 expiresAt
             }
         },
@@ -151,6 +167,7 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
             name, 
             isActive,
             scopes,
+            trustedIps,
             expiresIn
         }
     } = await validateRequest(reqValidator.UpdateServiceTokenV3, req);
@@ -171,6 +188,20 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
         ProjectPermissionSub.ServiceTokens
     );
 
+    // validate trusted ips
+    let reformattedTrustedIps;
+    if (trustedIps) {
+        reformattedTrustedIps = trustedIps.map((trustedIp) => {
+            const isValidIPOrCidr = isValidIpOrCidr(trustedIp.ipAddress);
+            
+            if (!isValidIPOrCidr) return res.status(400).send({
+                message: "The IP is not a valid IPv4, IPv6, or CIDR block"
+            });
+            
+            return extractIPDetails(trustedIp.ipAddress);
+        });
+    }
+
     let expiresAt;
     if (expiresIn) {
         expiresAt = new Date();
@@ -183,6 +214,7 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
             name,
             isActive,
             scopes,
+            trustedIps: reformattedTrustedIps,
             expiresAt
         },
         {
@@ -201,7 +233,8 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
             metadata: {
                 name: serviceTokenData.name,
                 isActive,
-                scopes: scopes as Array<Scope>,
+                scopes: scopes as Array<IServiceTokenV3Scope>,
+                trustedIps: reformattedTrustedIps as Array<IServiceTokenV3TrustedIp>,
                 expiresAt
             }
         },
@@ -254,7 +287,8 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
             metadata: {
                 name: serviceTokenData.name,
                 isActive: serviceTokenData.isActive,
-                scopes: serviceTokenData.scopes as Array<Scope>,
+                scopes: serviceTokenData.scopes as Array<IServiceTokenV3Scope>,
+                trustedIps: serviceTokenData.trustedIps as Array<IServiceTokenV3TrustedIp>,
                 expiresAt: serviceTokenData.expiresAt
             }
         },

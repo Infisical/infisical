@@ -19,10 +19,7 @@ import {
   ServiceTokenData,
   TFolderRootSchema
 } from "../models";
-import {
-  Scope,
-  Permission
-} from "../models/serviceTokenDataV3";
+import { Permission } from "../models/serviceTokenDataV3";
 import { EventType, SecretVersion } from "../ee/models";
 import {
   BadRequestError,

@@ -1,14 +1,21 @@
 import { Document, Schema, Types, model } from "mongoose";
+import { IPType } from "../ee/models";
 
 export enum Permission {
     READ = "read",
     WRITE = "write"
 }
 
-export interface Scope {
+export interface IServiceTokenV3Scope {
     environment: string;
     secretPath: string;
     permissions: Permission[];
+}
+
+export interface IServiceTokenV3TrustedIp {
+    ipAddress: string;
+    type: IPType;
+    prefix: number;
 }
 
 export interface IServiceTokenDataV3 extends Document {
@@ -21,7 +28,8 @@ export interface IServiceTokenDataV3 extends Document {
     lastUsed?: Date;
     usageCount: number;
     expiresAt?: Date;
-    scopes: Array<Scope>;
+    scopes: Array<IServiceTokenV3Scope>;
+    trustedIps: Array<IServiceTokenV3TrustedIp>;
 }
 
 const serviceTokenDataV3Schema = new Schema(
@@ -82,6 +90,34 @@ const serviceTokenDataV3Schema = new Schema(
                     }
                 }
             ],
+            required: true
+        },
+        trustedIps: {
+            type: [
+                {
+                    ipAddress: {
+                        type: String,
+                        required: true
+                    },
+                    type: {
+                        type: String,
+                        enum: [
+                            IPType.IPV4,
+                            IPType.IPV6
+                        ],
+                        required: true
+                    },
+                    prefix: {
+                        type: Number,
+                        required: false
+                    }
+                }
+            ],
+            default: [{
+                ipAddress: "0.0.0.0",
+                type: IPType.IPV4.toString(),
+                prefix: 0
+            }],
             required: true
         }
     },

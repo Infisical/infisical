@@ -87,12 +87,14 @@ export const useUpdateServiceTokenV3 = () => {
       name,
       isActive,
       scopes,
+      trustedIps,
       expiresIn
     }) => {
       const { data: { serviceTokenData } } = await apiRequest.patch(`/api/v3/service-token/${serviceTokenDataId}`, {
         name,
         isActive,
         scopes,
+        trustedIps,
         expiresIn
       });
 

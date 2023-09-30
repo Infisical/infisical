@@ -44,6 +44,13 @@ export type ServiceTokenV3Scope = {
   secretPath: string;
 };
 
+export type ServiceTokenV3TrustedIp = {
+  _id: string;
+  ipAddress: string;
+  type: "ipv4" | "ipv6";
+  prefix?: number;
+}
+
 export type ServiceTokenDataV3 = {
   _id: string;
   name: string;
@@ -52,6 +59,7 @@ export type ServiceTokenDataV3 = {
   lastUsed?: string;
   usageCount: number;
   scopes: ServiceTokenV3Scope[];
+  trustedIps: ServiceTokenV3TrustedIp[];
   expiresAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -62,6 +70,9 @@ export type CreateServiceTokenDataV3DTO = {
   workspaceId: string;
   publicKey: string;
   scopes: ServiceTokenV3Scope[];
+  trustedIps: {
+    ipAddress: string;
+  }[];
   expiresIn?: number;
   encryptedKey: string;
   nonce: string;
@@ -77,6 +88,9 @@ export type UpdateServiceTokenDataV3DTO = {
   isActive?: boolean;
   name?: string;
   scopes?: ServiceTokenV3Scope[];
+  trustedIps?: {
+    ipAddress: string;
+  }[];
   expiresIn?: number;
 }
 

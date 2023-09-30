@@ -3,7 +3,8 @@ import {
     EventType
 } from "./enums";
 import {
-    Scope
+  IServiceTokenV3Scope,
+  IServiceTokenV3TrustedIp
 } from "../../../models/serviceTokenDataV3";
 
 interface UserActorMetadata {
@@ -229,7 +230,8 @@ interface CreateServiceTokenV3Event {
     metadata: {
         name: string;
         isActive: boolean;
-        scopes: Array<Scope>;
+        scopes: Array<IServiceTokenV3Scope>;
+        trustedIps: Array<IServiceTokenV3TrustedIp>;
         expiresAt?: Date;
     }
 }
@@ -239,7 +241,8 @@ interface UpdateServiceTokenV3Event {
     metadata: {
         name?: string;
         isActive?: boolean;
-        scopes?: Array<Scope>;
+        scopes?: Array<IServiceTokenV3Scope>;
+        trustedIps?: Array<IServiceTokenV3TrustedIp>;
         expiresAt?: Date;
     }
 }
@@ -249,8 +252,9 @@ interface DeleteServiceTokenV3Event {
     metadata: {
         name: string;
         isActive: boolean;
-        scopes: Array<Scope>;
+        scopes: Array<IServiceTokenV3Scope>;
         expiresAt?: Date;
+        trustedIps: Array<IServiceTokenV3TrustedIp>;
     }
 }
 

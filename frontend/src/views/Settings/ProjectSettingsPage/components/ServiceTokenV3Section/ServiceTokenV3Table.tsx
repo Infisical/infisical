@@ -22,7 +22,7 @@ import {
     useUpdateServiceTokenV3
 } from "@app/hooks/api";
 import { Permission } from "@app/hooks/api/serviceTokens/enums"
-import { ServiceTokenV3Scope } from "@app/hooks/api/serviceTokens/types"
+import { ServiceTokenV3Scope, ServiceTokenV3TrustedIp } from "@app/hooks/api/serviceTokens/types"
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -32,6 +32,7 @@ type Props = {
         serviceTokenDataId?: string;
         name?: string;
         scopes?: ServiceTokenV3Scope[];
+        trustedIps?: ServiceTokenV3TrustedIp[];
       }
     ) => void;
   };
@@ -89,7 +90,8 @@ export const ServiceTokenV3Table = ({
                         <Th>Name</Th>
                         <Th>Status</Th>
                         <Th>Scopes</Th>
-                        <Th># Times Used</Th>
+                        <Th>Trusted IPs</Th>
+                        {/* <Th># Times Used</Th> */}
                         <Th>Last Used</Th>
                         <Th>Created At</Th>
                         <Th>Expires At</Th>
@@ -106,8 +108,9 @@ export const ServiceTokenV3Table = ({
                         name,
                         isActive,
                         lastUsed,
-                        usageCount,
+                        // usageCount,
                         scopes,
+                        trustedIps,
                         createdAt,
                         expiresAt
                     }) => {
@@ -154,7 +157,20 @@ export const ServiceTokenV3Table = ({
                                         );
                                     })}
                                 </Td> 
-                                <Td>{usageCount}</Td>
+                                <Td>
+                                    {trustedIps.map(({
+                                        _id: trustedIpId,
+                                        ipAddress,
+                                        prefix
+                                    }) => {
+                                        return (
+                                            <p key={`service-token-${_id}-}-trusted-ip-${trustedIpId}`}>
+                                                {`${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`}
+                                            </p>
+                                        );
+                                    })}
+                                </Td> 
+                                {/* <Td>{usageCount}</Td> */}
                                 <Td>{lastUsed ? formatDate(lastUsed) : "-"}</Td>
                                 <Td>{formatDate(createdAt)}</Td>
                                 <Td>{expiresAt ? formatDate(expiresAt) : "-"}</Td>
@@ -170,6 +186,7 @@ export const ServiceTokenV3Table = ({
                                                         serviceTokenDataId: _id,
                                                         name,
                                                         scopes,
+                                                        trustedIps
                                                     });
                                                 }}
                                                 size="lg"
