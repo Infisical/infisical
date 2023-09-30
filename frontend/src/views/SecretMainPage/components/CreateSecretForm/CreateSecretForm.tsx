@@ -5,7 +5,9 @@ import { z } from "zod";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, FormControl, Input, Modal, ModalContent, SecretInput } from "@app/components/v2";
 import { useCreateSecretV3 } from "@app/hooks/api";
-import { DecryptedSecret, UserWsKeyPair } from "@app/hooks/api/types";
+import { UserWsKeyPair } from "@app/hooks/api/types";
+
+import { PopUpNames, usePopUpAction, usePopUpState } from "../../SecretMainPage.store";
 
 const typeSchema = z.object({
   key: z.string(),
@@ -15,15 +17,11 @@ const typeSchema = z.object({
 type TFormSchema = z.infer<typeof typeSchema>;
 
 type Props = {
-  secrets?: DecryptedSecret[];
   environment: string;
   workspaceId: string;
   decryptFileKey: UserWsKeyPair;
   secretPath?: string;
   // modal props
-  isOpen?: boolean;
-  onClose: () => void;
-  onTogglePopUp: (isOpen: boolean) => void;
   autoCapitalize?: boolean;
 };
 
@@ -32,9 +30,6 @@ export const CreateSecretForm = ({
   workspaceId,
   decryptFileKey,
   secretPath = "/",
-  isOpen,
-  onClose,
-  onTogglePopUp,
   autoCapitalize = true
 }: Props) => {
   const {
@@ -44,6 +39,8 @@ export const CreateSecretForm = ({
     reset,
     formState: { errors, isSubmitting }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
+  const { isOpen } = usePopUpState(PopUpNames.CreateSecretForm);
+  const { closePopUp, togglePopUp } = usePopUpAction();
 
   const { createNotification } = useNotificationContext();
 
@@ -61,7 +58,7 @@ export const CreateSecretForm = ({
         type: "shared",
         latestFileKey: decryptFileKey
       });
-      onClose();
+      closePopUp(PopUpNames.CreateSecretForm);
       reset();
       createNotification({
         type: "success",
@@ -77,7 +74,10 @@ export const CreateSecretForm = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onTogglePopUp}>
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={(state) => togglePopUp(PopUpNames.CreateSecretForm, state)}
+    >
       <ModalContent
         title="Create secret"
         subTitle="Add a secret to the particular environment and folder"
@@ -118,7 +118,7 @@ export const CreateSecretForm = ({
             </Button>
             <Button
               key="layout-cancel-create-project"
-              onClick={onClose}
+              onClick={() => closePopUp(PopUpNames.CreateSecretForm)}
               variant="plain"
               colorSchema="secondary"
             >

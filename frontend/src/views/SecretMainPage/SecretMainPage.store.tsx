@@ -28,13 +28,39 @@ const createSelectedSecretStore: StateCreator<SelectedSecretState> = (set) => ({
   }
 });
 
-const StoreContext = createContext<StoreApi<SelectedSecretState> | null>(null);
+export enum PopUpNames {
+  CreateSecretForm = "create-secret-form"
+}
+type PopUpState = {
+  popUp: Record<string, { isOpen: boolean; data?: any }>;
+  popUpActions: {
+    togglePopUp: (id: PopUpNames, isOpen?: boolean) => void;
+    closePopUp: (id: PopUpNames) => void;
+    openPopUp: (id: PopUpNames, data?: any) => void;
+  };
+};
+const createPopUpStore: StateCreator<PopUpState> = (set) => ({
+  popUp: {},
+  popUpActions: {
+    closePopUp: (id) => set((state) => ({ popUp: { ...state.popUp, [id]: { isOpen: false } } })),
+    openPopUp: (id, data) =>
+      set((state) => ({ popUp: { ...state.popUp, [id]: { isOpen: true, data } } })),
+    togglePopUp: (id, isOpen) =>
+      set((state) => ({
+        popUp: { ...state.popUp, [id]: { isOpen: isOpen ?? !state.popUp[id].isOpen } }
+      }))
+  }
+});
+
+type CombinedState = SelectedSecretState & PopUpState;
+const StoreContext = createContext<StoreApi<CombinedState> | null>(null);
 export const StoreProvider = ({ children }: { children: ReactNode }) => {
-  const storeRef = useRef<StoreApi<SelectedSecretState>>();
+  const storeRef = useRef<StoreApi<CombinedState>>();
   const router = useRouter();
   if (!storeRef.current) {
-    storeRef.current = createStore<SelectedSecretState>((...a) => ({
-      ...createSelectedSecretStore(...a)
+    storeRef.current = createStore<CombinedState>((...a) => ({
+      ...createSelectedSecretStore(...a),
+      ...createPopUpStore(...a)
     }));
   }
 
@@ -53,7 +79,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   return <StoreContext.Provider value={storeRef.current}>{children}</StoreContext.Provider>;
 };
 
-const useStoreContext = <T extends unknown>(selector: (state: SelectedSecretState) => T): T => {
+const useStoreContext = <T extends unknown>(selector: (state: CombinedState) => T): T => {
   const ctx = useContext(StoreContext);
   if (!ctx) throw new Error("Missing ");
   return useStore(ctx, selector);
@@ -62,3 +88,8 @@ const useStoreContext = <T extends unknown>(selector: (state: SelectedSecretStat
 // selected secret context
 export const useSelectedSecrets = () => useStoreContext((state) => state.selectedSecret);
 export const useSelectedSecretActions = () => useStoreContext((state) => state.action);
+
+// popup context
+export const usePopUpState = (id: PopUpNames) =>
+  useStoreContext((state) => state.popUp?.[id] || { isOpen: false });
+export const usePopUpAction = () => useStoreContext((state) => state.popUpActions);

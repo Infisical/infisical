@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import { subject } from "@casl/ability";
 import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
 
 import NavHeader from "@app/components/navigation/NavHeader";
 import { PermissionDeniedBanner } from "@app/components/permissions";
@@ -28,6 +27,7 @@ import {
 } from "@app/hooks/api";
 
 import { ActionBar } from "./components/ActionBar";
+import { CreateSecretForm } from "./components/CreateSecretForm";
 import { FolderListView } from "./components/FolderListView";
 import { PitDrawer } from "./components/PitDrawer";
 import { SecretDropzone } from "./components/SecretDropzone";
@@ -218,7 +218,6 @@ export const SecretMainPage = () => {
               workspaceId={workspaceId}
               secretPath={secretPath}
               isVisible={isVisible}
-              decryptFileKey={decryptFileKey!}
               filter={filter}
               tags={tags}
               onVisiblilityToggle={handleToggleVisibility}
@@ -226,15 +225,10 @@ export const SecretMainPage = () => {
               onSearchChange={handleSearchChange}
               onToggleTagFilter={handleTagToggle}
               snapshotCount={snapshotCount || 0}
-              autoCapitalization={currentWorkspace?.autoCapitalization}
               isSnapshotCountLoading={isSnapshotCountLoading}
               onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
             />
-            <div
-              className={twMerge(
-                "mt-3 overflow-auto thin-scrollbar bg-mineshaft-800 text-left text-bunker-300 rounded-md text-sm border border-mineshaft-600"
-              )}
-            >
+            <div className="mt-3 overflow-y-auto overflow-x-hidden thin-scrollbar bg-mineshaft-800 text-left text-bunker-300 rounded-md text-sm">
               <div className="flex flex-col ">
                 {isNotEmtpy && (
                   <div className="flex font-medium border-b border-mineshaft-600">
@@ -292,6 +286,13 @@ export const SecretMainPage = () => {
                 {!canReadSecret && folders?.length === 0 && <PermissionDeniedBanner />}
               </div>
             </div>
+            <CreateSecretForm
+              environment={environment}
+              workspaceId={workspaceId}
+              decryptFileKey={decryptFileKey!}
+              secretPath={secretPath}
+              autoCapitalize={currentWorkspace?.autoCapitalization}
+            />
             <SecretDropzone
               secrets={secrets}
               environment={environment}
@@ -300,6 +301,16 @@ export const SecretMainPage = () => {
               secretPath={secretPath}
               isSmaller={isNotEmtpy}
               environments={currentWorkspace?.environments}
+            />
+            <PitDrawer
+              secretSnaphots={snapshotList}
+              snapshotId={snapshotId}
+              isDrawerOpen={popUp.snapshots.isOpen}
+              onOpenChange={(isOpen) => handlePopUpToggle("snapshots", isOpen)}
+              hasNextPage={hasNextSnapshotListPage}
+              fetchNextPage={fetchNextSnapshotList}
+              onSelectSnapshot={handleSelectSnapshot}
+              isFetchingNextPage={isFetchingNextSnapshotList}
             />
           </>
         ) : (
@@ -316,16 +327,6 @@ export const SecretMainPage = () => {
             onClickListSnapshot={() => handlePopUpToggle("snapshots", true)}
           />
         )}
-        <PitDrawer
-          secretSnaphots={snapshotList}
-          snapshotId={snapshotId}
-          isDrawerOpen={popUp.snapshots.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("snapshots", isOpen)}
-          hasNextPage={hasNextSnapshotListPage}
-          fetchNextPage={fetchNextSnapshotList}
-          onSelectSnapshot={handleSelectSnapshot}
-          isFetchingNextPage={isFetchingNextSnapshotList}
-        />
       </div>
     </StoreProvider>
   );
