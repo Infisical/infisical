@@ -20,9 +20,13 @@ import {
     Modal,
     ModalContent,
     Select,
-    SelectItem
+    SelectItem,
+    UpgradePlanModal
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import {
+    useSubscription,
+    useWorkspace 
+} from "@app/context";
 import { 
     useCreateServiceTokenV3,
     useGetUserWsKey,
@@ -88,14 +92,17 @@ const schema = yup.object({
 export type FormData = yup.InferType<typeof schema>;
 
 type Props = {
-  popUp: UsePopUpState<["serviceTokenV3"]>;
+  popUp: UsePopUpState<["serviceTokenV3", "upgradePlan"]>;
+  handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["serviceTokenV3"]>, state?: boolean) => void;
 };
 
 export const AddServiceTokenV3Modal = ({
     popUp,
+    handlePopUpOpen,
     handlePopUpToggle
 }: Props) => {
+    const { subscription } = useSubscription();
     const { currentWorkspace } = useWorkspace();
 
     const { data: latestFileKey } = useGetUserWsKey(currentWorkspace?._id ?? "");
@@ -400,19 +407,39 @@ export const AddServiceTokenV3Modal = ({
                                 control={control}
                                 name={`trustedIps.${index}.ipAddress`}
                                 defaultValue="0.0.0.0/0"
-                                render={({ field, fieldState: { error } }) => (
-                                    <FormControl
-                                        className="mb-0 flex-grow"
-                                        label={index === 0 ? "Trusted IP" : undefined}
-                                        isError={Boolean(error)}
-                                        errorText={error?.message}
-                                    >
-                                    <Input {...field} placeholder="123.456.789.0" />
-                                    </FormControl>
-                                )}
+                                render={({ field, fieldState: { error } }) => {
+                                    return (
+                                        <FormControl
+                                            className="mb-0 flex-grow"
+                                            label={index === 0 ? "Trusted IP" : undefined}
+                                            isError={Boolean(error)}
+                                            errorText={error?.message}
+                                        >
+                                        <Input 
+                                            value={field.value}
+                                            onChange={(e) => {
+                                                if (subscription?.ipAllowlisting) {
+                                                    field.onChange(e);
+                                                    return;
+                                                }
+                                                
+                                                handlePopUpOpen("upgradePlan");
+                                            }}
+                                            placeholder="123.456.789.0" 
+                                        />
+                                        </FormControl>
+                                    );
+                                }}
                             />
                             <IconButton
-                                onClick={() => removeTrustedIp(index)}
+                                onClick={() => {
+                                    if (subscription?.ipAllowlisting) {
+                                        removeTrustedIp(index);
+                                        return;
+                                    }
+                                    
+                                    handlePopUpOpen("upgradePlan");
+                                }}
                                 size="lg"
                                 colorSchema="danger"
                                 variant="plain"
@@ -426,11 +453,16 @@ export const AddServiceTokenV3Modal = ({
                     <div className="my-4 ml-1">
                         <Button
                             variant="outline_bg"
-                            onClick={() =>
-                                appendTrustedIp({
-                                    ipAddress: "0.0.0.0/0"
-                                })
-                            }
+                            onClick={() => {
+                                if (subscription?.ipAllowlisting) {
+                                    appendTrustedIp({
+                                        ipAddress: "0.0.0.0/0"
+                                    })
+                                    return;
+                                }
+
+                                handlePopUpOpen("upgradePlan");
+                            }}
                             leftIcon={<FontAwesomeIcon icon={faPlus} />}
                             size="xs"
                         >
@@ -478,6 +510,11 @@ export const AddServiceTokenV3Modal = ({
                         </Button>
                     </div>
                 </form>
+                <UpgradePlanModal
+                    isOpen={popUp?.upgradePlan?.isOpen}
+                    onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+                    text="You can use IP allowlisting if you switch to Infisical's Pro plan."
+                />
             </ModalContent>
         </Modal>
     );

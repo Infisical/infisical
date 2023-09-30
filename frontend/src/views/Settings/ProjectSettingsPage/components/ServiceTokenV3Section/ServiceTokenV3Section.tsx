@@ -23,7 +23,8 @@ export const ServiceTokenV3Section = withProjectPermission(
     const { mutateAsync: deleteMutateAsync } = useDeleteServiceTokenV3();
     const { popUp, handlePopUpOpen, handlePopUpClose,  handlePopUpToggle } = usePopUp([
       "serviceTokenV3",
-      "deleteServiceTokenV3"
+      "deleteServiceTokenV3",
+      "upgradePlan"
     ] as const);
     
     const onDeleteServiceTokenDataSubmit = async (serviceTokenDataId: string) => {
@@ -74,6 +75,7 @@ export const ServiceTokenV3Section = withProjectPermission(
           />
           <AddServiceTokenV3Modal 
             popUp={popUp}
+            handlePopUpOpen={handlePopUpOpen}
             handlePopUpToggle={handlePopUpToggle}
           />
           <DeleteActionModal

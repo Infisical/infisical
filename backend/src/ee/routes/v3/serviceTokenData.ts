@@ -1,7 +1,7 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth } from "../../middleware";
-import { AuthMode } from "../../variables";
+import { requireAuth } from "../../../middleware";
+import { AuthMode } from "../../../variables";
 import { serviceTokenDataController } from "../../controllers/v3";
 
 router.get(

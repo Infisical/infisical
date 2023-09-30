@@ -28,6 +28,9 @@ import {
   secretScanning as v1SecretScanningRouter
 } from "./ee/routes/v1";
 import {
+  serviceTokenData as v3ServiceTokenDataRouter
+} from "./ee/routes/v3";
+import {
   auth as v1AuthRouter,
   bot as v1BotRouter,
   integrationAuth as v1IntegrationAuthRouter,
@@ -55,7 +58,6 @@ import {
   organizations as v2OrganizationsRouter,
   secret as v2SecretRouter, // begin to phase out
   secrets as v2SecretsRouter,
-  serviceAccounts as v2ServiceAccountsRouter,
   serviceTokenData as v2ServiceTokenDataRouter,
   signup as v2SignupRouter,
   tags as v2TagsRouter,
@@ -66,8 +68,7 @@ import {
   auth as v3AuthRouter,
   secrets as v3SecretsRouter,
   signup as v3SignupRouter,
-  workspaces as v3WorkspacesRouter,
-  serviceTokenData as v3ServiceTokenDataRouter
+  workspaces as v3WorkspacesRouter
 } from "./routes/v3";
 import { healthCheck } from "./routes/status";
 import { getLogger } from "./utils/logger";
@@ -155,6 +156,7 @@ const main = async () => {
   app.use("/api/v1/organizations", eeOrganizationsRouter);
   app.use("/api/v1/sso", eeSSORouter);
   app.use("/api/v1/cloud-products", eeCloudProductsRouter);
+  app.use("/api/v3/service-token", v3ServiceTokenDataRouter);
 
   // v1 routes
   app.use("/api/v1/signup", v1SignupRouter);
@@ -198,8 +200,6 @@ const main = async () => {
   app.use("/api/v3/secrets", v3SecretsRouter);
   app.use("/api/v3/workspaces", v3WorkspacesRouter);
   app.use("/api/v3/signup", v3SignupRouter);
-  app.use("/api/v3/service-token", v3ServiceTokenDataRouter);
-  
 
   // api docs
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));

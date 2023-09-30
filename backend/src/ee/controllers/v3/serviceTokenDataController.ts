@@ -4,29 +4,30 @@ import {
     IServiceTokenDataV3,
     IUser,
     ServiceTokenDataV3,
-    ServiceTokenDataV3Key
-} from "../../models";
+    ServiceTokenDataV3Key,
+    Workspace
+} from "../../../models";
 import {
     IServiceTokenV3Scope, 
     IServiceTokenV3TrustedIp 
-} from "../../models/serviceTokenDataV3";
+} from "../../../models/serviceTokenDataV3";
 import {
     ActorType,
     EventType
-} from "../../ee/models";
-import { validateRequest } from "../../helpers/validation";
-import * as reqValidator from "../../validation/serviceTokenDataV3";
-import { createToken } from "../../helpers/auth";
+} from "../../models";
+import { validateRequest } from "../../../helpers/validation";
+import * as reqValidator from "../../../validation/serviceTokenDataV3";
+import { createToken } from "../../../helpers/auth";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
+} from "../../services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability"; 
-import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
-import { extractIPDetails, isValidIpOrCidr } from "../../utils/ip";
-import { EEAuditLogService } from "../../ee/services";
-import { getJwtServiceTokenSecret } from "../../config";
+import { BadRequestError, ResourceNotFoundError } from "../../../utils/errors";
+import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
+import { EEAuditLogService, EELicenseService } from "../../services";
+import { getJwtServiceTokenSecret } from "../../../config";
 
 /**
  * Return project key for service token
@@ -80,8 +81,17 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         ProjectPermissionSub.ServiceTokens
     );
     
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+
+    const plan = await EELicenseService.getPlan(workspace.organization);
+    
     // validate trusted ips
     const reformattedTrustedIps = trustedIps.map((trustedIp) => {
+        if (!plan.ipAllowlisting && trustedIp.ipAddress !== "0.0.0.0/0") return res.status(400).send({
+            message: "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
+        });
+
         const isValidIPOrCidr = isValidIpOrCidr(trustedIp.ipAddress);
         
         if (!isValidIPOrCidr) return res.status(400).send({
@@ -173,7 +183,6 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
     } = await validateRequest(reqValidator.UpdateServiceTokenV3, req);
 
     let serviceTokenData = await ServiceTokenDataV3.findById(serviceTokenDataId);
-
     if (!serviceTokenData) throw ResourceNotFoundError({ 
         message: "Service token not found" 
     });
@@ -188,10 +197,19 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
         ProjectPermissionSub.ServiceTokens
     );
 
+    const workspace = await Workspace.findById(serviceTokenData.workspace);
+    if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+
+    const plan = await EELicenseService.getPlan(workspace.organization);
+
     // validate trusted ips
     let reformattedTrustedIps;
     if (trustedIps) {
         reformattedTrustedIps = trustedIps.map((trustedIp) => {
+            if (!plan.ipAllowlisting && trustedIp.ipAddress !== "0.0.0.0/0") return res.status(400).send({
+                message: "Failed to update IP access range to service token due to plan restriction. Upgrade plan to update IP access range."
+            });
+
             const isValidIPOrCidr = isValidIpOrCidr(trustedIp.ipAddress);
             
             if (!isValidIPOrCidr) return res.status(400).send({
