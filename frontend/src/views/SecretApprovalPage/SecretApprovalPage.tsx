@@ -2,6 +2,7 @@ import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 
 import { SecretApprovalPolicyList } from "./components/SecretApprovalPolicyList";
+import { SecretApprovalRequest } from "./components/SecretApprovalRequest";
 
 enum TabSection {
   ApprovalRequests = "approval-requests",
@@ -22,6 +23,9 @@ export const SecretApprovalPage = () => {
           <Tab value={TabSection.ApprovalRequests}>Secret PRs</Tab>
           <Tab value={TabSection.Rules}>Policies</Tab>
         </TabList>
+        <TabPanel value={TabSection.ApprovalRequests}>
+          <SecretApprovalRequest />
+        </TabPanel>
         <TabPanel value={TabSection.Rules}>
           <SecretApprovalPolicyList workspaceId={workspaceId} />
         </TabPanel>

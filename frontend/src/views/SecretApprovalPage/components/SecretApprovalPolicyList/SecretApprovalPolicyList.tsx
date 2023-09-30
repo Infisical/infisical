@@ -99,9 +99,11 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
               <TableSkeleton columns={4} innerKey="secret-policies" className="bg-mineshaft-700" />
             )}
             {!isPoliciesLoading && !policies?.length && (
-              <Td colSpan={5}>
-                <EmptyState title="No policies found" icon={faFileShield} />
-              </Td>
+              <Tr>
+                <Td colSpan={5}>
+                  <EmptyState title="No policies found" icon={faFileShield} />
+                </Td>
+              </Tr>
             )}
             {policies?.map((policy) => (
               <SecretApprovalPolicyRow

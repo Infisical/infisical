@@ -43,6 +43,7 @@ import {
   password as v1PasswordRouter,
   sso as v1SSORouter,
   secretApprovalPolicy as v1SecretApprovalPolicy,
+  secretApprovalRequest as v1SecretApprovalRequest,
   secretImps as v1SecretImpsRouter,
   secret as v1SecretRouter,
   secretsFolder as v1SecretsFolder,
@@ -183,6 +184,7 @@ const main = async () => {
   app.use("/api/v1/roles", v1RoleRouter);
   app.use("/api/v1/secret-approvals", v1SecretApprovalPolicy);
   app.use("/api/v1/sso", v1SSORouter);
+  app.use("/api/v1/secret-approval-requests", v1SecretApprovalRequest);
 
   // v2 routes (improvements)
   app.use("/api/v2/signup", v2SignupRouter);

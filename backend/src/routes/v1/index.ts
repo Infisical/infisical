@@ -19,6 +19,7 @@ import secretsFolder from "./secretsFolder";
 import webhooks from "./webhook";
 import secretImps from "./secretImps";
 import secretApprovalPolicy from "./secretApprovalPolicy";
+import secretApprovalRequest from "./secretApprovalRequest";
 
 export {
   signup,
@@ -41,5 +42,6 @@ export {
   webhooks,
   secretImps,
   sso,
-  secretApprovalPolicy
+  secretApprovalPolicy,
+  secretApprovalRequest
 };
