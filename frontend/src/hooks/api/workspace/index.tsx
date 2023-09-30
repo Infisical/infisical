@@ -13,12 +13,11 @@ export {
   useGetWorkspaceIndexStatus,
   useGetWorkspaceIntegrations,
   useGetWorkspaceSecrets,
+  useGetWorkspaceServiceTokenDataV3,
   useGetWorkspaceUsers,
   useNameWorkspaceSecrets,
   useRenameWorkspace,
   useReorderWsEnvironment,
   useToggleAutoCapitalization,
   useUpdateUserWorkspaceRole,
-  useUpdateWsEnvironment,
-  useGetWorkspaceServiceTokenDataV3
-} from "./queries";
+  useUpdateWsEnvironment} from "./queries";

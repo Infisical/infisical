@@ -21,8 +21,8 @@ import {
     useGetWorkspaceServiceTokenDataV3,
     useUpdateServiceTokenV3
 } from "@app/hooks/api";
-import { ServiceTokenV3Scope } from "@app/hooks/api/serviceTokens/types"
 import { Permission } from "@app/hooks/api/serviceTokens/enums"
+import { ServiceTokenV3Scope } from "@app/hooks/api/serviceTokens/types"
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -147,7 +147,7 @@ export const ServiceTokenV3Table = ({
                                         return (
                                             <p key={`service-token-${_id}-scope-${scope.environment}-${scope.secretPath}`}>
                                                 <span className="font-bold">
-                                                    {scope.permissions}
+                                                    {permissionText}
                                                 </span>
                                                 {` @${scope.environment} - ${scope.secretPath}`}
                                             </p>

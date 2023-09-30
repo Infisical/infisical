@@ -5,8 +5,8 @@ import { apiRequest } from "@app/config/request";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
 import { EncryptedSecret } from "../secrets/types";
-import { TWorkspaceUser } from "../users/types";
 import { ServiceTokenDataV3 } from "../serviceTokens/types";
+import { TWorkspaceUser } from "../users/types";
 import {
   CreateEnvironmentDTO,
   CreateWorkspaceDTO,

@@ -35,6 +35,7 @@ import {
 import {
     Permission
 } from "@app/hooks/api/serviceTokens/enums";
+import { ServiceTokenV3Scope } from "@app/hooks/api/serviceTokens/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const expirations = [
@@ -47,8 +48,7 @@ const expirations = [
 ];
 
 const permissionsMap: {
-    "read": Permission[],
-    "readWrite": Permission[]
+    [key: string]: Permission[]
 } = {
     "read": [Permission.READ],
     "readWrite": [Permission.READ, Permission.WRITE],
@@ -60,7 +60,7 @@ const schema = yup.object({
     scopes: yup
     .array(
       yup.object({
-        permission: yup.string().oneOf(Object.keys(permissionsMap), "Invalid permission").required().label("Permission") as yup.SchemaOf<"read" | "readWrite", object>,
+        permission: yup.string().oneOf(Object.keys(permissionsMap), "Invalid permission").required().label("Permission"),
         environment: yup.string().max(50).required().label("Environment"),
         secretPath: yup
           .string()
@@ -115,21 +115,21 @@ export const AddServiceTokenV3Modal = ({
         const serviceTokenData = popUp?.serviceTokenV3?.data as { 
             serviceTokenDataId: string;
             name: string;
-            scopes: any;
+            scopes: ServiceTokenV3Scope[];
         };
         
         if (serviceTokenData) {
             reset({
                 name: serviceTokenData.name,
-                scopes: serviceTokenData.scopes.map((scope) => {
+                scopes: serviceTokenData.scopes.map((scope: ServiceTokenV3Scope) => {
                     let permission = "read";
                     if (scope.permissions.includes(Permission.WRITE)) {
                         permission = "readWrite";
                     }
                     
                     return ({
-                        environment: scope.environment,
-                        secretPath: scope.secretPath,
+                        environment: "dev",
+                        secretPath: "/",
                         permission
                     })
                 })
@@ -275,7 +275,6 @@ export const AddServiceTokenV3Modal = ({
                                 <Controller
                                     control={control}
                                     name={`scopes.${index}.permission`}
-                                    defaultValue={currentWorkspace?.environments?.[0]?.slug}
                                     render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                                         <FormControl
                                             className="mb-0"
@@ -302,7 +301,6 @@ export const AddServiceTokenV3Modal = ({
                                 <Controller
                                     control={control}
                                     name={`scopes.${index}.environment`}
-                                    defaultValue={currentWorkspace?.environments?.[0]?.slug}
                                     render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                                         <FormControl
                                             className="mb-0"
