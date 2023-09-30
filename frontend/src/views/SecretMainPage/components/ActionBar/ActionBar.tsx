@@ -76,9 +76,7 @@ type Props = {
 
 function downloadSecret(
   secrets: DecryptedSecret[],
-  importedSecrets:
-    | (Omit<TImportedSecrets, "secrets"> & { secrets: DecryptedSecret[] })[]
-    | undefined,
+  importedSecrets: (Omit<TImportedSecrets, "secrets"> & { secrets: DecryptedSecret[] })[],
   environment: string
 ) {
   return async () => {
@@ -177,8 +175,12 @@ export const ActionBar = ({
 
   const handleSelectedDownload = async () => {
     const filteredSecret = secrets.filter(({ _id }) => Boolean(selectedSecrets?.[_id]));
+    const filteredImportedSecrets = importedSecrets.map((data) => ({
+      ...data,
+      secrets: data.secrets.filter(({ _id }) => Boolean(selectedSecrets?.[_id]))
+    }));
 
-    await downloadSecret(filteredSecret, undefined, environment)();
+    await downloadSecret(filteredSecret, filteredImportedSecrets, environment)();
   };
 
   const handleSecretBulkDelete = async () => {
