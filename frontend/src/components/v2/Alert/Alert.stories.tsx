@@ -29,10 +29,10 @@ export const Warning: Story = {
   }
 };
 
-export const Destructive: Story = {
+export const Danger: Story = {
   args: {
     children: <ExampleComponent />,
-    variant: "destructive"
+    variant: "danger"
   }
 };
 

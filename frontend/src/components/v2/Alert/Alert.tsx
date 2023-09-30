@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import * as React from "react";
+import { forwardRef } from "react";
 import {
   faExclamationCircle,
   faExclamationTriangle,
@@ -15,7 +14,7 @@ const alertVariants = cva(
     variants: {
       variant: {
         default: "",
-        destructive: "text-red border-red",
+        danger: "text-red border-red",
         warning: "text-yellow border-yellow"
       }
     },
@@ -33,17 +32,17 @@ type AlertProps = {
 
 const variantTitleMap = {
   default: "Info",
-  destructive: "Danger",
+  danger: "Danger",
   warning: "Warning"
 };
 
 const variantIconMap = {
   default: faInfoCircle,
-  destructive: faExclamationCircle,
+  danger: faExclamationCircle,
   warning: faExclamationTriangle
 };
 
-const Alert = React.forwardRef<
+const Alert = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants> & AlertProps
 >(({ className, variant, title, icon, hideTitle = false, children, ...props }, ref) => {
@@ -75,7 +74,7 @@ const Alert = React.forwardRef<
 });
 Alert.displayName = "Alert";
 
-const AlertDescription = React.forwardRef<
+const AlertDescription = forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
