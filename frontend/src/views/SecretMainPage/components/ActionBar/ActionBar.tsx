@@ -203,10 +203,10 @@ export const ActionBar = ({
             <DropdownMenuTrigger asChild>
               <IconButton
                 variant="outline_bg"
-                ariaLabel="Download"
+                ariaLabel="Filter"
                 className={twMerge(
                   "transition-all",
-                  Object.keys(filter.tags).length && "text-primary border-primary/50"
+                  Object.keys(filter.tags).length && "border-primary/50 text-primary"
                 )}
               >
                 <FontAwesomeIcon icon={faFilter} />
