@@ -110,14 +110,14 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ, Permission.READ_WRITE]
+        requiredPermissions: [Permission.READ]
       });
       permissionCheckFn = (env: string, secPath: string) =>
         isValidScopeV3({
           authPayload: req.authData.authPayload as IServiceTokenDataV3,
           environment: env,
           secretPath: secPath,
-          acceptedPermissions: [Permission.READ, Permission.READ_WRITE]
+          requiredPermissions: [Permission.READ]
         });
       break;
     }
@@ -213,7 +213,7 @@ export const getSecretByNameRaw = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ, Permission.READ_WRITE]
+        requiredPermissions: [Permission.READ]
       });
       break;
     }
@@ -285,7 +285,7 @@ export const createSecretRaw = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ_WRITE]
+        requiredPermissions: [Permission.WRITE]
       });
       break;
     }
@@ -384,7 +384,7 @@ export const updateSecretByNameRaw = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ_WRITE]
+        requiredPermissions: [Permission.WRITE]
       });
       break;
     }
@@ -464,7 +464,7 @@ export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ_WRITE]
+        requiredPermissions: [Permission.WRITE]
       });
       break;
     }
@@ -559,14 +559,14 @@ export const getSecrets = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ, Permission.READ_WRITE]
+        requiredPermissions: [Permission.READ]
       });
       permissionCheckFn = (env: string, secPath: string) =>
         isValidScopeV3({
           authPayload: req.authData.authPayload as IServiceTokenDataV3,
           environment: env,
           secretPath: secPath,
-          acceptedPermissions: [Permission.READ, Permission.READ_WRITE]
+          requiredPermissions: [Permission.READ]
         });
       break;
     }
@@ -644,7 +644,7 @@ export const getSecretByName = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ, Permission.READ_WRITE]
+        requiredPermissions: [Permission.READ]
       });
       break;
     }
@@ -717,7 +717,7 @@ export const createSecret = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ_WRITE]
+        requiredPermissions: [Permission.WRITE]
       });
       break;
     }
@@ -816,7 +816,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ_WRITE]
+        requiredPermissions: [Permission.WRITE]
       });
       break;
     }
@@ -892,7 +892,7 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ_WRITE]
+        requiredPermissions: [Permission.WRITE]
       });
       break;
     }
@@ -950,7 +950,7 @@ export const createSecretByNameBatch = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ_WRITE]
+        requiredPermissions: [Permission.WRITE]
       });
       break;
     }
@@ -999,7 +999,7 @@ export const updateSecretByNameBatch = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ_WRITE]
+        requiredPermissions: [Permission.WRITE]
       });
       break;
     }
@@ -1048,7 +1048,7 @@ export const deleteSecretByNameBatch = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
         secretPath,
-        acceptedPermissions: [Permission.READ_WRITE]
+        requiredPermissions: [Permission.WRITE]
       });
       break;
     }

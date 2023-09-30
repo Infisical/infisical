@@ -20,13 +20,13 @@ import { isValidScopeV3 } from "../helpers";
   workspaceId,
   environment,
   secretPath = "/",
-  acceptedPermissions
+  requiredPermissions
 }: {
   serviceTokenData: IServiceTokenDataV3;
   workspaceId: Types.ObjectId;
   environment?: string;
   secretPath?: string;
-  acceptedPermissions: Permission[];
+  requiredPermissions: Permission[];
 }) => {
 
   if (!serviceTokenData.workspace.equals(workspaceId)) {
@@ -41,7 +41,7 @@ import { isValidScopeV3 } from "../helpers";
       authPayload: serviceTokenData,
       environment,
       secretPath,
-      acceptedPermissions
+      requiredPermissions
     });
     
     if (!isValid) throw UnauthorizedRequestError({
@@ -57,7 +57,7 @@ export const CreateServiceTokenV3 = z.object({
     publicKey: z.string().trim(),
     scopes: z
       .object({
-        permission: z.enum(["read", "readWrite"]),
+        permissions: z.enum(["read", "write"]).array(),
         environment: z.string().trim(),
         secretPath: z.string().trim()
       })
@@ -78,7 +78,7 @@ export const UpdateServiceTokenV3 = z.object({
     isActive: z.boolean().optional(),
     scopes: z
       .object({
-        permission: z.enum(["read", "readWrite"]),
+        permissions: z.enum(["read", "write"]).array(),
         environment: z.string().trim(),
         secretPath: z.string().trim()
       })

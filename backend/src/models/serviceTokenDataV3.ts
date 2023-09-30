@@ -2,13 +2,13 @@ import { Document, Schema, Types, model } from "mongoose";
 
 export enum Permission {
     READ = "read",
-    READ_WRITE = "readWrite"
+    WRITE = "write"
 }
 
 export interface Scope {
     environment: string;
     secretPath: string;
-    permission: Permission;
+    permissions: Permission[];
 }
 
 export interface IServiceTokenDataV3 extends Document {
@@ -19,6 +19,7 @@ export interface IServiceTokenDataV3 extends Document {
     publicKey: string;
     isActive: boolean;
     lastUsed?: Date;
+    usageCount: number;
     expiresAt?: Date;
     scopes: Array<Scope>;
 }
@@ -51,6 +52,11 @@ const serviceTokenDataV3Schema = new Schema(
             type: Date,
             required: false
         },
+        usageCount: {
+            type: Number,
+            default: 0,
+            required: true
+        },
         expiresAt: {
             type: Date,
             required: false,
@@ -68,9 +74,10 @@ const serviceTokenDataV3Schema = new Schema(
                         default: "/",
                         required: true
                     },
-                    permission: {
-                        type: String,
-                        enum: [Permission.READ, Permission.READ_WRITE],
+                    permissions: {
+                        type: [String],
+                        enum: [Permission.READ, Permission.WRITE],
+                        default: [Permission.READ],
                         required: true
                     }
                 }

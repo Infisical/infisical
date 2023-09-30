@@ -94,6 +94,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         user,
         workspace: new Types.ObjectId(workspaceId),
         publicKey,
+        usageCount: 0,
         scopes,
         isActive,
         expiresAt

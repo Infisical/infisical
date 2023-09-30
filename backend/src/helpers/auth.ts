@@ -249,7 +249,8 @@ export const getAuthSTDPayload = async ({
 			isActive: true
 		},
 		{
-			lastUsed: new Date()
+			lastUsed: new Date(),
+			$inc: { usageCount: 1 }
 		},
 		{
 			new: true

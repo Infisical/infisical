@@ -69,12 +69,12 @@ export const isValidScopeV3 = ({
   authPayload,
   environment,
   secretPath,
-  acceptedPermissions
+  requiredPermissions
 }: {
   authPayload: IServiceTokenDataV3,
   environment: string,
   secretPath: string,
-  acceptedPermissions: Permission[]
+  requiredPermissions: Permission[]
 }) => {
   const { scopes } = authPayload;
   
@@ -84,7 +84,7 @@ export const isValidScopeV3 = ({
       scope.environment === environment
   );
 
-  if (validScope && !acceptedPermissions.includes(validScope.permission)) {
+  if (validScope && !requiredPermissions.every(permission => validScope.permissions.includes(permission))) {
     return false;
   }
   

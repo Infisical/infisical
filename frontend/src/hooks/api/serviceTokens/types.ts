@@ -1,3 +1,5 @@
+import { Permission } from "./enums";
+
 export type ServiceTokenScope = {
   environment: string;
   secretPath: string;
@@ -37,7 +39,7 @@ export type DeleteServiceTokenRes = { serviceTokenData: ServiceToken };
 // --- v3
 
 export type ServiceTokenV3Scope = {
-  permission: string;
+  permissions: Permission[];
   environment: string;
   secretPath: string;
 };
@@ -48,6 +50,7 @@ export type ServiceTokenDataV3 = {
   workspace: string;
   isActive: boolean;
   lastUsed?: string;
+  usageCount: number;
   scopes: ServiceTokenV3Scope[];
   expiresAt?: string;
   createdAt: string;

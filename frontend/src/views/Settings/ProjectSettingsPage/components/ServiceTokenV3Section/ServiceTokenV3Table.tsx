@@ -21,9 +21,8 @@ import {
     useGetWorkspaceServiceTokenDataV3,
     useUpdateServiceTokenV3
 } from "@app/hooks/api";
-import {
-    ServiceTokenV3Scope
-} from "@app/hooks/api/serviceTokens/types"
+import { ServiceTokenV3Scope } from "@app/hooks/api/serviceTokens/types"
+import { Permission } from "@app/hooks/api/serviceTokens/enums"
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -90,6 +89,7 @@ export const ServiceTokenV3Table = ({
                         <Th>Name</Th>
                         <Th>Status</Th>
                         <Th>Scopes</Th>
+                        <Th># Times Used</Th>
                         <Th>Last Used</Th>
                         <Th>Created At</Th>
                         <Th>Expires At</Th>
@@ -106,6 +106,7 @@ export const ServiceTokenV3Table = ({
                         name,
                         isActive,
                         lastUsed,
+                        usageCount,
                         scopes,
                         createdAt,
                         expiresAt
@@ -135,16 +136,25 @@ export const ServiceTokenV3Table = ({
                                 </Td>
                                 <Td>
                                     {scopes.map((scope) => {
+                                        let permissionText = "read"
+                                        if (
+                                            scope.permissions.includes(Permission.WRITE) &&
+                                            scope.permissions.includes(Permission.READ)
+                                        ) {
+                                            permissionText = "readWrite";
+                                        }
+                                        
                                         return (
                                             <p key={`service-token-${_id}-scope-${scope.environment}-${scope.secretPath}`}>
                                                 <span className="font-bold">
-                                                    {scope.permission}
+                                                    {scope.permissions}
                                                 </span>
                                                 {` @${scope.environment} - ${scope.secretPath}`}
                                             </p>
                                         );
                                     })}
                                 </Td> 
+                                <Td>{usageCount}</Td>
                                 <Td>{lastUsed ? formatDate(lastUsed) : "-"}</Td>
                                 <Td>{formatDate(createdAt)}</Td>
                                 <Td>{expiresAt ? formatDate(expiresAt) : "-"}</Td>

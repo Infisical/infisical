@@ -32,6 +32,9 @@ import {
     useGetUserWsKey,
     useUpdateServiceTokenV3
 } from "@app/hooks/api";
+import {
+    Permission
+} from "@app/hooks/api/serviceTokens/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const expirations = [
@@ -43,7 +46,13 @@ const expirations = [
     { label: "12 months", value: "31104000" }
 ];
 
-const permissionValues: Array<"read" | "readWrite"> = ["read", "readWrite"];
+const permissionsMap: {
+    "read": Permission[],
+    "readWrite": Permission[]
+} = {
+    "read": [Permission.READ],
+    "readWrite": [Permission.READ, Permission.WRITE],
+}
 
 const schema = yup.object({
     name: yup.string().required("ST V3 name is required"),
@@ -51,7 +60,7 @@ const schema = yup.object({
     scopes: yup
     .array(
       yup.object({
-        permission: yup.string().oneOf(permissionValues, "Invalid permission").required().label("Permission"),
+        permission: yup.string().oneOf(Object.keys(permissionsMap), "Invalid permission").required().label("Permission") as yup.SchemaOf<"read" | "readWrite", object>,
         environment: yup.string().max(50).required().label("Environment"),
         secretPath: yup
           .string()
@@ -112,7 +121,18 @@ export const AddServiceTokenV3Modal = ({
         if (serviceTokenData) {
             reset({
                 name: serviceTokenData.name,
-                scopes: serviceTokenData.scopes
+                scopes: serviceTokenData.scopes.map((scope) => {
+                    let permission = "read";
+                    if (scope.permissions.includes(Permission.WRITE)) {
+                        permission = "readWrite";
+                    }
+                    
+                    return ({
+                        environment: scope.environment,
+                        secretPath: scope.secretPath,
+                        permission
+                    })
+                })
             });
         } else {
             reset({
@@ -140,12 +160,21 @@ export const AddServiceTokenV3Modal = ({
                 scopes: any;
             };
             
+            // convert read/readWrite permission => ["read", "write"] format
+            const reformattedScopes = scopes.map((scope) => {
+                return ({
+                    environment: scope.environment,
+                    secretPath: scope.secretPath,
+                    permissions: permissionsMap[scope.permission]
+                });
+            })
+            
             if (serviceTokenData) {
                 // update
                 await updateMutateAsync({
                     serviceTokenDataId: serviceTokenData.serviceTokenDataId,
                     name,
-                    scopes,
+                    scopes: reformattedScopes,
                     expiresIn: expiresIn === "" ? undefined : Number(expiresIn)
                 });
             } else {
@@ -176,7 +205,7 @@ export const AddServiceTokenV3Modal = ({
                     name,
                     workspaceId: currentWorkspace._id,
                     publicKey,
-                    scopes,
+                    scopes: reformattedScopes,
                     expiresIn: expiresIn === "" ? undefined : Number(expiresIn),
                     encryptedKey: ciphertext,
                     nonce
