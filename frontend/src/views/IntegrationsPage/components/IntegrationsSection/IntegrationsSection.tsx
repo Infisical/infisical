@@ -17,9 +17,8 @@ import {
   Skeleton,
   Tooltip
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useGetWorkspaceBot } from "@app/hooks/api";
 import { TIntegration } from "@app/hooks/api/types";
 
 type Props = {
@@ -27,20 +26,22 @@ type Props = {
   integrations?: TIntegration[];
   isLoading?: boolean;
   onIntegrationDelete: (integration: TIntegration, cb: () => void) => void;
+  isBotActive: boolean | undefined;
+  workspaceId: string;
 };
 
 export const IntegrationsSection = ({
   integrations = [],
   environments = [],
   isLoading,
-  onIntegrationDelete
+  onIntegrationDelete,
+  isBotActive,
+  workspaceId
 }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteConfirmation"
   ] as const);
 
-  const { currentWorkspace } = useWorkspace();
-  const { data: bot } = useGetWorkspaceBot(currentWorkspace?._id ?? "");
   return (
     <div className="mb-8">
       <div className="mx-4 mb-4 mt-6 flex flex-col items-start justify-between px-2 text-xl">
@@ -53,12 +54,12 @@ export const IntegrationsSection = ({
         </div>
       )}
 
-      {!bot?.isActive && (
+      {!isBotActive && (
         <div className="px-6 py-4">
           <Alert hideTitle variant="warning">
             <AlertDescription>
               All the active integrations will be disabled. Disable End-to-End Encryption in{" "}
-              <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>
+              <Link href={`/project/${workspaceId}/settings`} passHref>
                 <a className="underline underline-offset-2">project settings </a>
               </Link>
               to re-enable it .
@@ -67,7 +68,7 @@ export const IntegrationsSection = ({
         </div>
       )}
 
-      {!isLoading && !integrations.length && bot?.isActive && (
+      {!isLoading && !integrations.length && isBotActive && (
         <div className="mx-6">
           <EmptyState
             className="rounded-md border border-mineshaft-700 pt-8 pb-4"
@@ -75,7 +76,7 @@ export const IntegrationsSection = ({
           />
         </div>
       )}
-      {!isLoading && bot?.isActive && (
+      {!isLoading && isBotActive && (
         <div className="flex flex-col space-y-4 p-6 pt-0">
           {integrations?.map((integration) => (
             <div
