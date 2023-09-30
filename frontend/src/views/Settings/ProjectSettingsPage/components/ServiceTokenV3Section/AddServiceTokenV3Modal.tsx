@@ -94,7 +94,7 @@ export type FormData = yup.InferType<typeof schema>;
 type Props = {
   popUp: UsePopUpState<["serviceTokenV3", "upgradePlan"]>;
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
-  handlePopUpToggle: (popUpName: keyof UsePopUpState<["serviceTokenV3"]>, state?: boolean) => void;
+  handlePopUpToggle: (popUpName: keyof UsePopUpState<["serviceTokenV3", "upgradePlan"]>, state?: boolean) => void;
 };
 
 export const AddServiceTokenV3Modal = ({
