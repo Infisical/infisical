@@ -383,15 +383,6 @@
       ]
     },
     {
-      "group": "Security",
-      "pages": [
-        "security/overview",
-        "security/data-model",
-        "security/mechanics",
-        "security/service-tokens"
-      ]
-    },
-    {
       "group": "Overview",
       "pages": ["changelog/overview"]
     },

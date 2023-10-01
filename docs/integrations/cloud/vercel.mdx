@@ -61,22 +61,23 @@ Select which Infisical environment secrets you want to sync to which Vercel app 
    ![integrations Vercel config](../../images/integrations/vercel/integrations-vercel-config-integrations-console.png) 
    ![integrations Vercel config](../../images/integrations/vercel/integrations-vercel-config-new-app.png) 
     
-    Create the application. As part of the form, set **Redirect URL** to `https://your-domain.com/integrations/vercel/oauth2/callback`. Also,
+    Create the application. As part of the form, set a **URL Slug** to a unique slug like `infisical-your-domain` and keep it handy. Also, set **Redirect URL** to `https://your-domain.com/integrations/vercel/oauth2/callback`. Lastly,
     be sure to set the API Scopes according to the second screenshot below.
    
    ![integrations Vercel config](../../images/integrations/vercel/integrations-vercel-config-new-app-form-1.png) 
    ![integrations Vercel config](../../images/integrations/vercel/integrations-vercel-config-new-app-form-2.png) 
    
-   ## Add your Vercel integration credentials to Infisical
+   ## Add your Vercel integration credentials and information to Infisical
    
-   Obtain the **Client (Integration) ID** and **Client (Integration) Secret** for your Vercel integration.
+   Obtain the **Client (Integration) ID** and **Client (Integration) Secret** as well as the **URL Slug** from earlier for your Vercel integration.
 
    ![integrations Vercel config](../../images/integrations/vercel/integrations-vercel-config-credentials.png) 
    
-   Back in your Infisical instance, add two new environment variables for the credentials of your Vercel integration.
+   Back in your Infisical instance, add three new environment variables for the credentials of your Vercel integration.
 
    - `CLIENT_ID_VERCEL`: The **Client (Integration) ID** of your Vercel integration.
    - `CLIENT_SECRET_VERCEL`: The **Client (Integration) Secret** of your Vercel integration.
+   - `CLIENT_SLUG_VERCEL`: The **URL Slug** of your Vercel integration.
    
   Once added, restart your Infisical instance and use the Vercel integration.
 
