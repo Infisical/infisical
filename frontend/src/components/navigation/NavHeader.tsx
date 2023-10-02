@@ -144,7 +144,7 @@ export default function NavHeader({
                   href={{ pathname: "/project/[id]/secrets/[env]", query }}
                 >
                   <a className="text-sm font-semibold text-primary/80 hover:text-primary">
-                    folderName
+                    {folderName}
                   </a>
                 </Link>
               )}
