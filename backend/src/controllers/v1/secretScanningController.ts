@@ -6,7 +6,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import GitAppInstallationSession from "../../ee/models/gitAppInstallationSession";
 import GitAppOrganizationInstallation from "../../ee/models/gitAppOrganizationInstallation";
-import GitRisks from "../../ee/models/gitRisks";
+import GitRisks, { RiskStatus } from "../../ee/models/gitRisks";
 import { Organization } from "../../models";
 
 import { scanGithubFullRepoForSecretLeaks } from "../../queues/secret-scanning/githubScanFullRepository";
@@ -19,6 +19,7 @@ import {
   OrgPermissionSubjects,
   getUserOrgPermissions
 } from "../../ee/services/RoleService";
+import { SecretScanningService } from "../../services";
 
 export const createInstallationSession = async (req: Request, res: Response) => {
   const sessionId = crypto.randomBytes(16).toString("hex");
@@ -89,6 +90,11 @@ export const linkInstallationToOrganization = async (req: Request, res: Response
     }
   ).lean();
 
+  // this function will create the Git secret blind index data & salt if it doesn't exist (ie. legacy situation)
+  const salt = await SecretScanningService.getGitSecretBlindIndexSalt({
+    organizationId: installationSession.organization.toString()
+  });
+
   const octokit = new ProbotOctokit({
     auth: {
       appId: await getSecretScanningGitAppId(),
@@ -104,7 +110,8 @@ export const linkInstallationToOrganization = async (req: Request, res: Response
     scanGithubFullRepoForSecretLeaks({
       organizationId: installationSession.organization.toString(),
       installationId,
-      repository: { id: repository.id, fullName: repository.full_name }
+      repository: { id: repository.id, fullName: repository.full_name },
+      salt
     });
   }
   res.json(installationLink);
@@ -151,7 +158,7 @@ export const getRisksForOrganization = async (req: Request, res: Response) => {
   });
 };
 
-export const updateRisksStatus = async (req: Request, res: Response) => {
+export const updateRiskStatus = async (req: Request, res: Response) => {
   const {
     params: { organizationId, riskId },
     body: { status }
@@ -163,6 +170,28 @@ export const updateRisksStatus = async (req: Request, res: Response) => {
     OrgPermissionSubjects.SecretScanning
   );
 
-  const risk = await GitRisks.findByIdAndUpdate(riskId, { status }).lean();
+  const risk = await GitRisks.findByIdAndUpdate(riskId, { status }).select("+gitSecretBlindIndex").lean();
+
+  let gitSecretBlindIndex: string | undefined = risk?.gitSecretBlindIndex;
+  
+  // legacy situation
+  if (!gitSecretBlindIndex) {
+    gitSecretBlindIndex = await SecretScanningService.createGitSecretBlindIndexData({ organizationId });
+  }
+
+  // this means that the Git secret will hold the most recently defined risk status, 
+  // even if not all the fingerprints with the same blind index have been changed
+  if (gitSecretBlindIndex) {
+    await SecretScanningService.updateGitSecret({
+      gitSecretBlindIndex,
+      organizationId,
+      status: status as RiskStatus
+    })
+  }
+
+  // // now we go back and update all Git risks with the same blind index 
+  // // (I think we should put this as a pop up so the user can choose to do that)
+  // await GitRisks.updateMany({ gitSecretBlindIndex }, { status }).select("+gitSecretBlindIndex").lean();
+
   res.json(risk);
 };

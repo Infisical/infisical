@@ -1,17 +1,18 @@
 import Queue, { Job } from "bull";
 import { ProbotOctokit } from "probot"
-import { createHash } from "crypto";
+import { Schema } from "mongoose";
 
 import TelemetryService from "../../services/TelemetryService";
 import { sendMail } from "../../helpers";
-import GitRisks from "../../ee/models/gitRisks";
+import { RiskStatus } from "../../ee/models/gitRisks";
 import { MembershipOrg, User } from "../../models";
 import { ADMIN, OWNER } from "../../variables";
 import { convertKeysToLowercase, scanFullRepoContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
 import { SecretMatch } from "../../ee/services/GithubSecretScanning/types";
-
-import { TScanFullRepoQueueDetails } from "./types";
+import { BatchRiskUpdateItem, TScanFullRepoQueueDetails } from "./types";
+import { SecretScanningService } from "../../services";
+import { bulkWriteRiskData } from "./bulkWriteHelper";
 
 export const githubFullRepositorySecretScan = new Queue("github-full-repository-secret-scanning", "redis://redis:6379");
 
@@ -19,7 +20,8 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
   const {
     organizationId,
     repository,
-    installationId
+    installationId,
+    salt
   }: TScanFullRepoQueueDetails = job.data;
   const [owner, repo] = repository.fullName.split("/");
 
@@ -33,34 +35,49 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
     });
 
     const findings: SecretMatch[] = await scanFullRepoContentAndGetFindings(octokit, installationId, repository.fullName)
-    const batchUpdateOperations: any[] = [];
+    const batchRiskUpdate: BatchRiskUpdateItem[] = [];
+    const secretFindings: string[] = [];
 
     for (const finding of findings) {
 
-      // Create a SHA3-512 hash of the secret (used for new pushes to more efficiently check repo)
-      const sha512Hash = createHash("sha3-512");
-      sha512Hash.update(finding.Secret);
-      const hashResult = sha512Hash.digest("hex");
-
-      const updateOperation = {
-        updateOne: {
-          filter: { fingerprint: finding.Fingerprint },
-          update: {
-            ...convertKeysToLowercase(finding),
-            installationId: installationId,
-            organization: organizationId,
-            repositoryFullName: repository.fullName,
-            repositoryId: repository.id,
-            hashedSecret: hashResult,
-          },
-          upsert: true,
+      batchRiskUpdate.push({
+        fingerprint: finding.Fingerprint,
+        data: {
+          ...convertKeysToLowercase(finding),
+          installationId: installationId,
+          organization: organizationId as unknown as Schema.Types.ObjectId,
+          repositoryFullName: repository.fullName,
+          repositoryId: repository.id.toString(),
+          status: RiskStatus.UNRESOLVED,
+          gitSecretBlindIndex: "", // placeholder until we create the blind indexes in bulk
         },
-      };
+      });
 
-      batchUpdateOperations.push(updateOperation);
+      secretFindings.push(finding.Secret);
     }
 
-    await GitRisks.bulkWrite(batchUpdateOperations);
+    if (batchRiskUpdate.length === 0) return;
+
+    // setup blind indexing for the Git secret findings
+    const gitSecretBlindIndexes = await SecretScanningService.createGitSecrets({
+      gitSecrets: secretFindings,
+      organizationId,
+      salt,
+      status: RiskStatus.UNRESOLVED
+    });
+
+    if (findings.length !== gitSecretBlindIndexes.length) {
+      throw new Error("Length mismatch between the Git secret findings and the new Git secret blind indexes");
+    }
+
+    // update the batch update operation with the corresponding gitSecretBlindIndex 
+    // this is needed to coordinate Git risk status updates across GitRisks and GitSecret
+    for (let i = 0; i < findings.length; i++) {
+      batchRiskUpdate[i].data.gitSecretBlindIndex = gitSecretBlindIndexes[i];
+    }
+    
+    // check for duplicate data and bulk update Git risks
+    await bulkWriteRiskData(batchRiskUpdate);
 
     // get emails of admins
     const adminsOfWork = await MembershipOrg.find({

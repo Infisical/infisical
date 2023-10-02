@@ -240,4 +240,44 @@ export const BotNotFoundError = (error?: Partial<RequestErrorContext>) => new Re
     stack: error?.stack,
 })
 
+//* ----->[GIT SECRET BLIND INDEX SALT RETRIEVAL ERRORS]<-----
+export const GitSecretBlindIndexSaltNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? "git_secret_blind_index_salt_not_found_error",
+    message: error?.message ?? "Could not find the Git secret blind index salt needed for secret scanning",
+    context: error?.context,
+    stack: error?.stack,
+});
+
+//* ----->[GIT SECRET BLIND INDEX SALT CREATION ERRORS]<-----
+export const GitSecretBlindIndexHashingError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 500,
+    type: error?.type ?? "git_secret_blind_index_hashing_error",
+    message: error?.message ?? "Error hashing the Git secret value to create the blind index needed for secret scanning",
+    context: error?.context,
+    stack: error?.stack,
+}); 
+
+//* ----->[GIT SECRET NOT FOUND ERRORS]<-----
+export const GitSecretNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? "git_secret_not_found_error",
+    message: error?.message ?? "Error finding the Git secret by blind index for secret scanning",
+    context: error?.context,
+    stack: error?.stack,
+}); 
+
+//* ----->[GIT SECRET BULK UPDATE ERRORS]<-----
+export const GitSecretsBulkUpdateError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? "git_secret_bulk_update_error",
+    message: error?.message ?? "Error updating the Git secrets for secret scanning",
+    context: error?.context,
+    stack: error?.stack,
+}); 
+
 //* ----->[MISC ERRORS]<-----

@@ -7,6 +7,7 @@ import EventService from "./EventService";
 import IntegrationService from "./IntegrationService";
 import TokenService from "./TokenService";
 import SecretService from "./SecretService";
+import SecretScanningService from "./SecretScanningService"
 
 export {
   TelemetryService,
@@ -17,4 +18,5 @@ export {
   IntegrationService,
   TokenService,
   SecretService,
+  SecretScanningService
 }

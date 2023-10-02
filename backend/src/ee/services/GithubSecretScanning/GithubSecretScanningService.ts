@@ -2,6 +2,7 @@ import { Probot } from "probot";
 import GitRisks from "../../models/gitRisks";
 import GitAppOrganizationInstallation from "../../models/gitAppOrganizationInstallation";
 import { scanGithubPushEventForSecretLeaks } from "../../../queues/secret-scanning/githubScanPushEvent";
+import { SecretScanningService } from "../../../services";
 
 export default async (app: Probot) => {
   app.on("installation.deleted", async (context) => {
@@ -30,17 +31,30 @@ export default async (app: Probot) => {
       return
     }
 
-    const installationLinkToOrgExists = await GitAppOrganizationInstallation.findOne({ installationId: installation?.id }).lean()
+    const installationLinkToOrgExists = await GitAppOrganizationInstallation.findOne({ 
+      installationId: installation?.id
+    }).lean()
+
     if (!installationLinkToOrgExists) {
       return
+    }
+
+    const organizationId = installationLinkToOrgExists.organizationId;
+
+    let salt: string | undefined;
+    salt = await SecretScanningService.getGitSecretBlindIndexSalt({ organizationId })
+
+    if (!salt) {
+      salt = await SecretScanningService.createGitSecretBlindIndexData({ organizationId });
     }
 
     scanGithubPushEventForSecretLeaks({
       commits: commits,
       pusher: { name: pusher.name, email: pusher.email },
       repository: { fullName: repository.full_name, id: repository.id },
-      organizationId: installationLinkToOrgExists.organizationId,
-      installationId: installation.id.toString()
+      organizationId,
+      installationId: installation.id.toString(),
+      salt
     })
   });
 };

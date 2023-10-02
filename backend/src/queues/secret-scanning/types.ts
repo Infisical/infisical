@@ -1,4 +1,6 @@
 import { Commit } from "@octokit/webhooks-types";
+import { RiskStatus } from "../../ee/models";
+import { Schema } from "mongoose";
 
 type TScanQueueDetailsBase = {
   organizationId: string,
@@ -7,6 +9,7 @@ type TScanQueueDetailsBase = {
     fullName: string
   },
   installationId: string,
+  salt: string
 };
 
 export type TScanFullRepoQueueDetails = TScanQueueDetailsBase;
@@ -22,4 +25,24 @@ export type TScanPushEventQueueDetails = TScanQueueDetailsBase & {
 export interface GitHubRepoFileContent {
   content: string | null;
   errorMessage?: string;
+}
+
+export interface BatchRiskUpdateItem {
+  fingerprint: string;
+  data: {
+    installationId: string;
+    organization: Schema.Types.ObjectId;
+    repositoryFullName: string;
+    repositoryId: string;
+    status: RiskStatus;
+    gitSecretBlindIndex: string;
+  };
+}
+
+export interface BulkOperationItem {
+  updateOne: {
+    filter: { fingerprint: string };
+    update: { $set: BatchRiskUpdateItem["data"] };
+    upsert: true;
+  };
 }

@@ -6,7 +6,7 @@ import {
   getCurrentOrganizationInstallationStatus,
   getRisksForOrganization,
   linkInstallationToOrganization,
-  updateRisksStatus
+  updateRiskStatus
 } from "../../../controllers/v1/secretScanningController";
 import { AuthMode } from "../../../variables";
 
@@ -47,7 +47,7 @@ router.post(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  updateRisksStatus
+  updateRiskStatus
 );
 
 export default router;

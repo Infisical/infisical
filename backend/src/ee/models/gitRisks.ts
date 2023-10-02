@@ -9,6 +9,7 @@ export enum RiskStatus {
 
 export type GitRisks = {
   id: string;
+  gitSecretBlindIndex?: string; // New field to map to the Git secrets to enable updating the status across schemas
   description: string;
   startLine: string;
   endLine: string;
@@ -16,7 +17,6 @@ export type GitRisks = {
   endColumn: string;
   match: string;
   secret: string;
-  hashedSecret: string; // new value to efficiently find same secret in a commit/ same repo file
   file: string;
   symlinkFile: string;
   commit: string;
@@ -45,6 +45,10 @@ export type GitRisks = {
 const gitRisks = new Schema<GitRisks>({
   id: {
     type: String,
+  },
+  gitSecretBlindIndex: {
+    type: String,
+    select: false,
   },
   description: {
     type: String,
@@ -131,10 +135,6 @@ const gitRisks = new Schema<GitRisks>({
     type: String,
     enum: RiskStatus,
     default: RiskStatus.UNRESOLVED,
-  }, 
-  hashedSecret: {
-    type: String, // SHA3-512 hash of the secret
-    select: false,
   },
 }, { timestamps: true });
 

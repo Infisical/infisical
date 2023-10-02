@@ -25,6 +25,7 @@
       "only-multiline"
     ],
     "@typescript-eslint/no-unused-vars": "off",
+    "@typescript-eslint/no-extra-semi": "off", // added to be able to push
     "unused-imports/no-unused-imports": "error",
     "unused-imports/no-unused-vars": [
       "warn",
