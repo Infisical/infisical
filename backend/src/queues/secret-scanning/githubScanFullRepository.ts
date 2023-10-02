@@ -72,7 +72,6 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
     // this is needed to coordinate Git risk status updates across GitRisks and GitSecret
     for (let i = 0; i < findings.length; i++) {
       batchRiskUpdate[i].data.gitSecretBlindIndex = gitSecretBlindIndexes[i];
-      },
     }
     
     // check for duplicate data and bulk update Git risks
