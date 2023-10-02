@@ -1,6 +1,14 @@
 import { Request, Response } from "express";
 import { PipelineStage, Types } from "mongoose";
-import { Folder, Membership, Secret, ServiceTokenData, TFolderSchema, User } from "../../../models";
+import {
+  Folder,
+  Membership,
+  Secret,
+  ServiceTokenData,
+  TFolderSchema,
+  User,
+  Workspace
+} from "../../../models";
 import {
   ActorType,
   AuditLog,
@@ -19,7 +27,7 @@ import {
 import { EESecretService } from "../../services";
 import { getLatestSecretVersionIds } from "../../helpers/secretVersion";
 // import Folder, { TFolderSchema } from "../../../models/folder";
-import { searchByFolderId } from "../../../services/FolderService";
+import { getFolderByPath, searchByFolderId } from "../../../services/FolderService";
 import { EEAuditLogService, EELicenseService } from "../../services";
 import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
 import { validateRequest } from "../../../helpers/validation";
@@ -41,6 +49,7 @@ import {
   getUserProjectPermissions
 } from "../../services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
+import { BadRequestError } from "../../../utils/errors";
 
 /**
  * Return secret snapshots for workspace with id [workspaceId]
@@ -95,7 +104,7 @@ export const getWorkspaceSecretSnapshots = async (req: Request, res: Response) =
     */
   const {
     params: { workspaceId },
-    query: { environment, folderId, offset, limit }
+    query: { environment, directory, offset, limit }
   } = await validateRequest(GetWorkspaceSecretSnapshotsV1, req);
 
   const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
@@ -104,10 +113,20 @@ export const getWorkspaceSecretSnapshots = async (req: Request, res: Response) =
     ProjectPermissionSub.SecretRollback
   );
 
+  let folderId = "root";
+  const folders = await Folder.findOne({ workspace: workspaceId, environment });
+  if (!folders && directory !== "/") throw BadRequestError({ message: "Folder not found" });
+
+  if (folders) {
+    const folder = getFolderByPath(folders?.nodes, directory);
+    if (!folder) throw BadRequestError({ message: "Invalid folder id" });
+    folderId = folder.id;
+  }
+
   const secretSnapshots = await SecretSnapshot.find({
     workspace: workspaceId,
     environment,
-    folderId: folderId || "root"
+    folderId
   })
     .sort({ createdAt: -1 })
     .skip(offset)
@@ -126,7 +145,7 @@ export const getWorkspaceSecretSnapshots = async (req: Request, res: Response) =
 export const getWorkspaceSecretSnapshotsCount = async (req: Request, res: Response) => {
   const {
     params: { workspaceId },
-    query: { environment, folderId }
+    query: { environment, directory }
   } = await validateRequest(GetWorkspaceSecretSnapshotsCountV1, req);
 
   const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
@@ -135,10 +154,20 @@ export const getWorkspaceSecretSnapshotsCount = async (req: Request, res: Respon
     ProjectPermissionSub.SecretRollback
   );
 
+  let folderId = "root";
+  const folders = await Folder.findOne({ workspace: workspaceId, environment });
+  if (!folders && directory !== "/") throw BadRequestError({ message: "Folder not found" });
+
+  if (folders) {
+    const folder = getFolderByPath(folders?.nodes, directory);
+    if (!folder) throw BadRequestError({ message: "Invalid folder id" });
+    folderId = folder.id;
+  }
+
   const count = await SecretSnapshot.countDocuments({
     workspace: workspaceId,
     environment,
-    folderId: folderId || "root"
+    folderId
   });
 
   return res.status(200).send({
@@ -206,7 +235,7 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
 
   const {
     params: { workspaceId },
-    body: { folderId, environment, version }
+    body: { directory, environment, version }
   } = await validateRequest(RollbackWorkspaceSecretSnapshotV1, req);
 
   const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
@@ -214,6 +243,16 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
     ProjectPermissionActions.Create,
     ProjectPermissionSub.SecretRollback
   );
+
+  let folderId = "root";
+  const folders = await Folder.findOne({ workspace: workspaceId, environment });
+  if (!folders && directory !== "/") throw BadRequestError({ message: "Folder not found" });
+
+  if (folders) {
+    const folder = getFolderByPath(folders?.nodes, directory);
+    if (!folder) throw BadRequestError({ message: "Invalid folder id" });
+    folderId = folder.id;
+  }
 
   // validate secret snapshot
   const secretSnapshot = await SecretSnapshot.findOne({
@@ -781,7 +820,10 @@ export const addWorkspaceTrustedIp = async (req: Request, res: Response) => {
     ProjectPermissionSub.IpAllowList
   );
 
-  const plan = await EELicenseService.getPlan(req.workspace.organization);
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+
+  const plan = await EELicenseService.getPlan(workspace.organization);
 
   if (!plan.ipAllowlisting)
     return res.status(400).send({
@@ -844,7 +886,10 @@ export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
     ProjectPermissionSub.IpAllowList
   );
 
-  const plan = await EELicenseService.getPlan(req.workspace.organization);
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+
+  const plan = await EELicenseService.getPlan(workspace.organization);
 
   if (!plan.ipAllowlisting)
     return res.status(400).send({
@@ -933,7 +978,10 @@ export const deleteWorkspaceTrustedIp = async (req: Request, res: Response) => {
     ProjectPermissionSub.IpAllowList
   );
 
-  const plan = await EELicenseService.getPlan(req.workspace.organization);
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+
+  const plan = await EELicenseService.getPlan(workspace.organization);
 
   if (!plan.ipAllowlisting)
     return res.status(400).send({

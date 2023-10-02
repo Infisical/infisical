@@ -1,5 +1,5 @@
 import { Document, Schema, Types, model } from "mongoose";
-import { ACCEPTED, ADMIN, CUSTOM, INVITED, MEMBER, OWNER } from "../variables";
+import { ACCEPTED, ADMIN, CUSTOM, INVITED, MEMBER } from "../variables";
 
 export interface IMembershipOrg extends Document {
   _id: Types.ObjectId;
@@ -26,7 +26,7 @@ const membershipOrgSchema = new Schema(
     },
     role: {
       type: String,
-      enum: [OWNER, ADMIN, MEMBER, CUSTOM],
+      enum: [ADMIN, MEMBER, CUSTOM],
       required: true
     },
     status: {

@@ -34,9 +34,9 @@ export const validateClientForIntegration = async ({
   if (!integration) throw IntegrationNotFoundError();
 
   const integrationAuth = await IntegrationAuth.findById(integration.integrationAuth).select(
-    "+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt"
+    "+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt metadata"
   );
-
+  
   if (!integrationAuth) throw IntegrationAuthNotFoundError();
 
   const accessToken = (
@@ -76,8 +76,14 @@ export const CreateIntegrationV1 = z.object({
     owner: z.string().trim().optional(),
     path: z.string().trim().optional(),
     region: z.string().trim().optional(),
+    scope: z.string().trim().optional(),
     metadata: z.object({
-      secretSuffix: z.string().optional()
+      secretPrefix: z.string().optional(),
+      secretSuffix: z.string().optional(),
+      secretGCPLabel: z.object({
+        labelName: z.string(),
+        labelValue: z.string()
+      }).optional(),
     }).optional()
   })
 });

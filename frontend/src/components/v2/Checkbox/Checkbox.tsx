@@ -30,9 +30,10 @@ export const Checkbox = ({
     <div className="flex items-center font-inter text-bunker-300">
       <CheckboxPrimitive.Root
         className={twMerge(
-          "flex items-center justify-center w-4 h-4 mr-3 transition-all rounded shadow border border-mineshaft-400 hover:bg-mineshaft-500 bg-mineshaft-600",
+          "flex items-center justify-center w-4 h-4 transition-all rounded shadow border border-mineshaft-400 hover:bg-mineshaft-500 bg-mineshaft-600",
           isDisabled && "bg-bunker-400 hover:bg-bunker-400",
           isChecked && "bg-primary hover:bg-primary",
+          Boolean(children) && "mr-3",
           className
         )}
         required={isRequired}

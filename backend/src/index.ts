@@ -38,7 +38,8 @@ import {
   membership as v1MembershipRouter,
   organization as v1OrganizationRouter,
   password as v1PasswordRouter,
-  secretImport as v1SecretImportRouter,
+  secretApprovalPolicy as v1SecretApprovalPolicy,
+  secretImps as v1SecretImpsRouter,
   secret as v1SecretRouter,
   secretsFolder as v1SecretsFolder,
   serviceToken as v1ServiceTokenRouter,
@@ -138,6 +139,7 @@ const main = async () => {
 
   app.use((req, res, next) => {
     // default to IP address provided by Cloudflare
+    // #swagger.ignore = true
     const cfIp = req.headers["cf-connecting-ip"];
     req.realIP = Array.isArray(cfIp) ? cfIp[0] : (cfIp as string) || req.ip;
     next();
@@ -153,7 +155,7 @@ const main = async () => {
   app.use("/api/v1/sso", eeSSORouter);
   app.use("/api/v1/cloud-products", eeCloudProductsRouter);
 
-  // v1 routes (default)
+  // v1 routes
   app.use("/api/v1/signup", v1SignupRouter);
   app.use("/api/v1/auth", v1AuthRouter);
   app.use("/api/v1/bot", v1BotRouter);
@@ -162,7 +164,7 @@ const main = async () => {
   app.use("/api/v1/organization", v1OrganizationRouter);
   app.use("/api/v1/workspace", v1WorkspaceRouter);
   app.use("/api/v1/membership-org", v1MembershipOrgRouter);
-  app.use("/api/v1/membership", v1MembershipRouter);
+  app.use("/api/v1/membership", v1MembershipRouter); //
   app.use("/api/v1/key", v1KeyRouter);
   app.use("/api/v1/invite-org", v1InviteOrgRouter);
   app.use("/api/v1/secret", v1SecretRouter); // deprecate
@@ -173,8 +175,9 @@ const main = async () => {
   app.use("/api/v1/folders", v1SecretsFolder);
   app.use("/api/v1/secret-scanning", v1SecretScanningRouter);
   app.use("/api/v1/webhooks", v1WebhooksRouter);
-  app.use("/api/v1/secret-imports", v1SecretImportRouter);
+  app.use("/api/v1/secret-imports", v1SecretImpsRouter);
   app.use("/api/v1/roles", v1RoleRouter);
+  app.use("/api/v1/secret-approvals", v1SecretApprovalPolicy);
 
   // v2 routes (improvements)
   app.use("/api/v2/signup", v2SignupRouter);

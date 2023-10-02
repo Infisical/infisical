@@ -12,6 +12,7 @@ import {
   INTEGRATION_BITBUCKET_API_URL,
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_NORTHFLANK_API_URL,
+  INTEGRATION_QOVERY_API_URL,
   INTEGRATION_RAILWAY_API_URL,
   INTEGRATION_SET,
   INTEGRATION_VERCEL_API_URL,
@@ -341,6 +342,362 @@ export const getIntegrationAuthVercelBranches = async (req: Request, res: Respon
 
   return res.status(200).send({
     branches
+  });
+};
+
+/**
+ * Return list of Qovery Orgs for a specific user
+ * @param req
+ * @param res
+ */
+export const getIntegrationAuthQoveryOrgs = async (req: Request, res: Response) => {
+  const {
+    params: { integrationAuthId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthQoveryOrgsV1, req);
+
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
+
+  const { data } = await standardRequest.get(
+    `${INTEGRATION_QOVERY_API_URL}/organization`,
+    {
+      headers: {
+        Authorization: `Token ${accessToken}`,
+        "Accept": "application/json",
+      },
+    }
+  );
+
+  interface QoveryOrg {
+    id: string;
+    name: string;
+  }
+
+  const orgs = data.results.map((a: QoveryOrg) => {
+    return {
+      name: a.name,
+      orgId: a.id,
+    };
+  });
+
+  return res.status(200).send({
+    orgs
+  });
+};
+
+/**
+ * Return list of Qovery Projects for a specific orgId
+ * @param req
+ * @param res
+ */
+export const getIntegrationAuthQoveryProjects = async (req: Request, res: Response) => {
+  const {
+    params: { integrationAuthId },
+    query: { orgId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthQoveryProjectsV1, req);
+  
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
+  
+  interface Project {
+    name: string;
+    projectId: string;
+  }
+
+  interface QoveryProject {
+    id: string;
+    name: string;
+  }
+  
+  let projects: Project[] = [];
+  
+  if (orgId && orgId !== "") {
+    const { data } = await standardRequest.get(
+      `${INTEGRATION_QOVERY_API_URL}/organization/${orgId}/project`,
+      {
+        headers: {
+          Authorization: `Token ${accessToken}`,
+          "Accept": "application/json",
+        },
+      }
+    );
+
+    projects = data.results.map((a: QoveryProject) => {
+      return {
+        name: a.name,
+        projectId: a.id,
+      };
+    });
+  }
+
+  return res.status(200).send({
+    projects
+  });
+};
+
+/**
+ * Return list of Qovery environments for project with id [projectId]
+ * @param req
+ * @param res
+ */
+export const getIntegrationAuthQoveryEnvironments = async (req: Request, res: Response) => {
+  const {
+    params: { integrationAuthId },
+    query: { projectId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthQoveryEnvironmentsV1, req);
+
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
+  
+  interface Environment {
+    name: string;
+    environmentId: string;
+  }
+
+  interface QoveryEnvironment {
+    id: string;
+    name: string;
+  }
+  
+  let environments: Environment[] = [];
+  
+  if (projectId && projectId !== "" && projectId !== "none") { // TODO: fix
+    const { data } = await standardRequest.get(
+      `${INTEGRATION_QOVERY_API_URL}/project/${projectId}/environment`,
+      {
+        headers: {
+          Authorization: `Token ${accessToken}`,
+          "Accept": "application/json",
+        },
+      }
+    );
+
+    environments = data.results.map((a: QoveryEnvironment) => {
+      return {
+        name: a.name,
+        environmentId: a.id,
+      };
+    });
+  }
+
+  return res.status(200).send({
+    environments
+  });
+};
+
+/**
+ * Return list of Qovery apps for environment with id [environmentId]
+ * @param req
+ * @param res
+ */
+export const getIntegrationAuthQoveryApps = async (req: Request, res: Response) => {
+  const {
+    params: { integrationAuthId },
+    query: { environmentId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthQoveryScopesV1, req);
+
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
+  
+  interface App {
+    name: string;
+    appId: string;  
+  }
+
+  interface QoveryApp {
+    id: string;
+    name: string;
+  }
+  
+  let apps: App[] = [];
+  
+  if (environmentId && environmentId !== "") {
+    const { data } = await standardRequest.get(
+      `${INTEGRATION_QOVERY_API_URL}/environment/${environmentId}/application`,
+      {
+        headers: {
+          Authorization: `Token ${accessToken}`,
+          "Accept": "application/json",
+        },
+      }
+    );
+
+    apps = data.results.map((a: QoveryApp) => {
+      return {
+        name: a.name,
+        appId: a.id,
+      };
+    });
+  }
+
+  return res.status(200).send({
+    apps
+  });
+};
+
+/**
+ * Return list of Qovery containers for environment with id [environmentId]
+ * @param req
+ * @param res
+ */
+export const getIntegrationAuthQoveryContainers = async (req: Request, res: Response) => {
+  const {
+    params: { integrationAuthId },
+    query: { environmentId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthQoveryScopesV1, req);
+
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
+  
+  interface Container {
+    name: string;
+    appId: string;
+  }
+
+  interface QoveryContainer {
+    id: string;
+    name: string;
+  }
+  
+  let containers: Container[] = [];
+  
+  if (environmentId && environmentId !== "") {
+    const { data } = await standardRequest.get(
+      `${INTEGRATION_QOVERY_API_URL}/environment/${environmentId}/container`,
+      {
+        headers: {
+          Authorization: `Token ${accessToken}`,
+          "Accept": "application/json",
+        },
+      }
+    );
+
+    containers = data.results.map((a: QoveryContainer) => {
+      return {
+        name: a.name,
+        appId: a.id,
+      };
+    });
+  }
+
+  return res.status(200).send({
+    containers
+  });
+};
+
+/**
+ * Return list of Qovery jobs for environment with id [environmentId]
+ * @param req
+ * @param res
+ */
+export const getIntegrationAuthQoveryJobs = async (req: Request, res: Response) => {
+  const {
+    params: { integrationAuthId },
+    query: { environmentId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthQoveryScopesV1, req);
+
+  // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
+  
+  interface Job {
+    name: string;
+    appId: string;  
+  }
+
+  interface QoveryJob {
+    id: string;
+    name: string;
+  }
+  
+  let jobs: Job[] = [];
+  
+  if (environmentId && environmentId !== "") {
+    const { data } = await standardRequest.get(
+      `${INTEGRATION_QOVERY_API_URL}/environment/${environmentId}/job`,
+      {
+        headers: {
+          Authorization: `Token ${accessToken}`,
+          "Accept": "application/json",
+        },
+      }
+    );
+
+    jobs = data.results.map((a: QoveryJob) => {
+      return {
+        name: a.name,
+        appId: a.id,
+      };
+    });
+  }
+
+  return res.status(200).send({
+    jobs
   });
 };
 
@@ -713,11 +1070,12 @@ export const getIntegrationAuthNorthflankSecretGroups = async (req: Request, res
  */
 export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: Response) => {
   const {
-    params: { integrationAuthId, appId }
+    params: { integrationAuthId },
+    query: { appId }
   } = await validateRequest(reqValidator.GetIntegrationAuthTeamCityBuildConfigsV1, req);
-
+  
   // TODO(akhilmhdh): remove class -> static function path and makes these into reusable independent functions
-  const { integrationAuth } = await getIntegrationAuthAccessHelper({
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
     integrationAuthId: new ObjectId(integrationAuthId)
   });
 
@@ -749,13 +1107,13 @@ export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: 
     const {
       data: { buildType }
     } = await standardRequest.get<GetTeamCityBuildConfigsRes>(
-      `${req.integrationAuth.url}/app/rest/buildTypes`,
+      `${integrationAuth.url}/app/rest/buildTypes`,
       {
         params: {
           locator: `project:${appId}`
         },
         headers: {
-          Authorization: `Bearer ${req.accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           Accept: "application/json"
         }
       }

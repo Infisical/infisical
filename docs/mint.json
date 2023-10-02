@@ -126,6 +126,8 @@
           "group": "SSO",
           "pages": [
             "documentation/platform/sso/overview",
+            "documentation/platform/sso/google",
+            "documentation/platform/sso/github",
             "documentation/platform/sso/okta",
             "documentation/platform/sso/azure",
             "documentation/platform/sso/jumpcloud"
@@ -150,6 +152,7 @@
         "self-hosting/configuration/envars",
         "self-hosting/configuration/email",
         "self-hosting/configuration/redis",
+        "self-hosting/configuration/sso",
         "self-hosting/faq"
       ]
     },
@@ -166,6 +169,7 @@
             "cli/commands/run",
             "cli/commands/secrets",
             "cli/commands/export",
+            "cli/commands/service-token",
             "cli/commands/vault",
             "cli/commands/user",
             "cli/commands/reset",
@@ -235,6 +239,7 @@
         "integrations/cloud/teamcity",
         "integrations/cloud/cloudflare-pages",
         "integrations/cloud/checkly",
+        "integrations/cloud/qovery",
         "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",
         "integrations/cloud/gcp-secret-manager",
@@ -332,6 +337,15 @@
           ]
         },
         {
+          "group": "Folders",
+          "pages": [
+            "api-reference/endpoints/folders/list",
+            "api-reference/endpoints/folders/create",
+            "api-reference/endpoints/folders/update",
+            "api-reference/endpoints/folders/delete"
+          ]
+        },
+        {
           "group": "Secrets",
           "pages": [
             "api-reference/endpoints/secrets/list",
@@ -341,6 +355,15 @@
             "api-reference/endpoints/secrets/delete",
             "api-reference/endpoints/secrets/versions",
             "api-reference/endpoints/secrets/rollback-version"
+          ]
+        },
+        {
+          "group": "Secret imports",
+          "pages": [
+            "api-reference/endpoints/secret-imports/list",
+            "api-reference/endpoints/secret-imports/create",
+            "api-reference/endpoints/secret-imports/update",
+            "api-reference/endpoints/secret-imports/delete"
           ]
         },
         {
@@ -378,7 +401,8 @@
         "contributing/overview",
         "contributing/code-of-conduct",
         "contributing/developing",
-        "contributing/pull-requests"
+        "contributing/pull-requests",
+        "contributing/faq"
       ]
     }
   ],

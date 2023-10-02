@@ -103,7 +103,10 @@ export const getSecretsBotHelper = async ({
   environment: string;
   secretPath: string;
 }) => {
-  const content: Record<string, { value: string; comment?: string }> = {};
+  const content: Record<
+    string,
+    { value: string; comment?: string; skipMultilineEncoding?: boolean }
+  > = {};
   const key = await getKey({ workspaceId: workspaceId });
 
   let folderId = "root";
@@ -134,7 +137,8 @@ export const getSecretsBotHelper = async ({
   const importedSecrets = await getAllImportedSecrets(
     workspaceId.toString(),
     environment,
-    folderId
+    folderId,
+    () => true // integrations are setup to read all the ones
   );
 
   importedSecrets.forEach(({ secrets }) => {
@@ -164,6 +168,8 @@ export const getSecretsBotHelper = async ({
         });
         content[secretKey].comment = commentValue;
       }
+
+      content[secretKey].skipMultilineEncoding = secret.skipMultilineEncoding;
     });
   });
 
@@ -193,6 +199,8 @@ export const getSecretsBotHelper = async ({
       });
       content[secretKey].comment = commentValue;
     }
+
+    content[secretKey].skipMultilineEncoding = secret.skipMultilineEncoding;
   });
 
   await expandSecrets(workspaceId.toString(), key, content);

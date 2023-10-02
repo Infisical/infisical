@@ -220,11 +220,11 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 			workspaceFile.WorkspaceId = params.WorkspaceId
 		}
 
-		// Verify environment
-		err = ValidateEnvironmentName(params.Environment, workspaceFile.WorkspaceId, loggedInUserDetails.UserCredentials)
-		if err != nil {
-			return nil, fmt.Errorf("unable to validate environment name because [err=%s]", err)
-		}
+		// // Verify environment
+		// err = ValidateEnvironmentName(params.Environment, workspaceFile.WorkspaceId, loggedInUserDetails.UserCredentials)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("unable to validate environment name because [err=%s]", err)
+		// }
 
 		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId,
 			params.Environment, params.TagSlugs, params.SecretsPath, params.IncludeImport)
@@ -253,32 +253,32 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 	return secretsToReturn, errorToReturn
 }
 
-func ValidateEnvironmentName(environmentName string, workspaceId string, userLoggedInDetails models.UserCredentials) error {
-	httpClient := resty.New()
-	httpClient.SetAuthToken(userLoggedInDetails.JTWToken).
-		SetHeader("Accept", "application/json")
+// func ValidateEnvironmentName(environmentName string, workspaceId string, userLoggedInDetails models.UserCredentials) error {
+// 	httpClient := resty.New()
+// 	httpClient.SetAuthToken(userLoggedInDetails.JTWToken).
+// 		SetHeader("Accept", "application/json")
 
-	response, err := api.CallGetAccessibleEnvironments(httpClient, api.GetAccessibleEnvironmentsRequest{WorkspaceId: workspaceId})
-	if err != nil {
-		return err
-	}
+// 	response, err := api.CallGetAccessibleEnvironments(httpClient, api.GetAccessibleEnvironmentsRequest{WorkspaceId: workspaceId})
+// 	if err != nil {
+// 		return err
+// 	}
 
-	listOfEnvSlugs := []string{}
-	mapOfEnvSlugs := make(map[string]interface{})
+// 	listOfEnvSlugs := []string{}
+// 	mapOfEnvSlugs := make(map[string]interface{})
 
-	for _, environment := range response.AccessibleEnvironments {
-		listOfEnvSlugs = append(listOfEnvSlugs, environment.Slug)
-		mapOfEnvSlugs[environment.Slug] = environment
-	}
+// 	for _, environment := range response.AccessibleEnvironments {
+// 		listOfEnvSlugs = append(listOfEnvSlugs, environment.Slug)
+// 		mapOfEnvSlugs[environment.Slug] = environment
+// 	}
 
-	_, exists := mapOfEnvSlugs[environmentName]
-	if !exists {
-		HandleError(fmt.Errorf("the environment [%s] does not exist in project with [id=%s]. Only [%s] are available", environmentName, workspaceId, strings.Join(listOfEnvSlugs, ",")))
-	}
+// 	_, exists := mapOfEnvSlugs[environmentName]
+// 	if !exists {
+// 		HandleError(fmt.Errorf("the environment [%s] does not exist in project with [id=%s]. Only [%s] are available", environmentName, workspaceId, strings.Join(listOfEnvSlugs, ",")))
+// 	}
 
-	return nil
+// 	return nil
 
-}
+// }
 
 func getExpandedEnvVariable(secrets []models.SingleEnvironmentVariable, variableWeAreLookingFor string, hashMapOfCompleteVariables map[string]string, hashMapOfSelfRefs map[string]string) string {
 	if value, found := hashMapOfCompleteVariables[variableWeAreLookingFor]; found {
@@ -683,4 +683,45 @@ func GetEnvelopmentBasedOnGitBranch(workspaceFile models.WorkspaceConfigFile) st
 		log.Debug().Msgf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
 		return ""
 	}
+}
+
+func GetPlainTextWorkspaceKey(authenticationToken string, receiverPrivateKey string, workspaceId string) ([]byte, error) {
+	httpClient := resty.New()
+	httpClient.SetAuthToken(authenticationToken).
+		SetHeader("Accept", "application/json")
+
+	request := api.GetEncryptedWorkspaceKeyRequest{
+		WorkspaceId: workspaceId,
+	}
+
+	workspaceKeyResponse, err := api.CallGetEncryptedWorkspaceKey(httpClient, request)
+	if err != nil {
+		return nil, fmt.Errorf("GetPlainTextWorkspaceKey: unable to retrieve your encrypted workspace key. [err=%v]", err)
+	}
+
+	encryptedWorkspaceKey, err := base64.StdEncoding.DecodeString(workspaceKeyResponse.EncryptedKey)
+	if err != nil {
+		return nil, fmt.Errorf("GetPlainTextWorkspaceKey: Unable to get bytes represented by the base64 for encryptedWorkspaceKey [err=%v]", err)
+	}
+
+	encryptedWorkspaceKeySenderPublicKey, err := base64.StdEncoding.DecodeString(workspaceKeyResponse.Sender.PublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("GetPlainTextWorkspaceKey: Unable to get bytes represented by the base64 for encryptedWorkspaceKeySenderPublicKey [err=%v]", err)
+	}
+
+	encryptedWorkspaceKeyNonce, err := base64.StdEncoding.DecodeString(workspaceKeyResponse.Nonce)
+	if err != nil {
+		return nil, fmt.Errorf("GetPlainTextWorkspaceKey: Unable to get bytes represented by the base64 for encryptedWorkspaceKeyNonce [err=%v]", err)
+	}
+
+	currentUsersPrivateKey, err := base64.StdEncoding.DecodeString(receiverPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("GetPlainTextWorkspaceKey: Unable to get bytes represented by the base64 for currentUsersPrivateKey [err=%v]", err)
+	}
+
+	if len(currentUsersPrivateKey) == 0 || len(encryptedWorkspaceKeySenderPublicKey) == 0 {
+		return nil, fmt.Errorf("GetPlainTextWorkspaceKey: Missing credentials for generating plainTextEncryptionKey")
+	}
+
+	return crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey), nil
 }

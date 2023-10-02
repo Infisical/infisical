@@ -1,14 +1,17 @@
 import { ReactNode } from "react";
+import { faClose } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { cva, VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
 type Props = {
   children: ReactNode;
   className?: string;
+  onClose?: () => void;
 } & VariantProps<typeof tagVariants>;
 
 const tagVariants = cva(
-  "inline-flex items-center whitespace-nowrap text-sm rounded-sm mr-1.5 text-bunker-200 rounded-[30px] text-gray-400 ",
+  "inline-flex items-center whitespace-nowrap text-sm rounded mr-1.5 text-bunker-200 text-gray-400 ",
   {
     variants: {
       colorSchema: {
@@ -23,14 +26,13 @@ const tagVariants = cva(
   }
 );
 
-export const Tag = ({
-  children,
-  className,
-  colorSchema = "gray",
-  size = "sm" }: Props) => (
-  <div
-    className={twMerge(tagVariants({ colorSchema, className, size }))}
-  >
+export const Tag = ({ children, className, colorSchema = "gray", size = "sm", onClose }: Props) => (
+  <div className={twMerge(tagVariants({ colorSchema, className, size }))}>
     {children}
+    {onClose && (
+      <button type="button" onClick={onClose} className="ml-2 flex items-center justify-center">
+        <FontAwesomeIcon icon={faClose} />
+      </button>
+    )}
   </div>
 );

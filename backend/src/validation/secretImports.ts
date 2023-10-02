@@ -4,7 +4,7 @@ export const CreateSecretImportV1 = z.object({
   body: z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
-    folderId: z.string().trim().default("root"),
+    directory: z.string().trim().default("/"),
     secretImport: z.object({
       environment: z.string().trim(),
       secretPath: z.string().trim()
@@ -40,7 +40,7 @@ export const GetSecretImportsV1 = z.object({
   query: z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
-    folderId: z.string().trim().default("root")
+    directory: z.string().trim().default("/")
   })
 });
 
@@ -48,6 +48,6 @@ export const GetAllSecretsFromImportV1 = z.object({
   query: z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
-    folderId: z.string().trim().default("root")
+    directory: z.string().trim().default("/")
   })
 });

@@ -6,7 +6,7 @@ import TelemetryService from "../../services/TelemetryService";
 import { sendMail } from "../../helpers";
 import { RiskStatus } from "../../ee/models/gitRisks";
 import { MembershipOrg, User } from "../../models";
-import { ADMIN, OWNER } from "../../variables";
+import { ADMIN } from "../../variables";
 import { convertKeysToLowercase, scanFullRepoContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
 import { SecretMatch } from "../../ee/services/GithubSecretScanning/types";
@@ -39,7 +39,6 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
     const secretFindings: string[] = [];
 
     for (const finding of findings) {
-
       batchRiskUpdate.push({
         fingerprint: finding.Fingerprint,
         data: {
@@ -51,8 +50,7 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
           status: RiskStatus.UNRESOLVED,
           gitSecretBlindIndex: "", // placeholder until we create the blind indexes in bulk
         },
-      });
-
+      })
       secretFindings.push(finding.Secret);
     }
 
@@ -64,7 +62,7 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
       organizationId,
       salt,
       status: RiskStatus.UNRESOLVED
-    });
+    })
 
     if (findings.length !== gitSecretBlindIndexes.length) {
       throw new Error("Length mismatch between the Git secret findings and the new Git secret blind indexes");
@@ -74,6 +72,7 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
     // this is needed to coordinate Git risk status updates across GitRisks and GitSecret
     for (let i = 0; i < findings.length; i++) {
       batchRiskUpdate[i].data.gitSecretBlindIndex = gitSecretBlindIndexes[i];
+      },
     }
     
     // check for duplicate data and bulk update Git risks
@@ -82,10 +81,7 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
     // get emails of admins
     const adminsOfWork = await MembershipOrg.find({
       organization: organizationId,
-      $or: [
-        { role: OWNER },
-        { role: ADMIN }
-      ]
+      role: ADMIN,
     }).lean()
 
     const userEmails = await User.find({

@@ -6,7 +6,7 @@ import TelemetryService from "../../services/TelemetryService";
 import { sendMail } from "../../helpers";
 import GitRisks, { RiskStatus } from "../../ee/models/gitRisks";
 import { MembershipOrg, User } from "../../models";
-import { ADMIN, OWNER } from "../../variables";
+import { ADMIN } from "../../variables";
 import { convertKeysToLowercase, scanContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
 import { BatchRiskUpdateItem, TScanPushEventQueueDetails } from "./types";
@@ -151,10 +151,7 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
   // get emails of admins
   const adminsOfWork = await MembershipOrg.find({
     organization: organizationId,
-    $or: [
-      { role: OWNER },
-      { role: ADMIN }
-    ]
+    role: ADMIN
   }).lean()
 
   const userEmails = await User.find({

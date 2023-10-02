@@ -22,14 +22,14 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
   ) => (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
-        className={twMerge("fixed inset-0 z-[70] h-full w-full animate-fadeIn", overlayClassName)}
+        className={twMerge("fixed inset-0 z-30 h-full w-full animate-fadeIn", overlayClassName)}
         style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
       />
       <DialogPrimitive.Content {...props} ref={forwardedRef}>
         <Card
           isRounded
           className={twMerge(
-            "fixed top-1/2 left-1/2 z-[90] dark:[color-scheme:dark] max-h-screen overflow-y-auto thin-scrollbar max-w-lg -translate-y-2/4 -translate-x-2/4 animate-popIn border border-mineshaft-600 drop-shadow-2xl",
+            "fixed top-1/2 left-1/2 z-30 dark:[color-scheme:dark] max-h-screen thin-scrollbar max-w-lg -translate-y-2/4 -translate-x-2/4 animate-popIn border border-mineshaft-600 drop-shadow-2xl",
             className
           )}
         >

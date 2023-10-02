@@ -30,9 +30,9 @@ const validateClientForIntegrationAuth = async ({
   const integrationAuth = await IntegrationAuth.findById(integrationAuthId)
     .populate<{ workspace: IWorkspace }>("workspace")
     .select(
-      "+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt"
+      "+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt metadata"
     );
-
+    
   if (!integrationAuth) throw IntegrationAuthNotFoundError();
 
   let accessToken, accessId;
@@ -113,6 +113,39 @@ export const GetIntegrationAuthVercelBranchesV1 = z.object({
   })
 });
 
+export const GetIntegrationAuthQoveryOrgsV1 = z.object({
+  params: z.object({
+    integrationAuthId: z.string().trim()
+  })
+});
+
+export const GetIntegrationAuthQoveryProjectsV1 = z.object({
+  params: z.object({
+    integrationAuthId: z.string().trim()
+  }),
+  query: z.object({
+    orgId: z.string().trim()
+  })
+});
+
+export const GetIntegrationAuthQoveryEnvironmentsV1 = z.object({
+  params: z.object({
+    integrationAuthId: z.string().trim()
+  }),
+  query: z.object({
+    projectId: z.string().trim()
+  })
+});
+
+export const GetIntegrationAuthQoveryScopesV1 = z.object({
+  params: z.object({
+    integrationAuthId: z.string().trim()
+  }),
+  query: z.object({
+    environmentId: z.string().trim()
+  })
+});
+
 export const GetIntegrationAuthRailwayEnvironmentsV1 = z.object({
   params: z.object({
     integrationAuthId: z.string().trim()
@@ -153,9 +186,11 @@ export const DeleteIntegrationAuthV1 = z.object({
 });
 
 export const GetIntegrationAuthTeamCityBuildConfigsV1 = z.object({
-  params:z.object({
-    appId:z.string().trim(),
+  params: z.object({
     integrationAuthId:z.string().trim()
+  }),
+  query: z.object({
+    appId:z.string().trim()
   })
 })
 

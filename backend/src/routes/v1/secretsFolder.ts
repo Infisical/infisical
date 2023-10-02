@@ -1,13 +1,13 @@
 import express from "express";
+const router = express.Router();
+import { requireAuth } from "../../middleware";
 import {
   createFolder,
   deleteFolder,
   getFolders,
   updateFolderById
 } from "../../controllers/v1/secretsFolderController";
-import { requireAuth } from "../../middleware";
 import { AuthMode } from "../../variables";
-const router = express.Router();
 
 router.post(
   "/",
@@ -18,7 +18,7 @@ router.post(
 );
 
 router.patch(
-  "/:folderId",
+  "/:folderName",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),
@@ -26,7 +26,7 @@ router.patch(
 );
 
 router.delete(
-  "/:folderId",
+  "/:folderName",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
   }),

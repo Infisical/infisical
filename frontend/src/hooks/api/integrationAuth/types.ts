@@ -26,6 +26,21 @@ export type Environment = {
   environmentId: string;
 };
 
+export type Container = {
+  name: string;
+  containerId: string;
+};
+
+export type Org = {
+  name: string;
+  orgId: string;
+};
+
+export type Project = {
+  name: string;
+  projectId: string;
+};
+
 export type Service = {
   name: string;
   serviceId: string;

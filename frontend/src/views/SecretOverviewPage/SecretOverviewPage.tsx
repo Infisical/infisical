@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { subject } from "@casl/ability";
 import {
   faArrowDown,
   faArrowUp,
@@ -30,13 +29,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useOrganization,
-  useProjectPermission,
-  useWorkspace
-} from "@app/context";
+import { useOrganization, useWorkspace } from "@app/context";
 import {
   useCreateSecretV3,
   useDeleteSecretV3,
@@ -82,7 +75,6 @@ export const SecretOverviewPage = () => {
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (router.query?.secretPath as string) || "/";
-  const permission = useProjectPermission();
 
   useEffect(() => {
     if (!isWorkspaceLoading && !workspaceId && router.isReady) {
@@ -90,22 +82,7 @@ export const SecretOverviewPage = () => {
     }
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 
-  const userAvailableEnvs =
-    currentWorkspace?.environments?.filter(
-      ({ slug }) =>
-        permission.can(
-          ProjectPermissionActions.Read,
-          subject(ProjectPermissionSub.Secrets, { environment: slug, secretPath })
-        ) ||
-        permission.can(
-          ProjectPermissionActions.Read,
-          subject(ProjectPermissionSub.Folders, { environment: slug, secretPath })
-        ) ||
-        permission.can(
-          ProjectPermissionActions.Read,
-          subject(ProjectPermissionSub.SecretImports, { environment: slug, secretPath })
-        )
-    ) || [];
+  const userAvailableEnvs = currentWorkspace?.environments || [];
 
   const {
     data: secrets,
@@ -121,7 +98,7 @@ export const SecretOverviewPage = () => {
   const { folders, folderNames, isFolderPresentInEnv } = useGetFoldersByEnv({
     workspaceId,
     environments: userAvailableEnvs.map(({ slug }) => slug),
-    parentFolderPath: secretPath
+    directory: secretPath
   });
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
@@ -213,17 +190,8 @@ export const SecretOverviewPage = () => {
 
   const handleExploreEnvClick = (slug: string) => {
     const query: Record<string, string> = { ...router.query, env: slug };
-    delete query.secretPath;
-    // the dir return will have the present directory folder id
-    // use that when clicking on explore to redirect user to there
     const envIndex = userAvailableEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
-      const envFolder = folders?.[envIndex];
-      const dir = envFolder?.data?.dir?.pop();
-      if (dir) {
-        query.folderId = dir.id;
-      }
-
       router.push({
         pathname: "/project/[id]/secrets/[env]",
         query

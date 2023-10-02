@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import {
+  Folder,
   Integration,
   Membership,
   Secret,
@@ -21,14 +22,103 @@ import {
   getUserProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
+import { SecretImport } from "../../models";
+import { ServiceAccountWorkspacePermission } from "../../models";
+import { Webhook } from "../../models";
 
 /**
- * Create new workspace environment named [environmentName] under workspace with id
+ * Create new workspace environment named [environmentName]
+ * with slug [environmentSlug] under workspace with id
  * @param req
  * @param res
  * @returns
  */
 export const createWorkspaceEnvironment = async (req: Request, res: Response) => {
+  /* 
+    #swagger.summary = 'Create environment'
+    #swagger.description = 'Create environment'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+	#swagger.parameters['workspaceId'] = {
+		"description": "ID of project",
+		"required": true,
+		"type": "string"
+	} 
+
+  /* 
+    #swagger.summary = 'Create environment'
+    #swagger.description = 'Create environment'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+	#swagger.parameters['workspaceId'] = {
+		"description": "ID of project",
+		"required": true,
+		"type": "string"
+	} 
+
+  #swagger.requestBody = {
+      content: {
+          "application/json": {
+              "schema": {
+                  "type": "object",
+                  "properties": {
+                      "environmentName": {
+                          "type": "string",
+                          "description": "Name of the environment",
+                          "example": "development"
+                      },
+                      "environmentSlug": {
+                          "type": "string",
+                          "description": "Slug of the environment",
+                          "example": "dev-environment"
+                      }
+                  },
+                  "required": ["environmentName", "environmentSlug"]
+              }
+          }
+      }
+  }
+
+  #swagger.responses[200] = {
+      content: {
+          "application/json": {
+              "schema": { 
+                  "type": "object",
+                  "properties": {
+                      "message": {
+                          "type": "string",
+                          "example": "Successfully created new environment"
+                      },
+                      "workspace": {
+                          "type": "string",
+                          "example": "someWorkspaceId"
+                      },
+                      "environment": {
+                          "type": "object",
+                          "properties": {
+                              "name": {
+                                  "type": "string",
+                                  "example": "someEnvironmentName"
+                              },
+                              "slug": {
+                                  "type": "string",
+                                  "example": "someEnvironmentSlug"
+                              }
+                          }
+                      }
+                  },
+                  "description": "Response after creating a new environment"
+              }
+          }           
+      }
+  }
+  */
   const {
     params: { workspaceId },
     body: { environmentName, environmentSlug }
@@ -156,6 +246,79 @@ export const reorderWorkspaceEnvironments = async (req: Request, res: Response) 
  * @returns
  */
 export const renameWorkspaceEnvironment = async (req: Request, res: Response) => {
+  /* 
+    #swagger.summary = 'Rename workspace environment'
+    #swagger.description = 'Rename a specific environment within a workspace'
+
+    #swagger.parameters['workspaceId'] = {
+    "description": "ID of the workspace",
+    "required": true,
+    "type": "string",
+        "in": "path"
+  }
+
+    #swagger.requestBody = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "environmentName": {
+                            "type": "string",
+                            "description": "New name for the environment",
+                            "example": "Staging-Renamed"
+                        },
+                        "environmentSlug": {
+                            "type": "string",
+                            "description": "New slug for the environment",
+                            "example": "staging-renamed"
+                        },
+                        "oldEnvironmentSlug": {
+                            "type": "string",
+                            "description": "Current slug of the environment to rename",
+                            "example": "staging-old"
+                        }
+                    },
+                    "required": ["environmentName", "environmentSlug", "oldEnvironmentSlug"]
+                }
+            }
+        }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string",
+                            "example": "Successfully update environment"
+                        },
+                        "workspace": {
+                            "type": "string",
+                            "example": "someWorkspaceId"
+                        },
+                        "environment": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "example": "Staging-Renamed"
+                                },
+                                "slug": {
+                                    "type": "string",
+                                    "example": "staging-renamed"
+                                }
+                            }
+                        }
+                    },
+                    "description": "Details of the renamed environment"
+                }
+            }
+        }
+    }   
+  */
   const {
     params: { workspaceId },
     body: { environmentName, environmentSlug, oldEnvironmentSlug }
@@ -210,13 +373,38 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
     { environment: environmentSlug }
   );
   await ServiceTokenData.updateMany(
-    { workspace: workspaceId, environment: oldEnvironmentSlug },
-    { environment: environmentSlug }
+    {
+      workspace: workspaceId,
+      "scopes.environment": oldEnvironmentSlug
+    },
+    { $set: { "scopes.$[element].environment": environmentSlug } },
+    { arrayFilters: [{ "element.environment": oldEnvironmentSlug }] }
   );
   await Integration.updateMany(
     { workspace: workspaceId, environment: oldEnvironmentSlug },
     { environment: environmentSlug }
   );
+
+  await Folder.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+
+  await SecretImport.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+
+  await ServiceAccountWorkspacePermission.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+
+  await Webhook.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+
   await Membership.updateMany(
     {
       workspace: workspaceId,
@@ -259,6 +447,64 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
  * @returns
  */
 export const deleteWorkspaceEnvironment = async (req: Request, res: Response) => {
+  /* 
+    #swagger.summary = 'Delete workspace environment'
+    #swagger.description = 'Delete a specific environment from a workspace'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+    #swagger.parameters['workspaceId'] = {
+		"description": "ID of the workspace",
+		"required": true,
+		"type": "string",
+        "in": "path"
+	}
+
+    #swagger.requestBody = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "environmentSlug": {
+                            "type": "string",
+                            "description": "Slug of the environment to delete",
+                            "example": "dev-environment"
+                        }
+                    },
+                    "required": ["environmentSlug"]
+                }
+            }
+        }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": { 
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string",
+                            "example": "Successfully deleted environment"
+                        },
+                        "workspace": {
+                            "type": "string",
+                            "example": "someWorkspaceId"
+                        },
+                        "environment": {
+                            "type": "string",
+                            "example": "dev-environment"
+                        }
+                    },
+                    "description": "Response after deleting an environment from a workspace"
+                }
+            }           
+        }
+    }   
+*/
   const {
     params: { workspaceId },
     body: { environmentSlug }
@@ -344,6 +590,58 @@ export const deleteWorkspaceEnvironment = async (req: Request, res: Response) =>
 
 // TODO(akhilmhdh) after rbac this can be completely removed
 export const getAllAccessibleEnvironmentsOfWorkspace = async (req: Request, res: Response) => {
+  /* 
+    #swagger.summary = 'Get all accessible environments of a workspace'
+    #swagger.description = 'Fetch all environments that the user has access to in a specified workspace'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+    #swagger.parameters['workspaceId'] = {
+		"description": "ID of the workspace",
+		"required": true,
+		"type": "string",
+        "in": "path"
+	}
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "accessibleEnvironments": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Development"
+                                    },
+                                    "slug": {
+                                        "type": "string",
+                                        "example": "development"
+                                    },
+                                    "isWriteDenied": {
+                                        "type": "boolean",
+                                        "example": false
+                                    },
+                                    "isReadDenied": {
+                                        "type": "boolean",
+                                        "example": false
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "description": "List of environments the user has access to in the specified workspace"
+                }
+            }
+        }
+    }   
+  */
   const {
     params: { workspaceId }
   } = await validateRequest(reqValidator.GetAllAccessibileEnvironmentsOfWorkspaceV2, req);

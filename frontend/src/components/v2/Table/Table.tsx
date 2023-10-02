@@ -79,7 +79,7 @@ export const Tr = ({
 }: TrProps): JSX.Element => (
   <tr
     className={twMerge(
-      "cursor-default border-b last:border-b-0 border-solid border-mineshaft-600",
+      "cursor-default border-b border-solid border-mineshaft-600 last:border-b-0",
       isHoverable && "hover:bg-mineshaft-600",
       isSelectable && "cursor-pointer",
       className
