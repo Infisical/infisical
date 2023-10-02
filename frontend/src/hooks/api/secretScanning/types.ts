@@ -14,7 +14,6 @@ export type GitRisks = {
   endColumn: string;
   match: string;
   secret: string;
-  hashedSecret: string; // SHA3-512 hash
   file: string;
   symlinkFile: string;
   commit: string;
