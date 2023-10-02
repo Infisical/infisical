@@ -1,15 +1,15 @@
 import { Types } from "mongoose";
+import { z } from "zod";
+import { ActorType } from "../ee/models";
+import { AuthData } from "../interfaces/middleware";
 import { ISecret, IServiceTokenData, IUser, Secret } from "../models";
-import { validateUserClientForSecret, validateUserClientForSecrets } from "./user";
+import { BadRequestError, SecretNotFoundError } from "../utils/errors";
+import { SECRET_PERSONAL, SECRET_SHARED } from "../variables";
 import {
   validateServiceTokenDataClientForSecrets,
   validateServiceTokenDataClientForWorkspace
 } from "./serviceTokenData";
-import { BadRequestError, SecretNotFoundError } from "../utils/errors";
-import { AuthData } from "../interfaces/middleware";
-import { ActorType } from "../ee/models";
-import { z } from "zod";
-import { SECRET_PERSONAL, SECRET_SHARED } from "../variables";
+import { validateUserClientForSecret, validateUserClientForSecrets } from "./user";
 
 /**
  * Validate authenticated clients for secrets with id [secretId] based
@@ -327,7 +327,8 @@ export const CreateSecretV3 = z.object({
     secretCommentCiphertext: z.string().trim().optional(),
     secretCommentIV: z.string().trim().optional(),
     secretCommentTag: z.string().trim().optional(),
-    metadata: z.record(z.string()).optional()
+    metadata: z.record(z.string()).optional(),
+    addFolder: z.string().optional(),
   }),
   params: z.object({
     secretName: z.string().trim()

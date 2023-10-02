@@ -538,7 +538,8 @@ export const createSecret = async (req: Request, res: Response) => {
       secretCommentTag,
       secretKeyCiphertext,
       secretValueCiphertext,
-      secretCommentCiphertext
+      secretCommentCiphertext,
+      addFolder
     },
     params: { secretName }
   } = await validateRequest(reqValidator.CreateSecretV3, req);
@@ -575,7 +576,8 @@ export const createSecret = async (req: Request, res: Response) => {
     secretCommentCiphertext,
     secretCommentIV,
     secretCommentTag,
-    metadata
+    metadata,
+    addFolder,
   });
 
   await EventService.handleEvent({
