@@ -225,8 +225,19 @@ const main = async () => {
 
   server.on("close", async () => {
     await DatabaseService.closeDatabase();
-    syncSecretsToThirdPartyServices.close();
-    githubPushEventSecretScan.close();
+    // TODO: prevent queue from trying to reconnect with redis after .close
+    syncSecretsToThirdPartyServices.close()
+    githubPushEventSecretScan.close()
+  });
+
+  process.on("SIGINT", function () {
+    server.close();
+    process.exit(0);
+  });
+
+  process.on("SIGTERM", function () {
+    server.close();
+    process.exit(0);
   });
 
   return server;
