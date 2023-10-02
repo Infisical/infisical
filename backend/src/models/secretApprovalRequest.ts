@@ -32,6 +32,25 @@ export interface ISecretApprovalSecChange {
   tags?: string[];
 }
 
+export type ISecretCommits<T = Types.ObjectId, J = Types.ObjectId> = Array<
+  | {
+      newVersion: ISecretApprovalSecChange;
+      op: CommitType.CREATE;
+    }
+  | {
+      // secret is recorded to get the latest version, we can keep ref to secret for pulling change as it will also get changed
+      //  on merge
+      secretVersion: J;
+      secret: T;
+      newVersion: Partial<Omit<ISecretApprovalSecChange, "_id">> & { _id: Types.ObjectId };
+      op: CommitType.UPDATE;
+    }
+  | {
+      secret: T;
+      secretVersion: J;
+      op: CommitType.DELETE;
+    }
+>;
 export interface ISecretApprovalRequest {
   _id: Types.ObjectId;
   committer: Types.ObjectId;
@@ -45,21 +64,8 @@ export interface ISecretApprovalRequest {
   hasMerged: boolean;
   status: "open" | "close";
   policy: Types.ObjectId;
-  commits: Array<
-    | {
-        newVersion: ISecretApprovalSecChange;
-        op: CommitType.CREATE;
-      }
-    | {
-        secret: Types.ObjectId;
-        newVersion: Partial<ISecretApprovalSecChange>;
-        op: CommitType.UPDATE;
-      }
-    | {
-        secret: Types.ObjectId;
-        op: CommitType.DELETE;
-      }
-  >;
+  commits: ISecretCommits;
+  conflicts: Array<{ secretId: string; op: CommitType }>;
 }
 
 const secretApprovalSecretChangeSchema = new Schema<ISecretApprovalSecChange>({
@@ -157,9 +163,19 @@ const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
       {
         secret: { type: Types.ObjectId, ref: "Secret" },
         newVersion: secretApprovalSecretChangeSchema,
+        secretVersion: { type: Types.ObjectId, ref: "SecretVersion" },
         op: { type: String, enum: [CommitType], required: true }
       }
-    ]
+    ],
+    conflicts: {
+      type: [
+        {
+          secretId: { type: String, required: true },
+          op: { type: String, enum: [CommitType], required: true }
+        }
+      ],
+      default: []
+    }
   },
   {
     timestamps: true

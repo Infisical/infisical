@@ -7,6 +7,16 @@ export type TSecretApprovalPolicy = {
   approvals: number;
 };
 
+export type TGetSecretApprovalPoliciesDTO = {
+  workspaceId: string;
+};
+
+export type TGetSecretApprovalPolicyOfBoardDTO = {
+  workspaceId: string;
+  environment: string;
+  secretPath: string;
+};
+
 export type TCreateSecretPolicyDTO = {
   workspaceId: string;
   environment: string;

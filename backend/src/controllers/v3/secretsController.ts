@@ -596,7 +596,7 @@ export const createSecret = async (req: Request, res: Response) => {
   });
 
   const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-  if (secretApprovalPolicy && membership) {
+  if (secretApprovalPolicy && membership  && type !== "personal") {
     const secretApprovalRequest = await generateSecretApprovalRequest({
       workspaceId,
       environment,
@@ -701,7 +701,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
   });
 
   const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-  if (secretApprovalPolicy && membership) {
+  if (secretApprovalPolicy && membership && type !== "personal") {
     const secretApprovalRequest = await generateSecretApprovalRequest({
       workspaceId,
       environment,
@@ -712,6 +712,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
         [CommitType.UPDATE]: [
           {
             secretName,
+            newSecretName,
             secretValueCiphertext,
             secretValueIV,
             secretValueTag,
@@ -784,7 +785,7 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
   });
 
   const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-  if (secretApprovalPolicy && membership) {
+  if (secretApprovalPolicy && membership && type !== "personal") {
     const secretApprovalRequest = await generateSecretApprovalRequest({
       workspaceId,
       environment,
@@ -846,7 +847,7 @@ export const createSecretByNameBatch = async (req: Request, res: Response) => {
       policy: secretApprovalPolicy,
       commiterMembershipId: membership._id.toString(),
       data: {
-        [CommitType.CREATE]: secrets
+        [CommitType.CREATE]: secrets.filter(({ type }) => type === "shared")
       }
     });
     return res.send({ approval: secretApprovalRequest });
@@ -887,7 +888,7 @@ export const updateSecretByNameBatch = async (req: Request, res: Response) => {
       policy: secretApprovalPolicy,
       commiterMembershipId: membership._id.toString(),
       data: {
-        [CommitType.UPDATE]: secrets
+        [CommitType.UPDATE]: secrets.filter(({ type }) => type === "shared")
       }
     });
     return res.send({ approval: secretApprovalRequest });
@@ -928,7 +929,7 @@ export const deleteSecretByNameBatch = async (req: Request, res: Response) => {
       policy: secretApprovalPolicy,
       commiterMembershipId: membership._id.toString(),
       data: {
-        [CommitType.DELETE]: secrets
+        [CommitType.DELETE]: secrets.filter(({ type }) => type === "shared")
       }
     });
     return res.send({ approval: secretApprovalRequest });

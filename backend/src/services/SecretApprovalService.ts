@@ -11,11 +11,16 @@ import {
   CommitType,
   ISecretApprovalRequest,
   ISecretApprovalSecChange,
+  ISecretCommits,
   SecretApprovalRequest
 } from "../models/secretApprovalRequest";
 import { BadRequestError } from "../utils/errors";
 import { getFolderByPath } from "./FolderService";
-import { SECRET_SHARED } from "../variables";
+import { ALGORITHM_AES_256_GCM, ENCODING_SCHEME_UTF8, SECRET_SHARED } from "../variables";
+import TelemetryService from "./TelemetryService";
+import { EEAuditLogService, EESecretService } from "../ee/services";
+import { EventType, SecretVersion } from "../ee/models";
+import { AuthData } from "../interfaces/middleware";
 
 // if glob pattern score is 1, if not exist score is 0 and if its not both then its exact path meaning score 2
 const getPolicyScore = (policy: ISecretApprovalPolicy) =>
@@ -43,6 +48,35 @@ export const getSecretPolicyOfBoard = async (
   return finalPolicy;
 };
 
+const getLatestSecretVersion = async (secretIds: Types.ObjectId[]) => {
+  const latestSecretVersions = await SecretVersion.aggregate([
+    {
+      $match: {
+        secret: {
+          $in: secretIds
+        },
+        type: SECRET_SHARED
+      }
+    },
+    {
+      $sort: { version: -1 }
+    },
+    {
+      $group: {
+        _id: "$secret",
+        version: { $max: "$version" },
+        versionId: { $max: "$_id" }, // id of latest secret versionId
+        secret: { $first: "$$ROOT" }
+      }
+    }
+  ]).exec();
+  // reduced with secret id and latest version as document
+  return latestSecretVersions.reduce(
+    (prev, curr) => ({ ...prev, [curr._id.toString()]: curr.secret }),
+    {}
+  );
+};
+
 type TApprovalCreateSecret = Omit<ISecretApprovalSecChange, "_id" | "version"> & {
   secretName: string;
 };
@@ -50,6 +84,7 @@ type TApprovalUpdateSecret = Partial<Omit<ISecretApprovalSecChange, "_id" | "ver
   secretName: string;
   newSecretName?: string;
 };
+
 type TGenerateSecretApprovalRequestArg = {
   workspaceId: string;
   environment: string;
@@ -151,22 +186,21 @@ export const generateSecretApprovalRequest = async ({
       }, {})
     );
     // check update secret exists
-    const secretsToBeUpdated = await Secret.find({
+    const oldSecrets = await Secret.find({
       workspace: new Types.ObjectId(workspaceId),
       folder: folderId,
-      environment
+      environment,
+      type: SECRET_SHARED,
+      secretBlindIndex: {
+        $in: updatedSecret.map(({ secretName }) => secretBlindIndexes[secretName])
+      }
     })
       .select("+secretBlindIndex")
-      .or(
-        updatedSecret.map(({ secretName }) => ({
-          secretBlindIndex: secretBlindIndexes[secretName],
-          type: SECRET_SHARED
-        }))
-      )
       .lean()
       .exec();
-    if (secretsToBeUpdated.length !== updatedSecret.length)
+    if (oldSecrets.length !== updatedSecret.length)
       throw BadRequestError({ message: "Secrets already exist" });
+
     // finally check updating blindindex exist
     const nameUpdatedSecrets = updatedSecret.filter(({ newSecretName }) => Boolean(newSecretName));
     const newSecretBlindIndexes = await Promise.all(
@@ -188,24 +222,29 @@ export const generateSecretApprovalRequest = async ({
       environment,
       secretBlindIndex: { $in: Object.values(newSecretBlindIndexes) }
     });
-    if (doesAnySecretExistWithNewIndex)
+    if (doesAnySecretExistWithNewIndex.length)
       throw BadRequestError({ message: "Secret with new name already exist" });
+
+    const oldSecretsGroupById = oldSecrets.reduce<Record<string, ISecret>>(
+      (prev, curr) => ({ ...prev, [curr?.secretBlindIndex || ""]: curr }),
+      {}
+    );
+    const latestSecretVersions = await getLatestSecretVersion(
+      updatedSecret.map((el) => oldSecretsGroupById[secretBlindIndexes[el.secretName]]._id)
+    );
 
     commits.push(
       ...updatedSecret.map((el) => {
-        const oldSecret = secretsToBeUpdated.find(
-          (sec) => sec?.secretBlindIndex === secretBlindIndexes[el.secretName]
-        );
-        if (!oldSecret) throw BadRequestError({ message: "Secret not found" });
-
+        const secretId = oldSecretsGroupById[secretBlindIndexes[el.secretName]]._id;
         return {
           op: CommitType.UPDATE as const,
-          secret: oldSecret._id,
+          secret: secretId,
+          secretVersion: latestSecretVersions[secretId.toString()]._id,
           newVersion: {
             ...el,
             secretBlindIndex: newSecretBlindIndexes?.[el.secretName],
             _id: new Types.ObjectId(),
-            version: oldSecret.version || 1
+            version: oldSecretsGroupById[secretBlindIndexes[el.secretName]].version || 1
           }
         };
       })
@@ -233,29 +272,35 @@ export const generateSecretApprovalRequest = async ({
     const secretsToDelete = await Secret.find({
       workspace: new Types.ObjectId(workspaceId),
       folder: folderId,
-      environment
+      environment,
+      type: SECRET_SHARED,
+      secretBlindIndex: {
+        $in: deletedSecrets.map(({ secretName }) => secretBlindIndexes[secretName])
+      }
     })
-      .or(
-        deletedSecrets.map(({ secretName }) => ({
-          secretBlindIndex: secretBlindIndexes[secretName],
-          type: SECRET_SHARED
-        }))
-      )
-      .select({ secretBlindIndexes: 1 })
+      .select({ secretBlindIndex: 1, _id: 1 })
       .lean()
       .exec();
     if (secretsToDelete.length !== deletedSecrets.length)
       throw BadRequestError({ message: "Deleted secrets not found" });
 
+    const oldSecretsGroupById = secretsToDelete.reduce<Record<string, ISecret>>(
+      (prev, curr) => ({ ...prev, [curr?.secretBlindIndex || ""]: curr }),
+      {}
+    );
+    const latestSecretVersions = await getLatestSecretVersion(
+      deletedSecrets.map((el) => oldSecretsGroupById[secretBlindIndexes[el.secretName]]._id)
+    );
+
     commits.push(
-      ...deletedSecrets.map((el) => ({
-        op: CommitType.DELETE as const,
-        secret: (
-          secretsToDelete.find(
-            (sec) => sec?.secretBlindIndex === secretBlindIndexes[el.secretName]
-          ) as ISecret
-        )._id
-      }))
+      ...deletedSecrets.map((el) => {
+        const secretId = oldSecretsGroupById[secretBlindIndexes[el.secretName]]._id;
+        return {
+          op: CommitType.DELETE as const,
+          secret: secretId,
+          secretVersion: latestSecretVersions[secretId.toString()]
+        };
+      })
     );
   }
 
@@ -269,4 +314,357 @@ export const generateSecretApprovalRequest = async ({
   });
   await secretApprovalRequest.save();
   return secretApprovalRequest;
+};
+
+// validation for a merge conditions happen in another function in controller
+export const performSecretApprovalRequestMerge = async (id: string, authData: AuthData) => {
+  const secretApprovalRequest = await SecretApprovalRequest.findById(id)
+    .populate<{ commits: ISecretCommits<ISecret> }>({
+      path: "commits.secret",
+      select: "+secretBlindIndex",
+      populate: {
+        path: "tags"
+      }
+    })
+    .select("+commits.newVersion.secretBlindIndex");
+  if (!secretApprovalRequest) throw BadRequestError({ message: "Approval request not found" });
+
+  const workspaceId = secretApprovalRequest.workspace;
+  const environment = secretApprovalRequest.environment;
+  const folderId = secretApprovalRequest.folderId;
+  const postHogClient = await TelemetryService.getPostHogClient();
+  const conflicts: Array<{ id: string; op: CommitType }> = [];
+
+  const secretCreationCommits = secretApprovalRequest.commits.filter(
+    ({ op }) => op === CommitType.CREATE
+  ) as Array<{ op: CommitType.CREATE; newVersion: ISecretApprovalSecChange }>;
+  if (secretCreationCommits.length) {
+    // the created secrets already exist thus creation conflict ones
+    const conflictedSecrets = await Secret.find({
+      workspace: workspaceId,
+      environment,
+      folder: folderId,
+      secretBlindIndex: {
+        $in: secretCreationCommits.map(({ newVersion }) => newVersion.secretBlindIndex)
+      }
+    })
+      .select("+secretBlindIndex")
+      .lean();
+    const conflictGroupByBlindIndex = conflictedSecrets.reduce<Record<string, boolean>>(
+      (prev, curr) => ({ ...prev, [curr.secretBlindIndex || ""]: true }),
+      {}
+    );
+    const nonConflictSecrets = secretCreationCommits.filter(
+      ({ newVersion }) => !conflictGroupByBlindIndex[newVersion.secretBlindIndex || ""]
+    );
+    secretCreationCommits
+      .filter(({ newVersion }) => conflictGroupByBlindIndex[newVersion.secretBlindIndex || ""])
+      .forEach((el) => {
+        conflicts.push({ op: CommitType.CREATE, id: el.newVersion._id.toString() });
+      });
+
+    // create secret
+    const newlyCreatedSecrets: ISecret[] = await Secret.insertMany(
+      nonConflictSecrets.map(
+        ({
+          newVersion: {
+            secretKeyIV,
+            secretKeyTag,
+            secretValueIV,
+            secretValueTag,
+            secretCommentIV,
+            secretCommentTag,
+            secretKeyCiphertext,
+            secretValueCiphertext,
+            secretCommentCiphertext,
+            skipMultilineEncoding,
+            secretBlindIndex,
+            algorithm,
+            keyEncoding,
+            tags
+          }
+        }) => ({
+          version: 1,
+          workspace: new Types.ObjectId(workspaceId),
+          environment,
+          type: SECRET_SHARED,
+          secretKeyCiphertext,
+          secretKeyIV,
+          secretKeyTag,
+          secretValueCiphertext,
+          secretValueIV,
+          secretValueTag,
+          secretCommentCiphertext,
+          secretCommentIV,
+          secretCommentTag,
+          folder: folderId,
+          algorithm: algorithm || ALGORITHM_AES_256_GCM,
+          keyEncoding: keyEncoding || ENCODING_SCHEME_UTF8,
+          tags,
+          skipMultilineEncoding,
+          secretBlindIndex
+        })
+      )
+    );
+
+    await EESecretService.addSecretVersions({
+      secretVersions: newlyCreatedSecrets.map(
+        (secret) =>
+          new SecretVersion({
+            secret: secret._id,
+            version: secret.version,
+            workspace: secret.workspace,
+            type: secret.type,
+            folder: folderId,
+            tags: secret.tags,
+            skipMultilineEncoding: secret?.skipMultilineEncoding,
+            environment: secret.environment,
+            isDeleted: false,
+            secretBlindIndex: secret.secretBlindIndex,
+            secretKeyCiphertext: secret.secretKeyCiphertext,
+            secretKeyIV: secret.secretKeyIV,
+            secretKeyTag: secret.secretKeyTag,
+            secretValueCiphertext: secret.secretValueCiphertext,
+            secretValueIV: secret.secretValueIV,
+            secretValueTag: secret.secretValueTag,
+            algorithm: ALGORITHM_AES_256_GCM,
+            keyEncoding: ENCODING_SCHEME_UTF8
+          })
+      )
+    });
+
+    // question to team where to keep secretKey
+    await EEAuditLogService.createAuditLog(
+      authData,
+      {
+        type: EventType.CREATE_SECRETS,
+        metadata: {
+          environment,
+          secretPath: "/",
+          secrets: newlyCreatedSecrets.map(({ version, _id }) => ({
+            secretId: _id.toString(),
+            secretKey: "",
+            secretVersion: version
+          }))
+        }
+      },
+      {
+        workspaceId
+      }
+    );
+  }
+
+  const secretUpdationCommits = secretApprovalRequest.commits.filter(
+    ({ op }) => op === CommitType.UPDATE
+  ) as Array<{
+    op: CommitType.UPDATE;
+    newVersion: Partial<Omit<ISecretApprovalSecChange, "_id">> & { _id: Types.ObjectId };
+    secret: ISecret;
+  }>;
+  if (secretUpdationCommits.length) {
+    const conflictedByNewBlindIndex = await Secret.find({
+      workspace: workspaceId,
+      environment,
+      folder: folderId,
+      secretBlindIndex: {
+        $in: secretUpdationCommits
+          .map(({ newVersion }) => newVersion?.secretBlindIndex)
+          .filter(Boolean)
+      }
+    })
+      .select("+secretBlindIndex")
+      .lean();
+    const conflictGroupByBlindIndex = conflictedByNewBlindIndex.reduce<Record<string, boolean>>(
+      (prev, curr) => (curr?.secretBlindIndex ? { ...prev, [curr.secretBlindIndex]: true } : prev),
+      {}
+    );
+    secretUpdationCommits
+      .filter(
+        ({ newVersion }) =>
+          newVersion.secretBlindIndex && conflictGroupByBlindIndex[newVersion.secretBlindIndex]
+      )
+      .forEach((el) => {
+        conflicts.push({ op: CommitType.UPDATE, id: el.newVersion._id.toString() });
+      });
+
+    const nonConflictSecrets = secretUpdationCommits.filter(({ newVersion }) =>
+      newVersion?.secretBlindIndex ? !conflictGroupByBlindIndex[newVersion.secretBlindIndex] : true
+    );
+    await Secret.bulkWrite(
+      // id and version are stripped off
+      nonConflictSecrets.map(
+        ({
+          newVersion: {
+            secretKeyIV,
+            secretKeyTag,
+            secretValueIV,
+            secretValueTag,
+            secretCommentIV,
+            secretCommentTag,
+            secretKeyCiphertext,
+            secretValueCiphertext,
+            secretCommentCiphertext,
+            skipMultilineEncoding,
+            secretBlindIndex,
+            tags
+          },
+          secret
+        }) => ({
+          updateOne: {
+            filter: {
+              workspace: new Types.ObjectId(workspaceId),
+              environment,
+              folder: folderId,
+              secretBlindIndex: secret.secretBlindIndex,
+              type: SECRET_SHARED
+            },
+            update: {
+              $inc: {
+                version: 1
+              },
+              secretKeyIV,
+              secretKeyTag,
+              secretValueIV,
+              secretValueTag,
+              secretCommentIV,
+              secretCommentTag,
+              secretKeyCiphertext,
+              secretValueCiphertext,
+              secretCommentCiphertext,
+              skipMultilineEncoding,
+              secretBlindIndex,
+              tags,
+              algorithm: ALGORITHM_AES_256_GCM,
+              keyEncoding: ENCODING_SCHEME_UTF8
+            }
+          }
+        })
+      )
+    );
+
+    await EESecretService.addSecretVersions({
+      secretVersions: nonConflictSecrets.map(({ newVersion, secret }) => {
+        return new SecretVersion({
+          secret: secret._id,
+          version: secret.version + 1,
+          workspace: workspaceId,
+          type: SECRET_SHARED,
+          folder: folderId,
+          environment,
+          isDeleted: false,
+          secretBlindIndex: newVersion?.secretBlindIndex ?? secret.secretBlindIndex,
+          secretKeyCiphertext: newVersion?.secretKeyCiphertext ?? secret.secretKeyCiphertext,
+          secretKeyIV: newVersion?.secretKeyIV ?? secret.secretKeyCiphertext,
+          secretKeyTag: newVersion?.secretKeyTag ?? secret.secretKeyTag,
+          secretValueCiphertext: newVersion?.secretValueCiphertext ?? secret.secretValueCiphertext,
+          secretValueIV: newVersion?.secretValueIV ?? secret.secretValueIV,
+          secretValueTag: newVersion?.secretValueTag ?? secret.secretValueTag,
+          tags: newVersion?.tags ?? secret.tags,
+          algorithm: ALGORITHM_AES_256_GCM,
+          keyEncoding: ENCODING_SCHEME_UTF8,
+          skipMultilineEncoding: newVersion?.skipMultilineEncoding ?? secret.skipMultilineEncoding
+        });
+      })
+    });
+
+    await EEAuditLogService.createAuditLog(
+      authData,
+      {
+        type: EventType.UPDATE_SECRETS,
+        metadata: {
+          environment,
+          secretPath: "/",
+          secrets: nonConflictSecrets.map(({ secret }) => ({
+            secretId: secret._id.toString(),
+            secretKey: "",
+            secretVersion: secret.version + 1
+          }))
+        }
+      },
+      {
+        workspaceId
+      }
+    );
+  }
+
+  const secretDeletionCommits = secretApprovalRequest.commits.filter(
+    ({ op }) => op === CommitType.DELETE
+  ) as Array<{
+    op: CommitType.DELETE;
+    secret: ISecret;
+  }>;
+  if (secretDeletionCommits.length) {
+    await Secret.deleteMany({
+      workspace: new Types.ObjectId(workspaceId),
+      folder: folderId,
+      environment
+    })
+      .or(
+        secretDeletionCommits.map(({ secret: { secretBlindIndex } }) => ({
+          secretBlindIndex,
+          type: { $in: ["shared", "personal"] }
+        }))
+      )
+      .exec();
+
+    await EESecretService.markDeletedSecretVersions({
+      secretIds: secretDeletionCommits.map(({ secret }) => secret._id)
+    });
+
+    await EEAuditLogService.createAuditLog(
+      authData,
+      {
+        type: EventType.DELETE_SECRETS,
+        metadata: {
+          environment,
+          secretPath: "/",
+          secrets: secretDeletionCommits.map(({ secret: { _id, version } }) => ({
+            secretId: _id.toString(),
+            secretKey: "",
+            secretVersion: version
+          }))
+        }
+      },
+      {
+        workspaceId
+      }
+    );
+  }
+
+  const updatedSecretApproval = await SecretApprovalRequest.findByIdAndUpdate(
+    id,
+    {
+      conflicts,
+      hasMerged: true,
+      status: "close"
+    },
+    { new: true }
+  );
+
+  if (postHogClient) {
+    if (postHogClient) {
+      postHogClient.capture({
+        event: "secrets merged",
+        distinctId: await TelemetryService.getDistinctId({
+          authData
+        }),
+        properties: {
+          numberOfSecrets: secretApprovalRequest.commits.length,
+          environment,
+          workspaceId,
+          folderId,
+          channel: authData.userAgentType,
+          userAgent: authData.userAgent
+        }
+      });
+    }
+  }
+
+  await EESecretService.takeSecretSnapshot({
+    workspaceId,
+    environment,
+    folderId
+  });
+
+  return updatedSecretApproval;
 };

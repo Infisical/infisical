@@ -1,4 +1,9 @@
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  UseInfiniteQueryOptions,
+  useQuery,
+  UseQueryOptions
+} from "@tanstack/react-query";
 
 import {
   decryptAssymmetric,
@@ -18,8 +23,18 @@ import {
 } from "./types";
 
 export const secretApprovalRequestKeys = {
-  list: ({ workspaceId, environment }: TGetSecretApprovalRequestList) =>
-    [{ workspaceId, environment }, "secret-approval-requests"] as const,
+  list: ({
+    workspaceId,
+    environment,
+    status,
+    committer,
+    offset,
+    limit
+  }: TGetSecretApprovalRequestList) =>
+    [
+      { workspaceId, environment, status, committer, offset, limit },
+      "secret-approval-requests"
+    ] as const,
   detail: ({ id }: Omit<TGetSecretApprovalRequestDetails, "decryptKey">) =>
     [{ id }, "secret-approval-request-detail"] as const
 };
@@ -68,14 +83,22 @@ export const decryptSecretApprovalSecret = (
 
 const fetchSecretApprovalRequestList = async ({
   workspaceId,
-  environment
+  environment,
+  committer,
+  status = "open",
+  limit = 20,
+  offset
 }: TGetSecretApprovalRequestList) => {
   const { data } = await apiRequest.get<{ approvals: TSecretApprovalRequest[] }>(
     "/api/v1/secret-approval-requests",
     {
       params: {
         workspaceId,
-        environment
+        environment,
+        committer,
+        status,
+        limit,
+        offset
       }
     }
   );
@@ -86,10 +109,13 @@ const fetchSecretApprovalRequestList = async ({
 export const useGetSecretApprovalRequests = ({
   workspaceId,
   environment,
-  options = {}
+  options = {},
+  status,
+  limit = 20,
+  committer
 }: TGetSecretApprovalRequestList & {
   options?: Omit<
-    UseQueryOptions<
+    UseInfiniteQueryOptions<
       TSecretApprovalRequest[],
       unknown,
       TSecretApprovalRequest[],
@@ -98,10 +124,26 @@ export const useGetSecretApprovalRequests = ({
     "queryKey" | "queryFn"
   >;
 }) =>
-  useQuery({
-    queryKey: secretApprovalRequestKeys.list({ workspaceId, environment }),
-    queryFn: () => fetchSecretApprovalRequestList({ workspaceId, environment }),
-    enabled: Boolean(workspaceId) && (options?.enabled ?? true)
+  useInfiniteQuery({
+    queryKey: secretApprovalRequestKeys.list({
+      workspaceId,
+      environment,
+      committer,
+      status
+    }),
+    queryFn: ({ pageParam }) =>
+      fetchSecretApprovalRequestList({
+        workspaceId,
+        environment,
+        status,
+        committer,
+        limit,
+        offset: pageParam
+      }),
+    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
+    getNextPageParam: (lastPage, pages) => {
+      return lastPage?.length !== 0 ? pages.length * limit : undefined;
+    }
   });
 
 const fetchSecretApprovalRequestDetails = async ({
@@ -134,9 +176,10 @@ export const useGetSecretApprovalRequestDetails = ({
     queryFn: () => fetchSecretApprovalRequestDetails({ id }),
     select: (data) => ({
       ...data,
-      commits: data.commits.map(({ secret, op, newVersion }) => ({
+      commits: data.commits.map(({ secretVersion, op, newVersion, secret }) => ({
         op,
-        secret: secret ? decryptSecrets([secret], decryptKey)[0] : undefined,
+        secret,
+        secretVersion: secretVersion ? decryptSecrets([secretVersion], decryptKey)[0] : undefined,
         newVersion: newVersion ? decryptSecretApprovalSecret(newVersion, decryptKey) : undefined
       }))
     }),

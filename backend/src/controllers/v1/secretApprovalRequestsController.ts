@@ -2,11 +2,12 @@ import { Request, Response } from "express";
 import { getUserProjectPermissions } from "../../ee/services/ProjectRoleService";
 import { validateRequest } from "../../helpers/validation";
 import { Folder } from "../../models";
-import { SecretApprovalRequest } from "../../models/secretApprovalRequest";
+import { ApprovalStatus, SecretApprovalRequest } from "../../models/secretApprovalRequest";
 import * as reqValidator from "../../validation/secretApprovalRequest";
 import { getFolderWithPathFromId } from "../../services/FolderService";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import { ISecretApprovalPolicy } from "../../models/secretApprovalPolicy";
+import { performSecretApprovalRequestMerge } from "../../services/SecretApprovalService";
 
 export const getSecretApprovalRequests = async (req: Request, res: Response) => {
   const {
@@ -29,6 +30,7 @@ export const getSecretApprovalRequests = async (req: Request, res: Response) => 
     ([key, value]) => value === undefined && delete query[key as keyof typeof query]
   );
   const approvalRequests = await SecretApprovalRequest.find(query)
+    .sort({ createdAt: -1 })
     .limit(limit)
     .skip(offset)
     .populate("policy")
@@ -64,11 +66,12 @@ export const getSecretApprovalRequestDetails = async (req: Request, res: Respons
   const secretApprovalRequest = await SecretApprovalRequest.findById(id)
     .populate("policy")
     .populate({
-      path: "commits.secret",
+      path: "commits.secretVersion",
       populate: {
         path: "tags"
       }
     })
+    .populate("commits.secret", "version")
     .populate("commits.newVersion.tags");
   if (!secretApprovalRequest)
     throw BadRequestError({ message: "Secret approval request not found" });
@@ -125,4 +128,44 @@ export const updateSecretApprovalRequestStatus = async (req: Request, res: Respo
   await secretApprovalRequest.save();
 
   return res.send({ status });
+};
+
+export const mergeSecretApprovalRequest = async (req: Request, res: Response) => {
+  const {
+    body: { id }
+  } = await validateRequest(reqValidator.mergeSecretApprovalRequest, req);
+
+  const secretApprovalRequest = await SecretApprovalRequest.findById(id).populate<{
+    policy: ISecretApprovalPolicy;
+  }>("policy");
+
+  if (!secretApprovalRequest)
+    throw BadRequestError({ message: "Secret approval request not found" });
+
+  const { membership } = await getUserProjectPermissions(
+    req.user._id,
+    secretApprovalRequest.workspace.toString()
+  );
+  if (
+    membership.role !== "admin" &&
+    secretApprovalRequest.committer !== membership.id &&
+    !secretApprovalRequest.policy.approvers.find((approverId) => approverId === membership.id)
+  ) {
+    throw UnauthorizedRequestError({ message: "User has no access" });
+  }
+
+  const reviewers = secretApprovalRequest.reviewers.reduce<Record<string, ApprovalStatus>>(
+    (prev, curr) => ({ ...prev, [curr.member.toString()]: curr.status }),
+    {}
+  );
+  const hasMinApproval =
+    secretApprovalRequest.policy.approvals <=
+    secretApprovalRequest.policy.approvers.filter(
+      (approverId) => reviewers[approverId.toString()] === ApprovalStatus.APPROVED
+    ).length;
+
+  if (!hasMinApproval) throw BadRequestError({ message: "Doesn't have minimum approvals needed" });
+
+  const approval = await performSecretApprovalRequestMerge(id, req.authData);
+  return res.send({ approval });
 };

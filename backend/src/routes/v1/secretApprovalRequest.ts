@@ -21,6 +21,14 @@ router.get(
 );
 
 router.post(
+  "/merge",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  secretApprovalRequestController.mergeSecretApprovalRequest
+);
+
+router.post(
   "/:id",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]

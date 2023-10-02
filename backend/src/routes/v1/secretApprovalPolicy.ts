@@ -12,6 +12,14 @@ router.get(
   secretApprovalPolicyController.getSecretApprovalPolicy
 );
 
+router.get(
+  "/board",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  secretApprovalPolicyController.getSecretApprovalPolicyOfBoard
+);
+
 router.post(
   "/",
   requireAuth({

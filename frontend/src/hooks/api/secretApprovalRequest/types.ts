@@ -60,7 +60,8 @@ export type TSecretApprovalRequest<
   policy: TSecretApprovalPolicy;
   commits: {
     // if there is no secret means it was creation
-    secret?: J;
+    secret?: { version: number };
+    secretVersion: J;
     // if there is no new version its for Delete
     newVersion?: T;
     op: CommitType;
@@ -70,6 +71,10 @@ export type TSecretApprovalRequest<
 export type TGetSecretApprovalRequestList = {
   workspaceId: string;
   environment?: string;
+  status?: "open" | "close";
+  committer?: string;
+  limit?: number;
+  offset?: number;
 };
 
 export type TGetSecretApprovalRequestDetails = {
@@ -79,5 +84,9 @@ export type TGetSecretApprovalRequestDetails = {
 
 export type TUpdateSecretApprovalRequestStatusDTO = {
   status: ApprovalStatus;
+  id: string;
+};
+
+export type TPerformSecretApprovalRequestMerge = {
   id: string;
 };

@@ -2,7 +2,15 @@ import { z } from "zod";
 
 export const GetSecretApprovalRuleList = z.object({
   query: z.object({
-    workspaceId: z.string()
+    workspaceId: z.string().trim()
+  })
+});
+
+export const GetSecretApprovalPolicyOfABoard = z.object({
+  query: z.object({
+    workspaceId: z.string().trim(),
+    environment: z.string().trim(),
+    secretPath: z.string().trim()
   })
 });
 

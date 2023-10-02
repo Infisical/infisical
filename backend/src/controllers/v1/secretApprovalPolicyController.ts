@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { Request, Response } from "express";
 import {
   ProjectPermissionActions,
@@ -7,6 +7,7 @@ import {
 } from "../../ee/services/ProjectRoleService";
 import { validateRequest } from "../../helpers/validation";
 import { SecretApprovalPolicy } from "../../models/secretApprovalPolicy";
+import { getSecretPolicyOfBoard } from "../../services/SecretApprovalService";
 import { BadRequestError } from "../../utils/errors";
 import * as reqValidator from "../../validation/secretApproval";
 
@@ -106,4 +107,19 @@ export const getSecretApprovalPolicy = async (req: Request, res: Response) => {
   return res.send({
     approvals: doc
   });
+};
+
+export const getSecretApprovalPolicyOfBoard = async (req: Request, res: Response) => {
+  const {
+    query: { workspaceId, environment, secretPath }
+  } = await validateRequest(reqValidator.GetSecretApprovalPolicyOfABoard, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    subject(ProjectPermissionSub.Secrets, { secretPath, environment })
+  );
+
+  const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+  return res.send({ policy: secretApprovalPolicy });
 };
