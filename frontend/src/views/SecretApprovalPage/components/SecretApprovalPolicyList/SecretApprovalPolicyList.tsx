@@ -87,6 +87,7 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
         <Table>
           <THead>
             <Tr>
+              <Th>Name</Th>
               <Th>Environment</Th>
               <Th>Secret Path</Th>
               <Th>Eligible Approvers</Th>

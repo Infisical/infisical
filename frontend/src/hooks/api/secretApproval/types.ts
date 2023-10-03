@@ -1,6 +1,7 @@
 export type TSecretApprovalPolicy = {
   _id: string;
   workspace: string;
+  name: string;
   environment: string;
   secretPath?: string;
   approvers: string[];

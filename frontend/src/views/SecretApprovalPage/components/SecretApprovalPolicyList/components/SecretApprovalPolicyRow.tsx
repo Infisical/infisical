@@ -38,6 +38,7 @@ export const SecretApprovalPolicyRow = ({
 
   return (
     <Tr>
+      <Td>{policy.name}</Td>
       <Td>{policy.environment}</Td>
       <Td>{policy.secretPath || "*"}</Td>
       <Td>

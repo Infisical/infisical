@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { Request, Response } from "express";
+import { nanoid } from "nanoid";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -15,7 +16,7 @@ const ERR_SECRET_APPROVAL_NOT_FOUND = BadRequestError({ message: "secret approva
 
 export const createSecretApprovalPolicy = async (req: Request, res: Response) => {
   const {
-    body: { approvals, secretPath, approvers, environment, workspaceId }
+    body: { approvals, secretPath, approvers, environment, workspaceId, name }
   } = await validateRequest(reqValidator.CreateSecretApprovalRule, req);
 
   const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
@@ -26,6 +27,7 @@ export const createSecretApprovalPolicy = async (req: Request, res: Response) =>
 
   const secretApproval = new SecretApprovalPolicy({
     workspace: workspaceId,
+    name: name ?? `${environment}-${nanoid(3)}`,
     secretPath,
     environment,
     approvals,
@@ -40,7 +42,7 @@ export const createSecretApprovalPolicy = async (req: Request, res: Response) =>
 
 export const updateSecretApprovalPolicy = async (req: Request, res: Response) => {
   const {
-    body: { approvals, approvers, secretPath },
+    body: { approvals, approvers, secretPath, name },
     params: { id }
   } = await validateRequest(reqValidator.UpdateSecretApprovalRule, req);
 
@@ -59,6 +61,7 @@ export const updateSecretApprovalPolicy = async (req: Request, res: Response) =>
   const updatedDoc = await SecretApprovalPolicy.findByIdAndUpdate(id, {
     approvals,
     approvers,
+    name: (name || secretApproval?.name) ?? `${secretApproval.environment}-${nanoid(3)}`,
     ...(secretPath === null ? { $unset: { secretPath: 1 } } : { secretPath })
   });
 

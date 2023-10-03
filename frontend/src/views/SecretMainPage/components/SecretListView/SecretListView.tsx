@@ -218,7 +218,7 @@ export const SecretListView = ({
             newKey: hasKeyChanged ? key : undefined,
             skipMultilineEncoding: modSecret.skipMultilineEncoding
           });
-          if (isProtectedBranch) cb();
+          if (cb) cb();
         }
 
         queryClient.invalidateQueries(

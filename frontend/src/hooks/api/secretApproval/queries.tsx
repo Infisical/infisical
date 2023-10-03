@@ -52,7 +52,7 @@ const fetchApprovalPolicyOfABoard = async (
     "/api/v1/secret-approvals/board",
     { params: { workspaceId, environment, secretPath } }
   );
-  return data.policy;
+  return data.policy || "";
 };
 
 export const useGetSecretApprovalPolicyOfABoard = ({

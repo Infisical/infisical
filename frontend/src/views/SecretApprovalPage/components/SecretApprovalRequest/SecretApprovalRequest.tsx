@@ -6,6 +6,7 @@ import {
   faCodeBranch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { formatDistance } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 
 import {
@@ -18,9 +19,9 @@ import {
   EmptyState,
   Skeleton
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useUser, useWorkspace } from "@app/context";
 import { useGetSecretApprovalRequests, useGetWorkspaceUsers } from "@app/hooks/api";
-import { TSecretApprovalRequest, TWorkspaceUser } from "@app/hooks/api/types";
+import { ApprovalStatus, TSecretApprovalRequest, TWorkspaceUser } from "@app/hooks/api/types";
 
 import {
   generateCommitText,
@@ -50,11 +51,13 @@ export const SecretApprovalRequest = () => {
     environment: envFilter,
     committer: committerFilter
   });
+  const { user: presentUser } = useUser();
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
     (prev, curr) => ({ ...prev, [curr._id]: curr }),
     {}
   );
+  const myMembershipId = members?.find(({ user }) => user._id === presentUser._id)?._id;
   const isSecretApprovalScreen = Boolean(selectedApproval);
 
   const handleGoBackSecretRequestDetail = () => {
@@ -181,7 +184,21 @@ export const SecretApprovalRequest = () => {
             {secretApprovalRequests?.pages?.map((group, i) => (
               <Fragment key={`secret-approval-request-${i + 1}`}>
                 {group?.map((secretApproval) => {
-                  const { _id: reqId, commits, committer } = secretApproval;
+                  const {
+                    _id: reqId,
+                    commits,
+                    committer,
+                    createdAt,
+                    policy,
+                    reviewers,
+                    status
+                  } = secretApproval;
+                  const isApprover = policy?.approvers?.indexOf(myMembershipId || "") !== -1;
+                  const isReviewed =
+                    reviewers.findIndex(
+                      ({ member, status: reviewStatus }) =>
+                        member === myMembershipId && reviewStatus === ApprovalStatus.APPROVED
+                    ) !== -1;
                   return (
                     <div
                       key={reqId}
@@ -198,9 +215,11 @@ export const SecretApprovalRequest = () => {
                         {generateCommitText(commits)}
                       </div>
                       <span className="text-xs text-gray-500">
-                        Opened 2 hours ago by {membersGroupById?.[committer]?.user?.firstName}{" "}
+                        Opened {formatDistance(new Date(createdAt), new Date())} ago by{" "}
+                        {membersGroupById?.[committer]?.user?.firstName}{" "}
                         {membersGroupById?.[committer]?.user?.lastName} (
-                        {membersGroupById?.[committer]?.user?.email}) - Review required
+                        {membersGroupById?.[committer]?.user?.email}){" "}
+                        {isApprover && !isReviewed && status === "open" && "- Review required"}
                       </span>
                     </div>
                   );

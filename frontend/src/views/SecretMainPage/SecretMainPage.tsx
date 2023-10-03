@@ -216,6 +216,7 @@ export const SecretMainPage = () => {
             isProjectRelated
             onEnvChange={handleEnvChange}
             isProtectedBranch={isProtectedBranch}
+            protectionPolicyName={boardPolicy?.name}
           />
         </div>
         {!isRollbackMode ? (

@@ -33,12 +33,18 @@ type Props = {
   editValues?: TSecretApprovalPolicy;
 };
 
-const formSchema = z.object({
-  environment: z.string(),
-  secretPath: z.string().optional().nullable(),
-  approvals: z.number().min(1),
-  approvers: z.string().array().optional()
-});
+const formSchema = z
+  .object({
+    environment: z.string(),
+    name: z.string().optional(),
+    secretPath: z.string().optional().nullable(),
+    approvals: z.number().min(1),
+    approvers: z.string().array().min(1)
+  })
+  .refine((data) => data.approvals <= data.approvers.length, {
+    path: ["approvals"],
+    message: "Approvals should be lower than approvals"
+  });
 
 type TFormSchema = z.infer<typeof formSchema>;
 
@@ -126,6 +132,15 @@ export const SecretPolicyForm = ({
     <Modal isOpen={isOpen} onOpenChange={onToggle}>
       <ModalContent title={isEditMode ? "Edit policy" : "Create policy"}>
         <form onSubmit={handleSubmit(handleFormSubmit)}>
+          <Controller
+            control={control}
+            name="name"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Policy Name" isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} value={field.value || ""} />
+              </FormControl>
+            )}
+          />
           <Controller
             control={control}
             name="environment"
