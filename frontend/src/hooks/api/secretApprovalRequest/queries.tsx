@@ -142,6 +142,8 @@ export const useGetSecretApprovalRequests = ({
       }),
     enabled: Boolean(workspaceId) && (options?.enabled ?? true),
     getNextPageParam: (lastPage, pages) => {
+      if (lastPage.length && lastPage.length < limit) return undefined;
+
       return lastPage?.length !== 0 ? pages.length * limit : undefined;
     }
   });

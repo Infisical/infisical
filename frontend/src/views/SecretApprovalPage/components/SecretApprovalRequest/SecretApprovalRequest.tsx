@@ -14,7 +14,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  EmptyState,
+  Skeleton
 } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { useGetSecretApprovalRequests, useGetWorkspaceUsers } from "@app/hooks/api";
@@ -40,6 +42,7 @@ export const SecretApprovalRequest = () => {
     isFetchingNextPage: isFetchingNextApprovalRequest,
     fetchNextPage: fetchNextApprovalRequest,
     hasNextPage: hasNextApprovalPage,
+    isLoading: isApprovalRequestLoading,
     refetch
   } = useGetSecretApprovalRequests({
     workspaceId,
@@ -58,6 +61,9 @@ export const SecretApprovalRequest = () => {
     setSelectedApproval(null);
     refetch({ refetchPage: (_page, index) => index === 0 });
   };
+
+  const isRequestListEmpty =
+    !isApprovalRequestLoading && secretApprovalRequests?.pages[0]?.length === 0;
 
   return (
     <AnimatePresence exitBeforeEnter>
@@ -97,7 +103,7 @@ export const SecretApprovalRequest = () => {
               className={statusFilter === "close" ? "text-gray-500" : ""}
             >
               <FontAwesomeIcon icon={faCodeBranch} className="mr-2" />
-              27 Open
+              Open
             </div>
             <div
               className={statusFilter === "open" ? "text-gray-500" : ""}
@@ -109,7 +115,7 @@ export const SecretApprovalRequest = () => {
               }}
             >
               <FontAwesomeIcon icon={faCheck} className="mr-2" />
-              27 Closed
+              Closed
             </div>
             <div className="flex-grow flex justify-end space-x-8">
               <DropdownMenu>
@@ -167,6 +173,11 @@ export const SecretApprovalRequest = () => {
             </div>
           </div>
           <div className="flex flex-col border-t border-mineshaft-600 bg-mineshaft-800">
+            {isRequestListEmpty && (
+              <div className="py-12">
+                <EmptyState title="No more requests pending." />
+              </div>
+            )}
             {secretApprovalRequests?.pages?.map((group, i) => (
               <Fragment key={`secret-approval-request-${i + 1}`}>
                 {group?.map((secretApproval) => {
@@ -196,6 +207,22 @@ export const SecretApprovalRequest = () => {
                 })}
               </Fragment>
             ))}
+            {(isFetchingNextApprovalRequest || isApprovalRequestLoading) && (
+              <div>
+                {Array.apply(0, Array(3)).map((_x, index) => (
+                  <div
+                    key={`approval-request-loading-${index + 1}`}
+                    className="flex flex-col px-8 py-4 hover:bg-mineshaft-700"
+                  >
+                    <div className="mb-2 flex items-center">
+                      <FontAwesomeIcon icon={faCodeBranch} className="mr-2" />
+                      <Skeleton className="bg-mineshaft-600 w-1/4" />
+                    </div>
+                    <Skeleton className="bg-mineshaft-600 w-1/2" />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           {hasNextApprovalPage && (
             <Button
