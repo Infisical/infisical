@@ -3,17 +3,25 @@ title: "Project"
 description: "How Infisical organizes secrets into projects."
 ---
 
-A project houses environment variables for an application.
+A project houses application configuration and secrets for an application.
 
-## Dashboard
+## Secrets Overview
 
-The dashboard page is where you can manage environment variables for a given project.
+The **Secrets Overview** page captures a birds-eye-view of secrets and folders across environments like development, staging, or production. 
+This is useful for comparing secrets, identifying if anything is missing, and making quick changes.
+
+![project secrets overview](../../images/platform/project/project-secrets-overview-open.png)
+
+## Secrets Dashboard
+
+The **Secrets Dashboard** page appears when you press to manage the secrets of a particular environment.
 
 ![project dashboard](../../images/dashboard.png)
 
-### Environment variables
+### Secrets
 
-Environment variables can be added or removed from a project. By default, they are pre-populated in your first project for demonstration. For any subsequent project, it can be convenient to import existing environment variables by dragging and dropping a .env file containing them.
+Secrets can be added to or removed from a project. By default, they are pre-populated in your first project for demonstration. 
+For any subsequent project, if applicable, it can be convenient to add items by dragging and dropping a .env file containing them.
 
 Here's what dragging and dropping a .env looks like:
 
