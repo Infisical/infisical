@@ -19,6 +19,7 @@ export type Props = {
   secretVersion?: DecryptedSecret;
   newVersion?: Omit<TSecretApprovalSecChange, "tags"> & { tags?: WsTag[] };
   presentSecretVersionNumber: number;
+  hasMerged?: Boolean;
 };
 
 const generateItemTitle = (op: CommitType) => {
@@ -38,10 +39,11 @@ export const SecretApprovalRequestChangeItem = ({
   op,
   secretVersion,
   newVersion,
-  presentSecretVersionNumber
+  presentSecretVersionNumber,
+  hasMerged
 }: Props) => {
   // meaning request has changed
-  const isStale = (secretVersion?.version || 1) < presentSecretVersionNumber;
+  const isStale = (secretVersion?.version || 1) < presentSecretVersionNumber && !hasMerged;
   return (
     <div className="bg-bunker-500 rounded-lg pt-2 pb-4 px-4">
       <div className="py-3 px-1 flex items-center">

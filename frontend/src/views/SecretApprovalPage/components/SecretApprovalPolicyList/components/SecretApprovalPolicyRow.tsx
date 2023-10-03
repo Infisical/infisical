@@ -2,6 +2,7 @@ import { useState } from "react";
 import { faCheckCircle, faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,9 +12,9 @@ import {
   IconButton,
   Input,
   Td,
-  Tooltip,
   Tr
 } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { useUpdateSecretApprovalPolicy } from "@app/hooks/api";
 import { TSecretApprovalPolicy } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
@@ -35,6 +36,7 @@ export const SecretApprovalPolicyRow = ({
 }: Props) => {
   const [selectedApprovers, setSelectedApprovers] = useState<string[]>([]);
   const { mutate: updateSecretApprovalPolicy, isLoading } = useUpdateSecretApprovalPolicy();
+  const permission = useProjectPermission();
 
   return (
     <Tr>
@@ -62,7 +64,13 @@ export const SecretApprovalPolicyRow = ({
             }
           }}
         >
-          <DropdownMenuTrigger asChild disabled={isLoading}>
+          <DropdownMenuTrigger
+            asChild
+            disabled={
+              isLoading ||
+              permission.cannot(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval)
+            }
+          >
             <Input
               isReadOnly
               value={policy.approvers?.length ? `${policy.approvers.length} selected` : "None"}
@@ -98,22 +106,37 @@ export const SecretApprovalPolicyRow = ({
       <Td>{policy.approvals}</Td>
       <Td>
         <div className="flex items-center justify-end space-x-4">
-          <Tooltip content="Edit">
-            <IconButton variant="plain" ariaLabel="edit" onClick={onEdit}>
-              <FontAwesomeIcon icon={faPencil} size="lg" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content="Delete">
-            <IconButton
-              variant="plain"
-              colorSchema="danger"
-              size="lg"
-              ariaLabel="edit"
-              onClick={onDelete}
-            >
-              <FontAwesomeIcon icon={faTrash} />
-            </IconButton>
-          </Tooltip>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Edit}
+            a={ProjectPermissionSub.SecretApproval}
+            renderTooltip
+            allowedLabel="Edit"
+          >
+            {(isAllowed) => (
+              <IconButton variant="plain" ariaLabel="edit" onClick={onEdit} isDisabled={!isAllowed}>
+                <FontAwesomeIcon icon={faPencil} size="lg" />
+              </IconButton>
+            )}
+          </ProjectPermissionCan>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Delete}
+            a={ProjectPermissionSub.SecretApproval}
+            renderTooltip
+            allowedLabel="Delete"
+          >
+            {(isAllowed) => (
+              <IconButton
+                variant="plain"
+                colorSchema="danger"
+                size="lg"
+                ariaLabel="edit"
+                onClick={onDelete}
+                isDisabled={!isAllowed}
+              >
+                <FontAwesomeIcon icon={faTrash} />
+              </IconButton>
+            )}
+          </ProjectPermissionCan>
         </div>
       </Td>
     </Tr>

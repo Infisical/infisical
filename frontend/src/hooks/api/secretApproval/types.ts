@@ -20,6 +20,7 @@ export type TGetSecretApprovalPolicyOfBoardDTO = {
 
 export type TCreateSecretPolicyDTO = {
   workspaceId: string;
+  name?: string;
   environment: string;
   secretPath?: string | null;
   approvers?: string[];
@@ -28,6 +29,7 @@ export type TCreateSecretPolicyDTO = {
 
 export type TUpdateSecretPolicyDTO = {
   id: string;
+  name?: string;
   approvers?: string[];
   secretPath?: string | null;
   approvals?: number;

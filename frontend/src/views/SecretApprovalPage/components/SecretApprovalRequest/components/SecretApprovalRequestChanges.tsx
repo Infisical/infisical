@@ -211,6 +211,7 @@ export const SecretApprovalRequestChanges = ({
             ({ op, secretVersion, secret, newVersion }, index) => (
               <SecretApprovalRequestChangeItem
                 op={op}
+                hasMerged={hasMerged}
                 secretVersion={secretVersion}
                 presentSecretVersionNumber={secret?.version || 0}
                 newVersion={newVersion}

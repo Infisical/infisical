@@ -42,7 +42,7 @@ export const getSecretPolicyOfBoard = async (
   // now sort by priority. exact secret path gets first match followed by glob followed by just env scoped
   // if that is tie get by first createdAt
   const policiesByPriority = policiesFilteredByPath.sort(
-    (a, b) => getPolicyScore(a) - getPolicyScore(b)
+    (a, b) => getPolicyScore(b) - getPolicyScore(a)
   );
   const finalPolicy = policiesByPriority.shift();
   return finalPolicy;

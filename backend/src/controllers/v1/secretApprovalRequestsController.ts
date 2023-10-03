@@ -6,8 +6,9 @@ import { ApprovalStatus, SecretApprovalRequest } from "../../models/secretApprov
 import * as reqValidator from "../../validation/secretApprovalRequest";
 import { getFolderWithPathFromId } from "../../services/FolderService";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import { ISecretApprovalPolicy } from "../../models/secretApprovalPolicy";
+import { ISecretApprovalPolicy, SecretApprovalPolicy } from "../../models/secretApprovalPolicy";
 import { performSecretApprovalRequestMerge } from "../../services/SecretApprovalService";
+import { Types } from "mongoose";
 
 export const getSecretApprovalRequests = async (req: Request, res: Response) => {
   const {
@@ -17,24 +18,43 @@ export const getSecretApprovalRequests = async (req: Request, res: Response) => 
   const { membership } = await getUserProjectPermissions(req.user._id, workspaceId);
 
   const query = {
-    workspace: workspaceId,
+    workspace: new Types.ObjectId(workspaceId),
     environment,
-    committer,
-    status,
-    ...(membership.role !== "admin"
-      ? { $or: [{ committer: membership.id }, { "policy.approvers": membership.id }] }
-      : {})
+    committer: committer ? new Types.ObjectId(committer) : undefined,
+    status
   };
   // to strip of undefined in query we use es6 spread to ignore those fields
   Object.entries(query).forEach(
     ([key, value]) => value === undefined && delete query[key as keyof typeof query]
   );
-  const approvalRequests = await SecretApprovalRequest.find(query)
-    .sort({ createdAt: -1 })
-    .limit(limit)
-    .skip(offset)
-    .populate("policy")
-    .lean();
+  const approvalRequests = await SecretApprovalRequest.aggregate([
+    {
+      $match: query
+    },
+    {
+      $lookup: {
+        from: SecretApprovalPolicy.collection.name,
+        localField: "policy",
+        foreignField: "_id",
+        as: "policy"
+      }
+    },
+    { $unwind: "$policy" },
+    ...(membership.role !== "admin"
+      ? [
+          {
+            $match: {
+              $or: [
+                { committer: new Types.ObjectId(membership.id) },
+                { "policy.approvers": new Types.ObjectId(membership.id) }
+              ]
+            }
+          }
+        ]
+      : []),
+    { $skip: offset },
+    { $limit: limit }
+  ]);
   if (!approvalRequests.length) return res.send({ approvals: [] });
 
   const unqiueEnvs = environment ?? {
@@ -114,7 +134,7 @@ export const updateSecretApprovalReviewStatus = async (req: Request, res: Respon
   if (
     membership.role !== "admin" &&
     secretApprovalRequest.committer !== membership.id &&
-    !secretApprovalRequest.policy.approvers.find((approverId) => approverId === membership.id)
+    !secretApprovalRequest.policy.approvers.find((approverId) => approverId.equals(membership.id))
   ) {
     throw UnauthorizedRequestError({ message: "User has no access" });
   }

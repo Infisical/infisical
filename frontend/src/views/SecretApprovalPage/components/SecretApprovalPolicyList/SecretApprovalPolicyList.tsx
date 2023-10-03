@@ -2,6 +2,7 @@ import { faFileShield, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -15,6 +16,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteSecretApprovalPolicy,
@@ -35,11 +37,15 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
     "secretPolicyForm",
     "deletePolicy"
   ] as const);
+  const permission = useProjectPermission();
   const { createNotification } = useNotificationContext();
 
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const { data: policies, isLoading: isPoliciesLoading } = useGetSecretApprovalPolicies({
-    workspaceId
+    workspaceId,
+    options: {
+      enabled: permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval)
+    }
   });
 
   const { mutateAsync: deleteSecretApprovalPolicy } = useDeleteSecretApprovalPolicy();
@@ -75,12 +81,20 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
           </div>
         </div>
         <div>
-          <Button
-            onClick={() => handlePopUpOpen("secretPolicyForm")}
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.SecretApproval}
           >
-            Create policy
-          </Button>
+            {(isAllowed) => (
+              <Button
+                onClick={() => handlePopUpOpen("secretPolicyForm")}
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                isDisabled={!isAllowed}
+              >
+                Create policy
+              </Button>
+            )}
+          </ProjectPermissionCan>
         </div>
       </div>
       <TableContainer>
