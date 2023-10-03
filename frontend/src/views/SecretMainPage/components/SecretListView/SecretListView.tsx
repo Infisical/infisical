@@ -183,7 +183,6 @@ export const SecretListView = ({
       modSecret: Omit<DecryptedSecret, "tags"> & { tags: { _id: string }[] },
       cb?: () => void
     ) => {
-      console.log(orgSecret, modSecret);
       const { key: oldKey } = orgSecret;
       const { key, value, overrideAction, idOverride, valueOverride, tags, comment } = modSecret;
       const hasKeyChanged = oldKey !== key;
@@ -219,7 +218,7 @@ export const SecretListView = ({
             newKey: hasKeyChanged ? key : undefined,
             skipMultilineEncoding: modSecret.skipMultilineEncoding
           });
-          if (isProtectedBranch) cb?.();
+          if (isProtectedBranch) cb();
         }
 
         queryClient.invalidateQueries(

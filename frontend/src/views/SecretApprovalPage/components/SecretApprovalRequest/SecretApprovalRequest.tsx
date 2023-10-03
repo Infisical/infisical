@@ -39,7 +39,8 @@ export const SecretApprovalRequest = () => {
     data: secretApprovalRequests,
     isFetchingNextPage: isFetchingNextApprovalRequest,
     fetchNextPage: fetchNextApprovalRequest,
-    hasNextPage: hasNextApprovalPage
+    hasNextPage: hasNextApprovalPage,
+    refetch
   } = useGetSecretApprovalRequests({
     workspaceId,
     status: statusFilter,
@@ -51,8 +52,12 @@ export const SecretApprovalRequest = () => {
     (prev, curr) => ({ ...prev, [curr._id]: curr }),
     {}
   );
-
   const isSecretApprovalScreen = Boolean(selectedApproval);
+
+  const handleGoBackSecretRequestDetail = () => {
+    setSelectedApproval(null);
+    refetch({ refetchPage: (_page, index) => index === 0 });
+  };
 
   return (
     <AnimatePresence exitBeforeEnter>
@@ -68,7 +73,7 @@ export const SecretApprovalRequest = () => {
             workspaceId={workspaceId}
             members={membersGroupById}
             approvalRequestId={selectedApproval?._id || ""}
-            onGoBack={() => setSelectedApproval(null)}
+            onGoBack={handleGoBackSecretRequestDetail}
             committer={membersGroupById?.[selectedApproval?.committer || ""]}
           />
         </motion.div>
@@ -192,16 +197,18 @@ export const SecretApprovalRequest = () => {
               </Fragment>
             ))}
           </div>
-          <Button
-            className="mt-4 text-sm"
-            isFullWidth
-            variant="star"
-            isLoading={isFetchingNextApprovalRequest}
-            isDisabled={isFetchingNextApprovalRequest || !hasNextApprovalPage}
-            onClick={() => fetchNextApprovalRequest()}
-          >
-            {hasNextApprovalPage ? "Load More" : "End of history"}
-          </Button>
+          {hasNextApprovalPage && (
+            <Button
+              className="mt-4 text-sm"
+              isFullWidth
+              variant="star"
+              isLoading={isFetchingNextApprovalRequest}
+              isDisabled={isFetchingNextApprovalRequest || !hasNextApprovalPage}
+              onClick={() => fetchNextApprovalRequest()}
+            >
+              {hasNextApprovalPage ? "Load More" : "End of history"}
+            </Button>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

@@ -54,6 +54,7 @@ export type ISecretCommits<T = Types.ObjectId, J = Types.ObjectId> = Array<
 export interface ISecretApprovalRequest {
   _id: Types.ObjectId;
   committer: Types.ObjectId;
+  statusChangeBy: Types.ObjectId;
   reviewers: {
     member: Types.ObjectId;
     status: ApprovalStatus;
@@ -159,6 +160,7 @@ const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
     hasMerged: { type: Boolean, default: false },
     status: { type: String, enum: ["close", "open"], default: "open" },
     committer: { type: Schema.Types.ObjectId, ref: "Membership" },
+    statusChangeBy: { type: Schema.Types.ObjectId, ref: "Membership" },
     commits: [
       {
         secret: { type: Types.ObjectId, ref: "Secret" },

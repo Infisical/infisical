@@ -58,6 +58,7 @@ export type TSecretApprovalRequest<
   hasMerged: boolean;
   status: "open" | "close";
   policy: TSecretApprovalPolicy;
+  statusChangeBy: string;
   commits: {
     // if there is no secret means it was creation
     secret?: { version: number };
@@ -82,11 +83,17 @@ export type TGetSecretApprovalRequestDetails = {
   decryptKey: UserWsKeyPair;
 };
 
-export type TUpdateSecretApprovalRequestStatusDTO = {
+export type TUpdateSecretApprovalReviewStatusDTO = {
   status: ApprovalStatus;
+  id: string;
+};
+
+export type TUpdateSecretApprovalRequestStatusDTO = {
+  status: "open" | "close";
   id: string;
 };
 
 export type TPerformSecretApprovalRequestMerge = {
   id: string;
+  workspaceId: string;
 };

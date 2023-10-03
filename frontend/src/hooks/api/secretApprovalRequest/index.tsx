@@ -1,5 +1,6 @@
 export {
   usePerformSecretApprovalRequestMerge,
-  useUpdateSecretApprovalRequestStatus
+  useUpdateSecretApprovalRequestStatus,
+  useUpdateSecretApprovalReviewStatus
 } from "./mutation";
 export { useGetSecretApprovalRequestDetails, useGetSecretApprovalRequests } from "./queries";

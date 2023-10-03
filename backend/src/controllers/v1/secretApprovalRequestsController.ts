@@ -35,7 +35,7 @@ export const getSecretApprovalRequests = async (req: Request, res: Response) => 
     .skip(offset)
     .populate("policy")
     .lean();
-  if (!approvalRequests.length) return res.send({ requests: [] });
+  if (!approvalRequests.length) return res.send({ approvals: [] });
 
   const unqiueEnvs = environment ?? {
     $in: [...new Set(approvalRequests.map(({ environment }) => environment))]
@@ -64,7 +64,7 @@ export const getSecretApprovalRequestDetails = async (req: Request, res: Respons
     params: { id }
   } = await validateRequest(reqValidator.getSecretApprovalRequestDetails, req);
   const secretApprovalRequest = await SecretApprovalRequest.findById(id)
-    .populate("policy")
+    .populate<{ policy: ISecretApprovalPolicy }>("policy")
     .populate({
       path: "commits.secretVersion",
       populate: {
@@ -84,7 +84,9 @@ export const getSecretApprovalRequestDetails = async (req: Request, res: Respons
   if (
     membership.role !== "admin" &&
     secretApprovalRequest.committer !== membership.id &&
-    secretApprovalRequest.reviewers.find(({ member }) => member === membership.id)
+    !secretApprovalRequest.policy.approvers.find(
+      (approverId) => approverId.toString() === membership._id.toString()
+    )
   ) {
     throw UnauthorizedRequestError({ message: "User has no access" });
   }
@@ -94,11 +96,11 @@ export const getSecretApprovalRequestDetails = async (req: Request, res: Respons
   });
 };
 
-export const updateSecretApprovalRequestStatus = async (req: Request, res: Response) => {
+export const updateSecretApprovalReviewStatus = async (req: Request, res: Response) => {
   const {
     body: { status },
     params: { id }
-  } = await validateRequest(reqValidator.updateSecretApprovalRequestStatus, req);
+  } = await validateRequest(reqValidator.updateSecretApprovalReviewStatus, req);
   const secretApprovalRequest = await SecretApprovalRequest.findById(id).populate<{
     policy: ISecretApprovalPolicy;
   }>("policy");
@@ -132,7 +134,7 @@ export const updateSecretApprovalRequestStatus = async (req: Request, res: Respo
 
 export const mergeSecretApprovalRequest = async (req: Request, res: Response) => {
   const {
-    body: { id }
+    params: { id }
   } = await validateRequest(reqValidator.mergeSecretApprovalRequest, req);
 
   const secretApprovalRequest = await SecretApprovalRequest.findById(id).populate<{
@@ -149,7 +151,7 @@ export const mergeSecretApprovalRequest = async (req: Request, res: Response) =>
   if (
     membership.role !== "admin" &&
     secretApprovalRequest.committer !== membership.id &&
-    !secretApprovalRequest.policy.approvers.find((approverId) => approverId === membership.id)
+    !secretApprovalRequest.policy.approvers.find((approverId) => approverId.equals(membership.id))
   ) {
     throw UnauthorizedRequestError({ message: "User has no access" });
   }
@@ -166,6 +168,51 @@ export const mergeSecretApprovalRequest = async (req: Request, res: Response) =>
 
   if (!hasMinApproval) throw BadRequestError({ message: "Doesn't have minimum approvals needed" });
 
-  const approval = await performSecretApprovalRequestMerge(id, req.authData);
+  const approval = await performSecretApprovalRequestMerge(
+    id,
+    req.authData,
+    membership._id.toString()
+  );
   return res.send({ approval });
+};
+
+export const updateSecretApprovalRequestStatus = async (req: Request, res: Response) => {
+  const {
+    body: { status },
+    params: { id }
+  } = await validateRequest(reqValidator.updateSecretApprovalRequestStatus, req);
+
+  const secretApprovalRequest = await SecretApprovalRequest.findById(id).populate<{
+    policy: ISecretApprovalPolicy;
+  }>("policy");
+
+  if (!secretApprovalRequest)
+    throw BadRequestError({ message: "Secret approval request not found" });
+
+  const { membership } = await getUserProjectPermissions(
+    req.user._id,
+    secretApprovalRequest.workspace.toString()
+  );
+
+  if (
+    membership.role !== "admin" &&
+    secretApprovalRequest.committer !== membership.id &&
+    !secretApprovalRequest.policy.approvers.find((approverId) => approverId.equals(membership._id))
+  ) {
+    throw UnauthorizedRequestError({ message: "User has no access" });
+  }
+
+  if (secretApprovalRequest.hasMerged)
+    throw BadRequestError({ message: "Approval request has been merged" });
+  if (secretApprovalRequest.status === "close" && status === "close")
+    throw BadRequestError({ message: "Approval request is already closed" });
+  if (secretApprovalRequest.status === "open" && status === "open")
+    throw BadRequestError({ message: "Approval request is already open" });
+
+  const updatedRequest = await SecretApprovalRequest.findByIdAndUpdate(
+    id,
+    { status, statusChangeBy: membership._id },
+    { new: true }
+  );
+  return res.send({ approval: updatedRequest });
 };

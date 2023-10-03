@@ -482,11 +482,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           <a>
                             <MenuItem
                               isSelected={
-                                router.asPath === `/project/${currentWorkspace?._id}/allowlist`
+                                router.asPath === `/project/${currentWorkspace?._id}/approval`
                               }
                               icon="system-outline-126-verified"
                             >
-                              Admin Panel
+                              Secret Approval
                             </MenuItem>
                           </a>
                         </Link>

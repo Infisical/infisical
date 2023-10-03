@@ -317,7 +317,11 @@ export const generateSecretApprovalRequest = async ({
 };
 
 // validation for a merge conditions happen in another function in controller
-export const performSecretApprovalRequestMerge = async (id: string, authData: AuthData) => {
+export const performSecretApprovalRequestMerge = async (
+  id: string,
+  authData: AuthData,
+  userMembershipId: string
+) => {
   const secretApprovalRequest = await SecretApprovalRequest.findById(id)
     .populate<{ commits: ISecretCommits<ISecret> }>({
       path: "commits.secret",
@@ -636,7 +640,8 @@ export const performSecretApprovalRequestMerge = async (id: string, authData: Au
     {
       conflicts,
       hasMerged: true,
-      status: "close"
+      status: "close",
+      statusChangeBy: userMembershipId
     },
     { new: true }
   );

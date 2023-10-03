@@ -9,33 +9,18 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import {
-  Button,
-  ContentLoader,
-  IconButton,
-  SecretInput,
-  Table,
-  TableContainer,
-  Tag,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { Button, ContentLoader, EmptyState, IconButton, Tooltip } from "@app/components/v2";
 import { useUser } from "@app/context";
 import {
   useGetSecretApprovalRequestDetails,
   useGetUserWsKey,
-  usePerformSecretApprovalRequestMerge,
-  useUpdateSecretApprovalRequestStatus
+  useUpdateSecretApprovalReviewStatus
 } from "@app/hooks/api";
 import { ApprovalStatus, CommitType, TWorkspaceUser } from "@app/hooks/api/types";
 
-import { useNotificationContext } from "~/components/context/Notifications/NotificationProvider";
-
 import { SecretApprovalRequestAction } from "./SecretApprovalRequestAction";
+import { SecretApprovalRequestChangeItem } from "./SecretApprovalRequestChangeItem";
 
 export const generateCommitText = (commits: { op: CommitType }[] = []) => {
   const score: Record<string, number> = {};
@@ -112,9 +97,7 @@ export const SecretApprovalRequestChanges = ({
     mutateAsync: updateSecretApprovalRequestStatus,
     isLoading: isUpdatingRequestStatus,
     variables
-  } = useUpdateSecretApprovalRequestStatus();
-  const { mutateAsync: performSecretApprovalMerge, isLoading: isMerging } =
-    usePerformSecretApprovalRequestMerge();
+  } = useUpdateSecretApprovalReviewStatus();
 
   const isApproving = variables?.status === ApprovalStatus.APPROVED && isUpdatingRequestStatus;
   const isRejecting = variables?.status === ApprovalStatus.REJECTED && isUpdatingRequestStatus;
@@ -155,31 +138,18 @@ export const SecretApprovalRequestChanges = ({
     }
   };
 
-  const handleSecretApprovalRequestMerge = async () => {
-    try {
-      await performSecretApprovalMerge({
-        id: approvalRequestId
-      });
-      createNotification({
-        type: "success",
-        text: "Successfully merged the request"
-      });
-    } catch (err) {
-      console.log(err);
-      createNotification({
-        type: "error",
-        text: "Failed to update the request status"
-      });
-    }
-  };
-
   if (isSecretApprovalRequestLoading) {
     <div>
       <ContentLoader />
     </div>;
   }
 
-  if (!isSecretApprovalRequestSuccess) return <div>Failed</div>;
+  if (!isSecretApprovalRequestSuccess)
+    return (
+      <div>
+        <EmptyState title="Failed to load approvals" />
+      </div>
+    );
 
   const isMergable =
     secretApprovalRequestDetails?.policy?.approvals <=
@@ -212,141 +182,54 @@ export const SecretApprovalRequestChanges = ({
               </span>
             </div>
           </div>
-          <Button
-            size="xs"
-            leftIcon={hasApproved && <FontAwesomeIcon icon={faCheck} />}
-            onClick={() => handleSecretApprovalStatusUpdate(ApprovalStatus.APPROVED)}
-            isLoading={isApproving}
-            isDisabled={isApproving || hasApproved}
-          >
-            {hasApproved ? "Approved" : "Approve"}
-          </Button>
-          <Button
-            size="xs"
-            colorSchema="danger"
-            leftIcon={hasRejected && <FontAwesomeIcon icon={faCheck} />}
-            onClick={() => handleSecretApprovalStatusUpdate(ApprovalStatus.REJECTED)}
-            isLoading={isRejecting}
-            isDisabled={isRejecting || hasRejected}
-          >
-            {hasRejected ? "Rejected" : "Reject"}
-          </Button>
+          {!hasMerged && secretApprovalRequestDetails.status === "open" && (
+            <>
+              <Button
+                size="xs"
+                leftIcon={hasApproved && <FontAwesomeIcon icon={faCheck} />}
+                onClick={() => handleSecretApprovalStatusUpdate(ApprovalStatus.APPROVED)}
+                isLoading={isApproving}
+                isDisabled={isApproving || hasApproved}
+              >
+                {hasApproved ? "Approved" : "Approve"}
+              </Button>
+              <Button
+                size="xs"
+                colorSchema="danger"
+                leftIcon={hasRejected && <FontAwesomeIcon icon={faCheck} />}
+                onClick={() => handleSecretApprovalStatusUpdate(ApprovalStatus.REJECTED)}
+                isLoading={isRejecting}
+                isDisabled={isRejecting || hasRejected}
+              >
+                {hasRejected ? "Rejected" : "Reject"}
+              </Button>
+            </>
+          )}
         </div>
         <div className="flex flex-col space-y-4">
-          {secretApprovalRequestDetails.commits.map(({ op, secretVersion, newVersion }, index) => (
-            <div key={`commit-change-secret-${index + 1}`}>
-              <TableContainer>
-                <Table>
-                  <THead>
-                    <Tr>
-                      {op === CommitType.UPDATE && <Th className="w-12" />}
-                      <Th className="min-table-row">Secret</Th>
-                      <Th>Value</Th>
-                      <Th className="min-table-row">Comment</Th>
-                      <Th className="min-table-row">Tags</Th>
-                    </Tr>
-                  </THead>
-                  {op === CommitType.UPDATE ? (
-                    <TBody>
-                      <Tr>
-                        <Td className="text-red-600">OLD</Td>
-                        <Td>{secretVersion?.key}</Td>
-                        <Td>
-                          <SecretInput isReadOnly value={secretVersion?.value} />
-                        </Td>
-                        <Td>{secretVersion?.comment}</Td>
-                        <Td>
-                          {secretVersion?.tags?.map(({ name, _id: tagId, tagColor }) => (
-                            <Tag
-                              className="flex items-center space-x-2 w-min"
-                              key={`${secretVersion._id}-${tagId}`}
-                            >
-                              <div
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: tagColor || "#bec2c8" }}
-                              />
-                              <div className="text-sm">{name}</div>
-                            </Tag>
-                          ))}
-                        </Td>
-                      </Tr>
-                      <Tr>
-                        <Td className="text-green-600">NEW</Td>
-                        <Td>{newVersion?.secretKey}</Td>
-                        <Td>
-                          <SecretInput isReadOnly value={newVersion?.secretValue} />
-                        </Td>
-                        <Td>{newVersion?.secretComment}</Td>
-                        <Td>
-                          {newVersion?.tags?.map(({ name, _id: tagId, tagColor }) => (
-                            <Tag
-                              className="flex items-center space-x-2 w-min"
-                              key={`${newVersion._id}-${tagId}`}
-                            >
-                              <div
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: tagColor || "#bec2c8" }}
-                              />
-                              <div className="text-sm">{name}</div>
-                            </Tag>
-                          ))}
-                        </Td>
-                      </Tr>
-                    </TBody>
-                  ) : (
-                    <TBody>
-                      <Tr>
-                        <Td>
-                          {op === CommitType.CREATE ? newVersion?.secretKey : secretVersion?.key}
-                        </Td>
-                        <Td>
-                          <SecretInput
-                            isReadOnly
-                            value={
-                              op === CommitType.CREATE
-                                ? newVersion?.secretValue
-                                : secretVersion?.value
-                            }
-                          />
-                        </Td>
-                        <Td>
-                          {op === CommitType.CREATE
-                            ? newVersion?.secretComment
-                            : secretVersion?.comment}
-                        </Td>
-                        <Td>
-                          {(op === CommitType.CREATE ? newVersion?.tags : secretVersion?.tags)?.map(
-                            ({ name, _id: tagId, tagColor }) => (
-                              <Tag
-                                className="flex items-center space-x-2 w-min"
-                                key={`${
-                                  op === CommitType.CREATE ? newVersion?._id : secretVersion?._id
-                                }-${tagId}`}
-                              >
-                                <div
-                                  className="w-3 h-3 rounded-full"
-                                  style={{ backgroundColor: tagColor || "#bec2c8" }}
-                                />
-                                <div className="text-sm">{name}</div>
-                              </Tag>
-                            )
-                          )}
-                        </Td>
-                      </Tr>
-                    </TBody>
-                  )}
-                </Table>
-              </TableContainer>
-            </div>
-          ))}
+          {secretApprovalRequestDetails.commits.map(
+            ({ op, secretVersion, secret, newVersion }, index) => (
+              <SecretApprovalRequestChangeItem
+                op={op}
+                secretVersion={secretVersion}
+                presentSecretVersionNumber={secret?.version || 0}
+                newVersion={newVersion}
+                key={`${op}-${index + 1}-${secretVersion?._id}`}
+              />
+            )
+          )}
         </div>
-        <div className="flex items-center px-4 py-6 rounded-lg space-x-6 bg-mineshaft-800 mt-8">
+        <div className="flex items-center px-5 py-6 rounded-lg space-x-6 bg-mineshaft-800 mt-8">
           <SecretApprovalRequestAction
+            approvalRequestId={secretApprovalRequestDetails._id}
             hasMerged={hasMerged}
+            approvals={secretApprovalRequestDetails.policy.approvals || 0}
             status={secretApprovalRequestDetails.status}
-            isMerging={isMerging}
             isMergable={isMergable}
-            onMerge={handleSecretApprovalRequestMerge}
+            statusChangeByEmail={
+              members[secretApprovalRequestDetails?.statusChangeBy || ""]?.user?.email || ""
+            }
+            workspaceId={workspaceId}
           />
         </div>
       </div>

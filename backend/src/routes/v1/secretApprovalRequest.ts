@@ -21,7 +21,7 @@ router.get(
 );
 
 router.post(
-  "/merge",
+  "/:id/merge",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
@@ -29,7 +29,15 @@ router.post(
 );
 
 router.post(
-  "/:id",
+  "/:id/review",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  secretApprovalRequestController.updateSecretApprovalReviewStatus
+);
+
+router.post(
+  "/:id/status",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),

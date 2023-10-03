@@ -18,7 +18,7 @@ export const getSecretApprovalRequestDetails = z.object({
   })
 });
 
-export const updateSecretApprovalRequestStatus = z.object({
+export const updateSecretApprovalReviewStatus = z.object({
   body: z.object({
     status: z.enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED])
   }),
@@ -28,7 +28,16 @@ export const updateSecretApprovalRequestStatus = z.object({
 });
 
 export const mergeSecretApprovalRequest = z.object({
-  body: z.object({
+  params: z.object({
     id: z.string().trim()
+  })
+});
+
+export const updateSecretApprovalRequestStatus = z.object({
+  params: z.object({
+    id: z.string().trim()
+  }),
+  body: z.object({
+    status: z.enum(["open", "close"])
   })
 });
