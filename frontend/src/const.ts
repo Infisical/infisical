@@ -117,3 +117,7 @@ export const secretTagsColors = [
     selected: false
   },
 ]
+
+export const globalConstants = Object.freeze({
+  INFISICAL_RADAR_GITHUB_BASE_URL: "https://github.com/apps/infisical-radar",
+});

@@ -5,9 +5,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
+import { globalConstants } from "@app/const";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
-
-const INFISICAL_RADAR_GITHUB_URL = "https://github.com/apps/infisical-radar";
 
 export const ConfigureInfisicalRadar: FC = () => {
   const { createNotification } = useNotificationContext();
@@ -23,11 +22,11 @@ export const ConfigureInfisicalRadar: FC = () => {
         type: "info"
       });
 
-      redirectWindow = window.open(INFISICAL_RADAR_GITHUB_URL, "_blank", "noopener,noreferrer");
+      redirectWindow = window.open(globalConstants.INFISICAL_RADAR_GITHUB_BASE_URL, "_blank", "noopener,noreferrer");
 
       const redirectTimeout = setTimeout(() => {
         if (redirectWindow) {
-          redirectWindow.location.href = INFISICAL_RADAR_GITHUB_URL;
+          redirectWindow.location.href = globalConstants.INFISICAL_RADAR_GITHUB_BASE_URL;
         }
       }, 500);
 

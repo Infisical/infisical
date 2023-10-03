@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
+import { globalConstants } from "@app/const";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { createSecretScanningSession, getInstallationStatus, linkGitAppInstallationWithOrganization } from "@app/hooks/api";
@@ -50,7 +51,7 @@ const SecretScanning = withPermission(
     const generateNewIntegrationSession = async () => {
       const sessionId = await createSecretScanningSession(String(localStorage.getItem("orgData.id")));
       router.push(
-        `https://github.com/apps/infisical-radar/installations/new?state=${sessionId}`
+        `${globalConstants.INFISICAL_RADAR_GITHUB_BASE_URL}/installations/new?state=${sessionId}`
       );
     };
 
