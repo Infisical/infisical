@@ -21,6 +21,7 @@ import {
   faCheck,
   faEnvelope,
   faInfinity,
+  faInfo,
   faMobile,
   faPlus,
   faQuestion
@@ -68,6 +69,7 @@ import {
   useLogoutUser,
   useUploadWsKey
 } from "@app/hooks/api";
+import { CURRENT_INFISICAL_VERSION } from "@app/version"
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -696,6 +698,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </div>
                     </button>
                   )}
+                <div className="mb-2 w-full pl-5 duration-200 hover:text-mineshaft-200">
+                  <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
+                  Current version: {CURRENT_INFISICAL_VERSION}
+                </div>
               </div>
             </nav>
           </aside>

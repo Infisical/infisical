@@ -39,7 +39,10 @@ jobs:
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           load: true
           context: backend
-          tags: infisical/backend:test
+          tags: |
+            infisical/backend:${{ steps.extract_version.outputs.version }}
+          labels: |
+            version=${{ steps.extract_version.outputs.version }}
       - name: ⏻ Spawn backend container and dependencies
         run: |
           docker compose -f .github/resources/docker-compose.be-test.yml up --wait --quiet-pull
@@ -58,9 +61,10 @@ jobs:
           context: backend
           tags: |
             infisical/backend:${{ steps.commit.outputs.short }}
-            infisical/backend:latest
             infisical/backend:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
+          labels: |
+            version=${{ steps.extract_version.outputs.version }}
 
   frontend-image:
     name: Build frontend image
@@ -90,9 +94,22 @@ jobs:
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           project: 64mmf0n610
           context: frontend
-          tags: infisical/frontend:test
+          tags: |
+            infisical/frontend:${{ steps.extract_version.outputs.version }}
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+          labels: |
+            version=${{ steps.extract_version.outputs.version }}
+      - name: 🛠️ Create or update Infisical version in version.ts file
+        run: |
+          version='${{ steps.extract_version.outputs.version }}'
+          file='frontend/src/version.ts'
+          touch "$file"
+          if grep -q "export const CURRENT_INFISICAL_VERSION = '.*';" "$file"; then
+            sed -i "s/export const CURRENT_INFISICAL_VERSION = '.*';/export const CURRENT_INFISICAL_VERSION = '$version';/" "$file"
+          else
+            echo "export const INFISICAL_VERSION = '$version';" >> "$file"
+          fi
       - name: ⏻ Spawn frontend container
         run: |
           docker run -d --rm --name infisical-frontend-test infisical/frontend:test
@@ -111,8 +128,9 @@ jobs:
           context: frontend
           tags: |
             infisical/frontend:${{ steps.commit.outputs.short }}
-            infisical/frontend:latest
             infisical/frontend:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+          labels: |
+            version=${{ steps.extract_version.outputs.version }}
