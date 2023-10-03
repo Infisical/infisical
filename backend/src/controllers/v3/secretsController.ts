@@ -3,7 +3,7 @@ import { Types } from "mongoose";
 import { EventService, SecretService } from "../../services";
 import { eventPushSecrets } from "../../events";
 import { BotService } from "../../services";
-import { containsGlobPatterns, isValidScope, repackageSecretToRaw } from "../../helpers/secrets";
+import { containsGlobPatterns, repackageSecretToRaw } from "../../helpers/secrets";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
 import { Folder, IServiceTokenData } from "../../models";
@@ -81,8 +81,7 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
       secretPath,
       requiredPermissions: [PERMISSION_READ_SECRETS]
     });
-    permissionCheckFn = (env: string, secPath: string) =>
-      isValidScope(req.authData.authPayload as IServiceTokenData, env, secPath);
+    permissionCheckFn = () => true;
   }
 
   const secrets = await SecretService.getSecrets({
@@ -447,8 +446,7 @@ export const getSecrets = async (req: Request, res: Response) => {
       secretPath,
       requiredPermissions: [PERMISSION_READ_SECRETS]
     });
-    permissionCheckFn = (env: string, secPath: string) =>
-      isValidScope(req.authData.authPayload as IServiceTokenData, env, secPath);
+    permissionCheckFn = () => true;
   }
 
   const secrets = await SecretService.getSecrets({
