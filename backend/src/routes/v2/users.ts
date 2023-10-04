@@ -33,17 +33,6 @@ router.put(
     requireAuth({
         acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
     }),
-    body("authMethods").exists().isArray({
-        min: 1,
-    }).custom((authMethods: AuthMethod[]) => {
-        return authMethods.every(provider => [
-            AuthMethod.EMAIL,
-            AuthMethod.GOOGLE,
-            AuthMethod.GITHUB,
-            AuthMethod.GITLAB
-        ].includes(provider))
-    }),
-    validateRequest,
     usersController.updateAuthMethods,
 );
 

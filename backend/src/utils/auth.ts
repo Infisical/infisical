@@ -20,11 +20,12 @@ import {
   getClientSecretGoogleLogin,
   getJwtProviderAuthLifetime,
   getJwtProviderAuthSecret,
+  getSiteURL,
+  getUrlGitLabLogin
 } from "../config";
 import { getSSOConfigHelper } from "../ee/helpers/organizations";
 import { InternalServerError, OrganizationNotFoundError } from "./errors";
 import { ACCEPTED, INTEGRATION_GITHUB_API_URL, INVITED, MEMBER } from "../variables";
-import { getSiteURL } from "../config";
 import { standardRequest } from "../config/request";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -80,6 +81,7 @@ const initializePassport = async () => {
   const clientSecretGoogleLogin = await getClientSecretGoogleLogin();
   const clientIdGitHubLogin = await getClientIdGitHubLogin();
   const clientSecretGitHubLogin = await getClientSecretGitHubLogin();
+  const urlGitLab = await getUrlGitLabLogin();
   const clientIdGitLabLogin = await getClientIdGitLabLogin();
   const clientSecretGitLabLogin = await getClientSecretGitLabLogin();
 
@@ -216,15 +218,15 @@ const initializePassport = async () => {
     ));
   }
 
-  if (clientIdGitLabLogin && clientSecretGitLabLogin) {
+  if (urlGitLab && clientIdGitLabLogin && clientSecretGitLabLogin) {
     passport.use(new GitLabStrategy({
       passReqToCallback: true,
       clientID: clientIdGitLabLogin,
       clientSecret: clientSecretGitLabLogin,
-      callbackURL: "/api/v1/sso/gitlab"
+      callbackURL: "/api/v1/sso/gitlab",
+      baseURL: urlGitLab
     },
     async (req : express.Request, accessToken : any, refreshToken : any, profile : any, done : any) => {
-      
       const email = profile.emails[0].value;
       
       let user = await User.findOne({
