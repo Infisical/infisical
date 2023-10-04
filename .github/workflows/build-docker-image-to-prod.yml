@@ -98,18 +98,9 @@ jobs:
             infisical/frontend:${{ steps.extract_version.outputs.version }}
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+            NEXT_INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
           labels: |
             version=${{ steps.extract_version.outputs.version }}
-      - name: 🛠️ Create or update Infisical version in version.ts file
-        run: |
-          version='${{ steps.extract_version.outputs.version }}'
-          file='frontend/src/version.ts'
-          touch "$file"
-          if grep -q "export const CURRENT_INFISICAL_VERSION = '.*';" "$file"; then
-            sed -i "s/export const CURRENT_INFISICAL_VERSION = '.*';/export const CURRENT_INFISICAL_VERSION = '$version';/" "$file"
-          else
-            echo "export const INFISICAL_VERSION = '$version';" >> "$file"
-          fi
       - name: ⏻ Spawn frontend container
         run: |
           docker run -d --rm --name infisical-frontend-test infisical/frontend:test
@@ -132,5 +123,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+            NEXT_INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
           labels: |
             version=${{ steps.extract_version.outputs.version }}

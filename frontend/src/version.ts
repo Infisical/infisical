@@ -1,1 +1,0 @@
-export const CURRENT_INFISICAL_VERSION = "v1.1.1"; // placeholder - dynamically updated on prod build
