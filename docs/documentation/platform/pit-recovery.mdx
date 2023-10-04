@@ -3,26 +3,37 @@ title: "Point-in-Time Recovery"
 description: "How to rollback secrets and configs to any commit with Infisical."
 ---
 
-Point-in-time recovery allows secrets to be rolled back to any point in time. 
-It's powered by snapshots that get created after every mutations to a secret within a given [folder](./folder) and environment.
+<Info>
+  Point-in-Time Recovery is a paid feature.
+   
+  If you're using Infisical Cloud, then it is available under the **Team Tier**. If you're self-hosting Infisical,
+  then you should contact team@infisical.com to purchase an enterprise license to use it.
+</Info>
 
-## Commits
+Infisical's point-in-time recovery feature allows secrets to be rolled back to any point in time for any given [folder](./folder).
+Under the hood, snapshots, capturing the state of the folder, get taken after any mutation an item within that folder.
 
-Similar to Git, a commit in Infisical is a snapshot of your project's secrets at a specific point in time scoped to the environment and [folder](./folder) it is in. You can browse and view your project's snapshots via the "Point-in-Time Recovery" sidebar.
+## Snapshots
 
-![PIT commits](../../images/pit-commits.png)
-![PIT snapshots](../../images/pit-snapshots.png)
+Similar to Git, a commit (aka snapshot) in Infisical is the state of your project's secrets at a specific point in time scoped to 
+an environment and [folder](./folder) within it.
+
+To view a list of snapshots for the current folder, press the **Commits** button.
+
+![PIT commits](../../images/platform/pit-recovery/pit-recovery-commits.png)
+
+This opens up a sidebar from which you can select to view a particular snapshot:
+
+![PIT snapshots](../../images/platform/pit-recovery/pit-recovery-commits-drawer.png)
 
 ## Rolling back
 
-Secrets can be rolled back to any point in time via the "Rollback to this snapshot" button. This will roll back the changes within the given [folder](./folder) and environment to the chosen time.
+After pressing on a snapshot from the sidebar, you can view it and even roll back the state
+of the folder to that point in time by pressing the **Rollback** button. 
 
-It's important to note that this rollback action is localized and does not affect other folders within the same environment. This means each [folder](./folder) maintains its own independent history of changes, offering precise and isolated control over rollback actions.
-In essence, every [folder](./folder) possesses a distinct and separate timeline, providing granular control when managing your secrets. 
+![PIT snapshot](../../images/platform/pit-recovery/pit-recovery-rollback.png)
 
-![PIT snapshot](../../images/pit-snapshot.png)
+Rolling back secrets to a past snapshot creates a creates a snapshot at the top of the stack and updates secret versions.
 
-<Note>
-  Rolling back secrets to a past snapshot creates a new commit,
-  creates a snapshot at the top of the stack and updates secret versions.
-</Note>
+Note that rollbacks are localized to not affect other folders within the same environment. This means each [folder](./folder) maintains its own independent history of changes, offering precise and isolated control over rollback actions.
+Put differently, every [folder](./folder) possesses a distinct and separate timeline, providing granular control when managing your secrets. 
