@@ -1,3 +1,5 @@
+import { GITLAB_URL } from "../variables";
+
 import InfisicalClient from "infisical-node";
 
 export const client = new InfisicalClient({
@@ -52,6 +54,9 @@ export const getClientIdGoogleLogin = async () => (await client.getSecret("CLIEN
 export const getClientSecretGoogleLogin = async () => (await client.getSecret("CLIENT_SECRET_GOOGLE_LOGIN")).secretValue;
 export const getClientIdGitHubLogin = async () => (await client.getSecret("CLIENT_ID_GITHUB_LOGIN")).secretValue;
 export const getClientSecretGitHubLogin = async () => (await client.getSecret("CLIENT_SECRET_GITHUB_LOGIN")).secretValue;
+export const getClientIdGitLabLogin = async () => (await client.getSecret("CLIENT_ID_GITLAB_LOGIN")).secretValue;
+export const getClientSecretGitLabLogin = async () => (await client.getSecret("CLIENT_SECRET_GITLAB_LOGIN")).secretValue;
+export const getUrlGitLabLogin = async () => (await client.getSecret("URL_GITLAB_LOGIN")).secretValue || GITLAB_URL;
 
 export const getPostHogHost = async () => (await client.getSecret("POSTHOG_HOST")).secretValue || "https://app.posthog.com";
 export const getPostHogProjectApiKey = async () => (await client.getSecret("POSTHOG_PROJECT_API_KEY")).secretValue || "phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE";

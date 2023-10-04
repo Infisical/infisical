@@ -41,6 +41,7 @@
     "nodemailer": "^6.8.0",
     "passport": "^0.6.0",
     "passport-github": "^1.1.0",
+    "passport-gitlab2": "^5.0.0",
     "passport-google-oauth20": "^2.0.0",
     "posthog-node": "^2.6.0",
     "probot": "^12.3.1",
