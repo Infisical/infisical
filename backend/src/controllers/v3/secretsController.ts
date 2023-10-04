@@ -5,7 +5,6 @@ import { eventPushSecrets } from "../../events";
 import { BotService } from "../../services";
 import { 
   containsGlobPatterns, 
-  isValidScope, 
   isValidScopeV3,
   repackageSecretToRaw 
 } from "../../helpers/secrets";
@@ -100,8 +99,7 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
         secretPath,
         requiredPermissions: [PERMISSION_READ_SECRETS]
       });
-      permissionCheckFn = (env: string, secPath: string) =>
-        isValidScope(req.authData.authPayload as IServiceTokenData, env, secPath);
+      permissionCheckFn = () => true;
       break;
     }
     case ActorType.SERVICE_V3: {
@@ -554,8 +552,7 @@ export const getSecrets = async (req: Request, res: Response) => {
         secretPath,
         requiredPermissions: [PERMISSION_READ_SECRETS]
       });
-      permissionCheckFn = (env: string, secPath: string) =>
-        isValidScope(req.authData.authPayload as IServiceTokenData, env, secPath);
+      permissionCheckFn = (env: string, secPath: string) => true;
       break;
     }
     case ActorType.SERVICE_V3: {

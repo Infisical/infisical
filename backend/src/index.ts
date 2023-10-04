@@ -226,10 +226,25 @@ const main = async () => {
   // await createTestUserForDevelopment();
   setUpHealthEndpoint(server);
 
-  server.on("close", async () => {
+
+  const serverCleanup = async () => {
     await DatabaseService.closeDatabase();
     syncSecretsToThirdPartyServices.close();
     githubPushEventSecretScan.close();
+
+    process.exit(0);
+  }
+
+  process.on("SIGINT", function () {
+    server.close(async () => {
+      await serverCleanup()
+    });
+  });
+
+  process.on("SIGTERM", function () {
+    server.close(async () => {
+      await serverCleanup()
+    });
   });
 
   return server;
