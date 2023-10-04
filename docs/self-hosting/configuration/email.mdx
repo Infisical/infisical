@@ -29,15 +29,15 @@ Below you will find details on how to configure common email providers:
 1. Create an account on [Resend](https://resend.com).
 2. Add a [Domain](https://resend.com/domains).
 
-![adding resend domain](../../images/email-resend-create-domain.png)
+![adding resend domain](../../images/self-hosting/configuration/email/email-resend-create-domain.png)
 
 3. Create an [API Key](https://resend.com/api-keys).
 
-![creating resend api key](../../images/email-resend-create-key.png)
+![creating resend api key](../../images/self-hosting/configuration/email/email-resend-create-key.png)
 
 4. Go to the [SMTP page](https://resend.com/settings/smtp) and copy the values.
 
-![go to resend smtp settings](../../images/email-resend-smtp-settings.png)
+![go to resend smtp settings](../../images/self-hosting/configuration/email/email-resend-smtp-settings.png)
 
 5. With the API Key, you can now set your SMTP environment variables variables:
 
@@ -61,9 +61,9 @@ SMTP_FROM_NAME=Infisical
 2. Create a SendGrid API Key under Settings > [API Keys](https://app.sendgrid.com/settings/api_keys)
 3. Set a name for your API Key, we recommend using "Infisical," and select the "Restricted Key" option. You will need to enable the "Mail Send" permission as shown below:
 
-![creating sendgrid api key](../../images/email-sendgrid-create-key.png)
+![creating sendgrid api key](../../images/self-hosting/configuration/email/email-sendgrid-create-key.png)
 
-![setting sendgrid api key restriction](../../images/email-sendgrid-restrictions.png)
+![setting sendgrid api key restriction](../../images/self-hosting/configuration/email/email-sendgrid-restrictions.png)
 
 4. With the API Key, you can now set your SMTP environment variables:
 
@@ -87,7 +87,7 @@ SMTP_FROM_NAME=Infisical
 1. Create an account and configure [Mailgun](https://www.mailgun.com) to send emails.
 2. Obtain your Mailgun credentials in Sending > Overview > SMTP
 
-![obtain mailhog api key estriction](../../images/email-mailhog-credentials.png)
+![obtain mailhog api key estriction](../../images/self-hosting/configuration/email/email-mailhog-credentials.png)
 
 3. With your Mailgun credentials, you can now set up your SMTP environment variables:
 
@@ -108,9 +108,9 @@ SMTP_FROM_NAME=Infisical
 1. Create an account and [configure AWS SES](https://aws.amazon.com/premiumsupport/knowledge-center/ses-set-up-connect-smtp/) to send emails in the Amazon SES console.
 2. Create an IAM user for SMTP authentication and obtain SMTP credentials in SMTP settings > Create SMTP credentials
 
-![opening AWS SES console](../../images/email-aws-ses-console.png)
+![opening AWS SES console](../../images/self-hosting/configuration/email/email-aws-ses-console.png)
 
-![creating AWS IAM SES user](../../images/email-aws-ses-user.png)
+![creating AWS IAM SES user](../../images/self-hosting/configuration/email/email-aws-ses-user.png)
 
 3. With your AWS SES SMTP credentials, you can now set up your SMTP environment variables:
 
@@ -134,9 +134,9 @@ SMTP_FROM_NAME=Infisical
 1. Create an account and configure [SocketLabs](https://www.socketlabs.com/) to send emails.
 2. From the dashboard, navigate to SMTP Credentials > SMTP & APIs > SMTP Credentials to obtain your SocketLabs SMTP credentials.
 
-![opening SocketLabs dashboard](../../images/email-socketlabs-dashboard.png)
+![opening SocketLabs dashboard](../../images/self-hosting/configuration/email/email-socketlabs-dashboard.png)
 
-![obtaining SocketLabs credentials](../../images/email-socketlabs-credentials.png)
+![obtaining SocketLabs credentials](../../images/self-hosting/configuration/email/email-socketlabs-credentials.png)
 
 3. With your SocketLabs SMTP credentials, you can now set up your SMTP environment variables:
 
@@ -157,7 +157,7 @@ SMTP_FROM_NAME=Infisical
   email like `team@sandbox.socketlabs.dev`.
 </Note>
 
-![SocketLabs domain management](../../images/email-socketlabs-domains.png)
+![SocketLabs domain management](../../images/self-hosting/configuration/email/email-socketlabs-domains.png)
 
 <Info>
   Remember that you will need to restart Infisical for this to work properly.
@@ -169,7 +169,7 @@ SMTP_FROM_NAME=Infisical
 Create an account and enable "less secure app access" in Gmail Account Settings > Security. This will allow
 applications like Infisical to authenticate with Gmail via your username and password.
 
-![Gmail secure app access](../../images/email-gmail-app-access.png)
+![Gmail secure app access](../../images/self-hosting/configuration/email/email-gmail-app-access.png)
 
 With your Gmail username and password, you can set your SMTP environment variables:
 

@@ -3,53 +3,101 @@ title: "Project"
 description: "How Infisical organizes secrets into projects."
 ---
 
-A project houses environment variables for an application.
+A project houses application configuration and secrets for an application.
 
-## Dashboard
+## Secrets Overview
 
-The dashboard page is where you can manage environment variables for a given project.
+The **Secrets Overview** page captures a birds-eye-view of secrets and folders across environments like development, staging, or production. 
+This is useful for comparing secrets, identifying if anything is missing, and making quick changes.
+
+![project secrets overview](../../images/platform/project/project-secrets-overview-open.png)
+
+## Secrets Dashboard
+
+The **Secrets Dashboard** page appears when you press to manage the secrets of a specific environment.
 
 ![project dashboard](../../images/dashboard.png)
 
-### Environment variables
+### Secrets
 
-Environment variables can be added or removed from a project. By default, they are pre-populated in your first project for demonstration. For any subsequent project, it can be convenient to import existing environment variables by dragging and dropping a .env file containing them.
+To add a secret, press **Add Secret** button at the top of the dashboard.
 
-Here's what dragging and dropping a .env looks like:
+![project add secret](../../images/platform/project/project-secrets-add.png)
 
-![project drag and drop](../../images/project-drag-drop.png)
+For a new project, it can be convenient to populate the dashboard by dropping a `.env` file into the provided pane as shown below:
 
-### Environments
+![project drop env file](../../images/platform/project/project-secrets-drop-env.png)
 
-In most cases, environment variables belong to specific environments: development, staging, testing, and production. You can input environment variables for each environment that your project uses.
+To delete a secret, hover over it and press the **X** button that appears on the right side.
 
-![project environment](../../images/project-environment.png)
+![project delete secret](../../images/platform/project/project-secrets-delete.png)
 
-### Personal overrides
+To delete multiple secrets at once, hover over and select the secrets you'd like to delete
+and press the **Delete** button that appears at the top.
 
-Every environment variable value can be overridden with a custom value.
-
-- An overridden value can only be read and accessed by the user that overrode the original shared value.
-- A (default) shared value can be read and accessed by other users in a project.
-
-You can turn overrides on/off by toggling the override/branch icon:
-
-![project variable toggle open](../../images/project-envar-override.png)
+![project delete secret batch](../../images/platform/project/project-secrets-delete-batch.png)
 
 ### Search
 
-You can search for any environment variable by its key.
+To search for specific secrets by their key name, you can use the search bar.
 
-![project search](../../images/project-search.png)
+![project search](../../images/platform/project/project-secrets-search.png)
+
+To assist you with finding secrets, you can also group them by similar prefixes and filter them by tags (if applicable).
+
+![project filter](../../images/platform/project/project-secrets-filter.png)
 
 ### Hide/Un-hide
 
-You can hide or un-hide the values of your environment variables. By default, the values are hidden for your privacy.
+To view/hide all secrets at once, toggle the hide or un-hide button.
 
-![project hide](../../images/project-hide.png)
+![project filter](../../images/platform/project/project-secrets-unhide.png)
 
 ### Download as .env
 
-You can download your environment variables back in a .env file.
+To download/export secrets back into a `.env` file, press the download button.
 
-![project download](../../images/project-download.png)
+![project download back env](../../images/platform/project/project-secrets-download-env.png)
+
+### Tags
+
+To better organize similar secrets, hover over them and label them with a tag.
+
+![project tag secret](../../images/platform/project/project-secrets-tag.png)
+
+### Comments
+
+To provide more context about a given secret, especially for your team, hover over it and press the comment button.
+
+![project comment secret](../../images/platform/project/project-secrets-comment.png)
+
+### Personal overrides
+
+Infisical employs the concept of **shared** and **personal** secrets to address the need
+for common and custom secret values, or branching, amongst members of a team during software development.
+To provide a helpful analogy: A shared value is to a `main` branch as a personal value is to a custom branch.
+
+Consider:
+
+- A team with users A, B, user C.
+- A project with an environment containing a shared secret called D with the value E.
+
+Suppose user A overrides the value of secret D with the value F.
+
+Then:
+
+- If user A fetches the secret D back, they get the value F.
+- If users B and C fetch the secret D back, they both get the value E.
+
+![project override secret](../../images/platform/project/project-secrets-override.png)
+
+### Drawer
+
+To view the full details of each secret, you can hover over it and press on the ellipses button.
+
+![project secrets ellipses](../../images/platform/project/project-secrets-ellipses.png)
+
+This opens up a side-drawer:
+
+![project secrets drawer](../../images/platform/project/project-secrets-drawer.png)
+

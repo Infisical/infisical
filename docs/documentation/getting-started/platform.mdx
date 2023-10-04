@@ -2,24 +2,47 @@
 title: "Platform"
 ---
 
-Infisical is an [open-source](https://opensource.com/resources/what-open-source), [end-to-end encrypted](https://en.wikipedia.org/wiki/End-to-end_encryption) secret management platform that enables teams to easily store, manage, and sync secrets like API keys, database credentials, and environment variables across their apps and infrastructure.
+This quickstart provides an overview of functionalities offered by Infisical.
 
-This quickstart provides an overview of the functionalities offered by Infisical.
+## Managing your Organization
 
-## Projects
+When you first make an account with Infisical, you also create a new **organization** where you are assigned the `admin` role by default.
+From there, you can invite external members to the organization and start creating **projects** to house secrets.
 
-Projects hold secrets for applications, which are further organized into environments such as development, testing and production.
+### Projects
+
+The **Projects** page shows you all the projects that you have access to within your organization.
+Here, you can also create a new project. 
+
+![organization overview](../../images/organization-overview.png)
+
+### Members
+
+The **Members** page lets you add or remove external members to your organization. 
+Note that you can configure your organization in Infisical to have members authenticate with the platform via protocols like SAML 2.0.
+
+![organization members](../../images/organization-members.png)
+
+## Managing your Projects
+
+As mentioned before, projects house secrets which are further organized into environments such as development, testing and production.
+A project can be anything from a single application to a collection of micro-services that you wish to manage secrets for.
 
 ### Secrets Overview
 
-The secrets overview provides a bird's-eye view of all the secrets in a project and is particularly useful for identifying missing secrets across environments.
+The **Secrets Overview** screen provides a bird's-eye view of all the secrets in a project and is useful for comparing secrets and identifying missing ones across environments.
 
 ![dashboard secrets overview](../../images/dashboard-secrets-overview.png)
 
-### Secrets Dashboard
+In the above image, you can already see that:
+- `STRIPE_API_KEY` is missing from the **Staging** environment.
+- `JWT_SECRET` is missing from the **Production** environment.
+- `BAR` is `EMPTY` in the **Production** environment.
+
+### Dashboard
 
 The secrets dashboard lets you manage secrets for a specific environment in a project. 
-Here, developers can [override secrets](//project#personal-overrides), [version secrets](/documentation/platform/secret-versioning), [rollback projects to any point in time](/documentation/platform/pit-recovery), and much more.
+Here, developers can override secrets, version secrets, rollback projects to any point in time and much more.
 
 ![dashboard](../../images/dashboard.png)
 
@@ -27,30 +50,14 @@ Here, developers can [override secrets](//project#personal-overrides), [version 
 
 The integrations page provides native integrations to sync secrets from a project environment to a [host of ever-expanding integrations](/integrations/overview).
 
-<Tip>
-    Depending on your infrastructure setup and compliance requirements, you may or may not prefer to use these native integrations since they break end-to-end encryption (E2EE).
-    
-    You will learn about various ways to integrate with Infisical and maintain E2EE in subsequent quickstart sections.
-</Tip>
-
 ![integrations](../../images/integrations.png)
 
-### Access Control
+### Members
 
-The members page lets you add/remove members for a project and provision them access to environments (access levels include `No Access`, `Read Only`, and `Read and Write`).
+The members page lets you add/remove members to/from a project and provision them access to environments via roles. By default, Infisical provides the `admin`, `developer`, and `viewer` roles
+which you can assign to members.
 
 ![project members](../../images/project-members.png)
-
-## Organizations
-
-Organizations house projects and members.
-
-### Organization Settings
-
-At the organization-level, you can add/remove members and manage their access to projects.
-
-![organization name modal open](../../images/dashboard-name-modal-organization.png)
-![organization name modal open](../../images/organization.png)
 
 That's it for the platform quickstart! — We encourage you to continue exploring the documentation to gain a deeper understanding of the extensive features and functionalities that Infisical has to offer.
 

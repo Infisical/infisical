@@ -117,10 +117,8 @@
         "documentation/platform/secret-reference",
         "documentation/platform/webhooks",
         "documentation/platform/pit-recovery",
-        "documentation/platform/secret-versioning",
         "documentation/platform/audit-logs",
         "documentation/platform/token",
-        "documentation/platform/ip-allowlisting",
         "documentation/platform/mfa",
         {
           "group": "SSO",
@@ -386,15 +384,6 @@
         "internals/flows",
         "internals/security",
         "internals/service-tokens"
-      ]
-    },
-    {
-      "group": "Security",
-      "pages": [
-        "security/overview",
-        "security/data-model",
-        "security/mechanics",
-        "security/service-tokens"
       ]
     },
     {
