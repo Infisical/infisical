@@ -223,21 +223,25 @@ const main = async () => {
   // await createTestUserForDevelopment();
   setUpHealthEndpoint(server);
 
-  server.on("close", async () => {
+
+  const serverCleanup = async () => {
     await DatabaseService.closeDatabase();
-    // TODO: prevent queue from trying to reconnect with redis after .close
-    syncSecretsToThirdPartyServices.close()
-    githubPushEventSecretScan.close()
-  });
+    syncSecretsToThirdPartyServices.close();
+    githubPushEventSecretScan.close();
+
+    process.exit(0);
+  }
 
   process.on("SIGINT", function () {
-    server.close();
-    process.exit(0);
+    server.close(async () => {
+      await serverCleanup()
+    });
   });
 
   process.on("SIGTERM", function () {
-    server.close();
-    process.exit(0);
+    server.close(async () => {
+      await serverCleanup()
+    });
   });
 
   return server;
