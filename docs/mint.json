@@ -277,6 +277,12 @@
       ]
     },
     {
+      "group": "Build Tool Integrations",
+      "pages": [
+        "integrations/frameworks/gradle"
+      ]
+    },
+    {
       "group": "Overview",
       "pages": ["sdks/overview"]
     },
