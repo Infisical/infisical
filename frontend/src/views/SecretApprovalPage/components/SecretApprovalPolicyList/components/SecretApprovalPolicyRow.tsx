@@ -81,7 +81,7 @@ export const SecretApprovalPolicyRow = ({
             style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
             align="start"
           >
-            <DropdownMenuLabel>Select members that must approve changes</DropdownMenuLabel>
+            <DropdownMenuLabel>Select members that are allowed to approve changes</DropdownMenuLabel>
             {members?.map(({ _id, user }) => {
               const isChecked = selectedApprovers.includes(_id);
               return (

@@ -26,7 +26,7 @@ export const CreateSecretApprovalRule = z.object({
     })
     .refine((data) => data.approvals <= data.approvers.length, {
       path: ["approvals"],
-      message: "Approvals should be lower than approvals"
+      message: "The number of approvals should be lower than the number of approvers."
     })
 });
 
@@ -43,7 +43,7 @@ export const UpdateSecretApprovalRule = z.object({
     })
     .refine((data) => data.approvals <= data.approvers.length, {
       path: ["approvals"],
-      message: "Approvals should be lower than approvals"
+      message: "The number of approvals should be lower than the number of approvers."
     })
 });
 

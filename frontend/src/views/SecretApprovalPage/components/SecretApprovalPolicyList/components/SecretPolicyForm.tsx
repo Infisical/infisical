@@ -43,7 +43,7 @@ const formSchema = z
   })
   .refine((data) => data.approvals <= data.approvers.length, {
     path: ["approvals"],
-    message: "Approvals should be lower than approvals"
+    message: "The number of approvals should be lower than the number of approvers."
   });
 
 type TFormSchema = z.infer<typeof formSchema>;
@@ -183,7 +183,7 @@ export const SecretPolicyForm = ({
             name="approvers"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
               <FormControl
-                label="Approvals Required"
+                label="Approvers Required"
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
@@ -199,7 +199,7 @@ export const SecretPolicyForm = ({
                     style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
                     align="start"
                   >
-                    <DropdownMenuLabel>Select members that must approve changes</DropdownMenuLabel>
+                    <DropdownMenuLabel>Select members that are allowed to approve changes</DropdownMenuLabel>
                     {members.map(({ _id, user }) => {
                       const isChecked = value?.includes(_id);
                       return (

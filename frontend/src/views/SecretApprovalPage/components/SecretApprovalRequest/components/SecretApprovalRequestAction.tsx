@@ -96,23 +96,25 @@ export const SecretApprovalRequestAction = ({
             </span>
           </span>
         </div>
-        <div className="flex items-center space-x-6">
+        <div className="flex items-center space-x-2">
+          <Button
+            onClick={() => handleSecretApprovalStatusChange("close")}
+            isLoading={isStatusChanging}
+            variant="outline_bg"
+            colorSchema="secondary"
+            leftIcon={<FontAwesomeIcon icon={faClose} />}
+          >
+            Close request
+          </Button>
           <Button
             leftIcon={<FontAwesomeIcon icon={faCheck} />}
             isDisabled={!isMergable}
             isLoading={isMerging}
             onClick={handleSecretApprovalRequestMerge}
+            colorSchema="primary"
+            variant="solid"
           >
             Merge
-          </Button>
-          <Button
-            onClick={() => handleSecretApprovalStatusChange("close")}
-            isLoading={isStatusChanging}
-            variant="outline_bg"
-            colorSchema="danger"
-            leftIcon={<FontAwesomeIcon icon={faClose} />}
-          >
-            Close request
           </Button>
         </div>
       </div>

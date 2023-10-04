@@ -90,12 +90,12 @@ export const SecretApprovalRequest = () => {
         <motion.div
           key="approval-changes-list"
           transition={{ duration: 0.1 }}
-          initial={{ opacity: 0, translateX: -30 }}
+          initial={{ opacity: 0, translateX: 30 }}
           animate={{ opacity: 1, translateX: 0 }}
-          exit={{ opacity: 0, translateX: -30 }}
+          exit={{ opacity: 0, translateX: 30 }}
           className="rounded-md text-gray-300"
         >
-          <div className="p-4 px-8 flex items-center space-x-8 bg-mineshaft-800">
+          <div className="p-4 px-8 flex items-center space-x-8 bg-mineshaft-800 rounded-t-md border-t border-x border-mineshaft-600">
             <div
               role="button"
               tabIndex={0}
@@ -103,13 +103,13 @@ export const SecretApprovalRequest = () => {
               onKeyDown={(evt) => {
                 if (evt.key === "Enter") setStatusFilter("open");
               }}
-              className={statusFilter === "close" ? "text-gray-500" : ""}
+              className={statusFilter === "close" ? "text-gray-500 hover:text-gray-400 duration-100" : ""}
             >
               <FontAwesomeIcon icon={faCodeBranch} className="mr-2" />
               Open
             </div>
             <div
-              className={statusFilter === "open" ? "text-gray-500" : ""}
+              className={statusFilter === "open" ? "text-gray-500 hover:text-gray-400 duration-100" : ""}
               role="button"
               tabIndex={0}
               onClick={() => setStatusFilter("close")}
@@ -175,7 +175,7 @@ export const SecretApprovalRequest = () => {
               </DropdownMenu>
             </div>
           </div>
-          <div className="flex flex-col border-t border-mineshaft-600 bg-mineshaft-800">
+          <div className="flex flex-col border-t border-mineshaft-600 bg-mineshaft-800 rounded-b-md border-b border-x border-mineshaft-600">
             {isRequestListEmpty && (
               <div className="py-12">
                 <EmptyState title="No more requests pending." />

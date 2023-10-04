@@ -70,7 +70,7 @@ const buttonVariants = cva(
       {
         colorSchema: "primary",
         variant: "solid",
-        className: "bg-primary-500 bg-opacity-90 hover:bg-primary-500 hover:text-black"
+        className: "text-black bg-primary-500 bg-opacity-90 hover:bg-primary-500 hover:text-black"
       },
       {
         colorSchema: "primary",
