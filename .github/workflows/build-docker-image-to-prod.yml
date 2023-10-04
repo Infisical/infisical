@@ -40,9 +40,7 @@ jobs:
           load: true
           context: backend
           tags: |
-            infisical/backend:${{ steps.extract_version.outputs.version }}
-          labels: |
-            version=${{ steps.extract_version.outputs.version }}
+            infisical/backend:test
       - name: ⏻ Spawn backend container and dependencies
         run: |
           docker compose -f .github/resources/docker-compose.be-test.yml up --wait --quiet-pull
@@ -63,8 +61,6 @@ jobs:
             infisical/backend:${{ steps.commit.outputs.short }}
             infisical/backend:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
-          labels: |
-            version=${{ steps.extract_version.outputs.version }}
 
   frontend-image:
     name: Build frontend image
@@ -95,12 +91,10 @@ jobs:
           project: 64mmf0n610
           context: frontend
           tags: |
-            infisical/frontend:${{ steps.extract_version.outputs.version }}
+            infisical/frontend:test
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
             NEXT_INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
-          labels: |
-            version=${{ steps.extract_version.outputs.version }}
       - name: ⏻ Spawn frontend container
         run: |
           docker run -d --rm --name infisical-frontend-test infisical/frontend:test
@@ -124,5 +118,3 @@ jobs:
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
             NEXT_INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
-          labels: |
-            version=${{ steps.extract_version.outputs.version }}

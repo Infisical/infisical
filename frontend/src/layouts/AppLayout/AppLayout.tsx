@@ -123,6 +123,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const createWs = useCreateWorkspace();
   const uploadWsKey = useUploadWsKey();
   const addWsUser = useAddUserToWs();
+  const infisicalPlatformVersion = process.env.NEXT_PUBLIC_INFISICAL_PLATFORM_VERSION;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addNewWs",
@@ -697,10 +698,12 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </div>
                     </button>
                   )}
-                <div className="mb-2 w-full pl-5 duration-200 hover:text-mineshaft-200">
-                  <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
-                    Platform Version: {process.env.NEXT_PUBLIC_INFISICAL_PLATFORM_VERSION || "N/A"}
-                </div>
+                  {infisicalPlatformVersion && (
+                  <div className="mb-2 w-full pl-5 duration-200 hover:text-mineshaft-200">
+                    <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
+                      Platform Version: {infisicalPlatformVersion}
+                  </div>
+                  )}
               </div>
             </nav>
           </aside>
