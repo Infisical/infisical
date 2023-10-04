@@ -437,43 +437,82 @@ interface UpdateUserDeniedPermissions {
         }[]
     }
 }
+interface SecretApprovalMerge {
+  type: EventType.SECRET_APPROVAL_MERGED;
+  metadata: {
+    mergedBy: string;
+    secretApprovalRequestSlug: string;
+    secretApprovalRequestId: string;
+  };
+}
 
-export type Event = 
-    | GetSecretsEvent
-    | GetSecretEvent
-    | CreateSecretEvent
-    | CreateSecretBatchEvent
-    | UpdateSecretEvent
-    | UpdateSecretBatchEvent
-    | DeleteSecretEvent
-    | DeleteSecretBatchEvent
-    | GetWorkspaceKeyEvent
-    | AuthorizeIntegrationEvent
-    | UnauthorizeIntegrationEvent
-    | CreateIntegrationEvent
-    | DeleteIntegrationEvent
-    | AddTrustedIPEvent
-    | UpdateTrustedIPEvent
-    | DeleteTrustedIPEvent
-    | CreateServiceTokenEvent
-    | DeleteServiceTokenEvent
-    | CreateServiceTokenV3Event
-    | UpdateServiceTokenV3Event
-    | DeleteServiceTokenV3Event
-    | CreateEnvironmentEvent
-    | UpdateEnvironmentEvent
-    | DeleteEnvironmentEvent
-    | AddWorkspaceMemberEvent
-    | RemoveWorkspaceMemberEvent
-    | CreateFolderEvent
-    | UpdateFolderEvent
-    | DeleteFolderEvent
-    | CreateWebhookEvent
-    | UpdateWebhookStatusEvent
-    | DeleteWebhookEvent
-    | GetSecretImportsEvent
-    | CreateSecretImportEvent
-    | UpdateSecretImportEvent
-    | DeleteSecretImportEvent
-    | UpdateUserRole
-    | UpdateUserDeniedPermissions;
+interface SecretApprovalClosed {
+  type: EventType.SECRET_APPROVAL_CLOSED;
+  metadata: {
+    closedBy: string;
+    secretApprovalRequestSlug: string;
+    secretApprovalRequestId: string;
+  };
+}
+
+interface SecretApprovalReopened {
+  type: EventType.SECRET_APPROVAL_REOPENED;
+  metadata: {
+    reopenedBy: string;
+    secretApprovalRequestSlug: string;
+    secretApprovalRequestId: string;
+  };
+}
+
+interface SecretApprovalRequest {
+  type: EventType.SECRET_APPROVAL_REQUEST;
+  metadata: {
+    committedBy: string;
+    secretApprovalRequestSlug: string;
+    secretApprovalRequestId: string;
+  };
+}
+
+export type Event =
+  | GetSecretsEvent
+  | GetSecretEvent
+  | CreateSecretEvent
+  | CreateSecretBatchEvent
+  | UpdateSecretEvent
+  | UpdateSecretBatchEvent
+  | DeleteSecretEvent
+  | DeleteSecretBatchEvent
+  | GetWorkspaceKeyEvent
+  | AuthorizeIntegrationEvent
+  | UnauthorizeIntegrationEvent
+  | CreateIntegrationEvent
+  | DeleteIntegrationEvent
+  | AddTrustedIPEvent
+  | UpdateTrustedIPEvent
+  | DeleteTrustedIPEvent
+  | CreateServiceTokenEvent
+  | DeleteServiceTokenEvent
+  | CreateServiceTokenV3Event
+  | UpdateServiceTokenV3Event
+  | DeleteServiceTokenV3Event
+  | CreateEnvironmentEvent
+  | UpdateEnvironmentEvent
+  | DeleteEnvironmentEvent
+  | AddWorkspaceMemberEvent
+  | RemoveWorkspaceMemberEvent
+  | CreateFolderEvent
+  | UpdateFolderEvent
+  | DeleteFolderEvent
+  | CreateWebhookEvent
+  | UpdateWebhookStatusEvent
+  | DeleteWebhookEvent
+  | GetSecretImportsEvent
+  | CreateSecretImportEvent
+  | UpdateSecretImportEvent
+  | DeleteSecretImportEvent
+  | UpdateUserRole
+  | UpdateUserDeniedPermissions
+  | SecretApprovalMerge
+  | SecretApprovalClosed
+  | SecretApprovalRequest
+  | SecretApprovalReopened;

@@ -595,33 +595,37 @@ export const createSecret = async (req: Request, res: Response) => {
     secretAction: ProjectPermissionActions.Create
   });
 
-  const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-  if (secretApprovalPolicy && membership  && type !== "personal") {
-    const secretApprovalRequest = await generateSecretApprovalRequest({
-      workspaceId,
-      environment,
-      secretPath,
-      policy: secretApprovalPolicy,
-      commiterMembershipId: membership._id.toString(),
-      data: {
-        [CommitType.CREATE]: [
-          {
-            secretName,
-            secretValueCiphertext,
-            secretValueIV,
-            secretValueTag,
-            secretCommentIV,
-            secretCommentTag,
-            secretCommentCiphertext,
-            skipMultilineEncoding,
-            secretKeyTag,
-            secretKeyCiphertext,
-            secretKeyIV
-          }
-        ]
-      }
-    });
-    return res.send({ approval: secretApprovalRequest });
+
+  if (membership  && type !== "personal") {
+    const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+    if (secretApprovalPolicy) {
+      const secretApprovalRequest = await generateSecretApprovalRequest({
+        workspaceId,
+        environment,
+        secretPath,
+        policy: secretApprovalPolicy,
+        commiterMembershipId: membership._id.toString(),
+        authData:req.authData,
+        data: {
+          [CommitType.CREATE]: [
+            {
+              secretName,
+              secretValueCiphertext,
+              secretValueIV,
+              secretValueTag,
+              secretCommentIV,
+              secretCommentTag,
+              secretCommentCiphertext,
+              skipMultilineEncoding,
+              secretKeyTag,
+              secretKeyCiphertext,
+              secretKeyIV
+            }
+          ]
+        }
+      });
+      return res.send({ approval: secretApprovalRequest });
+    }
   }
 
   const secret = await SecretService.createSecret({
@@ -700,35 +704,38 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     secretAction: ProjectPermissionActions.Edit
   });
 
-  const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-  if (secretApprovalPolicy && membership && type !== "personal") {
-    const secretApprovalRequest = await generateSecretApprovalRequest({
-      workspaceId,
-      environment,
-      secretPath,
-      policy: secretApprovalPolicy,
-      commiterMembershipId: membership._id.toString(),
-      data: {
-        [CommitType.UPDATE]: [
-          {
-            secretName,
-            newSecretName,
-            secretValueCiphertext,
-            secretValueIV,
-            secretValueTag,
-            tags,
-            secretCommentIV,
-            secretCommentTag,
-            secretCommentCiphertext,
-            skipMultilineEncoding,
-            secretKeyTag,
-            secretKeyCiphertext,
-            secretKeyIV
-          }
-        ]
-      }
-    });
-    return res.send({ approval: secretApprovalRequest });
+  if (membership  && type !== "personal") {
+    const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+    if (secretApprovalPolicy) {
+      const secretApprovalRequest = await generateSecretApprovalRequest({
+        workspaceId,
+        environment,
+        secretPath,
+        policy: secretApprovalPolicy,
+        commiterMembershipId: membership._id.toString(),
+        authData: req.authData,
+        data: {
+          [CommitType.UPDATE]: [
+            {
+              secretName,
+              newSecretName,
+              secretValueCiphertext,
+              secretValueIV,
+              secretValueTag,
+              tags,
+              secretCommentIV,
+              secretCommentTag,
+              secretCommentCiphertext,
+              skipMultilineEncoding,
+              secretKeyTag,
+              secretKeyCiphertext,
+              secretKeyIV
+            }
+          ]
+        }
+      });
+      return res.send({ approval: secretApprovalRequest });
+    }
   }
 
   const secret = await SecretService.updateSecret({
@@ -784,23 +791,26 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
     secretAction: ProjectPermissionActions.Delete
   });
 
-  const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-  if (secretApprovalPolicy && membership && type !== "personal") {
-    const secretApprovalRequest = await generateSecretApprovalRequest({
-      workspaceId,
-      environment,
-      secretPath,
-      policy: secretApprovalPolicy,
-      commiterMembershipId: membership._id.toString(),
-      data: {
-        [CommitType.DELETE]: [
-          {
-            secretName
-          }
-        ]
-      }
-    });
-    return res.send({ approval: secretApprovalRequest });
+  if (membership  && type !== "personal") {
+    const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+    if (secretApprovalPolicy) {
+      const secretApprovalRequest = await generateSecretApprovalRequest({
+        workspaceId,
+        environment,
+        secretPath,
+        authData: req.authData,
+        policy: secretApprovalPolicy,
+        commiterMembershipId: membership._id.toString(),
+        data: {
+          [CommitType.DELETE]: [
+            {
+              secretName
+            }
+          ]
+        }
+      });
+      return res.send({ approval: secretApprovalRequest });
+    }
   }
 
   const { secret } = await SecretService.deleteSecret({
@@ -838,19 +848,22 @@ export const createSecretByNameBatch = async (req: Request, res: Response) => {
     secretAction: ProjectPermissionActions.Create
   });
 
-  const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-  if (secretApprovalPolicy && membership) {
-    const secretApprovalRequest = await generateSecretApprovalRequest({
-      workspaceId,
-      environment,
-      secretPath,
-      policy: secretApprovalPolicy,
-      commiterMembershipId: membership._id.toString(),
-      data: {
-        [CommitType.CREATE]: secrets.filter(({ type }) => type === "shared")
-      }
-    });
-    return res.send({ approval: secretApprovalRequest });
+  if (membership) {
+    const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+    if (secretApprovalPolicy) {
+      const secretApprovalRequest = await generateSecretApprovalRequest({
+        workspaceId,
+        environment,
+        secretPath,
+        authData: req.authData,
+        policy: secretApprovalPolicy,
+        commiterMembershipId: membership._id.toString(),
+        data: {
+          [CommitType.CREATE]: secrets.filter(({ type }) => type === "shared")
+        }
+      });
+      return res.send({ approval: secretApprovalRequest });
+    }
   }
 
   const createdSecrets = await SecretService.createSecretBatch({
@@ -879,19 +892,22 @@ export const updateSecretByNameBatch = async (req: Request, res: Response) => {
     secretAction: ProjectPermissionActions.Edit
   });
 
-  const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-  if (secretApprovalPolicy && membership) {
-    const secretApprovalRequest = await generateSecretApprovalRequest({
-      workspaceId,
-      environment,
-      secretPath,
-      policy: secretApprovalPolicy,
-      commiterMembershipId: membership._id.toString(),
-      data: {
-        [CommitType.UPDATE]: secrets.filter(({ type }) => type === "shared")
-      }
-    });
-    return res.send({ approval: secretApprovalRequest });
+  if (membership) {
+    const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+    if (secretApprovalPolicy) {
+      const secretApprovalRequest = await generateSecretApprovalRequest({
+        workspaceId,
+        environment,
+        secretPath,
+        policy: secretApprovalPolicy,
+        commiterMembershipId: membership._id.toString(),
+        data: {
+          [CommitType.UPDATE]: secrets.filter(({ type }) => type === "shared")
+        },
+        authData: req.authData
+      });
+      return res.send({ approval: secretApprovalRequest });
+    }
   }
 
   const updatedSecrets = await SecretService.updateSecretBatch({
@@ -920,19 +936,23 @@ export const deleteSecretByNameBatch = async (req: Request, res: Response) => {
     secretAction: ProjectPermissionActions.Delete
   });
   
-  const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-  if (secretApprovalPolicy && membership) {
-    const secretApprovalRequest = await generateSecretApprovalRequest({
-      workspaceId,
-      environment,
-      secretPath,
-      policy: secretApprovalPolicy,
-      commiterMembershipId: membership._id.toString(),
-      data: {
-        [CommitType.DELETE]: secrets.filter(({ type }) => type === "shared")
-      }
-    });
-    return res.send({ approval: secretApprovalRequest });
+
+  if (membership) {
+    const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+    if (secretApprovalPolicy) {
+      const secretApprovalRequest = await generateSecretApprovalRequest({
+        workspaceId,
+        environment,
+        secretPath,
+        policy: secretApprovalPolicy,
+        commiterMembershipId: membership._id.toString(),
+        data: {
+          [CommitType.DELETE]: secrets.filter(({ type }) => type === "shared")
+        },
+        authData: req.authData
+      });
+      return res.send({ approval: secretApprovalRequest });
+    }
   }
 
   const deletedSecrets = await SecretService.deleteSecretBatch({

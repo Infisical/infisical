@@ -213,6 +213,7 @@ export const SecretApprovalRequest = () => {
                       <div className="mb-1">
                         <FontAwesomeIcon icon={faCodeBranch} className="mr-2" />
                         {generateCommitText(commits)}
+                        <span className="text-xs text-bunker-300"> #{secretApproval.slug}</span>
                       </div>
                       <span className="text-xs text-gray-500">
                         Opened {formatDistance(new Date(createdAt), new Date())} ago by{" "}

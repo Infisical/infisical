@@ -245,7 +245,7 @@ export const SecretListView = ({
         });
       }
     },
-    [environment, secretPath]
+    [environment, secretPath, isProtectedBranch]
   );
 
   const handleSecretDelete = useCallback(async () => {

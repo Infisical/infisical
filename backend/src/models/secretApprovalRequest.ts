@@ -1,4 +1,5 @@
 import { Schema, Types, model } from "mongoose";
+import { customAlphabet } from "nanoid";
 import { ALGORITHM_AES_256_GCM, ENCODING_SCHEME_BASE64, ENCODING_SCHEME_UTF8 } from "../variables";
 
 export enum ApprovalStatus {
@@ -12,6 +13,9 @@ export enum CommitType {
   UPDATE = "update",
   CREATE = "create"
 }
+
+const SLUG_ALPHABETS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+const nanoId = customAlphabet(SLUG_ALPHABETS, 10);
 
 export interface ISecretApprovalSecChange {
   _id: Types.ObjectId;
@@ -54,6 +58,7 @@ export type ISecretCommits<T = Types.ObjectId, J = Types.ObjectId> = Array<
 export interface ISecretApprovalRequest {
   _id: Types.ObjectId;
   committer: Types.ObjectId;
+  slug: string;
   statusChangeBy: Types.ObjectId;
   reviewers: {
     member: Types.ObjectId;
@@ -142,6 +147,10 @@ const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
       type: String,
       required: true,
       default: "root"
+    },
+    slug: {
+      type: String,
+      default: () => nanoId()
     },
     reviewers: {
       type: [

@@ -139,9 +139,11 @@ export const SecretApprovalRequestChanges = ({
   };
 
   if (isSecretApprovalRequestLoading) {
-    <div>
-      <ContentLoader />
-    </div>;
+    return (
+      <div>
+        <ContentLoader />
+      </div>
+    );
   }
 
   if (!isSecretApprovalRequestSuccess)

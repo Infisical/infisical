@@ -96,6 +96,7 @@ type TGenerateSecretApprovalRequestArg = {
     [CommitType.DELETE]?: { secretName: string }[];
   };
   commiterMembershipId: string;
+  authData: AuthData;
 };
 
 export const generateSecretApprovalRequest = async ({
@@ -104,7 +105,8 @@ export const generateSecretApprovalRequest = async ({
   secretPath,
   policy,
   data,
-  commiterMembershipId
+  commiterMembershipId,
+  authData
 }: TGenerateSecretApprovalRequestArg) => {
   // calculate folder id from secret path
   let folderId = "root";
@@ -313,6 +315,22 @@ export const generateSecretApprovalRequest = async ({
     committer: commiterMembershipId
   });
   await secretApprovalRequest.save();
+
+  await EEAuditLogService.createAuditLog(
+    authData,
+    {
+      type: EventType.SECRET_APPROVAL_REQUEST,
+      metadata: {
+        committedBy: commiterMembershipId,
+        secretApprovalRequestId: secretApprovalRequest._id.toString(),
+        secretApprovalRequestSlug: secretApprovalRequest.slug
+      }
+    },
+    {
+      workspaceId: secretApprovalRequest.workspace
+    }
+  );
+
   return secretApprovalRequest;
 };
 
@@ -436,26 +454,6 @@ export const performSecretApprovalRequestMerge = async (
           })
       )
     });
-
-    // question to team where to keep secretKey
-    await EEAuditLogService.createAuditLog(
-      authData,
-      {
-        type: EventType.CREATE_SECRETS,
-        metadata: {
-          environment,
-          secretPath: "/",
-          secrets: newlyCreatedSecrets.map(({ version, _id }) => ({
-            secretId: _id.toString(),
-            secretKey: "",
-            secretVersion: version
-          }))
-        }
-      },
-      {
-        workspaceId
-      }
-    );
   }
 
   const secretUpdationCommits = secretApprovalRequest.commits.filter(
@@ -570,25 +568,6 @@ export const performSecretApprovalRequestMerge = async (
         });
       })
     });
-
-    await EEAuditLogService.createAuditLog(
-      authData,
-      {
-        type: EventType.UPDATE_SECRETS,
-        metadata: {
-          environment,
-          secretPath: "/",
-          secrets: nonConflictSecrets.map(({ secret }) => ({
-            secretId: secret._id.toString(),
-            secretKey: "",
-            secretVersion: secret.version + 1
-          }))
-        }
-      },
-      {
-        workspaceId
-      }
-    );
   }
 
   const secretDeletionCommits = secretApprovalRequest.commits.filter(
@@ -614,25 +593,6 @@ export const performSecretApprovalRequestMerge = async (
     await EESecretService.markDeletedSecretVersions({
       secretIds: secretDeletionCommits.map(({ secret }) => secret._id)
     });
-
-    await EEAuditLogService.createAuditLog(
-      authData,
-      {
-        type: EventType.DELETE_SECRETS,
-        metadata: {
-          environment,
-          secretPath: "/",
-          secrets: secretDeletionCommits.map(({ secret: { _id, version } }) => ({
-            secretId: _id.toString(),
-            secretKey: "",
-            secretVersion: version
-          }))
-        }
-      },
-      {
-        workspaceId
-      }
-    );
   }
 
   const updatedSecretApproval = await SecretApprovalRequest.findByIdAndUpdate(
@@ -670,6 +630,22 @@ export const performSecretApprovalRequestMerge = async (
     environment,
     folderId
   });
+
+  // question to team where to keep secretKey
+  await EEAuditLogService.createAuditLog(
+    authData,
+    {
+      type: EventType.SECRET_APPROVAL_MERGED,
+      metadata: {
+        mergedBy: userMembershipId,
+        secretApprovalRequestId: id,
+        secretApprovalRequestSlug: secretApprovalRequest.slug
+      }
+    },
+    {
+      workspaceId
+    }
+  );
 
   return updatedSecretApproval;
 };

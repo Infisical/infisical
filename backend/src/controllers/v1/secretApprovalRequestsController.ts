@@ -9,6 +9,8 @@ import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import { ISecretApprovalPolicy, SecretApprovalPolicy } from "../../models/secretApprovalPolicy";
 import { performSecretApprovalRequestMerge } from "../../services/SecretApprovalService";
 import { Types } from "mongoose";
+import { EEAuditLogService } from "../../ee/services";
+import { EventType } from "../../ee/models";
 
 export const getSecretApprovalRequests = async (req: Request, res: Response) => {
   const {
@@ -31,6 +33,7 @@ export const getSecretApprovalRequests = async (req: Request, res: Response) => 
     {
       $match: query
     },
+    { $sort: { createdAt: -1 } },
     {
       $lookup: {
         from: SecretApprovalPolicy.collection.name,
@@ -234,5 +237,37 @@ export const updateSecretApprovalRequestStatus = async (req: Request, res: Respo
     { status, statusChangeBy: membership._id },
     { new: true }
   );
+
+  if (status === "close") {
+    await EEAuditLogService.createAuditLog(
+      req.authData,
+      {
+        type: EventType.SECRET_APPROVAL_CLOSED,
+        metadata: {
+          closedBy: membership._id.toString(),
+          secretApprovalRequestId: id,
+          secretApprovalRequestSlug: secretApprovalRequest.slug
+        }
+      },
+      {
+        workspaceId: secretApprovalRequest.workspace
+      }
+    );
+  } else {
+    await EEAuditLogService.createAuditLog(
+      req.authData,
+      {
+        type: EventType.SECRET_APPROVAL_REOPENED,
+        metadata: {
+          reopenedBy: membership._id.toString(),
+          secretApprovalRequestId: id,
+          secretApprovalRequestSlug: secretApprovalRequest.slug
+        }
+      },
+      {
+        workspaceId: secretApprovalRequest.workspace
+      }
+    );
+  }
   return res.send({ approval: updatedRequest });
 };
