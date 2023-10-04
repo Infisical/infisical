@@ -83,6 +83,7 @@ jobs:
           tags: infisical/staging_deployment_frontend:test
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+            NEXT_INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
       - name: ⏻ Spawn frontend container
         run: |
           docker run -d --rm --name infisical-frontend-test infisical/staging_deployment_frontend:test
@@ -105,6 +106,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+            NEXT_INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
   gamma-deployment:
     name: Deploy to gamma
     runs-on: ubuntu-latest
