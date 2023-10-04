@@ -117,10 +117,8 @@
         "documentation/platform/secret-reference",
         "documentation/platform/webhooks",
         "documentation/platform/pit-recovery",
-        "documentation/platform/secret-versioning",
         "documentation/platform/audit-logs",
         "documentation/platform/token",
-        "documentation/platform/ip-allowlisting",
         "documentation/platform/mfa",
         {
           "group": "SSO",
@@ -169,6 +167,7 @@
             "cli/commands/run",
             "cli/commands/secrets",
             "cli/commands/export",
+            "cli/commands/service-token",
             "cli/commands/vault",
             "cli/commands/user",
             "cli/commands/reset",
@@ -276,6 +275,12 @@
       ]
     },
     {
+      "group": "Build Tool Integrations",
+      "pages": [
+        "integrations/build-tools/gradle"
+      ]
+    },
+    {
       "group": "Overview",
       "pages": ["sdks/overview"]
     },
@@ -379,15 +384,6 @@
         "internals/flows",
         "internals/security",
         "internals/service-tokens"
-      ]
-    },
-    {
-      "group": "Security",
-      "pages": [
-        "security/overview",
-        "security/data-model",
-        "security/mechanics",
-        "security/service-tokens"
       ]
     },
     {

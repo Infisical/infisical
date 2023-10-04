@@ -5,28 +5,30 @@ export const CreateFolderV1 = z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
     folderName: z.string().trim(),
-    parentFolderId: z.string().trim().optional()
+    directory: z.string().trim().default("/")
   })
 });
 
 export const UpdateFolderV1 = z.object({
   params: z.object({
-    folderId: z.string().trim()
+    folderName: z.string().trim()
   }),
   body: z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
-    name: z.string().trim()
+    name: z.string().trim(),
+    directory: z.string().trim().default("/")
   })
 });
 
 export const DeleteFolderV1 = z.object({
   params: z.object({
-    folderId: z.string().trim()
+    folderName: z.string().trim()
   }),
   body: z.object({
     workspaceId: z.string().trim(),
-    environment: z.string().trim()
+    environment: z.string().trim(),
+    directory: z.string().trim().default("/")
   })
 });
 
@@ -34,7 +36,6 @@ export const GetFoldersV1 = z.object({
   query: z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
-    parentFolderId: z.string().trim().optional(),
-    parentFolderPath: z.string().trim().optional()
+    directory: z.string().trim().default("/")
   })
 });

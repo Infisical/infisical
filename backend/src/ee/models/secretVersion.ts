@@ -4,7 +4,7 @@ import {
   ENCODING_SCHEME_BASE64,
   ENCODING_SCHEME_UTF8,
   SECRET_PERSONAL,
-  SECRET_SHARED,
+  SECRET_SHARED
 } from "../../variables";
 
 export interface ISecretVersion {
@@ -23,6 +23,7 @@ export interface ISecretVersion {
   secretValueCiphertext: string;
   secretValueIV: string;
   secretValueTag: string;
+  skipMultilineEncoding?: boolean;
   algorithm: "aes-256-gcm";
   keyEncoding: "utf8" | "base64";
   createdAt: string;
@@ -36,95 +37,96 @@ const secretVersionSchema = new Schema<ISecretVersion>(
       // could be deleted
       type: Schema.Types.ObjectId,
       ref: "Secret",
-      required: true,
+      required: true
     },
     version: {
       type: Number,
       default: 1,
-      required: true,
+      required: true
     },
     workspace: {
       type: Schema.Types.ObjectId,
       ref: "Workspace",
-      required: true,
+      required: true
     },
     type: {
       type: String,
       enum: [SECRET_SHARED, SECRET_PERSONAL],
-      required: true,
+      required: true
     },
     user: {
       // user associated with the personal secret
       type: Schema.Types.ObjectId,
-      ref: "User",
+      ref: "User"
     },
     environment: {
       type: String,
-      required: true,
+      required: true
     },
     isDeleted: {
       // consider removing field
       type: Boolean,
       default: false,
-      required: true,
+      required: true
     },
     secretBlindIndex: {
       type: String,
-      select: false,
+      select: false
     },
     secretKeyCiphertext: {
       type: String,
-      required: true,
+      required: true
     },
     secretKeyIV: {
       type: String, // symmetric
-      required: true,
+      required: true
     },
     secretKeyTag: {
       type: String, // symmetric
-      required: true,
+      required: true
     },
     secretValueCiphertext: {
       type: String,
-      required: true,
+      required: true
     },
     secretValueIV: {
       type: String, // symmetric
-      required: true,
+      required: true
     },
     secretValueTag: {
       type: String, // symmetric
-      required: true,
+      required: true
+    },
+    skipMultilineEncoding: {
+      type: Boolean,
+      required: false
     },
     algorithm: {
       // the encryption algorithm used
       type: String,
       enum: [ALGORITHM_AES_256_GCM],
       required: true,
-      default: ALGORITHM_AES_256_GCM,
+      default: ALGORITHM_AES_256_GCM
     },
     keyEncoding: {
       type: String,
       enum: [ENCODING_SCHEME_UTF8, ENCODING_SCHEME_BASE64],
       required: true,
-      default: ENCODING_SCHEME_UTF8,
+      default: ENCODING_SCHEME_UTF8
     },
     folder: {
       type: String,
-      required: true,
+      required: true
     },
     tags: {
       ref: "Tag",
       type: [Schema.Types.ObjectId],
-      default: [],
+      default: []
     }
   },
   {
-    timestamps: true,
+    timestamps: true
   }
 );
 
-export const SecretVersion = model<ISecretVersion>(
-  "SecretVersion",
-  secretVersionSchema
-);
+export const SecretVersion = model<ISecretVersion>("SecretVersion", secretVersionSchema);

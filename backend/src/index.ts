@@ -38,6 +38,7 @@ import {
   membership as v1MembershipRouter,
   organization as v1OrganizationRouter,
   password as v1PasswordRouter,
+  secretApprovalPolicy as v1SecretApprovalPolicy,
   secretImps as v1SecretImpsRouter,
   secret as v1SecretRouter,
   secretsFolder as v1SecretsFolder,
@@ -176,6 +177,7 @@ const main = async () => {
   app.use("/api/v1/webhooks", v1WebhooksRouter);
   app.use("/api/v1/secret-imports", v1SecretImpsRouter);
   app.use("/api/v1/roles", v1RoleRouter);
+  app.use("/api/v1/secret-approvals", v1SecretApprovalPolicy);
 
   // v2 routes (improvements)
   app.use("/api/v2/signup", v2SignupRouter);
@@ -221,10 +223,25 @@ const main = async () => {
   // await createTestUserForDevelopment();
   setUpHealthEndpoint(server);
 
-  server.on("close", async () => {
+
+  const serverCleanup = async () => {
     await DatabaseService.closeDatabase();
     syncSecretsToThirdPartyServices.close();
     githubPushEventSecretScan.close();
+
+    process.exit(0);
+  }
+
+  process.on("SIGINT", function () {
+    server.close(async () => {
+      await serverCleanup()
+    });
+  });
+
+  process.on("SIGTERM", function () {
+    server.close(async () => {
+      await serverCleanup()
+    });
   });
 
   return server;

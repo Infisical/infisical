@@ -14,7 +14,7 @@ import (
 
 var userCmd = &cobra.Command{
 	Use:                   "user",
-	Short:                 "Used to manage user credentials",
+	Short:                 "Used to manage local user credentials",
 	DisableFlagsInUseLine: true,
 	Example:               "infisical user",
 	Args:                  cobra.ExactArgs(0),

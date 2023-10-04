@@ -25,7 +25,7 @@ func CallGetEncryptedWorkspaceKey(httpClient *resty.Client, request GetEncrypted
 	}
 
 	if response.IsError() {
-		return GetEncryptedWorkspaceKeyResponse{}, fmt.Errorf("CallGetEncryptedWorkspaceKey: Unsuccessful response: [response=%s]", response)
+		return GetEncryptedWorkspaceKeyResponse{}, fmt.Errorf("CallGetEncryptedWorkspaceKey: Unsuccessful response [%v %v] [status-code=%v]", response.Request.Method, response.Request.URL, response.StatusCode())
 	}
 
 	return result, nil
@@ -338,4 +338,24 @@ func CallGetSingleSecretByNameV3(httpClient *resty.Client, request CreateSecretV
 	}
 
 	return nil
+}
+
+func CallCreateServiceToken(httpClient *resty.Client, request CreateServiceTokenRequest) (CreateServiceTokenResponse, error) {
+	var createServiceTokenResponse CreateServiceTokenResponse
+	response, err := httpClient.
+		R().
+		SetResult(&createServiceTokenResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v2/service-token/", config.INFISICAL_URL))
+
+	if err != nil {
+		return CreateServiceTokenResponse{}, fmt.Errorf("CallCreateServiceToken: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return CreateServiceTokenResponse{}, fmt.Errorf("CallCreateServiceToken: Unsuccessful response [%v %v] [status-code=%v]", response.Request.Method, response.Request.URL, response.StatusCode())
+	}
+
+	return createServiceTokenResponse, nil
 }

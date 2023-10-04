@@ -1,81 +1,68 @@
-import mongoose, { Schema, model } from "mongoose";
-import { ISecret, Secret } from "./secret";
+import { Schema, Types, model } from "mongoose";
+import { ISecretVersion, SecretVersion } from "../ee/models/secretVersion";
 
-interface ISecretApprovalRequest {
-	secret: mongoose.Types.ObjectId;
-	requestedChanges: ISecret;
-	requestedBy: mongoose.Types.ObjectId;
-	approvers: IApprover[];
-	status: ApprovalStatus;
-	timestamp: Date;
-	requestType: RequestType;
-	requestId: string;
+enum ApprovalStatus {
+  PENDING = "pending",
+  APPROVED = "approved",
+  REJECTED = "rejected"
 }
 
-interface IApprover {
-	userId: mongoose.Types.ObjectId;
-	status: ApprovalStatus;
+enum CommitType {
+  DELETE = "delete",
+  UPDATE = "update",
+  CREATE = "create"
 }
 
-export enum ApprovalStatus {
-	PENDING = "pending",
-	APPROVED = "approved",
-	REJECTED = "rejected"
+export interface ISecretApprovalRequest {
+  _id: Types.ObjectId;
+  committer: Types.ObjectId;
+  approvers: {
+    member: Types.ObjectId;
+    status: ApprovalStatus;
+  }[];
+  approvals: number;
+  hasMerged: boolean;
+  status: ApprovalStatus;
+  commits: {
+    secretVersion: Types.ObjectId;
+    newVersion: ISecretVersion;
+    op: CommitType;
+  }[];
 }
-
-export enum RequestType {
-	UPDATE = "update",
-	DELETE = "delete",
-	CREATE = "create"
-}
-
-const approverSchema = new mongoose.Schema({
-	user: {
-		type: mongoose.Schema.Types.ObjectId,
-		ref: "User",
-		required: true,
-	},
-	status: {
-		type: String,
-		enum: [ApprovalStatus],
-		default: ApprovalStatus.PENDING,
-	},
-});
 
 const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
-	{
-		secret: {
-			type: mongoose.Schema.Types.ObjectId,
-			ref: "Secret",
-		},
-		requestedChanges: Secret,
-		requestedBy: {
-			type: mongoose.Schema.Types.ObjectId,
-			ref: "User",
-		},
-		approvers: [approverSchema],
-		status: {
-			type: String,
-			enum: ApprovalStatus,
-			default: ApprovalStatus.PENDING,
-		},
-		timestamp: {
-			type: Date,
-			default: Date.now,
-		},
-		requestType: {
-			type: String,
-			enum: RequestType,
-			required: true,
-		},
-		requestId: {
-			type: String,
-			required: false,
-		},
-	},
-	{
-		timestamps: true,
-	}
+  {
+    approvers: [
+      {
+        member: {
+          // user associated with the personal secret
+          type: Schema.Types.ObjectId,
+          ref: "Membership"
+        },
+        status: { type: String, enum: ApprovalStatus, default: ApprovalStatus.PENDING }
+      }
+    ],
+    approvals: {
+      type: Number,
+      required: true
+    },
+    hasMerged: { type: Boolean, default: false },
+    status: { type: String, enum: ApprovalStatus, default: ApprovalStatus.PENDING },
+    committer: { type: Schema.Types.ObjectId, ref: "Membership" },
+    commits: [
+      {
+        secretVersion: { type: Types.ObjectId, ref: "SecretVersion" },
+        newVersion: SecretVersion,
+        op: { type: String, enum: [CommitType], required: true }
+      }
+    ]
+  },
+  {
+    timestamps: true
+  }
 );
 
-export const SecretApprovalRequest = model<ISecretApprovalRequest>("SecretApprovalRequest", secretApprovalRequestSchema);
+export const SecretApprovalRequest = model<ISecretApprovalRequest>(
+  "SecretApprovalRequest",
+  secretApprovalRequestSchema
+);

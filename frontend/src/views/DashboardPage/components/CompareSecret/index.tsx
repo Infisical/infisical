@@ -1,1 +1,0 @@
-export { CompareSecret } from "./CompareSecret";

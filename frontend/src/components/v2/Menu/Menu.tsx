@@ -2,8 +2,8 @@
 /* eslint-disable import/no-extraneous-dependencies */
 /* eslint-disable global-require */
 import { ComponentPropsWithRef, ElementType, ReactNode, Ref, useRef } from "react";
-import { motion } from "framer-motion"
-import Lottie from "lottie-react"
+import { motion } from "framer-motion";
+import Lottie from "lottie-react";
 import { twMerge } from "tailwind-merge";
 
 export type MenuProps = {
@@ -39,13 +39,10 @@ export const MenuItem = <T extends ElementType = "button">({
   inputRef,
   ...props
 }: MenuItemProps<T> & ComponentPropsWithRef<T>): JSX.Element => {
-  const iconRef = useRef()
+  const iconRef = useRef();
 
-  return( 
-    <a 
-      onMouseEnter={() => iconRef.current?.play()}
-      onMouseLeave={() => iconRef.current?.stop()} 
-    >
+  return (
+    <a onMouseEnter={() => iconRef.current?.play()} onMouseLeave={() => iconRef.current?.stop()}>
       <li
         className={twMerge(
           "group px-1 py-2 mt-0.5 font-inter flex flex-col text-sm text-bunker-100 transition-all rounded cursor-pointer hover:bg-mineshaft-700 duration-50",
@@ -55,25 +52,37 @@ export const MenuItem = <T extends ElementType = "button">({
         )}
       >
         <motion.span className="w-full flex flex-row items-center justify-start rounded-sm">
-          <Item type="button" role="menuitem" className="flex items-center relative" ref={inputRef} {...props}>
-            <div className={`${isSelected ? "visisble" : "invisible"} -left-[0.28rem] absolute w-[0.07rem] rounded-md h-5 bg-primary`}/>
-            {/* {icon && <span className="mr-3 ml-4 w-5 block group-hover:hidden">{icon}</span>} */}
-            <Lottie
-              lottieRef={iconRef}
-              style={{ width: 22, height: 22 }}
-              // eslint-disable-next-line import/no-dynamic-require
-              animationData={require(`../../../../public/lotties/${icon}.json`)}
-              loop={false}
-              autoplay={false}
-              className="my-auto ml-[0.1rem] mr-3"
+          <Item
+            type="button"
+            role="menuitem"
+            className="flex items-center relative"
+            ref={inputRef}
+            {...props}
+          >
+            <div
+              className={`${
+                isSelected ? "visisble" : "invisible"
+              } -left-[0.28rem] absolute w-[0.07rem] rounded-md h-5 bg-primary`}
             />
+            {/* {icon && <span className="mr-3 ml-4 w-5 block group-hover:hidden">{icon}</span>} */}
+            {icon && (
+              <Lottie
+                lottieRef={iconRef}
+                style={{ width: 22, height: 22 }}
+                // eslint-disable-next-line import/no-dynamic-require
+                animationData={require(`../../../../public/lotties/${icon}.json`)}
+                loop={false}
+                autoplay={false}
+                className="my-auto ml-[0.1rem] mr-3"
+              />
+            )}
             <span className="flex-grow text-left">{children}</span>
           </Item>
           {description && <span className="mt-2 text-xs">{description}</span>}
         </motion.span>
       </li>
     </a>
-  )
+  );
 };
 
 export const SubMenuItem = <T extends ElementType = "button">({
@@ -88,13 +97,10 @@ export const SubMenuItem = <T extends ElementType = "button">({
   inputRef,
   ...props
 }: MenuItemProps<T> & ComponentPropsWithRef<T>): JSX.Element => {
-  const iconRef = useRef()
+  const iconRef = useRef();
 
-  return( 
-    <a 
-      onMouseEnter={() => iconRef.current?.play()}
-      onMouseLeave={() => iconRef.current?.stop()} 
-    >
+  return (
+    <a onMouseEnter={() => iconRef.current?.play()} onMouseLeave={() => iconRef.current?.stop()}>
       <li
         className={twMerge(
           "group px-1 py-1 mt-0.5 font-inter flex flex-col text-sm text-mineshaft-300 hover:text-mineshaft-100 transition-all rounded cursor-pointer hover:bg-mineshaft-700 duration-50",
@@ -103,7 +109,13 @@ export const SubMenuItem = <T extends ElementType = "button">({
         )}
       >
         <motion.span className="w-full flex flex-row items-center justify-start rounded-sm pl-6">
-          <Item type="button" role="menuitem" className="flex items-center relative" ref={inputRef} {...props}>
+          <Item
+            type="button"
+            role="menuitem"
+            className="flex items-center relative"
+            ref={inputRef}
+            {...props}
+          >
             <Lottie
               lottieRef={iconRef}
               style={{ width: 16, height: 16 }}
@@ -119,9 +131,8 @@ export const SubMenuItem = <T extends ElementType = "button">({
         </motion.span>
       </li>
     </a>
-  )
+  );
 };
-
 
 MenuItem.displayName = "MenuItem";
 

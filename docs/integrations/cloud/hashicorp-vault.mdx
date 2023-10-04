@@ -34,17 +34,17 @@ To begin, navigate to the cluster / namespace that you want to sync secrets to i
 
 In Secrets, enable a KV Secrets Engine at a path for Infisical to sync secrets to; we'll use the path `kv`.
 
-![integrations hashicorp vault secrets engine](../../images/integrations-hashicorp-vault-engine-1.png)
-![integrations hashicorp vault secrets engine](../../images/integrations-hashicorp-vault-engine-2.png)
-![integrations hashicorp vault secrets engine](../../images/integrations-hashicorp-vault-engine-3.png)
+![integrations hashicorp vault secrets engine](../../images/integrations/hashicorp-vault/integrations-hashicorp-vault-engine-1.png)
+![integrations hashicorp vault secrets engine](../../images/integrations/hashicorp-vault/integrations-hashicorp-vault-engine-2.png)
+![integrations hashicorp vault secrets engine](../../images/integrations/hashicorp-vault/integrations-hashicorp-vault-engine-3.png)
 
 ### Enable the AppRole auth method
 
 In Access > Auth Methods, enable the AppRole auth method.
 
-![integrations hashicorp vault access](../../images/integrations-hashicorp-vault-access-1.png)
-![integrations hashicorp vault access](../../images/integrations-hashicorp-vault-access-2.png)
-![integrations hashicorp vault access](../../images/integrations-hashicorp-vault-access-3.png)
+![integrations hashicorp vault access](../../images/integrations/hashicorp-vault/integrations-hashicorp-vault-access-1.png)
+![integrations hashicorp vault access](../../images/integrations/hashicorp-vault/integrations-hashicorp-vault-access-2.png)
+![integrations hashicorp vault access](../../images/integrations/hashicorp-vault/integrations-hashicorp-vault-access-3.png)
 
 ### Create an ACL Policy
 
@@ -67,9 +67,9 @@ path "sys/namespaces/*" {
     that we want to sync secrets to.
 </Note>
 
-![integrations hashicorp vault policy](../../images/integrations-hashicorp-vault-policy-1.png)
-![integrations hashicorp vault policy](../../images/integrations-hashicorp-vault-policy-2.png)
-![integrations hashicorp vault policy](../../images/integrations-hashicorp-vault-policy-3.png)
+![integrations hashicorp vault policy](../../images/integrations/hashicorp-vault/integrations-hashicorp-vault-policy-1.png)
+![integrations hashicorp vault policy](../../images/integrations/hashicorp-vault/integrations-hashicorp-vault-policy-2.png)
+![integrations hashicorp vault policy](../../images/integrations/hashicorp-vault/integrations-hashicorp-vault-policy-3.png)
 
 ### Create a role with the policy attached
 
@@ -77,7 +77,7 @@ We now create a `infisical` role with the generated token's time-to-live (TTL) s
 
 1. Click the Vault CLI shell icon (`>_`) to open a command shell in the browser.
 
-![integrations hashicorp vault shell](../../images/integrations-hashicorp-vault-shell.png)
+![integrations hashicorp vault shell](../../images/integrations/hashicorp-vault/integrations-hashicorp-vault-shell.png)
 
 2. Copy the command below.
 
@@ -129,7 +129,7 @@ Great. We're now ready to connect Infisical to Vault!
 
 Back in Infisical, press on the HashiCorp Vault tile and input your Vault instance and `infisical` role RoleID and SecretID.
 
-![integrations hashicorp vault authorization](../../images/integrations-hashicorp-vault-auth.png)
+![integrations hashicorp vault authorization](../../images/integrations/hashicorp-vault/integrations-hashicorp-vault-auth.png)
 
 For additional details on each field:
 
@@ -137,7 +137,7 @@ For additional details on each field:
 
 If using HCP, you can copy your Cluster URL in the Cluster Overview:
 
-![integrations hashicorp vault cluster URL](../../images/integrations-hashicorp-vault-cluster-url.png)
+![integrations hashicorp vault cluster URL](../../images/integrations/hashicorp-vault/integrations-hashicorp-vault-cluster-url.png)
 
 - Vault Namespace: The Vault namespace you wish to connect to.
 - Vault RoleID: The RoleID previously created for the `infisical` role.
@@ -154,8 +154,8 @@ For additional details on each field:
 
 Press create integration to start syncing secrets to Vault.
 
-![integrations hashicorp vault](../../images/integrations-hashicorp-vault-create.png)
-![integrations hashicorp vault](../../images/integrations-hashicorp-vault.png)
+![integrations hashicorp vault](../../images/integrations/hashicorp-vault/integrations-hashicorp-vault-create.png)
+![integrations hashicorp vault](../../images/integrations/hashicorp-vault/integrations-hashicorp-vault.png)
 
 
 

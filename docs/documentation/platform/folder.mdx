@@ -3,28 +3,50 @@ title: "Folders"
 description: "Organize your secrets with folders"
 ---
 
-Folders provide a powerful and intuitive way to structure your secrets.
-They offer a system to keep your secrets organized and easily accessible, which becomes increasingly important as your collection of secrets grows.
+Infisical's folder feature lets you store secrets at a specific folder; we also call this **path-based secret storage**. 
+This is great for organizing secrets around hierarchies when multiple services, types of secrets, etc. are involved at great quantities. 
+With folders that can go infinitely deep, you can mirror your application architecture (be it microservices or monorepos) 
+or any logical grouping that best suits your needs.
 
-With folders in Infisical, you can now create a hierarchy of folders to organize your secrets, mirroring your application's architecture or any logical grouping that suits your needs. 
-Whether you follow a microservices architecture or work with monorepos, folders make it simpler to locate, manage and collaborate between teams.
+Consider the following structure for a microservice architecture:
 
+```
+| service1
+|---- envars
+|---- users
+|-------- tokens1
+|-------- tokens2
+| service2
+|---- envars
+...
+```
 
-## Creating a folder
+In this example, we store environment variables for each microservice under each respective `/envars` folder. 
+We also store user-specific secrets for micro-service 1 under `/service1/users`. With this folder structure in place, your applications only need to specify a path like `/microservice1/envars` to fetch secrets from there.
+By extending this example, you can see how path-based secret storage provides a versatile approach to manage secrets for any architecture.
 
-To create a folder, head over to the environment where you'd like to create the folder. Once there, click the `Add folder` button as shown below.
-If you wish to create nested folders, simply click into the folder of choice and click `Add folder` button again.
+## Folders
 
-![dashboard add folders](../../images/dashboard-add-folder.png)
+### Managing folders
+
+To add a folder, press the downward chevron to the right of the **Add Secret** button; then press on the **Add Folder** button.
 
 <Info>
   Folder names can only contain alphabets, numbers, and dashes
 </Info>
 
-## Compare folders across environments
+![add folder](../../images/platform/folder/folders-add.png)
 
-The overview screen provides a comprehensive view of all your secrets and folders, organized by environment. 
+To delete a folder, hover over it and press the **X** button that appears on the right side.
 
-![dashboard secret overview with folders](../../images/dashboard-folder-overview.png)
+![delete folder](../../images/platform/folder/folders-delete.png)
 
-When you click on a folder, the overview will be updated to show only the secrets and folders in that folder. This allows you to compare secrets across environment regardless of how deeply nested your folders are.
+### Comparing folders
+
+It's possible to compare the contents of folders across environments in the **Secrets Overview** page.
+When you click on a folder, the table will display the items within it across environments.
+
+In the image below, you can see that the **Development** environment is the only one that contains items 
+in the `/users` folder, being other folders `/user-a`, `/user-b`, ... `/user-f`.
+
+![comparing folders](../../images/platform/folder/folders-secrets-overview.png)

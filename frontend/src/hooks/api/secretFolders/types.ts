@@ -3,43 +3,36 @@ export type TSecretFolder = {
   name: string;
 };
 
-export type GetProjectFoldersDTO = {
+export type TGetProjectFoldersDTO = {
   workspaceId: string;
   environment: string;
-  parentFolderId?: string;
-  isPaused?: boolean;
-  sortDir?: "asc" | "desc";
-};
-
-export type GetProjectFoldersBatchDTO = {
-  folders: Omit<GetProjectFoldersDTO, "isPaused" | "sortDir">[];
-  isPaused?: boolean;
-  parentFolderPath?: string;
+  directory?: string;
 };
 
 export type TGetFoldersByEnvDTO = {
   environments: string[];
   workspaceId: string;
-  parentFolderPath?: string;
-  parentFolderId?: string;
+  directory?: string;
 };
 
-export type CreateFolderDTO = {
+export type TCreateFolderDTO = {
   workspaceId: string;
   environment: string;
   folderName: string;
-  parentFolderId?: string;
+  directory?: string;
 };
 
-export type UpdateFolderDTO = {
+export type TUpdateFolderDTO = {
   workspaceId: string;
   environment: string;
   name: string;
-  folderId: string;
+  folderName: string;
+  directory?: string;
 };
 
-export type DeleteFolderDTO = {
+export type TDeleteFolderDTO = {
   workspaceId: string;
   environment: string;
-  folderId: string;
+  folderName: string;
+  directory?: string;
 };

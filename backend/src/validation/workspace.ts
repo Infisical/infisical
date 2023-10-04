@@ -33,9 +33,10 @@ export const validateClientForWorkspace = async ({
 }) => {
   const workspace = await Workspace.findById(workspaceId);
 
-  if (!workspace) throw WorkspaceNotFoundError({
-    message: "Failed to find workspace"
-  });
+  if (!workspace)
+    throw WorkspaceNotFoundError({
+      message: "Failed to find workspace"
+    });
 
   let membership;
   switch (authData.actor.type) {
@@ -67,7 +68,7 @@ export const GetWorkspaceSecretSnapshotsV1 = z.object({
   }),
   query: z.object({
     environment: z.string().trim(),
-    folderId: z.string().trim().default("root"),
+    directory: z.string().trim().default("/"),
     offset: z.coerce.number(),
     limit: z.coerce.number()
   })
@@ -79,7 +80,7 @@ export const GetWorkspaceSecretSnapshotsCountV1 = z.object({
   }),
   query: z.object({
     environment: z.string().trim(),
-    folderId: z.string().trim().default("root")
+    directory: z.string().trim().default("/")
   })
 });
 
@@ -89,7 +90,7 @@ export const RollbackWorkspaceSecretSnapshotV1 = z.object({
   }),
   body: z.object({
     environment: z.string().trim(),
-    folderId: z.string().trim().default("root"),
+    directory: z.string().trim().default("/"),
     version: z.number()
   })
 });

@@ -4,7 +4,7 @@ import {
   ENCODING_SCHEME_BASE64,
   ENCODING_SCHEME_UTF8,
   SECRET_PERSONAL,
-  SECRET_SHARED,
+  SECRET_SHARED
 } from "../variables";
 
 export interface ISecret {
@@ -12,7 +12,7 @@ export interface ISecret {
   version: number;
   workspace: Types.ObjectId;
   type: string;
-  user: Types.ObjectId;
+  user?: Types.ObjectId;
   environment: string;
   secretBlindIndex?: string;
   secretKeyCiphertext: string;
@@ -27,13 +27,14 @@ export interface ISecret {
   secretCommentIV?: string;
   secretCommentTag?: string;
   secretCommentHash?: string;
+  skipMultilineEncoding?: boolean;
   algorithm: "aes-256-gcm";
   keyEncoding: "utf8" | "base64";
   tags?: string[];
   folder?: string;
   metadata?: {
     [key: string]: string;
-  }
+  };
 }
 
 const secretSchema = new Schema<ISecret>(
@@ -41,105 +42,109 @@ const secretSchema = new Schema<ISecret>(
     version: {
       type: Number,
       required: true,
-      default: 1,
+      default: 1
     },
     workspace: {
       type: Schema.Types.ObjectId,
       ref: "Workspace",
-      required: true,
+      required: true
     },
     type: {
       type: String,
       enum: [SECRET_SHARED, SECRET_PERSONAL],
-      required: true,
+      required: true
     },
     user: {
       // user associated with the personal secret
       type: Schema.Types.ObjectId,
-      ref: "User",
+      ref: "User"
     },
     tags: {
       ref: "Tag",
       type: [Schema.Types.ObjectId],
-      default: [],
+      default: []
     },
     environment: {
       type: String,
-      required: true,
+      required: true
     },
     secretBlindIndex: {
       type: String,
-      select: false,
+      select: false
     },
     secretKeyCiphertext: {
       type: String,
-      required: true,
+      required: true
     },
     secretKeyIV: {
       type: String, // symmetric
-      required: true,
+      required: true
     },
     secretKeyTag: {
       type: String, // symmetric
-      required: true,
+      required: true
     },
     secretKeyHash: {
-      type: String,
+      type: String
     },
     secretValueCiphertext: {
       type: String,
-      required: true,
+      required: true
     },
     secretValueIV: {
       type: String, // symmetric
-      required: true,
+      required: true
     },
     secretValueTag: {
       type: String, // symmetric
-      required: true,
+      required: true
     },
     secretValueHash: {
-      type: String,
+      type: String
     },
     secretCommentCiphertext: {
       type: String,
-      required: false,
+      required: false
     },
     secretCommentIV: {
       type: String, // symmetric
-      required: false,
+      required: false
     },
     secretCommentTag: {
       type: String, // symmetric
-      required: false,
+      required: false
     },
     secretCommentHash: {
       type: String,
-      required: false,
+      required: false
+    },
+    skipMultilineEncoding: {
+      type: Boolean,
+      required: false
     },
     algorithm: {
       // the encryption algorithm used
       type: String,
       enum: [ALGORITHM_AES_256_GCM],
       required: true,
-      default: ALGORITHM_AES_256_GCM,
+      default: ALGORITHM_AES_256_GCM
     },
     keyEncoding: {
       type: String,
       enum: [ENCODING_SCHEME_UTF8, ENCODING_SCHEME_BASE64],
       required: true,
-      default: ENCODING_SCHEME_UTF8,
+      default: ENCODING_SCHEME_UTF8
     },
     folder: {
       type: String,
-      default: "root",
+      default: "root"
     },
     metadata: {
       type: Schema.Types.Mixed
     }
   },
   {
-    timestamps: true,
+    timestamps: true
   }
 );
 
