@@ -58,6 +58,7 @@ jobs:
           context: backend
           tags: |
             infisical/backend:${{ steps.commit.outputs.short }}
+            infisical/backend:latest
             infisical/backend:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
 
