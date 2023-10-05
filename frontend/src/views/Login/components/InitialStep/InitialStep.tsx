@@ -57,7 +57,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             return;
           }
           // case: login was successful
-          const cliUrl = `http://localhost:${callbackPort}`;
+          const cliUrl = `http://127.0.0.1:${callbackPort}`;
 
           // send request to server endpoint
           const instance = axios.create();
