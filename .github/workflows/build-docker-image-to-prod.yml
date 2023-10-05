@@ -93,6 +93,7 @@ jobs:
           tags: infisical/frontend:test
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+            NEXT_INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
       - name: ⏻ Spawn frontend container
         run: |
           docker run -d --rm --name infisical-frontend-test infisical/frontend:test
@@ -116,3 +117,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+            NEXT_INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}

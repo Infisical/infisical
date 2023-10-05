@@ -1,5 +1,6 @@
 import { faKey, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
@@ -37,17 +38,6 @@ export const APIKeyTable = () => {
     }
   };
 
-  const formatDate = (dateToFormat: string) => {
-    const date = new Date(dateToFormat);
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-
-    const formattedDate = `${day}/${month}/${year}`;
-
-    return formattedDate;
-  };
-
   return (
     <TableContainer>
       <Table>
@@ -69,9 +59,9 @@ export const APIKeyTable = () => {
               return (
                 <Tr className="h-10" key={`api-key-${_id}`}>
                   <Td>{name}</Td>
-                  <Td>{formatDate(lastUsed)}</Td>
-                  <Td>{formatDate(createdAt)}</Td>
-                  <Td>{formatDate(expiresAt)}</Td>
+                  <Td>{format(new Date(lastUsed), "yyyy-MM-dd")}</Td>
+                  <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
+                  <Td>{format(new Date(expiresAt), "yyyy-MM-dd")}</Td>
                   <Td>
                     <IconButton
                       onClick={async () => {

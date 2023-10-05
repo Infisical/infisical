@@ -34,10 +34,10 @@ import { Webhook } from "../../models";
  * @returns
  */
 export const createWorkspaceEnvironment = async (req: Request, res: Response) => {
-  /* 
+  /*
     #swagger.summary = 'Create environment'
     #swagger.description = 'Create environment'
-    
+
     #swagger.security = [{
         "apiKeyAuth": []
     }]
@@ -46,12 +46,12 @@ export const createWorkspaceEnvironment = async (req: Request, res: Response) =>
 		"description": "ID of project",
 		"required": true,
 		"type": "string"
-	} 
+	}
 
-  /* 
+  /*
     #swagger.summary = 'Create environment'
     #swagger.description = 'Create environment'
-    
+
     #swagger.security = [{
         "apiKeyAuth": []
     }]
@@ -60,7 +60,7 @@ export const createWorkspaceEnvironment = async (req: Request, res: Response) =>
 		"description": "ID of project",
 		"required": true,
 		"type": "string"
-	} 
+	}
 
   #swagger.requestBody = {
       content: {
@@ -88,7 +88,7 @@ export const createWorkspaceEnvironment = async (req: Request, res: Response) =>
   #swagger.responses[200] = {
       content: {
           "application/json": {
-              "schema": { 
+              "schema": {
                   "type": "object",
                   "properties": {
                       "message": {
@@ -115,7 +115,7 @@ export const createWorkspaceEnvironment = async (req: Request, res: Response) =>
                   },
                   "description": "Response after creating a new environment"
               }
-          }           
+          }
       }
   }
   */
@@ -246,7 +246,7 @@ export const reorderWorkspaceEnvironments = async (req: Request, res: Response) 
  * @returns
  */
 export const renameWorkspaceEnvironment = async (req: Request, res: Response) => {
-  /* 
+  /*
     #swagger.summary = 'Rename workspace environment'
     #swagger.description = 'Rename a specific environment within a workspace'
 
@@ -317,7 +317,7 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
                 }
             }
         }
-    }   
+    }
   */
   const {
     params: { workspaceId },
@@ -394,6 +394,11 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
     { workspace: workspaceId, environment: oldEnvironmentSlug },
     { environment: environmentSlug }
   );
+  await SecretImport.updateMany(
+    { workspace: workspaceId, "imports.environment": oldEnvironmentSlug },
+    { $set: { "imports.$[element].environment": environmentSlug } },
+    { arrayFilters: [{ "element.environment": oldEnvironmentSlug }] },
+  );
 
   await ServiceAccountWorkspacePermission.updateMany(
     { workspace: workspaceId, environment: oldEnvironmentSlug },
@@ -447,10 +452,10 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
  * @returns
  */
 export const deleteWorkspaceEnvironment = async (req: Request, res: Response) => {
-  /* 
+  /*
     #swagger.summary = 'Delete workspace environment'
     #swagger.description = 'Delete a specific environment from a workspace'
-    
+
     #swagger.security = [{
         "apiKeyAuth": []
     }]
@@ -483,7 +488,7 @@ export const deleteWorkspaceEnvironment = async (req: Request, res: Response) =>
     #swagger.responses[200] = {
         content: {
             "application/json": {
-                "schema": { 
+                "schema": {
                     "type": "object",
                     "properties": {
                         "message": {
@@ -501,9 +506,9 @@ export const deleteWorkspaceEnvironment = async (req: Request, res: Response) =>
                     },
                     "description": "Response after deleting an environment from a workspace"
                 }
-            }           
+            }
         }
-    }   
+    }
 */
   const {
     params: { workspaceId },
@@ -590,10 +595,10 @@ export const deleteWorkspaceEnvironment = async (req: Request, res: Response) =>
 
 // TODO(akhilmhdh) after rbac this can be completely removed
 export const getAllAccessibleEnvironmentsOfWorkspace = async (req: Request, res: Response) => {
-  /* 
+  /*
     #swagger.summary = 'Get all accessible environments of a workspace'
     #swagger.description = 'Fetch all environments that the user has access to in a specified workspace'
-    
+
     #swagger.security = [{
         "apiKeyAuth": []
     }]
@@ -640,7 +645,7 @@ export const getAllAccessibleEnvironmentsOfWorkspace = async (req: Request, res:
                 }
             }
         }
-    }   
+    }
   */
   const {
     params: { workspaceId }

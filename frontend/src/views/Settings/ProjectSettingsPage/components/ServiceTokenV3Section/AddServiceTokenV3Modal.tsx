@@ -140,15 +140,19 @@ export const AddServiceTokenV3Modal = ({
         if (serviceTokenData) {
             reset({
                 name: serviceTokenData.name,
-                scopes: serviceTokenData.scopes.map((scope: ServiceTokenV3Scope) => {
+                scopes: serviceTokenData.scopes.map(({
+                    environment,
+                    secretPath,
+                    permissions
+                }: ServiceTokenV3Scope) => {
                     let permission = "read";
-                    if (scope.permissions.includes(Permission.WRITE)) {
+                    if (permissions.includes(Permission.WRITE)) {
                         permission = "readWrite";
                     }
-                    
+
                     return ({
-                        environment: "dev",
-                        secretPath: "/",
+                        environment,
+                        secretPath,
                         permission
                     })
                 }),

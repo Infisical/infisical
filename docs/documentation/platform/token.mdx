@@ -26,7 +26,7 @@ Service Token V3 (ST V3) is a new and improved authentication method that is in 
 Here's a few pointers to get you acquainted with it:
 
 - When you create a ST V3, you export a `JSON` file containing 3 components: `publicKey`, `privateKey`, and `serviceToken` where
-`serviceToken` is a JWT token prefixed with `proj_token`. The token provides access to the Infisical API and the public-private key
+`serviceToken` is a JWT token prefixed with `stv3`. The token provides access to the Infisical API and the public-private key
 pairs are to support cryptographic operations for the client whenever E2EE is needed.
 - ST V3 supports IP allowlisting; this means you can restrict the usage of a ST V3 to a specific IP or CIDR range.
 - ST V3 supports provisioning granular `read` or `readWrite` access down to each path.

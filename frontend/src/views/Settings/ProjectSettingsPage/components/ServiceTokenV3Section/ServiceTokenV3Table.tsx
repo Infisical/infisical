@@ -1,5 +1,6 @@
 import { faKey, faPencil,faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -70,17 +71,6 @@ export const ServiceTokenV3Table = ({
             });
         }
     }
-    
-    const formatDate = (dateToFormat: string) => {
-        const date = new Date(dateToFormat);
-        const year = date.getFullYear();
-        const month = date.getMonth() + 1;
-        const day = date.getDate();
-    
-        const formattedDate = `${day}/${month}/${year}`;
-    
-        return formattedDate;
-    };
       
     return (
         <TableContainer>
@@ -171,9 +161,9 @@ export const ServiceTokenV3Table = ({
                                     })}
                                 </Td> 
                                 {/* <Td>{usageCount}</Td> */}
-                                <Td>{lastUsed ? formatDate(lastUsed) : "-"}</Td>
-                                <Td>{formatDate(createdAt)}</Td>
-                                <Td>{expiresAt ? formatDate(expiresAt) : "-"}</Td>
+                                <Td>{lastUsed ? format(new Date(lastUsed), "yyyy-MM-dd") : "-"}</Td>
+                                <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
+                                <Td>{expiresAt ? format(new Date(expiresAt), "yyyy-MM-dd") : "-"}</Td>
                                 <Td className="flex justify-end">
                                     <ProjectPermissionCan
                                         I={ProjectPermissionActions.Edit}

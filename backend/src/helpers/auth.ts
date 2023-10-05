@@ -86,7 +86,7 @@ export const validateAuthMode = ({
 				authMode = AuthMode.SERVICE_TOKEN;
 				authTokenValue = tokenValue;
 				break;
-			case "proj_token":
+			case "stv3":
 				authMode = AuthMode.SERVICE_TOKEN_V3;
 				authTokenValue = parts.slice(1).join(".");
 				break;
