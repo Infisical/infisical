@@ -172,14 +172,10 @@ export const updateRiskStatus = async (req: Request, res: Response) => {
 
   const risk = await GitRisks.findByIdAndUpdate(riskId, { status }).select("+gitSecretBlindIndex").lean();
 
-  let gitSecretBlindIndex: string | undefined = risk?.gitSecretBlindIndex;
-  
-  // legacy situation
-  if (!gitSecretBlindIndex) {
-    gitSecretBlindIndex = await SecretScanningService.createGitSecretBlindIndexData({ organizationId });
-  }
-
-  // this means that the Git secret will hold the most recently defined risk status, 
+  // if no blind index, this is a legacy situation and we need to create it
+  const gitSecretBlindIndex = risk?.gitSecretBlindIndex ?? await SecretScanningService.createGitSecretBlindIndexData({ organizationId });
+ 
+  // this function defines the status for the Git secret as this risk, 
   // even if not all the fingerprints with the same blind index have been changed
   if (gitSecretBlindIndex) {
     await SecretScanningService.updateGitSecret({
@@ -189,8 +185,8 @@ export const updateRiskStatus = async (req: Request, res: Response) => {
     })
   }
 
-  // // now we go back and update all Git risks with the same blind index 
-  // // (I think we should put this as a pop up so the user can choose to do that)
+  // OPTION: now we go back and update all Git risks with the same blind index 
+  // this could be a popup to alert the user there are other Git risks with the same blind index but a different staus
   // await GitRisks.updateMany({ gitSecretBlindIndex }, { status }).select("+gitSecretBlindIndex").lean();
 
   res.json(risk);

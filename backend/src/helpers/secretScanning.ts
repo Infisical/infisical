@@ -1,6 +1,5 @@
 import { FilterQuery, UpdateQuery } from "mongoose";
 import { AnyBulkWriteOperation } from "mongodb";
-import { promisify } from "util";
 import { randomBytes } from "crypto";
 import * as argon2 from "argon2";
 
@@ -160,11 +159,10 @@ const encryptGitSecretsHelper = async ({ gitSecrets }: EncryptGitSecretsParams):
  */
 export const createGitSecretBlindIndexDataHelper = async ({
   organizationId
-}: CreateGitSecretBlindIndexDataParams): Promise<string> => { 
+}: CreateGitSecretBlindIndexDataParams): Promise<string> => {
+
   // initialize random blind index salt for the organization
-  const randomBytesPromisified = promisify(randomBytes);
-  const saltBuffer = await randomBytesPromisified(SALT_BLIND_INDEX_PARAMS.SALT_LENGTH);
-  const salt = saltBuffer.toString(SALT_BLIND_INDEX_PARAMS.ENCODING);
+  const salt = randomBytes(SALT_BLIND_INDEX_PARAMS.SALT_LENGTH).toString(SALT_BLIND_INDEX_PARAMS.ENCODING);
 
   const encryptionKey: string = await getEncryptionKey();
   const rootEncryptionKey: string = await getRootEncryptionKey();
@@ -248,7 +246,7 @@ export const createGitSecretBlindIndexWithSaltHelper = async ({
 /**
  * Create encrypted Git secrets and corresponding blind indexes
  * @param {Object} obj
- * @param {Set<string>|string[]} obj.gitSecrets - raw values of the Git secrets found in the Infisical Radar scan
+ * @param {String[]} obj.gitSecrets - raw values of the Git secrets found in the Infisical Radar scan
  * @param {String[]} obj.gitSecretBlindIndexes - Git secret blind indexes
  * @param {String} obj.organizationId - Infisical id for the GitHub organization connected to Infisical Radar
  * @param {String} obj.salt - 16-byte random salt tied to the GitHub organization connected to Infisical Radar
@@ -262,30 +260,20 @@ export const createGitSecretsHelper = async ({
   status
 }: CreateGitSecretsParams): Promise<string[]> => {
 
-  const gitSecretsArray = Array.isArray(gitSecrets) ? gitSecrets : Array.from(gitSecrets); // change from set to array for the push event
-  const encryptedGitSecrets = await encryptGitSecretsHelper({ gitSecrets: gitSecretsArray }); // returns only unique values
+  const encryptedGitSecrets = await encryptGitSecretsHelper({ gitSecrets }); // returns only unique values
 
   const blindIndexesToInsert = new Set<string>(); // same indexing as the encryptedGitSecrets
   const allBlindIndexes: string[] = [];
 
-  if (!gitSecretBlindIndexes || (Array.isArray(gitSecretBlindIndexes) && gitSecretBlindIndexes.length === 0)) {
-    // the full repo scan function did not create the blind indexes
-    const newIndexes = await createGitSecretBlindIndexesWithSaltHelper({
-      gitSecrets,
-      salt
-    })
+  // blind indexes already created in push scan function but not full repo scan function
+  const newIndexes = !gitSecretBlindIndexes?.length
+    ? await createGitSecretBlindIndexesWithSaltHelper({ gitSecrets, salt })
+    : gitSecretBlindIndexes;
 
-    newIndexes.forEach(index => {
-      blindIndexesToInsert.add(index);
-      allBlindIndexes.push(index);
-    })
-  } else {
-    // the push event function has already created the blind indexes
-    gitSecretBlindIndexes.forEach(index => {
-      blindIndexesToInsert.add(index);
-      allBlindIndexes.push(index);
-    })
-  }
+  newIndexes.forEach(index => {
+    blindIndexesToInsert.add(index);
+    allBlindIndexes.push(index);
+  });
 
   const encryptedGitSecretsToInsert: IGitSecret[] = [];
 
@@ -296,10 +284,7 @@ export const createGitSecretsHelper = async ({
       organizationId,
     }).select("+gitSecretBlindIndex")
 
-    if (existingGitSecret) {
-      // if the Git secret blind index already exists, skip it as we don't want to insert it into Git secrets again
-      continue;
-    }
+    if (existingGitSecret) continue; // GitSecrets only needs unique blind indexes
 
     const newGitSecret = encryptedGitSecrets[encryptedGitSecretsToInsert.length];
 
@@ -312,7 +297,7 @@ export const createGitSecretsHelper = async ({
     encryptedGitSecretsToInsert.push(newGitSecret);
   }
 
-  if (encryptedGitSecretsToInsert.length > 0) {
+  if (encryptedGitSecretsToInsert.length) {
     await GitSecret.insertMany(encryptedGitSecretsToInsert);
   }
 
@@ -396,7 +381,7 @@ export const updateGitSecretHelper = async ({
  * will update the Git secret risk status for that unique Git secret as well, even
  * if there are other fingerprints with the same blind index
  * @param {Object} obj
- * @param {Set<string>} obj.gitSecretBlindIndexes - unique Git secret blind indexes to update
+ * @param {String[]} obj.gitSecretBlindIndexes - already unique Git secret blind indexes to update
  * @param {String} obj.organizationId - Infisical organization ID of the GitHub organization connected to Infisical Radar
  * @param {RiskStatus} obj.status - Git risk status of the Git secret finding to update
  */
@@ -407,11 +392,10 @@ export const updateGitSecretsHelper = async ({
 }: UpdateGitSecretsParams): Promise<void> => {
 
   try {
-    if (!gitSecretBlindIndexes || (gitSecretBlindIndexes instanceof Set && gitSecretBlindIndexes.size === 0)) {
-      return;
-    }
+    if (!gitSecretBlindIndexes?.length) return;
 
-    const bulkUpdateOperations = Array.from(gitSecretBlindIndexes).map((gitSecretBlindIndex) => {
+      // Create a bulk update operation for each gitSecretBlindIndex
+    const bulkUpdateOperations = gitSecretBlindIndexes.map((gitSecretBlindIndex) => {
       const filter: FilterQuery<IGitSecret> = {
         gitSecretBlindIndex,
         organizationId,

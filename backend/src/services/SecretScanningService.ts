@@ -74,7 +74,7 @@ class SecretScanningService {
   /**
    * Create encrypted Git secrets and corresponding blind indexes
    * @param {Object} obj
-   * @param {Set<string>|string[]} obj.gitSecrets - raw values of the Git secrets found in the Infisical Radar scan
+   * @param {String[]} obj.gitSecrets - raw values of the Git secrets found in the Infisical Radar scan
    * @param {String[]} obj.gitSecretBlindIndexes - Git secret blind indexes
    * @param {String} obj.organizationId - Infisical id for the GitHub organization connected to Infisical Radar
    * @param {String} obj.salt - 16-byte random salt tied to the GitHub organization connected to Infisical Radar
@@ -149,7 +149,7 @@ class SecretScanningService {
   /**
    * Update Git risk status [status] of bulk Git secret findings [gitRisks]
    * @param {Object} obj
-   * @param {Set<string>} obj.gitSecretBlindIndexes - unique Git secret blind indexes to update
+   * @param {String[]} obj.gitSecretBlindIndexes - unique Git secret blind indexes to update
    * @param {String} obj.organizationId - Infisical organization ID of the GitHub organization connected to Infisical Radar
    * @param {RiskStatus} obj.status - Git risk status of the Git secret finding to update
    */

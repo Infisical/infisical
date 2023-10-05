@@ -54,14 +54,14 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
       secretFindings.push(finding.Secret);
     }
 
-    if (batchRiskUpdate.length === 0) return;
+    if (!batchRiskUpdate?.length) return;
 
     // setup blind indexing for the Git secret findings
     const gitSecretBlindIndexes = await SecretScanningService.createGitSecrets({
       gitSecrets: secretFindings,
       organizationId,
       salt,
-      status: RiskStatus.UNRESOLVED
+      status: RiskStatus.UNRESOLVED // new finding so set to unresolved
     })
 
     if (findings.length !== gitSecretBlindIndexes.length) {
@@ -69,7 +69,7 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
     }
 
     // update the batch update operation with the corresponding gitSecretBlindIndex 
-    // this is needed to coordinate Git risk status updates across GitRisks and GitSecret
+    // this is needed to sync Git risk status updates for GitRisks and GitSecret
     for (let i = 0; i < findings.length; i++) {
       batchRiskUpdate[i].data.gitSecretBlindIndex = gitSecretBlindIndexes[i];
     }

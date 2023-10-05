@@ -4,10 +4,10 @@ import { IGitSecretBlindIndexData } from "../../../models";
 interface BaseSecretScanningTypes {
   organizationId: string;
   gitSecret: string;
-  gitSecrets: string[] | Set<string>;
+  gitSecrets: string[];
   gitSecretBlindIndex: string;
   gitSecretBlindIndexData: IGitSecretBlindIndexData;
-  gitSecretBlindIndexes?: Set<string> | string[];
+  gitSecretBlindIndexes?: string[];
   saltBytes: number;
   salt: string;
   status?: RiskStatus;

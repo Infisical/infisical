@@ -38,8 +38,8 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
   const batchRiskUpdate: BatchRiskUpdateItem[] = [];
 
   const updateGitSecretBlindIndexes = new Set<string>();
-  const newGitSecretFindingsValues = new Set<string>(); // we only need the unique finding values as we have already created the blin indexes
-  const newGitSecretBlindIndexes: string[] = []; // process all of the blind indexes so we can add to the GitRisks too
+  const newGitSecretFindingsValues = new Set<string>();
+  const newGitSecretBlindIndexes: string[] = [];
 
   const allRisksMarkedFalsePositive = await GitRisks.find({
     repositoryId: repository.id,
@@ -98,9 +98,8 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
                 gitSecretBlindIndex: gitSecretBlindIndex
               },
             });
-            // same here although may want to ensure that the Git secret has been marked 
-            // as the most recent risk status (ie. false positive)
-            updateGitSecretBlindIndexes.add(gitSecretBlindIndex);
+            // same here + this causes the most recent risk status for that secret to be marked as false positive
+            updateGitSecretBlindIndexes.add(gitSecretBlindIndex); // only want unique blind indexes here
 
           } else {
             batchRiskUpdate.push({
@@ -116,8 +115,8 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
               },
             });
 
-            newGitSecretFindingsValues.add(finding.Secret);
-            newGitSecretBlindIndexes.push(gitSecretBlindIndex);
+            newGitSecretFindingsValues.add(finding.Secret); // only need unique findings
+            newGitSecretBlindIndexes.push(gitSecretBlindIndex); // process all so we can add against GitRisks
           }
         }
       } catch (error) {
@@ -126,13 +125,14 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
     }
   }
 
-  if (batchRiskUpdate.length === 0) return;
+  if (!batchRiskUpdate?.length) return;
+
   // check for duplicate data and bulk update Git risks
   await bulkWriteRiskData(batchRiskUpdate);
   
-  if (updateGitSecretBlindIndexes) {
+  if (updateGitSecretBlindIndexes.size) {
     await SecretScanningService.updateGitSecrets({
-      gitSecretBlindIndexes: updateGitSecretBlindIndexes,
+      gitSecretBlindIndexes: Array.from(updateGitSecretBlindIndexes),
       organizationId,
       status: RiskStatus.RESOLVED_FALSE_POSITIVE // set status to false positive
     });
@@ -140,7 +140,7 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
     
   if (newGitSecretFindingsValues.size && newGitSecretBlindIndexes.length) {
     await SecretScanningService.createGitSecrets({
-      gitSecrets: newGitSecretFindingsValues,
+      gitSecrets: Array.from(newGitSecretFindingsValues),
       gitSecretBlindIndexes: newGitSecretBlindIndexes,
       organizationId,
       salt,
