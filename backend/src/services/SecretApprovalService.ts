@@ -355,7 +355,7 @@ export const performSecretApprovalRequestMerge = async (
   const environment = secretApprovalRequest.environment;
   const folderId = secretApprovalRequest.folderId;
   const postHogClient = await TelemetryService.getPostHogClient();
-  const conflicts: Array<{ id: string; op: CommitType }> = [];
+  const conflicts: Array<{ secretId: string; op: CommitType }> = [];
 
   const secretCreationCommits = secretApprovalRequest.commits.filter(
     ({ op }) => op === CommitType.CREATE
@@ -382,7 +382,7 @@ export const performSecretApprovalRequestMerge = async (
     secretCreationCommits
       .filter(({ newVersion }) => conflictGroupByBlindIndex[newVersion.secretBlindIndex || ""])
       .forEach((el) => {
-        conflicts.push({ op: CommitType.CREATE, id: el.newVersion._id.toString() });
+        conflicts.push({ op: CommitType.CREATE, secretId: el.newVersion._id.toString() });
       });
 
     // create secret
@@ -482,15 +482,20 @@ export const performSecretApprovalRequestMerge = async (
     );
     secretUpdationCommits
       .filter(
-        ({ newVersion }) =>
-          newVersion.secretBlindIndex && conflictGroupByBlindIndex[newVersion.secretBlindIndex]
+        ({ newVersion, secret }) =>
+          (newVersion.secretBlindIndex && conflictGroupByBlindIndex[newVersion.secretBlindIndex]) ||
+          !secret
       )
       .forEach((el) => {
-        conflicts.push({ op: CommitType.UPDATE, id: el.newVersion._id.toString() });
+        conflicts.push({ op: CommitType.UPDATE, secretId: el.newVersion._id.toString() });
       });
 
-    const nonConflictSecrets = secretUpdationCommits.filter(({ newVersion }) =>
-      newVersion?.secretBlindIndex ? !conflictGroupByBlindIndex[newVersion.secretBlindIndex] : true
+    const nonConflictSecrets = secretUpdationCommits.filter(
+      ({ newVersion, secret }) =>
+        Boolean(secret) &&
+        (newVersion?.secretBlindIndex
+          ? !conflictGroupByBlindIndex[newVersion.secretBlindIndex]
+          : true)
     );
     await Secret.bulkWrite(
       // id and version are stripped off

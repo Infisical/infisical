@@ -1,4 +1,4 @@
-import { faFilePen } from "@fortawesome/free-solid-svg-icons";
+import { faExclamationTriangle, faInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
@@ -10,6 +10,7 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import { CommitType, DecryptedSecret, TSecretApprovalSecChange, WsTag } from "@app/hooks/api/types";
@@ -20,6 +21,7 @@ export type Props = {
   newVersion?: Omit<TSecretApprovalSecChange, "tags"> & { tags?: WsTag[] };
   presentSecretVersionNumber: number;
   hasMerged?: Boolean;
+  conflicts: Array<{ secretId: string; op: CommitType }>;
 };
 
 const generateItemTitle = (op: CommitType) => {
@@ -35,23 +37,42 @@ const generateItemTitle = (op: CommitType) => {
   );
 };
 
+const generateConflictText = (op: CommitType) => {
+  if (op === CommitType.CREATE) return <div>Secret already exist</div>;
+  if (op === CommitType.UPDATE) return <div>Secret not found</div>;
+  return null;
+};
+
 export const SecretApprovalRequestChangeItem = ({
   op,
   secretVersion,
   newVersion,
   presentSecretVersionNumber,
-  hasMerged
+  hasMerged,
+  conflicts
 }: Props) => {
   // meaning request has changed
-  const isStale = (secretVersion?.version || 1) < presentSecretVersionNumber && !hasMerged;
+  const isStale = (secretVersion?.version || 1) < presentSecretVersionNumber;
+  const itemConflict =
+    hasMerged && conflicts.find((el) => el.op === op && el.secretId === newVersion?._id);
+  const hasConflict = Boolean(itemConflict);
+
   return (
     <div className="bg-bunker-500 rounded-lg pt-2 pb-4 px-4">
       <div className="py-3 px-1 flex items-center">
         <div className="flex-grow">{generateItemTitle(op)}</div>
-        {isStale && (
+        {!hasMerged && isStale && (
           <div className="flex items-center">
-            <FontAwesomeIcon icon={faFilePen} className="text-primary-600 text-sm" />
+            <FontAwesomeIcon icon={faInfo} className="text-primary-600 text-sm" />
             <span className="text-xs ml-2">Secret has been changed(stale)</span>
+          </div>
+        )}
+        {hasMerged && hasConflict && (
+          <div className="flex items-center text-sm text-bunker-300 space-x-2">
+            <Tooltip content="Merge Conflict">
+              <FontAwesomeIcon icon={faExclamationTriangle} className="text-red-700" />
+            </Tooltip>
+            <div>{generateConflictText(op)}</div>
           </div>
         )}
       </div>

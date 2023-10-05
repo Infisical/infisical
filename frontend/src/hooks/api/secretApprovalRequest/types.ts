@@ -17,7 +17,6 @@ export enum CommitType {
 
 export type TSecretApprovalSecChangeData = {
   _id: string;
-  version: number;
   secretKeyCiphertext: string;
   secretKeyIV: string;
   secretKeyTag: string;
@@ -31,6 +30,7 @@ export type TSecretApprovalSecChangeData = {
   algorithm: "aes-256-gcm";
   keyEncoding: "utf8" | "base64";
   tags?: WsTag[];
+  version: number;
 };
 
 export type TSecretApprovalSecChange = {
@@ -57,10 +57,12 @@ export type TSecretApprovalRequest<
   workspace: string;
   environment: string;
   folderId: string;
+  secretPath: string;
   hasMerged: boolean;
   status: "open" | "close";
   policy: TSecretApprovalPolicy;
   statusChangeBy: string;
+  conflicts: Array<{ secretId: string; op: CommitType.UPDATE }>;
   commits: {
     // if there is no secret means it was creation
     secret?: { version: number };
@@ -71,6 +73,11 @@ export type TSecretApprovalRequest<
   }[];
 };
 
+export type TSecretApprovalRequestCount = {
+  open: number;
+  closed: number;
+};
+
 export type TGetSecretApprovalRequestList = {
   workspaceId: string;
   environment?: string;
@@ -78,6 +85,10 @@ export type TGetSecretApprovalRequestList = {
   committer?: string;
   limit?: number;
   offset?: number;
+};
+
+export type TGetSecretApprovalRequestCount = {
+  workspaceId: string;
 };
 
 export type TGetSecretApprovalRequestDetails = {
@@ -93,6 +104,7 @@ export type TUpdateSecretApprovalReviewStatusDTO = {
 export type TUpdateSecretApprovalRequestStatusDTO = {
   status: "open" | "close";
   id: string;
+  workspaceId: string;
 };
 
 export type TPerformSecretApprovalRequestMerge = {

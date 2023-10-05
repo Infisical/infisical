@@ -12,6 +12,54 @@ import { Types } from "mongoose";
 import { EEAuditLogService } from "../../ee/services";
 import { EventType } from "../../ee/models";
 
+export const getSecretApprovalRequestCount = async (req: Request, res: Response) => {
+  const {
+    query: { workspaceId }
+  } = await validateRequest(reqValidator.getSecretApprovalRequestCount, req);
+
+  const { membership } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const approvalRequestCount = await SecretApprovalRequest.aggregate([
+    {
+      $match: {
+        workspace: new Types.ObjectId(workspaceId)
+      }
+    },
+    {
+      $lookup: {
+        from: SecretApprovalPolicy.collection.name,
+        localField: "policy",
+        foreignField: "_id",
+        as: "policy"
+      }
+    },
+    { $unwind: "$policy" },
+    ...(membership.role !== "admin"
+      ? [
+          {
+            $match: {
+              $or: [
+                { committer: new Types.ObjectId(membership.id) },
+                { "policy.approvers": new Types.ObjectId(membership.id) }
+              ]
+            }
+          }
+        ]
+      : []),
+    {
+      $group: {
+        _id: "$status",
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+  const openRequests = approvalRequestCount.find(({ _id }) => _id === "open");
+  const closedRequests = approvalRequestCount.find(({ _id }) => _id === "close");
+
+  return res.send({
+    approvals: { open: openRequests?.count || 0, closed: closedRequests?.count || 0 }
+  });
+};
+
 export const getSecretApprovalRequests = async (req: Request, res: Response) => {
   const {
     query: { status, committer, workspaceId, environment, limit, offset }
@@ -95,7 +143,8 @@ export const getSecretApprovalRequestDetails = async (req: Request, res: Respons
       }
     })
     .populate("commits.secret", "version")
-    .populate("commits.newVersion.tags");
+    .populate("commits.newVersion.tags")
+    .lean();
   if (!secretApprovalRequest)
     throw BadRequestError({ message: "Secret approval request not found" });
 
@@ -114,8 +163,19 @@ export const getSecretApprovalRequestDetails = async (req: Request, res: Respons
     throw UnauthorizedRequestError({ message: "User has no access" });
   }
 
+  let secretPath = "/";
+  const approvalRootFolders = await Folder.findOne({
+    workspace: secretApprovalRequest.workspace,
+    environment: secretApprovalRequest.environment
+  }).lean();
+  if (approvalRootFolders) {
+    secretPath =
+      getFolderWithPathFromId(approvalRootFolders?.nodes, secretApprovalRequest.folderId)
+        ?.folderPath || "/";
+  }
+
   return res.send({
-    approval: secretApprovalRequest
+    approval: { ...secretApprovalRequest, secretPath }
   });
 };
 

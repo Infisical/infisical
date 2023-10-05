@@ -8,6 +8,7 @@ import {
 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 
+import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
 import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import { secretKeys } from "./queries";
 import {
@@ -114,6 +115,7 @@ export const useCreateSecretV3 = ({
       queryClient.invalidateQueries(
         secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       );
+      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
     },
     ...options
   });
@@ -173,6 +175,7 @@ export const useUpdateSecretV3 = ({
       queryClient.invalidateQueries(
         secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       );
+      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
     },
     ...options
   });
@@ -209,6 +212,7 @@ export const useDeleteSecretV3 = ({
       queryClient.invalidateQueries(
         secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       );
+      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
     },
     ...options
   });
@@ -261,6 +265,7 @@ export const useCreateSecretBatch = ({
       queryClient.invalidateQueries(
         secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       );
+      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
     },
     ...options
   });
@@ -313,6 +318,7 @@ export const useUpdateSecretBatch = ({
       queryClient.invalidateQueries(
         secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       );
+      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
     },
     ...options
   });
@@ -349,6 +355,7 @@ export const useDeleteSecretBatch = ({
       queryClient.invalidateQueries(
         secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       );
+      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
     },
     ...options
   });

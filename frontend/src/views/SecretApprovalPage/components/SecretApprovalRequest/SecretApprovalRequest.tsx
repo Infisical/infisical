@@ -20,7 +20,11 @@ import {
   Skeleton
 } from "@app/components/v2";
 import { useUser, useWorkspace } from "@app/context";
-import { useGetSecretApprovalRequests, useGetWorkspaceUsers } from "@app/hooks/api";
+import {
+  useGetSecretApprovalRequestCount,
+  useGetSecretApprovalRequests,
+  useGetWorkspaceUsers
+} from "@app/hooks/api";
 import { ApprovalStatus, TSecretApprovalRequest, TWorkspaceUser } from "@app/hooks/api/types";
 
 import {
@@ -51,6 +55,8 @@ export const SecretApprovalRequest = () => {
     environment: envFilter,
     committer: committerFilter
   });
+  const { data: secretApprovalRequestCount, isSuccess: isSecretApprovalReqCountSuccess } =
+    useGetSecretApprovalRequestCount({ workspaceId });
   const { user: presentUser } = useUser();
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
@@ -103,13 +109,17 @@ export const SecretApprovalRequest = () => {
               onKeyDown={(evt) => {
                 if (evt.key === "Enter") setStatusFilter("open");
               }}
-              className={statusFilter === "close" ? "text-gray-500 hover:text-gray-400 duration-100" : ""}
+              className={
+                statusFilter === "close" ? "text-gray-500 hover:text-gray-400 duration-100" : ""
+              }
             >
               <FontAwesomeIcon icon={faCodeBranch} className="mr-2" />
-              Open
+              {isSecretApprovalReqCountSuccess && secretApprovalRequestCount?.open} Open
             </div>
             <div
-              className={statusFilter === "open" ? "text-gray-500 hover:text-gray-400 duration-100" : ""}
+              className={
+                statusFilter === "open" ? "text-gray-500 hover:text-gray-400 duration-100" : ""
+              }
               role="button"
               tabIndex={0}
               onClick={() => setStatusFilter("close")}
@@ -118,7 +128,7 @@ export const SecretApprovalRequest = () => {
               }}
             >
               <FontAwesomeIcon icon={faCheck} className="mr-2" />
-              Closed
+              {isSecretApprovalReqCountSuccess && secretApprovalRequestCount.closed} Closed
             </div>
             <div className="flex-grow flex justify-end space-x-8">
               <DropdownMenu>

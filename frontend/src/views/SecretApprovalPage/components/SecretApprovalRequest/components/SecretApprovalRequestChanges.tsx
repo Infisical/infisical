@@ -5,6 +5,7 @@ import {
   faCheckCircle,
   faCircle,
   faCodeBranch,
+  faFolder,
   faXmarkCircle
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -175,13 +176,19 @@ export const SecretApprovalRequestChanges = ({
             <div className="text-lg mb-1">
               {generateCommitText(secretApprovalRequestDetails.commits)}
             </div>
-            <div className="text-sm text-bunker-300">
+            <div className="text-sm text-bunker-300 flex items-center">
               {committer?.user?.firstName}
               {committer?.user?.lastName} ({committer?.user?.email}) wants to change{" "}
-              {secretApprovalRequestDetails.commits.length} secret values in{" "}
-              <span className="text-blue-300 bg-blue-600/60 px-1">
+              {secretApprovalRequestDetails.commits.length} secret values in
+              <span className="text-primary-300 bg-primary-600/60 px-1 mx-1 rounded">
                 {secretApprovalRequestDetails.environment}
               </span>
+              <div className="flex items-center border border-mineshaft-500 pl-1 pr-2 rounded w-min">
+                <div className="border-r border-mineshaft-500 pr-1">
+                  <FontAwesomeIcon icon={faFolder} className="text-primary" size="sm" />
+                </div>
+                <div className="text-sm pl-2 pb-0.5">{secretApprovalRequestDetails.secretPath}</div>
+              </div>
             </div>
           </div>
           {!hasMerged && secretApprovalRequestDetails.status === "open" && (
@@ -213,6 +220,7 @@ export const SecretApprovalRequestChanges = ({
             ({ op, secretVersion, secret, newVersion }, index) => (
               <SecretApprovalRequestChangeItem
                 op={op}
+                conflicts={secretApprovalRequestDetails.conflicts}
                 hasMerged={hasMerged}
                 secretVersion={secretVersion}
                 presentSecretVersionNumber={secret?.version || 0}

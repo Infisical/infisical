@@ -65,7 +65,8 @@ export const SecretApprovalRequestAction = ({
     try {
       await updateSecretStatusChange({
         id: approvalRequestId,
-        status: reqState
+        status: reqState,
+        workspaceId
       });
       createNotification({
         type: "success",

@@ -3,4 +3,8 @@ export {
   useUpdateSecretApprovalRequestStatus,
   useUpdateSecretApprovalReviewStatus
 } from "./mutation";
-export { useGetSecretApprovalRequestDetails, useGetSecretApprovalRequests } from "./queries";
+export {
+  useGetSecretApprovalRequestCount,
+  useGetSecretApprovalRequestDetails,
+  useGetSecretApprovalRequests
+} from "./queries";

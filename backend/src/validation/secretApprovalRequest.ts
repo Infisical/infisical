@@ -12,6 +12,12 @@ export const getSecretApprovalRequests = z.object({
   })
 });
 
+export const getSecretApprovalRequestCount = z.object({
+  query: z.object({
+    workspaceId: z.string().trim()
+  })
+});
+
 export const getSecretApprovalRequestDetails = z.object({
   params: z.object({
     id: z.string().trim()

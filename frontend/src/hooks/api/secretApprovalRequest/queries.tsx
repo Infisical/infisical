@@ -15,9 +15,11 @@ import { UserWsKeyPair } from "../keys/types";
 import { decryptSecrets } from "../secrets/queries";
 import { DecryptedSecret } from "../secrets/types";
 import {
+  TGetSecretApprovalRequestCount,
   TGetSecretApprovalRequestDetails,
   TGetSecretApprovalRequestList,
   TSecretApprovalRequest,
+  TSecretApprovalRequestCount,
   TSecretApprovalSecChange,
   TSecretApprovalSecChangeData
 } from "./types";
@@ -36,7 +38,11 @@ export const secretApprovalRequestKeys = {
       "secret-approval-requests"
     ] as const,
   detail: ({ id }: Omit<TGetSecretApprovalRequestDetails, "decryptKey">) =>
-    [{ id }, "secret-approval-request-detail"] as const
+    [{ id }, "secret-approval-request-detail"] as const,
+  count: ({ workspaceId }: TGetSecretApprovalRequestCount) => [
+    { workspaceId },
+    "secret-approval-request-count"
+  ]
 };
 
 export const decryptSecretApprovalSecret = (
@@ -186,4 +192,33 @@ export const useGetSecretApprovalRequestDetails = ({
       }))
     }),
     enabled: Boolean(id && decryptKey) && (options?.enabled ?? true)
+  });
+
+const fetchSecretApprovalRequestCount = async ({ workspaceId }: TGetSecretApprovalRequestCount) => {
+  const { data } = await apiRequest.get<{ approvals: TSecretApprovalRequestCount }>(
+    "/api/v1/secret-approval-requests/count",
+    { params: { workspaceId } }
+  );
+
+  return data.approvals;
+};
+
+export const useGetSecretApprovalRequestCount = ({
+  workspaceId,
+  options = {}
+}: TGetSecretApprovalRequestCount & {
+  options?: Omit<
+    UseQueryOptions<
+      TSecretApprovalRequestCount,
+      unknown,
+      TSecretApprovalRequestCount,
+      ReturnType<typeof secretApprovalRequestKeys.count>
+    >,
+    "queryKey" | "queryFn"
+  >;
+}) =>
+  useQuery({
+    queryKey: secretApprovalRequestKeys.count({ workspaceId }),
+    queryFn: () => fetchSecretApprovalRequestCount({ workspaceId }),
+    enabled: Boolean(workspaceId) && (options?.enabled ?? true)
   });

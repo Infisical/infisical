@@ -13,6 +13,14 @@ router.get(
 );
 
 router.get(
+  "/count",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  secretApprovalRequestController.getSecretApprovalRequestCount
+);
+
+router.get(
   "/:id",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]

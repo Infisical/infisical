@@ -66,6 +66,7 @@ import {
   useAddUserToWs,
   useCreateWorkspace,
   useGetOrgTrialUrl,
+  useGetSecretApprovalRequestCount,
   useLogoutUser,
   useUploadWsKey
 } from "@app/hooks/api";
@@ -114,7 +115,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { orgs, currentOrg } = useOrganization();
   const { user } = useUser();
   const { subscription } = useSubscription();
+  const workspaceId = currentWorkspace?._id || "";
   // const [ isLearningNoteOpen, setIsLearningNoteOpen ] = useState(true);
+  const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
@@ -477,21 +480,24 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      {process.env.NEXT_PUBLIC_SECRET_APPROVAL === "true" && (
-                        <Link href={`/project/${currentWorkspace?._id}/approval`} passHref>
-                          <a>
-                            <MenuItem
-                              isSelected={
-                                router.asPath === `/project/${currentWorkspace?._id}/approval`
-                              }
-                              icon="system-outline-189-domain-verification"
-                            >
-                              Secret Approval
-                            </MenuItem>
-                          </a>
-                        </Link>
-                      )}
-                      {/* <Link href={`/project/${currentWorkspace?._id}/allowlist`} passHref>
+                      <Link href={`/project/${currentWorkspace?._id}/approval`} passHref>
+                        <a className="relative">
+                          <MenuItem
+                            isSelected={
+                              router.asPath === `/project/${currentWorkspace?._id}/approval`
+                            }
+                            icon="system-outline-189-domain-verification"
+                          >
+                            Secret approval
+                            {Boolean(secretApprovalReqCount?.open) && (
+                              <span className="text-xs p-0.5 rounded ml-2 bg-primary text-black">
+                                {secretApprovalReqCount?.open}
+                              </span>
+                            )}
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      <Link href={`/project/${currentWorkspace?._id}/allowlist`} passHref>
                         <a>
                           <MenuItem
                             isSelected={
