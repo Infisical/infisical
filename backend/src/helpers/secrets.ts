@@ -13,11 +13,13 @@ import {
   Folder,
   ISecret,
   IServiceTokenData,
+  IServiceTokenDataV3,
   Secret,
   SecretBlindIndexData,
   ServiceTokenData,
   TFolderRootSchema
 } from "../models";
+import { Permission } from "../models/serviceTokenDataV3";
 import { EventType, SecretVersion } from "../ee/models";
 import {
   BadRequestError,
@@ -53,10 +55,50 @@ import picomatch from "picomatch";
 import path from "path";
 import { getAnImportedSecret } from "../services/SecretImportService";
 
+/**
+ * Validate scope for service token v3
+ * @param authPayload 
+ * @param environment 
+ * @param secretPath 
+ * @returns 
+ */
+export const isValidScopeV3 = ({
+  authPayload,
+  environment,
+  secretPath,
+  requiredPermissions
+}: {
+  authPayload: IServiceTokenDataV3,
+  environment: string,
+  secretPath: string,
+  requiredPermissions: Permission[]
+}) => {
+  const { scopes } = authPayload;
+  
+  const validScope = scopes.find(
+    (scope) =>
+      picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
+      scope.environment === environment
+  );
+
+  if (validScope && !requiredPermissions.every(permission => validScope.permissions.includes(permission))) {
+    return false;
+  }
+  
+  return Boolean(validScope);
+}
+
+/**
+ * Validate scope for service token v2
+ * @param authPayload 
+ * @param environment 
+ * @param secretPath 
+ * @returns 
+ */
 export const isValidScope = (
   authPayload: IServiceTokenData,
   environment: string,
-  secretPath: string
+  secretPath: string,
 ) => {
   const { scopes: tkScopes } = authPayload;
   const validScope = tkScopes.find(

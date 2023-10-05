@@ -7,6 +7,7 @@ import { WorkspaceNotFoundError } from "../utils/errors";
 import { AuthData } from "../interfaces/middleware";
 import { z } from "zod";
 import { EventType, UserAgentType } from "../ee/models";
+import { UnauthorizedRequestError } from "../utils/errors";
 
 /**
  * Validate authenticated clients for workspace with id [workspaceId] based
@@ -57,8 +58,11 @@ export const validateClientForWorkspace = async ({
         environment,
         requiredPermissions
       });
-
-      return {};
+      return { membership, workspace};
+    case ActorType.SERVICE_V3:
+      throw UnauthorizedRequestError({
+        message: "Failed service token authorization for organization"
+      });
   }
 };
 
@@ -298,5 +302,11 @@ export const NameWorkspaceSecretsV3 = z.object({
         _id: z.string().trim()
       })
       .array()
+  })
+});
+
+export const GetWorkspaceServiceTokenDataV3 = z.object({
+  params: z.object({
+    workspaceId: z.string().trim()
   })
 });

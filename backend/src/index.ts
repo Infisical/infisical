@@ -28,6 +28,9 @@ import {
   secretScanning as v1SecretScanningRouter
 } from "./ee/routes/v1";
 import {
+  serviceTokenData as v3ServiceTokenDataRouter
+} from "./ee/routes/v3";
+import {
   auth as v1AuthRouter,
   bot as v1BotRouter,
   integrationAuth as v1IntegrationAuthRouter,
@@ -56,7 +59,6 @@ import {
   organizations as v2OrganizationsRouter,
   secret as v2SecretRouter, // begin to phase out
   secrets as v2SecretsRouter,
-  serviceAccounts as v2ServiceAccountsRouter,
   serviceTokenData as v2ServiceTokenDataRouter,
   signup as v2SignupRouter,
   tags as v2TagsRouter,
@@ -155,6 +157,7 @@ const main = async () => {
   app.use("/api/v1/organizations", eeOrganizationsRouter);
   app.use("/api/v1/sso", eeSSORouter);
   app.use("/api/v1/cloud-products", eeCloudProductsRouter);
+  app.use("/api/v3/service-token", v3ServiceTokenDataRouter);
 
   // v1 routes
   app.use("/api/v1/signup", v1SignupRouter);
@@ -192,7 +195,7 @@ const main = async () => {
   app.use("/api/v2/secret", v2SecretRouter); // deprecate
   app.use("/api/v2/secrets", v2SecretsRouter); // note: in the process of moving to v3/secrets
   app.use("/api/v2/service-token", v2ServiceTokenDataRouter);
-  app.use("/api/v2/service-accounts", v2ServiceAccountsRouter); // new
+  // app.use("/api/v2/service-accounts", v2ServiceAccountsRouter); // new
 
   // v3 routes (experimental)
   app.use("/api/v3/auth", v3AuthRouter);

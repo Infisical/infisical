@@ -8,6 +8,7 @@ import {
   Organization,
   ServiceAccount,
   ServiceTokenData,
+  ServiceTokenDataV3,
   User
 } from "../models";
 import { createToken } from "../helpers/auth";
@@ -54,6 +55,10 @@ const getAuthDataPayloadIdObj = (authData: AuthData) => {
   if (authData.authPayload instanceof ServiceTokenData) {
     return { serviceTokenDataId: authData.authPayload._id };
   }
+
+  if (authData.authPayload instanceof ServiceTokenDataV3) {
+    return { serviceTokenDataId: authData.authPayload._id };
+  }
 };
 
 /**
@@ -62,7 +67,6 @@ const getAuthDataPayloadIdObj = (authData: AuthData) => {
  * @returns 
  */
 const getAuthDataPayloadUserObj = (authData: AuthData) => {
-
   if (authData.authPayload instanceof User) {
     return { user: authData.authPayload._id };
   }
@@ -72,7 +76,11 @@ const getAuthDataPayloadUserObj = (authData: AuthData) => {
   }
 
   if (authData.authPayload instanceof ServiceTokenData) {
-    return { user: authData.authPayload.user };0
+    return { user: authData.authPayload.user };
+  }
+  
+  if (authData.authPayload instanceof ServiceTokenDataV3) {
+    return { user: authData.authPayload.user };
   }
 }
 

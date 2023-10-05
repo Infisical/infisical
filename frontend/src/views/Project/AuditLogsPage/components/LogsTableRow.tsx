@@ -29,6 +29,13 @@ export const LogsTableRow = ({
                         <p>Service token</p>
                     </Td>
                 ); 
+            case ActorType.SERVICE_V3:
+                    return (
+                        <Td>
+                            <p>{`${actor.metadata.name}`}</p>
+                            <p>Service token V3</p>
+                        </Td>
+                    );
             default:
                 return (
                     <Td />
@@ -160,6 +167,24 @@ export const LogsTableRow = ({
                         <p>{`Name: ${event.metadata.name}`}</p>
                     </Td>
                 );
+                case EventType.CREATE_SERVICE_TOKEN_V3:
+                    return (
+                        <Td>
+                            <p>{`Name: ${event.metadata.name}`}</p>
+                        </Td>
+                    );
+                case EventType.UPDATE_SERVICE_TOKEN_V3:
+                    return (
+                        <Td>
+                            <p>{`Name: ${event.metadata.name}`}</p>
+                        </Td>
+                    );
+                case EventType.DELETE_SERVICE_TOKEN_V3:
+                    return (
+                        <Td>
+                            <p>{`Name: ${event.metadata.name}`}</p>
+                        </Td>
+                    );
             case EventType.CREATE_ENVIRONMENT:
                 return (
                     <Td>

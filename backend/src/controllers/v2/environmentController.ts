@@ -395,9 +395,9 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
     { environment: environmentSlug }
   );
   await SecretImport.updateMany(
-    { workspace: workspaceId, 'imports.environment': oldEnvironmentSlug },
-    { $set: { 'imports.$[element].environment': environmentSlug } },
-    { arrayFilters: [{ 'element.environment': oldEnvironmentSlug }] },
+    { workspace: workspaceId, "imports.environment": oldEnvironmentSlug },
+    { $set: { "imports.$[element].environment": environmentSlug } },
+    { arrayFilters: [{ "element.environment": oldEnvironmentSlug }] },
   );
 
   await ServiceAccountWorkspacePermission.updateMany(

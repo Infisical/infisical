@@ -1,4 +1,11 @@
-import { ActorType, EventType } from "./enums";
+import {
+    ActorType,
+    EventType
+} from "./enums";
+import {
+  IServiceTokenV3Scope,
+  IServiceTokenV3TrustedIp
+} from "../../../models/serviceTokenDataV3";
 
 interface UserActorMetadata {
   userId: string;
@@ -20,7 +27,15 @@ export interface ServiceActor {
   metadata: ServiceActorMetadata;
 }
 
-export type Actor = UserActor | ServiceActor;
+export interface ServiceActorV3 {
+    type: ActorType.SERVICE_V3;
+    metadata: ServiceActorMetadata;
+}
+
+export type Actor = 
+    | UserActor
+    | ServiceActor
+    | ServiceActorV3;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -210,6 +225,39 @@ interface DeleteServiceTokenEvent {
   };
 }
 
+interface CreateServiceTokenV3Event {
+    type: EventType.CREATE_SERVICE_TOKEN_V3;
+    metadata: {
+        name: string;
+        isActive: boolean;
+        scopes: Array<IServiceTokenV3Scope>;
+        trustedIps: Array<IServiceTokenV3TrustedIp>;
+        expiresAt?: Date;
+    }
+}
+
+interface UpdateServiceTokenV3Event {
+    type: EventType.UPDATE_SERVICE_TOKEN_V3;
+    metadata: {
+        name?: string;
+        isActive?: boolean;
+        scopes?: Array<IServiceTokenV3Scope>;
+        trustedIps?: Array<IServiceTokenV3TrustedIp>;
+        expiresAt?: Date;
+    }
+}
+
+interface DeleteServiceTokenV3Event {
+    type: EventType.DELETE_SERVICE_TOKEN_V3;
+    metadata: {
+        name: string;
+        isActive: boolean;
+        scopes: Array<IServiceTokenV3Scope>;
+        expiresAt?: Date;
+        trustedIps: Array<IServiceTokenV3TrustedIp>;
+    }
+}
+
 interface CreateEnvironmentEvent {
   type: EventType.CREATE_ENVIRONMENT;
   metadata: {
@@ -379,50 +427,53 @@ interface UpdateUserRole {
 }
 
 interface UpdateUserDeniedPermissions {
-  type: EventType.UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS;
-  metadata: {
-    userId: string;
-    email: string;
-    deniedPermissions: {
-      environmentSlug: string;
-      ability: string;
-    }[];
-  };
+    type: EventType.UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS,
+    metadata: {
+        userId: string;
+        email: string;
+        deniedPermissions: {
+            environmentSlug: string;
+            ability: string;
+        }[]
+    }
 }
 
-export type Event =
-  | GetSecretsEvent
-  | GetSecretEvent
-  | CreateSecretEvent
-  | CreateSecretBatchEvent
-  | UpdateSecretEvent
-  | UpdateSecretBatchEvent
-  | DeleteSecretEvent
-  | DeleteSecretBatchEvent
-  | GetWorkspaceKeyEvent
-  | AuthorizeIntegrationEvent
-  | UnauthorizeIntegrationEvent
-  | CreateIntegrationEvent
-  | DeleteIntegrationEvent
-  | AddTrustedIPEvent
-  | UpdateTrustedIPEvent
-  | DeleteTrustedIPEvent
-  | CreateServiceTokenEvent
-  | DeleteServiceTokenEvent
-  | CreateEnvironmentEvent
-  | UpdateEnvironmentEvent
-  | DeleteEnvironmentEvent
-  | AddWorkspaceMemberEvent
-  | RemoveWorkspaceMemberEvent
-  | CreateFolderEvent
-  | UpdateFolderEvent
-  | DeleteFolderEvent
-  | CreateWebhookEvent
-  | UpdateWebhookStatusEvent
-  | DeleteWebhookEvent
-  | GetSecretImportsEvent
-  | CreateSecretImportEvent
-  | UpdateSecretImportEvent
-  | DeleteSecretImportEvent
-  | UpdateUserRole
-  | UpdateUserDeniedPermissions;
+export type Event = 
+    | GetSecretsEvent
+    | GetSecretEvent
+    | CreateSecretEvent
+    | CreateSecretBatchEvent
+    | UpdateSecretEvent
+    | UpdateSecretBatchEvent
+    | DeleteSecretEvent
+    | DeleteSecretBatchEvent
+    | GetWorkspaceKeyEvent
+    | AuthorizeIntegrationEvent
+    | UnauthorizeIntegrationEvent
+    | CreateIntegrationEvent
+    | DeleteIntegrationEvent
+    | AddTrustedIPEvent
+    | UpdateTrustedIPEvent
+    | DeleteTrustedIPEvent
+    | CreateServiceTokenEvent
+    | DeleteServiceTokenEvent
+    | CreateServiceTokenV3Event
+    | UpdateServiceTokenV3Event
+    | DeleteServiceTokenV3Event
+    | CreateEnvironmentEvent
+    | UpdateEnvironmentEvent
+    | DeleteEnvironmentEvent
+    | AddWorkspaceMemberEvent
+    | RemoveWorkspaceMemberEvent
+    | CreateFolderEvent
+    | UpdateFolderEvent
+    | DeleteFolderEvent
+    | CreateWebhookEvent
+    | UpdateWebhookStatusEvent
+    | DeleteWebhookEvent
+    | GetSecretImportsEvent
+    | CreateSecretImportEvent
+    | UpdateSecretImportEvent
+    | DeleteSecretImportEvent
+    | UpdateUserRole
+    | UpdateUserDeniedPermissions;

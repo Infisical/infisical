@@ -4,6 +4,17 @@ import {
     UserAgentType
 } from "./enums";
 
+enum Permission {
+    READ = "read",
+    READ_WRITE = "readWrite"
+}
+
+interface Scope {
+    environment: string;
+    secretPath: string;
+    permission: Permission;
+}
+
 interface UserActorMetadata {
   userId: string;
   email: string;
@@ -13,7 +24,6 @@ interface ServiceActorMetadata {
   serviceId: string;
   name: string;
 }
-
 
 interface UserActor {
   type: ActorType.USER;
@@ -25,9 +35,15 @@ export interface ServiceActor {
   metadata: ServiceActorMetadata;
 }
 
+export interface ServiceActorV3 {
+    type: ActorType.SERVICE_V3;
+    metadata: ServiceActorMetadata;
+}
+
 export type Actor = 
     | UserActor
-    | ServiceActor;
+    | ServiceActor
+    | ServiceActorV3;
 
 interface GetSecretsEvent {
     type: EventType.GET_SECRETS;
@@ -187,6 +203,36 @@ interface DeleteServiceTokenEvent {
             environment: string;
             secretPath: string;
         }>;
+    }
+}
+
+interface CreateServiceTokenV3Event {
+    type: EventType.CREATE_SERVICE_TOKEN_V3;
+    metadata: {
+        name: string;
+        isActive: boolean;
+        scopes: Array<Scope>;
+        expiresAt?: Date;
+    }
+}
+
+interface UpdateServiceTokenV3Event {
+    type: EventType.UPDATE_SERVICE_TOKEN_V3;
+    metadata: {
+        name?: string;
+        isActive?: boolean;
+        scopes?: Array<Scope>;
+        expiresAt?: Date;
+    }
+}
+
+interface DeleteServiceTokenV3Event {
+    type: EventType.DELETE_SERVICE_TOKEN_V3;
+    metadata: {
+        name: string;
+        isActive: boolean;
+        scopes: Array<Scope>;
+        expiresAt?: Date;
     }
 }
 
@@ -387,6 +433,9 @@ export type Event =
     | DeleteTrustedIPEvent
     | CreateServiceTokenEvent
     | DeleteServiceTokenEvent
+    | CreateServiceTokenV3Event
+    | UpdateServiceTokenV3Event
+    | DeleteServiceTokenV3Event
     | CreateEnvironmentEvent
     | UpdateEnvironmentEvent
     | DeleteEnvironmentEvent
