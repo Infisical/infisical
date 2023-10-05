@@ -1,8 +1,8 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth } from "../../middleware";
+import { requireAuth } from "../../../middleware";
 import { secretApprovalPolicyController } from "../../controllers/v1";
-import { AuthMode } from "../../variables";
+import { AuthMode } from "../../../variables";
 
 router.get(
   "/",
@@ -10,6 +10,14 @@ router.get(
     acceptedAuthModes: [AuthMode.JWT]
   }),
   secretApprovalPolicyController.getSecretApprovalPolicy
+);
+
+router.get(
+  "/board",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  secretApprovalPolicyController.getSecretApprovalPolicyOfBoard
 );
 
 router.post(

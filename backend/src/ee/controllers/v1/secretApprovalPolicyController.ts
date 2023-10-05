@@ -1,20 +1,22 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { Request, Response } from "express";
+import { nanoid } from "nanoid";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
-import { validateRequest } from "../../helpers/validation";
+} from "../../services/ProjectRoleService";
+import { validateRequest } from "../../../helpers/validation";
 import { SecretApprovalPolicy } from "../../models/secretApprovalPolicy";
-import { BadRequestError } from "../../utils/errors";
+import { getSecretPolicyOfBoard } from "../../services/SecretApprovalService";
+import { BadRequestError } from "../../../utils/errors";
 import * as reqValidator from "../../validation/secretApproval";
 
 const ERR_SECRET_APPROVAL_NOT_FOUND = BadRequestError({ message: "secret approval not found" });
 
 export const createSecretApprovalPolicy = async (req: Request, res: Response) => {
   const {
-    body: { approvals, secretPath, approvers, environment, workspaceId }
+    body: { approvals, secretPath, approvers, environment, workspaceId, name }
   } = await validateRequest(reqValidator.CreateSecretApprovalRule, req);
 
   const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
@@ -25,6 +27,7 @@ export const createSecretApprovalPolicy = async (req: Request, res: Response) =>
 
   const secretApproval = new SecretApprovalPolicy({
     workspace: workspaceId,
+    name: name ?? `${environment}-${nanoid(3)}`,
     secretPath,
     environment,
     approvals,
@@ -39,7 +42,7 @@ export const createSecretApprovalPolicy = async (req: Request, res: Response) =>
 
 export const updateSecretApprovalPolicy = async (req: Request, res: Response) => {
   const {
-    body: { approvals, approvers, secretPath },
+    body: { approvals, approvers, secretPath, name },
     params: { id }
   } = await validateRequest(reqValidator.UpdateSecretApprovalRule, req);
 
@@ -58,6 +61,7 @@ export const updateSecretApprovalPolicy = async (req: Request, res: Response) =>
   const updatedDoc = await SecretApprovalPolicy.findByIdAndUpdate(id, {
     approvals,
     approvers,
+    name: (name || secretApproval?.name) ?? `${secretApproval.environment}-${nanoid(3)}`,
     ...(secretPath === null ? { $unset: { secretPath: 1 } } : { secretPath })
   });
 
@@ -106,4 +110,19 @@ export const getSecretApprovalPolicy = async (req: Request, res: Response) => {
   return res.send({
     approvals: doc
   });
+};
+
+export const getSecretApprovalPolicyOfBoard = async (req: Request, res: Response) => {
+  const {
+    query: { workspaceId, environment, secretPath }
+  } = await validateRequest(reqValidator.GetSecretApprovalPolicyOfABoard, req);
+
+  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    subject(ProjectPermissionSub.Secrets, { secretPath, environment })
+  );
+
+  const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+  return res.send({ policy: secretApprovalPolicy });
 };

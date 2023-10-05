@@ -3,6 +3,7 @@ import { Schema, Types, model } from "mongoose";
 export interface ISecretApprovalPolicy {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
+  name: string;
   environment: string;
   secretPath?: string;
   approvers: Types.ObjectId[];
@@ -23,6 +24,9 @@ const secretApprovalPolicySchema = new Schema<ISecretApprovalPolicy>(
         ref: "Membership"
       }
     ],
+    name: {
+      type: String
+    },
     environment: {
       type: String,
       required: true

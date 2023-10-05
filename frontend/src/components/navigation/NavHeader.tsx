@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faAngleRight } from "@fortawesome/free-solid-svg-icons";
+import { faAngleRight, faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useOrganization, useWorkspace } from "@app/context";
@@ -16,6 +16,8 @@ type Props = {
   onEnvChange?: (slug: string) => void;
   secretPath?: string;
   isFolderMode?: boolean;
+  isProtectedBranch?: boolean;
+  protectionPolicyName?: string;
 };
 
 // TODO: make links clickable and clean up
@@ -42,7 +44,9 @@ export default function NavHeader({
   userAvailableEnvs = [],
   onEnvChange,
   isFolderMode,
-  secretPath = "/"
+  secretPath = "/",
+  isProtectedBranch = false,
+  protectionPolicyName
 }: Props): JSX.Element {
   const { currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
@@ -151,6 +155,11 @@ export default function NavHeader({
             </div>
           );
         })}
+      {isProtectedBranch && (
+        <Tooltip content={`Protected by policy ${protectionPolicyName}`}>
+          <FontAwesomeIcon icon={faLock} className="text-primary ml-2" />
+        </Tooltip>
+      )}
     </div>
   );
 }

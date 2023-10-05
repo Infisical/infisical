@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 import { Checkbox, Select, SelectItem } from "@app/components/v2";
+import { ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 import { TFormSchema } from "./ProjectRoleModifySection.utils";
@@ -21,7 +22,8 @@ type Props = {
     | "environments"
     | "tags"
     | "audit-logs"
-    | "ip-allowlist";
+    | "ip-allowlist"
+    | ProjectPermissionSub.SecretApproval;
   isNonEditable?: boolean;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;

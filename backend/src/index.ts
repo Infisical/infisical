@@ -25,11 +25,11 @@ import {
   users as eeUsersRouter,
   workspace as eeWorkspaceRouter,
   roles as v1RoleRouter,
+  secretApprovalPolicy as v1SecretApprovalPolicy,
+  secretApprovalRequest as v1SecretApprovalRequest,
   secretScanning as v1SecretScanningRouter
 } from "./ee/routes/v1";
-import {
-  serviceTokenData as v3ServiceTokenDataRouter
-} from "./ee/routes/v3";
+import { serviceTokenData as v3ServiceTokenDataRouter } from "./ee/routes/v3";
 import {
   auth as v1AuthRouter,
   bot as v1BotRouter,
@@ -42,7 +42,6 @@ import {
   organization as v1OrganizationRouter,
   password as v1PasswordRouter,
   sso as v1SSORouter,
-  secretApprovalPolicy as v1SecretApprovalPolicy,
   secretImps as v1SecretImpsRouter,
   secret as v1SecretRouter,
   secretsFolder as v1SecretsFolder,
@@ -183,6 +182,7 @@ const main = async () => {
   app.use("/api/v1/roles", v1RoleRouter);
   app.use("/api/v1/secret-approvals", v1SecretApprovalPolicy);
   app.use("/api/v1/sso", v1SSORouter);
+  app.use("/api/v1/secret-approval-requests", v1SecretApprovalRequest);
 
   // v2 routes (improvements)
   app.use("/api/v2/signup", v2SignupRouter);
@@ -228,24 +228,23 @@ const main = async () => {
   // await createTestUserForDevelopment();
   setUpHealthEndpoint(server);
 
-
   const serverCleanup = async () => {
     await DatabaseService.closeDatabase();
     syncSecretsToThirdPartyServices.close();
     githubPushEventSecretScan.close();
 
     process.exit(0);
-  }
+  };
 
   process.on("SIGINT", function () {
     server.close(async () => {
-      await serverCleanup()
+      await serverCleanup();
     });
   });
 
   process.on("SIGTERM", function () {
     server.close(async () => {
-      await serverCleanup()
+      await serverCleanup();
     });
   });
 

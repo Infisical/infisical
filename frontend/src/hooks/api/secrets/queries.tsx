@@ -26,7 +26,10 @@ export const secretKeys = {
   getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"] as const
 };
 
-const decryptSecrets = (encryptedSecrets: EncryptedSecret[], decryptFileKey: UserWsKeyPair) => {
+export const decryptSecrets = (
+  encryptedSecrets: EncryptedSecret[],
+  decryptFileKey: UserWsKeyPair
+) => {
   const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
   const key = decryptAssymmetric({
     ciphertext: decryptFileKey.encryptedKey,

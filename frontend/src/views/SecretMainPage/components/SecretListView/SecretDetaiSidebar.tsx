@@ -49,7 +49,8 @@ type Props = {
   onDeleteSecret: () => void;
   onSaveSecret: (
     orgSec: DecryptedSecret,
-    modSec: Omit<DecryptedSecret, "tags"> & { tags: { _id: string }[] }
+    modSec: Omit<DecryptedSecret, "tags"> & { tags: { _id: string }[] },
+    cb?: () => void
   ) => Promise<void>;
   tags: WsTag[];
   onCreateTag: () => void;
@@ -143,7 +144,7 @@ export const SecretDetailSidebar = ({
   };
 
   const handleFormSubmit = async (data: TFormSchema) => {
-    await onSaveSecret(secret, { ...secret, ...data });
+    await onSaveSecret(secret, { ...secret, ...data }, () => reset());
   };
 
   return (
