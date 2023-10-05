@@ -108,7 +108,7 @@ export const MFAStep = ({
 
         if (isCliLoginSuccessful && isCliLoginSuccessful.success){
           // case: login was successful
-          const cliUrl = `http://127.0.0.1:${callbackPort}`
+          const cliUrl = `http://127.0.0.1:${callbackPort}/`
 
           // send request to server endpoint 
           const instance = axios.create()
