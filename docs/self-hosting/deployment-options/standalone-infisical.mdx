@@ -1,9 +1,9 @@
 ---
-title: "Docker"
-description: "Learn to install Infisical purely on docker"
+title: "Docker/Podman"
+description: "Learn to install Infisical purely on docker or podman"
 ---
 
-The Infisical standalone version combines all the essential components of the application into a single container, making deployment and management more straightforward than using Kubernetes or Docker Compose. 
+The Infisical standalone version combines all the essential components of the application into a single container, making deployment and management more straightforward than using Kubernetes or Docker Compose. You will need to have deployments of MongoDB and Redis that you can connect the Infisical instance to. See the podman example for a setup that runs all 3 containers isolated within a pod.
 
 Since all the components are bundled into one image, running this version of Infisical requires a minimum of **230MB of memory**.
 
@@ -71,6 +71,80 @@ infisical/infisical:latest
 
 <Warning>
   The sample environment variables listed above are only to be used as an example and should not be used in production 
+</Warning>
+
+## Run with podman
+
+Podman is a docker alternative, and is the Red Hat supported container engine on RHEL.
+
+This example shows how to run simple test deployments of MongoDB, Redis and Infisical containers within a pod where only Infisical is exposed to the outside.
+
+First, we create the container and set up the mapping of the external port 80 to port 80 inside the pod. You can replace the external port by chenging 80:80 to something like 1080:80. You will then have to specify the correct port when connecting to your Infisical instance afterwards.
+
+```bash
+podman pod create --name infisical_vault -p 80:80
+```
+
+Then we create the Redis and MongoDB containers inside this pod. Note that there are no port specifications, as containers in a pod are visible to each other.
+
+```bash
+podman run -d --restart=always --pod=infisical_vault --name=infisical-redis docker.io/redis/redis:latest
+podman run -d --restart=always --pod=infisical_vault --name=infisical-mongo docker.io/mongodb/mongodb-community-server:latest
+```
+
+The Infisical Docker image requires several required environment variables. 
+Add the required environment variables listed below to your podman run command. View [all configurable environment variables](../configuration/envars)
+
+
+<ParamField query="ENCRYPTION_KEY" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+</ParamField>
+
+<ParamField query="JWT_SIGNUP_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+</ParamField>
+
+<ParamField query="JWT_REFRESH_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+</ParamField>
+
+<ParamField query="JWT_AUTH_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+</ParamField>
+
+<ParamField query="JWT_MFA_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+</ParamField>
+
+<ParamField query="JWT_SERVICE_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+</ParamField>
+
+<ParamField query="REDIS_URL" type="string" default="none" required>
+  Redis connection string
+</ParamField>
+
+<ParamField query="MONGO_URL" type="string" default="none" required>
+  *TLS based connection string is not yet supported
+</ParamField>
+
+
+Once you have added the required environment variables to your podman run command, execute it in your terminal.
+
+```bash
+podman run -d --restart=always --pod=infisical_vault --name=infisical-infisical   \
+-e ENCRYPTION_KEY=f40c9178624764ad85a6830b37ce239a \
+-e JWT_SIGNUP_SECRET=38ea90fb7998b92176080f457d890392 \
+-e JWT_REFRESH_SECRET=7764c7bbf3928ad501591a3e005eb364 \
+-e JWT_AUTH_SECRET=5239fea3a4720c0e524f814a540e14a2 \
+-e JWT_SERVICE_SECRET=8509fb8b90c9b53e9e61d1e35826dcb5  \
+-e MONGO_URL="mongodb://127.0.0.1:27017" \
+-e REDIS_URL="redis://127.0.0.1:6379" \
+docker.io/infisical/infisical:latest
+```
+
+<Warning>
+  The sample environment variables listed above are only to be used as an example and should not be used in production. No data is saved to persistent storage, so a redeployment of the pod will start from scratch.
 </Warning>
 
 ## Verify the installation:
