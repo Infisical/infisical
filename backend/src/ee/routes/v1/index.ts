@@ -8,6 +8,8 @@ import action from "./action";
 import cloudProducts from "./cloudProducts";
 import secretScanning from "./secretScanning";
 import roles from "./role";
+import secretApprovalPolicy from "./secretApprovalPolicy";
+import secretApprovalRequest from "./secretApprovalRequest";
 
 export {
   secret,
@@ -19,5 +21,7 @@ export {
   action,
   cloudProducts,
   secretScanning,
-  roles
+  roles,
+  secretApprovalPolicy,
+  secretApprovalRequest
 };

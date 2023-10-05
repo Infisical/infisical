@@ -4,8 +4,8 @@ import {
   containsGlobPatterns,
   generateSecretBlindIndexWithSaltHelper,
   getSecretBlindIndexSaltHelper
-} from "../helpers/secrets";
-import { Folder, ISecret, Secret } from "../models";
+} from "../../helpers/secrets";
+import { Folder, ISecret, Secret } from "../../models";
 import { ISecretApprovalPolicy, SecretApprovalPolicy } from "../models/secretApprovalPolicy";
 import {
   CommitType,
@@ -14,13 +14,13 @@ import {
   ISecretCommits,
   SecretApprovalRequest
 } from "../models/secretApprovalRequest";
-import { BadRequestError } from "../utils/errors";
-import { getFolderByPath } from "./FolderService";
-import { ALGORITHM_AES_256_GCM, ENCODING_SCHEME_UTF8, SECRET_SHARED } from "../variables";
-import TelemetryService from "./TelemetryService";
-import { EEAuditLogService, EESecretService } from "../ee/services";
-import { EventType, SecretVersion } from "../ee/models";
-import { AuthData } from "../interfaces/middleware";
+import { BadRequestError } from "../../utils/errors";
+import { getFolderByPath } from "../../services/FolderService";
+import { ALGORITHM_AES_256_GCM, ENCODING_SCHEME_UTF8, SECRET_SHARED } from "../../variables";
+import TelemetryService from "../../services/TelemetryService";
+import { EEAuditLogService, EESecretService } from "../services";
+import { EventType, SecretVersion } from "../models";
+import { AuthData } from "../../interfaces/middleware";
 
 // if glob pattern score is 1, if not exist score is 0 and if its not both then its exact path meaning score 2
 const getPolicyScore = (policy: ISecretApprovalPolicy) =>

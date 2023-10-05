@@ -1,8 +1,8 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth } from "../../middleware";
+import { requireAuth } from "../../../middleware";
 import { secretApprovalPolicyController } from "../../controllers/v1";
-import { AuthMode } from "../../variables";
+import { AuthMode } from "../../../variables";
 
 router.get(
   "/",

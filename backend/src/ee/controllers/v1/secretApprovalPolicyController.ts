@@ -5,11 +5,11 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
-import { validateRequest } from "../../helpers/validation";
+} from "../../services/ProjectRoleService";
+import { validateRequest } from "../../../helpers/validation";
 import { SecretApprovalPolicy } from "../../models/secretApprovalPolicy";
 import { getSecretPolicyOfBoard } from "../../services/SecretApprovalService";
-import { BadRequestError } from "../../utils/errors";
+import { BadRequestError } from "../../../utils/errors";
 import * as reqValidator from "../../validation/secretApproval";
 
 const ERR_SECRET_APPROVAL_NOT_FOUND = BadRequestError({ message: "secret approval not found" });

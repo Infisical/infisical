@@ -1,6 +1,10 @@
 import { Schema, Types, model } from "mongoose";
 import { customAlphabet } from "nanoid";
-import { ALGORITHM_AES_256_GCM, ENCODING_SCHEME_BASE64, ENCODING_SCHEME_UTF8 } from "../variables";
+import {
+  ALGORITHM_AES_256_GCM,
+  ENCODING_SCHEME_BASE64,
+  ENCODING_SCHEME_UTF8
+} from "../../variables";
 
 export enum ApprovalStatus {
   PENDING = "pending",

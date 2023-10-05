@@ -508,7 +508,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             IP Allowlist
                           </MenuItem>
                         </a>
-                      </Link> */}
+                      </Link>
                       <Link href={`/project/${currentWorkspace?._id}/audit-logs`} passHref>
                         <a>
                           <MenuItem
@@ -704,12 +704,12 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </div>
                     </button>
                   )}
-                  {infisicalPlatformVersion && (
+                {infisicalPlatformVersion && (
                   <div className="mb-2 w-full pl-5 duration-200 hover:text-mineshaft-200">
                     <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
-                      Platform Version: {infisicalPlatformVersion}
+                    Platform Version: {infisicalPlatformVersion}
                   </div>
-                  )}
+                )}
               </div>
             </nav>
           </aside>

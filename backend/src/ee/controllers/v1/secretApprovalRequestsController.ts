@@ -1,16 +1,16 @@
 import { Request, Response } from "express";
-import { getUserProjectPermissions } from "../../ee/services/ProjectRoleService";
-import { validateRequest } from "../../helpers/validation";
-import { Folder } from "../../models";
+import { getUserProjectPermissions } from "../../services/ProjectRoleService";
+import { validateRequest } from "../../../helpers/validation";
+import { Folder } from "../../../models";
 import { ApprovalStatus, SecretApprovalRequest } from "../../models/secretApprovalRequest";
 import * as reqValidator from "../../validation/secretApprovalRequest";
-import { getFolderWithPathFromId } from "../../services/FolderService";
-import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
+import { getFolderWithPathFromId } from "../../../services/FolderService";
+import { BadRequestError, UnauthorizedRequestError } from "../../../utils/errors";
 import { ISecretApprovalPolicy, SecretApprovalPolicy } from "../../models/secretApprovalPolicy";
 import { performSecretApprovalRequestMerge } from "../../services/SecretApprovalService";
 import { Types } from "mongoose";
-import { EEAuditLogService } from "../../ee/services";
-import { EventType } from "../../ee/models";
+import { EEAuditLogService } from "../../services";
+import { EventType } from "../../models";
 
 export const getSecretApprovalRequestCount = async (req: Request, res: Response) => {
   const {
