@@ -65,7 +65,7 @@ export const CreateSecretForm = ({
       createNotification({
         type: "success",
         text: isProtectedBranch
-          ? "Requested changes have been send for review"
+          ? "Requested changes have been sent for review"
           : "Successfully created secret"
       });
     } catch (error) {

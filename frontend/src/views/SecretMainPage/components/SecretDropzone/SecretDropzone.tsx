@@ -198,7 +198,7 @@ export const SecretDropzone = ({
       createNotification({
         type: "success",
         text: isProtectedBranch
-          ? "Uploaded changes have been send for review"
+          ? "Uploaded changes have been sent for review"
           : "Successfully uploaded secrets"
       });
     } catch (err) {
