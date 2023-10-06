@@ -40,6 +40,9 @@ backend:
     annotations: {}
     type: ClusterIP
     nodePort: ""
+  resources:
+    limits:
+      memory: 300Mi
 
 backendEnvironmentVariables: null
 
