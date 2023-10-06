@@ -196,7 +196,7 @@ backendEnvironmentVariables:
 mongodb:
   ## @param mongodb.enabled Enable MongoDB(&reg;)
   ##
-  enabled: false
+  enabled: true
   ## @param mongodb.name Name used to build variables (deprecated)
   ##
   name: "mongodb"
