@@ -48,7 +48,7 @@ backendEnvironmentVariables: null
 
 ## Mongo DB persistence
 mongodb:
-  enabled: true
+  enabled: false
   persistence:
     enabled: false
 
