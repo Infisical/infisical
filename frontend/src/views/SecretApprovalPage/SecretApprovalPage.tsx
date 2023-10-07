@@ -14,7 +14,7 @@ export const SecretApprovalPage = () => {
   const workspaceId = currentWorkspace?._id || "";
 
   return (
-    <div className="container mx-auto bg-bunker-800 text-white w-full h-full max-w-7xl">
+    <div className="container mx-auto bg-bunker-800 text-white w-full h-full max-w-6xl">
       <div className="my-6">
         <p className="text-3xl font-semibold text-gray-200">Secret Approvals</p>
       </div>
