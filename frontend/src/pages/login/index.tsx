@@ -18,7 +18,7 @@ export default function LoginPage() {
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Head>
       <Link href="/">
-        <div className="mb-4 mt-20 flex justify-center">
+        <div className="mb-2 mt-12 flex justify-center">
           <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
         </div>
       </Link>
