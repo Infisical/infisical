@@ -58,7 +58,7 @@ export default function CloudflarePagesIntegrationPage() {
                 <link rel='icon' href='/infisical.ico' />
             </Head>
             <Card className="max-w-lg rounded-md border border-mineshaft-600 mb-12">
-                <CardTitle className="text-left px-6" subTitle="After adding your API Token and Account ID, you will be prompted to set up an integration for a particular Infisical project and environment.">
+                <CardTitle className="text-left px-6" subTitle="After adding the details below, you will be prompted to set up an integration for a particular Infisical project and environment.">
                     <div className="flex flex-row items-center">
                         <div className="inline flex items-center pb-0.5">
                             <Image
