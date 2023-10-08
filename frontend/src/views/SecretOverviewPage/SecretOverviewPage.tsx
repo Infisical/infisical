@@ -325,7 +325,7 @@ export const SecretOverviewPage = () => {
                   className="bg-mineshaft-700"
                 />
               )}
-              {isTableEmpty && (
+              {isTableEmpty && !isTableLoading && (
                 <Tr>
                   <Td colSpan={userAvailableEnvs.length + 1}>
                     <EmptyState title="Let's add some secrets" icon={faFolderBlank} iconSize="3x">
@@ -335,7 +335,7 @@ export const SecretOverviewPage = () => {
                           query: { id: workspaceId, env: userAvailableEnvs?.[0]?.slug }
                         }}
                       >
-                        <Button className="mt-2 p-1">Go to {userAvailableEnvs?.[0]?.name}</Button>
+                        <Button className="mt-4" variant="outline_bg" colorSchema="primary" size="md">Go to {userAvailableEnvs?.[0]?.name}</Button>
                       </Link>
                     </EmptyState>
                   </Td>
