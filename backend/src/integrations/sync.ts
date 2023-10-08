@@ -87,13 +87,15 @@ const syncSecrets = async ({
   integrationAuth,
   secrets,
   accessId,
-  accessToken
+  accessToken,
+  appendices
 }: {
   integration: IIntegration;
   integrationAuth: IIntegrationAuth;
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
   accessToken: string;
+  appendices?: { prefix: string, suffix: string };
 }) => {
   switch (integration.integration) {
     case INTEGRATION_GCP_SECRET_MANAGER:
@@ -153,7 +155,8 @@ const syncSecrets = async ({
       await syncSecretsGitHub({
         integration,
         secrets,
-        accessToken
+        accessToken,
+        appendices
       });
       break;
     case INTEGRATION_GITLAB:
@@ -218,7 +221,8 @@ const syncSecrets = async ({
       await syncSecretsCheckly({
         integration,
         secrets,
-        accessToken
+        accessToken,
+        appendices
       });
       break;
     case INTEGRATION_QOVERY:
@@ -1342,11 +1346,13 @@ const syncSecretsNetlify = async ({
 const syncSecretsGitHub = async ({
   integration,
   secrets,
-  accessToken
+  accessToken,
+  appendices
 }: {
   integration: IIntegration;
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
+  appendices?: { prefix: string, suffix: string };
 }) => {
   interface GitHubRepoKey {
     key_id: string;
@@ -1376,7 +1382,7 @@ const syncSecretsGitHub = async ({
   ).data;
 
   // Get local copy of decrypted secrets. We cannot decrypt them as we dont have access to GH private key
-  const encryptedSecrets: GitHubSecretRes = (
+  let encryptedSecrets: GitHubSecretRes = (
     await octokit.request("GET /repos/{owner}/{repo}/actions/secrets", {
       owner: integration.owner,
       repo: integration.app
@@ -1388,6 +1394,15 @@ const syncSecretsGitHub = async ({
     }),
     {}
   );
+
+  encryptedSecrets = Object.keys(encryptedSecrets).reduce((result: {
+    [key: string]: GitHubSecret;
+  }, key) => {
+    if ((appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) && (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)) {
+      result[key] = encryptedSecrets[key];
+    }
+    return result;
+  }, {});
 
   Object.keys(encryptedSecrets).map(async (key) => {
     if (!(key in secrets)) {
@@ -2074,13 +2089,15 @@ const syncSecretsSupabase = async ({
 const syncSecretsCheckly = async ({
   integration,
   secrets,
-  accessToken
+  accessToken,
+  appendices
 }: {
   integration: IIntegration;
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
+  appendices?: { prefix: string, suffix: string };
 }) => {
-  const getSecretsRes = (
+  let getSecretsRes = (
     await standardRequest.get(`${INTEGRATION_CHECKLY_API_URL}/v1/variables`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -2095,6 +2112,15 @@ const syncSecretsCheckly = async ({
     }),
     {}
   );
+
+  getSecretsRes = Object.keys(getSecretsRes).reduce((result: {
+    [key: string]: string;
+  }, key) => {
+    if ((appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) && (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)) {
+      result[key] = getSecretsRes[key];
+    }
+    return result;
+  }, {});
 
   // add secrets
   for await (const key of Object.keys(secrets)) {

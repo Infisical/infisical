@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { faArrowUpRightFromSquare, faBookOpen, faBugs, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { motion } from "framer-motion";
 import queryString from "query-string";
 
 import {
@@ -18,13 +19,22 @@ import {
   FormControl,
   Input,
   Select,
-  SelectItem
+  SelectItem,
+  Tab,
+  TabList,
+  TabPanel,
+  Tabs
 } from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+
+enum TabSections {
+  Connection = "connection",
+  Options = "options"
+}
 
 export default function GitHubCreateIntegrationPage() {
   const router = useRouter();
@@ -41,6 +51,7 @@ export default function GitHubCreateIntegrationPage() {
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
   const [targetAppId, setTargetAppId] = useState("");
+  const [secretSuffix, setSecretSuffix] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -78,7 +89,10 @@ export default function GitHubCreateIntegrationPage() {
         app: targetApp.name,
         sourceEnvironment: selectedSourceEnvironment,
         owner: targetApp.owner,
-        secretPath
+        secretPath,
+        metadata: {
+          secretSuffix
+        }
       });
 
       setIsLoading(false);
@@ -124,52 +138,87 @@ export default function GitHubCreateIntegrationPage() {
             </Link>
           </div>
         </CardTitle>
-        <FormControl label="Project Environment" className="px-6">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`azure-key-vault-environment-${sourceEnvironment.slug}`}
-              >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path" className="px-6">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-        <FormControl label="GitHub Repo" className="px-6">
-          <Select
-            value={targetAppId}
-            onValueChange={(val) => setTargetAppId(val)}
-            className="w-full border border-mineshaft-500"
-            isDisabled={integrationAuthApps.length === 0}
-          >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.appId as string}
-                  key={`github-repo-${integrationAuthApp.appId}`}
+        <Tabs defaultValue={TabSections.Connection} className="px-6">
+          <TabList>
+            <div className="flex flex-row border-b border-mineshaft-600 w-full">
+              <Tab value={TabSections.Connection}>Connection</Tab>
+              <Tab value={TabSections.Options}>Options</Tab>
+            </div>
+          </TabList>
+          <TabPanel value={TabSections.Connection}>
+            <motion.div
+              key="panel-1"
+              transition={{ duration: 0.15 }}
+              initial={{ opacity: 0, translateX: 30 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              exit={{ opacity: 0, translateX: 30 }}
+            >
+              <FormControl label="Project Environment">
+                <Select
+                  value={selectedSourceEnvironment}
+                  onValueChange={(val) => setSelectedSourceEnvironment(val)}
+                  className="w-full border border-mineshaft-500"
                 >
-                  {integrationAuthApp.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No repositories found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
+                  {workspace?.environments.map((sourceEnvironment) => (
+                    <SelectItem
+                      value={sourceEnvironment.slug}
+                      key={`azure-key-vault-environment-${sourceEnvironment.slug}`}
+                    >
+                      {sourceEnvironment.name}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl label="Secrets Path">
+                <Input
+                  value={secretPath}
+                  onChange={(evt) => setSecretPath(evt.target.value)}
+                  placeholder="Provide a path, default is /"
+                />
+              </FormControl>
+              <FormControl label="GitHub Repo">
+                <Select
+                  value={targetAppId}
+                  onValueChange={(val) => setTargetAppId(val)}
+                  className="w-full border border-mineshaft-500"
+                  isDisabled={integrationAuthApps.length === 0}
+                >
+                  {integrationAuthApps.length > 0 ? (
+                    integrationAuthApps.map((integrationAuthApp) => (
+                      <SelectItem
+                        value={integrationAuthApp.appId as string}
+                        key={`github-repo-${integrationAuthApp.appId}`}
+                      >
+                        {integrationAuthApp.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" key="target-app-none">
+                      No repositories found
+                    </SelectItem>
+                  )}
+                </Select>
+              </FormControl>
+            </motion.div>
+          </TabPanel>
+          <TabPanel value={TabSections.Options}>
+            <motion.div
+              key="panel-1"
+              transition={{ duration: 0.15 }}
+              initial={{ opacity: 0, translateX: -30 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              exit={{ opacity: 0, translateX: 30 }}
+            >
+              <FormControl label="Append Secret Names with..." className="pb-[9.75rem]">
+                <Input
+                  value={secretSuffix}
+                  onChange={(evt) => setSecretSuffix(evt.target.value)}
+                  placeholder="Provide a suffix for secret names, default is no suffix"
+                />
+              </FormControl>
+            </motion.div>
+          </TabPanel>
+        </Tabs>
         <Button
           onClick={handleButtonClick}
           color="mineshaft"
