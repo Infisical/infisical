@@ -9,7 +9,7 @@ export default function LoginPage() {
   const { t } = useTranslation();
 
   return (
-    <div className="flex min-h-screen max-h-screen overflow-y-scroll flex-col justify-center bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6">
+    <div className="flex min-h-screen max-h-screen overflow-y-auto flex-col justify-center bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6">
       <Head>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
