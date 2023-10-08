@@ -39,9 +39,9 @@ import { StoreProvider } from "./SecretMainPage.store";
 import { Filter, GroupBy, SortDir } from "./SecretMainPage.types";
 
 const LOADER_TEXT = [
-  "Retriving your encrypted secrets",
-  "Fetching folders",
-  "Getting secret import links"
+  "Retrieving your encrypted secrets...",
+  "Fetching folders...",
+  "Getting secret import links..."
 ];
 
 export const SecretMainPage = () => {

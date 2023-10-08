@@ -488,9 +488,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             }
                             icon="system-outline-189-domain-verification"
                           >
-                            Secret approval
+                            Secret approvals
                             {Boolean(secretApprovalReqCount?.open) && (
-                              <span className="text-xs p-0.5 rounded ml-2 bg-primary text-black">
+                              <span className="text-xs font-semibold py-0.5 px-1 rounded ml-2 bg-primary-600 border border-primary-400 text-black">
                                 {secretApprovalReqCount?.open}
                               </span>
                             )}
