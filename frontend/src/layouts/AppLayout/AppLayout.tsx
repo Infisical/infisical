@@ -7,9 +7,10 @@
 // @ts-nocheck
 import crypto from "crypto";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
@@ -68,8 +69,10 @@ import {
   useGetOrgTrialUrl,
   useGetSecretApprovalRequestCount,
   useLogoutUser,
+  useRegisterUserAction,
   useUploadWsKey
 } from "@app/hooks/api";
+import { fetchUserAction  } from "@app/hooks/api/users/queries";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -116,7 +119,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { user } = useUser();
   const { subscription } = useSubscription();
   const workspaceId = currentWorkspace?._id || "";
-  // const [ isLearningNoteOpen, setIsLearningNoteOpen ] = useState(true);
+  const [ isLearningNoteOpen, setIsLearningNoteOpen ] = useState(false);
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit
@@ -142,6 +145,23 @@ export const AppLayout = ({ children }: LayoutProps) => {
   });
 
   const { t } = useTranslation();
+
+  const registerUserAction = useRegisterUserAction();
+
+  useEffect(async () => {
+    const checkLearningNote = async () => {
+      const userUpdateClosedCheck = await fetchUserAction(
+        "september_update_closed"
+      );
+      setIsLearningNoteOpen(!userUpdateClosedCheck);
+    }
+    checkLearningNote();
+  })
+
+  const closeUpdate = async () => {
+    await registerUserAction.mutateAsync("september_update_closed");
+    setIsLearningNoteOpen(false);
+  }
 
   const logout = useLogoutUser();
   const logOutUser = async () => {
@@ -546,19 +566,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      {/* {workspaces.map(project => <Link key={project._id} href={`/project/${project?._id}/secrets/overview`} passHref>
-                        <a>
-                          <SubMenuItem
-                            isSelected={false}
-                            icon="system-outline-44-folder"
-                          >
-                            {project.name}
-                          </SubMenuItem>
-                        </a>
-                        <div className="pl-8 text-mineshaft-300 text-sm py-1 cursor-default hover:text-mineshaft-100">
-                          <FontAwesomeIcon icon={faFolder} className="text-xxs pr-0.5"/> {project.name} <FontAwesomeIcon icon={faArrowRight} className="text-xs pl-0.5"/>
-                        </div>
-                      </Link>)} */}
                       <Link href={`/org/${currentOrg?._id}/members`} passHref>
                         <a>
                           <MenuItem
@@ -610,26 +617,26 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     : "mb-4"
                 } flex w-full cursor-default flex-col items-center px-3 text-sm text-mineshaft-400`}
               >
-                {/*   <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[9.9rem] ${router.asPath.includes("org") ? "bottom-[8.4rem]" : "bottom-[5.4rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-30`}/>
+                {/* <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[9.9rem] ${router.asPath.includes("org") ? "bottom-[8.4rem]" : "bottom-[5.4rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-30`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[10.7rem] ${router.asPath.includes("org") ? "bottom-[8.15rem]" : "bottom-[5.15rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-50`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[11.5rem] ${router.asPath.includes("org") ? "bottom-[7.9rem]" : "bottom-[4.9rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-70`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[12.3rem] ${router.asPath.includes("org") ? "bottom-[7.65rem]" : "bottom-[4.65rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-90`}/>
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} relative z-10 h-60 w-52 bg-mineshaft-900 border border-mineshaft-600 mb-6 rounded-md flex flex-col items-center justify-start px-3`}>
-                  <div className="w-full mt-2 text-md text-mineshaft-100 font-semibold">Kubernetes Operator</div>
-                  <div className="w-full mt-1 text-sm text-mineshaft-300 font-normal leading-[1.2rem] mb-1">Integrate Infisical into your Kubernetes infrastructure</div>
-                  <div className="h-[6.8rem] w-full bg-mineshaft-200 rounded-md mt-2 rounded-md border border-mineshaft-700"> 
-                    <Image src="/images/kubernetes-asset.png" height={319} width={539} alt="kubernetes image" className="rounded-sm" />
+                <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[12.3rem] ${router.asPath.includes("org") ? "bottom-[7.65rem]" : "bottom-[4.65rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-90`}/> */}
+                <div className={`${isLearningNoteOpen ? "block" : "hidden"} relative z-10 h-64 w-52 bg-mineshaft-900 border border-mineshaft-600 mb-6 rounded-md flex flex-col items-center justify-start px-3`}>
+                  <div className="w-full mt-2 text-md text-mineshaft-100 font-semibold">Infisical September update</div>
+                  <div className="w-full mt-1 text-sm text-mineshaft-300 font-normal leading-[1.2rem] mb-1">Improved RBAC, new integrations, dashboard remake, and more!</div>
+                  <div className="h-[6.77rem] w-full rounded-md mt-2 border border-mineshaft-700"> 
+                    <Image src="/images/infisical-update-september-2023.png" height={319} width={539} alt="kubernetes image" className="rounded-sm" />
                   </div>
                   <div className="w-full flex justify-between items-center mt-3 px-0.5">
                     <button
                       type="button"
-                      onClick={() => setIsLearningNoteOpen(false)}
+                      onClick={() => closeUpdate()}
                       className="text-mineshaft-400 hover:text-mineshaft-100 duration-200"
                     >
                       Close
                     </button>
                     <a
-                      href="https://infisical.com/docs/documentation/getting-started/kubernetes"
+                      href="https://infisical.com/blog/infisical-update-september-2023"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-mineshaft-400 font-normal leading-[1.2rem] hover:text-mineshaft-100 duration-200"
@@ -637,7 +644,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       Learn More <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs pl-0.5"/>
                     </a>
                   </div>
-                </div> */}
+                </div>
                 {router.asPath.includes("org") && (
                   <div
                     onKeyDown={() => null}
