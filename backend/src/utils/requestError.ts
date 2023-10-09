@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-extra-semi */
 import { Request } from "express"
 import { getVerboseErrorOutput } from "../config";
 
@@ -10,6 +11,27 @@ export enum LogLevel {
     CRITICAL = 500,
     ALERT = 550,
     EMERGENCY = 600,
+}
+
+export const mapToWinstonLogLevel = (customLogLevel: LogLevel): string => {
+  switch (customLogLevel) {
+    case LogLevel.DEBUG:
+      return "debug";
+    case LogLevel.INFO:
+      return "info";
+    case LogLevel.NOTICE:
+      return "notice";
+    case LogLevel.WARNING:
+      return "warn";
+    case LogLevel.ERROR:
+      return "error";
+    case LogLevel.CRITICAL:
+      return "crit";
+    case LogLevel.ALERT:
+      return "alert";
+    case LogLevel.EMERGENCY:
+      return "emerg";
+  }
 }
 
 export type RequestErrorContext =  {
@@ -87,7 +109,8 @@ export default class RequestError extends Error{
         }, this.context)
 
         //* Omit sensitive information from context that can leak internal workings of this program if user is not developer
-        if(!(await getVerboseErrorOutput())){
+        const verboseErrorOutput = await getVerboseErrorOutput();
+        if (verboseErrorOutput !== undefined) {
             _context = this._omit(_context, [
                 "stacktrace",
                 "exception",

@@ -3,7 +3,7 @@ import { ErrorRequestHandler } from "express";
 import { TokenExpiredError } from "jsonwebtoken";
 import { InternalServerError, UnauthorizedRequestError } from "../utils/errors";
 import { getLogger } from "../utils/logger";
-import RequestError, { LogLevel } from "../utils/requestError";
+import RequestError, { LogLevel, mapToWinstonLogLevel } from "../utils/requestError";
 import { getNodeEnv } from "../config";
 
 export const requestErrorHandler: ErrorRequestHandler = async (
@@ -14,37 +14,31 @@ export const requestErrorHandler: ErrorRequestHandler = async (
 ) => {
   if (res.headersSent) return next();
 
-  if (await getNodeEnv() !== "production") {
-    /* eslint-disable no-console */
-    console.error(error);
-  }
+  const logAndCaptureException = async (error: RequestError, logLevel: LogLevel) => {
+    // log stack trace & error message to the console using Winston
+    (await getLogger("backend-main")).log(mapToWinstonLogLevel(logLevel), `${error.stack}\n${error.message}`);
 
-  //TODO: Find better way to type check for error. In current setting you need to cast type to get the functions and variables from RequestError
-  if (error instanceof TokenExpiredError) {
-    error = UnauthorizedRequestError({ stack: error.stack, message: "Token expired" });
-  } else if (!(error instanceof RequestError)) {
-    error = InternalServerError({
-      context: { exception: error.message },
-      stack: error.stack,
-    });
-    (await getLogger("backend-main")).log(
-      (<RequestError>error).levelName.toLowerCase(),
-      (<RequestError>error).message
-    );
-  }
+    //* Set Sentry user identification if req.user is populated
+    if (req.user !== undefined && req.user !== null) {
+      Sentry.setUser({ email: (req.user as any).email });
+    }
 
-  //* Set Sentry user identification if req.user is populated
-  if (req.user !== undefined && req.user !== null) {
-    Sentry.setUser({ email: (req.user as any).email });
-  }
-  //* Only sent error to Sentry if LogLevel is one of the following level 'ERROR', 'EMERGENCY' or 'CRITICAL'
-  //* with this we will eliminate false-positive errors like 'BadRequestError', 'UnauthorizedRequestError' and so on
-  if (
-    [LogLevel.ERROR, LogLevel.EMERGENCY, LogLevel.CRITICAL].includes(
-      (<RequestError>error).level
-    )
-  ) {
-    Sentry.captureException(error);
+    // eliminate false-positive errors being sent to Sentry
+    if ("level" in error && [LogLevel.ERROR, LogLevel.EMERGENCY, LogLevel.CRITICAL].includes(error.level)) {
+      Sentry.captureException(error);
+    }
+  };
+
+  if (error instanceof RequestError || error instanceof TokenExpiredError) {
+    if (error instanceof TokenExpiredError) {
+      error = UnauthorizedRequestError({ stack: error.stack, message: "Token expired" }) as RequestError;
+    }
+
+    logAndCaptureException((<RequestError>error), LogLevel.INFO);
+  } else {
+    // For unexpected errors, throw a 500 error & ensure these are sent to Sentry in prod
+    error = InternalServerError({ context: { exception: error.message }, stack: error.stack }) as RequestError;
+    logAndCaptureException((<RequestError>error), (await getNodeEnv() === "production") ? LogLevel.ERROR : LogLevel.DEBUG);
   }
 
   res
