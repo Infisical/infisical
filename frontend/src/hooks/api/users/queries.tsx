@@ -51,11 +51,7 @@ export const useDeleteUser = () => {
       return user;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(userKeys.getUser);
-      queryClient.invalidateQueries(userKeys.userAction);
-      queryClient.invalidateQueries(userKeys.myIp);
-      queryClient.invalidateQueries(userKeys.myAPIKeys);
-      queryClient.invalidateQueries(userKeys.mySessions);
+      queryClient.clear();
     }
   });
 };
@@ -226,8 +222,9 @@ export const useRegisterUserAction = () => {
   });
 };
 
-export const useLogoutUser = () =>
-  useMutation({
+export const useLogoutUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: async () => {
       await apiRequest.post("/api/v1/auth/logout");
     },
@@ -244,8 +241,12 @@ export const useLogoutUser = () =>
       localStorage.removeItem("PRIVATE_KEY");
       localStorage.removeItem("orgData.id");
       localStorage.removeItem("projectData.id");
+      
+      queryClient.clear();
     }
   });
+}
+
 
 export const useGetMyIp = () => {
   return useQuery({
