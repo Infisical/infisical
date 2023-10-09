@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-extra-semi */
 import { Request } from "express"
 import { getVerboseErrorOutput } from "../config";
 
