@@ -195,8 +195,8 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
 
 })
 
-export const scanGithubPushEventForSecretLeaks = (pushEventPayload: TScanPushEventQueueDetails) => {
-  githubPushEventSecretScan.add(pushEventPayload, {
+export const scanGithubPushEventForSecretLeaks = (payload: TScanPushEventQueueDetails) => {
+  githubPushEventSecretScan.add(payload, {
     attempts: 3,
     backoff: {
       type: "exponential",

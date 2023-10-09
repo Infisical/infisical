@@ -2,7 +2,7 @@ import { Commit } from "@octokit/webhooks-types";
 import { RiskStatus } from "../../ee/models";
 import { Schema } from "mongoose";
 
-type TScanQueueDetailsBase = {
+export type TScanQueueDetailsBase = {
   organizationId: string,
   repository:   {
     id: number,
@@ -11,8 +11,6 @@ type TScanQueueDetailsBase = {
   installationId: string,
   salt: string
 };
-
-export type TScanFullRepoQueueDetails = TScanQueueDetailsBase;
 
 export type TScanPushEventQueueDetails = TScanQueueDetailsBase & {
   commits: Commit[],
