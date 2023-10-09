@@ -298,6 +298,10 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
         message: "Failed to delete service token"
     });
     
+    await ServiceTokenDataV3Key.findOneAndDelete({
+        serviceTokenData: serviceTokenData._id
+    });
+    
     await EEAuditLogService.createAuditLog(
         req.authData,
         {

@@ -1,6 +1,6 @@
 import SecurityClient from "@app/components/utilities/SecurityClient";
 
-export type GitRisks = {
+export type IGitRisks = {
   _id: string;
   description: string;
   startLine: string;
@@ -41,7 +41,7 @@ export type GitRisks = {
  * Will create a new integration session and return it for the given org
  * @returns 
  */
-const getRisksByOrganization = (oranizationId: string): Promise<GitRisks[]> =>
+const getRisksByOrganization = (oranizationId: string): Promise<IGitRisks[]> =>
   SecurityClient.fetchCall(`/api/v1/secret-scanning/organization/${oranizationId}/risks`, {
     method: "GET",
     headers: {

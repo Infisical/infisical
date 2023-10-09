@@ -12,8 +12,9 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import { Button, Input } from "@app/components/v2";
-import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+
+import { navigateUserToOrg } from "../../Login.utils";
 
 type Props = {
   setStep: (step: number) => void;
@@ -73,6 +74,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           email: email.toLowerCase(),
           password
         });
+
         if (isLoginSuccessful && isLoginSuccessful.success) {
           // case: login was successful
 
@@ -82,15 +84,14 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             setIsLoading(false);
             return;
           }
-          const userOrgs = await fetchOrganizations();
-          const userOrg = userOrgs[0] && userOrgs[0]._id;
+          
+          await navigateUserToOrg(router);
 
           // case: login does not require MFA step
           createNotification({
             text: "Successfully logged in",
             type: "success"
           });
-          router.push(`/org/${userOrg}/overview`);
         }
       }
     } catch (err) {

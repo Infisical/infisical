@@ -2,8 +2,6 @@
 import jsrp from "jsrp";
 
 import { login1 , verifyMfaToken } from "@app/hooks/api/auth/queries";
-import { fetchOrganizations } from "@app/hooks/api/organization/queries";
-import { fetchMyOrganizationProjects } from "@app/hooks/api/users/queries";
 import KeyService from "@app/services/KeyService";
 
 import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
@@ -82,16 +80,6 @@ const attemptLoginMfa = async ({
                     tag,
                     privateKey
                 });
-
-                // TODO: in the future - move this logic elsewhere
-                // because this function is about logging the user in
-                // and not initializing the login details
-                const userOrgs = await fetchOrganizations(); 
-                const orgId = userOrgs[0]._id;
-                localStorage.setItem("orgData.id", orgId);
-
-                const orgUserProjects = await fetchMyOrganizationProjects(orgId);
-                localStorage.setItem("projectData.id", orgUserProjects[0]._id);
 
                 resolve(true);
             } catch (err) {

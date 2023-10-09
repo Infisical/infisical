@@ -113,6 +113,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   // eslint-disable-next-line prefer-const
   const { workspaces, currentWorkspace } = useWorkspace();
   const { orgs, currentOrg } = useOrganization();
+  
   const { user } = useUser();
   const { subscription } = useSubscription();
   const workspaceId = currentWorkspace?._id || "";
@@ -148,16 +149,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
     try {
       console.log("Logging out...");
       await logout.mutateAsync();
-      localStorage.removeItem("protectedKey");
-      localStorage.removeItem("protectedKeyIV");
-      localStorage.removeItem("protectedKeyTag");
-      localStorage.removeItem("publicKey");
-      localStorage.removeItem("encryptedPrivateKey");
-      localStorage.removeItem("iv");
-      localStorage.removeItem("tag");
-      localStorage.removeItem("PRIVATE_KEY");
-      localStorage.removeItem("orgData.id");
-      localStorage.removeItem("projectData.id");
       router.push("/login");
     } catch (error) {
       console.error(error);

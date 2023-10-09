@@ -6,13 +6,11 @@ import {
   Organization,
   Workspace
 } from "../../models";
-import { createOrganization as create } from "../../helpers/organization";
-import { addMembershipsOrg } from "../../helpers/membershipOrg";
-import { ACCEPTED, ADMIN } from "../../variables";
 import { getLicenseServerUrl, getSiteURL } from "../../config";
 import { licenseServerKeyRequest } from "../../config/request";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/organization";
+import { ACCEPTED } from "../../variables";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -31,36 +29,6 @@ export const getOrganizations = async (req: Request, res: Response) => {
 
   return res.status(200).send({
     organizations
-  });
-};
-
-/**
- * Create new organization named [organizationName]
- * and add user as owner
- * @param req
- * @param res
- * @returns
- */
-export const createOrganization = async (req: Request, res: Response) => {
-  const {
-    body: { organizationName }
-  } = await validateRequest(reqValidator.CreateOrgv1, req);
-
-  // create organization and add user as member
-  const organization = await create({
-    email: req.user.email,
-    name: organizationName
-  });
-
-  await addMembershipsOrg({
-    userIds: [req.user._id.toString()],
-    organizationId: organization._id.toString(),
-    roles: [ADMIN],
-    statuses: [ACCEPTED]
-  });
-
-  return res.status(200).send({
-    organization
   });
 };
 

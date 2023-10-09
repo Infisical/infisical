@@ -41,6 +41,25 @@ export const useGetOrganizations = () => {
   });
 }
 
+export const useCreateOrg = () => {
+  return useMutation({
+    mutationFn: async ({
+      name
+    }: {
+      name: string;
+    }) => {
+      const { data: { organization } } = await apiRequest.post(
+        "/api/v2/organizations",
+        {
+          name
+        }
+      );
+
+      return organization;
+    }
+  });
+};
+
 export const useRenameOrg = () => {
   const queryClient = useQueryClient();
 
@@ -332,5 +351,34 @@ export const useGetOrgLicenses = (organizationId: string) => {
       return data;
     },
     enabled: true
+  });
+}
+
+export const useDeleteOrgById = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      organizationId,
+    }: {
+      organizationId: string;
+    }) => {
+      const { data: { organization } } = await apiRequest.delete<{ organization: Organization }>(
+        `/api/v2/organizations/${organizationId}`
+      );
+      return organization;
+    },
+    onSuccess(_, dto) {
+      queryClient.invalidateQueries(organizationKeys.getUserOrganizations);
+      queryClient.invalidateQueries(organizationKeys.getOrgPlanBillingInfo(dto.organizationId));
+      queryClient.invalidateQueries(organizationKeys.getOrgPlanTable(dto.organizationId));
+      queryClient.invalidateQueries(organizationKeys.getOrgPlansTable(dto.organizationId, "monthly")); // You might need to invalidate for 'yearly' as well.
+      queryClient.invalidateQueries(organizationKeys.getOrgPlansTable(dto.organizationId, "yearly"));
+      queryClient.invalidateQueries(organizationKeys.getOrgBillingDetails(dto.organizationId));
+      queryClient.invalidateQueries(organizationKeys.getOrgPmtMethods(dto.organizationId));
+      queryClient.invalidateQueries(organizationKeys.getOrgTaxIds(dto.organizationId));
+      queryClient.invalidateQueries(organizationKeys.getOrgInvoices(dto.organizationId));
+      queryClient.invalidateQueries(organizationKeys.getOrgLicenses(dto.organizationId));
+    }
   });
 }

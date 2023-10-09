@@ -1,11 +1,25 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Membership, MembershipOrg, ServiceAccount, Workspace } from "../../models";
+import { 
+  Membership, 
+  MembershipOrg, 
+  ServiceAccount, 
+  Workspace 
+} from "../../models";
+import { Role } from "../../ee/models";
 import { deleteMembershipOrg } from "../../helpers/membershipOrg";
-import { updateSubscriptionOrgQuantity } from "../../helpers/organization";
-import Role from "../../ee/models/role";
-import { BadRequestError } from "../../utils/errors";
-import { CUSTOM } from "../../variables";
+import { 
+  createOrganization as create,
+  deleteOrganization,
+  updateSubscriptionOrgQuantity
+} from "../../helpers/organization";
+import { addMembershipsOrg } from "../../helpers/membershipOrg";
+import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
+import {
+  ACCEPTED,
+  ADMIN,
+  CUSTOM 
+} from "../../variables";
 import * as reqValidator from "../../validation/organization";
 import { validateRequest } from "../../helpers/validation";
 import {
@@ -332,3 +346,60 @@ export const getOrganizationServiceAccounts = async (req: Request, res: Response
     serviceAccounts
   });
 };
+
+/**
+ * Create new organization named [organizationName]
+ * and add user as owner
+ * @param req
+ * @param res
+ * @returns
+ */
+ export const createOrganization = async (req: Request, res: Response) => {
+  const {
+    body: { name }
+  } = await validateRequest(reqValidator.CreateOrgv2, req);
+
+  // create organization and add user as member
+  const organization = await create({
+    email: req.user.email,
+    name
+  });
+
+  await addMembershipsOrg({
+    userIds: [req.user._id.toString()],
+    organizationId: organization._id.toString(),
+    roles: [ADMIN],
+    statuses: [ACCEPTED]
+  });
+
+  return res.status(200).send({
+    organization
+  });
+};
+
+/**
+ * Delete organization with id [organizationId]
+ * @param req 
+ * @param res 
+ */
+export const deleteOrganizationById = async (req: Request, res: Response) => {
+  const {
+    params: { organizationId }
+  } = await validateRequest(reqValidator.DeleteOrgv2, req);
+  
+  const membershipOrg = await MembershipOrg.findOne({
+    user: req.user._id,
+    organization: new Types.ObjectId(organizationId),
+    role: ADMIN
+  });
+  
+  if (!membershipOrg) throw UnauthorizedRequestError();
+  
+  const organization = await deleteOrganization({
+    organizationId: new Types.ObjectId(organizationId)
+  });
+  
+  return res.status(200).send({
+    organization
+  });
+}

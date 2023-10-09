@@ -1,12 +1,15 @@
 import { Request, Response } from "express";
-import GitAppInstallationSession from "../../ee/models/gitAppInstallationSession";
+import {
+  GitAppInstallationSession,
+  GitAppOrganizationInstallation,
+  GitRisks
+} from "../../ee/models";
 import crypto from "crypto";
 import { Types } from "mongoose";
 import { OrganizationNotFoundError, UnauthorizedRequestError } from "../../utils/errors";
-import GitAppOrganizationInstallation from "../../ee/models/gitAppOrganizationInstallation";
 import { scanGithubFullRepoForSecretLeaks } from "../../queues/secret-scanning/githubScanFullRepository";
 import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../config";
-import GitRisks, {
+import {
   STATUS_RESOLVED_FALSE_POSITIVE,
   STATUS_RESOLVED_NOT_REVOKED,
   STATUS_RESOLVED_REVOKED

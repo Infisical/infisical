@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { IUser, Key, Membership, MembershipOrg, User, Workspace } from "../../models";
-import { EventType } from "../../ee/models";
+import { EventType, Role } from "../../ee/models";
 import { deleteMembership as deleteMember, findMembership } from "../../helpers/membership";
 import { sendMail } from "../../helpers/nodemailer";
 import { ACCEPTED, ADMIN, CUSTOM, MEMBER, VIEWER } from "../../variables";
@@ -15,7 +15,6 @@ import {
   getUserProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
-import Role from "../../ee/models/role";
 import { BadRequestError } from "../../utils/errors";
 import { InviteUserToWorkspaceV1 } from "../../validation/workspace";
 
