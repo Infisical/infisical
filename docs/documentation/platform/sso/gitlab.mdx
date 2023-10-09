@@ -1,0 +1,37 @@
+---
+title: "GitLab SSO"
+description: "Configure GitLab SSO for Infisical"
+---
+
+Using GitLab SSO on a self-hosted instance of Infisical requires configuring an OAuth application in GitLab and registering your instance with it.
+
+## Create an OAuth application in GitLab
+
+Navigate to your user Settings > Applications to create a new GitLab application.
+
+![sso gitlab config](/images/sso/gitlab/edit-profile.png) 
+![sso gitlab config](/images/sso/gitlab/new-app.png) 
+
+Create the application. As part of the form, set the **Redirect URI** to `https://your-domain.com/api/v1/sso/gitlab`.
+Note that only `read_user` is required as part of the **Scopes** configuration.
+
+![sso gitlab config](/images/sso/gitlab/new-app-form.png) 
+
+<Note>
+    If you have a GitLab group, you can create an OAuth application under it
+    in your group Settings > Applications.
+</Note>
+
+## Add your OAuth application credentials to Infisical
+
+Obtain the **Application ID** and **Secret** for your GitLab application.
+
+![sso gitlab config](/images/sso/gitlab/credentials.png) 
+
+Back in your Infisical instance, add 2-3 new environment variables for the credentials of your GitLab application:
+
+- `CLIENT_ID_GITLAB_LOGIN`: The **Client ID** of your GitLab application.
+- `CLIENT_SECRET_GITLAB_LOGIN`: The **Secret** of your GitLab application.
+- (optional) `URL_GITLAB_LOGIN`: The URL of your self-hosted instance of GitLab where the OAuth application is registered. If no URL is passed in, this will default to `https://gitlab.com`.
+   
+Once added, restart your Infisical instance and log in with GitLab.

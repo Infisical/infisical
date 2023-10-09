@@ -1,10 +1,12 @@
 import { Types } from "mongoose";
 import {
     IServiceTokenData,
+    IServiceTokenDataV3,
     IUser,
 } from "../../models";
 import { 
     ServiceActor,
+    ServiceActorV3,
     UserActor,
     UserAgentType
 } from "../../ee/models";
@@ -21,6 +23,11 @@ export interface UserAuthData extends BaseAuthData {
     authPayload: IUser;
 }
 
+export interface ServiceTokenV3AuthData extends BaseAuthData {
+    actor: ServiceActorV3;
+    authPayload: IServiceTokenDataV3;
+}
+
 export interface ServiceTokenAuthData extends BaseAuthData {
     actor: ServiceActor;
     authPayload: IServiceTokenData;
@@ -28,4 +35,5 @@ export interface ServiceTokenAuthData extends BaseAuthData {
 
 export type AuthData =
     | UserAuthData
+    | ServiceTokenV3AuthData
     | ServiceTokenAuthData;

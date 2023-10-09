@@ -94,5 +94,3 @@ export const LogsTable = ({
         </TableContainer>
     );
 }
-
-// TODO: retrieve count

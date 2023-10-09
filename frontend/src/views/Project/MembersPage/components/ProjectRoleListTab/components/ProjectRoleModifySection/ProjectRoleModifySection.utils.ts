@@ -1,6 +1,7 @@
 /* eslint-disable no-param-reassign */
 import { z } from "zod";
 
+import { ProjectPermissionSub } from "@app/context";
 import { TProjectPermission } from "@app/hooks/api/roles/types";
 
 const generalPermissionSchema = z
@@ -41,6 +42,8 @@ export const formSchema = z.object({
       tags: generalPermissionSchema,
       "audit-logs": generalPermissionSchema,
       "ip-allowlist": generalPermissionSchema,
+      // akhilmhdh: refactor all keys like below
+      [ProjectPermissionSub.SecretApproval]: generalPermissionSchema,
       workspace: z
         .object({
           edit: z.boolean().optional(),

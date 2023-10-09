@@ -518,7 +518,7 @@ func browserCliLogin() (models.UserCredentials, error) {
 	SERVER_TIMEOUT := 60 * 10
 
 	//create listener
-	listener, err := net.Listen("tcp", "localhost:0")
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return models.UserCredentials{}, err
 	}

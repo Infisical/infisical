@@ -1,9 +1,8 @@
 <h1 align="center">
-  <img width="300" src="/img/logoname-black.svg#gh-light-mode-only" alt="infisical">
   <img width="300" src="/img/logoname-white.svg#gh-dark-mode-only" alt="infisical">
 </h1>
 <p align="center">
-  <p align="center"><b>Open-source, end-to-end encrypted secret management platform</b>: distribute secrets/configs across your team/infrastructure and prevent secret leaks.</p>
+  <p align="center"><b>The open-source secret management platform</b>: Sync secrets/configs across your team/infrastructure and prevent secret leaks.</p>
 </p>
 
 <h4 align="center">
@@ -34,7 +33,7 @@
     <img src="https://img.shields.io/github/commit-activity/m/infisical/infisical" alt="git commit activity" />
   </a>
   <a href="https://cloudsmith.io/~infisical/repos/">
-    <img src="https://img.shields.io/badge/Downloads-1.38M-orange" alt="Cloudsmith downloads" />
+    <img src="https://img.shields.io/badge/Downloads-2.58M-orange" alt="Cloudsmith downloads" />
   </a>
   <a href="https://infisical.com/slack">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
@@ -44,11 +43,11 @@
   </a>
 </h4>
 
-<img src="/img/infisical_github_repo.png" width="100%" alt="Dashboard" />
+<img src="/img/infisical_github_repo2.png" width="100%" alt="Dashboard" />
 
 ## Introduction
 
-**[Infisical](https://infisical.com)** is an open source, end-to-end encrypted secret management platform that teams use to centralize their secrets like API keys, database credentials, and configurations.
+**[Infisical](https://infisical.com)** is the open source secret management platform that teams use to centralize their secrets like API keys, database credentials, and configurations.
 
 We're on a mission to make secret management more accessible to everyone, not just security teams, and that means redesigning the entire developer experience from ground up.
 

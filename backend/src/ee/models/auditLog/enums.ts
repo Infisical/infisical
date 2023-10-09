@@ -1,6 +1,7 @@
 export enum ActorType {
-  USER = "user",
-  SERVICE = "service"
+    USER = "user",
+    SERVICE = "service",
+    SERVICE_V3 = "service-v3"
 }
 
 export enum UserAgentType {
@@ -28,8 +29,11 @@ export enum EventType {
   ADD_TRUSTED_IP = "add-trusted-ip",
   UPDATE_TRUSTED_IP = "update-trusted-ip",
   DELETE_TRUSTED_IP = "delete-trusted-ip",
-  CREATE_SERVICE_TOKEN = "create-service-token",
-  DELETE_SERVICE_TOKEN = "delete-service-token",
+  CREATE_SERVICE_TOKEN = "create-service-token", // v2
+  DELETE_SERVICE_TOKEN = "delete-service-token", // v2
+  CREATE_SERVICE_TOKEN_V3 = "create-service-token-v3", // v3
+  UPDATE_SERVICE_TOKEN_V3 = "update-service-token-v3", // v3
+  DELETE_SERVICE_TOKEN_V3 = "delete-service-token-v3", // v3
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
@@ -46,5 +50,9 @@ export enum EventType {
   UPDATE_SECRET_IMPORT = "update-secret-import",
   DELETE_SECRET_IMPORT = "delete-secret-import",
   UPDATE_USER_WORKSPACE_ROLE = "update-user-workspace-role",
-  UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS = "update-user-workspace-denied-permissions"
+  UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS = "update-user-workspace-denied-permissions",
+  SECRET_APPROVAL_MERGED = "secret-approval-merged",
+  SECRET_APPROVAL_REQUEST = "secret-approval-request",
+  SECRET_APPROVAL_CLOSED = "secret-approval-closed",
+  SECRET_APPROVAL_REOPENED = "secret-approval-reopened"
 }

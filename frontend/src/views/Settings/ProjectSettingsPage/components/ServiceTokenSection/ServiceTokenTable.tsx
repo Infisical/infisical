@@ -43,7 +43,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
         <THead>
           <Tr>
             <Th>Token Name</Th>
-            <Th>Envrionment - Secret Path</Th>
+            <Th>Environment - Secret Path</Th>
             <Th>Valid Until</Th>
             <Th aria-label="button" />
           </Tr>

@@ -1,6 +1,7 @@
 ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
+ARG NEXT_INFISICAL_PLATFORM_VERSION=next-infisical-platform-version
 
 FROM node:16-alpine AS deps
 # Install dependencies only when needed. Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
@@ -12,7 +13,6 @@ COPY package.json package-lock.json next.config.js ./
 
 # Install dependencies
 RUN npm ci --only-production --ignore-scripts
-
 
 # Rebuild the source code only when needed
 FROM node:16-alpine AS builder
@@ -52,6 +52,8 @@ ENV NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY \
 ARG INTERCOM_ID
 ENV NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID \
     BAKED_NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID
+ARG NEXT_INFISICAL_PLATFORM_VERSION
+ENV NEXT_PUBLIC_INFISICAL_PLATFORM_VERSION=$NEXT_INFISICAL_PLATFORM_VERSION 
 
 COPY --chown=nextjs:nodejs --chmod=555 scripts ./scripts
 COPY --from=builder /app/public ./public

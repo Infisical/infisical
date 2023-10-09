@@ -260,7 +260,7 @@ export const CreateSecretRawV3 = z.object({
     secretValue: z
       .string()
       .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
-    secretComment: z.string().trim(),
+    secretComment: z.string().trim().optional().default(""),
     skipMultilineEncoding: z.boolean().optional(),
     type: z.enum([SECRET_SHARED, SECRET_PERSONAL])
   }),

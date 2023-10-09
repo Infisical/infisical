@@ -29,11 +29,11 @@ router.patch(
 );
 
 router.put(
-  "/me/auth-methods",
-  requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
-  }),
-  usersController.updateAuthMethods
+    "/me/auth-methods",
+    requireAuth({
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY],
+    }),
+    usersController.updateAuthMethods,
 );
 
 router.get(

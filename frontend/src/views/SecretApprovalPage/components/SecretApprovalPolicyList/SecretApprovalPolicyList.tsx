@@ -2,6 +2,7 @@ import { faFileShield, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -13,8 +14,15 @@ import {
   Td,
   Th,
   THead,
-  Tr
+  Tr,
+  UpgradePlanModal
 } from "@app/components/v2";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProjectPermission,
+  useSubscription
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteSecretApprovalPolicy,
@@ -33,13 +41,19 @@ type Props = {
 export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
   const { handlePopUpToggle, handlePopUpOpen, handlePopUpClose, popUp } = usePopUp([
     "secretPolicyForm",
-    "deletePolicy"
+    "deletePolicy",
+    "upgradePlan"
   ] as const);
+  const permission = useProjectPermission();
+  const { subscription } = useSubscription();
   const { createNotification } = useNotificationContext();
 
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const { data: policies, isLoading: isPoliciesLoading } = useGetSecretApprovalPolicies({
-    workspaceId
+    workspaceId,
+    options: {
+      enabled: permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval)
+    }
   });
 
   const { mutateAsync: deleteSecretApprovalPolicy } = useDeleteSecretApprovalPolicy();
@@ -75,18 +89,33 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
           </div>
         </div>
         <div>
-          <Button
-            onClick={() => handlePopUpOpen("secretPolicyForm")}
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.SecretApproval}
           >
-            Create policy
-          </Button>
+            {(isAllowed) => (
+              <Button
+                onClick={() => {
+                  if (subscription && !subscription?.secretApproval) {
+                    handlePopUpOpen("upgradePlan");
+                    return;
+                  }
+                  handlePopUpOpen("secretPolicyForm");
+                }}
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                isDisabled={!isAllowed}
+              >
+                Create policy
+              </Button>
+            )}
+          </ProjectPermissionCan>
         </div>
       </div>
       <TableContainer>
         <Table>
           <THead>
             <Tr>
+              <Th>Name</Th>
               <Th>Environment</Th>
               <Th>Secret Path</Th>
               <Th>Eligible Approvers</Th>
@@ -99,9 +128,11 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
               <TableSkeleton columns={4} innerKey="secret-policies" className="bg-mineshaft-700" />
             )}
             {!isPoliciesLoading && !policies?.length && (
-              <Td colSpan={5}>
-                <EmptyState title="No policies found" icon={faFileShield} />
-              </Td>
+              <Tr>
+                <Td colSpan={5}>
+                  <EmptyState title="No policies found" icon={faFileShield} />
+                </Td>
+              </Tr>
             )}
             {policies?.map((policy) => (
               <SecretApprovalPolicyRow
@@ -129,6 +160,11 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
         title="Do you want to remove this polciy?"
         onChange={(isOpen) => handlePopUpToggle("deletePolicy", isOpen)}
         onDeleteApproved={handleDeletePolicy}
+      />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="You can add secret approval policy if you switch to Infisical's Team plan."
       />
     </div>
   );

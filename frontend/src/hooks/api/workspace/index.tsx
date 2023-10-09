@@ -13,6 +13,7 @@ export {
   useGetWorkspaceIndexStatus,
   useGetWorkspaceIntegrations,
   useGetWorkspaceSecrets,
+  useGetWorkspaceServiceTokenDataV3,
   useGetWorkspaceUsers,
   useNameWorkspaceSecrets,
   useRenameWorkspace,

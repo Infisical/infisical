@@ -5,6 +5,7 @@ import {
   Membership,
   Secret,
   ServiceTokenData,
+  ServiceTokenDataV3,
   TFolderSchema,
   User,
   Workspace
@@ -20,6 +21,7 @@ import {
   SecretSnapshot,
   SecretVersion,
   ServiceActor,
+  ServiceActorV3,
   TFolderRootVersionSchema,
   TrustedIP,
   UserActor
@@ -683,7 +685,7 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
     ProjectPermissionActions.Read,
     ProjectPermissionSub.AuditLogs
   );
-
+  
   const query = {
     workspace: new Types.ObjectId(workspaceId),
     ...(eventType
@@ -698,13 +700,13 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
       : {}),
     ...(actor
       ? {
-          "actor.type": actor.split("-", 2)[0],
+          "actor.type": actor.substring(0, actor.lastIndexOf("-")),
           ...(actor.split("-", 2)[0] === ActorType.USER
             ? {
-                "actor.metadata.userId": actor.split("-", 2)[1]
+                "actor.metadata.userId": actor.substring(actor.lastIndexOf("-") + 1)
               }
             : {
-                "actor.metadata.serviceId": actor.split("-", 2)[1]
+                "actor.metadata.serviceId": actor.substring(actor.lastIndexOf("-") + 1)
               })
         }
       : {}),
@@ -772,9 +774,27 @@ export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Res
       name: serviceTokenData.name
     }
   }));
+  
+  const serviceV3Actors: ServiceActorV3[] = (
+    await ServiceTokenDataV3.find({
+      workspace: new Types.ObjectId(workspaceId)
+    })
+  ).map((serviceTokenData) => ({
+    type: ActorType.SERVICE_V3,
+    metadata: {
+      serviceId: serviceTokenData._id.toString(),
+      name: serviceTokenData.name
+    }
+  }));
+  
+  const actors = [
+    ...userActors, 
+    ...serviceActors,
+    ...serviceV3Actors
+  ];
 
   return res.status(200).send({
-    actors: [...userActors, ...serviceActors]
+    actors
   });
 };
 

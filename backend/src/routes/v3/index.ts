@@ -7,5 +7,5 @@ export {
     auth,
     secrets,
     signup,
-    workspaces,
+    workspaces
 }

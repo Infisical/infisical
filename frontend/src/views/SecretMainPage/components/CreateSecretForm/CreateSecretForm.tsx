@@ -23,6 +23,7 @@ type Props = {
   secretPath?: string;
   // modal props
   autoCapitalize?: boolean;
+  isProtectedBranch?: boolean;
 };
 
 export const CreateSecretForm = ({
@@ -30,7 +31,8 @@ export const CreateSecretForm = ({
   workspaceId,
   decryptFileKey,
   secretPath = "/",
-  autoCapitalize = true
+  autoCapitalize = true,
+  isProtectedBranch = false
 }: Props) => {
   const {
     register,
@@ -62,7 +64,9 @@ export const CreateSecretForm = ({
       reset();
       createNotification({
         type: "success",
-        text: "Successfully created secret"
+        text: isProtectedBranch
+          ? "Requested changes have been sent for review"
+          : "Successfully created secret"
       });
     } catch (error) {
       console.log(error);

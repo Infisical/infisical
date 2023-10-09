@@ -1,6 +1,6 @@
 import net from "net";
 import { IPType } from "../../ee/models";
-import { InternalServerError } from "../errors";
+import { InternalServerError, UnauthorizedRequestError } from "../errors";
 
 /**
  * Return details of IP [ip]:
@@ -98,4 +98,39 @@ export const isValidIpOrCidr = (ip: string): boolean => {
     }
 
   return false;
+}
+
+/**
+ * Validates the IP address [ipAddress] against the trusted IPs [trustedIps].
+ * @param {Object} obj
+ * @param {String} obj.ipAddress - IP address to check
+ * @param {Object[]} obj.trustedIps - IPs to trust in blocklist
+ */
+export const checkIPAgainstBlocklist = ({
+    ipAddress,
+    trustedIps
+}: {
+    ipAddress: string;
+    trustedIps: {
+        ipAddress: string;
+        type: IPType;
+        prefix: number;
+    }[]
+}) => {
+    const blockList = new net.BlockList();
+
+    for (const trustedIp of trustedIps) {
+        if (trustedIp.prefix !== undefined) {
+            blockList.addSubnet(trustedIp.ipAddress, trustedIp.prefix, trustedIp.type);
+        } else {
+            blockList.addAddress(trustedIp.ipAddress, trustedIp.type);
+        }
+    }
+
+    const { type } = extractIPDetails(ipAddress);
+    const check = blockList.check(ipAddress, type);
+    
+    if (!check) throw UnauthorizedRequestError({
+        message: "Failed to authenticate"
+    });
 }
