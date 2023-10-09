@@ -1,3 +1,5 @@
+import { GITLAB_URL } from "../variables";
+
 import InfisicalClient from "infisical-node";
 
 export const client = new InfisicalClient({
@@ -26,6 +28,7 @@ export const getJwtSignupLifetime = async () => (await client.getSecret("JWT_SIG
 export const getJwtProviderAuthSecret = async () => (await client.getSecret("JWT_PROVIDER_AUTH_SECRET")).secretValue;
 export const getJwtProviderAuthLifetime = async () => (await client.getSecret("JWT_PROVIDER_AUTH_LIFETIME")).secretValue || "15m";
 export const getJwtSignupSecret = async () => (await client.getSecret("JWT_SIGNUP_SECRET")).secretValue;
+export const getJwtServiceTokenSecret = async () => (await client.getSecret("JWT_SERVICE_TOKEN_SECRET")).secretValue;
 export const getMongoURL = async () => (await client.getSecret("MONGO_URL")).secretValue;
 export const getNodeEnv = async () => (await client.getSecret("NODE_ENV")).secretValue || "production";
 export const getVerboseErrorOutput = async () => (await client.getSecret("VERBOSE_ERROR_OUTPUT")).secretValue === "true" && true;
@@ -52,6 +55,9 @@ export const getClientIdGoogleLogin = async () => (await client.getSecret("CLIEN
 export const getClientSecretGoogleLogin = async () => (await client.getSecret("CLIENT_SECRET_GOOGLE_LOGIN")).secretValue;
 export const getClientIdGitHubLogin = async () => (await client.getSecret("CLIENT_ID_GITHUB_LOGIN")).secretValue;
 export const getClientSecretGitHubLogin = async () => (await client.getSecret("CLIENT_SECRET_GITHUB_LOGIN")).secretValue;
+export const getClientIdGitLabLogin = async () => (await client.getSecret("CLIENT_ID_GITLAB_LOGIN")).secretValue;
+export const getClientSecretGitLabLogin = async () => (await client.getSecret("CLIENT_SECRET_GITLAB_LOGIN")).secretValue;
+export const getUrlGitLabLogin = async () => (await client.getSecret("URL_GITLAB_LOGIN")).secretValue || GITLAB_URL;
 
 export const getPostHogHost = async () => (await client.getSecret("POSTHOG_HOST")).secretValue || "https://app.posthog.com";
 export const getPostHogProjectApiKey = async () => (await client.getSecret("POSTHOG_PROJECT_API_KEY")).secretValue || "phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE";

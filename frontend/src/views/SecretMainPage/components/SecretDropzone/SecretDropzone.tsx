@@ -43,6 +43,7 @@ type Props = {
   environment: string;
   secretPath: string;
   secrets?: DecryptedSecret[];
+  isProtectedBranch?: boolean;
 };
 
 export const SecretDropzone = ({
@@ -52,7 +53,8 @@ export const SecretDropzone = ({
   decryptFileKey,
   environment,
   secretPath,
-  secrets = []
+  secrets = [],
+  isProtectedBranch = false
 }: Props): JSX.Element => {
   const { t } = useTranslation();
   const [isDragActive, setDragActive] = useToggle();
@@ -195,7 +197,9 @@ export const SecretDropzone = ({
       handlePopUpClose("overlapKeyWarning");
       createNotification({
         type: "success",
-        text: "Successfully uploaded secrets"
+        text: isProtectedBranch
+          ? "Uploaded changes have been sent for review"
+          : "Successfully uploaded secrets"
       });
     } catch (err) {
       console.log(err);

@@ -41,6 +41,7 @@
     "nodemailer": "^6.8.0",
     "passport": "^0.6.0",
     "passport-github": "^1.1.0",
+    "passport-gitlab2": "^5.0.0",
     "passport-google-oauth20": "^2.0.0",
     "posthog-node": "^2.6.0",
     "probot": "^12.3.1",
@@ -54,7 +55,7 @@
     "utility-types": "^3.10.0",
     "winston": "^3.8.2",
     "winston-loki": "^6.0.6",
-    "zod": "^3.21.4"
+    "zod": "^3.22.3"
   },
   "name": "infisical-api",
   "version": "1.0.0",

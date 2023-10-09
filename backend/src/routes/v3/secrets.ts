@@ -7,7 +7,7 @@ import { AuthMode } from "../../variables";
 router.get(
   "/raw",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.SERVICE_TOKEN_V3]
   }),
   secretsController.getSecretsRaw
 );
@@ -15,7 +15,7 @@ router.get(
 router.get(
   "/raw/:secretName",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.SERVICE_TOKEN_V3]
   }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "query"
@@ -29,7 +29,7 @@ router.get(
 router.post(
   "/raw/:secretName",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.SERVICE_TOKEN_V3]
   }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "body"
@@ -43,7 +43,7 @@ router.post(
 router.patch(
   "/raw/:secretName",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.SERVICE_TOKEN_V3]
   }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "body"
@@ -57,7 +57,7 @@ router.patch(
 router.delete(
   "/raw/:secretName",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.SERVICE_TOKEN_V3]
   }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "body"
@@ -71,7 +71,7 @@ router.delete(
 router.get(
   "/",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.SERVICE_TOKEN_V3]
   }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "query"
@@ -116,7 +116,7 @@ router.delete(
 router.post(
   "/:secretName",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.SERVICE_TOKEN_V3]
   }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "body"
@@ -127,7 +127,7 @@ router.post(
 router.get(
   "/:secretName",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.SERVICE_TOKEN_V3]
   }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "query"
@@ -138,7 +138,7 @@ router.get(
 router.patch(
   "/:secretName",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.SERVICE_TOKEN_V3]
   }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "body"
@@ -149,7 +149,7 @@ router.patch(
 router.delete(
   "/:secretName",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN, AuthMode.SERVICE_TOKEN_V3]
   }),
   requireBlindIndicesEnabled({
     locationWorkspaceId: "body"

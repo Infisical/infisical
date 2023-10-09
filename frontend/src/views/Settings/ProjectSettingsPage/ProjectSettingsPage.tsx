@@ -2,8 +2,6 @@ import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { Tab } from "@headlessui/react";
 
-import NavHeader from "@app/components/navigation/NavHeader";
-
 import { ProjectGeneralTab } from "./components/ProjectGeneralTab";
 import { ProjectServiceTokensTab } from "./components/ProjectServiceTokensTab";
 import { WebhooksTab } from "./components/WebhooksTab";
@@ -17,12 +15,9 @@ const tabs = [
 export const ProjectSettingsPage = () => {
   const { t } = useTranslation();
   return (
-    <div className="flex w-full justify-center bg-bunker-800 px-6 text-white">
-      <div className="w-full max-w-screen-lg">
-        <div className="relative right-5 ml-4">
-          <NavHeader pageName={t("settings.project.title")} isProjectRelated />
-        </div>
-        <div className="my-8">
+    <div className="flex justify-center w-full h-full bg-bunker-800 text-white">
+      <div className="max-w-7xl px-6 w-full">
+        <div className="my-6">
           <p className="text-3xl font-semibold text-gray-200">{t("settings.project.title")}</p>
         </div>
         <Tab.Group>

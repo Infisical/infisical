@@ -6,57 +6,19 @@ import { ssoController } from "../../controllers/v1";
 import { authLimiter } from "../../../helpers/rateLimiter";
 import { AuthMode } from "../../../variables";
 
-router.get("/redirect/google", authLimiter, (req, res, next) => {
-  passport.authenticate("google", {
-    scope: ["profile", "email"],
-    session: false,
-    ...(req.query.callback_port
-      ? {
-          state: req.query.callback_port as string
-        }
-      : {})
-  })(req, res, next);
-});
-
 router.get(
-  "/google",
-  passport.authenticate("google", {
-    failureRedirect: "/login/provider/error",
-    session: false
-  }),
-  ssoController.redirectSSO
-);
-
-router.get("/redirect/github", authLimiter, (req, res, next) => {
-  passport.authenticate("github", {
-    session: false,
-    ...(req.query.callback_port
-      ? {
-          state: req.query.callback_port as string
-        }
-      : {})
-  })(req, res, next);
-});
-
-router.get(
-  "/github",
+  "/redirect/saml2/:ssoIdentifier",
   authLimiter,
-  passport.authenticate("github", {
-    failureRedirect: "/login/provider/error",
-    session: false
-  }),
-  ssoController.redirectSSO
+  (req, res, next) => {
+    const options = {
+        failureRedirect: "/",
+        additionalParams: {
+          RelayState: req.query.callback_port ?? ""
+        },
+    };
+    passport.authenticate("saml", options)(req, res, next);
+  }
 );
-
-router.get("/redirect/saml2/:ssoIdentifier", authLimiter, (req, res, next) => {
-  const options = {
-    failureRedirect: "/",
-    additionalParams: {
-      RelayState: req.query.callback_port ?? ""
-    }
-  };
-  passport.authenticate("saml", options)(req, res, next);
-});
 
 router.post(
   "/saml2/:ssoIdentifier",

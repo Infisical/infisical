@@ -19,6 +19,7 @@ import {
   useGetImportedSecrets,
   useGetProjectFolders,
   useGetProjectSecrets,
+  useGetSecretApprovalPolicyOfABoard,
   useGetSecretImports,
   useGetUserWsKey,
   useGetWorkspaceSnapshotList,
@@ -118,6 +119,13 @@ export const SecretMainPage = () => {
   // fetch tags
   const { data: tags } = useGetWsTags(canReadSecret ? workspaceId : "");
 
+  const { data: boardPolicy } = useGetSecretApprovalPolicyOfABoard({
+    workspaceId,
+    environment,
+    secretPath
+  });
+  const isProtectedBranch = Boolean(boardPolicy);
+
   const {
     data: snapshotList,
     isFetchingNextPage: isFetchingNextSnapshotList,
@@ -207,6 +215,8 @@ export const SecretMainPage = () => {
             secretPath={secretPath}
             isProjectRelated
             onEnvChange={handleEnvChange}
+            isProtectedBranch={isProtectedBranch}
+            protectionPolicyName={boardPolicy?.name}
           />
         </div>
         {!isRollbackMode ? (
@@ -281,6 +291,7 @@ export const SecretMainPage = () => {
                     workspaceId={workspaceId}
                     secretPath={secretPath}
                     decryptFileKey={decryptFileKey!}
+                    isProtectedBranch={isProtectedBranch}
                   />
                 )}
                 {!canReadSecret && folders?.length === 0 && <PermissionDeniedBanner />}
@@ -292,6 +303,7 @@ export const SecretMainPage = () => {
               decryptFileKey={decryptFileKey!}
               secretPath={secretPath}
               autoCapitalize={currentWorkspace?.autoCapitalization}
+              isProtectedBranch={isProtectedBranch}
             />
             <SecretDropzone
               secrets={secrets}
@@ -301,6 +313,7 @@ export const SecretMainPage = () => {
               secretPath={secretPath}
               isSmaller={isNotEmtpy}
               environments={currentWorkspace?.environments}
+              isProtectedBranch={isProtectedBranch}
             />
             <PitDrawer
               secretSnaphots={snapshotList}

@@ -84,7 +84,8 @@ export const INTEGRATION_BITBUCKET_TOKEN_URL = "https://bitbucket.org/site/oauth
 // integration apps endpoints
 export const INTEGRATION_GCP_API_URL = "https://cloudresourcemanager.googleapis.com";
 export const INTEGRATION_HEROKU_API_URL = "https://api.heroku.com";
-export const INTEGRATION_GITLAB_API_URL = "https://gitlab.com/api";
+export const GITLAB_URL = "https://gitlab.com";
+export const INTEGRATION_GITLAB_API_URL = `${GITLAB_URL}/api`;
 export const INTEGRATION_GITHUB_API_URL = "https://api.github.com";
 export const INTEGRATION_VERCEL_API_URL = "https://api.vercel.com";
 export const INTEGRATION_NETLIFY_API_URL = "https://api.netlify.com";

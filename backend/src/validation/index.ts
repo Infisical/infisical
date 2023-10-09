@@ -1,4 +1,3 @@
-export * from "./secretApproval";
 export * from "./user";
 export * from "./workspace";
 export * from "./bot";
@@ -10,3 +9,4 @@ export * from "./organization";
 export * from "./secrets";
 export * from "./serviceAccount";
 export * from "./serviceTokenData";
+export * from "./serviceTokenDataV3";

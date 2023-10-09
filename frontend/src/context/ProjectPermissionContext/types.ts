@@ -20,7 +20,8 @@ export enum ProjectPermissionSub {
   IpAllowList = "ip-allowlist",
   Workspace = "workspace",
   Secrets = "secrets",
-  SecretRollback = "secret-rollback"
+  SecretRollback = "secret-rollback",
+  SecretApproval = "secret-approval"
 }
 
 type SubjectFields = {
@@ -43,6 +44,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.IpAllowList]
   | [ProjectPermissionActions, ProjectPermissionSub.Settings]
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
+  | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]

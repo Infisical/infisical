@@ -54,7 +54,8 @@ type Props = {
   secret: DecryptedSecret;
   onSaveSecret: (
     orgSec: DecryptedSecret,
-    modSec: Omit<DecryptedSecret, "tags"> & { tags: { _id: string }[] }
+    modSec: Omit<DecryptedSecret, "tags"> & { tags: { _id: string }[] },
+    cb?: () => void
   ) => Promise<void>;
   onDeleteSecret: (sec: DecryptedSecret) => void;
   onDetailViewSecret: (sec: DecryptedSecret) => void;
@@ -148,13 +149,14 @@ export const SecretItem = memo(
         );
         setValue("valueOverride", secret?.valueOverride, { shouldDirty: !isUnsavedOverride });
       } else {
+        reset();
         setValue("overrideAction", SecretActionType.Modified, { shouldDirty: true });
         setValue("valueOverride", "", { shouldDirty: true });
       }
     };
 
     const handleFormSubmit = async (data: TFormSchema) => {
-      await onSaveSecret(secret, { ...secret, ...data });
+      await onSaveSecret(secret, { ...secret, ...data }, () => reset());
     };
 
     const handleTagSelect = (tag: WsTag) => {

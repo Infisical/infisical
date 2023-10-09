@@ -8,27 +8,33 @@ import {
   Organization,
   ServiceAccount,
   ServiceTokenData,
+  ServiceTokenDataV3,
   User
 } from "../models";
 import { createToken } from "../helpers/auth";
 import {
   getClientIdGitHubLogin,
+  getClientIdGitLabLogin,
   getClientIdGoogleLogin,
   getClientSecretGitHubLogin,
+  getClientSecretGitLabLogin,
   getClientSecretGoogleLogin,
   getJwtProviderAuthLifetime,
   getJwtProviderAuthSecret,
+  getSiteURL,
+  getUrlGitLabLogin
 } from "../config";
 import { getSSOConfigHelper } from "../ee/helpers/organizations";
 import { InternalServerError, OrganizationNotFoundError } from "./errors";
 import { ACCEPTED, INTEGRATION_GITHUB_API_URL, INVITED, MEMBER } from "../variables";
-import { getSiteURL } from "../config";
 import { standardRequest } from "../config/request";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const GitHubStrategy = require("passport-github").Strategy;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const GitLabStrategy = require("passport-gitlab2").Strategy;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { MultiSamlStrategy } = require("@node-saml/passport-saml");
 
@@ -49,6 +55,10 @@ const getAuthDataPayloadIdObj = (authData: AuthData) => {
   if (authData.authPayload instanceof ServiceTokenData) {
     return { serviceTokenDataId: authData.authPayload._id };
   }
+
+  if (authData.authPayload instanceof ServiceTokenDataV3) {
+    return { serviceTokenDataId: authData.authPayload._id };
+  }
 };
 
 /**
@@ -57,7 +67,6 @@ const getAuthDataPayloadIdObj = (authData: AuthData) => {
  * @returns 
  */
 const getAuthDataPayloadUserObj = (authData: AuthData) => {
-
   if (authData.authPayload instanceof User) {
     return { user: authData.authPayload._id };
   }
@@ -67,7 +76,11 @@ const getAuthDataPayloadUserObj = (authData: AuthData) => {
   }
 
   if (authData.authPayload instanceof ServiceTokenData) {
-    return { user: authData.authPayload.user };0
+    return { user: authData.authPayload.user };
+  }
+  
+  if (authData.authPayload instanceof ServiceTokenDataV3) {
+    return { user: authData.authPayload.user };
   }
 }
 
@@ -76,6 +89,9 @@ const initializePassport = async () => {
   const clientSecretGoogleLogin = await getClientSecretGoogleLogin();
   const clientIdGitHubLogin = await getClientIdGitHubLogin();
   const clientSecretGitHubLogin = await getClientSecretGitHubLogin();
+  const urlGitLab = await getUrlGitLabLogin();
+  const clientIdGitLabLogin = await getClientIdGitLabLogin();
+  const clientSecretGitLabLogin = await getClientSecretGitLabLogin();
 
   if (clientIdGoogleLogin && clientSecretGoogleLogin) {
     passport.use(new GoogleStrategy({
@@ -193,6 +209,60 @@ const initializePassport = async () => {
           firstName: user.firstName,
           lastName: user.lastName,
           authMethod: AuthMethod.GITHUB,
+          isUserCompleted,
+          isLinkingRequired,
+          ...(req.query.state ? {
+            callbackPort: req.query.state as string
+          } : {})
+        },
+        expiresIn: await getJwtProviderAuthLifetime(),
+        secret: await getJwtProviderAuthSecret(),
+      });
+
+      req.isUserCompleted = isUserCompleted;
+      req.providerAuthToken = providerAuthToken;
+      return done(null, profile);
+    }
+    ));
+  }
+
+  if (urlGitLab && clientIdGitLabLogin && clientSecretGitLabLogin) {
+    passport.use(new GitLabStrategy({
+      passReqToCallback: true,
+      clientID: clientIdGitLabLogin,
+      clientSecret: clientSecretGitLabLogin,
+      callbackURL: "/api/v1/sso/gitlab",
+      baseURL: urlGitLab
+    },
+    async (req : express.Request, accessToken : any, refreshToken : any, profile : any, done : any) => {
+      const email = profile.emails[0].value;
+      
+      let user = await User.findOne({
+        email
+      }).select("+publicKey");
+
+      if (!user) {
+        user = await new User({
+          email: email,
+          authMethods: [AuthMethod.GITLAB],
+          firstName: profile.displayName,
+          lastName: ""
+        }).save();
+      }
+      
+      let isLinkingRequired = false;
+      if (!user.authMethods.includes(AuthMethod.GITLAB)) {
+        isLinkingRequired = true;
+      }
+
+      const isUserCompleted = !!user.publicKey;
+      const providerAuthToken = createToken({
+        payload: {
+          userId: user._id.toString(),
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          authMethod: AuthMethod.GITLAB,
           isUserCompleted,
           isLinkingRequired,
           ...(req.query.state ? {

@@ -40,12 +40,15 @@ backend:
     annotations: {}
     type: ClusterIP
     nodePort: ""
+  resources:
+    limits:
+      memory: 300Mi
 
 backendEnvironmentVariables: null
 
 ## Mongo DB persistence
 mongodb:
-  enabled: true
+  enabled: false
   persistence:
     enabled: false
 

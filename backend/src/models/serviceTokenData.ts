@@ -1,3 +1,4 @@
+// TODO: deprecate
 import { Document, Schema, Types, model } from "mongoose";
 
 export interface IServiceTokenData extends Document {

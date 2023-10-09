@@ -4,9 +4,10 @@ export enum AuthMethod {
   EMAIL = "email",
   GOOGLE = "google",
   GITHUB = "github",
-  OKTA_SAML = "okta-saml",
-  AZURE_SAML = "azure-saml",
-  JUMPCLOUD_SAML = "jumpcloud-saml"
+  GITLAB = "gitlab",
+	OKTA_SAML = "okta-saml",
+	AZURE_SAML = "azure-saml",
+	JUMPCLOUD_SAML = "jumpcloud-saml"
 }
 
 export type User = {

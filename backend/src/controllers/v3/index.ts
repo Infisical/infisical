@@ -7,5 +7,5 @@ export {
     authController,
     secretsController,
     signupController,
-    workspacesController,
+    workspacesController
 }

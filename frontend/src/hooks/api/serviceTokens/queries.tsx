@@ -2,12 +2,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { workspaceKeys } from "../workspace/queries";
 import {
+  CreateServiceTokenDataV3DTO,
+  CreateServiceTokenDataV3Res,
   CreateServiceTokenDTO,
   CreateServiceTokenRes,
+  DeleteServiceTokenDataV3DTO,
   DeleteServiceTokenRes,
-  ServiceToken
-} from "./types";
+  ServiceToken,
+  ServiceTokenDataV3,
+  UpdateServiceTokenDataV3DTO} from "./types";
 
 const serviceTokenKeys = {
   getAllWorkspaceServiceToken: (workspaceID: string) => [{ workspaceID }, "service-tokens"] as const
@@ -32,12 +37,11 @@ export const useGetUserWsServiceTokens = ({ workspaceID }: UseGetWorkspaceServic
 }
 
 // mutation
-export const useCreateServiceToken = () => {
+export const useCreateServiceToken = () => { // TODO: deprecate
   const queryClient = useQueryClient();
 
   return useMutation<CreateServiceTokenRes, {}, CreateServiceTokenDTO>({
     mutationFn: async (body) => {
-      console.log("useCreateServiceToken");
       const { data } = await apiRequest.post("/api/v2/service-token/", body);
       data.serviceToken += `.${body.randomBytes}`;
       return data;
@@ -53,12 +57,66 @@ export const useDeleteServiceToken = () => {
 
   return useMutation<DeleteServiceTokenRes, {}, string>({
     mutationFn: async (serviceTokenId) => {
-      console.log("useDeleteServiceToken");
       const { data } = await apiRequest.delete(`/api/v2/service-token/${serviceTokenId}`);
       return data;
     },
     onSuccess: ({ serviceTokenData: { workspace } }) => {
       queryClient.invalidateQueries(serviceTokenKeys.getAllWorkspaceServiceToken(workspace));
+    }
+  });
+};
+
+export const useCreateServiceTokenV3 = () => {
+  const queryClient = useQueryClient();
+  return useMutation<CreateServiceTokenDataV3Res, {}, CreateServiceTokenDataV3DTO>({
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post("/api/v3/service-token/", body);
+      return data;
+    },
+    onSuccess: ({ serviceTokenData }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceServiceTokenDataV3(serviceTokenData.workspace));
+    }
+  });
+};
+
+export const useUpdateServiceTokenV3 = () => {
+  const queryClient = useQueryClient();
+  return useMutation<ServiceTokenDataV3, {}, UpdateServiceTokenDataV3DTO>({
+    mutationFn: async ({
+      serviceTokenDataId,
+      name,
+      isActive,
+      scopes,
+      trustedIps,
+      expiresIn
+    }) => {
+      const { data: { serviceTokenData } } = await apiRequest.patch(`/api/v3/service-token/${serviceTokenDataId}`, {
+        name,
+        isActive,
+        scopes,
+        trustedIps,
+        expiresIn
+      });
+
+      return serviceTokenData;
+    },
+    onSuccess: ({ workspace }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceServiceTokenDataV3(workspace));
+    }
+  });
+};
+
+export const useDeleteServiceTokenV3 = () => {
+  const queryClient = useQueryClient();
+  return useMutation<ServiceTokenDataV3, {}, DeleteServiceTokenDataV3DTO>({
+    mutationFn: async ({
+      serviceTokenDataId
+    }) => {
+      const { data: { serviceTokenData } } = await apiRequest.delete(`/api/v3/service-token/${serviceTokenDataId}`);
+      return serviceTokenData;
+    },
+    onSuccess: ({ workspace }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceServiceTokenDataV3(workspace));
     }
   });
 };

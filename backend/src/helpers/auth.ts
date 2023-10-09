@@ -7,6 +7,7 @@ import {
 	ITokenVersion,
 	IUser,
 	ServiceTokenData,
+	ServiceTokenDataV3,
 	TokenVersion,
 	User,
 } from "../models";
@@ -23,12 +24,14 @@ import {
 	getJwtProviderAuthSecret,
 	getJwtRefreshLifetime,
 	getJwtRefreshSecret,
+	getJwtServiceTokenSecret
 } from "../config";
 import {
 	AuthMode
 } from "../variables";
 import {
 	ServiceTokenAuthData,
+	ServiceTokenV3AuthData,
 	UserAuthData
 } from "../interfaces/middleware";
 
@@ -47,6 +50,9 @@ export const validateAuthMode = ({
 	headers: { [key: string]: string | string[] | undefined },
 	acceptedAuthModes: AuthMode[]
 }) => {
+	
+	// TODO: update this to accept service token v3
+	
 	const apiKey = headers["x-api-key"];
 	const authHeader = headers["authorization"];
 
@@ -65,6 +71,7 @@ export const validateAuthMode = ({
 	if (typeof authHeader === "string") {
 		// case: treat request authentication type as via Authorization header (i.e. either JWT or service token)
 		const [tokenType, tokenValue] = <[string, string]>authHeader.split(" ", 2) ?? [null, null]
+
 		if (tokenType === null)
 			throw BadRequestError({ message: "Missing Authorization Header in the request header." });
 		if (tokenType.toLowerCase() !== "bearer")
@@ -72,15 +79,21 @@ export const validateAuthMode = ({
 		if (tokenValue === null)
 			throw BadRequestError({ message: "Missing Authorization Body in the request header." });
 
-		switch (tokenValue.split(".", 1)[0]) {
+		const parts = tokenValue.split(".");
+		
+		switch (parts[0]) {
 			case "st":
 				authMode = AuthMode.SERVICE_TOKEN;
+				authTokenValue = tokenValue;
+				break;
+			case "stv3":
+				authMode = AuthMode.SERVICE_TOKEN_V3;
+				authTokenValue = parts.slice(1).join(".");
 				break;
 			default:
 				authMode = AuthMode.JWT;
+				authTokenValue = tokenValue;
 		}
-
-		authTokenValue = tokenValue;
 	}
 
 	if (!authMode || !authTokenValue) throw BadRequestError({ message: "Missing valid Authorization or X-API-KEY in request header." });
@@ -211,8 +224,73 @@ export const getAuthSTDPayload = async ({
 		userAgent: req.headers["user-agent"] ?? "",
 		userAgentType: getUserAgentType(req.headers["user-agent"])
 	}
+}
 
-	// return serviceTokenDataToReturn;
+/**
+ * Return service token data V3 payload corresponding to service token [authTokenValue]
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue - service token value
+ * @returns {ServiceTokenData} serviceTokenData - service token data
+ */
+ export const getAuthSTDV3Payload = async ({
+	req,
+	authTokenValue,
+}: {
+	req: Request,
+	authTokenValue: string;
+}): Promise<ServiceTokenV3AuthData> => {
+	const decodedToken = <jwt.UserIDJwtPayload>(
+		jwt.verify(authTokenValue, await getJwtServiceTokenSecret())
+	);
+	
+	const serviceTokenData = await ServiceTokenDataV3.findOneAndUpdate(
+		{
+			_id: new Types.ObjectId(decodedToken._id),
+			isActive: true
+		},
+		{
+			lastUsed: new Date(),
+			$inc: { usageCount: 1 }
+		},
+		{
+			new: true
+		}
+	);
+	
+	if (!serviceTokenData) {
+		throw UnauthorizedRequestError({ 
+			message: "Failed to authenticate"
+		});
+	} else if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
+		// case: service token expired
+		await ServiceTokenDataV3.findByIdAndUpdate(
+			serviceTokenData._id,
+			{
+				isActive: false
+			},
+			{
+				new: true
+			}
+		);
+		
+		throw UnauthorizedRequestError({
+			message: "Failed to authenticate",
+		});
+	}
+
+	return {
+		actor: {
+			type: ActorType.SERVICE_V3,
+			metadata: {
+				serviceId: serviceTokenData._id.toString(),
+				name: serviceTokenData.name
+			}
+		},
+		authPayload: serviceTokenData,
+		ipAddress: req.realIP,
+		userAgent: req.headers["user-agent"] ?? "",
+		userAgentType: getUserAgentType(req.headers["user-agent"])
+	}
 }
 
 /**
@@ -382,11 +460,15 @@ export const createToken = ({
 	secret,
 }: {
 	payload: any;
-	expiresIn: string | number;
+	expiresIn?: string | number;
 	secret: string;
 }) => {
 	return jwt.sign(payload, secret, {
-		expiresIn,
+		...(
+			(expiresIn !== undefined && expiresIn !== null) 
+			? { expiresIn } 
+			: {}
+		)
 	});
 };
 

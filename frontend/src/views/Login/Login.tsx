@@ -36,7 +36,7 @@ export const Login = () => {
           const callbackPort = queryParams.get("callback_port")
 
           // send post request to cli with details
-          const cliUrl = `http://localhost:${callbackPort}`
+          const cliUrl = `http://127.0.0.1:${callbackPort}/`
           const instance = axios.create()
           await instance.post(cliUrl, { email: userDetails.email, privateKey: localStorage.getItem("PRIVATE_KEY"), JTWToken: getAuthToken() })
         }

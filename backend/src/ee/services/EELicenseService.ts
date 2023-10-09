@@ -1,12 +1,12 @@
 import { Types } from "mongoose";
 import * as Sentry from "@sentry/node";
 import NodeCache from "node-cache";
-import { 
+import {
     getLicenseKey,
     getLicenseServerKey,
     getLicenseServerUrl,
 } from "../../config";
-import { 
+import {
     licenseKeyRequest,
     licenseServerKeyRequest,
     refreshLicenseKeyToken,
@@ -37,6 +37,7 @@ interface FeatureSet {
     status: "incomplete" | "incomplete_expired" | "trialing" | "active" | "past_due" | "canceled" | "unpaid" | null;
     trial_end: number | null;
     has_used_trial: boolean;
+    secretApproval: boolean;
 }
 
 /**
@@ -46,7 +47,7 @@ interface FeatureSet {
  * - Self-hosted enterprise: Fetch and update global feature set
  */
 class EELicenseService {
-    
+
     private readonly _isLicenseValid: boolean; // TODO: deprecate
 
     public instanceType: "self-hosted" | "enterprise-self-hosted" | "cloud" = "self-hosted";
@@ -64,7 +65,7 @@ class EELicenseService {
         secretVersioning: true,
         pitRecovery: false,
         ipAllowlisting: false,
-        rbac: true,
+        rbac: false,
         customRateLimits: false,
         customAlerts: false,
         auditLogs: false,
@@ -72,18 +73,19 @@ class EELicenseService {
         samlSSO: false,
         status: null,
         trial_end: null,
-        has_used_trial: true
+        has_used_trial: true,
+        secretApproval: false
     }
 
     public localFeatureSet: NodeCache;
-    
+
     constructor() {
         this._isLicenseValid = true;
         this.localFeatureSet = new NodeCache({
             stdTTL: 60,
         });
     }
-    
+
     public async getPlan(organizationId: Types.ObjectId, workspaceId?: Types.ObjectId): Promise<FeatureSet> {
         try {
             if (this.instanceType === "cloud") {
@@ -96,7 +98,7 @@ class EELicenseService {
                 if (!organization) throw OrganizationNotFoundError();
 
                 let url = `${await getLicenseServerUrl()}/api/license-server/v1/customers/${organization.customerId}/cloud-plan`;
-                
+
                 if (workspaceId) {
                     url += `?workspaceId=${workspaceId}`;
                 }
@@ -114,14 +116,14 @@ class EELicenseService {
 
         return this.globalFeatureSet;
     }
-    
+
     public async refreshPlan(organizationId: Types.ObjectId, workspaceId?: Types.ObjectId) {
         if (this.instanceType === "cloud") {
             this.localFeatureSet.del(`${organizationId.toString()}-${workspaceId?.toString() ?? ""}`);
             await this.getPlan(organizationId, workspaceId);
         }
     }
-    
+
     public async delPlan(organizationId: Types.ObjectId) {
         if (this.instanceType === "cloud") {
             this.localFeatureSet.del(`${organizationId.toString()}-`);
@@ -136,23 +138,23 @@ class EELicenseService {
             if (licenseServerKey) {
                 // license server key is present -> validate it
                 const token = await refreshLicenseServerKeyToken()
-                    
+
                 if (token) {
                     this.instanceType = "cloud";
                 }
-                
+
                 return;
             }
-            
+
             if (licenseKey) {
                 // license key is present -> validate it
                 const token = await refreshLicenseKeyToken();
-                    
+
                 if (token) {
                     const { data: { currentPlan } } = await licenseKeyRequest.get(
                         `${await getLicenseServerUrl()}/api/license/v1/plan`
                     );
-                    
+
                     this.globalFeatureSet = currentPlan;
                     this.instanceType = "enterprise-self-hosted";
                 }

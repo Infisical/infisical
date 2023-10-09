@@ -11,6 +11,9 @@ type Props = {
   isLoading?: boolean;
 };
 
+// refactor(akhilmhdh): both color and size variants are together need to split it
+// colorSchema should handle all color class names
+// variant should handle how the button padding and other  types should be set
 const buttonVariants = cva(
   [
     "button",
@@ -67,7 +70,7 @@ const buttonVariants = cva(
       {
         colorSchema: "primary",
         variant: "solid",
-        className: "bg-primary-500 bg-opacity-90 hover:bg-primary-500 hover:text-black"
+        className: "text-black bg-primary-500 bg-opacity-90 hover:bg-primary-500 hover:text-black"
       },
       {
         colorSchema: "primary",
@@ -105,6 +108,12 @@ const buttonVariants = cva(
         colorSchema: "danger",
         variant: "outline",
         className: "text-red hover:bg-red hover:text-black"
+      },
+      {
+        colorSchema: "danger",
+        variant: "outline_bg",
+        className:
+          "bg-mineshaft-600 border border-red-500 hover:bg-red/[0.1] hover:border-red/40 text-red-500"
       },
       {
         colorSchema: "primary",

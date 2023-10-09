@@ -88,7 +88,10 @@ export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
   } = useForm<FormData>({
     resolver: yupResolver(schema),
     defaultValues: {
-      scopes: [{ secretPath: "/", environment: currentWorkspace?.environments?.[0]?.slug }]
+      scopes: [{ 
+        secretPath: "/", 
+        environment: currentWorkspace?.environments?.[0]?.slug 
+      }]
     }
   });
 
@@ -133,7 +136,7 @@ export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
         plaintext: key,
         key: randomBytes
       });
-
+      
       const { serviceToken } = await createServiceToken.mutateAsync({
         encryptedKey: ciphertext,
         iv,

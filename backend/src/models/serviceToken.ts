@@ -1,3 +1,4 @@
+// TODO: deprecate
 import { Schema, Types, model } from "mongoose";
 export interface IServiceToken {
 	_id: Types.ObjectId;

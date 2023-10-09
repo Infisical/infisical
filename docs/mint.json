@@ -117,10 +117,8 @@
         "documentation/platform/secret-reference",
         "documentation/platform/webhooks",
         "documentation/platform/pit-recovery",
-        "documentation/platform/secret-versioning",
         "documentation/platform/audit-logs",
         "documentation/platform/token",
-        "documentation/platform/ip-allowlisting",
         "documentation/platform/mfa",
         {
           "group": "SSO",
@@ -128,6 +126,7 @@
             "documentation/platform/sso/overview",
             "documentation/platform/sso/google",
             "documentation/platform/sso/github",
+            "documentation/platform/sso/gitlab",
             "documentation/platform/sso/okta",
             "documentation/platform/sso/azure",
             "documentation/platform/sso/jumpcloud"
@@ -277,6 +276,12 @@
       ]
     },
     {
+      "group": "Build Tool Integrations",
+      "pages": [
+        "integrations/build-tools/gradle"
+      ]
+    },
+    {
       "group": "Overview",
       "pages": ["sdks/overview"]
     },
@@ -380,15 +385,6 @@
         "internals/flows",
         "internals/security",
         "internals/service-tokens"
-      ]
-    },
-    {
-      "group": "Security",
-      "pages": [
-        "security/overview",
-        "security/data-model",
-        "security/mechanics",
-        "security/service-tokens"
       ]
     },
     {
