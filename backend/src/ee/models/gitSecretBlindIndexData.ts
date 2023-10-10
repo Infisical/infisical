@@ -1,13 +1,12 @@
-import { Document, Schema, Types, model } from "mongoose";
+import { Document, Schema, model } from "mongoose";
 import { 
     ALGORITHM_AES_256_GCM,
     ENCODING_SCHEME_BASE64,
     ENCODING_SCHEME_UTF8,
-} from "../variables";
+} from "../../variables";
 
 export interface IGitSecretBlindIndexData extends Document {
-    _id: Types.ObjectId;
-    organizationId: string;
+    organizationId: Schema.Types.ObjectId;
     encryptedSaltCiphertext: string;
     saltIV: string;
     saltTag: string;

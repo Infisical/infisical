@@ -2,8 +2,6 @@ export * from "./backupPrivateKey";
 export * from "./bot";
 export * from "./botOrg";
 export * from "./botKey";
-export * from "./gitSecret";
-export * from "./gitSecretBlindIndexData";
 export * from "./incidentContactOrg";
 export * from "./integration/integration";
 export * from "./integrationAuth";

@@ -1,10 +1,9 @@
 import Queue, { Job } from "bull";
 import { ProbotOctokit } from "probot";
-import { Schema } from "mongoose";
 
 import TelemetryService from "../../services/TelemetryService";
 import { sendMail } from "../../helpers";
-import GitRisks, { RiskStatus } from "../../ee/models/gitRisks";
+import { GitRisks, RiskStatus } from "../../ee/models";
 import { MembershipOrg, User } from "../../models";
 import { ADMIN } from "../../variables";
 import { convertKeysToLowercase, scanContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";
@@ -12,6 +11,7 @@ import { getSecretScanningGitAppId, getSecretScanningPrivateKey } from "../../co
 import { BatchRiskUpdateItem, TScanPushEventQueueDetails } from "./types";
 import { SecretScanningService } from "../../services";
 import { bulkWriteRiskData } from "./bulkWriteHelper";
+import mongoose, { Schema } from "mongoose";
 
 export const githubPushEventSecretScan = new Queue("github-push-event-secret-scanning", "redis://redis:6379");
 
@@ -30,29 +30,27 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
     auth: {
       appId: await getSecretScanningGitAppId(),
       privateKey: await getSecretScanningPrivateKey(),
-      installationId: installationId,
+      installationId,
     },
   });
 
   const existingUnresolvedFingerprints: string[] = [];
   const batchRiskUpdate: BatchRiskUpdateItem[] = [];
 
-  const updateGitSecretBlindIndexes = new Set<string>();
-  const newGitSecretFindingsValues = new Set<string>();
-  const newGitSecretBlindIndexes: string[] = [];
-
-  const allRisksMarkedFalsePositive = await GitRisks.find({
+  // only search in the current repo as we look for matching fingerprints
+  const allRisksMarkedFalsePositiveInRepo = await GitRisks.find({
     repositoryId: repository.id,
     status: RiskStatus.RESOLVED_FALSE_POSITIVE
   }).lean()
 
-  const allGitSecretsMarkedFalsePositive = await SecretScanningService.getGitSecrets({ 
-    organizationId,
+  // search across all of the org's repos as we look for matching blind indexes
+  const allRisksMarkedFalsePositiveInOrg = await GitRisks.find({
+    organization: new mongoose.Types.ObjectId(organizationId),
     status: RiskStatus.RESOLVED_FALSE_POSITIVE
-  })
+  }).select("+gitSecretBlindIndex").lean()
 
-  const existingFingerprintsWithStatusFalsePositive = allRisksMarkedFalsePositive.map(risk => risk.fingerPrintWithoutCommitId)
-  const existingBlindIndexesWithStatusFalsePositive = allGitSecretsMarkedFalsePositive.map(gitSecret => gitSecret.gitSecretBlindIndex)
+  const existingFingerprintsWithStatusFalsePositive = allRisksMarkedFalsePositiveInRepo.map(risk => risk.fingerPrintWithoutCommitId)
+  const existingBlindIndexesWithStatusFalsePositive = allRisksMarkedFalsePositiveInOrg.map(risk => risk.gitSecretBlindIndex)
 
   for (const commit of commits) {
     for (const filepath of [...commit.added, ...commit.modified]) {
@@ -83,40 +81,42 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
             gitSecret: finding.Secret
           })
 
-          if (existingBlindIndexesWithStatusFalsePositive.includes(gitSecretBlindIndex) || existingFingerprintsWithStatusFalsePositive.includes(fingerPrintWithCommitId)) {
-            // can remove this if we don't want all new commits that still contain the fingerprints marked 
+          const encryptionProperties = await SecretScanningService.encryptGitSecret({ 
+            gitSecret: finding.Secret
+          })
+
+          // console.log("encryptionProperties:", encryptionProperties)
+
+          if (existingFingerprintsWithStatusFalsePositive.includes(fingerPrintWithCommitId) || existingBlindIndexesWithStatusFalsePositive.includes(gitSecretBlindIndex)) {
+            // can skip this if we don't want all new commits that still contain the fingerprints marked 
             // false positive to keep being added to GitRisks & the secret scanning logs table
             batchRiskUpdate.push({
               fingerprint: finding.Fingerprint,
               data: {
                 ...convertKeysToLowercase(finding),
-                installationId: installationId,
+                installationId,
                 organization: organizationId as unknown as Schema.Types.ObjectId,
                 repositoryFullName: repository.fullName,
                 repositoryId: repository.id.toString(),
                 status: RiskStatus.RESOLVED_FALSE_POSITIVE, // set status to false positive
-                gitSecretBlindIndex: gitSecretBlindIndex
+                gitSecretBlindIndex,
+                ...encryptionProperties
               },
             });
-            // same here + this causes the most recent risk status for that secret to be marked as false positive
-            updateGitSecretBlindIndexes.add(gitSecretBlindIndex); // only want unique blind indexes here
-
           } else {
             batchRiskUpdate.push({
               fingerprint: finding.Fingerprint,
               data: {
                 ...convertKeysToLowercase(finding),
-                installationId: installationId,
+                installationId,
                 organization: organizationId as unknown as Schema.Types.ObjectId,
                 repositoryFullName: repository.fullName,
                 repositoryId: repository.id.toString(),
                 status: RiskStatus.UNRESOLVED, // new risk so set to unresolved
-                gitSecretBlindIndex: gitSecretBlindIndex
+                gitSecretBlindIndex,
+                ...encryptionProperties
               },
             });
-
-            newGitSecretFindingsValues.add(finding.Secret); // only need unique findings
-            newGitSecretBlindIndexes.push(gitSecretBlindIndex); // process all so we can add against GitRisks
           }
         }
       } catch (error) {
@@ -126,27 +126,9 @@ githubPushEventSecretScan.process(async (job: Job, done: Queue.DoneCallback) => 
   }
 
   if (!batchRiskUpdate?.length) return;
-
+ 
   // check for duplicate data and bulk update Git risks
   await bulkWriteRiskData(batchRiskUpdate);
-  
-  if (updateGitSecretBlindIndexes.size) {
-    await SecretScanningService.updateGitSecrets({
-      gitSecretBlindIndexes: Array.from(updateGitSecretBlindIndexes),
-      organizationId,
-      status: RiskStatus.RESOLVED_FALSE_POSITIVE // set status to false positive
-    });
-  }
-    
-  if (newGitSecretFindingsValues.size && newGitSecretBlindIndexes.length) {
-    await SecretScanningService.createGitSecrets({
-      gitSecrets: Array.from(newGitSecretFindingsValues),
-      gitSecretBlindIndexes: newGitSecretBlindIndexes,
-      organizationId,
-      salt,
-      status: RiskStatus.UNRESOLVED // new risk so set to unresolved
-    });
-  }
 
   // get emails of admins
   const adminsOfWork = await MembershipOrg.find({

@@ -1,6 +1,6 @@
 import { Probot } from "probot";
-import GitRisks from "../../models/gitRisks";
-import GitAppOrganizationInstallation from "../../models/gitAppOrganizationInstallation";
+
+import { GitAppOrganizationInstallation, GitRisks } from "../../models";
 import { scanGithubPushEventForSecretLeaks } from "../../../queues/secret-scanning/githubScanPushEvent";
 import { SecretScanningService } from "../../../services";
 

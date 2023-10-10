@@ -20,7 +20,7 @@ import { getRisksByOrganization } from "@app/hooks/api";
 import { ConfigureInfisicalRadar } from "./ConfigureInfisicalRadar";
 import { DownloadSecretScanningTable } from "./DownloadSecretScanningTable";
 import { RiskStatusSelection } from "./RiskStatusSelection";
-import { GitRisks,RiskStatus } from "./types";
+import { GitRisks, RiskStatus } from "./types";
 
 enum RiskStatusFilter {
   ALL = "All",

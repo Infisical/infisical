@@ -1,4 +1,5 @@
 import { Commit } from "@octokit/webhooks-types";
+
 import { RiskStatus } from "../../ee/models";
 import { Schema } from "mongoose";
 
@@ -29,11 +30,16 @@ export interface BatchRiskUpdateItem {
   fingerprint: string;
   data: {
     installationId: string;
-    organization: Schema.Types.ObjectId;
+    organization: Schema.Types.ObjectId,
     repositoryFullName: string;
     repositoryId: string;
     status: RiskStatus;
     gitSecretBlindIndex: string;
+    gitSecretValueCiphertext: string;
+    gitSecretValueIV: string;
+    gitSecretValueTag: string;
+    algorithm: "aes-256-gcm";
+    keyEncoding: "utf8" | "base64";
   };
 }
 

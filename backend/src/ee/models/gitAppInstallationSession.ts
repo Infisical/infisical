@@ -29,6 +29,4 @@ const gitAppInstallationSession = new Schema<GitAppInstallationSession>({
 });
 
 
-const GitAppInstallationSession = model<GitAppInstallationSession>("git_app_installation_session", gitAppInstallationSession);
-
-export default GitAppInstallationSession;
+export const GitAppInstallationSession = model<GitAppInstallationSession>("git_app_installation_session", gitAppInstallationSession);

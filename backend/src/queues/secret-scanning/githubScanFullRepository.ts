@@ -1,10 +1,9 @@
 import Queue, { Job } from "bull";
 import { ProbotOctokit } from "probot"
-import { Schema } from "mongoose";
 
 import TelemetryService from "../../services/TelemetryService";
 import { sendMail } from "../../helpers";
-import { RiskStatus } from "../../ee/models/gitRisks";
+import { RiskStatus } from "../../ee/models";
 import { MembershipOrg, User } from "../../models";
 import { ADMIN } from "../../variables";
 import { convertKeysToLowercase, scanFullRepoContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";
@@ -13,6 +12,7 @@ import { SecretMatch } from "../../ee/services/GithubSecretScanning/types";
 import { BatchRiskUpdateItem, TScanQueueDetailsBase } from "./types";
 import { SecretScanningService } from "../../services";
 import { bulkWriteRiskData } from "./bulkWriteHelper";
+import { Schema } from "mongoose";
 
 export const githubFullRepositorySecretScan = new Queue("github-full-repository-secret-scanning", "redis://redis:6379");
 
@@ -30,49 +30,39 @@ githubFullRepositorySecretScan.process(async (job: Job, done: Queue.DoneCallback
         auth: {
           appId: await getSecretScanningGitAppId(),
           privateKey: await getSecretScanningPrivateKey(),
-          installationId: installationId,
+          installationId,
         },
       });
 
       const findings: SecretMatch[] = await scanFullRepoContentAndGetFindings(octokit, installationId, repository.fullName)
       const batchRiskUpdate: BatchRiskUpdateItem[] = [];
-      const secretFindings: string[] = [];
 
       for (const finding of findings) {
+        const gitSecretBlindIndex = await SecretScanningService.createGitSecretBlindIndexWithSalt({ 
+          salt,
+          gitSecret: finding.Secret
+        })
+
+        const encryptionProperties = await SecretScanningService.encryptGitSecret({ 
+          gitSecret: finding.Secret
+        })
+
         batchRiskUpdate.push({
           fingerprint: finding.Fingerprint,
           data: {
             ...convertKeysToLowercase(finding),
-            installationId: installationId,
+            installationId,
             organization: organizationId as unknown as Schema.Types.ObjectId,
             repositoryFullName: repository.fullName,
             repositoryId: repository.id.toString(),
             status: RiskStatus.UNRESOLVED,
-            gitSecretBlindIndex: "", // placeholder until we create the blind indexes in bulk
+            gitSecretBlindIndex,
+            ...encryptionProperties
           },
         })
-        secretFindings.push(finding.Secret);
       }
 
       if (!batchRiskUpdate?.length) return;
-
-      // setup blind indexing for the Git secret findings
-      const gitSecretBlindIndexes = await SecretScanningService.createGitSecrets({
-        gitSecrets: secretFindings,
-        organizationId,
-        salt,
-        status: RiskStatus.UNRESOLVED // new finding so set to unresolved
-      })
-
-      if (findings.length !== gitSecretBlindIndexes.length) {
-        throw new Error("Length mismatch between the Git secret findings and the new Git secret blind indexes");
-      }
-
-      // update the batch update operation with the corresponding gitSecretBlindIndex
-      // this is needed to sync Git risk status updates for GitRisks and GitSecret
-      for (let i = 0; i < findings.length; i++) {
-        batchRiskUpdate[i].data.gitSecretBlindIndex = gitSecretBlindIndexes[i];
-      }
 
       // check for duplicate data and bulk update Git risks
       await bulkWriteRiskData(batchRiskUpdate);

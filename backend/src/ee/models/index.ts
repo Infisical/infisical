@@ -9,3 +9,4 @@ export * from "./auditLog";
 export * from  "./gitRisks";
 export * from  "./gitAppOrganizationInstallation";
 export * from  "./gitAppInstallationSession";
+export * from  "./gitSecretBlindIndexData";

@@ -1,7 +1,7 @@
 import { isEqual } from "lodash";
 
 import { BatchRiskUpdateItem, BulkOperationItem } from "./types";
-import GitRisks from "../../ee/models/gitRisks";
+import { GitRisks } from "../../ee/models";
 
 export async function bulkWriteRiskData(
   batchRiskUpdate: BatchRiskUpdateItem[],

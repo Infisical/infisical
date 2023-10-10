@@ -2,6 +2,7 @@ import { exec } from "child_process";
 import { mkdir, readFile, rm, writeFile } from "fs";
 import { tmpdir } from "os";
 import { join } from "path"
+
 import { SecretMatch } from "./types";
 
 export async function scanFullRepoContentAndGetFindings(octokit: any, installationId: string, repositoryFullName: string): Promise<SecretMatch[]> {

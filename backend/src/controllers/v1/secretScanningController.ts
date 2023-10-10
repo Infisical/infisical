@@ -1,12 +1,14 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { ProbotOctokit } from "probot";
 import { ForbiddenError } from "@casl/ability";
 
-import GitAppInstallationSession from "../../ee/models/gitAppInstallationSession";
-import GitAppOrganizationInstallation from "../../ee/models/gitAppOrganizationInstallation";
-import GitRisks, { RiskStatus } from "../../ee/models/gitRisks";
+import { 
+  GitAppInstallationSession,
+  GitAppOrganizationInstallation,
+  GitRisks,
+} from "../../ee/models";
 import { Organization } from "../../models";
 
 import { scanGithubFullRepoForSecretLeaks } from "../../queues/secret-scanning/githubScanFullRepository";
@@ -81,7 +83,7 @@ export const linkInstallationToOrganization = async (req: Request, res: Response
       organizationId: installationSession.organization
     },
     {
-      installationId: installationId,
+      installationId,
       organizationId: installationSession.organization,
       user: installationSession.user
     },
@@ -99,7 +101,7 @@ export const linkInstallationToOrganization = async (req: Request, res: Response
     auth: {
       appId: await getSecretScanningGitAppId(),
       privateKey: await getSecretScanningPrivateKey(),
-      installationId: installationId
+      installationId
     },
   });
 
@@ -121,7 +123,7 @@ export const getCurrentOrganizationInstallationStatus = async (req: Request, res
   const { organizationId } = req.params;
   try {
     const appInstallation = await GitAppOrganizationInstallation.findOne({
-      organizationId: organizationId
+      organizationId
     }).lean();
     if (!appInstallation) {
       res.json({
@@ -150,9 +152,10 @@ export const getRisksForOrganization = async (req: Request, res: Response) => {
     OrgPermissionSubjects.SecretScanning
   );
 
-  const risks = await GitRisks.find({ organization: organizationId })
+  const risks = await GitRisks.find({ organization: new mongoose.Types.ObjectId(organizationId) })
     .sort({ createdAt: -1 })
     .lean();
+  
   res.json({
     risks: risks
   });
@@ -170,24 +173,7 @@ export const updateRiskStatus = async (req: Request, res: Response) => {
     OrgPermissionSubjects.SecretScanning
   );
 
-  const risk = await GitRisks.findByIdAndUpdate(riskId, { status }).select("+gitSecretBlindIndex").lean();
-
-  // if no blind index, this is a legacy situation and we need to create it
-  const gitSecretBlindIndex = risk?.gitSecretBlindIndex ?? await SecretScanningService.createGitSecretBlindIndexData({ organizationId });
- 
-  // this function defines the status for the Git secret as this risk, 
-  // even if not all the fingerprints with the same blind index have been changed
-  if (gitSecretBlindIndex) {
-    await SecretScanningService.updateGitSecret({
-      gitSecretBlindIndex,
-      organizationId,
-      status: status as RiskStatus
-    })
-  }
-
-  // OPTION: now we go back and update all Git risks with the same blind index 
-  // this could be a popup to alert the user there are other Git risks with the same blind index but a different staus
-  // await GitRisks.updateMany({ gitSecretBlindIndex }, { status }).select("+gitSecretBlindIndex").lean();
+  const risk = await GitRisks.findByIdAndUpdate(riskId, { status }).lean();
 
   res.json(risk);
 };

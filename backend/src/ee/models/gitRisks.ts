@@ -1,4 +1,9 @@
 import { Schema, model } from "mongoose";
+import {
+  ALGORITHM_AES_256_GCM,
+  ENCODING_SCHEME_BASE64,
+  ENCODING_SCHEME_UTF8,
+} from "../../variables";
 
 export enum RiskStatus {
   RESOLVED_FALSE_POSITIVE = "RESOLVED_FALSE_POSITIVE",
@@ -7,9 +12,16 @@ export enum RiskStatus {
   UNRESOLVED = "UNRESOLVED",
 }
 
+export interface GitRisksEncryptionProperties {
+  gitSecretValueCiphertext: string;
+  gitSecretValueIV: string;
+  gitSecretValueTag: string;
+  algorithm: "aes-256-gcm";
+  keyEncoding: "utf8" | "base64";
+}
+
 export type GitRisks = {
   id: string;
-  gitSecretBlindIndex?: string; // New field to map to the Git secrets to enable updating the status across schemas
   description: string;
   startLine: string;
   endLine: string;
@@ -28,27 +40,24 @@ export type GitRisks = {
   tags: string[];
   ruleID: string;
   fingerprint: string;
-  fingerPrintWithoutCommitId: string
+  fingerPrintWithoutCommitId: string;
   riskOwner: string | null; // New field for setting a risk owner (nullable string)
-  installationId: string,
-  repositoryId: string,
-  repositoryLink: string
-  repositoryFullName: string
-  status: RiskStatus
+  installationId: string;
+  repositoryId: string;
+  repositoryLink: string;
+  repositoryFullName: string;
+  status: RiskStatus;
   pusher: {
-    name: string,
-    email: string
-  },
+    name: string;
+    email: string;
+  };
   organization: Schema.Types.ObjectId,
-}
+  gitSecretBlindIndex?: string;
+} & GitRisksEncryptionProperties;
 
 const gitRisks = new Schema<GitRisks>({
   id: {
     type: String,
-  },
-  gitSecretBlindIndex: {
-    type: String,
-    select: false,
   },
   description: {
     type: String,
@@ -136,8 +145,32 @@ const gitRisks = new Schema<GitRisks>({
     enum: RiskStatus,
     default: RiskStatus.UNRESOLVED,
   },
+  gitSecretBlindIndex: {
+    type: String,
+    select: false,
+  },
+  gitSecretValueCiphertext: {
+    type: String,
+    select: false,
+  },
+  gitSecretValueIV: {
+    type: String,
+    select: false,
+  },
+  gitSecretValueTag: {
+    type: String,
+    select: false,
+  },
+  algorithm: {
+    type: String,
+    enum: [ALGORITHM_AES_256_GCM],
+    default: ALGORITHM_AES_256_GCM,
+  },
+  keyEncoding: {
+    type: String,
+    enum: [ENCODING_SCHEME_UTF8, ENCODING_SCHEME_BASE64],
+    default: ENCODING_SCHEME_UTF8,
+  },
 }, { timestamps: true });
 
-const GitRisks = model<GitRisks>("GitRisks", gitRisks);
-
-export default GitRisks;
+export const GitRisks = model<GitRisks>("GitRisks", gitRisks);

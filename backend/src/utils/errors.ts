@@ -260,24 +260,4 @@ export const GitSecretBlindIndexHashingError = (error?: Partial<RequestErrorCont
     stack: error?.stack,
 }); 
 
-//* ----->[GIT SECRET NOT FOUND ERRORS]<-----
-export const GitSecretNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
-    logLevel: error?.logLevel ?? LogLevel.ERROR,
-    statusCode: error?.statusCode ?? 404,
-    type: error?.type ?? "git_secret_not_found_error",
-    message: error?.message ?? "Error finding the Git secret by blind index for secret scanning",
-    context: error?.context,
-    stack: error?.stack,
-}); 
-
-//* ----->[GIT SECRET BULK UPDATE ERRORS]<-----
-export const GitSecretsBulkUpdateError = (error?: Partial<RequestErrorContext>) => new RequestError({
-    logLevel: error?.logLevel ?? LogLevel.ERROR,
-    statusCode: error?.statusCode ?? 404,
-    type: error?.type ?? "git_secret_bulk_update_error",
-    message: error?.message ?? "Error updating the Git secrets for secret scanning",
-    context: error?.context,
-    stack: error?.stack,
-}); 
-
 //* ----->[MISC ERRORS]<-----

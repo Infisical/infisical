@@ -1,13 +1,13 @@
 import { Schema, model } from "mongoose";
 
-type Installation = {
+type GitAppOrganizationInstallation = {
   installationId: string
   organizationId: string
   user: Schema.Types.ObjectId
 };
 
 
-const gitAppOrganizationInstallation = new Schema<Installation>({
+const gitAppOrganizationInstallation = new Schema<GitAppOrganizationInstallation>({
   installationId: {
     type: String,
     required: true,
@@ -26,6 +26,4 @@ const gitAppOrganizationInstallation = new Schema<Installation>({
 });
 
 
-const GitAppOrganizationInstallation = model<Installation>("git_app_organization_installation", gitAppOrganizationInstallation);
-
-export default GitAppOrganizationInstallation;
+export const GitAppOrganizationInstallation = model<GitAppOrganizationInstallation>("git_app_organization_installation", gitAppOrganizationInstallation);
