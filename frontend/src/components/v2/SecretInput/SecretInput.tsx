@@ -22,7 +22,7 @@ const sanitizeConf = {
 
 const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
   if (content === "") return "EMPTY";
-  if (!content) return "missing";
+  if (!content) return "EMPTY";
   if (!isVisible) return replaceContentWithDot(content);
 
   const sanitizedContent = sanitizeHtml(
