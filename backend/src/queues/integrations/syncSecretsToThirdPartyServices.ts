@@ -60,7 +60,8 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
       integrationAuth,
       secrets: Object.keys(suffixedSecrets).length !== 0 ? suffixedSecrets : secrets,
       accessId: access.accessId === undefined ? null : access.accessId,
-      accessToken: access.accessToken
+      accessToken: access.accessToken,
+      appendices: { prefix: integration.metadata?.secretPrefix || "", suffix: integration.metadata?.secretSuffix || "" }
     });
   }
 })

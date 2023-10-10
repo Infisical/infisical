@@ -113,7 +113,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
       <h1 className="mb-8 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         Login to Infisical
       </h1>
-      <div className="mt-4 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+      <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
         <Button
           colorSchema="primary"
           variant="outline_bg"
@@ -126,12 +126,12 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             window.close();
           }}
           leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-2" />}
-          className="mx-0 h-11 w-full"
+          className="mx-0 h-10 w-full"
         >
           {t("login.continue-with-google")}
         </Button>
       </div>
-      <div className="mt-4 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+      <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
         <Button
           colorSchema="primary"
           variant="outline_bg"
@@ -145,12 +145,12 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             window.close();
           }}
           leftIcon={<FontAwesomeIcon icon={faGithub} className="mr-2" />}
-          className="mx-0 h-11 w-full"
+          className="mx-0 h-10 w-full"
         >
           Continue with GitHub
         </Button>
       </div>
-      <div className="mt-4 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+      <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
         <Button
           colorSchema="primary"
           variant="outline_bg"
@@ -164,12 +164,12 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             window.close();
           }}
           leftIcon={<FontAwesomeIcon icon={faGitlab} className="mr-2" />}
-          className="mx-0 h-11 w-full"
+          className="mx-0 h-10 w-full"
         >
           Continue with GitLab
         </Button>
       </div>
-      <div className="mt-4 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+      <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
         <Button
           colorSchema="primary"
           variant="outline_bg"
@@ -177,7 +177,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             setStep(2);
           }}
           leftIcon={<FontAwesomeIcon icon={faLock} className="mr-2" />}
-          className="mx-0 h-11 w-full"
+          className="mx-0 h-10 w-full"
         >
           Continue with SSO
         </Button>
@@ -195,10 +195,10 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           placeholder="Enter your email..."
           isRequired
           autoComplete="username"
-          className="h-11"
+          className="h-10"
         />
       </div>
-      <div className="mt-4 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+      <div className="mt-2 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
         <Input
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -207,15 +207,15 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
           isRequired
           autoComplete="current-password"
           id="current-password"
-          className="select:-webkit-autofill:focus h-11"
+          className="select:-webkit-autofill:focus h-10"
         />
       </div>
-      <div className="mt-5 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
+      <div className="mt-3 w-1/4 min-w-[21.2rem] rounded-md text-center md:min-w-[20.1rem] lg:w-1/6">
         <Button
           type="submit"
           size="sm"
           isFullWidth
-          className="h-11"
+          className="h-10"
           colorSchema="primary"
           variant="solid"
           isLoading={isLoading}
@@ -227,10 +227,9 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
       {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
       {!serverDetails?.inviteOnlySignup ? (
         <div className="mt-6 flex flex-row text-sm text-bunker-400">
-          <span className="mr-1">Don&apos;t have an acount yet?</span>
           <Link href="/signup">
             <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-              {t("login.create-account")}
+              Don&apos;t have an acount yet? {t("login.create-account")}
             </span>
           </Link>
         </div>
@@ -238,10 +237,9 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
         <div />
       )}
       <div className="flex flex-row text-sm text-bunker-400">
-        <span className="mr-1">Forgot password?</span>
         <Link href="/verify-email">
           <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-            Recover your account
+            Forgot password? Recover your account
           </span>
         </Link>
       </div>
