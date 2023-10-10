@@ -7,7 +7,7 @@
 // @ts-nocheck
 import crypto from "crypto";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Image from "next/image";
@@ -68,11 +68,10 @@ import {
   useCreateWorkspace,
   useGetOrgTrialUrl,
   useGetSecretApprovalRequestCount,
+  useGetUserAction,
   useLogoutUser,
   useRegisterUserAction,
-  useUploadWsKey
-} from "@app/hooks/api";
-import { fetchUserAction  } from "@app/hooks/api/users/queries";
+  useUploadWsKey} from "@app/hooks/api";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -119,7 +118,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { user } = useUser();
   const { subscription } = useSubscription();
   const workspaceId = currentWorkspace?._id || "";
-  const [ isLearningNoteOpen, setIsLearningNoteOpen ] = useState(false);
+  const { data: updateClosed } = useGetUserAction("september_update_closed");
+  
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit
@@ -148,19 +148,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const registerUserAction = useRegisterUserAction();
 
-  useEffect(async () => {
-    const checkLearningNote = async () => {
-      const userUpdateClosedCheck = await fetchUserAction(
-        "september_update_closed"
-      );
-      setIsLearningNoteOpen(!userUpdateClosedCheck);
-    }
-    checkLearningNote();
-  })
-
   const closeUpdate = async () => {
     await registerUserAction.mutateAsync("september_update_closed");
-    setIsLearningNoteOpen(false);
   }
 
   const logout = useLogoutUser();
@@ -621,7 +610,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[10.7rem] ${router.asPath.includes("org") ? "bottom-[8.15rem]" : "bottom-[5.15rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-50`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[11.5rem] ${router.asPath.includes("org") ? "bottom-[7.9rem]" : "bottom-[4.9rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-70`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[12.3rem] ${router.asPath.includes("org") ? "bottom-[7.65rem]" : "bottom-[4.65rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-90`}/> */}
-                <div className={`${isLearningNoteOpen ? "block" : "hidden"} relative z-10 h-64 w-52 bg-mineshaft-900 border border-mineshaft-600 mb-6 rounded-md flex flex-col items-center justify-start px-3`}>
+                <div className={`${!updateClosed ? "block" : "hidden"} relative z-10 h-64 w-52 bg-mineshaft-900 border border-mineshaft-600 mb-6 rounded-md flex flex-col items-center justify-start px-3`}>
                   <div className="w-full mt-2 text-md text-mineshaft-100 font-semibold">Infisical September update</div>
                   <div className="w-full mt-1 text-sm text-mineshaft-300 font-normal leading-[1.2rem] mb-1">Improved RBAC, new integrations, dashboard remake, and more!</div>
                   <div className="h-[6.77rem] w-full rounded-md mt-2 border border-mineshaft-700"> 
