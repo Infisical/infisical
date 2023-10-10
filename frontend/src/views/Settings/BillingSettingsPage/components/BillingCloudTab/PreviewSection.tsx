@@ -1,3 +1,7 @@
+import Link from "next/link";
+import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
 import {
@@ -74,24 +78,36 @@ export const PreviewSection = () => {
         subscription?.slug !== "enterprise" &&
         subscription?.slug !== "pro" &&
         subscription?.slug !== "pro-annual" && (
-          <div className="p-4 rounded-lg flex-1 border border-mineshaft-600 mb-6 flex items-center bg-mineshaft-600">
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold text-mineshaft-50">Become Infisical</h2>
-              <p className="text-gray-400 mt-4">
-                Unlimited members, projects, RBAC, smart alerts, and so much more
-              </p>
+          <div className="flex flex-row space-x-6">
+            <div className="p-4 rounded-lg flex-1 border border-primary/40 mb-6 flex items-center bg-primary/10">
+              <div className="flex-1">
+                <h2 className="text-xl font-medium text-mineshaft-100">Unleash the full power of <span className="text-transparent font-semibold bg-clip-text bg-gradient-to-r from-primary-500 to-yellow">Infisical</span></h2>
+                <p className="text-gray-400 mt-4">
+                  Get unlimited members, projects, RBAC, smart alerts, and so much more.
+                </p>
+              </div>
+              <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Billing}>
+                {(isAllowed) => (
+                  <Button
+                    onClick={() => handleUpgradeBtnClick()}
+                    color="mineshaft"
+                    isDisabled={!isAllowed}
+                  >
+                    {!subscription.has_used_trial ? "Start Pro Free Trial" : "Upgrade Plan"}
+                  </Button>
+                )}
+              </OrgPermissionCan>
             </div>
-            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Billing}>
-              {(isAllowed) => (
-                <Button
-                  onClick={() => handleUpgradeBtnClick()}
-                  color="mineshaft"
-                  isDisabled={!isAllowed}
-                >
-                  {!subscription.has_used_trial ? "Start Pro Free Trial" : "Upgrade Plan"}
-                </Button>
-              )}
-            </OrgPermissionCan>
+            <div className="flex flex-col max-w-[12rem] w-full items-start border border-mineshaft-600 mb-6 flex items-center bg-mineshaft-800 p-4 rounded-lg">
+              <div className="mb-4 flex justify-center w-full font-semibold text-mineshaft-200">Want to learn more? </div>
+              <div className="flex justify-center w-full">
+                <Link href="https://infisical.com/schedule-demo">
+                  <span className="rounded-full px-4 py-2 bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/10 hover:border-primary/40 duration-200 cursor-pointer">
+                    Book a demo <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs mb-[0.06rem] ml-1"/>
+                  </span>
+                </Link> 
+              </div>
+            </div>
           </div>
         )}
       {!isLoading && subscription && data && (

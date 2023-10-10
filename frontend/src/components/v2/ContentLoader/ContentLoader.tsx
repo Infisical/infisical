@@ -23,10 +23,8 @@ export const ContentLoader = ({ text, frequency = 2000 }: Props) => {
   }, []);
 
   return (
-    <div className="container mx-auto flex relative flex-col h-1/2 w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark] space-y-8">
-      <div>
-        <img src="/images/loading/loading.gif" height={210} width={240} alt="loading animation" />
-      </div>
+    <div className="container mx-auto flex relative flex-col h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark] space-y-8">
+      <img src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
       {text && isTextArray && (
         <AnimatePresence exitBeforeEnter>
           <motion.div
@@ -40,7 +38,7 @@ export const ContentLoader = ({ text, frequency = 2000 }: Props) => {
           </motion.div>
         </AnimatePresence>
       )}
-      {text && !isTextArray && <div className="text-primary text-sm">{text}</div>}
+      {text && !isTextArray && <div className="text-primary text-xs">{text}</div>}
     </div>
   );
 };
