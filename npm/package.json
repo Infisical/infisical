@@ -1,0 +1,13 @@
+{
+  "name": "infisical-cli",
+  "version": "0.14.2",
+  "bin": {
+    "infisical": "./bin/infisical"
+  },
+  "scripts": {
+    "postinstall": "node src/index.cjs"
+  },
+  "dependencies": {
+    "tar": "^6.2.0"
+  }
+}
