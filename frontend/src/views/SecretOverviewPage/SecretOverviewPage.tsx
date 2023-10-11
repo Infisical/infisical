@@ -31,6 +31,7 @@ import {
 } from "@app/components/v2";
 import { useOrganization, useWorkspace } from "@app/context";
 import {
+  useCreateFolder,
   useCreateSecretV3,
   useDeleteSecretV3,
   useGetFoldersByEnv,
@@ -104,9 +105,24 @@ export const SecretOverviewPage = () => {
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
+  const { mutateAsync: createFolder } = useCreateFolder();
 
   const handleSecretCreate = async (env: string, key: string, value: string) => {
     try {
+      // create folder if not existing
+      if (secretPath !== "/") {
+        const path = secretPath.split("/");
+        const directory = path.slice(0, -1).join("/");
+        const folderName = path.at(-1);
+        if (folderName && directory) {
+          await createFolder({
+            workspaceId,
+            environment: env,
+            directory,
+            folderName
+          });
+        }
+      }
       await createSecretV3({
         environment: env,
         workspaceId,
@@ -154,13 +170,14 @@ export const SecretOverviewPage = () => {
     }
   };
 
-  const handleSecretDelete = async (env: string, key: string) => {
+  const handleSecretDelete = async (env: string, key: string, secretId?: string) => {
     try {
       await deleteSecretV3({
         environment: env,
         workspaceId,
         secretPath,
         secretName: key,
+        secretId,
         type: "shared"
       });
       createNotification({
@@ -188,7 +205,20 @@ export const SecretOverviewPage = () => {
     });
   };
 
-  const handleExploreEnvClick = (slug: string) => {
+  const handleExploreEnvClick = async (slug: string) => {
+    if (secretPath !== "/") {
+      const path = secretPath.split("/");
+      const directory = path.slice(0, -1).join("/");
+      const folderName = path.at(-1);
+      if (folderName && directory) {
+        await createFolder({
+          workspaceId,
+          environment: slug,
+          directory,
+          folderName
+        });
+      }
+    }
     const query: Record<string, string> = { ...router.query, env: slug };
     const envIndex = userAvailableEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
@@ -335,7 +365,14 @@ export const SecretOverviewPage = () => {
                           query: { id: workspaceId, env: userAvailableEnvs?.[0]?.slug }
                         }}
                       >
-                        <Button className="mt-4" variant="outline_bg" colorSchema="primary" size="md">Go to {userAvailableEnvs?.[0]?.name}</Button>
+                        <Button
+                          className="mt-4"
+                          variant="outline_bg"
+                          colorSchema="primary"
+                          size="md"
+                        >
+                          Go to {userAvailableEnvs?.[0]?.name}
+                        </Button>
                       </Link>
                     </EmptyState>
                   </Td>

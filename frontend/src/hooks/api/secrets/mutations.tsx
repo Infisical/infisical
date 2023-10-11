@@ -189,12 +189,20 @@ export const useDeleteSecretV3 = ({
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TDeleteSecretsV3DTO>({
-    mutationFn: async ({ secretPath = "/", type, environment, workspaceId, secretName }) => {
+    mutationFn: async ({
+      secretPath = "/",
+      type,
+      environment,
+      workspaceId,
+      secretName,
+      secretId
+    }) => {
       const reqBody = {
         workspaceId,
         environment,
         type,
-        secretPath
+        secretPath,
+        secretId
       };
 
       const { data } = await apiRequest.delete(`/api/v3/secrets/${secretName}`, {

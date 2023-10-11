@@ -9,7 +9,6 @@ import { Secret, ServiceTokenData } from "../../models";
 import { Folder } from "../../models/folder";
 import {
   appendFolder,
-  generateFolderId,
   getAllFolderIds,
   getFolderByPath,
   getFolderWithPathFromId,
@@ -132,9 +131,6 @@ export const createFolder = async (req: Request, res: Response) => {
 
   // space has no folders initialized
   if (!folders) {
-    if (directory !== "/") throw ERR_FOLDER_NOT_FOUND;
-
-    const id = generateFolderId();
     const folder = new Folder({
       workspace: workspaceId,
       environment,
@@ -142,14 +138,15 @@ export const createFolder = async (req: Request, res: Response) => {
         id: "root",
         name: "root",
         version: 1,
-        children: [{ id, name: folderName, children: [], version: 1 }]
+        children: []
       }
     });
+    const { parent, child } = appendFolder(folder.nodes, { folderName, directory });
     await folder.save();
     const folderVersion = new FolderVersion({
       workspace: workspaceId,
       environment,
-      nodes: folder.nodes
+      nodes: parent
     });
     await folderVersion.save();
     await EESecretService.takeSecretSnapshot({
@@ -163,9 +160,9 @@ export const createFolder = async (req: Request, res: Response) => {
         type: EventType.CREATE_FOLDER,
         metadata: {
           environment,
-          folderId: id,
+          folderId: child.id,
           folderName,
-          folderPath: `root/${folderName}`
+          folderPath: directory
         }
       },
       {
@@ -173,26 +170,26 @@ export const createFolder = async (req: Request, res: Response) => {
       }
     );
 
-    return res.json({ folder: { id, name: folderName } });
+    return res.json({ folder: { id: child.id, name: folderName } });
   }
 
-  const parentFolder = getFolderByPath(folders.nodes, directory);
-  if (!parentFolder) throw ERR_FOLDER_NOT_FOUND;
+  const { parent, child, hasCreated } = appendFolder(folders.nodes, { folderName, directory });
 
-  const folder = appendFolder(folders.nodes, { folderName, parentFolderId: parentFolder.id });
+  if (!hasCreated) return res.json({ folder: child });
+
   await Folder.findByIdAndUpdate(folders._id, folders);
 
   const folderVersion = new FolderVersion({
     workspace: workspaceId,
     environment,
-    nodes: parentFolder
+    nodes: parent
   });
   await folderVersion.save();
 
   await EESecretService.takeSecretSnapshot({
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
-    folderId: parentFolder.id
+    folderId: child.id
   });
 
   await EEAuditLogService.createAuditLog(
@@ -201,7 +198,7 @@ export const createFolder = async (req: Request, res: Response) => {
       type: EventType.CREATE_FOLDER,
       metadata: {
         environment,
-        folderId: folder.id,
+        folderId: child.id,
         folderName,
         folderPath: directory
       }
@@ -211,7 +208,7 @@ export const createFolder = async (req: Request, res: Response) => {
     }
   );
 
-  return res.json({ folder });
+  return res.json({ folder: child });
 };
 
 /**

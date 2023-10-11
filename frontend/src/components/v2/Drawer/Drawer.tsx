@@ -37,7 +37,7 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
   ) => (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
-        className="fixed inset-0 z-[70] h-full w-full"
+        className="fixed inset-0 z-20 h-full w-full"
         style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
       />
       <DialogPrimitive.Content

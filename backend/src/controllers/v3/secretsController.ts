@@ -777,7 +777,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
  */
 export const deleteSecretByName = async (req: Request, res: Response) => {
   const {
-    body: { type, environment, secretPath, workspaceId },
+    body: { type, environment, secretPath, workspaceId, secretId },
     params: { secretName }
   } = await validateRequest(reqValidator.DeleteSecretByNameV3, req);
 
@@ -813,6 +813,7 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
 
   const { secret } = await SecretService.deleteSecret({
     secretName,
+    secretId,
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
     type,
