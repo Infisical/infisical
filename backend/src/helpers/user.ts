@@ -1,5 +1,27 @@
-import { IUser, User } from "../models";
+import mongoose, { Types } from "mongoose";
+import {
+  APIKeyData, 
+  BackupPrivateKey,
+  IUser,
+  Key,
+  Membership,
+  MembershipOrg,
+  TokenVersion,
+  User,
+  UserAction
+} from "../models";
+import {
+  Action,
+  Log
+} from "../ee/models";
 import { sendMail } from "./nodemailer";
+import {
+  InternalServerError,
+  ResourceNotFoundError
+} from "../utils/errors";
+import { ADMIN } from "../variables";
+import { deleteOrganization } from "../helpers/organization";
+import { deleteWorkspace } from "../helpers/workspace";
 
 /**
  * Initialize a user under email [email]
@@ -134,3 +156,169 @@ export const checkUserDevice = async ({
     });
   }
 };
+
+/**
+ * Check that if we delete user with id [userId] then
+ * there won't be any admin-less organizations or projects
+ * @param {Object} obj
+ * @param {String} obj.userId - id of user to check deletion conditions for
+ */
+const checkDeleteUserConditions = async ({
+  userId
+}: {
+  userId: Types.ObjectId;
+}) => {
+  const memberships = await Membership.find({
+    user: userId
+  });
+
+  const membershipOrgs = await MembershipOrg.find({
+    user: userId
+  });
+
+  // delete organizations where user is only member
+  for await (const membershipOrg of membershipOrgs) {
+    const orgMemberCount = await MembershipOrg.countDocuments({
+      organization: membershipOrg.organization,
+    });
+    
+    const otherOrgAdminCount = await MembershipOrg.countDocuments({
+      organization: membershipOrg.organization,
+      user: { $ne: userId },
+      role: ADMIN
+    });
+
+    if (orgMemberCount > 1 && otherOrgAdminCount === 0) {
+      throw InternalServerError({
+        message: "Failed to delete account because an org would be admin-less"
+      });
+    }
+  }
+
+  // delete workspaces where user is only member
+  for await (const membership of memberships) {
+    const workspaceMemberCount = await Membership.countDocuments({
+      workspace: membership.workspace
+    });
+    
+    const otherWorkspaceAdminCount = await Membership.countDocuments({
+      workspace: membership.workspace,
+      user: { $ne: userId },
+      role: ADMIN
+    });
+
+    if (workspaceMemberCount > 1 && otherWorkspaceAdminCount === 0) {
+      throw InternalServerError({
+        message: "Failed to delete account because a workspace would be admin-less"
+      });
+    }
+  }
+}
+
+/**
+ * Delete account with id [userId]
+ * @param {Object} obj
+ * @param {Types.ObjectId} obj.userId - id of user to delete
+ * @returns {User} user - deleted user
+ */
+export const deleteUser = async ({
+  userId
+}: {
+  userId: Types.ObjectId
+}) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const user = await User.findByIdAndDelete(userId);
+    
+    if (!user) throw ResourceNotFoundError();
+
+    await checkDeleteUserConditions({
+      userId: user._id
+    });
+    
+    await UserAction.deleteMany({
+      user: user._id
+    });
+
+    await BackupPrivateKey.deleteMany({
+      user: user._id
+    });
+
+    await APIKeyData.deleteMany({
+      user: user._id
+    });
+
+    await Action.deleteMany({
+      user: user._id
+    }); 
+    
+    await Log.deleteMany({
+      user: user._id
+    });
+
+    await TokenVersion.deleteMany({
+      user: user._id
+    });
+
+    await Key.deleteMany({
+      receiver: user._id
+    });
+
+    const membershipOrgs = await MembershipOrg.find({
+      user: userId
+    });
+  
+    // delete organizations where user is only member
+    for await (const membershipOrg of membershipOrgs) {
+      const memberCount = await MembershipOrg.countDocuments({
+        organization: membershipOrg.organization
+      });
+      
+      if (memberCount === 1) {
+        // organization only has 1 member (the current user)
+
+        await deleteOrganization({
+          organizationId: membershipOrg.organization
+        });
+      }
+    }
+
+    const memberships = await Membership.find({
+      user: userId
+    });
+  
+    // delete workspaces where user is only member
+    for await (const membership of memberships) {
+      const memberCount = await Membership.countDocuments({
+        workspace: membership.workspace
+      });
+      
+      if (memberCount === 1) {
+        // workspace only has 1 member (the current user) -> delete workspace
+  
+        await deleteWorkspace({
+          workspaceId: membership.workspace
+        });
+      }
+    }
+    
+    await MembershipOrg.deleteMany({
+      user: userId
+    });
+    
+    await Membership.deleteMany({
+      user: userId
+    });
+
+    return user;
+  } catch (err) {
+    await session.abortTransaction();
+    throw InternalServerError({
+      message: "Failed to delete account"
+    })
+  } finally {
+    session.endSession();
+  }
+}

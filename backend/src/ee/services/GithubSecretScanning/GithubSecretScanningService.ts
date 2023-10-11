@@ -1,6 +1,8 @@
 import { Probot } from "probot";
-import GitRisks from "../../models/gitRisks";
-import GitAppOrganizationInstallation from "../../models/gitAppOrganizationInstallation";
+import {
+  GitAppOrganizationInstallation,
+  GitRisks 
+} from "../../models";
 import { scanGithubPushEventForSecretLeaks } from "../../../queues/secret-scanning/githubScanPushEvent";
 export default async (app: Probot) => {
   app.on("installation.deleted", async (context) => {

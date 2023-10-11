@@ -4,14 +4,6 @@ import { requireAuth } from "../../middleware";
 import { usersController } from "../../controllers/v2";
 import { AuthMode } from "../../variables";
 
-router.get(
-  "/me",
-  requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
-  }),
-  usersController.getMe
-);
-
 router.patch(
   "/me/mfa",
   requireAuth({
@@ -82,6 +74,22 @@ router.delete(
     acceptedAuthModes: [AuthMode.JWT]
   }),
   usersController.deleteMySessions
+);
+
+router.get(
+  "/me",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+  }),
+  usersController.getMe
+);
+
+router.delete(
+  "/me",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+  }),
+  usersController.deleteMe
 );
 
 export default router;

@@ -136,12 +136,6 @@ export const GetOrgLicencesv1 = z.object({
   params: z.object({ organizationId: z.string().trim() })
 });
 
-export const CreateOrgv1 = z.object({
-  body: z.object({
-    organizationName: z.string().trim()
-  })
-});
-
 export const GetOrgv1 = z.object({
   params: z.object({
     organizationId: z.string().trim()
@@ -208,4 +202,14 @@ export const VerfiyUserToOrganizationV1 = z.object({
     organizationId: z.string().trim(),
     code: z.string().trim()
   })
+});
+
+export const CreateOrgv2 = z.object({
+  body: z.object({
+    name: z.string().trim()
+  })
+});
+
+export const DeleteOrgv2 = z.object({
+  params: z.object({ organizationId: z.string().trim() })
 });

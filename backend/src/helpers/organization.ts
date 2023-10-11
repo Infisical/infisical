@@ -1,5 +1,43 @@
-import { Types } from "mongoose";
-import { MembershipOrg, Organization } from "../models";
+import mongoose, { Types } from "mongoose";
+import { 
+  Bot, 
+  BotKey,
+  BotOrg,
+  Folder,
+  IncidentContactOrg,
+  Integration,
+  IntegrationAuth,
+  Key,
+  Membership,
+  MembershipOrg,
+  Organization,
+  Secret,
+  SecretBlindIndexData,
+  SecretImport,
+  ServiceToken,
+  ServiceTokenData,
+  ServiceTokenDataV3,
+  ServiceTokenDataV3Key,
+  Tag,
+  Webhook,
+  Workspace
+} from "../models";
+import {
+  Action,
+  AuditLog,
+  FolderVersion,
+  GitAppInstallationSession,
+  GitAppOrganizationInstallation,
+  GitRisks,
+  Log,
+  Role,
+  SSOConfig,
+  SecretApprovalPolicy,
+  SecretApprovalRequest,
+  SecretSnapshot,
+  SecretVersion,
+  TrustedIP
+} from "../ee/models";
 import {
   ACCEPTED,
 } from "../variables";
@@ -17,6 +55,7 @@ import {
 import {
   createBotOrg
 } from "./botOrg";
+import { InternalServerError, ResourceNotFoundError } from "../utils/errors";
 
 /**
  * Create an organization with name [name]
@@ -64,6 +103,227 @@ export const createOrganization = async ({
 
   return organization;
 };
+
+/**
+ * Delete organization with id [organizationId]
+ * @param {Object} obj
+ * @param {Types.ObjectId} obj.organizationId - id of organization to delete
+ * @returns 
+ */
+export const deleteOrganization = async ({
+  organizationId
+}: {
+  organizationId: Types.ObjectId;
+}) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const organization = await Organization.findByIdAndDelete(organizationId);
+  
+    if (!organization) throw ResourceNotFoundError();
+    
+    await MembershipOrg.deleteMany({
+      organization: organization._id
+    });
+    
+    await BotOrg.deleteMany({
+      organization: organization._id
+    });
+    
+    await SSOConfig.deleteMany({
+      organization: organization._id
+    });
+    
+    await Role.deleteMany({
+      organization: organization._id
+    });
+
+    await IncidentContactOrg.deleteMany({
+      organization: organization._id
+    });
+    
+    await GitRisks.deleteMany({
+      organization: organization._id
+    });
+    
+    await GitAppInstallationSession.deleteMany({
+      organization: organization._id
+    });
+    
+    await GitAppOrganizationInstallation.deleteMany({
+      organization: organization._id
+    });
+
+    const workspaceIds = await Workspace.distinct("_id", {
+      organization: organization._id
+    });
+    
+    await Workspace.deleteMany({
+      organization: organization._id
+    });
+    
+    await Membership.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await Key.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+    
+    await Bot.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+    
+    await BotKey.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await SecretBlindIndexData.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+    
+    await Secret.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+    
+    await SecretVersion.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await SecretSnapshot.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+    
+    
+    await SecretImport.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await Folder.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await FolderVersion.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await Webhook.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await TrustedIP.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+    
+    await Tag.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await IntegrationAuth.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await Integration.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await ServiceToken.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await ServiceTokenData.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await ServiceTokenDataV3.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+    
+    await ServiceTokenDataV3Key.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await AuditLog.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await Log.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await Action.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await SecretApprovalPolicy.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+
+    await SecretApprovalRequest.deleteMany({
+      workspace: {
+        $in: workspaceIds
+      }
+    });
+    
+    return organization;
+  } catch (err) {
+    await session.abortTransaction();
+    throw InternalServerError({
+      message: "Failed to delete organization"
+    });
+  } finally {
+    session.endSession();
+  }
+}
 
 /**
  * Update organization subscription quantity to reflect number of members in

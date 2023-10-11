@@ -202,12 +202,12 @@ export const deleteWorkspace = async (req: Request, res: Response) => {
   );
 
   // delete workspace
-  await deleteWork({
-    id: workspaceId
+  const workspace = await deleteWork({
+    workspaceId: new Types.ObjectId(workspaceId)
   });
 
   return res.status(200).send({
-    message: "Successfully deleted workspace"
+    workspace
   });
 };
 

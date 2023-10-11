@@ -42,6 +42,20 @@ export const fetchUserDetails = async () => {
 
 export const useGetUser = () => useQuery(userKeys.getUser, fetchUserDetails);
 
+export const useDeleteUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data: { user } } = await apiRequest.delete<{ user: User }>("/api/v2/users/me");
+      return user;
+    },
+    onSuccess: () => {
+      queryClient.clear();
+    }
+  });
+};
+
 export const fetchUserAction = async (action: string) => {
   const { data } = await apiRequest.get<{ userAction: string }>("/api/v1/user-action", {
     params: {
@@ -208,21 +222,31 @@ export const useRegisterUserAction = () => {
   });
 };
 
-export const useLogoutUser = () =>
-  useMutation({
+export const useLogoutUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: async () => {
       await apiRequest.post("/api/v1/auth/logout");
     },
     onSuccess: () => {
       setAuthToken("");
       // Delete the cookie by not setting a value; Alternatively clear the local storage
-      localStorage.setItem("publicKey", "");
-      localStorage.setItem("encryptedPrivateKey", "");
-      localStorage.setItem("iv", "");
-      localStorage.setItem("tag", "");
-      localStorage.setItem("PRIVATE_KEY", "");
+      localStorage.removeItem("protectedKey");
+      localStorage.removeItem("protectedKeyIV");
+      localStorage.removeItem("protectedKeyTag");
+      localStorage.removeItem("publicKey");
+      localStorage.removeItem("encryptedPrivateKey");
+      localStorage.removeItem("iv");
+      localStorage.removeItem("tag");
+      localStorage.removeItem("PRIVATE_KEY");
+      localStorage.removeItem("orgData.id");
+      localStorage.removeItem("projectData.id");
+      
+      queryClient.clear();
     }
   });
+}
+
 
 export const useGetMyIp = () => {
   return useQuery({
