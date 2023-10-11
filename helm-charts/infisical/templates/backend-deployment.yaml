@@ -25,6 +25,10 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+    {{- with $backend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       containers:
       - name: {{ template "infisical.name" . }}-{{ $backend.name }}
         image: "{{ $backend.image.repository }}:{{ $backend.image.tag | default "latest" }}"
