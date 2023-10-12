@@ -17,7 +17,6 @@ import { Filter, GroupBy, SortDir } from "../../SecretMainPage.types";
 import { SecretDetailSidebar } from "./SecretDetaiSidebar";
 import { SecretItem } from "./SecretItem";
 
-
 type Props = {
   secrets?: DecryptedSecret[];
   environment: string;
@@ -28,6 +27,7 @@ type Props = {
   sortDir?: SortDir;
   tags?: WsTag[];
   isVisible?: boolean;
+  isProtectedBranch?: boolean;
 };
 
 const reorderSecretGroupByUnderscore = (secrets: DecryptedSecret[], sortDir: SortDir) => {
@@ -86,14 +86,14 @@ export const SecretListView = ({
   sortDir = SortDir.ASC,
   tags: wsTags = [],
   isVisible,
+  isProtectedBranch = false
 }: Props) => {
   const { createNotification } = useNotificationContext();
   const queryClient = useQueryClient();
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",
     "secretDetail",
-    "createTag",
-    "moveSecrets"
+    "createTag"
   ] as const);
 
   // strip of side effect queries
@@ -180,7 +180,8 @@ export const SecretListView = ({
   const handleSaveSecret = useCallback(
     async (
       orgSecret: DecryptedSecret,
-      modSecret: Omit<DecryptedSecret, "tags"> & { tags: { _id: string }[] }
+      modSecret: Omit<DecryptedSecret, "tags"> & { tags: { _id: string }[] },
+      cb?: () => void
     ) => {
       const { key: oldKey } = orgSecret;
       const { key, value, overrideAction, idOverride, valueOverride, tags, comment } = modSecret;
@@ -195,6 +196,19 @@ export const SecretListView = ({
         ) && isSameTags;
 
       try {
+        // personal secret change
+        if (overrideAction === "deleted") {
+          await handleSecretOperation("delete", "personal", oldKey);
+        } else if (overrideAction && idOverride) {
+          await handleSecretOperation("update", "personal", oldKey, {
+            value: valueOverride,
+            newKey: hasKeyChanged ? key : undefined,
+            skipMultilineEncoding: modSecret.skipMultilineEncoding
+          });
+        } else if (overrideAction) {
+          await handleSecretOperation("create", "personal", oldKey, { value: valueOverride });
+        }
+
         // shared secret change
         if (!isSharedSecUnchanged) {
           await handleSecretOperation("update", "shared", oldKey, {
@@ -204,19 +218,7 @@ export const SecretListView = ({
             newKey: hasKeyChanged ? key : undefined,
             skipMultilineEncoding: modSecret.skipMultilineEncoding
           });
-        }
-
-        // personal secret change
-        if (overrideAction === "deleted") {
-          await handleSecretOperation("delete", "personal", key);
-        } else if (overrideAction && idOverride) {
-          await handleSecretOperation("update", "personal", oldKey, {
-            value: valueOverride,
-            newKey: hasKeyChanged ? key : undefined,
-            skipMultilineEncoding: modSecret.skipMultilineEncoding
-          });
-        } else if (overrideAction) {
-          await handleSecretOperation("create", "personal", key, { value: valueOverride });
+          if (cb) cb();
         }
 
         queryClient.invalidateQueries(
@@ -231,7 +233,9 @@ export const SecretListView = ({
         handlePopUpClose("secretDetail");
         createNotification({
           type: "success",
-          text: "Successfully saved secrets"
+          text: isProtectedBranch
+            ? "Requested changes have been sent for review"
+            : "Successfully saved secrets"
         });
       } catch (error) {
         console.log(error);
@@ -241,7 +245,7 @@ export const SecretListView = ({
         });
       }
     },
-    [environment, secretPath]
+    [environment, secretPath, isProtectedBranch]
   );
 
   const handleSecretDelete = useCallback(async () => {
@@ -261,7 +265,9 @@ export const SecretListView = ({
       handlePopUpClose("secretDetail");
       createNotification({
         type: "success",
-        text: "Successfully deleted secret"
+        text: isProtectedBranch
+          ? "Requested changes have been sent for review"
+          : "Successfully deleted secret"
       });
     } catch (error) {
       console.log(error);
@@ -299,6 +305,7 @@ export const SecretListView = ({
               >
                 {namespace}
               </div>
+
               {filteredSecrets.map((secret) => (
                 <SecretItem
                   environment={environment}
