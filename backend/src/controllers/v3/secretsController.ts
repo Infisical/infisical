@@ -839,3 +839,39 @@ export const deleteSecretByNameBatch = async (req: Request, res: Response) => {
     secrets: deletedSecrets
   });
 };
+
+export const moveSecretsToFolder = async (req: Request, res: Response) => {
+  const {
+    body: { secrets, workspaceId, environment, folderId, secretPath }
+  } = await validateRequest(reqValidator.MoveSecretsToFolderV3, req);
+
+  console.warn("848 => secrets", secrets)
+
+   if (req.user?._id) {
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    console.warn("852 => permission", permission)
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    );
+  } else {
+    await validateServiceTokenDataClientForWorkspace({
+      serviceTokenData: req.authData.authPayload as IServiceTokenData,
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      secretPath,
+      requiredPermissions: [PERMISSION_WRITE_SECRETS]
+    });
+  }
+
+  const updatedSecrets = await SecretService.moveSecretsToFolder({
+    secretPath,
+    environment,
+    workspaceId: new Types.ObjectId(workspaceId),
+    secrets,
+    folderId,
+    authData: req.authData
+  });
+
+  return res.status(200).send(updatedSecrets);
+};

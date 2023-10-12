@@ -6,6 +6,7 @@ import {
   DeleteSecretParams,
   GetSecretParams,
   GetSecretsParams,
+  MoveSecretParams,
   UpdateSecretBatchParams,
   UpdateSecretParams
 } from "../interfaces/services/SecretService";
@@ -48,7 +49,7 @@ import { TelemetryService } from "../services";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
 import { EEAuditLogService, EELogService, EESecretService } from "../ee/services";
 import { getAuthDataPayloadIdObj, getAuthDataPayloadUserObj } from "../utils/auth";
-import { getFolderByPath, getFolderIdFromServiceToken } from "../services/FolderService";
+import { getFolderByPath, getFolderIdFromServiceToken, getParentFromFolderId } from "../services/FolderService";
 import picomatch from "picomatch";
 import path from "path";
 import { getAnImportedSecret } from "../services/SecretImportService";
@@ -1741,4 +1742,38 @@ export const deleteSecretBatchHelper = async ({
   return {
     secrets: deletedSecrets
   };
+};
+
+
+export const moveSecretsToFolderHelper = async ({
+  workspaceId,
+  environment,
+  secrets,
+  folderId
+}: MoveSecretParams) => {
+  const folders = await Folder.findOne({ workspace: workspaceId, environment });
+
+  if (!folders) {
+    throw BadRequestError({ message: "The folder doesn't exist" });
+  }
+
+  const parentFolder = getParentFromFolderId(folders.nodes, folderId);
+
+  if (!parentFolder) {
+    throw BadRequestError({ message: "The folder doesn't exist" });
+  }
+  const folder = parentFolder.children.find(({ id }) => id === folderId);
+
+  if (!folder) {
+    throw BadRequestError({ message: "The folder doesn't exist" });
+  }
+
+  const updatedSecrets = await Secret.updateMany(
+    { _id: { $in: secrets.map((secret: { _id: string }) => secret._id) } },
+    { $set: { folder: folderId } }
+  );
+
+  return {
+    secrets: updatedSecrets
+  }
 };

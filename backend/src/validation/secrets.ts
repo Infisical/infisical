@@ -449,3 +449,19 @@ export const DeleteSecretByNameBatchV3 = z.object({
       .min(1)
   })
 });
+
+export const MoveSecretsToFolderV3 = z.object({
+  body: z.object({
+    workspaceId: z.string().trim(),
+    environment: z.string().trim(),
+    folderId: z.string().trim().default("/"),
+    secretPath: z.string().trim(),
+    secrets: z
+      .object({
+        _id: z.string().trim(),
+      })
+      .array()
+      .min(1)
+  })
+});
+

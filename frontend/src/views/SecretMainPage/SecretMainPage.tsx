@@ -227,6 +227,7 @@ export const SecretMainPage = () => {
               snapshotCount={snapshotCount || 0}
               isSnapshotCountLoading={isSnapshotCountLoading}
               onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
+              folders={folders}
             />
             <div className="mt-3 overflow-y-auto overflow-x-hidden thin-scrollbar bg-mineshaft-800 text-left text-bunker-300 rounded-md text-sm">
               <div className="flex flex-col ">

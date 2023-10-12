@@ -1,3 +1,4 @@
+import { useCallback } from "react"
 import { subject } from "@casl/ability";
 import {
   faAngleDown,
@@ -13,7 +14,8 @@ import {
   faMagnifyingGlass,
   faMinusSquare,
   faPlus,
-  faTrash
+  faTrash,
+  faUpDownLeftRight
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import FileSaver from "file-saver";
@@ -43,7 +45,7 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch } from "@app/hooks/api";
-import { DecryptedSecret, TImportedSecrets, WsTag } from "@app/hooks/api/types";
+import { DecryptedSecret, TImportedSecrets, TSecretFolder, WsTag } from "@app/hooks/api/types";
 
 import {
   PopUpNames,
@@ -54,6 +56,9 @@ import {
 import { Filter, GroupBy } from "../../SecretMainPage.types";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
+import { MoveSecretsToFolder } from "~/components/MoveSecrets";
+import { useMoveSecrets } from "~/hooks/api/secrets/mutations";
+
 
 type Props = {
   secrets?: DecryptedSecret[];
@@ -72,6 +77,7 @@ type Props = {
   onToggleTagFilter: (tagId: string) => void;
   onVisiblilityToggle: () => void;
   onClickRollbackMode: () => void;
+  folders: TSecretFolder[] | undefined;
 };
 
 export const ActionBar = ({
@@ -85,6 +91,7 @@ export const ActionBar = ({
   isVisible,
   snapshotCount,
   isSnapshotCountLoading,
+  folders,
   onSearchChange,
   onToggleTagFilter,
   onGroupByChange,
@@ -96,7 +103,8 @@ export const ActionBar = ({
     "addSecretImport",
     "bulkDeleteSecrets",
     "misc",
-    "upgradePlan"
+    "upgradePlan",
+    "moveSecrets"
   ] as const);
   const { subscription } = useSubscription();
   const { createNotification } = useNotificationContext();
@@ -108,6 +116,9 @@ export const ActionBar = ({
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
+
+  /* Mutation action calls */
+  const { mutateAsync: moveSecretsToFolder } = useMoveSecrets();
 
   const handleFolderCreate = async (folderName: string) => {
     try {
@@ -186,9 +197,88 @@ export const ActionBar = ({
     }
   };
 
+  const onMoveSecrets = async (folderId: string, selectedSecrets: { _id: string }[]) => {
+    try {
+      await moveSecretsToFolder({
+        secrets: selectedSecrets,
+        folderId,
+        workspaceId,
+        environment,
+        secretPath
+      });
+      resetSelectedSecret();
+      handlePopUpClose("moveSecrets")
+      createNotification({
+        text: `Successfully moved  ${Object.keys(selectedSecrets).length > 1 ? "secrets" : "secret"}`,
+        type: "success"
+      });
+    } catch (error) {
+      createNotification({
+        text: `Failed to move ${Object.keys(selectedSecrets).length > 1 ? "secrets" : "secret"}`,
+        type: "error"
+      });
+    }
+  }
+
+  const handleMoveSecretsModalOpen = useCallback(() => handlePopUpOpen("moveSecrets"), []);
+
+  const checkedSecrets = Object.keys(selectedSecrets).map((secretId) => ({
+    _id: secretId,
+  }));
+
+
   return (
     <>
       <div className="flex items-center space-x-2 mt-4">
+        <div className={twMerge("fixed transform  flex justify-center opacity-0 bottom-[20px] left-[220px] scale-50 right-0 z-10 pointer-events-none translate-y-20  transition-all duration-300", Object.keys(selectedSecrets).length > 0 && "translate-y-0 scale-100 opacity-100")}>
+          <div className="flex flex-initial items-center justify-center shadow-md  bg-mineshaft-800 border border-mineshaft-500 rounded-[4px] pt-[8px] pr-[8px] pb-[8px] pl-[16px] pointer-events-auto gap-[16px]">
+            <span className="flex  min-w-[65px] text-gray-300">
+              <Tooltip content="Clear">
+                <IconButton variant="plain" ariaLabel="clear-selection" onClick={resetSelectedSecret}>
+                  <FontAwesomeIcon icon={faMinusSquare} size="lg" />
+                </IconButton>
+              </Tooltip>
+              <div className="text-sm ml-4 px-2 flex-grow">
+                {Object.keys(selectedSecrets).length} Selected
+              </div>
+            </span>
+            <div className="flex gap-2">
+              <div className="bg-mineshaft-700 hover:bg-mineshaft-500 cursor-pointer flex justify-center items-center border border-mineshaft-500 rounded-md px-[15px] py-1.5 text-gray-200"
+                role="button"
+                onClick={() => handleMoveSecretsModalOpen()}
+                tabIndex={-1}
+                onKeyUp={() => { }}>
+                <FontAwesomeIcon icon={faUpDownLeftRight} className="mr-2.5" />
+                Move
+              </div>
+            </div>
+            <div role="button" className="bg-mineshaft-700 hover:bg-mineshaft-500  cursor-pointer flex justify-center items-center border rounded-md border-mineshaft-500 px-[15px] py-1.5 text-gray-200"
+              onClick={() => handlePopUpOpen("bulkDeleteSecrets")}
+              tabIndex={-1}
+              onKeyUp={() => { }} >
+              <FontAwesomeIcon icon={faTrash} className="mr-2.5" />
+              Delete
+            </div>
+          </div>
+        </div>
+        {/* Bult secrets move modal */}
+        <Modal
+          isOpen={popUp?.moveSecrets?.isOpen}
+          onOpenChange={(open) => {
+            handlePopUpToggle("moveSecrets", open);
+          }}
+        >
+          <ModalContent
+            title={`Move  ${Object.keys(selectedSecrets).length > 1 ? "secrets" : "secret"} to another folder`}
+            subTitle="choose a folder you wish to move secrets to below"
+          >
+            <MoveSecretsToFolder
+              onMoveSecrets={onMoveSecrets}
+              checkedSecrets={checkedSecrets}
+              folderData={folders}
+            />
+          </ModalContent>
+        </Modal>
         <div className="w-2/5">
           <Input
             className="bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
@@ -372,44 +462,6 @@ export const ActionBar = ({
           </DropdownMenu>
         </div>
       </div>
-      <div
-        className={twMerge(
-          "overflow-hidden transition-all h-0 flex-shrink-0",
-          isMultiSelectActive && "h-16"
-        )}
-      >
-        <div className="text-bunker-300 flex items-center bg-mineshaft-800 mt-3.5 py-2 px-4 rounded-md border border-mineshaft-600">
-          <Tooltip content="Clear">
-            <IconButton variant="plain" ariaLabel="clear-selection" onClick={resetSelectedSecret}>
-              <FontAwesomeIcon icon={faMinusSquare} size="lg" />
-            </IconButton>
-          </Tooltip>
-          <div className="text-sm ml-4 px-2 flex-grow">
-            {Object.keys(selectedSecrets).length} Selected
-          </div>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Edit}
-            a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
-            renderTooltip
-            allowedLabel="Delete"
-          >
-            {(isAllowed) => (
-              <Button
-                variant="outline_bg"
-                colorSchema="danger"
-                leftIcon={<FontAwesomeIcon icon={faTrash} />}
-                className="ml-4"
-                onClick={() => handlePopUpOpen("bulkDeleteSecrets")}
-                isDisabled={!isAllowed}
-                size="xs"
-              >
-                Delete
-              </Button>
-            )}
-          </ProjectPermissionCan>
-        </div>
-      </div>
-      {/* all the side triggers from actions like modals etc */}
       <CreateSecretImportForm
         environment={environment}
         workspaceId={workspaceId}

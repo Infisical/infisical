@@ -124,3 +124,14 @@ export interface DeleteSecretBatchParams {
     type: "shared" | "personal";
   }>;
 }
+
+export interface MoveSecretParams {
+  workspaceId: Types.ObjectId;
+  environment: string;
+  authData: AuthData;
+  secretPath: string;
+  folderId: string;
+  secrets: Array<{
+    _id: string;
+  }>;
+}

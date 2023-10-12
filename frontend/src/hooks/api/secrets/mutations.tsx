@@ -16,6 +16,7 @@ import {
   TCreateSecretsV3DTO,
   TDeleteSecretBatchDTO,
   TDeleteSecretsV3DTO,
+  TMoveSecretsDTO,
   TUpdateSecretBatchDTO,
   TUpdateSecretsV3DTO
 } from "./types";
@@ -295,7 +296,7 @@ export const useUpdateSecretBatch = ({
             ...encryptSecret(randomBytes, secretName, secretValue, secretComment),
             type,
             tags,
-            skipMultilineEncoding
+            skipMultilineEncoding,
           })
         )
       };
@@ -357,4 +358,39 @@ export const useDeleteSecretBatch = ({
 export const createSecret = async (dto: CreateSecretDTO) => {
   const { data } = await apiRequest.post(`/api/v3/secrets/${dto.secretKey}`, dto);
   return data;
+};
+
+export const useMoveSecrets = ({
+  options
+}: {
+  options?: Omit<MutationOptions<{}, {}, TMoveSecretsDTO>, "mutationFn">;
+} = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, TMoveSecretsDTO>({
+    mutationFn: async ({ environment, workspaceId, folderId, secrets, secretPath }) => {
+      const reqBody = {
+        environment,
+        workspaceId,
+        folderId,
+        secrets,
+        secretPath
+      };
+
+      const { data } = await apiRequest.post(`/api/v3/secrets/move/${folderId}`, reqBody);
+      return data;
+    },
+    onSuccess: (_, { workspaceId, environment, secretPath }) => {
+      queryClient.invalidateQueries(
+        secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+      );
+    },
+    ...options
+  });
 };

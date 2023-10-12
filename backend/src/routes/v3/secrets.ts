@@ -157,4 +157,15 @@ router.delete(
   secretsController.deleteSecretByName
 );
 
+router.post(
+  "/move/:folderId",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]
+  }),
+  requireBlindIndicesEnabled({
+    locationWorkspaceId: "body"
+  }),
+  secretsController.moveSecretsToFolder
+);
+
 export default router;

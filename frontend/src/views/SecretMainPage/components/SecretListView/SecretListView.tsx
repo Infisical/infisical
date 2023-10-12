@@ -17,6 +17,7 @@ import { Filter, GroupBy, SortDir } from "../../SecretMainPage.types";
 import { SecretDetailSidebar } from "./SecretDetaiSidebar";
 import { SecretItem } from "./SecretItem";
 
+
 type Props = {
   secrets?: DecryptedSecret[];
   environment: string;
@@ -84,14 +85,15 @@ export const SecretListView = ({
   filter,
   sortDir = SortDir.ASC,
   tags: wsTags = [],
-  isVisible
+  isVisible,
 }: Props) => {
   const { createNotification } = useNotificationContext();
   const queryClient = useQueryClient();
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",
     "secretDetail",
-    "createTag"
+    "createTag",
+    "moveSecrets"
   ] as const);
 
   // strip of side effect queries
@@ -297,7 +299,6 @@ export const SecretListView = ({
               >
                 {namespace}
               </div>
-
               {filteredSecrets.map((secret) => (
                 <SecretItem
                   environment={environment}

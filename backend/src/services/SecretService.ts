@@ -6,6 +6,7 @@ import {
   DeleteSecretParams,
   GetSecretParams,
   GetSecretsParams,
+  MoveSecretParams,
   UpdateSecretBatchParams,
   UpdateSecretParams
 } from "../interfaces/services/SecretService";
@@ -20,6 +21,7 @@ import {
   getSecretBlindIndexSaltHelper,
   getSecretHelper,
   getSecretsHelper,
+  moveSecretsToFolderHelper,
   updateSecretBatchHelper,
   updateSecretHelper
 } from "../helpers/secrets";
@@ -172,6 +174,10 @@ class SecretService {
 
   static async deleteSecretBatch(deleteSecretParams: DeleteSecretBatchParams) {
     return await deleteSecretBatchHelper(deleteSecretParams);
+  }
+
+  static async moveSecretsToFolder(moveSecretsParams: MoveSecretParams) {
+    return await moveSecretsToFolderHelper(moveSecretsParams);
   }
 }
 

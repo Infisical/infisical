@@ -5310,6 +5310,26 @@
         }
       }
     },
+    "/api/v3/secrets/move/{folderId}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "folderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v3/workspaces/{workspaceId}/secrets/names": {
       "post": {
         "description": "",
