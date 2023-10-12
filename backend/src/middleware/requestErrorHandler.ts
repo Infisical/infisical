@@ -3,8 +3,8 @@ import { ErrorRequestHandler } from "express";
 import { TokenExpiredError } from "jsonwebtoken";
 import { InternalServerError, UnauthorizedRequestError } from "../utils/errors";
 import { getLogger } from "../utils/logger";
-import RequestError, { LogLevel, mapToWinstonLogLevel } from "../utils/requestError";
-import { getNodeEnv } from "../config";
+import RequestError from "../utils/requestError";
+import { ForbiddenError } from "@casl/ability";
 
 export const requestErrorHandler: ErrorRequestHandler = async (
   error: RequestError | Error,
@@ -14,35 +14,37 @@ export const requestErrorHandler: ErrorRequestHandler = async (
 ) => {
   if (res.headersSent) return next();
 
-  const logAndCaptureException = async (error: RequestError, logLevel: LogLevel) => {
-    // log stack trace & error message to the console using Winston
-    (await getLogger("backend-main")).log(mapToWinstonLogLevel(logLevel), `${error.stack}\n${error.message}`);
+  const logAndCaptureException = async (error: RequestError) => {
+    (await getLogger("backend-main")).log(
+      (<RequestError>error).levelName.toLowerCase(),
+      `${error.stack}\n${error.message}`
+    );
 
     //* Set Sentry user identification if req.user is populated
     if (req.user !== undefined && req.user !== null) {
       Sentry.setUser({ email: (req.user as any).email });
     }
 
-    // eliminate false-positive errors being sent to Sentry
-    if ("level" in error && [LogLevel.ERROR, LogLevel.EMERGENCY, LogLevel.CRITICAL].includes(error.level)) {
-      Sentry.captureException(error);
-    }
+    Sentry.captureException(error);
   };
 
-  if (error instanceof RequestError || error instanceof TokenExpiredError) {
+  if (error instanceof RequestError) {
     if (error instanceof TokenExpiredError) {
-      error = UnauthorizedRequestError({ stack: error.stack, message: "Token expired" }) as RequestError;
+      error = UnauthorizedRequestError({ stack: error.stack, message: "Token expired" });
+    }
+    await logAndCaptureException((<RequestError>error));
+  } else {
+    if (error instanceof ForbiddenError) {
+      error = UnauthorizedRequestError({ context: { exception: error.message }, stack: error.stack })
+    } else {
+      error = InternalServerError({ context: { exception: error.message }, stack: error.stack });
     }
 
-    logAndCaptureException((<RequestError>error), LogLevel.INFO);
-  } else {
-    // For unexpected errors, throw a 500 error & ensure these are sent to Sentry in prod
-    error = InternalServerError({ context: { exception: error.message }, stack: error.stack }) as RequestError;
-    logAndCaptureException((<RequestError>error), (await getNodeEnv() === "production") ? LogLevel.ERROR : LogLevel.DEBUG);
+    await logAndCaptureException((<RequestError>error));
   }
 
-  res
-    .status((<RequestError>error).statusCode)
-    .json((<RequestError>error).format(req));
+  delete (<any>error).stacktrace // remove stack trace from being sent to client
+  res.status((<RequestError>error).statusCode).json(error);
+
   next();
 };
