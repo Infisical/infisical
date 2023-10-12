@@ -845,8 +845,6 @@ export const moveSecretsToFolder = async (req: Request, res: Response) => {
     body: { secrets, workspaceId, environment, folderId, secretPath }
   } = await validateRequest(reqValidator.MoveSecretsToFolderV3, req);
 
-  console.warn("848 => secrets", secrets)
-
    if (req.user?._id) {
     const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
     ForbiddenError.from(permission).throwUnlessCan(
