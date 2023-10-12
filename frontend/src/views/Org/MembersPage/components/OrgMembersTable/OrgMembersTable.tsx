@@ -209,6 +209,11 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
     [userId, members]
   );
 
+  const isIamMember = useMemo(
+    () => members?.find(({ user: u }) => userId === u?._id)?.role === "member",
+    [userId, members]
+  );
+
   const findRoleFromId = useCallback(
     (roleId: string) => {
       return roles.find(({ _id: id }) => id === roleId);
@@ -436,7 +441,7 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
                                 !(
                                   (status === "invited" || status === "verified") &&
                                   serverDetails?.emailConfigured
-                                ) && (
+                                ) && !isIamMember && (
                                   <button
                                     type="button"
                                     onClick={() =>
