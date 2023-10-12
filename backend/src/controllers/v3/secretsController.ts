@@ -849,7 +849,6 @@ export const moveSecretsToFolder = async (req: Request, res: Response) => {
 
    if (req.user?._id) {
     const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    console.warn("852 => permission", permission)
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
