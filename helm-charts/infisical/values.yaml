@@ -16,31 +16,31 @@ frontend:
   ## @param frontend.enabled Enable frontend
   ##
   enabled: true
-  ## @param frontend.name Backend name
+  ## @param frontend.name Frontend name
   ##
   name: frontend
-  ## @param frontend.fullnameOverride Backend fullnameOverride
+  ## @param frontend.fullnameOverride Frontend fullnameOverride
   ##
   fullnameOverride: ""
-  ## @param frontend.podAnnotations Backend pod annotations
+  ## @param frontend.podAnnotations Frontend pod annotations
   ##
   podAnnotations: {}
-  ## @param frontend.deploymentAnnotations Backend deployment annotations
+  ## @param frontend.deploymentAnnotations Frontend deployment annotations
   ##
   deploymentAnnotations: {}
-  ## @param frontend.replicaCount Backend replica count
+  ## @param frontend.replicaCount Frontend replica count
   ##
   replicaCount: 2
-  ## Backend image parameters
+  ## Frontend image parameters
   ##
   image:
-    ## @param frontend.image.repository Backend image repository
+    ## @param frontend.image.repository Frontend image repository
     ##
     repository: infisical/frontend
-    ## @param frontend.image.tag Backend image tag
+    ## @param frontend.image.tag Frontend image tag
     ##
     tag: "latest"
-    ## @param frontend.image.pullPolicy Backend image pullPolicy
+    ## @param frontend.image.pullPolicy Frontend image pullPolicy
     ##
     pullPolicy: IfNotPresent
   ## @param frontend.resources.limits.memory container memory limit [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
@@ -51,6 +51,9 @@ frontend:
       memory: 100Mi
     requests:
       cpu: 100m
+  ## @param frontend.affinity Frontend pod affinity
+  ##
+  affinity: {}
   ## @param frontend.kubeSecretRef Backend secret resource reference name (containing required [frontend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))
   ##
   kubeSecretRef: ""
@@ -118,6 +121,9 @@ backend:
       memory: 200Mi
     requests:
       cpu: 150m
+  ## @param backend.affinity Backend pod affinity
+  ##
+  affinity: {}
   ## @param backend.kubeSecretRef Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))
   ##
   kubeSecretRef: ""
@@ -286,7 +292,7 @@ mongodb:
     ##
     rootPassword: root
 
-    ## @param auth.existingSecret Existing secret with MongoDB(&reg;) credentials (keys: `mongodb-passwords`, `mongodb-root-password`, `mongodb-metrics-password`, `mongodb-replica-set-key`)
+    ## @param mongodb.auth.existingSecret Existing secret with MongoDB(&reg;) credentials (keys: `mongodb-passwords`, `mongodb-root-password`, `mongodb-metrics-password`, `mongodb-replica-set-key`)
     ## NOTE: When it's set the previous parameters are ignored.
     ##
     existingSecret: ""

@@ -64,16 +64,17 @@ kubectl get secrets -n <namespace> <secret-name> \
 | Name                                    | Description                                                                                                                                                   | Value                |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
 | `frontend.enabled`                      | Enable frontend                                                                                                                                               | `true`               |
-| `frontend.name`                         | Backend name                                                                                                                                                  | `frontend`           |
-| `frontend.fullnameOverride`             | Backend fullnameOverride                                                                                                                                      | `""`                 |
-| `frontend.podAnnotations`               | Backend pod annotations                                                                                                                                       | `{}`                 |
-| `frontend.deploymentAnnotations`        | Backend deployment annotations                                                                                                                                | `{}`                 |
-| `frontend.replicaCount`                 | Backend replica count                                                                                                                                         | `2`                  |
-| `frontend.image.repository`             | Backend image repository                                                                                                                                      | `infisical/frontend` |
-| `frontend.image.tag`                    | Backend image tag                                                                                                                                             | `latest`             |
-| `frontend.image.pullPolicy`             | Backend image pullPolicy                                                                                                                                      | `IfNotPresent`       |
+| `frontend.name`                         | Frontend name                                                                                                                                                 | `frontend`           |
+| `frontend.fullnameOverride`             | Frontend fullnameOverride                                                                                                                                     | `""`                 |
+| `frontend.podAnnotations`               | Frontend pod annotations                                                                                                                                      | `{}`                 |
+| `frontend.deploymentAnnotations`        | Frontend deployment annotations                                                                                                                               | `{}`                 |
+| `frontend.replicaCount`                 | Frontend replica count                                                                                                                                        | `2`                  |
+| `frontend.image.repository`             | Frontend image repository                                                                                                                                     | `infisical/frontend` |
+| `frontend.image.tag`                    | Frontend image tag                                                                                                                                            | `latest`             |
+| `frontend.image.pullPolicy`             | Frontend image pullPolicy                                                                                                                                     | `IfNotPresent`       |
 | `frontend.resources.limits.memory`      | container memory limit [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)          | `100Mi`              |
-| `frontend.resources.requests.cpu`       | container CPU request [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)           | `10m`                |
+| `frontend.resources.requests.cpu`       | container CPU request [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)           | `100m`               |
+| `frontend.affinity`                     | Frontend pod affinity                                                                                                                                         | `{}`                 |
 | `frontend.kubeSecretRef`                | Backend secret resource reference name (containing required [frontend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars)) | `""`                 |
 | `frontend.service.annotations`          | Backend service annotations                                                                                                                                   | `{}`                 |
 | `frontend.service.type`                 | Backend service type                                                                                                                                          | `ClusterIP`          |
@@ -95,6 +96,7 @@ kubectl get secrets -n <namespace> <secret-name> \
 | `backend.image.pullPolicy`                             | Backend image pullPolicy                                                                                                                                                                                                            | `IfNotPresent`              |
 | `backend.resources.limits.memory`                      | container memory limit [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)                                                                                | `200Mi`                     |
 | `backend.resources.requests.cpu`                       | container CPU request [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)                                                                                 | `150m`                      |
+| `backend.affinity`                                     | Backend pod affinity                                                                                                                                                                                                                | `{}`                        |
 | `backend.kubeSecretRef`                                | Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))                                                                        | `""`                        |
 | `backend.service.annotations`                          | Backend service annotations                                                                                                                                                                                                         | `{}`                        |
 | `backend.service.type`                                 | Backend service type                                                                                                                                                                                                                | `ClusterIP`                 |
@@ -189,6 +191,7 @@ kubectl get secrets -n <namespace> <secret-name> \
 | `mailhog.ingress.hosts[0].host`    | Mailhog host               | `mailhog.infisical.local` |
 
 ### Redis parameters
+
 
 
 
