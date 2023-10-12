@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import crypto from "crypto";
 
-import { useState } from "react";
+import { useEffect,useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -56,6 +56,19 @@ export default function SignupInvite() {
   const token = parsedUrl.token as string;
   const organizationId = parsedUrl.organization_id as string;
   const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
+
+  // Check if the user is already logged in!
+  useEffect(() => {
+    const tryAuth = async () => {
+      try {
+        const userOrgs = await fetchOrganizations();
+        router.push(`/org/${userOrgs[0]._id}/overview`);
+      } catch (error) {
+        console.log("User already logged in! Redirecting to /org");
+      }
+    };
+    tryAuth();
+  }, []);
 
   // Verifies if the information that the users entered (name, workspace) is there, and if the password matched the criteria.
   const signupErrorCheck = async () => {
