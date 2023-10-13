@@ -5,8 +5,8 @@ import {
     Button, ModalClose,
 } from "@app/components/v2";
 
+import { TSecretFolder } from "../../hooks/api/types";
 import { FolderSelector } from "./FolderSelector";
-import { TSecretFolder } from "~/hooks/api/types";
 
 type Props = {
     checkedSecrets: { _id: string }[],

@@ -47,6 +47,8 @@ import { usePopUp } from "@app/hooks";
 import { useCreateFolder, useDeleteSecretBatch } from "@app/hooks/api";
 import { DecryptedSecret, TImportedSecrets, TSecretFolder, WsTag } from "@app/hooks/api/types";
 
+import { MoveSecretsToFolder } from "../../../../components/MoveSecrets";
+import { useMoveSecrets } from "../../../../hooks/api/secrets/mutations";
 import {
   PopUpNames,
   usePopUpAction,
@@ -56,8 +58,6 @@ import {
 import { Filter, GroupBy } from "../../SecretMainPage.types";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
-import { MoveSecretsToFolder } from "~/components/MoveSecrets";
-import { useMoveSecrets } from "~/hooks/api/secrets/mutations";
 
 
 type Props = {
@@ -115,7 +115,6 @@ export const ActionBar = ({
 
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
-  const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
 
   /* Mutation action calls */
   const { mutateAsync: moveSecretsToFolder } = useMoveSecrets();
@@ -197,10 +196,10 @@ export const ActionBar = ({
     }
   };
 
-  const onMoveSecrets = async (folderId: string, selectedSecrets: { _id: string }[]) => {
+  const onMoveSecrets = async (folderId: string, secretsToMove: { _id: string }[]) => {
     try {
       await moveSecretsToFolder({
-        secrets: selectedSecrets,
+        secrets: secretsToMove,
         folderId,
         workspaceId,
         environment,

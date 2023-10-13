@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/router";
+import React, { useState } from "react";
 import { faFolder } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
-import { TSecretFolder } from "~/hooks/api/types";
+import { TSecretFolder } from "../../hooks/api/types";
 
 
 
@@ -34,9 +33,7 @@ export const FolderSelector: React.FC<FolderSelectorProps> = ({ folders, onSelec
                 (folders && folders.length > 0) && (
                     <div>
                         <h2 className="text-md font-semibold text-gray-300 mt-3">Select a folder within current directory:</h2>
-                        {
-                            (
-                                <ul className="mt-3">
+                        <ul className="mt-3">
                                     {folders.map((folder) => (
                                         <li key={folder.id}>
                                             <button
@@ -52,8 +49,6 @@ export const FolderSelector: React.FC<FolderSelectorProps> = ({ folders, onSelec
                                         </li>
                                     ))}
                                 </ul>
-                            )
-                        }
                     </div>
                 )
             }
