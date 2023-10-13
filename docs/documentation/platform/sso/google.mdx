@@ -22,9 +22,24 @@ Obtain the **Client ID** and **Client Secret** for your GCP OAuth2 application.
 
 ![GCP obtain OAuth2 credentials](../../../images/sso/google/credentials.png)
    
-Back in your Infisical instance, add two new environment variables for the credentials of your GCP OAuth2 application:
+Back in your Infisical instance, make sure to set the following environment variables:
 
 - `CLIENT_ID_GOOGLE_LOGIN`: The **Client ID** of your GCP OAuth2 application.
 - `CLIENT_SECRET_GOOGLE_LOGIN`: The **Client Secret** of your GCP OAuth2 application.
+- `JWT_PROVIDER_AUTH_SECRET`: A secret key used for signing and verifying JWT. This could be a randomly-generated 256-bit hex string.
+- `SITE_URL`: The URL of your self-hosted instance of Infisical - should be an absolute URL including the protocol (e.g. https://app.infisical.com)
    
-  Once added, restart your Infisical instance and log in with Google
+Once added, restart your Infisical instance and log in with Google
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Why is Google SSO not working?">
+    It is likely that you have misconfigured your self-hosted instance of Infisical. You should:
+
+    - Check that you have set the `CLIENT_ID_GOOGLE_LOGIN`, `CLIENT_SECRET_GOOGLE_LOGIN`, 
+    `JWT_PROVIDER_AUTH_SECRET`, and `SITE_URL` environment variables.
+    - Check that the **Authorized redirect URI** specified in GCP matches the `SITE_URL` environment variable.
+    For example, if the former is `https://app.infisical.com/api/v1/sso/google` then the latter should be `https://app.infisical.com`.
+  </Accordion>
+</AccordionGroup>

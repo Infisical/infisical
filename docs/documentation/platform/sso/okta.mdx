@@ -77,3 +77,11 @@ At this point, you have configured everything you need within the context of the
 Enabling SAML SSO enforces all members in your organization to only be able to log into Infisical via Okta.
 
 ![SAML Okta assignment](../../../images/sso/okta/enable-saml.png)
+
+<Note>
+   If you're configuring SAML SSO on a self-hosted instance of Infisical, make sure to
+   set the `JWT_PROVIDER_AUTH_SECRET` and `SITE_URL` environment variable for it to work:
+   
+   - `JWT_PROVIDER_AUTH_SECRET`: This is secret key used for signing and verifying JWT. This could be a randomly-generated 256-bit hex string.
+   - `SITE_URL`: The URL of your self-hosted instance of Infisical - should be an absolute URL including the protocol (e.g. https://app.infisical.com)
+</Note>
