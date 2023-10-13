@@ -34,7 +34,6 @@ import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
-import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
 import { tempLocalStorage } from "@app/components/utilities/checks/tempLocalStorage";
 import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import {
@@ -214,7 +213,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
       // }
     };
     putUserInOrg();
-    onboardingCheck({});
   }, [router.query.id]);
 
   const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {

@@ -49,6 +49,8 @@ export const NonePage = () => {
             const organization = await mutateAsync({
                 name
             });
+            
+            localStorage.setItem("orgData.id", organization._id);
 
             createNotification({
                 text: "Successfully created organization",

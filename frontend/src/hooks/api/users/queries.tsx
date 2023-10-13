@@ -51,6 +51,17 @@ export const useDeleteUser = () => {
       return user;
     },
     onSuccess: () => {
+      localStorage.removeItem("protectedKey");
+      localStorage.removeItem("protectedKeyIV");
+      localStorage.removeItem("protectedKeyTag");
+      localStorage.removeItem("publicKey");
+      localStorage.removeItem("encryptedPrivateKey");
+      localStorage.removeItem("iv");
+      localStorage.removeItem("tag");
+      localStorage.removeItem("PRIVATE_KEY");
+      localStorage.removeItem("orgData.id");
+      localStorage.removeItem("projectData.id");
+
       queryClient.clear();
     }
   });
