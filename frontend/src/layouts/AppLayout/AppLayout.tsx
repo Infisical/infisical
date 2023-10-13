@@ -71,7 +71,9 @@ import {
   useGetUserAction,
   useLogoutUser,
   useRegisterUserAction,
-  useUploadWsKey} from "@app/hooks/api";
+  useUploadWsKey
+} from "@app/hooks/api";
+import { CreateOrgModal } from "@app/views/Org/components";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -115,12 +117,12 @@ export const AppLayout = ({ children }: LayoutProps) => {
   // eslint-disable-next-line prefer-const
   const { workspaces, currentWorkspace } = useWorkspace();
   const { orgs, currentOrg } = useOrganization();
-  
+
   const { user } = useUser();
   const { subscription } = useSubscription();
   const workspaceId = currentWorkspace?._id || "";
   const { data: updateClosed } = useGetUserAction("september_update_closed");
-  
+
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit
@@ -134,7 +136,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addNewWs",
-    "upgradePlan"
+    "upgradePlan",
+    "createOrg"
   ] as const);
   const {
     control,
@@ -151,7 +154,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const closeUpdate = async () => {
     await registerUserAction.mutateAsync("september_update_closed");
-  }
+  };
 
   const logout = useLogoutUser();
   const logOutUser = async () => {
@@ -318,6 +321,22 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             </Button>
                           </DropdownMenuItem>
                         ))}
+                        <DropdownMenuItem key="add-org">
+                          <Button
+                            onClick={() => handlePopUpOpen("createOrg")}
+                            variant="plain"
+                            colorSchema="secondary"
+                            size="xs"
+                            className="flex w-full items-center justify-start p-0 font-normal"
+                            leftIcon={
+                              <FontAwesomeIcon icon={faPlus} className="mr-3 text-primary" />
+                            }
+                          >
+                            <div className="flex w-full items-center justify-between">
+                              Create New Organization
+                            </div>
+                          </Button>
+                        </DropdownMenuItem>
                         <div className="mt-1 h-1 border-t border-mineshaft-600" />
                         <button type="button" onClick={logOutUser} className="w-full">
                           <DropdownMenuItem>Log Out</DropdownMenuItem>
@@ -490,7 +509,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           >
                             Secret approvals
                             {Boolean(secretApprovalReqCount?.open) && (
-                              <span className="text-xs font-semibold py-0.5 px-1 rounded ml-2 bg-primary-600 border border-primary-400 text-black">
+                              <span className="ml-2 rounded border border-primary-400 bg-primary-600 py-0.5 px-1 text-xs font-semibold text-black">
                                 {secretApprovalReqCount?.open}
                               </span>
                             )}
@@ -601,17 +620,31 @@ export const AppLayout = ({ children }: LayoutProps) => {
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[10.7rem] ${router.asPath.includes("org") ? "bottom-[8.15rem]" : "bottom-[5.15rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-50`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[11.5rem] ${router.asPath.includes("org") ? "bottom-[7.9rem]" : "bottom-[4.9rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-70`}/>
                 <div className={`${isLearningNoteOpen ? "block" : "hidden"} z-0 absolute h-60 w-[12.3rem] ${router.asPath.includes("org") ? "bottom-[7.65rem]" : "bottom-[4.65rem]"} bg-mineshaft-900 border border-mineshaft-600 mb-4 rounded-md opacity-90`}/> */}
-                <div className={`${!updateClosed ? "block" : "hidden"} relative z-10 h-64 w-52 bg-mineshaft-900 border border-mineshaft-600 mb-6 rounded-md flex flex-col items-center justify-start px-3`}>
-                  <div className="w-full mt-2 text-md text-mineshaft-100 font-semibold">Infisical September update</div>
-                  <div className="w-full mt-1 text-sm text-mineshaft-300 font-normal leading-[1.2rem] mb-1">Improved RBAC, new integrations, dashboard remake, and more!</div>
-                  <div className="h-[6.77rem] w-full rounded-md mt-2 border border-mineshaft-700"> 
-                    <Image src="/images/infisical-update-september-2023.png" height={319} width={539} alt="kubernetes image" className="rounded-sm" />
+                <div
+                  className={`${
+                    !updateClosed ? "block" : "hidden"
+                  } relative z-10 mb-6 flex h-64 w-52 flex-col items-center justify-start rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3`}
+                >
+                  <div className="text-md mt-2 w-full font-semibold text-mineshaft-100">
+                    Infisical September update
                   </div>
-                  <div className="w-full flex justify-between items-center mt-3 px-0.5">
+                  <div className="mt-1 mb-1 w-full text-sm font-normal leading-[1.2rem] text-mineshaft-300">
+                    Improved RBAC, new integrations, dashboard remake, and more!
+                  </div>
+                  <div className="mt-2 h-[6.77rem] w-full rounded-md border border-mineshaft-700">
+                    <Image
+                      src="/images/infisical-update-september-2023.png"
+                      height={319}
+                      width={539}
+                      alt="kubernetes image"
+                      className="rounded-sm"
+                    />
+                  </div>
+                  <div className="mt-3 flex w-full items-center justify-between px-0.5">
                     <button
                       type="button"
                       onClick={() => closeUpdate()}
-                      className="text-mineshaft-400 hover:text-mineshaft-100 duration-200"
+                      className="text-mineshaft-400 duration-200 hover:text-mineshaft-100"
                     >
                       Close
                     </button>
@@ -619,9 +652,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       href="https://infisical.com/blog/infisical-update-september-2023"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-mineshaft-400 font-normal leading-[1.2rem] hover:text-mineshaft-100 duration-200"
+                      className="text-sm font-normal leading-[1.2rem] text-mineshaft-400 duration-200 hover:text-mineshaft-100"
                     >
-                      Learn More <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs pl-0.5"/>
+                      Learn More{" "}
+                      <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="pl-0.5 text-xs" />
                     </a>
                   </div>
                 </div>
@@ -779,6 +813,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
             isOpen={popUp.upgradePlan.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
             text="You have exceeded the number of projects allowed on the free plan."
+          />
+          <CreateOrgModal
+            isOpen={popUp?.createOrg?.isOpen}
+            onClose={() => handlePopUpToggle("createOrg", false)}
           />
           <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">
             {children}
