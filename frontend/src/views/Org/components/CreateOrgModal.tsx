@@ -1,5 +1,6 @@
 import { FC } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { useRouter } from "next/router";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
@@ -22,6 +23,7 @@ interface CreateOrgModalProps {
 
 export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => {
   const { createNotification } = useNotificationContext();
+  const router = useRouter();
 
   const {
     control,
@@ -48,7 +50,10 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
         type: "success"
       });
 
-      window.location.href = `/org/${organization._id}/overview`;
+      if (router.isReady) router.push(`/org/${organization._id}/overview`);
+      else window.location.href = `/org/${organization._id}/overview`;
+
+      localStorage.setItem("orgData.id", organization._id);
 
       reset();
       onClose();
