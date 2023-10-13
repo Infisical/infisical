@@ -57,10 +57,10 @@ import { getAnImportedSecret } from "../services/SecretImportService";
 
 /**
  * Validate scope for service token v3
- * @param authPayload 
- * @param environment 
- * @param secretPath 
- * @returns 
+ * @param authPayload
+ * @param environment
+ * @param secretPath
+ * @returns
  */
 export const isValidScopeV3 = ({
   authPayload,
@@ -68,37 +68,40 @@ export const isValidScopeV3 = ({
   secretPath,
   requiredPermissions
 }: {
-  authPayload: IServiceTokenDataV3,
-  environment: string,
-  secretPath: string,
-  requiredPermissions: Permission[]
+  authPayload: IServiceTokenDataV3;
+  environment: string;
+  secretPath: string;
+  requiredPermissions: Permission[];
 }) => {
   const { scopes } = authPayload;
-  
+
   const validScope = scopes.find(
     (scope) =>
       picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
       scope.environment === environment
   );
 
-  if (validScope && !requiredPermissions.every(permission => validScope.permissions.includes(permission))) {
+  if (
+    validScope &&
+    !requiredPermissions.every((permission) => validScope.permissions.includes(permission))
+  ) {
     return false;
   }
-  
+
   return Boolean(validScope);
-}
+};
 
 /**
  * Validate scope for service token v2
- * @param authPayload 
- * @param environment 
- * @param secretPath 
- * @returns 
+ * @param authPayload
+ * @param environment
+ * @param secretPath
+ * @returns
  */
 export const isValidScope = (
   authPayload: IServiceTokenData,
   environment: string,
-  secretPath: string,
+  secretPath: string
 ) => {
   const { scopes: tkScopes } = authPayload;
   const validScope = tkScopes.find(
@@ -1000,12 +1003,22 @@ export const deleteSecretHelper = async ({
   environment,
   type,
   authData,
-  secretPath = "/"
+  secretPath = "/",
+  // used for update corner case and blindIndex goes wrong way
+  secretId
 }: DeleteSecretParams) => {
-  const secretBlindIndex = await generateSecretBlindIndexHelper({
+  let secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId)
   });
+  if (secretId) {
+    const secret = await Secret.findOne({
+      workspace: workspaceId,
+      environment,
+      _id: secretId
+    }).select("secretBlindIndex");
+    if (secret && secret.secretBlindIndex) secretBlindIndex = secret.secretBlindIndex;
+  }
 
   const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
 

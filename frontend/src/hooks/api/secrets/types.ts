@@ -120,6 +120,7 @@ export type TDeleteSecretsV3DTO = {
   type: "shared" | "personal";
   secretPath: string;
   secretName: string;
+  secretId?: string;
 };
 
 export type TCreateSecretBatchDTO = {
