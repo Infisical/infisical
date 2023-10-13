@@ -12,6 +12,7 @@ export const navigateUserToOrg = async (router: NextRouter) => {
         router.push(`/org/${userOrg}/overview`);
     } else {
         // user is not part of any org
+        localStorage.removeItem("orgData.id");
         router.push("/org/none");
     }
 }
