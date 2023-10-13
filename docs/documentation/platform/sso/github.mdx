@@ -29,9 +29,24 @@ Obtain the **Client ID** and generate a new **Client Secret** for your GitHub OA
 
 ![GCP obtain OAuth2 credentials](../../../images/sso/github/credentials.png)
 
-Back in your Infisical instance, add two new environment variables for the credentials of your GitHub OAuth application:
+Back in your Infisical instance, make sure to set the following environment variables:
 
 - `CLIENT_ID_GITHUB_LOGIN`: The **Client ID** of your GitHub OAuth application.
 - `CLIENT_SECRET_GITHUB_LOGIN`: The **Client Secret** of your GitHub OAuth application.
+- `JWT_PROVIDER_AUTH_SECRET`: A secret key used for signing and verifying JWT. This could be a randomly-generated 256-bit hex string.
+- `SITE_URL`: The URL of your self-hosted instance of Infisical - should be an absolute URL including the protocol (e.g. https://app.infisical.com)
    
 Once added, restart your Infisical instance and log in with GitHub.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Why is GitHub SSO not working?">
+    It is likely that you have misconfigured your self-hosted instance of Infisical. You should:
+
+    - Check that you have set the `CLIENT_ID_GITHUB_LOGIN`, `CLIENT_SECRET_GITHUB_LOGIN`, 
+    `JWT_PROVIDER_AUTH_SECRET`, and `SITE_URL` environment variables.
+    - Check that the **Authorization callback URL** specified in GitHub matches the `SITE_URL` environment variable.
+    For example, if the former is `https://app.infisical.com/api/v1/sso/github` then the latter should be `https://app.infisical.com`.
+  </Accordion>
+</AccordionGroup>
