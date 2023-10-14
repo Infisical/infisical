@@ -37,6 +37,7 @@
     "mongodb": "^5.7.0",
     "mongoose": "^7.4.1",
     "nanoid": "^3.3.6",
+    "next": "^12.3.4",
     "node-cache": "^5.1.2",
     "nodemailer": "^6.8.0",
     "passport": "^0.6.0",
