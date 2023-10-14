@@ -87,6 +87,10 @@ import { setup } from "./utils/setup";
 import { syncSecretsToThirdPartyServices } from "./queues/integrations/syncSecretsToThirdPartyServices";
 import { githubPushEventSecretScan } from "./queues/secret-scanning/githubScanPushEvent";
 const SmeeClient = require("smee-client"); // eslint-disable-line
+import path from "path";
+import next from "next";
+
+const dir = path.join(__dirname, "../../frontend");
 
 const main = async () => {
   await setup();
@@ -208,6 +212,19 @@ const main = async () => {
 
   // server status
   app.use("/api", healthCheck);
+
+  if (process.env.NODE_ENV === "production") {
+    const nextApp = next({
+      dev: false,
+      dir
+    });
+    const nextHandler = nextApp.getRequestHandler();
+    await nextApp.prepare();
+
+    app.all("*", (req, res) => {
+      return nextHandler(req, res);
+    });
+  }
 
   //* Handle unrouted requests and respond with proper error message as well as status code
   app.use((req, res, next) => {
