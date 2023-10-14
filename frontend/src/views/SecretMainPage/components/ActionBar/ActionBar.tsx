@@ -260,7 +260,7 @@ export const ActionBar = ({
             </div>
           </div>
         </div>
-        {/* Bult secrets move modal */}
+        {/* Move secrets modal */}
         <Modal
           isOpen={popUp?.moveSecrets?.isOpen}
           onOpenChange={(open) => {
