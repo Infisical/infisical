@@ -33,7 +33,7 @@ reports
 junit.xml
 
 # next.js
-/.next/
+.next/
 /out/
 
 # production
