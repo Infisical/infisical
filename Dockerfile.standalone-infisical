@@ -1,7 +1,12 @@
 ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 
-FROM node:16-alpine AS frontend-dependencies
+FROM  node:16-alpine AS base
+
+FROM base AS frontend-dependencies
+
+# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
+RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
@@ -11,7 +16,7 @@ COPY frontend/package.json frontend/package-lock.json frontend/next.config.js ./
 RUN npm ci --only-production --ignore-scripts
 
 # Rebuild the source code only when needed
-FROM node:16-alpine AS frontend-builder
+FROM base AS frontend-builder
 WORKDIR /app
 
 # Copy dependencies
@@ -32,7 +37,7 @@ ENV NEXT_PUBLIC_INTERCOM_ID $INTERCOM_ID
 RUN npm run build
 
 # Production image
-FROM node:16-alpine AS frontend-runner
+FROM base AS frontend-runner
 WORKDIR /app
 
 RUN addgroup --system --gid 1001 nodejs
@@ -53,6 +58,8 @@ COPY --from=frontend-builder /app/public ./public
 RUN chown nextjs:nodejs ./public/data
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=frontend-builder --chown=nextjs:nodejs /app/next.config.js ./next.config.js
+COPY --from=frontend-builder --chown=nextjs:nodejs /app/node_modules/@casl/ability/dist/es6c/extra.js ./node_modules/@casl/ability/dist/es6c/extra.js
 
 USER nextjs
 
@@ -61,7 +68,7 @@ ENV NEXT_TELEMETRY_DISABLED 1
 ##
 ## BACKEND
 ##
-FROM node:16-alpine AS backend-build
+FROM base AS backend-build
 
 WORKDIR /app
 
@@ -72,7 +79,7 @@ COPY /backend .
 RUN npm run build
 
 # Production stage
-FROM node:16-alpine AS backend-runner
+FROM base AS backend-runner
 
 WORKDIR /app
 
@@ -81,8 +88,10 @@ RUN npm ci --only-production
 
 COPY --from=backend-build /app .
 
+RUN mkdir frontend-build
+
 # Production stage
-FROM node:16-alpine AS production
+FROM base AS production
 
 WORKDIR / 
 
@@ -97,7 +106,7 @@ COPY nginx/default-stand-alone-docker.conf /etc/nginx/nginx.conf
 
 COPY --from=backend-runner /app /backend
 
-COPY --from=frontend-runner /app/ /app/
+COPY --from=frontend-runner /app ./backend/frontend-build
 
 EXPOSE 80
 ENV HTTPS_ENABLED false 
