@@ -90,7 +90,7 @@ const SmeeClient = require("smee-client"); // eslint-disable-line
 import path from "path";
 import next from "next";
 
-const dir = path.join(__dirname, "../../frontend");
+const dir = path.join(__dirname, "../frontend-build");
 
 const main = async () => {
   await setup();
@@ -214,6 +214,7 @@ const main = async () => {
   app.use("/api", healthCheck);
 
   if (process.env.NODE_ENV === "production") {
+    process.chdir(dir);
     const nextApp = next({
       dev: false,
       dir
