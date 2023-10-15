@@ -60,3 +60,5 @@ yarn-error.log*
 
 # Editor specific
 .vscode/*
+
+frontend-build
