@@ -655,7 +655,7 @@ func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]mod
 
 func init() {
 	secretsGenerateExampleEnvCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
-	secretsGenerateExampleEnvCmd.Flags().String("path", "/", "store the secret within a folder path")
+	secretsGenerateExampleEnvCmd.Flags().String("path", "/", "Fetch secrets from within a folder path")
 	secretsCmd.AddCommand(secretsGenerateExampleEnvCmd)
 
 	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
