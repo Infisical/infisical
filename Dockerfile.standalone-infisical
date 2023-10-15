@@ -59,7 +59,6 @@ RUN chown nextjs:nodejs ./public/data
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/next.config.js ./next.config.js
-COPY --from=frontend-builder --chown=nextjs:nodejs /app/node_modules/@casl/ability/dist/es6c/extra.js ./node_modules/@casl/ability/dist/es6c/extra.js
 
 USER nextjs
 
