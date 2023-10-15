@@ -94,22 +94,18 @@ FROM base AS production
 
 WORKDIR / 
 
-# Install PM2
-RUN npm install -g pm2
-# Copy ecosystem.config.js
-COPY ecosystem.config.js .
-
-RUN apk add --no-cache nginx
-
-COPY nginx/default-stand-alone-docker.conf /etc/nginx/nginx.conf
-
 COPY --from=backend-runner /app /backend
 
 COPY --from=frontend-runner /app ./backend/frontend-build
 
 EXPOSE 80
-ENV HTTPS_ENABLED false 
 
-CMD ["pm2-runtime", "start", "ecosystem.config.js"]
+ENV PORT 80
+ENV HTTPS_ENABLED false 
+ENV NODE_ENV production
+
+WORKDIR /backend
+
+CMD ["node", "build/index.js"]
 
 
