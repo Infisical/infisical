@@ -88,7 +88,8 @@ import { syncSecretsToThirdPartyServices } from "./queues/integrations/syncSecre
 import { githubPushEventSecretScan } from "./queues/secret-scanning/githubScanPushEvent";
 const SmeeClient = require("smee-client"); // eslint-disable-line
 import path from "path";
-import next from "next";
+
+let handler: null | any = null;
 
 const main = async () => {
   await setup();
@@ -148,6 +149,27 @@ const main = async () => {
     req.realIP = Array.isArray(cfIp) ? cfIp[0] : (cfIp as string) || req.ip;
     next();
   });
+
+  if ((await getNodeEnv()) === "production") {
+    const nextJsBuildPath = path.join(__dirname, "../frontend-build");
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const conf = require("../frontend-build/.next/required-server-files.json").config;
+    const NextServer =
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      require("../frontend-build/node_modules/next/dist/server/next-server").default;
+    const nextApp = new NextServer({
+      dev: false,
+      dir: nextJsBuildPath,
+      port: await getPort(),
+      conf,
+      hostname: "local",
+      customServer: false
+    });
+
+    handler = nextApp.getRequestHandler();
+  }
 
   // (EE) routes
   app.use("/api/v1/secret", eeSecretRouter);
@@ -211,18 +233,9 @@ const main = async () => {
   // server status
   app.use("/api", healthCheck);
 
-  if (process.env.NODE_ENV == "production") {
-    const nextJsBuildPath = path.join(__dirname, "../frontend-build");
-    const nextApp = next({
-      dev: false,
-      dir: nextJsBuildPath
-    });
-
-    const nextHandler = nextApp.getRequestHandler();
-    await nextApp.prepare();
-
+  if (handler) {
     app.all("*", (req, res) => {
-      return nextHandler(req, res);
+      return handler(req, res);
     });
   }
 
