@@ -58,7 +58,6 @@ COPY --from=frontend-builder /app/public ./public
 RUN chown nextjs:nodejs ./public/data
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=frontend-builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=frontend-builder --chown=nextjs:nodejs /app/next.config.js ./next.config.js
 
 USER nextjs
 
