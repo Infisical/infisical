@@ -212,11 +212,10 @@ const main = async () => {
   app.use("/api", healthCheck);
 
   if (process.env.NODE_ENV == "production") {
-    const dir = path.join(__dirname, "../frontend-build");
-    process.chdir(dir);
+    const nextJsBuildPath = path.join(__dirname, "../frontend-build");
     const nextApp = next({
       dev: false,
-      dir
+      dir: nextJsBuildPath
     });
 
     const nextHandler = nextApp.getRequestHandler();
