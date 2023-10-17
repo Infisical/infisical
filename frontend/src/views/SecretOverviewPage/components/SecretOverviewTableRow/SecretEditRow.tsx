@@ -12,13 +12,14 @@ import { useToggle } from "@app/hooks";
 type Props = {
   defaultValue?: string | null;
   secretName: string;
+  secretId?: string;
   isCreatable?: boolean;
   isVisible?: boolean;
   environment: string;
   secretPath: string;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
   onSecretUpdate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretDelete: (env: string, key: string) => Promise<void>;
+  onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
 };
 
 export const SecretEditRow = ({
@@ -30,7 +31,8 @@ export const SecretEditRow = ({
   onSecretDelete,
   environment,
   secretPath,
-  isVisible
+  isVisible,
+  secretId
 }: Props) => {
   const {
     handleSubmit,
@@ -77,7 +79,7 @@ export const SecretEditRow = ({
   const handleDeleteSecret = async () => {
     setIsDeleting.on();
     try {
-      await onSecretDelete(environment, secretName);
+      await onSecretDelete(environment, secretName, secretId);
       reset({ value: undefined });
     } finally {
       setIsDeleting.off();

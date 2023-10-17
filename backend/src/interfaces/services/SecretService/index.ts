@@ -64,6 +64,7 @@ export interface UpdateSecretParams {
 
 export interface DeleteSecretParams {
   secretName: string;
+  secretId?: string;
   workspaceId: Types.ObjectId;
   environment: string;
   type: "shared" | "personal";

@@ -124,13 +124,15 @@ export const SecretListView = ({
       comment,
       tags,
       skipMultilineEncoding,
-      newKey
+      newKey,
+      secretId
     }: Partial<{
       value: string;
       comment: string;
       tags: string[];
       skipMultilineEncoding: boolean;
       newKey: string;
+      secretId: string;
     }> = {}
   ) => {
     if (operation === "delete") {
@@ -139,7 +141,8 @@ export const SecretListView = ({
         workspaceId,
         secretPath,
         secretName: key,
-        type
+        type,
+        secretId
       });
       return;
     }
@@ -249,9 +252,9 @@ export const SecretListView = ({
   );
 
   const handleSecretDelete = useCallback(async () => {
-    const { key } = popUp.deleteSecret?.data as DecryptedSecret;
+    const { key, _id: secretId } = popUp.deleteSecret?.data as DecryptedSecret;
     try {
-      await handleSecretOperation("delete", "shared", key);
+      await handleSecretOperation("delete", "shared", key, { secretId });
       queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );

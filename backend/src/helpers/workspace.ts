@@ -1,4 +1,4 @@
-import mongoose, { Types } from "mongoose";
+import mongoose, { Types, mongo } from "mongoose";
 import {
 	Bot,
 	BotKey,
@@ -102,125 +102,189 @@ export const createWorkspace = async ({
  * @param {String} obj.id - id of workspace to delete
  */
 export const deleteWorkspace = async ({ 
-	workspaceId
+	workspaceId,
+	existingSession
 }: { 
 	workspaceId: Types.ObjectId;
+	existingSession?: mongo.ClientSession;
 }) => {
-	const session = await mongoose.startSession();
-	session.startTransaction();
+
+	let session;
+
+	if (existingSession) {
+		session = existingSession;
+	} else {
+		session = await mongoose.startSession();
+		session.startTransaction();
+	}
 	
 	try {
-		const workspace = await Workspace.findByIdAndDelete(workspaceId);
+		const workspace = await Workspace.findByIdAndDelete(workspaceId, { session });
 		
 		if (!workspace) throw ResourceNotFoundError();
 		
 		await Membership.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 		
 		await Key.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 		
 		await Bot.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await BotKey.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await SecretBlindIndexData.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await Secret.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 		
 		await SecretVersion.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await SecretSnapshot.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await SecretImport.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await Folder.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await FolderVersion.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await Webhook.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await TrustedIP.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await Tag.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await IntegrationAuth.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await Integration.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await ServiceToken.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await ServiceTokenData.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await ServiceTokenDataV3.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await ServiceTokenDataV3Key.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await AuditLog.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await Log.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await Action.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await SecretApprovalPolicy.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 
 		await SecretApprovalRequest.deleteMany({
 			workspace: workspace._id
+		}, {
+			session
 		});
 		
 		return workspace;
 	} catch (err) {
-		await session.abortTransaction();
+		if (!existingSession) {
+			await session.abortTransaction();
+		}
 		throw InternalServerError({
 			message: "Failed to delete organization"
 		});
 	} finally {
-		session.endSession();
+		if (!existingSession) {
+			await session.commitTransaction();
+			session.endSession();
+		}
 	}
 };

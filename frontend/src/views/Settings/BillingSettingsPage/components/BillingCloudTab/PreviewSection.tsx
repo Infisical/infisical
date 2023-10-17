@@ -71,7 +71,7 @@ export const PreviewSection = () => {
       console.error(err);
     }
   };
-
+  
   return (
     <div>
       {subscription &&

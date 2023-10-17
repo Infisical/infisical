@@ -379,7 +379,8 @@ export const DeleteSecretByNameV3 = z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
     type: z.enum([SECRET_SHARED, SECRET_PERSONAL]),
-    secretPath: z.string().trim().default("/")
+    secretPath: z.string().trim().default("/"),
+    secretId: z.string().trim().optional()
   }),
   params: z.object({
     secretName: z.string()
