@@ -476,7 +476,7 @@ export const getSecrets = async (req: Request, res: Response) => {
 
   if (folderId && folderId !== "root") {
     const folder = await Folder.findOne({ workspace: workspaceId, environment });
-    if (!folder) throw BadRequestError({ message: "Folder not found" });
+    if (!folder) return res.send({ secrets: [] });
 
     secretPath = getFolderWithPathFromId(folder.nodes, folderId).folderPath;
   }
@@ -673,6 +673,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
       secretValueCiphertext,
       secretValueTag,
       secretValueIV,
+      secretId,
       type,
       environment,
       secretPath,
@@ -741,6 +742,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
     type,
+    secretId,
     authData: req.authData,
     newSecretName,
     secretValueCiphertext,

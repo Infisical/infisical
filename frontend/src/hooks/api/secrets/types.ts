@@ -109,6 +109,7 @@ export type TUpdateSecretsV3DTO = {
   skipMultilineEncoding?: boolean;
   newSecretName?: string;
   secretName: string;
+  secretId?: string;
   secretValue: string;
   secretComment?: string;
   tags?: string[];
