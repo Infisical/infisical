@@ -303,7 +303,7 @@ const initializePassport = async () => {
         
         const samlConfig: ISAMLConfig = ({
           path: `/api/v1/sso/saml2/${ssoIdentifier}`,
-          callbackURL: `/api/v1/sso/saml2${ssoIdentifier}`,
+          callbackURL: `/api/v1/sso/saml2/${ssoIdentifier}`,
           entryPoint: ssoConfig.entryPoint,
           issuer: ssoConfig.issuer,
           cert: ssoConfig.cert,
