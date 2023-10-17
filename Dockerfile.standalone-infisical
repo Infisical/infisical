@@ -74,6 +74,7 @@ COPY backend/package*.json ./
 RUN npm ci --only-production
 
 COPY /backend .
+COPY standalone-entrypoint.sh standalone-entrypoint.sh
 RUN npm run build
 
 # Production stage
@@ -105,6 +106,9 @@ ENV NODE_ENV production
 
 WORKDIR /backend
 
-CMD ["node", "build/index.js"]
+ENV TELEMETRY_ENABLED true
+
+CMD ["./standalone-entrypoint.sh"]
+
 
 

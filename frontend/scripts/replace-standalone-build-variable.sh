@@ -10,7 +10,7 @@ fi
 
 echo "Replacing pre-baked value.."
 
-find /app/public /app/.next -type f -name "*.js" |
+find public .next -type f -name "*.js" |
 while read file; do
     sed -i "s|$ORIGINAL|$REPLACEMENT|g" "$file"
 done
