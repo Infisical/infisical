@@ -12,6 +12,9 @@ jobs:
       - name: Extract version from tag
         id: extract_version
         run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical/}"
+      - name: Extract version from tag
+        id: extract_version
+        run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical/}"
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
         with:
@@ -73,3 +76,6 @@ jobs:
             infisical/infisical:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
           file: Dockerfile.standalone-infisical
+          build-args: |
+            POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+            NEXT_INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
