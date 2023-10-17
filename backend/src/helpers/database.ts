@@ -14,7 +14,7 @@ export const initDatabaseHelper = async ({
 }) => {
     try {
         await mongoose.connect(mongoURL);
-    
+
         // allow empty strings to pass the required validator
         mongoose.Schema.Types.String.checkRequired(v => typeof v === "string");
 
@@ -31,14 +31,10 @@ export const initDatabaseHelper = async ({
  * Close database conection
  */
 export const closeDatabaseHelper = async () => {
-    return Promise.all([
-        new Promise((resolve) => {
-            if (mongoose.connection && mongoose.connection.readyState == 1) {
-            mongoose.connection.close()
-                .then(() => resolve("Database connection closed"));
-            } else {
-            resolve("Database connection already closed");
-            }
-        }),
-    ]);
-}
+    if (mongoose.connection && mongoose.connection.readyState === 1) {
+        await mongoose.connection.close();
+        return "Database connection closed";
+    } else {
+        return "Database connection already closed";
+    }
+};
