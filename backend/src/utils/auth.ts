@@ -301,8 +301,8 @@ const initializePassport = async () => {
         }
         
         const samlConfig: ISAMLConfig = ({
-          path: `${await getSiteURL()}/api/v1/sso/saml2/${ssoIdentifier}`,
-          callbackURL: `${await getSiteURL()}/api/v1/sso/saml2${ssoIdentifier}`,
+          path: `/api/v1/sso/saml2/${ssoIdentifier}`,
+          callbackURL: `/api/v1/sso/saml2${ssoIdentifier}`,
           entryPoint: ssoConfig.entryPoint,
           issuer: ssoConfig.issuer,
           cert: ssoConfig.cert,
