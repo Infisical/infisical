@@ -150,7 +150,7 @@ const main = async () => {
     next();
   });
 
-  if ((await getNodeEnv()) === "production") {
+  if ((await getNodeEnv()) === "production" && process.env.STANDALONE_BUILD === "true") {
     const nextJsBuildPath = path.join(__dirname, "../frontend-build");
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore

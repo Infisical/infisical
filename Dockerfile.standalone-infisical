@@ -105,6 +105,7 @@ COPY --from=frontend-runner /app ./backend/frontend-build
 ENV PORT 8080
 ENV HTTPS_ENABLED false 
 ENV NODE_ENV production
+ENV STANDALONE_BUILD true 
 
 WORKDIR /backend
 
