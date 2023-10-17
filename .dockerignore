@@ -8,4 +8,3 @@ backend/frontend-build
 README.md
 .dockerignore
 **/Dockerfile
-.next
