@@ -1,8 +1,4 @@
-// @ts-check
 
-/**
- * @type {import('next').NextConfig}
- **/
 const path = require("path");
 
 const ContentSecurityPolicy = `
@@ -53,7 +49,9 @@ const securityHeaders = [
     value: ContentSecurityPolicy.replace(/\s{2,}/g, " ").trim()
   }
 ];
-
+/**
+ * @type {import('next').NextConfig}
+ **/
 module.exports = {
   output: "standalone",
   i18n: {

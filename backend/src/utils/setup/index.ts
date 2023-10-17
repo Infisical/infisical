@@ -55,9 +55,6 @@ export const setup = async () => {
   // initializing global feature set
   await EELicenseService.initGlobalFeatureSet();
 
-  // initializing the database connection
-  await DatabaseService.initDatabase(await getMongoURL());
-
   await initializePassport();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY

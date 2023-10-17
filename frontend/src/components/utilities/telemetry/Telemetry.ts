@@ -13,7 +13,7 @@ class Capturer {
   }
 
   capture(item: string) {
-    if (ENV === 'production' && TELEMETRY_CAPTURING_ENABLED) {
+    if (ENV === 'production' && TELEMETRY_CAPTURING_ENABLED === "true") {
       try {
         this.api.capture(item);
       } catch (error) {
@@ -23,7 +23,7 @@ class Capturer {
   }
 
   identify(id: string, email?: string) {
-    if (ENV === 'production' && TELEMETRY_CAPTURING_ENABLED) {
+    if (ENV === 'production' && TELEMETRY_CAPTURING_ENABLED === "true") {
       try {
         this.api.identify(id, {
           email: email
