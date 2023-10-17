@@ -297,6 +297,7 @@ const initializePassport = async () => {
           issuer: string;
           cert: string;
           audience: string;
+          protocol: string;
           wantAuthnResponseSigned?: boolean;
         }
         
@@ -306,6 +307,7 @@ const initializePassport = async () => {
           entryPoint: ssoConfig.entryPoint,
           issuer: ssoConfig.issuer,
           cert: ssoConfig.cert,
+          protocol: "https://",
           audience: await getSiteURL()
         });
         
