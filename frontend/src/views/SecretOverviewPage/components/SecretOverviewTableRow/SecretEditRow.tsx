@@ -18,7 +18,7 @@ type Props = {
   environment: string;
   secretPath: string;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretUpdate: (env: string, key: string, value: string) => Promise<void>;
+  onSecretUpdate: (env: string, key: string, value: string, secretId?: string) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
 };
 
@@ -42,7 +42,7 @@ export const SecretEditRow = ({
     formState: { isDirty, isSubmitting }
   } = useForm({
     values: {
-      value: defaultValue
+      value: defaultValue || null
     }
   });
   const [isDeleting, setIsDeleting] = useToggle();
@@ -70,7 +70,7 @@ export const SecretEditRow = ({
       if (isCreatable) {
         await onSecretCreate(environment, secretName, value);
       } else {
-        await onSecretUpdate(environment, secretName, value);
+        await onSecretUpdate(environment, secretName, value, secretId);
       }
     }
     reset({ value });
@@ -80,7 +80,7 @@ export const SecretEditRow = ({
     setIsDeleting.on();
     try {
       await onSecretDelete(environment, secretName, secretId);
-      reset({ value: undefined });
+      reset({ value: null });
     } finally {
       setIsDeleting.off();
     }

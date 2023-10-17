@@ -353,6 +353,7 @@ export const UpdateSecretByNameV3 = z.object({
   body: z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
+    secretId: z.string().trim().optional(),
     type: z.enum([SECRET_SHARED, SECRET_PERSONAL]),
     secretPath: z.string().trim().default("/"),
     secretValueCiphertext: z.string().trim(),

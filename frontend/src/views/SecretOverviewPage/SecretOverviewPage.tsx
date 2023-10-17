@@ -146,12 +146,13 @@ export const SecretOverviewPage = () => {
     }
   };
 
-  const handleSecretUpdate = async (env: string, key: string, value: string) => {
+  const handleSecretUpdate = async (env: string, key: string, value: string, secretId?: string) => {
     try {
       await updateSecretV3({
         environment: env,
         workspaceId,
         secretPath,
+        secretId,
         secretName: key,
         secretValue: value,
         type: "shared",
@@ -242,7 +243,6 @@ export const SecretOverviewPage = () => {
   );
 
   const canViewOverviewPage = Boolean(userAvailableEnvs.length);
-
   const filteredSecretNames = secKeys
     ?.filter((name) => name.toUpperCase().includes(searchFilter.toUpperCase()))
     .sort((a, b) => (sortDir === "asc" ? a.localeCompare(b) : b.localeCompare(a)));

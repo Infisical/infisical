@@ -153,6 +153,7 @@ export const SecretListView = ({
         workspaceId,
         secretPath,
         secretName: key,
+        secretId,
         secretValue: value || "",
         type,
         latestFileKey: decryptFileKey,
@@ -201,11 +202,14 @@ export const SecretListView = ({
       try {
         // personal secret change
         if (overrideAction === "deleted") {
-          await handleSecretOperation("delete", "personal", oldKey);
+          await handleSecretOperation("delete", "personal", oldKey, {
+            secretId: orgSecret.idOverride
+          });
         } else if (overrideAction && idOverride) {
           await handleSecretOperation("update", "personal", oldKey, {
             value: valueOverride,
             newKey: hasKeyChanged ? key : undefined,
+            secretId: orgSecret.idOverride,
             skipMultilineEncoding: modSecret.skipMultilineEncoding
           });
         } else if (overrideAction) {
@@ -218,6 +222,7 @@ export const SecretListView = ({
             value,
             tags: tagIds,
             comment,
+            secretId: orgSecret._id,
             newKey: hasKeyChanged ? key : undefined,
             skipMultilineEncoding: modSecret.skipMultilineEncoding
           });
@@ -308,7 +313,6 @@ export const SecretListView = ({
               >
                 {namespace}
               </div>
-
               {filteredSecrets.map((secret) => (
                 <SecretItem
                   environment={environment}
