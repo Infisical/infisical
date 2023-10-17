@@ -315,6 +315,11 @@ const initializePassport = async () => {
           samlConfig.wantAuthnResponseSigned = false;
         }
         
+        if (ssoConfig.authProvider.toString() === AuthMethod.AZURE_SAML.toString()) {
+          samlConfig.wantAuthnResponseSigned = false;
+          samlConfig.audience = `spn:${await getSiteURL()}`;
+        }
+        
         req.ssoConfig = ssoConfig;
         
         done(null, samlConfig);
