@@ -291,23 +291,19 @@ const initializePassport = async () => {
         });
         
         interface ISAMLConfig {
-          path: string;
-          callbackURL: string;
+          callbackUrl: string;
           entryPoint: string;
           issuer: string;
           cert: string;
           audience: string;
-          protocol: string;
           wantAuthnResponseSigned?: boolean;
         }
         
         const samlConfig: ISAMLConfig = ({
-          path: `/api/v1/sso/saml2/${ssoIdentifier}`,
-          callbackURL: `/api/v1/sso/saml2/${ssoIdentifier}`,
+          callbackUrl: `${await getSiteURL()}/api/v1/sso/saml2/${ssoIdentifier}`,
           entryPoint: ssoConfig.entryPoint,
           issuer: ssoConfig.issuer,
           cert: ssoConfig.cert,
-          protocol: "https://",
           audience: await getSiteURL()
         });
         
@@ -316,7 +312,7 @@ const initializePassport = async () => {
         }
         
         if (ssoConfig.authProvider.toString() === AuthMethod.AZURE_SAML.toString()) {
-          samlConfig.wantAuthnResponseSigned = false;
+          samlConfig.audience = `spn:${ssoConfig.issuer}`;
         }
         
         req.ssoConfig = ssoConfig;
