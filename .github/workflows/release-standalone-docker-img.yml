@@ -12,9 +12,6 @@ jobs:
       - name: Extract version from tag
         id: extract_version
         run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical/}"
-      - name: Extract version from tag
-        id: extract_version
-        run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical/}"
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
         with:
