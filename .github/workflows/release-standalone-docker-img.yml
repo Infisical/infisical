@@ -75,4 +75,4 @@ jobs:
           file: Dockerfile.standalone-infisical
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
-            NEXT_INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
+            INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
