@@ -7,7 +7,7 @@ import { AuthMode } from "../../variables";
 router.post(
   "/",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.API_KEY]
   }),
   secretImpsController.createSecretImp
 );
@@ -15,7 +15,7 @@ router.post(
 router.put(
   "/:id",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.API_KEY]
   }),
   secretImpsController.updateSecretImport
 );
@@ -23,7 +23,7 @@ router.put(
 router.delete(
   "/:id",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.API_KEY]
   }),
   secretImpsController.deleteSecretImport
 );
@@ -31,7 +31,7 @@ router.delete(
 router.get(
   "/",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.API_KEY]
   }),
   secretImpsController.getSecretImports
 );
@@ -39,7 +39,7 @@ router.get(
 router.get(
   "/secrets",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.API_KEY]
   }),
   secretImpsController.getAllSecretsFromImport
 );
