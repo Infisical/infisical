@@ -143,8 +143,8 @@ export const SSOModal = ({
                     entityId: "Identifier (Entity ID)",
                     entryPoint: "Login URL",
                     entryPointPlaceholder: "https://login.microsoftonline.com/xxx/saml2",
-                    issuer: "Azure AD Identifier",
-                    issuerPlaceholder: "https://sts.windows.net/xxx/"
+                    issuer: "Azure Application ID",
+                    issuerPlaceholder: "abc-def-ghi-jkl-mno"
                 });
             case AuthProvider.JUMPCLOUD_SAML:
                 return ({
