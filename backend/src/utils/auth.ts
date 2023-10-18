@@ -312,7 +312,9 @@ const initializePassport = async () => {
         }
         
         if (ssoConfig.authProvider.toString() === AuthMethod.AZURE_SAML.toString()) {
-          samlConfig.audience = `spn:${ssoConfig.issuer}`;
+          if (req.body.RelayState && JSON.parse(req.body.RelayState).spInitiated) {
+            samlConfig.audience = `spn:${ssoConfig.issuer}`;
+          }
         }
         
         req.ssoConfig = ssoConfig;
@@ -407,7 +409,7 @@ const initializePassport = async () => {
           authMethod: req.ssoConfig.authProvider,
           isUserCompleted,
           ...(req.body.RelayState ? {
-            callbackPort: req.body.RelayState as string
+            callbackPort: JSON.parse(req.body.RelayState).callbackPort as string
           } : {})
         },
         expiresIn: await getJwtProviderAuthLifetime(),
