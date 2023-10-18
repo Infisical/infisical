@@ -1,5 +1,6 @@
 ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
+ARG INTERCOM_ID=intercom-id
 
 FROM  node:16-alpine AS base
 
@@ -48,13 +49,6 @@ RUN adduser --system --uid 1001 non-root-user
 RUN mkdir -p /app/.next/cache/images && chown non-root-user:nodejs /app/.next/cache/images
 VOLUME /app/.next/cache/images
 
-ARG POSTHOG_API_KEY
-ENV NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY \
-  BAKED_NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY
-ARG INTERCOM_ID
-ENV NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID \
-  BAKED_NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID
-
 COPY --chown=non-root-user:nodejs --chmod=555 frontend/scripts ./scripts
 COPY --from=frontend-builder /app/public ./public
 RUN chown non-root-user:nodejs ./public/data
@@ -97,6 +91,14 @@ RUN mkdir frontend-build
 FROM base AS production
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 non-root-user
+
+## set pre baked keys
+ARG POSTHOG_API_KEY
+ENV NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY \
+  BAKED_NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY
+ARG INTERCOM_ID=intercom-id
+ENV NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID \
+  BAKED_NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID
 
 WORKDIR / 
 
