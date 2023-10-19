@@ -13,6 +13,7 @@ import {
 } from "../models";
 import { createToken } from "../helpers/auth";
 import {
+  getAuthSecret,
   getClientIdGitHubLogin,
   getClientIdGitLabLogin,
   getClientIdGoogleLogin,
@@ -20,13 +21,12 @@ import {
   getClientSecretGitLabLogin,
   getClientSecretGoogleLogin,
   getJwtProviderAuthLifetime,
-  getJwtProviderAuthSecret,
   getSiteURL,
   getUrlGitLabLogin
 } from "../config";
 import { getSSOConfigHelper } from "../ee/helpers/organizations";
 import { InternalServerError, OrganizationNotFoundError } from "./errors";
-import { ACCEPTED, INTEGRATION_GITHUB_API_URL, INVITED, MEMBER } from "../variables";
+import { ACCEPTED, AuthTokenType, INTEGRATION_GITHUB_API_URL, INVITED, MEMBER } from "../variables";
 import { standardRequest } from "../config/request";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -131,6 +131,7 @@ const initializePassport = async () => {
         const isUserCompleted = !!user.publicKey;
         const providerAuthToken = createToken({
           payload: {
+            authTokenType: AuthTokenType.PROVIDER_TOKEN,
             userId: user._id.toString(),
             email: user.email,
             firstName: user.firstName,
@@ -143,7 +144,7 @@ const initializePassport = async () => {
             } : {})
           },
           expiresIn: await getJwtProviderAuthLifetime(),
-          secret: await getJwtProviderAuthSecret(),
+          secret: await getAuthSecret(),
         });
 
         req.isUserCompleted = isUserCompleted;
@@ -204,6 +205,7 @@ const initializePassport = async () => {
       const isUserCompleted = !!user.publicKey;
       const providerAuthToken = createToken({
         payload: {
+          authTokenType: AuthTokenType.PROVIDER_TOKEN,
           userId: user._id.toString(),
           email: user.email,
           firstName: user.firstName,
@@ -216,7 +218,7 @@ const initializePassport = async () => {
           } : {})
         },
         expiresIn: await getJwtProviderAuthLifetime(),
-        secret: await getJwtProviderAuthSecret(),
+        secret: await getAuthSecret(),
       });
 
       req.isUserCompleted = isUserCompleted;
@@ -258,6 +260,7 @@ const initializePassport = async () => {
       const isUserCompleted = !!user.publicKey;
       const providerAuthToken = createToken({
         payload: {
+          authTokenType: AuthTokenType.PROVIDER_TOKEN,
           userId: user._id.toString(),
           email: user.email,
           firstName: user.firstName,
@@ -270,7 +273,7 @@ const initializePassport = async () => {
           } : {})
         },
         expiresIn: await getJwtProviderAuthLifetime(),
-        secret: await getJwtProviderAuthSecret(),
+        secret: await getAuthSecret(),
       });
 
       req.isUserCompleted = isUserCompleted;
@@ -401,6 +404,7 @@ const initializePassport = async () => {
       const isUserCompleted = !!user.publicKey;
       const providerAuthToken = createToken({
         payload: {
+          authTokenType: AuthTokenType.PROVIDER_TOKEN,
           userId: user._id.toString(),
           email: user.email,
           firstName,
@@ -413,7 +417,7 @@ const initializePassport = async () => {
           } : {})
         },
         expiresIn: await getJwtProviderAuthLifetime(),
-        secret: await getJwtProviderAuthSecret(),
+        secret: await getAuthSecret(),
       });
       
       req.isUserCompleted = isUserCompleted;

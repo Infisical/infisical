@@ -17,17 +17,13 @@ export const getRootEncryptionKey = async () => {
 }
 export const getInviteOnlySignup = async () => (await client.getSecret("INVITE_ONLY_SIGNUP")).secretValue === "true"
 export const getSaltRounds = async () => parseInt((await client.getSecret("SALT_ROUNDS")).secretValue) || 10;
+export const getAuthSecret = async () => (await client.getSecret("AUTH_SECRET")).secretValue; // new
 export const getJwtAuthLifetime = async () => (await client.getSecret("JWT_AUTH_LIFETIME")).secretValue || "10d";
-export const getJwtAuthSecret = async () => (await client.getSecret("JWT_AUTH_SECRET")).secretValue;
 export const getJwtMfaLifetime = async () => (await client.getSecret("JWT_MFA_LIFETIME")).secretValue || "5m";
-export const getJwtMfaSecret = async () => (await client.getSecret("JWT_MFA_LIFETIME")).secretValue || "5m";
 export const getJwtRefreshLifetime = async () => (await client.getSecret("JWT_REFRESH_LIFETIME")).secretValue || "90d";
-export const getJwtRefreshSecret = async () => (await client.getSecret("JWT_REFRESH_SECRET")).secretValue;
-export const getJwtServiceSecret = async () => (await client.getSecret("JWT_SERVICE_SECRET")).secretValue;
+export const getJwtServiceSecret = async () => (await client.getSecret("JWT_SERVICE_SECRET")).secretValue; // TODO: deprecate (related to ST V1)
 export const getJwtSignupLifetime = async () => (await client.getSecret("JWT_SIGNUP_LIFETIME")).secretValue || "15m";
-export const getJwtProviderAuthSecret = async () => (await client.getSecret("JWT_PROVIDER_AUTH_SECRET")).secretValue;
 export const getJwtProviderAuthLifetime = async () => (await client.getSecret("JWT_PROVIDER_AUTH_LIFETIME")).secretValue || "15m";
-export const getJwtSignupSecret = async () => (await client.getSecret("JWT_SIGNUP_SECRET")).secretValue;
 export const getJwtServiceTokenSecret = async () => (await client.getSecret("JWT_SERVICE_TOKEN_SECRET")).secretValue;
 export const getMongoURL = async () => (await client.getSecret("MONGO_URL")).secretValue;
 export const getNodeEnv = async () => (await client.getSecret("NODE_ENV")).secretValue || "production";

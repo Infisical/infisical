@@ -81,7 +81,7 @@ import {
   getSecretScanningPrivateKey,
   getSecretScanningWebhookProxy,
   getSecretScanningWebhookSecret,
-  getSiteURL
+  getSiteURL,
 } from "./config";
 import { setup } from "./utils/setup";
 import { syncSecretsToThirdPartyServices } from "./queues/integrations/syncSecretsToThirdPartyServices";
