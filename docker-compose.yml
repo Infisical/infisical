@@ -1,43 +1,17 @@
 version: "3"
 
 services:
-  nginx:
-    container_name: infisical-nginx
-    image: nginx
-    restart: always
-    ports:
-      - 80:80
-      - 443:443
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - frontend
-      - backend
-    networks:
-      - infisical
-
   backend:
     container_name: infisical-backend
     restart: unless-stopped
     depends_on:
       - mongo
-    image: infisical/backend
+    image: infisical/infisical:latest
     env_file: .env
+    ports:
+      - 80:8080
     environment:
       - NODE_ENV=production
-    networks:
-      - infisical
-
-  frontend:
-    container_name: infisical-frontend
-    restart: unless-stopped
-    depends_on:
-      - backend
-    image: infisical/frontend
-    env_file: .env
-    environment:
-      # - NEXT_PUBLIC_POSTHOG_API_KEY=${POSTHOG_PROJECT_API_KEY}
-      - INFISICAL_TELEMETRY_ENABLED=${TELEMETRY_ENABLED}
     networks:
       - infisical
 
