@@ -37,8 +37,8 @@ spec:
           httpGet:
             path: /api/status
             port: 8080
-          initialDelaySeconds: 50
-          periodSeconds: 30
+          initialDelaySeconds: 10
+          periodSeconds: 10
         ports: 
         - containerPort: 8080
         envFrom:
