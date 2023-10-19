@@ -14,7 +14,8 @@ import {
   getJwtSignupLifetime,
   getJwtSignupSecret,
   getSiteURL,
-  getSmtpConfigured
+  getSmtpConfigured,
+  getNodeEnv
 } from "../../config";
 import { validateUserEmail } from "../../validation";
 import { validateRequest } from "../../helpers/validation";
@@ -102,8 +103,15 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
     OrgPermissionSubjects.Member
   );
 
-  const host = req.headers.host;
-  const siteUrl = `${req.protocol}://${host}`;
+  let siteURL;
+  const nodeEnv = await getNodeEnv();
+  if (nodeEnv === "production") {
+    siteURL = await getSiteURL(); // Use await getSiteURL() in production
+  } else {
+    const host = req.headers.host;
+    siteURL = `${req.protocol}://${host}`; // Use the default value for non-production environments
+  }
+
   const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
 
   const ssoConfig = await SSOConfig.findOne({
@@ -196,7 +204,7 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
         email: inviteeEmail,
         organizationId: organization._id.toString(),
         token,
-        callback_url: (await getSiteURL()) + "/signupinvite"
+        callback_url: `${siteURL + "/signupinvite"}`
       }
     });
 
