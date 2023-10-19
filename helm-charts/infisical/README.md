@@ -4,7 +4,6 @@ This is the Infisical application Helm chart. This chart includes the following 
 
 | Service    | Description                         |
 | ---------- | ----------------------------------- |
-| `frontend` | Infisical's Web UI                  |
 | `backend`  | Infisical's API                     |
 | `mongodb`  | Infisical's database                |
 | `redis`    | Infisical's cache service           |
@@ -59,28 +58,6 @@ kubectl get secrets -n <namespace> <secret-name> \
 | `nameOverride`     | Override release name     | `""`  |
 | `fullnameOverride` | Override release fullname | `""`  |
 
-### Infisical frontend parameters
-
-| Name                                    | Description                                                                                                                                                   | Value                |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| `frontend.enabled`                      | Enable frontend                                                                                                                                               | `true`               |
-| `frontend.name`                         | Frontend name                                                                                                                                                 | `frontend`           |
-| `frontend.fullnameOverride`             | Frontend fullnameOverride                                                                                                                                     | `""`                 |
-| `frontend.podAnnotations`               | Frontend pod annotations                                                                                                                                      | `{}`                 |
-| `frontend.deploymentAnnotations`        | Frontend deployment annotations                                                                                                                               | `{}`                 |
-| `frontend.replicaCount`                 | Frontend replica count                                                                                                                                        | `2`                  |
-| `frontend.image.repository`             | Frontend image repository                                                                                                                                     | `infisical/frontend` |
-| `frontend.image.tag`                    | Frontend image tag                                                                                                                                            | `latest`             |
-| `frontend.image.pullPolicy`             | Frontend image pullPolicy                                                                                                                                     | `IfNotPresent`       |
-| `frontend.resources.limits.memory`      | container memory limit [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)          | `100Mi`              |
-| `frontend.resources.requests.cpu`       | container CPU request [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)           | `100m`               |
-| `frontend.affinity`                     | Frontend pod affinity                                                                                                                                         | `{}`                 |
-| `frontend.kubeSecretRef`                | Backend secret resource reference name (containing required [frontend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars)) | `""`                 |
-| `frontend.service.annotations`          | Backend service annotations                                                                                                                                   | `{}`                 |
-| `frontend.service.type`                 | Backend service type                                                                                                                                          | `ClusterIP`          |
-| `frontend.service.nodePort`             | Backend service nodePort (used if above type is `NodePort`)                                                                                                   | `""`                 |
-| `frontendEnvironmentVariables.SITE_URL` | Absolute URL including the protocol (e.g. https://app.infisical.com)                                                                                          | `infisical.local`    |
-
 ### Infisical backend parameters
 
 | Name                                                   | Description                                                                                                                                                                                                                         | Value                       |
@@ -91,11 +68,9 @@ kubectl get secrets -n <namespace> <secret-name> \
 | `backend.podAnnotations`                               | Backend pod annotations                                                                                                                                                                                                             | `{}`                        |
 | `backend.deploymentAnnotations`                        | Backend deployment annotations                                                                                                                                                                                                      | `{}`                        |
 | `backend.replicaCount`                                 | Backend replica count                                                                                                                                                                                                               | `2`                         |
-| `backend.image.repository`                             | Backend image repository                                                                                                                                                                                                            | `infisical/backend`         |
+| `backend.image.repository`                             | Backend image repository                                                                                                                                                                                                            | `infisical/infisical`       |
 | `backend.image.tag`                                    | Backend image tag                                                                                                                                                                                                                   | `latest`                    |
 | `backend.image.pullPolicy`                             | Backend image pullPolicy                                                                                                                                                                                                            | `IfNotPresent`              |
-| `backend.resources.limits.memory`                      | container memory limit [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)                                                                                | `200Mi`                     |
-| `backend.resources.requests.cpu`                       | container CPU request [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)                                                                                 | `150m`                      |
 | `backend.affinity`                                     | Backend pod affinity                                                                                                                                                                                                                | `{}`                        |
 | `backend.kubeSecretRef`                                | Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))                                                                        | `""`                        |
 | `backend.service.annotations`                          | Backend service annotations                                                                                                                                                                                                         | `{}`                        |
@@ -191,6 +166,7 @@ kubectl get secrets -n <namespace> <secret-name> \
 | `mailhog.ingress.hosts[0].host`    | Mailhog host               | `mailhog.infisical.local` |
 
 ### Redis parameters
+
 
 
 
