@@ -8,76 +8,6 @@ nameOverride: ""
 ##
 fullnameOverride: ""
 
-## @section Infisical frontend parameters
-## Documentation : https://infisical.com/docs/self-hosting/deployments/kubernetes
-##
-
-frontend:
-  ## @param frontend.enabled Enable frontend
-  ##
-  enabled: true
-  ## @param frontend.name Frontend name
-  ##
-  name: frontend
-  ## @param frontend.fullnameOverride Frontend fullnameOverride
-  ##
-  fullnameOverride: ""
-  ## @param frontend.podAnnotations Frontend pod annotations
-  ##
-  podAnnotations: {}
-  ## @param frontend.deploymentAnnotations Frontend deployment annotations
-  ##
-  deploymentAnnotations: {}
-  ## @param frontend.replicaCount Frontend replica count
-  ##
-  replicaCount: 2
-  ## Frontend image parameters
-  ##
-  image:
-    ## @param frontend.image.repository Frontend image repository
-    ##
-    repository: infisical/frontend
-    ## @param frontend.image.tag Frontend image tag
-    ##
-    tag: "latest"
-    ## @param frontend.image.pullPolicy Frontend image pullPolicy
-    ##
-    pullPolicy: IfNotPresent
-  ## @param frontend.resources.limits.memory container memory limit [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
-  ## @param frontend.resources.requests.cpu container CPU request [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
-  ##
-  resources:
-    limits:
-      memory: 100Mi
-    requests:
-      cpu: 100m
-  ## @param frontend.affinity Frontend pod affinity
-  ##
-  affinity: {}
-  ## @param frontend.kubeSecretRef Backend secret resource reference name (containing required [frontend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))
-  ##
-  kubeSecretRef: ""
-  ## Frontend service
-  ##
-  service:
-    ## @param frontend.service.annotations Backend service annotations
-    ##
-    annotations: {}
-    ## @param frontend.service.type Backend service type
-    ##
-    type: ClusterIP
-    ## @param frontend.service.nodePort Backend service nodePort (used if above type is `NodePort`)
-    ##
-    nodePort: ""
-
-## Frontend variables configuration
-## Documentation : https://infisical.com/docs/self-hosting/configuration/envars
-##
-frontendEnvironmentVariables:
-  ## @param frontendEnvironmentVariables.SITE_URL Absolute URL including the protocol (e.g. https://app.infisical.com)
-  ##
-  SITE_URL: infisical.local
-
 ## @section Infisical backend parameters
 ## Documentation : https://infisical.com/docs/self-hosting/deployments/kubernetes
 ##
@@ -106,21 +36,13 @@ backend:
   image:
     ## @param backend.image.repository Backend image repository
     ##
-    repository: infisical/backend
+    repository: infisical/infisical
     ## @param backend.image.tag Backend image tag
     ##
     tag: "latest"
     ## @param backend.image.pullPolicy Backend image pullPolicy
     ##
     pullPolicy: IfNotPresent
-  ## @param backend.resources.limits.memory container memory limit [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
-  ## @param backend.resources.requests.cpu container CPU request [check the offical kubernetes documentations](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
-  ##
-  resources:
-    limits:
-      memory: 200Mi
-    requests:
-      cpu: 150m
   ## @param backend.affinity Backend pod affinity
   ##
   affinity: {}
@@ -349,16 +271,6 @@ ingress:
   ## Replace with your own domain
   ##
   hostName: ""
-  ## @skip ingress.frontend
-  ##
-  frontend:
-    path: /
-    pathType: Prefix
-  ## @skip ingress.backend
-  ##
-  backend:
-    path: /api
-    pathType: Prefix
   ## @param ingress.tls Ingress TLS hosts (matching above hostName)
   ## Replace with your own domain
   ##

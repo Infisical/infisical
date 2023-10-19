@@ -30,27 +30,20 @@ spec:
   rules:
     - http:
         paths:
-        - path: {{ $ingress.frontend.path }}
-          pathType: {{ $ingress.frontend.pathType }}
-          backend:
-            service:
-              name: {{ include "infisical.frontend.fullname" . }}
-              port:
-                number: 3000
-        - path: {{ $ingress.backend.path }}
-          pathType: {{ $ingress.backend.pathType }}
+        - path: /
+          pathType: Prefix
           backend:
             service:
               name: {{ include "infisical.backend.fullname" . }}
               port:
-                number: 4000
+                number: 8080
         - path: /ss-webhook
           pathType: Exact
           backend:
             service:
               name: {{ include "infisical.backend.fullname" . }}
               port:
-                number: 4000
+                number: 8080
       {{- if $ingress.hostName }}
       host: {{ $ingress.hostName }}
       {{- end }}
