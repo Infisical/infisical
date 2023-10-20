@@ -65,7 +65,10 @@ import { Octokit } from "@octokit/rest";
 import _ from "lodash";
 import sodium from "libsodium-wrappers";
 import { standardRequest } from "../config/request";
-import { ZGetTenantEnv } from "../validation/hasuraCloudIntegration";
+import {
+  ZGetTenantEnv,
+  ZUpdateTenantEnv
+} from "../validation/hasuraCloudIntegration";
 
 const getSecretKeyValuePair = (
   secrets: Record<string, { value: string | null; comment?: string } | null>
@@ -3136,37 +3139,91 @@ const syncSecretsHasuraCloud = async ({
 
   const {
     data: {
-      getTenantEnv: { hash: currentHash }
+      getTenantEnv: { hash, envVars }
     }
   } = ZGetTenantEnv.parse(res.data);
 
-  const envs = Object.keys(secrets).reduce<{ key: string; value: any }[]>((prev, key) => {
-    if (secrets?.[key]?.value) {
-      prev.push({ key, value: secrets[key].value });
+  let currentEnvKeys = new Set<string>();
+
+  if (envVars.environment) {
+    currentEnvKeys = new Set(Object.keys(envVars.environment));
+  }
+  const keysToAdd = new Set(Object.keys(secrets));
+
+  const envKeysToDelete = new Set<string>();
+  const envs: { key: string; value: any }[] = [];
+
+  for (const [key, value] of Object.entries(secrets)) {
+    if (value.value) {
+      envs.push({ key, value: value.value });
     }
-    return prev;
-  }, []);
+  }
 
-  const variables = {
-    currentHash,
-    envs,
-    tenantId: integration.appId
-  };
+  for (const currentKey of currentEnvKeys) {
+    if (!keysToAdd.has(currentKey)) {
+      envKeysToDelete.add(currentKey);
+    }
+  }
 
-  await standardRequest.post(
-    INTEGRATION_HASURA_CLOUD_API_URL,
-    {
-      query:
-        "mutation MyQuery($currentHash: String!, $envs: [UpdateEnvObject!]!, $tenantId: uuid!) { updateTenantEnv(currentHash: $currentHash, envs: $envs, tenantId: $tenantId) { hash envVars} }",
-      variables
-    },
-    {
-      headers: {
-        Authorization: `pat ${accessToken}`,
-        "Content-Type": "application/json"
+  let currentHash = hash;
+
+  if (envs.length) {
+    const addRequest = await standardRequest.post(
+      INTEGRATION_HASURA_CLOUD_API_URL,
+      {
+        query:
+          "mutation MyQuery($currentHash: String!, $envs: [UpdateEnvObject!]!, $tenantId: uuid!) { updateTenantEnv(currentHash: $currentHash, envs: $envs, tenantId: $tenantId) { hash envVars} }",
+        variables: {
+          currentHash,
+          envs,
+          tenantId: integration.appId
+        }
+      },
+      {
+        headers: {
+          Authorization: `pat ${accessToken}`,
+          "Content-Type": "application/json"
+        }
       }
+    );
+
+    const addRequestResponse = ZUpdateTenantEnv.safeParse(addRequest.data);
+    if (addRequestResponse.success) {
+      currentHash = addRequestResponse.data.data.updateTenantEnv.hash;
     }
-  );
+  }
+
+  if (envKeysToDelete.size > 0) {
+    await standardRequest.post(
+      INTEGRATION_HASURA_CLOUD_API_URL,
+      {
+        query: `
+        mutation deleteTenantEnv($id: uuid!, $currentHash: String!, $env: [String!]!) {
+          deleteTenantEnv(tenantId: $id, currentHash: $currentHash, deleteEnvs: $env) {
+            hash
+            envVars
+          }
+        }
+        
+        `,
+        variables: {
+          id: integration.appId,
+          currentHash,
+          env: Array.from(envKeysToDelete)
+        }
+      },
+      {
+        headers: {
+          Authorization: `pat ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+ 
+
+
+  }
 };
 
 export { syncSecrets };
