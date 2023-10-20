@@ -25,6 +25,8 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_GITLAB_API_URL,
+  INTEGRATION_HASURA_CLOUD,
+  INTEGRATION_HASURA_CLOUD_API_URL,
   INTEGRATION_HEROKU,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_LARAVELFORGE,
@@ -47,7 +49,7 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_WINDMILL,
-  INTEGRATION_WINDMILL_API_URL,
+  INTEGRATION_WINDMILL_API_URL
 } from "../variables";
 import { IIntegrationAuth } from "../models";
 import { Octokit } from "@octokit/rest";
@@ -73,7 +75,7 @@ const getApps = async ({
   accessToken,
   accessId,
   teamId,
-  workspaceSlug,
+  workspaceSlug
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
@@ -85,7 +87,7 @@ const getApps = async ({
   switch (integrationAuth.integration) {
     case INTEGRATION_GCP_SECRET_MANAGER:
       apps = await getAppsGCPSecretManager({
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_AZURE_KEY_VAULT:
@@ -99,50 +101,50 @@ const getApps = async ({
       break;
     case INTEGRATION_HEROKU:
       apps = await getAppsHeroku({
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_VERCEL:
       apps = await getAppsVercel({
         integrationAuth,
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_NETLIFY:
       apps = await getAppsNetlify({
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_GITHUB:
       apps = await getAppsGithub({
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_GITLAB:
       apps = await getAppsGitlab({
         integrationAuth,
         accessToken,
-        teamId,
+        teamId
       });
       break;
     case INTEGRATION_RENDER:
       apps = await getAppsRender({
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_RAILWAY:
       apps = await getAppsRailway({
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_FLYIO:
       apps = await getAppsFlyio({
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_CIRCLECI:
       apps = await getAppsCircleCI({
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_LARAVELFORGE:
@@ -154,28 +156,28 @@ const getApps = async ({
     case INTEGRATION_TERRAFORM_CLOUD:
       apps = await getAppsTerraformCloud({
         accessToken,
-        workspacesId: accessId,
+        workspacesId: accessId
       });
       break;
     case INTEGRATION_TRAVISCI:
       apps = await getAppsTravisCI({
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_TEAMCITY:
       apps = await getAppsTeamCity({
         integrationAuth,
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_SUPABASE:
       apps = await getAppsSupabase({
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_CHECKLY:
       apps = await getAppsCheckly({
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_CLOUDFLARE_PAGES:
@@ -186,7 +188,7 @@ const getApps = async ({
       break;
     case INTEGRATION_NORTHFLANK:
       apps = await getAppsNorthflank({
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_BITBUCKET:
@@ -197,7 +199,7 @@ const getApps = async ({
       break;
     case INTEGRATION_CODEFRESH:
       apps = await getAppsCodefresh({
-        accessToken,
+        accessToken
       });
       break;
     case INTEGRATION_WINDMILL:
@@ -206,13 +208,19 @@ const getApps = async ({
       });
       break;
     case INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM:
-      apps = await getAppsDigitalOceanAppPlatform({ 
-        accessToken 
+      apps = await getAppsDigitalOceanAppPlatform({
+        accessToken
       });
       break;
     case INTEGRATION_CLOUD_66:
       apps = await getAppsCloud66({
-        accessToken,
+        accessToken
+      });
+      break;
+
+    case INTEGRATION_HASURA_CLOUD:
+      apps = await getAppsHasuraCloud({
+        accessToken
       });
       break;
   }
@@ -229,73 +237,79 @@ const getApps = async ({
  * @returns {String} apps.appId - id of GCP project
  */
 const getAppsGCPSecretManager = async ({ accessToken }: { accessToken: string }) => {
-  
   interface GCPApp {
     projectNumber: string;
     projectId: string;
-    lifecycleState: "ACTIVE" | "LIFECYCLE_STATE_UNSPECIFIED" | "DELETE_REQUESTED" | "DELETE_IN_PROGRESS";
+    lifecycleState:
+      | "ACTIVE"
+      | "LIFECYCLE_STATE_UNSPECIFIED"
+      | "DELETE_REQUESTED"
+      | "DELETE_IN_PROGRESS";
     name: string;
     createTime: string;
     parent: {
       type: "organization" | "folder" | "project";
       id: string;
-    }
+    };
   }
-  
+
   interface GCPGetProjectsRes {
     projects: GCPApp[];
     nextPageToken?: string;
   }
-  
+
   interface GCPGetServiceRes {
     name: string;
     parent: string;
-    state: "ENABLED" | "DISABLED" | "STATE_UNSPECIFIED"
+    state: "ENABLED" | "DISABLED" | "STATE_UNSPECIFIED";
   }
 
   let gcpApps: GCPApp[] = [];
   const apps: App[] = [];
-  
+
   const pageSize = 100;
   let pageToken: string | undefined;
   let hasMorePages = true;
-  
+
   while (hasMorePages) {
     const params = new URLSearchParams({
       pageSize: String(pageSize),
       ...(pageToken ? { pageToken } : {})
     });
 
-    const res: GCPGetProjectsRes = (await standardRequest.get(`${INTEGRATION_GCP_API_URL}/v1/projects`, {
+    const res: GCPGetProjectsRes = (
+      await standardRequest.get(`${INTEGRATION_GCP_API_URL}/v1/projects`, {
         params,
         headers: {
-          "Authorization": `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           "Accept-Encoding": "application/json"
         }
       })
-    )
-    .data;
-    
+    ).data;
+
     gcpApps = gcpApps.concat(res.projects);
 
     if (!res.nextPageToken) {
       hasMorePages = false;
     }
-    
+
     pageToken = res.nextPageToken;
   }
-  
+
   for await (const gcpApp of gcpApps) {
     try {
-      const res: GCPGetServiceRes = (await standardRequest.get(
-        `${INTEGRATION_GCP_SERVICE_USAGE_URL}/v1/projects/${gcpApp.projectId}/services/${INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME}`, {
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json"
+      const res: GCPGetServiceRes = (
+        await standardRequest.get(
+          `${INTEGRATION_GCP_SERVICE_USAGE_URL}/v1/projects/${gcpApp.projectId}/services/${INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Accept-Encoding": "application/json"
+            }
           }
-        }
-      )).data;
-      
+        )
+      ).data;
+
       if (res.state === "ENABLED") {
         apps.push({
           name: gcpApp.name,
@@ -322,13 +336,13 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
     await standardRequest.get(`${INTEGRATION_HEROKU_API_URL}/apps`, {
       headers: {
         Accept: "application/vnd.heroku+json; version=3",
-        Authorization: `Bearer ${accessToken}`,
-      },
+        Authorization: `Bearer ${accessToken}`
+      }
     })
   ).data;
 
   const apps = res.map((a: any) => ({
-    name: a.name,
+    name: a.name
   }));
 
   return apps;
@@ -343,7 +357,7 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
  */
 const getAppsVercel = async ({
   integrationAuth,
-  accessToken,
+  accessToken
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
@@ -352,21 +366,21 @@ const getAppsVercel = async ({
     await standardRequest.get(`${INTEGRATION_VERCEL_API_URL}/v9/projects`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "application/json",
+        "Accept-Encoding": "application/json"
       },
       ...(integrationAuth?.teamId
         ? {
-          params: {
-            teamId: integrationAuth.teamId,
-          },
-        }
-        : {}),
+            params: {
+              teamId: integrationAuth.teamId
+            }
+          }
+        : {})
     })
   ).data;
 
   const apps = res.projects.map((a: any) => ({
     name: a.name,
-    appId: a.id,
+    appId: a.id
   }));
 
   return apps;
@@ -390,24 +404,21 @@ const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
     const params = new URLSearchParams({
       page: String(page),
       per_page: String(perPage),
-      filter: "all",
+      filter: "all"
     });
 
-    const { data } = await standardRequest.get(
-      `${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`,
-      {
-        params,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Accept-Encoding": "application/json",
-        },
+    const { data } = await standardRequest.get(`${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`, {
+      params,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json"
       }
-    );
+    });
 
     data.map((a: any) => {
       apps.push({
         name: a.name,
-        appId: a.site_id,
+        appId: a.site_id
       });
     });
 
@@ -441,7 +452,7 @@ const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
   }
 
   const octokit = new Octokit({
-    auth: accessToken,
+    auth: accessToken
   });
 
   const getAllRepos = async () => {
@@ -455,7 +466,7 @@ const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
         "GET /user/repos{?visibility,affiliation,type,sort,direction,per_page,page,since,before}",
         {
           per_page,
-          page,
+          page
         }
       );
 
@@ -478,7 +489,7 @@ const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
       return {
         appId: a.id,
         name: a.name,
-        owner: a.owner.login,
+        owner: a.owner.login
       };
     });
 
@@ -499,14 +510,14 @@ const getAppsRender = async ({ accessToken }: { accessToken: string }) => {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
-        "Accept-Encoding": "application/json",
-      },
+        "Accept-Encoding": "application/json"
+      }
     })
   ).data;
 
   const apps = res.map((a: any) => ({
     name: a.service.name,
-    appId: a.service.id,
+    appId: a.service.id
   }));
 
   return apps;
@@ -540,27 +551,27 @@ const getAppsRailway = async ({ accessToken }: { accessToken: string }) => {
   const {
     data: {
       data: {
-        projects: { edges },
-      },
-    },
+        projects: { edges }
+      }
+    }
   } = await standardRequest.post(
     INTEGRATION_RAILWAY_API_URL,
     {
       query,
-      variables,
+      variables
     },
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
-        "Accept-Encoding": "application/json",
-      },
+        "Accept-Encoding": "application/json"
+      }
     }
   );
 
   const apps = edges.map((e: any) => ({
     name: e.node.name,
-    appId: e.node.id,
+    appId: e.node.id
   }));
 
   return apps;
@@ -575,7 +586,7 @@ const getAppsRailway = async ({ accessToken }: { accessToken: string }) => {
  * @returns {String} apps.name - name of Laravel Forge sites
  * @returns {String} apps.appId - id of Laravel Forge sites
  */
-const getAppsLaravelForge = async ({ 
+const getAppsLaravelForge = async ({
   accessToken,
   serverId
 }: {
@@ -583,18 +594,21 @@ const getAppsLaravelForge = async ({
   serverId?: string;
 }) => {
   const res = (
-    await standardRequest.get(`${INTEGRATION_LARAVELFORGE_API_URL}/api/v1/servers/${serverId}/sites`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    })
+    await standardRequest.get(
+      `${INTEGRATION_LARAVELFORGE_API_URL}/api/v1/servers/${serverId}/sites`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        }
+      }
+    )
   ).data.sites;
 
   const apps = res.map((a: any) => ({
     name: a.name,
-    appId: a.id,
+    appId: a.id
   }));
 
   return apps;
@@ -613,7 +627,7 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
     name: string;
     hostname: string;
   }
-  
+
   const query = `
     query($role: String) {
       apps(type: "container", first: 400, role: $role) {
@@ -632,15 +646,15 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
       {
         query,
         variables: {
-          role: null,
-        },
+          role: null
+        }
       },
       {
         headers: {
           Authorization: "Bearer " + accessToken,
           Accept: "application/json",
-          "Accept-Encoding": "application/json",
-        },
+          "Accept-Encoding": "application/json"
+        }
       }
     )
   ).data.data.apps.nodes;
@@ -665,14 +679,14 @@ const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
     await standardRequest.get(`${INTEGRATION_CIRCLECI_API_URL}/v1.1/projects`, {
       headers: {
         "Circle-Token": accessToken,
-        "Accept-Encoding": "application/json",
-      },
+        "Accept-Encoding": "application/json"
+      }
     })
   ).data;
 
   const apps = res?.map((a: any) => {
     return {
-      name: a?.reponame,
+      name: a?.reponame
     };
   });
 
@@ -684,15 +698,15 @@ const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
     await standardRequest.get(`${INTEGRATION_TRAVISCI_API_URL}/repos`, {
       headers: {
         Authorization: `token ${accessToken}`,
-        "Accept-Encoding": "application/json",
-      },
+        "Accept-Encoding": "application/json"
+      }
     })
   ).data;
 
   const apps = res?.map((a: any) => {
     return {
       name: a?.slug?.split("/")[1],
-      appId: a?.id,
+      appId: a?.id
     };
   });
 
@@ -707,7 +721,7 @@ const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
  * @returns {Object[]} apps - names and ids of Terraform Cloud projects
  * @returns {String} apps.name - name of Terraform Cloud projects
  */
-const getAppsTerraformCloud = async ({ 
+const getAppsTerraformCloud = async ({
   accessToken,
   workspacesId
 }: {
@@ -715,26 +729,28 @@ const getAppsTerraformCloud = async ({
   workspacesId?: string;
 }) => {
   const res = (
-    await standardRequest.get(`${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${workspacesId}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
-    })
+    await standardRequest.get(
+      `${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${workspacesId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json"
+        }
+      }
+    )
   ).data.data;
 
-  const apps = []
+  const apps = [];
 
   const appsObj = {
-      name: res?.attributes.name,
-      appId: res?.id,
+    name: res?.attributes.name,
+    appId: res?.id
   };
 
-  apps.push(appsObj)
+  apps.push(appsObj);
 
   return apps;
 };
-
 
 /**
  * Return list of repositories for GitLab integration
@@ -746,14 +762,16 @@ const getAppsTerraformCloud = async ({
 const getAppsGitlab = async ({
   integrationAuth,
   accessToken,
-  teamId,
+  teamId
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
   teamId?: string;
 }) => {
-  const gitLabApiUrl = integrationAuth.url ? `${integrationAuth.url}/api` : INTEGRATION_GITLAB_API_URL;
-  
+  const gitLabApiUrl = integrationAuth.url
+    ? `${integrationAuth.url}/api`
+    : INTEGRATION_GITLAB_API_URL;
+
   const apps: App[] = [];
 
   let page = 1;
@@ -766,24 +784,21 @@ const getAppsGitlab = async ({
     while (hasMorePages) {
       const params = new URLSearchParams({
         page: String(page),
-        per_page: String(perPage),
+        per_page: String(perPage)
       });
 
-      const { data } = await standardRequest.get(
-        `${gitLabApiUrl}/v4/groups/${teamId}/projects`,
-        {
-          params,
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json",
-          },
+      const { data } = await standardRequest.get(`${gitLabApiUrl}/v4/groups/${teamId}/projects`, {
+        params,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
         }
-      );
+      });
 
       data.map((a: any) => {
         apps.push({
           name: a.name,
-          appId: a.id,
+          appId: a.id
         });
       });
 
@@ -800,32 +815,29 @@ const getAppsGitlab = async ({
       await standardRequest.get(`${gitLabApiUrl}/v4/user`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Accept-Encoding": "application/json",
-        },
+          "Accept-Encoding": "application/json"
+        }
       })
     ).data;
 
     while (hasMorePages) {
       const params = new URLSearchParams({
         page: String(page),
-        per_page: String(perPage),
+        per_page: String(perPage)
       });
 
-      const { data } = await standardRequest.get(
-        `${gitLabApiUrl}/v4/users/${id}/projects`,
-        {
-          params,
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json",
-          },
+      const { data } = await standardRequest.get(`${gitLabApiUrl}/v4/users/${id}/projects`, {
+        params,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
         }
-      );
+      });
 
       data.map((a: any) => {
         apps.push({
           name: a.name,
-          appId: a.id,
+          appId: a.id
         });
       });
 
@@ -847,9 +859,9 @@ const getAppsGitlab = async ({
  * @returns {Object[]} apps - names and ids of TeamCity projects
  * @returns {String} apps.name - name of TeamCity projects
  */
-const getAppsTeamCity = async ({ 
+const getAppsTeamCity = async ({
   integrationAuth,
-  accessToken,
+  accessToken
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
@@ -858,15 +870,15 @@ const getAppsTeamCity = async ({
     await standardRequest.get(`${integrationAuth.url}/app/rest/projects`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
+        Accept: "application/json"
+      }
     })
   ).data.project.slice(1);
-  
+
   const apps = res.map((a: any) => {
     return {
       name: a.name,
-      appId: a.id,
+      appId: a.id
     };
   });
 
@@ -881,20 +893,17 @@ const getAppsTeamCity = async ({
  * @returns {String} apps.name - name of Supabase app
  */
 const getAppsSupabase = async ({ accessToken }: { accessToken: string }) => {
-  const { data } = await standardRequest.get(
-    `${INTEGRATION_SUPABASE_API_URL}/v1/projects`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "application/json",
-      },
+  const { data } = await standardRequest.get(`${INTEGRATION_SUPABASE_API_URL}/v1/projects`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Accept-Encoding": "application/json"
     }
-  );
+  });
 
   const apps = data.map((a: any) => {
     return {
       name: a.name,
-      appId: a.id,
+      appId: a.id
     };
   });
 
@@ -909,20 +918,17 @@ const getAppsSupabase = async ({ accessToken }: { accessToken: string }) => {
  * @returns {String} apps.name - name of Checkly account
  */
 const getAppsCheckly = async ({ accessToken }: { accessToken: string }) => {
-  const { data } = await standardRequest.get(
-    `${INTEGRATION_CHECKLY_API_URL}/v1/accounts`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept": "application/json",
-      },
+  const { data } = await standardRequest.get(`${INTEGRATION_CHECKLY_API_URL}/v1/accounts`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json"
     }
-  );
+  });
 
   const apps = data.map((a: any) => {
     return {
       name: a.name,
-      appId: a.id,
+      appId: a.id
     };
   });
 
@@ -948,19 +954,19 @@ const getAppsCloudflarePages = async ({
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Accept": "application/json",
-      },
+        Accept: "application/json"
+      }
     }
   );
 
   const apps = data.result.map((a: any) => {
     return {
       name: a.name,
-      appId: a.id,
+      appId: a.id
     };
   });
   return apps;
-}
+};
 
 /**
  * Return list of repositories for the BitBucket integration based on provided BitBucket workspace
@@ -970,9 +976,9 @@ const getAppsCloudflarePages = async ({
  * @returns {Object[]} apps - BitBucket repositories
  * @returns {String} apps.name - name of BitBucket repository
  */
-const getAppsBitBucket = async ({ 
+const getAppsBitBucket = async ({
   accessToken,
-  workspaceSlug,
+  workspaceSlug
 }: {
   accessToken: string;
   workspaceSlug?: string;
@@ -996,45 +1002,42 @@ const getAppsBitBucket = async ({
   }
 
   if (!workspaceSlug) {
-    return []
+    return [];
   }
-  
+
   const repositories: Repository[] = [];
   let hasNextPage = true;
-  let repositoriesUrl = `${INTEGRATION_BITBUCKET_API_URL}/2.0/repositories/${workspaceSlug}`
+  let repositoriesUrl = `${INTEGRATION_BITBUCKET_API_URL}/2.0/repositories/${workspaceSlug}`;
 
   while (hasNextPage) {
-    const { data }: { data: RepositoriesResponse } = await standardRequest.get(
-        repositoriesUrl,
-        {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Accept": "application/json",
-            },
-        }
-    );
+    const { data }: { data: RepositoriesResponse } = await standardRequest.get(repositoriesUrl, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      }
+    });
 
     if (data?.values.length > 0) {
       data.values.forEach((repository) => {
-        repositories.push(repository)
-      })
+        repositories.push(repository);
+      });
     }
 
     if (data.next) {
-      repositoriesUrl = data.next
+      repositoriesUrl = data.next;
     } else {
-      hasNextPage = false
+      hasNextPage = false;
     }
   }
 
   const apps = repositories.map((repository) => {
-      return {
-          name: repository.name,
-          appId: repository.uuid,
-      };
+    return {
+      name: repository.name,
+      appId: repository.uuid
+    };
   });
   return apps;
-}
+};
 
 /** Return list of projects for Northflank integration
  * @param {Object} obj
@@ -1045,19 +1048,14 @@ const getAppsBitBucket = async ({
 const getAppsNorthflank = async ({ accessToken }: { accessToken: string }) => {
   const {
     data: {
-      data: {
-        projects
-      }
+      data: { projects }
     }
-  } = await standardRequest.get(
-    `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "application/json",
-      },
+  } = await standardRequest.get(`${INTEGRATION_NORTHFLANK_API_URL}/v1/projects`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Accept-Encoding": "application/json"
     }
-  );
+  });
 
   const apps = projects.map((a: any) => {
     return {
@@ -1076,27 +1074,22 @@ const getAppsNorthflank = async ({ accessToken }: { accessToken: string }) => {
  * @returns {Object[]} apps - names of Supabase apps
  * @returns {String} apps.name - name of Supabase app
  */
-const getAppsCodefresh = async ({
-  accessToken,
-}: {
-  accessToken: string;
-}) => {
+const getAppsCodefresh = async ({ accessToken }: { accessToken: string }) => {
   const res = (
     await standardRequest.get(`${INTEGRATION_CODEFRESH_API_URL}/projects`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "application/json",
-      },
+        "Accept-Encoding": "application/json"
+      }
     })
   ).data;
 
   const apps = res.projects.map((a: any) => ({
     name: a.projectName,
-    appId: a.id,
+    appId: a.id
   }));
 
   return apps;
-
 };
 
 /**
@@ -1107,16 +1100,13 @@ const getAppsCodefresh = async ({
  * @returns {String} apps.name - name of Windmill workspace
  */
 const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
-  const { data } = await standardRequest.get(
-    `${INTEGRATION_WINDMILL_API_URL}/workspaces/list`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "application/json",
-      },
+  const { data } = await standardRequest.get(`${INTEGRATION_WINDMILL_API_URL}/workspaces/list`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Accept-Encoding": "application/json"
     }
-  );
-  
+  });
+
   // check for write access of secrets in windmill workspaces
   const writeAccessCheck = data.map(async (app: any) => {
     try {
@@ -1134,8 +1124,8 @@ const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json",
-          },
+            "Accept-Encoding": "application/json"
+          }
         }
       );
 
@@ -1150,30 +1140,30 @@ const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json",
-          },
+            "Accept-Encoding": "application/json"
+          }
         }
       );
-      
+
       // is write access is allowed then delete the created secrets from workspace
       if (writeUser && writeFolder) {
         await standardRequest.delete(
-        `${INTEGRATION_WINDMILL_API_URL}/w/${app.id}/variables/delete/${userPath}`,
+          `${INTEGRATION_WINDMILL_API_URL}/w/${app.id}/variables/delete/${userPath}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
-              "Accept-Encoding": "application/json",
-            },
+              "Accept-Encoding": "application/json"
+            }
           }
         );
 
         await standardRequest.delete(
-        `${INTEGRATION_WINDMILL_API_URL}/w/${app.id}/variables/delete/${folderPath}`,
+          `${INTEGRATION_WINDMILL_API_URL}/w/${app.id}/variables/delete/${folderPath}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
-              "Accept-Encoding": "application/json",
-            },
+              "Accept-Encoding": "application/json"
+            }
           }
         );
 
@@ -1188,16 +1178,16 @@ const getAppsWindmill = async ({ accessToken }: { accessToken: string }) => {
 
   const appsWriteResponses = await Promise.all(writeAccessCheck);
   const appsWithWriteAccess = appsWriteResponses.filter((appRes: any) => !appRes.error);
-  
+
   const apps = appsWithWriteAccess.map((a: any) => {
     return {
       name: a.name,
-      appId: a.id,
+      appId: a.id
     };
   });
-  
+
   return apps;
-}
+};
 
 /**
  * Return list of applications for DigitalOcean App Platform integration
@@ -1225,7 +1215,7 @@ const getAppsDigitalOceanAppPlatform = async ({ accessToken }: { accessToken: st
     value: string;
     scope: string;
   }
-  
+
   const res = (
     await standardRequest.get(`${INTEGRATION_DIGITAL_OCEAN_API_URL}/v2/apps`, {
       headers: {
@@ -1239,8 +1229,28 @@ const getAppsDigitalOceanAppPlatform = async ({ accessToken }: { accessToken: st
     name: a.spec.name,
     appId: a.id
   }));
-}
-  
+};
+
+const getAppsHasuraCloud = async ({ accessToken }: { accessToken: string }) => {
+  const res = await standardRequest.post(
+    INTEGRATION_HASURA_CLOUD_API_URL,
+    {
+      query: "query MyQuery { projects { name tenant { id } } }"
+    },
+    {
+      headers: {
+        Authorization: `pat ${accessToken}`,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+
+  const data = (res?.data?.data?.projects ?? []).map(
+    ({ name, tenant: { id: appId } }: { name: string; tenant: { id: string } }) => ({ name, appId })
+  );
+  return data;
+};
+
 /**
  * Return list of applications for Cloud66 integration
  * @param {Object} obj
@@ -1290,7 +1300,7 @@ const getAppsCloud66 = async ({ accessToken }: { accessToken: string }) => {
         "Accept-Encoding": "application/json"
       }
     })
-  ).data.response as Cloud66Apps[]
+  ).data.response as Cloud66Apps[];
 
   const apps = stacks.map((app) => ({
     name: app.name,
