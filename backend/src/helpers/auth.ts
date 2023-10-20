@@ -19,15 +19,14 @@ import {
 	UnauthorizedRequestError,
 } from "../utils/errors";
 import {
+	getAuthSecret,
 	getJwtAuthLifetime,
-	getJwtAuthSecret,
-	getJwtProviderAuthSecret,
 	getJwtRefreshLifetime,
-	getJwtRefreshSecret,
 	getJwtServiceTokenSecret
 } from "../config";
 import {
-	AuthMode
+	AuthMode,
+	AuthTokenType
 } from "../variables";
 import {
 	ServiceTokenAuthData,
@@ -50,8 +49,6 @@ export const validateAuthMode = ({
 	headers: { [key: string]: string | string[] | undefined },
 	acceptedAuthModes: AuthMode[]
 }) => {
-	
-	// TODO: update this to accept service token v3
 	
 	const apiKey = headers["x-api-key"];
 	const authHeader = headers["authorization"];
@@ -120,8 +117,10 @@ export const getAuthUserPayload = async ({
 	authTokenValue: string;
 }): Promise<UserAuthData> => {
 	const decodedToken = <jwt.UserIDJwtPayload>(
-		jwt.verify(authTokenValue, await getJwtAuthSecret())
+		jwt.verify(authTokenValue, await getAuthSecret())
 	);
+
+	if (decodedToken.authTokenType !== AuthTokenType.ACCESS_TOKEN) throw UnauthorizedRequestError();
 
 	const user = await User.findOne({
 		_id: new Types.ObjectId(decodedToken.userId),
@@ -159,11 +158,6 @@ export const getAuthUserPayload = async ({
 		userAgent: req.headers["user-agent"] ?? "",
 		userAgentType: getUserAgentType(req.headers["user-agent"])
 	}
-	
-	// return ({
-	// 	user,
-	// 	tokenVersionId: tokenVersion._id, // what to do with this? // move this out
-	// });
 }
 
 /**
@@ -404,22 +398,24 @@ export const issueAuthTokens = async ({
 	// issue tokens
 	const token = createToken({
 		payload: {
+			authTokenType: AuthTokenType.ACCESS_TOKEN,
 			userId,
 			tokenVersionId: tokenVersion._id.toString(),
 			accessVersion: tokenVersion.accessVersion,
 		},
 		expiresIn: await getJwtAuthLifetime(),
-		secret: await getJwtAuthSecret(),
+		secret: await getAuthSecret(),
 	});
 
 	const refreshToken = createToken({
 		payload: {
+			authTokenType: AuthTokenType.REFRESH_TOKEN,
 			userId,
 			tokenVersionId: tokenVersion._id.toString(),
 			refreshVersion: tokenVersion.refreshVersion,
 		},
 		expiresIn: await getJwtRefreshLifetime(),
-		secret: await getJwtRefreshSecret(),
+		secret: await getAuthSecret(),
 	});
 
 	return {
@@ -451,7 +447,7 @@ export const clearTokens = async (tokenVersionId: Types.ObjectId): Promise<void>
  * bearer/auth, refresh, and temporary signup tokens
  * @param {Object} obj
  * @param {Object} obj.payload - payload of (JWT) token
- * @param {String} obj.secret - (JWT) secret such as [JWT_AUTH_SECRET]
+ * @param {String} obj.secret - (JWT) secret such as [AUTH_SECRET]
  * @param {String} obj.expiresIn - string describing time span such as '10h' or '7d'
  */
 export const createToken = ({
@@ -479,13 +475,16 @@ export const validateProviderAuthToken = async ({
 	email: string;
 	providerAuthToken?: string;
 }) => {
+
 	if (!providerAuthToken) {
 		throw new Error("Invalid authentication request.");
 	}
 
 	const decodedToken = <jwt.ProviderAuthJwtPayload>(
-		jwt.verify(providerAuthToken, await getJwtProviderAuthSecret())
+		jwt.verify(providerAuthToken, await getAuthSecret())
 	);
+	
+	if (decodedToken.authTokenType !== AuthTokenType.PROVIDER_TOKEN) throw UnauthorizedRequestError();
 
 	if (decodedToken.email !== email) {
 		throw new Error("Invalid authentication credentials.")

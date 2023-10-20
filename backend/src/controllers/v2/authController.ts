@@ -10,9 +10,9 @@ import { sendMail } from "../../helpers/nodemailer";
 import { TokenService } from "../../services";
 import { EELogService } from "../../ee/services";
 import { BadRequestError, InternalServerError } from "../../utils/errors";
-import { ACTION_LOGIN, TOKEN_EMAIL_MFA } from "../../variables";
+import { ACTION_LOGIN, AuthTokenType, TOKEN_EMAIL_MFA } from "../../variables";
 import { getUserAgentType } from "../../utils/posthog"; // TODO: move this
-import { getHttpsEnabled, getJwtMfaLifetime, getJwtMfaSecret } from "../../config";
+import { getAuthSecret, getHttpsEnabled, getJwtMfaLifetime } from "../../config";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/auth";
 
@@ -109,10 +109,11 @@ export const login2 = async (req: Request, res: Response) => {
           // generate temporary MFA token
           const token = createToken({
             payload: {
+              authTokenType: AuthTokenType.MFA_TOKEN,
               userId: user._id.toString()
             },
             expiresIn: await getJwtMfaLifetime(),
-            secret: await getJwtMfaSecret()
+            secret: await getAuthSecret()
           });
 
           const code = await TokenService.createToken({

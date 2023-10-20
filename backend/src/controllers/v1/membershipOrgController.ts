@@ -8,11 +8,11 @@ import { updateSubscriptionOrgQuantity } from "../../helpers/organization";
 import { sendMail } from "../../helpers/nodemailer";
 import { TokenService } from "../../services";
 import { EELicenseService } from "../../ee/services";
-import { ACCEPTED, INVITED, MEMBER, TOKEN_EMAIL_ORG_INVITATION } from "../../variables";
+import { ACCEPTED, AuthTokenType, INVITED, MEMBER, TOKEN_EMAIL_ORG_INVITATION } from "../../variables";
 import * as reqValidator from "../../validation/membershipOrg";
 import {
+  getAuthSecret,
   getJwtSignupLifetime,
-  getJwtSignupSecret,
   getSiteURL,
   getSmtpConfigured
 } from "../../config";
@@ -272,10 +272,11 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
   // generate temporary signup token
   const token = createToken({
     payload: {
+      authTokenType: AuthTokenType.SIGNUP_TOKEN,
       userId: user._id.toString()
     },
     expiresIn: await getJwtSignupLifetime(),
-    secret: await getJwtSignupSecret()
+    secret: await getAuthSecret()
   });
 
   return res.status(200).send({
