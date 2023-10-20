@@ -32,6 +32,8 @@ import {
   INTEGRATION_GITLAB,
   INTEGRATION_GITLAB_API_URL,
   INTEGRATION_HASHICORP_VAULT,
+  INTEGRATION_HASURA_CLOUD,
+  INTEGRATION_HASURA_CLOUD_API_URL,
   INTEGRATION_HEROKU,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_LARAVELFORGE,
@@ -63,6 +65,7 @@ import { Octokit } from "@octokit/rest";
 import _ from "lodash";
 import sodium from "libsodium-wrappers";
 import { standardRequest } from "../config/request";
+import { ZGetTenantEnv } from "../validation/hasuraCloudIntegration";
 
 const getSecretKeyValuePair = (
   secrets: Record<string, { value: string | null; comment?: string } | null>
@@ -95,7 +98,7 @@ const syncSecrets = async ({
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
   accessToken: string;
-  appendices?: { prefix: string, suffix: string };
+  appendices?: { prefix: string; suffix: string };
 }) => {
   switch (integration.integration) {
     case INTEGRATION_GCP_SECRET_MANAGER:
@@ -301,6 +304,14 @@ const syncSecrets = async ({
       break;
     case INTEGRATION_WINDMILL:
       await syncSecretsWindmill({
+        integration,
+        secrets,
+        accessToken
+      });
+      break;
+
+    case INTEGRATION_HASURA_CLOUD:
+      await syncSecretsHasuraCloud({
         integration,
         secrets,
         accessToken
@@ -963,8 +974,9 @@ const syncSecretsVercel = async ({
       : {}),
     ...(integration?.path
       ? {
-        gitBranch: integration?.path
-      } : {})
+          gitBranch: integration?.path
+        }
+      : {})
   };
 
   const vercelSecrets: VercelSecret[] = (
@@ -992,7 +1004,7 @@ const syncSecretsVercel = async ({
 
     return true;
   });
-  
+
   const res: { [key: string]: VercelSecret } = {};
 
   for await (const vercelSecret of vercelSecrets) {
@@ -1352,7 +1364,7 @@ const syncSecretsGitHub = async ({
   integration: IIntegration;
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
-  appendices?: { prefix: string, suffix: string };
+  appendices?: { prefix: string; suffix: string };
 }) => {
   interface GitHubRepoKey {
     key_id: string;
@@ -1395,14 +1407,23 @@ const syncSecretsGitHub = async ({
     {}
   );
 
-  encryptedSecrets = Object.keys(encryptedSecrets).reduce((result: {
-    [key: string]: GitHubSecret;
-  }, key) => {
-    if ((appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) && (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)) {
-      result[key] = encryptedSecrets[key];
-    }
-    return result;
-  }, {});
+  encryptedSecrets = Object.keys(encryptedSecrets).reduce(
+    (
+      result: {
+        [key: string]: GitHubSecret;
+      },
+      key
+    ) => {
+      if (
+        (appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) &&
+        (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)
+      ) {
+        result[key] = encryptedSecrets[key];
+      }
+      return result;
+    },
+    {}
+  );
 
   Object.keys(encryptedSecrets).map(async (key) => {
     if (!(key in secrets)) {
@@ -2095,7 +2116,7 @@ const syncSecretsCheckly = async ({
   integration: IIntegration;
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
-  appendices?: { prefix: string, suffix: string };
+  appendices?: { prefix: string; suffix: string };
 }) => {
   let getSecretsRes = (
     await standardRequest.get(`${INTEGRATION_CHECKLY_API_URL}/v1/variables`, {
@@ -2113,14 +2134,23 @@ const syncSecretsCheckly = async ({
     {}
   );
 
-  getSecretsRes = Object.keys(getSecretsRes).reduce((result: {
-    [key: string]: string;
-  }, key) => {
-    if ((appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) && (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)) {
-      result[key] = getSecretsRes[key];
-    }
-    return result;
-  }, {});
+  getSecretsRes = Object.keys(getSecretsRes).reduce(
+    (
+      result: {
+        [key: string]: string;
+      },
+      key
+    ) => {
+      if (
+        (appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) &&
+        (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)
+      ) {
+        result[key] = getSecretsRes[key];
+      }
+      return result;
+    },
+    {}
+  );
 
   // add secrets
   for await (const key of Object.keys(secrets)) {
@@ -2195,18 +2225,20 @@ const syncSecretsQovery = async ({
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
-  
   const getSecretsRes = (
-    await standardRequest.get(`${INTEGRATION_QOVERY_API_URL}/${integration.scope}/${integration.appId}/environmentVariable`, {
-      headers: {
-        Authorization: `Token ${accessToken}`,
-        "Accept-Encoding": "application/json"
+    await standardRequest.get(
+      `${INTEGRATION_QOVERY_API_URL}/${integration.scope}/${integration.appId}/environmentVariable`,
+      {
+        headers: {
+          Authorization: `Token ${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
       }
-    })
+    )
   ).data.results.reduce(
     (obj: any, secret: any) => ({
       ...obj,
-      [secret.key]: {"id": secret.id, "value": secret.value}
+      [secret.key]: { id: secret.id, value: secret.value }
     }),
     {}
   );
@@ -3071,6 +3103,67 @@ const syncSecretsNorthflank = async ({
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Accept-Encoding": "application/json"
+      }
+    }
+  );
+};
+
+const syncSecretsHasuraCloud = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+}) => {
+  const res = await standardRequest.post(
+    INTEGRATION_HASURA_CLOUD_API_URL,
+    {
+      query:
+        "query MyQuery($tenantId: uuid!) { getTenantEnv(tenantId: $tenantId) { hash envVars } }",
+      variables: {
+        tenantId: integration.appId
+      }
+    },
+    {
+      headers: {
+        Authorization: `pat ${accessToken}`,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+
+  const {
+    data: {
+      getTenantEnv: { hash: currentHash }
+    }
+  } = ZGetTenantEnv.parse(res.data);
+
+  const envs = Object.keys(secrets).reduce<{ key: string; value: any }[]>((prev, key) => {
+    if (secrets?.[key]?.value) {
+      prev.push({ key, value: secrets[key].value });
+    }
+    return prev;
+  }, []);
+
+  const variables = {
+    currentHash,
+    envs,
+    tenantId: integration.appId
+  };
+
+  await standardRequest.post(
+    INTEGRATION_HASURA_CLOUD_API_URL,
+    {
+      query:
+        "mutation MyQuery($currentHash: String!, $envs: [UpdateEnvObject!]!, $tenantId: uuid!) { updateTenantEnv(currentHash: $currentHash, envs: $envs, tenantId: $tenantId) { hash envVars} }",
+      variables
+    },
+    {
+      headers: {
+        Authorization: `pat ${accessToken}`,
+        "Content-Type": "application/json"
       }
     }
   );
