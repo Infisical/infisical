@@ -141,10 +141,10 @@
           "group": "Deployment options",
           "pages": [
             "self-hosting/overview",
+            "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/kubernetes-helm",
             "self-hosting/deployment-options/aws-ec2",
             "self-hosting/deployment-options/docker-compose",
-            "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/digital-ocean-marketplace"
           ]
         },
