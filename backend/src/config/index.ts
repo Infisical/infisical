@@ -17,7 +17,7 @@ export const getRootEncryptionKey = async () => {
 }
 export const getInviteOnlySignup = async () => (await client.getSecret("INVITE_ONLY_SIGNUP")).secretValue === "true"
 export const getSaltRounds = async () => parseInt((await client.getSecret("SALT_ROUNDS")).secretValue) || 10;
-export const getAuthSecret = async () => (await client.getSecret("AUTH_SECRET")).secretValue; // new
+export const getAuthSecret = async () => (await client.getSecret("JWT_AUTH_SECRET")).secretValue ?? (await client.getSecret("AUTH_SECRET")).secretValue;
 export const getJwtAuthLifetime = async () => (await client.getSecret("JWT_AUTH_LIFETIME")).secretValue || "10d";
 export const getJwtMfaLifetime = async () => (await client.getSecret("JWT_MFA_LIFETIME")).secretValue || "5m";
 export const getJwtRefreshLifetime = async () => (await client.getSecret("JWT_REFRESH_LIFETIME")).secretValue || "90d";
