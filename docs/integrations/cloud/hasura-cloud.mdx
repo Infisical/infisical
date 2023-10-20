@@ -1,0 +1,36 @@
+---
+title: "Hasura Cloud"
+description: "How to sync secrets from Infisical to Hasura Cloud"
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+
+## Navigate to your project's integrations tab
+
+![integrations](../../images/integrations.png)
+
+## Enter your Hasura Cloud Access Token
+
+Obtain a Hasura Cloud Access Token in My Account > Access Tokens
+
+![integrations hasura cloud tokens](../../images/integrations/hasura-cloud/integrations-hasura-cloud-tokens.png)
+
+Press on the Hasura Cloud tile and input your Hasura Cloud access token to grant Infisical access to your Hasura Cloud account.
+
+![integrations hasura cloud authorization](../../images/integrations/hasura-cloud/integrations-hasura-cloud-auth.png)
+
+<Info>
+  If this is your project's first cloud integration, then you'll have to grant
+  Infisical access to your project's environment variables. Although this step
+  breaks E2EE, it's necessary for Infisical to sync the environment variables to
+  the cloud platform.
+</Info>
+
+## Start integration
+
+Select which Infisical environment secrets you want to sync to which Hasura Cloud project and press create integration to start syncing secrets to Hasura Cloud.
+
+![integrations hasura cloud](../../images/integrations/hasura-cloud/integrations-hasura-cloud-create.png)
+![integrations hasura cloud](../../images/integrations/hasura-cloud/integrations-hasura-cloud.png)
