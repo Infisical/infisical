@@ -63,7 +63,7 @@ export default function HasuraCloudAuthorizeIntegrationPage() {
           <div className="flex flex-row items-center">
             <div className="inline flex items-center pb-0.5">
               <Image
-                src="/images/integrations/Flyio.svg"
+                src="/images/integrations/Hasura.svg"
                 height={30}
                 width={30}
                 alt={`${APP_NAME} logo`}

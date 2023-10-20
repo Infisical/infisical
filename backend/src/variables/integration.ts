@@ -373,7 +373,7 @@ export const getIntegrationOptions = async () => {
     {
       name: "Hasura Cloud",
       slug: "hasura-cloud",
-      image: "Northflank.png",
+      image: "Hasura.svg",
       isAvailable: true,
       type: "pat",
       clientId: "",
