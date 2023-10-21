@@ -339,6 +339,7 @@ export const SecretListView = ({
         title="Do you want to delete this secret?"
         onChange={(isOpen) => handlePopUpToggle("deleteSecret", isOpen)}
         onDeleteApproved={handleSecretDelete}
+        buttonText="Delete Secret"
       />
       <SecretDetailSidebar
         environment={environment}

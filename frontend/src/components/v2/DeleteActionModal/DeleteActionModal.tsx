@@ -15,6 +15,7 @@ type Props = {
   title: string;
   subTitle?: string;
   onDeleteApproved: () => Promise<void>;
+  buttonText?: string;
 };
 
 export const DeleteActionModal = ({
@@ -24,7 +25,8 @@ export const DeleteActionModal = ({
   deleteKey,
   onDeleteApproved,
   title,
-  subTitle = "This action is irreversible!"
+  subTitle = "This action is irreversible!",
+  buttonText = "Delete"
 }: Props): JSX.Element => {
   const [inputData, setInputData] = useState("");
   const [isLoading, setIsLoading] = useToggle();
@@ -56,7 +58,7 @@ export const DeleteActionModal = ({
         title={title}
         subTitle={subTitle}
         footerContent={
-          <div className="flex items-center">
+          <div className="flex items-center mx-2">
             <Button
               className="mr-4"
               colorSchema="danger"
@@ -64,7 +66,7 @@ export const DeleteActionModal = ({
               onClick={onDelete}
               isLoading={isLoading}
             >
-              Delete
+              {buttonText}
             </Button>
             <ModalClose asChild>
               <Button variant="plain" colorSchema="secondary" onClick={onClose}>
@@ -87,9 +89,9 @@ export const DeleteActionModal = ({
                 Type <span className="font-bold">{deleteKey}</span> to delete the resource
               </div>
             }
-            className="mb-4"
+            className="mb-0"
           >
-            <Input value={inputData} onChange={(e) => setInputData(e.target.value)} />
+            <Input value={inputData} onChange={(e) => setInputData(e.target.value)} placeholder="Type to delete..." />
           </FormControl>
         </form>
       </ModalContent>

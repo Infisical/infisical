@@ -105,7 +105,7 @@ export const CreateSecretForm = ({
               >
                 <SecretInput
                   {...field}
-                  containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900  px-2 py-1.5"
+                  containerClassName="text-bunker-300 hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
                 />
               </FormControl>
             )}
