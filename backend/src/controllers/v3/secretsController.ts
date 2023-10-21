@@ -963,6 +963,14 @@ export const deleteSecretByNameBatch = async (req: Request, res: Response) => {
     authData: req.authData
   });
 
+  await EventService.handleEvent({
+    event: eventPushSecrets({
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      secretPath
+    })
+  });
+
   return res.status(200).send({
     secrets: deletedSecrets
   });
