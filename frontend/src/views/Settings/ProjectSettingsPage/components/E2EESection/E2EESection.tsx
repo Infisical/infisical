@@ -3,7 +3,7 @@ import {
   decryptAssymmetric,
   encryptAssymmetric
 } from "@app/components/utilities/cryptography/crypto";
-import { Checkbox } from "@app/components/v2";
+import { Alert, AlertDescription, Checkbox } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { useGetUserWsKey, useGetWorkspaceBot, useUpdateBotActiveStatus } from "@app/hooks/api";
 
@@ -76,30 +76,39 @@ export const E2EESection = () => {
   };
 
   return bot ? (
-    <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <p className="mb-3 text-xl font-semibold">End-to-End Encryption</p>
-      <p className="text-gray-400 mb-8">
+      <p className="mb-8 text-gray-400">
         Disabling, end-to-end encryption (E2EE) unlocks capabilities like native integrations to
         cloud providers as well as HTTP calls to get secrets back raw but enables the server to
         read/decrypt your secret values.
       </p>
-      <p className="text-gray-400 mb-8">
+      <p className="mb-8 text-gray-400">
         Note that, even with E2EE disabled, your secrets are always encrypted at rest.
       </p>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
         {(isAllowed) => (
-          <div className="w-max">
-            <Checkbox
-              className="data-[state=checked]:bg-primary"
-              id="autoCapitalization"
-              isChecked={!bot.isActive}
-              isDisabled={!isAllowed}
-              onCheckedChange={async () => {
-                await toggleBotActivate();
-              }}
-            >
-              End-to-end encryption enabled
-            </Checkbox>
+          <div className="flex w-full flex-col gap-y-3">
+            <div className="w-max">
+              <Checkbox
+                className="data-[state=checked]:bg-primary"
+                id="autoCapitalization"
+                isChecked={!bot.isActive}
+                isDisabled={!isAllowed}
+                onCheckedChange={async () => {
+                  await toggleBotActivate();
+                }}
+              >
+                End-to-end encryption enabled
+              </Checkbox>
+            </div>
+            <div>
+              <Alert variant="warning">
+                <AlertDescription>
+                  Enabling End-to-end encryption disables all the integrations
+                </AlertDescription>
+              </Alert>
+            </div>
           </div>
         )}
       </ProjectPermissionCan>
