@@ -1,6 +1,7 @@
 export enum ActorType {
   USER = "user",
-  SERVICE = "service"
+  SERVICE = "service",
+  SERVICE_V3 = "service-v3"
 }
 
 export enum UserAgentType {
@@ -24,8 +25,11 @@ export enum EventType {
   ADD_TRUSTED_IP = "add-trusted-ip",
   UPDATE_TRUSTED_IP = "update-trusted-ip",
   DELETE_TRUSTED_IP = "delete-trusted-ip",
-  CREATE_SERVICE_TOKEN = "create-service-token",
-  DELETE_SERVICE_TOKEN = "delete-service-token",
+  CREATE_SERVICE_TOKEN = "create-service-token", // v2
+  DELETE_SERVICE_TOKEN = "delete-service-token", // v2
+  CREATE_SERVICE_TOKEN_V3 = "create-service-token-v3", // v3
+  UPDATE_SERVICE_TOKEN_V3 = "update-service-token-v3", // v3
+  DELETE_SERVICE_TOKEN_V3 = "delete-service-token-v3", // v3
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",

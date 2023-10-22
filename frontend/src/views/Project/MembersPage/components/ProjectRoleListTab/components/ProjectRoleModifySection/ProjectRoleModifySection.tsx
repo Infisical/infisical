@@ -3,11 +3,13 @@ import { faElementor } from "@fortawesome/free-brands-svg-icons";
 import {
   faAnchorLock,
   faArrowLeft,
+  faBook,
   faCog,
   faKey,
   faLock,
   faNetworkWired,
   faPuzzlePiece,
+  faShield,
   faTags,
   faUser,
   faUsers
@@ -17,7 +19,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, FormControl, Input, UpgradePlanModal } from "@app/components/v2";
-import { useOrganization, useSubscription, useWorkspace } from "@app/context";
+import { ProjectPermissionSub, useOrganization, useSubscription, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useCreateRole, useUpdateRole } from "@app/hooks/api";
 import { TRole } from "@app/hooks/api/roles/types";
@@ -39,6 +41,12 @@ const SINGLE_PERMISSION_LIST = [
     subtitle: "Integration management control",
     icon: faPuzzlePiece,
     formName: "integrations"
+  },
+  {
+    title: "Secret Protect policy",
+    subtitle: "Manage policies for secret protection for unauthorized secret changes",
+    icon: faShield,
+    formName: ProjectPermissionSub.SecretApproval
   },
   {
     title: "Roles",
@@ -81,6 +89,12 @@ const SINGLE_PERMISSION_LIST = [
     subtitle: "Tag management control",
     icon: faTags,
     formName: "tags"
+  },
+  {
+    title: "Audit Logs",
+    subtitle: "Audit log management control",
+    icon: faBook,
+    formName: "audit-logs"
   },
   {
     title: "IP Allowlist",

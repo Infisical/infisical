@@ -14,14 +14,14 @@ import {
 } from "@app/components/v2";
 import timeSince from "@app/ee/utilities/timeSince";
 import getRisksByOrganization, {
-  GitRisks
+  IGitRisks
 } from "@app/pages/api/secret-scanning/getRisksByOrganization";
 
 import { RiskStatusSelection } from "./RiskStatusSelection";
 
 export const SecretScanningLogsTable = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [gitRisks, setGitRisks] = useState<GitRisks[]>([]);
+  const [gitRisks, setGitRisks] = useState<IGitRisks[]>([]);
 
   useEffect(() => {
     const fetchRisks = async () => {

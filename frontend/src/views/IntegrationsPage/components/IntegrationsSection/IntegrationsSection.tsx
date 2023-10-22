@@ -119,8 +119,30 @@ export const IntegrationsSection = ({
                     {integrationSlugNameMapping[integration.integration]}
                   </div>
                 </div>
+                {(integration.integration === "qovery") && (
+                  <div className="flex flex-row">
+                    <div className="ml-2 flex flex-col">
+                      <FormLabel label="Org" />
+                      <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                        {integration?.owner || "-"}
+                      </div>
+                    </div>
+                    <div className="ml-2 flex flex-col">
+                      <FormLabel label="Project" />
+                      <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                        {integration?.targetService || "-"}
+                      </div>
+                    </div>
+                    <div className="ml-2 flex flex-col">
+                      <FormLabel label="Env" />
+                      <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                        {integration?.targetEnvironment || "-"}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="ml-2 flex flex-col">
-                  <FormLabel label="App" />
+                  <FormLabel label={integration?.metadata?.scope || "App"} />
                   <div className="min-w-[8rem] rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
                     {integration.integration === "hashicorp-vault"
                       ? `${integration.app} - path: ${integration.path}`
@@ -140,7 +162,7 @@ export const IntegrationsSection = ({
                     </div>
                   </div>
                 )}
-                {integration.integration === "checkly" && (
+                {((integration.integration === "checkly") || (integration.integration === "github")) && (
                   <div className="ml-2 flex flex-col">
                     <FormLabel label="Secret Suffix" />
                     <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
@@ -154,7 +176,7 @@ export const IntegrationsSection = ({
                   I={ProjectPermissionActions.Delete}
                   a={ProjectPermissionSub.Integrations}
                 >
-                  {(isAllowed) => (
+                  {(isAllowed: boolean) => (
                     <div className="ml-2 opacity-80 duration-200 hover:opacity-100">
                       <Tooltip content="Remove Integration">
                         <IconButton

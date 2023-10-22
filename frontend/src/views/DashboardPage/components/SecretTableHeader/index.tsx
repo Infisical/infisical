@@ -1,1 +1,0 @@
-export { SecretTableHeader } from "./SecretTableHeader";

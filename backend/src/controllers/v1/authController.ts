@@ -6,15 +6,18 @@ const jsrp = require("jsrp");
 import { LoginSRPDetail, TokenVersion, User } from "../../models";
 import { clearTokens, createToken, issueAuthTokens } from "../../helpers/auth";
 import { checkUserDevice } from "../../helpers/user";
-import { ACTION_LOGIN, ACTION_LOGOUT } from "../../variables";
+import { 
+  ACTION_LOGIN,
+  ACTION_LOGOUT, 
+  AuthTokenType 
+} from "../../variables";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import { EELogService } from "../../ee/services";
 import { getUserAgentType } from "../../utils/posthog";
 import {
+  getAuthSecret,
   getHttpsEnabled,
-  getJwtAuthLifetime,
-  getJwtAuthSecret,
-  getJwtRefreshSecret
+  getJwtAuthLifetime
 } from "../../config";
 import { ActorType } from "../../ee/models";
 import { validateRequest } from "../../helpers/validation";
@@ -238,6 +241,7 @@ export const checkAuth = async (req: Request, res: Response) => {
  * @returns
  */
 export const getNewToken = async (req: Request, res: Response) => {
+
   const refreshToken = req.cookies.jid;
 
   if (!refreshToken)
@@ -245,7 +249,9 @@ export const getNewToken = async (req: Request, res: Response) => {
       message: "Failed to find refresh token in request cookies"
     });
 
-  const decodedToken = <jwt.UserIDJwtPayload>jwt.verify(refreshToken, await getJwtRefreshSecret());
+  const decodedToken = <jwt.UserIDJwtPayload>jwt.verify(refreshToken, await getAuthSecret());
+  
+  if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN) throw UnauthorizedRequestError();
 
   const user = await User.findOne({
     _id: decodedToken.userId
@@ -268,12 +274,13 @@ export const getNewToken = async (req: Request, res: Response) => {
 
   const token = createToken({
     payload: {
+      authTokenType: AuthTokenType.ACCESS_TOKEN,
       userId: decodedToken.userId,
       tokenVersionId: tokenVersion._id.toString(),
       accessVersion: tokenVersion.refreshVersion
     },
     expiresIn: await getJwtAuthLifetime(),
-    secret: await getJwtAuthSecret()
+    secret: await getAuthSecret()
   });
 
   return res.status(200).send({

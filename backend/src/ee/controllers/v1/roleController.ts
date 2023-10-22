@@ -23,7 +23,7 @@ import {
   memberPermissions
 } from "../../services/RoleService";
 import { BadRequestError } from "../../../utils/errors";
-import Role from "../../models/role";
+import { Role } from "../../models";
 import { validateRequest } from "../../../helpers/validation";
 import { packRules } from "@casl/ability/extra";
 
@@ -212,6 +212,7 @@ export const getUserPermissions = async (req: Request, res: Response) => {
   const {
     params: { orgId }
   } = await validateRequest(GetUserPermission, req);
+  
   const { permission } = await getUserOrgPermissions(req.user._id, orgId);
 
   res.status(200).json({

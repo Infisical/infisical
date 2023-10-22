@@ -4,7 +4,14 @@ import { Types } from "mongoose";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../crypto";
 import { EESecretService } from "../../ee/services";
 import { redisClient } from "../../services/RedisService"
-import { IPType, ISecretVersion, SecretSnapshot, SecretVersion, TrustedIP } from "../../ee/models";
+import { 
+  IPType, 
+  ISecretVersion, 
+  Role, 
+  SecretSnapshot, 
+  SecretVersion,
+  TrustedIP
+} from "../../ee/models";
 import {
   AuthMethod,
   BackupPrivateKey,
@@ -34,14 +41,12 @@ import {
   MEMBER,
   OWNER
 } from "../../variables";
-
 import { InternalServerError } from "../errors";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   memberProjectPermissions
 } from "../../ee/services/ProjectRoleService";
-import Role from "../../ee/models/role";
 
 /**
  * Backfill secrets to ensure that they're all versioned and have
@@ -819,3 +824,18 @@ export const backfillPermission = async () => {
     console.info("Could not acquire lock for script [backfillPermission], skipping");
   }
 };
+
+export const migrateRoleFromOwnerToAdmin = async () => {
+  await MembershipOrg.updateMany(
+    {
+      role: OWNER
+    },
+    {
+      $set: {
+        role: ADMIN
+      }
+    }
+  );
+
+  console.info("Backfill: Finished converting owner role to member");
+}

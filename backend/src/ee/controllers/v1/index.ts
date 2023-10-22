@@ -8,6 +8,8 @@ import * as actionController from "./actionController";
 import * as membershipController from "./membershipController";
 import * as cloudProductsController from "./cloudProductsController";
 import * as roleController from "./roleController";
+import * as secretApprovalPolicyController from "./secretApprovalPolicyController";
+import * as secretApprovalRequestController from "./secretApprovalRequestsController";
 
 export {
   secretController,
@@ -19,5 +21,7 @@ export {
   actionController,
   membershipController,
   cloudProductsController,
-  roleController
+  roleController,
+  secretApprovalPolicyController,
+  secretApprovalRequestController
 };

@@ -8,26 +8,33 @@ import {
   Organization,
   ServiceAccount,
   ServiceTokenData,
+  ServiceTokenDataV3,
   User
 } from "../models";
 import { createToken } from "../helpers/auth";
 import {
+  getAuthSecret,
   getClientIdGitHubLogin,
+  getClientIdGitLabLogin,
   getClientIdGoogleLogin,
   getClientSecretGitHubLogin,
+  getClientSecretGitLabLogin,
   getClientSecretGoogleLogin,
   getJwtProviderAuthLifetime,
-  getJwtProviderAuthSecret,
+  getSiteURL,
+  getUrlGitLabLogin
 } from "../config";
 import { getSSOConfigHelper } from "../ee/helpers/organizations";
 import { InternalServerError, OrganizationNotFoundError } from "./errors";
-import { ACCEPTED, INVITED, MEMBER } from "../variables";
-import { getSiteURL } from "../config";
+import { ACCEPTED, AuthTokenType, INTEGRATION_GITHUB_API_URL, INVITED, MEMBER } from "../variables";
+import { standardRequest } from "../config/request";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const GitHubStrategy = require("passport-github").Strategy;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const GitLabStrategy = require("passport-gitlab2").Strategy;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { MultiSamlStrategy } = require("@node-saml/passport-saml");
 
@@ -48,6 +55,10 @@ const getAuthDataPayloadIdObj = (authData: AuthData) => {
   if (authData.authPayload instanceof ServiceTokenData) {
     return { serviceTokenDataId: authData.authPayload._id };
   }
+
+  if (authData.authPayload instanceof ServiceTokenDataV3) {
+    return { serviceTokenDataId: authData.authPayload._id };
+  }
 };
 
 /**
@@ -56,7 +67,6 @@ const getAuthDataPayloadIdObj = (authData: AuthData) => {
  * @returns 
  */
 const getAuthDataPayloadUserObj = (authData: AuthData) => {
-
   if (authData.authPayload instanceof User) {
     return { user: authData.authPayload._id };
   }
@@ -66,7 +76,11 @@ const getAuthDataPayloadUserObj = (authData: AuthData) => {
   }
 
   if (authData.authPayload instanceof ServiceTokenData) {
-    return { user: authData.authPayload.user };0
+    return { user: authData.authPayload.user };
+  }
+  
+  if (authData.authPayload instanceof ServiceTokenDataV3) {
+    return { user: authData.authPayload.user };
   }
 }
 
@@ -75,6 +89,9 @@ const initializePassport = async () => {
   const clientSecretGoogleLogin = await getClientSecretGoogleLogin();
   const clientIdGitHubLogin = await getClientIdGitHubLogin();
   const clientSecretGitHubLogin = await getClientSecretGitHubLogin();
+  const urlGitLab = await getUrlGitLabLogin();
+  const clientIdGitLabLogin = await getClientIdGitLabLogin();
+  const clientSecretGitLabLogin = await getClientSecretGitLabLogin();
 
   if (clientIdGoogleLogin && clientSecretGoogleLogin) {
     passport.use(new GoogleStrategy({
@@ -114,6 +131,7 @@ const initializePassport = async () => {
         const isUserCompleted = !!user.publicKey;
         const providerAuthToken = createToken({
           payload: {
+            authTokenType: AuthTokenType.PROVIDER_TOKEN,
             userId: user._id.toString(),
             email: user.email,
             firstName: user.firstName,
@@ -126,7 +144,7 @@ const initializePassport = async () => {
             } : {})
           },
           expiresIn: await getJwtProviderAuthLifetime(),
-          secret: await getJwtProviderAuthSecret(),
+          secret: await getAuthSecret(),
         });
 
         req.isUserCompleted = isUserCompleted;
@@ -143,10 +161,28 @@ const initializePassport = async () => {
       passReqToCallback: true,
       clientID: clientIdGitHubLogin,
       clientSecret: clientSecretGitHubLogin,
-      callbackURL: "/api/v1/sso/github"
+      callbackURL: "/api/v1/sso/github",
+      scope: ["user:email"]
     },
     async (req : express.Request, accessToken : any, refreshToken : any, profile : any, done : any) => {
-      const email = profile.emails[0].value;
+      interface GitHubEmail {
+        email: string;
+        primary: boolean;
+        verified: boolean;
+        visibility: null | string;
+      }
+      
+      const { data }: { data: GitHubEmail[] } = await standardRequest.get(
+        `${INTEGRATION_GITHUB_API_URL}/user/emails`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      );
+      
+      const primaryEmail = data.filter((gitHubEmail: GitHubEmail) => gitHubEmail.primary)[0];
+      const email = primaryEmail.email;
       
       let user = await User.findOne({
         email
@@ -169,6 +205,7 @@ const initializePassport = async () => {
       const isUserCompleted = !!user.publicKey;
       const providerAuthToken = createToken({
         payload: {
+          authTokenType: AuthTokenType.PROVIDER_TOKEN,
           userId: user._id.toString(),
           email: user.email,
           firstName: user.firstName,
@@ -181,7 +218,62 @@ const initializePassport = async () => {
           } : {})
         },
         expiresIn: await getJwtProviderAuthLifetime(),
-        secret: await getJwtProviderAuthSecret(),
+        secret: await getAuthSecret(),
+      });
+
+      req.isUserCompleted = isUserCompleted;
+      req.providerAuthToken = providerAuthToken;
+      return done(null, profile);
+    }
+    ));
+  }
+
+  if (urlGitLab && clientIdGitLabLogin && clientSecretGitLabLogin) {
+    passport.use(new GitLabStrategy({
+      passReqToCallback: true,
+      clientID: clientIdGitLabLogin,
+      clientSecret: clientSecretGitLabLogin,
+      callbackURL: "/api/v1/sso/gitlab",
+      baseURL: urlGitLab
+    },
+    async (req : express.Request, accessToken : any, refreshToken : any, profile : any, done : any) => {
+      const email = profile.emails[0].value;
+      
+      let user = await User.findOne({
+        email
+      }).select("+publicKey");
+
+      if (!user) {
+        user = await new User({
+          email: email,
+          authMethods: [AuthMethod.GITLAB],
+          firstName: profile.displayName,
+          lastName: ""
+        }).save();
+      }
+      
+      let isLinkingRequired = false;
+      if (!user.authMethods.includes(AuthMethod.GITLAB)) {
+        isLinkingRequired = true;
+      }
+
+      const isUserCompleted = !!user.publicKey;
+      const providerAuthToken = createToken({
+        payload: {
+          authTokenType: AuthTokenType.PROVIDER_TOKEN,
+          userId: user._id.toString(),
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          authMethod: AuthMethod.GITLAB,
+          isUserCompleted,
+          isLinkingRequired,
+          ...(req.query.state ? {
+            callbackPort: req.query.state as string
+          } : {})
+        },
+        expiresIn: await getJwtProviderAuthLifetime(),
+        secret: await getAuthSecret(),
       });
 
       req.isUserCompleted = isUserCompleted;
@@ -202,8 +294,7 @@ const initializePassport = async () => {
         });
         
         interface ISAMLConfig {
-          path: string;
-          callbackURL: string;
+          callbackUrl: string;
           entryPoint: string;
           issuer: string;
           cert: string;
@@ -212,8 +303,7 @@ const initializePassport = async () => {
         }
         
         const samlConfig: ISAMLConfig = ({
-          path: `${await getSiteURL()}/api/v1/sso/saml2/${ssoIdentifier}`,
-          callbackURL: `${await getSiteURL()}/api/v1/sso/saml2${ssoIdentifier}`,
+          callbackUrl: `${await getSiteURL()}/api/v1/sso/saml2/${ssoIdentifier}`,
           entryPoint: ssoConfig.entryPoint,
           issuer: ssoConfig.issuer,
           cert: ssoConfig.cert,
@@ -222,6 +312,12 @@ const initializePassport = async () => {
         
         if (ssoConfig.authProvider.toString() === AuthMethod.JUMPCLOUD_SAML.toString()) {
           samlConfig.wantAuthnResponseSigned = false;
+        }
+        
+        if (ssoConfig.authProvider.toString() === AuthMethod.AZURE_SAML.toString()) {
+          if (req.body.RelayState && JSON.parse(req.body.RelayState).spInitiated) {
+            samlConfig.audience = `spn:${ssoConfig.issuer}`;
+          }
         }
         
         req.ssoConfig = ssoConfig;
@@ -308,6 +404,7 @@ const initializePassport = async () => {
       const isUserCompleted = !!user.publicKey;
       const providerAuthToken = createToken({
         payload: {
+          authTokenType: AuthTokenType.PROVIDER_TOKEN,
           userId: user._id.toString(),
           email: user.email,
           firstName,
@@ -316,11 +413,11 @@ const initializePassport = async () => {
           authMethod: req.ssoConfig.authProvider,
           isUserCompleted,
           ...(req.body.RelayState ? {
-            callbackPort: req.body.RelayState as string
+            callbackPort: JSON.parse(req.body.RelayState).callbackPort as string
           } : {})
         },
         expiresIn: await getJwtProviderAuthLifetime(),
-        secret: await getJwtProviderAuthSecret(),
+        secret: await getAuthSecret(),
       });
       
       req.isUserCompleted = isUserCompleted;

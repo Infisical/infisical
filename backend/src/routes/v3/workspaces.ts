@@ -34,4 +34,12 @@ router.post(
 
 // --
 
+router.get(
+  "/:workspaceId/service-token",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  workspacesController.getWorkspaceServiceTokenData
+);
+
 export default router;

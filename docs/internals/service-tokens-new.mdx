@@ -1,0 +1,72 @@
+---
+title: "Service tokens"
+description: "Understanding service tokens and their best practices"
+---
+​
+Many clients use service tokens to authenticate and read/write secrets from/to Infisical; they can be created in your project settings.
+
+On this page, we discuss Service Token V3, the new and improved authentication method.
+
+## Anatomy
+
+A service token in Infisical exports a `JSON` file containing 3 components: `publicKey`, `privateKey`, and `serviceToken` where
+`serviceToken` is a JWT token prefixed with `proj_token`. The token provides access to the Infisical API and the public-private key
+pairs are to support cryptographic operations for the client whenever E2EE is needed.
+
+### Database model
+
+The storage backend model for a token contains the following information:
+
+- ID: The token identifier.
+- Expiration: The date at which point the token is invalid.
+- Project: The project that the token is part of.
+- Status: The active/inactive state of a token.
+- Scopes: The project environment(s) and path(s) that the token has access to as well as `read` or `readWrite` permissions for them.
+- Trusted IPs: The specific (IPv4 or IPv6) IPs or CIDR ranges that the token can be used from.
+- Last used: The date at which point the token was last used.
+- Usage count: The number of times that the token has been used.
+
+### Token
+
+As mentioned before, a service token consists of three components, exported as a `JSON`, used for authentication and cryptographic purposes.
+
+Consider the following `JSON`:
+
+```
+{
+  "publicKey": "...",
+  "privateKey": "...",
+  "serviceToken": "stv3..."
+}
+```
+
+Here, the `serviceToken` component can be used to authenticate with the API, by including it in the `Authorization` header under `Bearer <serviceToken>` and retrieve (encrypted) secrets as well as a project key back. Meanwhile, the `privateKey` (in the `JSON`), and `publicKey` (returned in the encrypted project key response) can be used to decrypt the project key used to decrypt the secrets.
+
+Note that when using service tokens via select client methods like SDK or CLI, cryptographic operations are abstracted for you that is the token is parsed and encryption/decryption operations are handled. If using service tokens with the REST API and end-to-end encryption enabled, then you will have to handle the encryption/decryption operations yourself.
+​
+## Recommendations
+
+### Permissions
+
+You should consider the [principle of least privilege(PoLP)](https://en.wikipedia.org/wiki/Principle_of_least_privilege) when setting which environment(s) and path(s)
+should be accessible by a service token; you should also consider whether or not it needs `read` or `readWrite` access.
+
+For example, if the client using the token only requires `read` access to the secrets in the `/config` path of the staging environment, then you should scope the token to the `/config` path of that environment only with `read` permission.
+
+### Status & Expiration
+
+We recommend considering whether or not a service token should be able to access secrets indefinitely or within a finite lifetime such as until 6 months or 1 year from now
+
+### Network access
+
+We recommend configuring the IP allowlist configuration of each service token to restrict its usage to specific IP addresses or CIDR-notated range of addresses.
+
+### Storage
+
+Since service tokens grant access to your secrets, we recommend storing them securely across your development cycle whether it be in a .env file in local development or as an environment variable of your deployment platform.
+
+### Rotation
+
+We recommend periodically rotating the service token, even in the absence of compromise. Since service tokens are capable of decrypting project keys used to decrypt secrets, they should be rotated before approximately 2^32 encryptions have been performed; this follows the guidance set forth by [NIST publication 800-38D](https://csrc.nist.gov/pubs/sp/800/38/d/final).
+
+Note that Infisical keeps track of the number of times that service tokens are used and will alert you when you have reached 90% of the recommended capacity.

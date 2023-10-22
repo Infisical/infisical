@@ -49,7 +49,8 @@ export enum ProjectPermissionSub {
   IpAllowList = "ip-allowlist",
   Workspace = "workspace",
   Secrets = "secrets",
-  SecretRollback = "secret-rollback"
+  SecretRollback = "secret-rollback",
+  SecretApproval = "secret-approval"
 }
 
 type SubjectFields = {
@@ -72,6 +73,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.IpAllowList]
   | [ProjectPermissionActions, ProjectPermissionSub.Settings]
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
+  | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
@@ -84,6 +86,11 @@ const buildAdminPermission = () => {
   can(ProjectPermissionActions.Create, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretApproval);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretApproval);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback);
@@ -154,6 +161,8 @@ const buildMemberPermission = () => {
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets);
 
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback);
 
@@ -203,6 +212,7 @@ const buildViewerPermission = () => {
   const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);

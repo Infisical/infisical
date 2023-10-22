@@ -2,7 +2,8 @@ import jwt from "jsonwebtoken";
 import { NextFunction, Request, Response } from "express";
 import { User } from "../models";
 import { BadRequestError, UnauthorizedRequestError } from "../utils/errors";
-import { getJwtSignupSecret } from "../config";
+import { getAuthSecret } from "../config";
+import { AuthTokenType } from "../variables";
 
 declare module "jsonwebtoken" {
 	export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -27,8 +28,10 @@ const requireSignupAuth = async (
 	if(AUTH_TOKEN_VALUE === null) return next(BadRequestError({message: "Missing Authorization Body in the request header"}))
 	
 	const decodedToken = <jwt.UserIDJwtPayload>(
-		jwt.verify(AUTH_TOKEN_VALUE, await getJwtSignupSecret())
+		jwt.verify(AUTH_TOKEN_VALUE, await getAuthSecret())
 	);
+	
+	if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) throw UnauthorizedRequestError();
 
 	const user = await User.findOne({
 		_id: decodedToken.userId,

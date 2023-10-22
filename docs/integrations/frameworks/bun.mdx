@@ -1,0 +1,34 @@
+---
+title: "Bun"
+description: "How to use Infisical to inject environment variables and secrets into a Bun app."
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+- [Install the CLI](/cli/overview)
+
+## Initialize Infisical for your [Bun](https://bun.sh)
+
+```bash
+# navigate to the root of your of your project 
+cd /path/to/project
+
+# then initialize infisical
+infisical init
+```
+
+## Start your application as usual but with Infisical
+
+```bash
+infisical run -- <your application start command>
+
+# Example
+infisical run -- bun run dev
+```
+
+<Info>
+  Bun environment variables can be called as either `Bun.env.SECRET` or `process.env.SECRET`. We also recommend you check this more in-depth [guide to environment variables in Bun](https://infisical.com/blog/bun-environment-variables).
+</Info>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/m1NNVuiP07M?si=wJtdQdhQ2ylGeRI8" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>

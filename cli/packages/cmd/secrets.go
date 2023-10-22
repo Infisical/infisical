@@ -4,14 +4,13 @@ Copyright (c) 2023 Infisical Inc.
 package cmd
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"regexp"
 	"sort"
 	"strings"
 	"unicode"
-
-	"crypto/sha256"
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/crypto"
@@ -198,7 +197,7 @@ var secretsSetCmd = &cobra.Command{
 			}
 
 			// Key and value from argument
-			key := strings.ToUpper(splitKeyValueFromArg[0])
+			key := splitKeyValueFromArg[0]
 			value := splitKeyValueFromArg[1]
 
 			hashedKey := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
@@ -417,7 +416,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 	secretsMap := getSecretsByKeys(secrets)
 
 	for _, secretKeyFromArg := range args {
-		if value, ok := secretsMap[strings.ToUpper(secretKeyFromArg)]; ok {
+		if value, ok := secretsMap[secretKeyFromArg]; ok {
 			requestedSecrets = append(requestedSecrets, value)
 		} else {
 			requestedSecrets = append(requestedSecrets, models.SingleEnvironmentVariable{
@@ -441,6 +440,11 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	secretsPath, err := cmd.Flags().GetString("path")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
 	infisicalToken, err := cmd.Flags().GetString("token")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
@@ -451,7 +455,7 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath})
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
@@ -625,7 +629,7 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 func CenterString(s string, numStars int) string {
 	stars := strings.Repeat("*", numStars)
 	padding := (numStars - len(s)) / 2
-	cenetredTextWithStar := stars[:padding] + " " + strings.ToUpper(s) + " " + stars[padding:]
+	cenetredTextWithStar := stars[:padding] + " " + s + " " + stars[padding:]
 
 	hashes := strings.Repeat("#", len(cenetredTextWithStar)+2)
 	return fmt.Sprintf("%s \n# %s \n%s", hashes, cenetredTextWithStar, hashes)
@@ -650,8 +654,8 @@ func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]mod
 }
 
 func init() {
-
 	secretsGenerateExampleEnvCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	secretsGenerateExampleEnvCmd.Flags().String("path", "/", "Fetch secrets from within a folder path")
 	secretsCmd.AddCommand(secretsGenerateExampleEnvCmd)
 
 	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")

@@ -682,7 +682,7 @@ const OrganizationPage = withPermission(
             </div>
           )}
         </div>
-        {new Date().getTime() - new Date(user?.createdAt).getTime() < 30 * 24 * 60 * 60 * 1000 && (
+        {!(new Date().getTime() - new Date(user?.createdAt).getTime() < 30 * 24 * 60 * 60 * 1000) && (
           <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
             <p className="mr-4 mb-4 font-semibold text-white">Onboarding Guide</p>
             <div className="mb-3 grid w-full grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">

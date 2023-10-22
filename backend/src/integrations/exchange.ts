@@ -423,6 +423,7 @@ const exchangeCodeGitlab = async ({
     accessToken: res.access_token,
     refreshToken: res.refresh_token,
     accessExpiresAt,
+    url
   };
 };
 

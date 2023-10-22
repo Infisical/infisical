@@ -1,7 +1,7 @@
 import { UserWsKeyPair } from "../keys/types";
 import { EncryptedSecretVersion } from "../secrets/types";
 
-export type TWorkspaceSecretSnapshot = {
+export type TSecretSnapshot = {
   _id: string;
   workspace: string;
   version: number;
@@ -11,27 +11,27 @@ export type TWorkspaceSecretSnapshot = {
   __v: number;
 };
 
-export type TSnapshotSecret = Omit<TWorkspaceSecretSnapshot, "secretVersions"> & {
+export type TSnapshotData = Omit<TSecretSnapshot, "secretVersions"> & {
   secretVersions: EncryptedSecretVersion[];
   folderVersion: Array<{ name: string; id: string }>;
 };
 
-export type TSnapshotSecretProps = {
+export type TSnapshotDataProps = {
   snapshotId: string;
   env: string;
   decryptFileKey: UserWsKeyPair;
 };
 
-export type GetWorkspaceSecretSnapshotsDTO = {
+export type TGetSecretSnapshotsDTO = {
   workspaceId: string;
   limit: number;
   environment: string;
-  folder?: string;
+  directory?: string;
 };
 
 export type TSecretRollbackDTO = {
   workspaceId: string;
   version: number;
   environment: string;
-  folderId?: string;
+  directory?: string;
 };

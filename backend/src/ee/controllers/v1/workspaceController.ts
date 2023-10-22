@@ -5,6 +5,7 @@ import {
   Membership,
   Secret,
   ServiceTokenData,
+  ServiceTokenDataV3,
   TFolderSchema,
   User,
   Workspace
@@ -20,6 +21,7 @@ import {
   SecretSnapshot,
   SecretVersion,
   ServiceActor,
+  ServiceActorV3,
   TFolderRootVersionSchema,
   TrustedIP,
   UserActor
@@ -27,7 +29,7 @@ import {
 import { EESecretService } from "../../services";
 import { getLatestSecretVersionIds } from "../../helpers/secretVersion";
 // import Folder, { TFolderSchema } from "../../../models/folder";
-import { searchByFolderId } from "../../../services/FolderService";
+import { getFolderByPath, searchByFolderId } from "../../../services/FolderService";
 import { EEAuditLogService, EELicenseService } from "../../services";
 import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
 import { validateRequest } from "../../../helpers/validation";
@@ -104,7 +106,7 @@ export const getWorkspaceSecretSnapshots = async (req: Request, res: Response) =
     */
   const {
     params: { workspaceId },
-    query: { environment, folderId, offset, limit }
+    query: { environment, directory, offset, limit }
   } = await validateRequest(GetWorkspaceSecretSnapshotsV1, req);
 
   const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
@@ -113,10 +115,20 @@ export const getWorkspaceSecretSnapshots = async (req: Request, res: Response) =
     ProjectPermissionSub.SecretRollback
   );
 
+  let folderId = "root";
+  const folders = await Folder.findOne({ workspace: workspaceId, environment });
+  if (!folders && directory !== "/") throw BadRequestError({ message: "Folder not found" });
+
+  if (folders) {
+    const folder = getFolderByPath(folders?.nodes, directory);
+    if (!folder) throw BadRequestError({ message: "Invalid folder id" });
+    folderId = folder.id;
+  }
+
   const secretSnapshots = await SecretSnapshot.find({
     workspace: workspaceId,
     environment,
-    folderId: folderId || "root"
+    folderId
   })
     .sort({ createdAt: -1 })
     .skip(offset)
@@ -135,7 +147,7 @@ export const getWorkspaceSecretSnapshots = async (req: Request, res: Response) =
 export const getWorkspaceSecretSnapshotsCount = async (req: Request, res: Response) => {
   const {
     params: { workspaceId },
-    query: { environment, folderId }
+    query: { environment, directory }
   } = await validateRequest(GetWorkspaceSecretSnapshotsCountV1, req);
 
   const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
@@ -144,10 +156,20 @@ export const getWorkspaceSecretSnapshotsCount = async (req: Request, res: Respon
     ProjectPermissionSub.SecretRollback
   );
 
+  let folderId = "root";
+  const folders = await Folder.findOne({ workspace: workspaceId, environment });
+  if (!folders && directory !== "/") throw BadRequestError({ message: "Folder not found" });
+
+  if (folders) {
+    const folder = getFolderByPath(folders?.nodes, directory);
+    if (!folder) throw BadRequestError({ message: "Invalid folder id" });
+    folderId = folder.id;
+  }
+
   const count = await SecretSnapshot.countDocuments({
     workspace: workspaceId,
     environment,
-    folderId: folderId || "root"
+    folderId
   });
 
   return res.status(200).send({
@@ -215,7 +237,7 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
 
   const {
     params: { workspaceId },
-    body: { folderId, environment, version }
+    body: { directory, environment, version }
   } = await validateRequest(RollbackWorkspaceSecretSnapshotV1, req);
 
   const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
@@ -223,6 +245,16 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
     ProjectPermissionActions.Create,
     ProjectPermissionSub.SecretRollback
   );
+
+  let folderId = "root";
+  const folders = await Folder.findOne({ workspace: workspaceId, environment });
+  if (!folders && directory !== "/") throw BadRequestError({ message: "Folder not found" });
+
+  if (folders) {
+    const folder = getFolderByPath(folders?.nodes, directory);
+    if (!folder) throw BadRequestError({ message: "Invalid folder id" });
+    folderId = folder.id;
+  }
 
   // validate secret snapshot
   const secretSnapshot = await SecretSnapshot.findOne({
@@ -653,7 +685,7 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
     ProjectPermissionActions.Read,
     ProjectPermissionSub.AuditLogs
   );
-
+  
   const query = {
     workspace: new Types.ObjectId(workspaceId),
     ...(eventType
@@ -668,13 +700,13 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
       : {}),
     ...(actor
       ? {
-          "actor.type": actor.split("-", 2)[0],
+          "actor.type": actor.substring(0, actor.lastIndexOf("-")),
           ...(actor.split("-", 2)[0] === ActorType.USER
             ? {
-                "actor.metadata.userId": actor.split("-", 2)[1]
+                "actor.metadata.userId": actor.substring(actor.lastIndexOf("-") + 1)
               }
             : {
-                "actor.metadata.serviceId": actor.split("-", 2)[1]
+                "actor.metadata.serviceId": actor.substring(actor.lastIndexOf("-") + 1)
               })
         }
       : {}),
@@ -742,9 +774,27 @@ export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Res
       name: serviceTokenData.name
     }
   }));
+  
+  const serviceV3Actors: ServiceActorV3[] = (
+    await ServiceTokenDataV3.find({
+      workspace: new Types.ObjectId(workspaceId)
+    })
+  ).map((serviceTokenData) => ({
+    type: ActorType.SERVICE_V3,
+    metadata: {
+      serviceId: serviceTokenData._id.toString(),
+      name: serviceTokenData.name
+    }
+  }));
+  
+  const actors = [
+    ...userActors, 
+    ...serviceActors,
+    ...serviceV3Actors
+  ];
 
   return res.status(200).send({
-    actors: [...userActors, ...serviceActors]
+    actors
   });
 };
 

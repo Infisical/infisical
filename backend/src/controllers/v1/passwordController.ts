@@ -5,12 +5,12 @@ import * as bigintConversion from "bigint-conversion";
 import { BackupPrivateKey, LoginSRPDetail, User } from "../../models";
 import { clearTokens, createToken, sendMail } from "../../helpers";
 import { TokenService } from "../../services";
-import { TOKEN_EMAIL_PASSWORD_RESET } from "../../variables";
+import { AuthTokenType, TOKEN_EMAIL_PASSWORD_RESET } from "../../variables";
 import { BadRequestError } from "../../utils/errors";
 import {
+  getAuthSecret,
   getHttpsEnabled,
   getJwtSignupLifetime,
-  getJwtSignupSecret,
   getSiteURL
 } from "../../config";
 import { ActorType } from "../../ee/models";
@@ -88,10 +88,11 @@ export const emailPasswordResetVerify = async (req: Request, res: Response) => {
   // generate temporary password-reset token
   const token = createToken({
     payload: {
+      authTokenType: AuthTokenType.SIGNUP_TOKEN,
       userId: user._id.toString()
     },
     expiresIn: await getJwtSignupLifetime(),
-    secret: await getJwtSignupSecret()
+    secret: await getAuthSecret()
   });
 
   return res.status(200).send({

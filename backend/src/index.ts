@@ -25,8 +25,11 @@ import {
   users as eeUsersRouter,
   workspace as eeWorkspaceRouter,
   roles as v1RoleRouter,
+  secretApprovalPolicy as v1SecretApprovalPolicy,
+  secretApprovalRequest as v1SecretApprovalRequest,
   secretScanning as v1SecretScanningRouter
 } from "./ee/routes/v1";
+import { serviceTokenData as v3ServiceTokenDataRouter } from "./ee/routes/v3";
 import {
   auth as v1AuthRouter,
   bot as v1BotRouter,
@@ -38,6 +41,7 @@ import {
   membership as v1MembershipRouter,
   organization as v1OrganizationRouter,
   password as v1PasswordRouter,
+  sso as v1SSORouter,
   secretImps as v1SecretImpsRouter,
   secret as v1SecretRouter,
   secretsFolder as v1SecretsFolder,
@@ -54,7 +58,6 @@ import {
   organizations as v2OrganizationsRouter,
   secret as v2SecretRouter, // begin to phase out
   secrets as v2SecretsRouter,
-  serviceAccounts as v2ServiceAccountsRouter,
   serviceTokenData as v2ServiceTokenDataRouter,
   signup as v2SignupRouter,
   tags as v2TagsRouter,
@@ -78,12 +81,15 @@ import {
   getSecretScanningPrivateKey,
   getSecretScanningWebhookProxy,
   getSecretScanningWebhookSecret,
-  getSiteURL
+  getSiteURL,
 } from "./config";
 import { setup } from "./utils/setup";
 import { syncSecretsToThirdPartyServices } from "./queues/integrations/syncSecretsToThirdPartyServices";
 import { githubPushEventSecretScan } from "./queues/secret-scanning/githubScanPushEvent";
 const SmeeClient = require("smee-client"); // eslint-disable-line
+import path from "path";
+
+let handler: null | any = null;
 
 const main = async () => {
   await setup();
@@ -144,6 +150,27 @@ const main = async () => {
     next();
   });
 
+  if ((await getNodeEnv()) === "production" && process.env.STANDALONE_BUILD === "true") {
+    const nextJsBuildPath = path.join(__dirname, "../frontend-build");
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const conf = require("../frontend-build/.next/required-server-files.json").config;
+    const NextServer =
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      require("../frontend-build/node_modules/next/dist/server/next-server").default;
+    const nextApp = new NextServer({
+      dev: false,
+      dir: nextJsBuildPath,
+      port: await getPort(),
+      conf,
+      hostname: "local",
+      customServer: false
+    });
+
+    handler = nextApp.getRequestHandler();
+  }
+
   // (EE) routes
   app.use("/api/v1/secret", eeSecretRouter);
   app.use("/api/v1/secret-snapshot", eeSecretSnapshotRouter);
@@ -153,6 +180,7 @@ const main = async () => {
   app.use("/api/v1/organizations", eeOrganizationsRouter);
   app.use("/api/v1/sso", eeSSORouter);
   app.use("/api/v1/cloud-products", eeCloudProductsRouter);
+  app.use("/api/v3/service-token", v3ServiceTokenDataRouter);
 
   // v1 routes
   app.use("/api/v1/signup", v1SignupRouter);
@@ -176,6 +204,9 @@ const main = async () => {
   app.use("/api/v1/webhooks", v1WebhooksRouter);
   app.use("/api/v1/secret-imports", v1SecretImpsRouter);
   app.use("/api/v1/roles", v1RoleRouter);
+  app.use("/api/v1/secret-approvals", v1SecretApprovalPolicy);
+  app.use("/api/v1/sso", v1SSORouter);
+  app.use("/api/v1/secret-approval-requests", v1SecretApprovalRequest);
 
   // v2 routes (improvements)
   app.use("/api/v2/signup", v2SignupRouter);
@@ -188,7 +219,7 @@ const main = async () => {
   app.use("/api/v2/secret", v2SecretRouter); // deprecate
   app.use("/api/v2/secrets", v2SecretsRouter); // note: in the process of moving to v3/secrets
   app.use("/api/v2/service-token", v2ServiceTokenDataRouter);
-  app.use("/api/v2/service-accounts", v2ServiceAccountsRouter); // new
+  // app.use("/api/v2/service-accounts", v2ServiceAccountsRouter); // new
 
   // v3 routes (experimental)
   app.use("/api/v3/auth", v3AuthRouter);
@@ -201,6 +232,12 @@ const main = async () => {
 
   // server status
   app.use("/api", healthCheck);
+
+  if (handler) {
+    app.all("*", (req, res) => {
+      return handler(req, res);
+    });
+  }
 
   //* Handle unrouted requests and respond with proper error message as well as status code
   app.use((req, res, next) => {
@@ -221,10 +258,24 @@ const main = async () => {
   // await createTestUserForDevelopment();
   setUpHealthEndpoint(server);
 
-  server.on("close", async () => {
+  const serverCleanup = async () => {
     await DatabaseService.closeDatabase();
     syncSecretsToThirdPartyServices.close();
     githubPushEventSecretScan.close();
+
+    process.exit(0);
+  };
+
+  process.on("SIGINT", function () {
+    server.close(async () => {
+      await serverCleanup();
+    });
+  });
+
+  process.on("SIGTERM", function () {
+    server.close(async () => {
+      await serverCleanup();
+    });
   });
 
   return server;

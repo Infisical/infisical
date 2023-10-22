@@ -5,7 +5,7 @@ export const STATUS_RESOLVED_REVOKED = "RESOLVED_REVOKED";
 export const STATUS_RESOLVED_NOT_REVOKED = "RESOLVED_NOT_REVOKED";
 export const STATUS_UNRESOLVED = "UNRESOLVED";
 
-export type GitRisks = {
+export type IGitRisks = {
   id: string;
   description: string;
   startLine: string;
@@ -42,7 +42,7 @@ export type GitRisks = {
   organization: Schema.Types.ObjectId,
 }
 
-const gitRisks = new Schema<GitRisks>({
+const gitRisks = new Schema<IGitRisks>({
   id: {
     type: String,
   },
@@ -147,6 +147,4 @@ const gitRisks = new Schema<GitRisks>({
   }
 }, { timestamps: true });
 
-const GitRisks = model<GitRisks>("GitRisks", gitRisks);
-
-export default GitRisks;
+export const GitRisks = model<IGitRisks>("GitRisks", gitRisks);

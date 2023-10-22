@@ -7,6 +7,8 @@ export * from "./integrations";
 export * from "./keys";
 export * from "./organization";
 export * from "./roles";
+export * from "./secretApproval";
+export * from "./secretApprovalRequest";
 export * from "./secretFolders";
 export * from "./secretImports";
 export * from "./secrets";

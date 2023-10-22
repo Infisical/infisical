@@ -12,10 +12,10 @@ import attemptLoginMfa from "@app/components/utilities/attemptLoginMfa";
 import { Button } from "@app/components/v2";    
 import { useUpdateUserAuthMethods } from "@app/hooks/api";
 import { useSendMfaToken } from "@app/hooks/api/auth";
-import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
+import { navigateUserToOrg } from "../../Login.utils";
 
 // The style for the verification code input
 const props = {
@@ -108,7 +108,7 @@ export const MFAStep = ({
 
         if (isCliLoginSuccessful && isCliLoginSuccessful.success){
           // case: login was successful
-          const cliUrl = `http://localhost:${callbackPort}`
+          const cliUrl = `http://127.0.0.1:${callbackPort}/`
 
           // send request to server endpoint 
           const instance = axios.create()
@@ -127,8 +127,6 @@ export const MFAStep = ({
   
         if (isLoginSuccessful) {
           setIsLoading(false);
-          const userOrgs = await fetchOrganizations();
-          const userOrg = userOrgs[0] && userOrgs[0]._id;
 
           // case: login does not require MFA step
           createNotification({
@@ -144,7 +142,7 @@ export const MFAStep = ({
             });
           }
           
-          router.push(`/org/${userOrg}/overview`);
+          await navigateUserToOrg(router);
         } else {
           createNotification({
             text: "Failed to log in",

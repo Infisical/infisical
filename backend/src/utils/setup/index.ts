@@ -18,7 +18,8 @@ import {
   backfillServiceToken,
   backfillServiceTokenMultiScope,
   backfillTrustedIps,
-  backfillUserAuthMethods
+  backfillUserAuthMethods,
+  migrateRoleFromOwnerToAdmin
 } from "./backfillData";
 import {
   reencryptBotOrgKeys,
@@ -54,9 +55,6 @@ export const setup = async () => {
   // initializing global feature set
   await EELicenseService.initGlobalFeatureSet();
 
-  // initializing the database connection
-  await DatabaseService.initDatabase(await getMongoURL());
-
   await initializePassport();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
@@ -85,6 +83,7 @@ export const setup = async () => {
   await backfillTrustedIps();
   await backfillUserAuthMethods();
   // await backfillPermission();
+  await migrateRoleFromOwnerToAdmin()
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY

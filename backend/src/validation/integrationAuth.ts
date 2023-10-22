@@ -58,6 +58,10 @@ const validateClientForIntegrationAuth = async ({
       throw UnauthorizedRequestError({
         message: "Failed service token authorization for integration authorization"
       });
+    case ActorType.SERVICE_V3:
+      throw UnauthorizedRequestError({
+        message: "Failed service token authorization for integration authorization"
+      });
   }
 };
 
@@ -113,6 +117,39 @@ export const GetIntegrationAuthVercelBranchesV1 = z.object({
   })
 });
 
+export const GetIntegrationAuthQoveryOrgsV1 = z.object({
+  params: z.object({
+    integrationAuthId: z.string().trim()
+  })
+});
+
+export const GetIntegrationAuthQoveryProjectsV1 = z.object({
+  params: z.object({
+    integrationAuthId: z.string().trim()
+  }),
+  query: z.object({
+    orgId: z.string().trim()
+  })
+});
+
+export const GetIntegrationAuthQoveryEnvironmentsV1 = z.object({
+  params: z.object({
+    integrationAuthId: z.string().trim()
+  }),
+  query: z.object({
+    projectId: z.string().trim()
+  })
+});
+
+export const GetIntegrationAuthQoveryScopesV1 = z.object({
+  params: z.object({
+    integrationAuthId: z.string().trim()
+  }),
+  query: z.object({
+    environmentId: z.string().trim()
+  })
+});
+
 export const GetIntegrationAuthRailwayEnvironmentsV1 = z.object({
   params: z.object({
     integrationAuthId: z.string().trim()
@@ -153,9 +190,11 @@ export const DeleteIntegrationAuthV1 = z.object({
 });
 
 export const GetIntegrationAuthTeamCityBuildConfigsV1 = z.object({
-  params:z.object({
-    appId:z.string().trim(),
+  params: z.object({
     integrationAuthId:z.string().trim()
+  }),
+  query: z.object({
+    appId:z.string().trim()
   })
 })
 

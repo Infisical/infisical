@@ -161,18 +161,18 @@ export const AddAPIKeyModal = ({
                         )}
                     />
                     <div className="mt-8 flex items-center">
-                    <Button
-                        className="mr-4"
-                        size="sm"
-                        type="submit"
-                        isLoading={isLoading}
-                        isDisabled={isLoading}
-                    >
-                        Add
-                    </Button>
-                    <Button colorSchema="secondary" variant="plain">
-                        Cancel
-                    </Button>
+                        <Button
+                            className="mr-4"
+                            size="sm"
+                            type="submit"
+                            isLoading={isLoading}
+                            isDisabled={isLoading}
+                        >
+                            Add
+                        </Button>
+                        <Button colorSchema="secondary" variant="plain">
+                            Cancel
+                        </Button>
                     </div>
                 </form>
             ) : (

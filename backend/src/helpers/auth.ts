@@ -7,6 +7,7 @@ import {
 	ITokenVersion,
 	IUser,
 	ServiceTokenData,
+	ServiceTokenDataV3,
 	TokenVersion,
 	User,
 } from "../models";
@@ -18,17 +19,18 @@ import {
 	UnauthorizedRequestError,
 } from "../utils/errors";
 import {
+	getAuthSecret,
 	getJwtAuthLifetime,
-	getJwtAuthSecret,
-	getJwtProviderAuthSecret,
 	getJwtRefreshLifetime,
-	getJwtRefreshSecret,
+	getJwtServiceTokenSecret
 } from "../config";
 import {
-	AuthMode
+	AuthMode,
+	AuthTokenType
 } from "../variables";
 import {
 	ServiceTokenAuthData,
+	ServiceTokenV3AuthData,
 	UserAuthData
 } from "../interfaces/middleware";
 
@@ -47,6 +49,7 @@ export const validateAuthMode = ({
 	headers: { [key: string]: string | string[] | undefined },
 	acceptedAuthModes: AuthMode[]
 }) => {
+	
 	const apiKey = headers["x-api-key"];
 	const authHeader = headers["authorization"];
 
@@ -65,6 +68,7 @@ export const validateAuthMode = ({
 	if (typeof authHeader === "string") {
 		// case: treat request authentication type as via Authorization header (i.e. either JWT or service token)
 		const [tokenType, tokenValue] = <[string, string]>authHeader.split(" ", 2) ?? [null, null]
+
 		if (tokenType === null)
 			throw BadRequestError({ message: "Missing Authorization Header in the request header." });
 		if (tokenType.toLowerCase() !== "bearer")
@@ -72,15 +76,21 @@ export const validateAuthMode = ({
 		if (tokenValue === null)
 			throw BadRequestError({ message: "Missing Authorization Body in the request header." });
 
-		switch (tokenValue.split(".", 1)[0]) {
+		const parts = tokenValue.split(".");
+		
+		switch (parts[0]) {
 			case "st":
 				authMode = AuthMode.SERVICE_TOKEN;
+				authTokenValue = tokenValue;
+				break;
+			case "stv3":
+				authMode = AuthMode.SERVICE_TOKEN_V3;
+				authTokenValue = parts.slice(1).join(".");
 				break;
 			default:
 				authMode = AuthMode.JWT;
+				authTokenValue = tokenValue;
 		}
-
-		authTokenValue = tokenValue;
 	}
 
 	if (!authMode || !authTokenValue) throw BadRequestError({ message: "Missing valid Authorization or X-API-KEY in request header." });
@@ -107,8 +117,10 @@ export const getAuthUserPayload = async ({
 	authTokenValue: string;
 }): Promise<UserAuthData> => {
 	const decodedToken = <jwt.UserIDJwtPayload>(
-		jwt.verify(authTokenValue, await getJwtAuthSecret())
+		jwt.verify(authTokenValue, await getAuthSecret())
 	);
+
+	if (decodedToken.authTokenType !== AuthTokenType.ACCESS_TOKEN) throw UnauthorizedRequestError();
 
 	const user = await User.findOne({
 		_id: new Types.ObjectId(decodedToken.userId),
@@ -146,11 +158,6 @@ export const getAuthUserPayload = async ({
 		userAgent: req.headers["user-agent"] ?? "",
 		userAgentType: getUserAgentType(req.headers["user-agent"])
 	}
-	
-	// return ({
-	// 	user,
-	// 	tokenVersionId: tokenVersion._id, // what to do with this? // move this out
-	// });
 }
 
 /**
@@ -211,8 +218,73 @@ export const getAuthSTDPayload = async ({
 		userAgent: req.headers["user-agent"] ?? "",
 		userAgentType: getUserAgentType(req.headers["user-agent"])
 	}
+}
 
-	// return serviceTokenDataToReturn;
+/**
+ * Return service token data V3 payload corresponding to service token [authTokenValue]
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue - service token value
+ * @returns {ServiceTokenData} serviceTokenData - service token data
+ */
+ export const getAuthSTDV3Payload = async ({
+	req,
+	authTokenValue,
+}: {
+	req: Request,
+	authTokenValue: string;
+}): Promise<ServiceTokenV3AuthData> => {
+	const decodedToken = <jwt.UserIDJwtPayload>(
+		jwt.verify(authTokenValue, await getJwtServiceTokenSecret())
+	);
+	
+	const serviceTokenData = await ServiceTokenDataV3.findOneAndUpdate(
+		{
+			_id: new Types.ObjectId(decodedToken._id),
+			isActive: true
+		},
+		{
+			lastUsed: new Date(),
+			$inc: { usageCount: 1 }
+		},
+		{
+			new: true
+		}
+	);
+	
+	if (!serviceTokenData) {
+		throw UnauthorizedRequestError({ 
+			message: "Failed to authenticate"
+		});
+	} else if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
+		// case: service token expired
+		await ServiceTokenDataV3.findByIdAndUpdate(
+			serviceTokenData._id,
+			{
+				isActive: false
+			},
+			{
+				new: true
+			}
+		);
+		
+		throw UnauthorizedRequestError({
+			message: "Failed to authenticate",
+		});
+	}
+
+	return {
+		actor: {
+			type: ActorType.SERVICE_V3,
+			metadata: {
+				serviceId: serviceTokenData._id.toString(),
+				name: serviceTokenData.name
+			}
+		},
+		authPayload: serviceTokenData,
+		ipAddress: req.realIP,
+		userAgent: req.headers["user-agent"] ?? "",
+		userAgentType: getUserAgentType(req.headers["user-agent"])
+	}
 }
 
 /**
@@ -326,22 +398,24 @@ export const issueAuthTokens = async ({
 	// issue tokens
 	const token = createToken({
 		payload: {
+			authTokenType: AuthTokenType.ACCESS_TOKEN,
 			userId,
 			tokenVersionId: tokenVersion._id.toString(),
 			accessVersion: tokenVersion.accessVersion,
 		},
 		expiresIn: await getJwtAuthLifetime(),
-		secret: await getJwtAuthSecret(),
+		secret: await getAuthSecret(),
 	});
 
 	const refreshToken = createToken({
 		payload: {
+			authTokenType: AuthTokenType.REFRESH_TOKEN,
 			userId,
 			tokenVersionId: tokenVersion._id.toString(),
 			refreshVersion: tokenVersion.refreshVersion,
 		},
 		expiresIn: await getJwtRefreshLifetime(),
-		secret: await getJwtRefreshSecret(),
+		secret: await getAuthSecret(),
 	});
 
 	return {
@@ -373,7 +447,7 @@ export const clearTokens = async (tokenVersionId: Types.ObjectId): Promise<void>
  * bearer/auth, refresh, and temporary signup tokens
  * @param {Object} obj
  * @param {Object} obj.payload - payload of (JWT) token
- * @param {String} obj.secret - (JWT) secret such as [JWT_AUTH_SECRET]
+ * @param {String} obj.secret - (JWT) secret such as [AUTH_SECRET]
  * @param {String} obj.expiresIn - string describing time span such as '10h' or '7d'
  */
 export const createToken = ({
@@ -382,11 +456,15 @@ export const createToken = ({
 	secret,
 }: {
 	payload: any;
-	expiresIn: string | number;
+	expiresIn?: string | number;
 	secret: string;
 }) => {
 	return jwt.sign(payload, secret, {
-		expiresIn,
+		...(
+			(expiresIn !== undefined && expiresIn !== null) 
+			? { expiresIn } 
+			: {}
+		)
 	});
 };
 
@@ -397,13 +475,16 @@ export const validateProviderAuthToken = async ({
 	email: string;
 	providerAuthToken?: string;
 }) => {
+
 	if (!providerAuthToken) {
 		throw new Error("Invalid authentication request.");
 	}
 
 	const decodedToken = <jwt.ProviderAuthJwtPayload>(
-		jwt.verify(providerAuthToken, await getJwtProviderAuthSecret())
+		jwt.verify(providerAuthToken, await getAuthSecret())
 	);
+	
+	if (decodedToken.authTokenType !== AuthTokenType.PROVIDER_TOKEN) throw UnauthorizedRequestError();
 
 	if (decodedToken.email !== email) {
 		throw new Error("Invalid authentication credentials.")

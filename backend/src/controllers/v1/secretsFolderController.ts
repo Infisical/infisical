@@ -9,12 +9,9 @@ import { Secret, ServiceTokenData } from "../../models";
 import { Folder } from "../../models/folder";
 import {
   appendFolder,
-  deleteFolderById,
-  generateFolderId,
   getAllFolderIds,
   getFolderByPath,
   getFolderWithPathFromId,
-  getParentFromFolderId,
   validateFolderName
 } from "../../services/FolderService";
 import {
@@ -25,13 +22,9 @@ import {
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import * as reqValidator from "../../validation/folders";
 
-/**
- * Create folder with name [folderName] for workspace with id [workspaceId]
- * and environment [environment]
- * @param req
- * @param res
- * @returns
- */
+const ERR_FOLDER_NOT_FOUND = BadRequestError({ message: "The folder doesn't exist" });
+
+// verify workspace id/environment
 export const createFolder = async (req: Request, res: Response) => {
   /* 
     #swagger.summary = 'Create a folder'
@@ -107,7 +100,7 @@ export const createFolder = async (req: Request, res: Response) => {
     }
   */
   const {
-    body: { workspaceId, environment, folderName, parentFolderId }
+    body: { workspaceId, environment, folderName, directory }
   } = await validateRequest(reqValidator.CreateFolderV1, req);
 
   if (!validateFolderName(folderName)) {
@@ -116,35 +109,28 @@ export const createFolder = async (req: Request, res: Response) => {
     });
   }
 
+  if (req.authData.authPayload instanceof ServiceTokenData) {
+    // token check
+    const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, directory);
+    if (!isValidScopeAccess) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+  } else {
+    // user check
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: directory })
+    );
+  }
+
   const folders = await Folder.findOne({
     workspace: workspaceId,
     environment
   }).lean();
 
-  if (req.user) {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    const secretPath =
-      folders && parentFolderId
-        ? getFolderWithPathFromId(folders.nodes, parentFolderId).folderPath
-        : "/";
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-  }
-
   // space has no folders initialized
-
   if (!folders) {
-    if (req.authData.authPayload instanceof ServiceTokenData) {
-      // root check
-      const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, "/");
-      if (!isValidScopeAccess) {
-        throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
-      }
-    }
-
-    const id = generateFolderId();
     const folder = new Folder({
       workspace: workspaceId,
       environment,
@@ -152,14 +138,15 @@ export const createFolder = async (req: Request, res: Response) => {
         id: "root",
         name: "root",
         version: 1,
-        children: [{ id, name: folderName, children: [], version: 1 }]
+        children: []
       }
     });
+    const { parent, child } = appendFolder(folder.nodes, { folderName, directory });
     await folder.save();
     const folderVersion = new FolderVersion({
       workspace: workspaceId,
       environment,
-      nodes: folder.nodes
+      nodes: parent
     });
     await folderVersion.save();
     await EESecretService.takeSecretSnapshot({
@@ -173,9 +160,9 @@ export const createFolder = async (req: Request, res: Response) => {
         type: EventType.CREATE_FOLDER,
         metadata: {
           environment,
-          folderId: id,
+          folderId: child.id,
           folderName,
-          folderPath: `root/${folderName}`
+          folderPath: directory
         }
       },
       {
@@ -183,46 +170,27 @@ export const createFolder = async (req: Request, res: Response) => {
       }
     );
 
-    return res.json({ folder: { id, name: folderName } });
+    return res.json({ folder: { id: child.id, name: folderName } });
   }
 
-  const folder = appendFolder(folders.nodes, { folderName, parentFolderId });
+  const { parent, child, hasCreated } = appendFolder(folders.nodes, { folderName, directory });
 
-  await Folder.findByIdAndUpdate(folders._id, folders);
-
-  const { folder: parentFolder, folderPath: parentFolderPath } = getFolderWithPathFromId(
-    folders.nodes,
-    parentFolderId || "root"
-  );
-
-  if (req.authData.authPayload instanceof ServiceTokenData) {
-    // root check
-    const isValidScopeAccess = isValidScope(
-      req.authData.authPayload,
-      environment,
-      parentFolderPath
-    );
-    if (!isValidScopeAccess) {
-      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
-    }
-  }
+  if (!hasCreated) return res.json({ folder: child });
 
   await Folder.findByIdAndUpdate(folders._id, folders);
 
   const folderVersion = new FolderVersion({
     workspace: workspaceId,
     environment,
-    nodes: parentFolder
+    nodes: parent
   });
   await folderVersion.save();
 
   await EESecretService.takeSecretSnapshot({
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
-    folderId: parentFolderId
+    folderId: child.id
   });
-
-  const { folderPath } = getFolderWithPathFromId(folders.nodes, folder.id);
 
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -230,9 +198,9 @@ export const createFolder = async (req: Request, res: Response) => {
       type: EventType.CREATE_FOLDER,
       metadata: {
         environment,
-        folderId: folder.id,
+        folderId: child.id,
         folderName,
-        folderPath
+        folderPath: directory
       }
     },
     {
@@ -240,7 +208,7 @@ export const createFolder = async (req: Request, res: Response) => {
     }
   );
 
-  return res.json({ folder });
+  return res.json({ folder: child });
 };
 
 /**
@@ -332,8 +300,8 @@ export const updateFolderById = async (req: Request, res: Response) => {
     }
   */
   const {
-    body: { workspaceId, environment, name },
-    params: { folderId }
+    body: { workspaceId, environment, name, directory },
+    params: { folderName }
   } = await validateRequest(reqValidator.UpdateFolderV1, req);
 
   if (!validateFolderName(name)) {
@@ -342,38 +310,31 @@ export const updateFolderById = async (req: Request, res: Response) => {
     });
   }
 
+  if (req.authData.authPayload instanceof ServiceTokenData) {
+    const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, directory);
+    if (!isValidScopeAccess) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+  } else {
+    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: directory })
+    );
+  }
+
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
   if (!folders) {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
 
-  const parentFolder = getParentFromFolderId(folders.nodes, folderId);
+  const parentFolder = getFolderByPath(folders.nodes, directory);
   if (!parentFolder) {
     throw BadRequestError({ message: "The folder doesn't exist" });
   }
 
-  if (req.user) {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-    const secretPath = getFolderWithPathFromId(folders.nodes, parentFolder.id).folderPath;
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-    );
-  }
-
-  const folder = parentFolder.children.find(({ id }) => id === folderId);
-  if (!folder) {
-    throw BadRequestError({ message: "The folder doesn't exist" });
-  }
-
-  if (req.authData.authPayload instanceof ServiceTokenData) {
-    const { folderPath: secretPath } = getFolderWithPathFromId(folders.nodes, parentFolder.id);
-    // root check
-    const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, secretPath);
-    if (!isValidScopeAccess) {
-      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
-    }
-  }
+  const folder = parentFolder.children.find(({ name }) => name === folderName);
+  if (!folder) throw ERR_FOLDER_NOT_FOUND;
 
   const oldFolderName = folder.name;
   parentFolder.version += 1;
@@ -505,24 +466,12 @@ export const deleteFolder = async (req: Request, res: Response) => {
     }
   */
   const {
-    params: { folderId },
-    body: { environment, workspaceId }
+    params: { folderName },
+    body: { environment, workspaceId, directory }
   } = await validateRequest(reqValidator.DeleteFolderV1, req);
 
-  const folders = await Folder.findOne({ workspace: workspaceId, environment });
-  if (!folders) {
-    throw BadRequestError({ message: "The folder doesn't exist" });
-  }
-
-  const delOp = deleteFolderById(folders.nodes, folderId);
-  if (!delOp) {
-    throw BadRequestError({ message: "The folder doesn't exist" });
-  }
-  const { deletedNode: delFolder, parent: parentFolder } = delOp;
-  const { folderPath: secretPath } = getFolderWithPathFromId(folders.nodes, parentFolder.id);
-
   if (req.authData.authPayload instanceof ServiceTokenData) {
-    const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, secretPath);
+    const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, directory);
     if (!isValidScopeAccess) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
@@ -531,12 +480,23 @@ export const deleteFolder = async (req: Request, res: Response) => {
     const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: directory })
     );
   }
 
+  const folders = await Folder.findOne({ workspace: workspaceId, environment });
+  if (!folders) throw ERR_FOLDER_NOT_FOUND;
+
+  const parentFolder = getFolderByPath(folders.nodes, directory);
+  if (!parentFolder) throw ERR_FOLDER_NOT_FOUND;
+
+  const index = parentFolder.children.findIndex(({ name }) => name === folderName);
+  if (index === -1) throw ERR_FOLDER_NOT_FOUND;
+
+  const deletedFolder = parentFolder.children.splice(index, 1)[0];
+
   parentFolder.version += 1;
-  const delFolderIds = getAllFolderIds(delFolder);
+  const delFolderIds = getAllFolderIds(deletedFolder);
 
   await Folder.findByIdAndUpdate(folders._id, folders);
   const folderVersion = new FolderVersion({
@@ -565,9 +525,9 @@ export const deleteFolder = async (req: Request, res: Response) => {
       type: EventType.DELETE_FOLDER,
       metadata: {
         environment,
-        folderId,
-        folderName: delFolder.name,
-        folderPath: secretPath
+        folderId: deletedFolder.id,
+        folderName: deletedFolder.name,
+        folderPath: directory
       }
     },
     {
@@ -575,7 +535,7 @@ export const deleteFolder = async (req: Request, res: Response) => {
     }
   );
 
-  res.send({ message: "successfully deleted folders", folders: delFolderIds });
+  return res.send({ message: "successfully deleted folders", folders: delFolderIds });
 };
 
 /**
@@ -677,69 +637,27 @@ export const getFolders = async (req: Request, res: Response) => {
     }
   */
   const {
-    query: { workspaceId, environment, parentFolderId, parentFolderPath }
+    query: { workspaceId, environment, directory }
   } = await validateRequest(reqValidator.GetFoldersV1, req);
 
-  const folders = await Folder.findOne({ workspace: workspaceId, environment });
-
-  if (req.user) await getUserProjectPermissions(req.user._id, workspaceId);
-
-  if (!folders) {
-    res.send({ folders: [], dir: [] });
-    return;
-  }
-
-  // if instead of parentFolderId given a path like /folder1/folder2
-  if (parentFolderPath) {
-    if (req.authData.authPayload instanceof ServiceTokenData) {
-      const isValidScopeAccess = isValidScope(
-        req.authData.authPayload,
-        environment,
-        parentFolderPath
-      );
-      if (!isValidScopeAccess) {
-        throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
-      }
-    }
-    const folder = getFolderByPath(folders.nodes, parentFolderPath);
-
-    if (!folder) {
-      res.send({ folders: [], dir: [] });
-      return;
-    }
-    // dir is not needed at present as this is only used in overview section of secrets
-    res.send({
-      folders: folder.children.map(({ id, name }) => ({ id, name })),
-      dir: [{ name: folder.name, id: folder.id }]
-    });
-  }
-
-  if (!parentFolderId) {
-    if (req.authData.authPayload instanceof ServiceTokenData) {
-      const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, "/");
-      if (!isValidScopeAccess) {
-        throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
-      }
-    }
-
-    const rootFolders = folders.nodes.children.map(({ id, name }) => ({
-      id,
-      name
-    }));
-    res.send({ folders: rootFolders });
-    return;
-  }
-
-  const { folder, folderPath, dir } = getFolderWithPathFromId(folders.nodes, parentFolderId);
   if (req.authData.authPayload instanceof ServiceTokenData) {
-    const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, folderPath);
+    const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, directory);
     if (!isValidScopeAccess) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
+  } else {
+    // check that user is a member of the workspace
+    await getUserProjectPermissions(req.user._id, workspaceId);
   }
 
-  res.send({
-    folders: folder.children.map(({ id, name }) => ({ id, name })),
-    dir
+  const folders = await Folder.findOne({ workspace: workspaceId, environment });
+  if (!folders) {
+    return res.send({ folders: [], dir: [] });
+  }
+
+  const folder = getFolderByPath(folders.nodes, directory);
+
+  return res.send({
+    folders: folder?.children?.map(({ id, name }) => ({ id, name })) || []
   });
 };

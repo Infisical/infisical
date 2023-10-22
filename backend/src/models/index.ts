@@ -14,17 +14,19 @@ export * from "./tag";
 export * from "./folder";
 export * from "./secretImports";
 export * from "./secretBlindIndexData";
-export * from "./serviceToken";
-export * from "./serviceAccount";
-export * from "./serviceAccountKey";
-export * from "./serviceAccountOrganizationPermission";
-export * from "./serviceAccountWorkspacePermission";
+export * from "./serviceToken"; // TODO: deprecate
+export * from "./serviceAccount"; // TODO: deprecate
+export * from "./serviceAccountKey"; // TODO: deprecate 
+export * from "./serviceAccountOrganizationPermission"; // TODO: deprecate  
+export * from "./serviceAccountWorkspacePermission"; // TODO: deprecate
 export * from "./tokenData";
 export * from "./user";
 export * from "./userAction";
 export * from "./workspace";
-export * from "./serviceTokenData";
+export * from "./serviceTokenData"; // TODO: deprecate
 export * from "./apiKeyData";
 export * from "./loginSRPDetail";
 export * from "./tokenVersion";
 export * from "./webhooks";
+export * from "./serviceTokenDataV3";
+export * from "./serviceTokenDataV3Key";

@@ -6,7 +6,7 @@ export const CreateInstalLSessionv1 = z.object({
 
 export const LinkInstallationToOrgv1 = z.object({
   body: z.object({
-    installationId: z.number(),
+    installationId: z.string(),
     sessionId: z.string().trim()
   })
 });

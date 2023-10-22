@@ -103,7 +103,10 @@ export const getSecretsBotHelper = async ({
   environment: string;
   secretPath: string;
 }) => {
-  const content: Record<string, { value: string; comment?: string }> = {};
+  const content: Record<
+    string,
+    { value: string; comment?: string; skipMultilineEncoding?: boolean }
+  > = {};
   const key = await getKey({ workspaceId: workspaceId });
 
   let folderId = "root";
@@ -165,6 +168,8 @@ export const getSecretsBotHelper = async ({
         });
         content[secretKey].comment = commentValue;
       }
+
+      content[secretKey].skipMultilineEncoding = secret.skipMultilineEncoding;
     });
   });
 
@@ -194,6 +199,8 @@ export const getSecretsBotHelper = async ({
       });
       content[secretKey].comment = commentValue;
     }
+
+    content[secretKey].skipMultilineEncoding = secret.skipMultilineEncoding;
   });
 
   await expandSecrets(workspaceId.toString(), key, content);

@@ -5,37 +5,63 @@ description: "How Infisical structures its organizations."
 
 An organization houses projects and members.
 
-By default, Infisical creates an organization under your name. You can manage your organization in your organization settings.
+## Projects
 
-![organization name modal open](../../images/dashboard-name-modal-organization.png)
-![organization name modal open](../../images/organization.png)
+The **Projects** page is where you can view the projects that you have access to within your organization
+as well as create a new project.
+
+![organization](../../images/platform/organization/organization-projects.png)
+
+## Settings
+
+The **Settings** page lets you manage information about your organization including:
+
+- Name: The name of your organization.
+- Incident contacts: Emails that should be alerted if anything abnormal is detected within the organization.
+- SAML Authentication: The SAML SSO configuration of the organization (if applicable); Infisical currently
+supports Okta, Azure, and JumpCloud identity providers.
+
+![organization settings general](../../images/platform/organization/organization-settings-general.png)
+![organization settings auth](../../images/platform/organization/organization-settings-auth.png)
 
 ## Members
 
-Members of an organization can create and add other members to projects within that organization.
-
-To add a member to your organization, scroll down to the "Organization Members" section and invite the member via email. They'll receive an email to confirm their organization invitation. If the member is an existing user on the platform, they will be automatically added to the organization.
+The **Members** page is where you can manage members and their permissions within the organization.
+In the **Members** tab, you can add external members to your organization or remove them; you can also
+change their role.
 
 ![organization members](../../images/organization-members.png)
 
-<Note>
-  Note that access to projects must be provisioned to new members after they've
-  accepted their organization invitation, and they will not be added to any
-  projects by default.
-</Note>
+In the **Roles** tab, you can manage roles for members within the organization. 
 
-## Service Accounts
+<Info>
+  Note that Role-Based Access Management (RBAC) is partly a paid feature.
+  
+  Infisical provides immutable roles like `admin`, `member`, etc.
+  at the organization and project level for free.
 
-Service accounts represent machine identities such as VMs or application clients that can authenticate with Infisical. They can be provisioned read/write permissions for project(s) and environment(s).
+  If you're using Infisical Cloud, the ability to create custom roles is available under the **Pro Tier**. 
+  If you're self-hosting Infisical, then you should contact team@infisical.com to purchase an enterprise license to use it.
+</Info>
 
-To add a service account to your organization, scroll down to the "Service Accounts" section and create a service account. Afterwards, you can press on the edit button beside the service account to provision it permissions.
+![organization roles](../../images/platform/organization/organization-members-roles.png)
 
-![organization service accounts](../../images/organization-service-accounts.png)
+As you can see next, Infisical supports granular permissions that you can tailor to each role. So,
+if you need certain members to only be able to access billing details, for example, then you can
+assign them that permission only.
 
-## Incident contacts
+![organization role permissions](../../images/platform/organization/organization-members-roles-add-perm.png)
 
-Incident contacts of an organization are alerted if anything abnormal is detected within the operations of an organization.
+## Usage & Billing
 
-To add an incident contact to your organization, scroll down to the "Incident Contacts" section and add their email.
+The **Usage & Billing** page applies only to [Infisical Cloud](https://app.infisical.com) and is where you can
+manage your plan and billing information.
 
-![organization incident contacts](../../images/organization-ic.png)
+This includes the following items:
+
+- Current plan: The current plan information such as what tier your organization is on and what features/limits apply to this tier.
+- Licenses: The license keys for self-hosted instances of Infisical (if applicable).
+- Receipts: The receipts of monthly/annual invoices.
+- Billing: The billing details of your organization including payment methods on file, tax IDs (if applicable), etc.
+
+![organization usage and billing](../../images/platform/organization/organization-usage-billing.png)

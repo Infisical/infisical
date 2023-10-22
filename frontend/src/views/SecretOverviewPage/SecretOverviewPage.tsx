@@ -31,6 +31,7 @@ import {
 } from "@app/components/v2";
 import { useOrganization, useWorkspace } from "@app/context";
 import {
+  useCreateFolder,
   useCreateSecretV3,
   useDeleteSecretV3,
   useGetFoldersByEnv,
@@ -98,15 +99,30 @@ export const SecretOverviewPage = () => {
   const { folders, folderNames, isFolderPresentInEnv } = useGetFoldersByEnv({
     workspaceId,
     environments: userAvailableEnvs.map(({ slug }) => slug),
-    parentFolderPath: secretPath
+    directory: secretPath
   });
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
+  const { mutateAsync: createFolder } = useCreateFolder();
 
   const handleSecretCreate = async (env: string, key: string, value: string) => {
     try {
+      // create folder if not existing
+      if (secretPath !== "/") {
+        const path = secretPath.split("/");
+        const directory = path.slice(0, -1).join("/");
+        const folderName = path.at(-1);
+        if (folderName && directory) {
+          await createFolder({
+            workspaceId,
+            environment: env,
+            directory,
+            folderName
+          });
+        }
+      }
       await createSecretV3({
         environment: env,
         workspaceId,
@@ -130,12 +146,13 @@ export const SecretOverviewPage = () => {
     }
   };
 
-  const handleSecretUpdate = async (env: string, key: string, value: string) => {
+  const handleSecretUpdate = async (env: string, key: string, value: string, secretId?: string) => {
     try {
       await updateSecretV3({
         environment: env,
         workspaceId,
         secretPath,
+        secretId,
         secretName: key,
         secretValue: value,
         type: "shared",
@@ -154,13 +171,14 @@ export const SecretOverviewPage = () => {
     }
   };
 
-  const handleSecretDelete = async (env: string, key: string) => {
+  const handleSecretDelete = async (env: string, key: string, secretId?: string) => {
     try {
       await deleteSecretV3({
         environment: env,
         workspaceId,
         secretPath,
         secretName: key,
+        secretId,
         type: "shared"
       });
       createNotification({
@@ -188,19 +206,23 @@ export const SecretOverviewPage = () => {
     });
   };
 
-  const handleExploreEnvClick = (slug: string) => {
+  const handleExploreEnvClick = async (slug: string) => {
+    if (secretPath !== "/") {
+      const path = secretPath.split("/");
+      const directory = path.slice(0, -1).join("/");
+      const folderName = path.at(-1);
+      if (folderName && directory) {
+        await createFolder({
+          workspaceId,
+          environment: slug,
+          directory,
+          folderName
+        });
+      }
+    }
     const query: Record<string, string> = { ...router.query, env: slug };
-    delete query.secretPath;
-    // the dir return will have the present directory folder id
-    // use that when clicking on explore to redirect user to there
     const envIndex = userAvailableEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
-      const envFolder = folders?.[envIndex];
-      const dir = envFolder?.data?.dir?.pop();
-      if (dir) {
-        query.folderId = dir.id;
-      }
-
       router.push({
         pathname: "/project/[id]/secrets/[env]",
         query
@@ -221,7 +243,6 @@ export const SecretOverviewPage = () => {
   );
 
   const canViewOverviewPage = Boolean(userAvailableEnvs.length);
-
   const filteredSecretNames = secKeys
     ?.filter((name) => name.toUpperCase().includes(searchFilter.toUpperCase()))
     .sort((a, b) => (sortDir === "asc" ? a.localeCompare(b) : b.localeCompare(a)));
@@ -334,7 +355,7 @@ export const SecretOverviewPage = () => {
                   className="bg-mineshaft-700"
                 />
               )}
-              {isTableEmpty && (
+              {isTableEmpty && !isTableLoading && (
                 <Tr>
                   <Td colSpan={userAvailableEnvs.length + 1}>
                     <EmptyState title="Let's add some secrets" icon={faFolderBlank} iconSize="3x">
@@ -344,7 +365,14 @@ export const SecretOverviewPage = () => {
                           query: { id: workspaceId, env: userAvailableEnvs?.[0]?.slug }
                         }}
                       >
-                        <Button className="mt-2 p-1">Go to {userAvailableEnvs?.[0]?.name}</Button>
+                        <Button
+                          className="mt-4"
+                          variant="outline_bg"
+                          colorSchema="primary"
+                          size="md"
+                        >
+                          Go to {userAvailableEnvs?.[0]?.name}
+                        </Button>
                       </Link>
                     </EmptyState>
                   </Td>

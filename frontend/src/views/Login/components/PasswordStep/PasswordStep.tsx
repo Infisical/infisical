@@ -10,8 +10,9 @@ import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import { Button, Input } from "@app/components/v2";
 import { useUpdateUserAuthMethods } from "@app/hooks/api";
-import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
+
+import { navigateUserToOrg } from "../../Login.utils";
 
 type Props = { 
     providerAuthToken: string;
@@ -62,7 +63,7 @@ export const PasswordStep = ({
                         return;
                     }
                     // case: login was successful
-                    const cliUrl = `http://localhost:${callbackPort}`
+                    const cliUrl = `http://127.0.0.1:${callbackPort}/`
 
                     // send request to server endpoint
                     const instance = axios.create()
@@ -92,8 +93,6 @@ export const PasswordStep = ({
                     }
 
                     // case: login does not require MFA step
-                    const userOrgs = await fetchOrganizations();
-                    const userOrg = userOrgs[0]._id;
                     setIsLoading(false);
                     createNotification({
                         text: "Successfully logged in",
@@ -108,7 +107,7 @@ export const PasswordStep = ({
                         });
                     }
 
-                    router.push(`/org/${userOrg}/overview`);
+                    await navigateUserToOrg(router);
                 }
             }
         } catch (err) {
@@ -120,8 +119,6 @@ export const PasswordStep = ({
             console.error(err);
         }
     };
-
-
     
     return (
         <form 

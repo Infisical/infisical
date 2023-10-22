@@ -5,48 +5,8 @@ import bcrypt from "bcrypt";
 import { APIKeyData, AuthMethod, MembershipOrg, TokenVersion, User } from "../../models";
 import { getSaltRounds } from "../../config";
 import { validateRequest } from "../../helpers/validation";
+import { deleteUser } from "../../helpers/user";
 import * as reqValidator from "../../validation";
-
-/**
- * Return the current user.
- * @param req
- * @param res
- * @returns
- */
-export const getMe = async (req: Request, res: Response) => {
-  /* 
-    #swagger.summary = "Retrieve the current user on the request"
-    #swagger.description = "Retrieve the current user on the request"
-    
-    #swagger.security = [{
-        "apiKeyAuth": []
-    }]
-
-    #swagger.responses[200] = {
-        content: {
-            "application/json": {
-                "schema": { 
-                    "type": "object",
-                    "properties": {
-                        "user": {
-                            "type": "object",
-                            $ref: "#/components/schemas/CurrentUser",
-                            "description": "Current user on request"
-                        }
-                    }
-                }
-            }           
-        }
-    }   
-    */
-  const user = await User.findById(req.user._id).select(
-    "+salt +publicKey +encryptedPrivateKey +iv +tag +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag"
-  );
-
-  return res.status(200).send({
-    user
-  });
-};
 
 /**
  * Update the current user's MFA-enabled status [isMfaEnabled].
@@ -296,3 +256,59 @@ export const deleteMySessions = async (req: Request, res: Response) => {
     message: "Successfully revoked all sessions"
   });
 };
+
+/**
+ * Return the current user.
+ * @param req
+ * @param res
+ * @returns
+ */
+ export const getMe = async (req: Request, res: Response) => {
+  /* 
+    #swagger.summary = "Retrieve the current user on the request"
+    #swagger.description = "Retrieve the current user on the request"
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": { 
+                    "type": "object",
+                    "properties": {
+                        "user": {
+                            "type": "object",
+                            $ref: "#/components/schemas/CurrentUser",
+                            "description": "Current user on request"
+                        }
+                    }
+                }
+            }           
+        }
+    }   
+    */
+  const user = await User.findById(req.user._id).select(
+    "+salt +publicKey +encryptedPrivateKey +iv +tag +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag"
+  );
+
+  return res.status(200).send({
+    user
+  });
+};
+
+/**
+ * Delete the current user.
+ * @param req 
+ * @param res 
+ */
+export const deleteMe = async (req: Request, res: Response) => {
+  const user = await deleteUser({
+    userId: req.user._id
+  });
+
+  return res.status(200).send({
+    user
+  });
+}

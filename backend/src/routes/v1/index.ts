@@ -11,6 +11,7 @@ import key from "./key";
 import inviteOrg from "./inviteOrg";
 import secret from "./secret";
 import serviceToken from "./serviceToken";
+import sso from "./sso";
 import password from "./password";
 import integration from "./integration";
 import integrationAuth from "./integrationAuth";
@@ -37,5 +38,6 @@ export {
   integrationAuth,
   secretsFolder,
   webhooks,
-  secretImps
+  secretImps,
+  sso
 };

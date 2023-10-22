@@ -3,6 +3,7 @@ export * from "./Alert";
 export * from "./Button";
 export * from "./Card";
 export * from "./Checkbox";
+export * from "./ContentLoader";
 export * from "./DatePicker";
 export * from "./DeleteActionModal";
 export * from "./Drawer";

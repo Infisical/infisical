@@ -26,6 +26,4 @@ const gitAppOrganizationInstallation = new Schema<Installation>({
 });
 
 
-const GitAppOrganizationInstallation = model<Installation>("git_app_organization_installation", gitAppOrganizationInstallation);
-
-export default GitAppOrganizationInstallation;
+export const GitAppOrganizationInstallation = model<Installation>("git_app_organization_installation", gitAppOrganizationInstallation);

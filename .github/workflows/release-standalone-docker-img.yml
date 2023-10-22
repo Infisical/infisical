@@ -73,3 +73,6 @@ jobs:
             infisical/infisical:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
           file: Dockerfile.standalone-infisical
+          build-args: |
+            POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+            INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}

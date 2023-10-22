@@ -13,15 +13,6 @@ router.get(
   organizationController.getOrganizations
 );
 
-router.post(
-  // not used on frontend
-  "/",
-  requireAuth({
-    acceptedAuthModes: [AuthMode.JWT]
-  }),
-  organizationController.createOrganization
-);
-
 router.get(
   "/:organizationId",
   requireAuth({

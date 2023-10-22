@@ -54,4 +54,20 @@ router.get(
   organizationsController.getOrganizationServiceAccounts
 );
 
+router.post(
+  "/",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  organizationsController.createOrganization
+);
+
+router.delete(
+  "/:organizationId",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+  }),
+  organizationsController.deleteOrganizationById
+);
+
 export default router;

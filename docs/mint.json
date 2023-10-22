@@ -117,15 +117,16 @@
         "documentation/platform/secret-reference",
         "documentation/platform/webhooks",
         "documentation/platform/pit-recovery",
-        "documentation/platform/secret-versioning",
         "documentation/platform/audit-logs",
         "documentation/platform/token",
-        "documentation/platform/ip-allowlisting",
         "documentation/platform/mfa",
         {
           "group": "SSO",
           "pages": [
             "documentation/platform/sso/overview",
+            "documentation/platform/sso/google",
+            "documentation/platform/sso/github",
+            "documentation/platform/sso/gitlab",
             "documentation/platform/sso/okta",
             "documentation/platform/sso/azure",
             "documentation/platform/sso/jumpcloud"
@@ -140,16 +141,17 @@
           "group": "Deployment options",
           "pages": [
             "self-hosting/overview",
+            "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/kubernetes-helm",
             "self-hosting/deployment-options/aws-ec2",
             "self-hosting/deployment-options/docker-compose",
-            "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/digital-ocean-marketplace"
           ]
         },
         "self-hosting/configuration/envars",
         "self-hosting/configuration/email",
         "self-hosting/configuration/redis",
+        "self-hosting/configuration/sso",
         "self-hosting/faq"
       ]
     },
@@ -166,6 +168,7 @@
             "cli/commands/run",
             "cli/commands/secrets",
             "cli/commands/export",
+            "cli/commands/service-token",
             "cli/commands/vault",
             "cli/commands/user",
             "cli/commands/reset",
@@ -235,6 +238,7 @@
         "integrations/cloud/teamcity",
         "integrations/cloud/cloudflare-pages",
         "integrations/cloud/checkly",
+        "integrations/cloud/qovery",
         "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",
         "integrations/cloud/gcp-secret-manager",
@@ -269,6 +273,12 @@
         "integrations/frameworks/rails",
         "integrations/frameworks/dotnet",
         "integrations/platforms/pm2"
+      ]
+    },
+    {
+      "group": "Build Tool Integrations",
+      "pages": [
+        "integrations/build-tools/gradle"
       ]
     },
     {
@@ -375,15 +385,6 @@
         "internals/flows",
         "internals/security",
         "internals/service-tokens"
-      ]
-    },
-    {
-      "group": "Security",
-      "pages": [
-        "security/overview",
-        "security/data-model",
-        "security/mechanics",
-        "security/service-tokens"
       ]
     },
     {

@@ -5,6 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
 import { EncryptedSecret } from "../secrets/types";
+import { ServiceTokenDataV3 } from "../serviceTokens/types";
 import { TWorkspaceUser } from "../users/types";
 import {
   CreateEnvironmentDTO,
@@ -32,7 +33,8 @@ export const workspaceKeys = {
   getAllUserWorkspace: ["workspaces"] as const,
   getUserWsEnvironments: (workspaceId: string) => ["workspace-env", { workspaceId }] as const,
   getWorkspaceAuditLogs: (workspaceId: string) => [{ workspaceId }] as const,
-  getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }] as const
+  getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }] as const,
+  getWorkspaceServiceTokenDataV3: (workspaceId: string) => [{ workspaceId }, "workspace-service-token-data-v3"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -359,5 +361,21 @@ export const useUpdateUserWorkspaceRole = () => {
     onSuccess: (res) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(res.workspace));
     }
+  });
+};
+
+export const useGetWorkspaceServiceTokenDataV3 = (workspaceId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceServiceTokenDataV3(workspaceId),
+    queryFn: async () => {
+      const {
+        data: { serviceTokenData }
+      } = await apiRequest.get<{ serviceTokenData: ServiceTokenDataV3[] }>(
+        `/api/v3/workspaces/${workspaceId}/service-token`
+      );
+
+      return serviceTokenData;
+    },
+    enabled: true
   });
 };

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import {
+  Folder,
   Integration,
   Membership,
   Secret,
@@ -21,19 +22,22 @@ import {
   getUserProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
+import { SecretImport } from "../../models";
+import { ServiceAccountWorkspacePermission } from "../../models";
+import { Webhook } from "../../models";
 
 /**
- * Create new workspace environment named [environmentName] 
+ * Create new workspace environment named [environmentName]
  * with slug [environmentSlug] under workspace with id
  * @param req
  * @param res
  * @returns
  */
 export const createWorkspaceEnvironment = async (req: Request, res: Response) => {
-  /* 
+  /*
     #swagger.summary = 'Create environment'
     #swagger.description = 'Create environment'
-    
+
     #swagger.security = [{
         "apiKeyAuth": []
     }]
@@ -42,12 +46,12 @@ export const createWorkspaceEnvironment = async (req: Request, res: Response) =>
 		"description": "ID of project",
 		"required": true,
 		"type": "string"
-	} 
+	}
 
-  /* 
+  /*
     #swagger.summary = 'Create environment'
     #swagger.description = 'Create environment'
-    
+
     #swagger.security = [{
         "apiKeyAuth": []
     }]
@@ -56,7 +60,7 @@ export const createWorkspaceEnvironment = async (req: Request, res: Response) =>
 		"description": "ID of project",
 		"required": true,
 		"type": "string"
-	} 
+	}
 
   #swagger.requestBody = {
       content: {
@@ -84,7 +88,7 @@ export const createWorkspaceEnvironment = async (req: Request, res: Response) =>
   #swagger.responses[200] = {
       content: {
           "application/json": {
-              "schema": { 
+              "schema": {
                   "type": "object",
                   "properties": {
                       "message": {
@@ -111,7 +115,7 @@ export const createWorkspaceEnvironment = async (req: Request, res: Response) =>
                   },
                   "description": "Response after creating a new environment"
               }
-          }           
+          }
       }
   }
   */
@@ -242,7 +246,7 @@ export const reorderWorkspaceEnvironments = async (req: Request, res: Response) 
  * @returns
  */
 export const renameWorkspaceEnvironment = async (req: Request, res: Response) => {
-  /* 
+  /*
     #swagger.summary = 'Rename workspace environment'
     #swagger.description = 'Rename a specific environment within a workspace'
 
@@ -313,7 +317,7 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
                 }
             }
         }
-    }   
+    }
   */
   const {
     params: { workspaceId },
@@ -369,13 +373,43 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
     { environment: environmentSlug }
   );
   await ServiceTokenData.updateMany(
-    { workspace: workspaceId, environment: oldEnvironmentSlug },
-    { environment: environmentSlug }
+    {
+      workspace: workspaceId,
+      "scopes.environment": oldEnvironmentSlug
+    },
+    { $set: { "scopes.$[element].environment": environmentSlug } },
+    { arrayFilters: [{ "element.environment": oldEnvironmentSlug }] }
   );
   await Integration.updateMany(
     { workspace: workspaceId, environment: oldEnvironmentSlug },
     { environment: environmentSlug }
   );
+
+  await Folder.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+
+  await SecretImport.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+  await SecretImport.updateMany(
+    { workspace: workspaceId, "imports.environment": oldEnvironmentSlug },
+    { $set: { "imports.$[element].environment": environmentSlug } },
+    { arrayFilters: [{ "element.environment": oldEnvironmentSlug }] },
+  );
+
+  await ServiceAccountWorkspacePermission.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+
+  await Webhook.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+
   await Membership.updateMany(
     {
       workspace: workspaceId,
@@ -418,10 +452,10 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
  * @returns
  */
 export const deleteWorkspaceEnvironment = async (req: Request, res: Response) => {
-  /* 
+  /*
     #swagger.summary = 'Delete workspace environment'
     #swagger.description = 'Delete a specific environment from a workspace'
-    
+
     #swagger.security = [{
         "apiKeyAuth": []
     }]
@@ -454,7 +488,7 @@ export const deleteWorkspaceEnvironment = async (req: Request, res: Response) =>
     #swagger.responses[200] = {
         content: {
             "application/json": {
-                "schema": { 
+                "schema": {
                     "type": "object",
                     "properties": {
                         "message": {
@@ -472,9 +506,9 @@ export const deleteWorkspaceEnvironment = async (req: Request, res: Response) =>
                     },
                     "description": "Response after deleting an environment from a workspace"
                 }
-            }           
+            }
         }
-    }   
+    }
 */
   const {
     params: { workspaceId },
@@ -561,10 +595,10 @@ export const deleteWorkspaceEnvironment = async (req: Request, res: Response) =>
 
 // TODO(akhilmhdh) after rbac this can be completely removed
 export const getAllAccessibleEnvironmentsOfWorkspace = async (req: Request, res: Response) => {
-  /* 
+  /*
     #swagger.summary = 'Get all accessible environments of a workspace'
     #swagger.description = 'Fetch all environments that the user has access to in a specified workspace'
-    
+
     #swagger.security = [{
         "apiKeyAuth": []
     }]
@@ -611,7 +645,7 @@ export const getAllAccessibleEnvironmentsOfWorkspace = async (req: Request, res:
                 }
             }
         }
-    }   
+    }
   */
   const {
     params: { workspaceId }
