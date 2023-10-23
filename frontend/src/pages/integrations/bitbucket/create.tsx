@@ -6,6 +6,7 @@ import {
   useCreateIntegration
 } from "@app/hooks/api";
 
+import WarningMessage from "../../../components/basic/WarningMessage";
 import {
   Button,
   Card,
@@ -178,6 +179,7 @@ export default function BitBucketCreateIntegrationPage() {
             )}
           </Select>
         </FormControl>
+        <WarningMessage text="Warning alert! The existing secrets will be removed and get replaced by infisical provided ones." />
         <Button
           onClick={handleButtonClick}
           color="mineshaft"

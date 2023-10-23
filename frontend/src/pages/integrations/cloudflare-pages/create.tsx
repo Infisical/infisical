@@ -6,6 +6,7 @@ import {
     useCreateIntegration
 , useGetWorkspaceById } from "@app/hooks/api";
 
+import WarningMessage from "../../../components/basic/WarningMessage";
 import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "../../../components/v2";
 import { useGetIntegrationAuthApps, useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
 
@@ -139,6 +140,7 @@ export default function CloudflarePagesIntegrationPage() {
                         ))}
                     </Select>
                 </FormControl>
+                <WarningMessage text="Warning alert! The existing secrets will be removed and get replaced by infisical provided ones." />
                 <Button
                     onClick={handleButtonClick}
                     color="mineshaft"

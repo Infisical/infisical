@@ -31,6 +31,7 @@ import {
   useGetIntegrationAuthQoveryScopes 
 } from "@app/hooks/api/integrationAuth/queries";
 
+import WarningMessage from "../../../components/basic/WarningMessage";
 import { useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 
@@ -366,6 +367,7 @@ export default function QoveryCreateIntegrationPage() {
             </motion.div>
           </TabPanel>
         </Tabs>
+        <WarningMessage text="Warning alert! The existing secrets will be removed and get replaced by infisical provided ones." />
         <Button
           onClick={handleButtonClick}
           color="mineshaft"

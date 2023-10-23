@@ -11,6 +11,7 @@ import {
   useCreateIntegration
 } from "@app/hooks/api";
 
+import WarningMessage from "../../../components/basic/WarningMessage";
 import {
   Button,
   Card,
@@ -162,6 +163,7 @@ export default function HashiCorpVaultCreateIntegrationPage() {
             onChange={(e) => setVaultSecretPath(e.target.value)}
           />
         </FormControl>
+        <WarningMessage text="Warning alert! The existing secrets will be removed and get replaced by infisical provided ones." />
         <Button
           onClick={handleButtonClick}
           colorSchema="primary"
