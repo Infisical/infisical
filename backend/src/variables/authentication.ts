@@ -3,7 +3,8 @@ export enum AuthTokenType {
     REFRESH_TOKEN = "refreshToken",
     SIGNUP_TOKEN = "signupToken",
     MFA_TOKEN = "mfaToken",
-    PROVIDER_TOKEN = "providerToken"
+    PROVIDER_TOKEN = "providerToken",
+    API_KEY = "apiKey"
 }
 
 export enum AuthMode {

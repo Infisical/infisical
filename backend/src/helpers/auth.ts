@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import {
 	APIKeyData,
+	APIKeyDataV2,
 	ITokenVersion,
 	IUser,
 	ServiceTokenData,
@@ -105,6 +106,7 @@ export const validateAuthMode = ({
 
 /**
  * Return user payload corresponding to JWT token [authTokenValue]
+ * that is either for browser / CLI or API Key
  * @param {Object} obj
  * @param {String} obj.authTokenValue - JWT token value
  * @returns {User} user - user corresponding to JWT token
@@ -120,7 +122,41 @@ export const getAuthUserPayload = async ({
 		jwt.verify(authTokenValue, await getAuthSecret())
 	);
 
-	if (decodedToken.authTokenType !== AuthTokenType.ACCESS_TOKEN) throw UnauthorizedRequestError();
+	if (
+		decodedToken.authTokenType !== AuthTokenType.ACCESS_TOKEN &&
+		decodedToken.authTokenType !== AuthTokenType.API_KEY
+	) {
+		throw UnauthorizedRequestError();
+	}
+	
+	if (decodedToken.authTokenType === AuthTokenType.ACCESS_TOKEN) {
+		const tokenVersion = await TokenVersion.findOneAndUpdate({
+			_id: new Types.ObjectId(decodedToken.tokenVersionId),
+			user: decodedToken.userId
+		}, {
+			lastUsed: new Date(),
+		});
+	
+		if (!tokenVersion) throw UnauthorizedRequestError();
+	
+		if (decodedToken.accessVersion !== tokenVersion.accessVersion) throw UnauthorizedRequestError();
+	} else if (decodedToken.authTokenType === AuthTokenType.API_KEY) {
+		const apiKeyData = await APIKeyDataV2.findOneAndUpdate(
+			{
+				_id: new Types.ObjectId(decodedToken.apiKeyDataId),
+				user: new Types.ObjectId(decodedToken.userId)
+			},
+			{
+				lastUsed: new Date(),
+				$inc: { usageCount: 1 }
+			},
+			{
+				new: true
+			}
+		);
+		
+		if (!apiKeyData) throw UnauthorizedRequestError();
+	}
 
 	const user = await User.findOne({
 		_id: new Types.ObjectId(decodedToken.userId),
@@ -130,21 +166,6 @@ export const getAuthUserPayload = async ({
 
 	if (!user?.publicKey) throw UnauthorizedRequestError({ message: "Failed to authenticate user with partially set up account" });
 
-	const tokenVersion = await TokenVersion.findOneAndUpdate({
-		_id: new Types.ObjectId(decodedToken.tokenVersionId),
-		user: user._id,
-	}, {
-		lastUsed: new Date(),
-	});
-
-	if (!tokenVersion) throw UnauthorizedRequestError({
-		message: "Failed to validate access token",
-	});
-
-	if (decodedToken.accessVersion !== tokenVersion.accessVersion) throw UnauthorizedRequestError({
-		message: "Failed to validate access token",
-	});
-	
 	return {
 		actor: {
 			type: ActorType.USER,

@@ -29,6 +29,7 @@ import {
   secretApprovalRequest as v1SecretApprovalRequest,
   secretScanning as v1SecretScanningRouter
 } from "./ee/routes/v1";
+import { apiKeyData as v3apiKeyDataRouter } from "./ee/routes/v3";
 import { serviceTokenData as v3ServiceTokenDataRouter } from "./ee/routes/v3";
 import {
   auth as v1AuthRouter,
@@ -68,6 +69,7 @@ import {
   auth as v3AuthRouter,
   secrets as v3SecretsRouter,
   signup as v3SignupRouter,
+  users as v3UsersRouter,
   workspaces as v3WorkspacesRouter
 } from "./routes/v3";
 import { healthCheck } from "./routes/status";
@@ -180,7 +182,8 @@ const main = async () => {
   app.use("/api/v1/organizations", eeOrganizationsRouter);
   app.use("/api/v1/sso", eeSSORouter);
   app.use("/api/v1/cloud-products", eeCloudProductsRouter);
-  app.use("/api/v3/service-token", v3ServiceTokenDataRouter);
+  app.use("/api/v3/api-key", v3apiKeyDataRouter); // new
+  app.use("/api/v3/service-token", v3ServiceTokenDataRouter); // new
 
   // v1 routes
   app.use("/api/v1/signup", v1SignupRouter);
@@ -226,6 +229,7 @@ const main = async () => {
   app.use("/api/v3/secrets", v3SecretsRouter);
   app.use("/api/v3/workspaces", v3WorkspacesRouter);
   app.use("/api/v3/signup", v3SignupRouter);
+  app.use("/api/v3/users", v3UsersRouter);
 
   // api docs
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
