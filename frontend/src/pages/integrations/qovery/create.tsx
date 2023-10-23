@@ -8,7 +8,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 import queryString from "query-string";
 
-import { WarningMessage } from "@app/components/messages";
 import {
   Button,
   Card,
@@ -22,6 +21,7 @@ import {
   TabPanel,
   Tabs
 } from "@app/components/v2";
+import { WarningMessage } from "@app/components/WarningMessage";
 import {
   useCreateIntegration
 } from "@app/hooks/api";

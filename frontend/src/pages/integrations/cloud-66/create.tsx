@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
-import { WarningMessage } from "@app/components/messages";
+import { WarningMessage } from "@app/components/WarningMessage";
 import {
   useCreateIntegration
 } from "@app/hooks/api";

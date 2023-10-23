@@ -11,7 +11,7 @@ import { motion } from "framer-motion";
 import queryString from "query-string";
 import * as yup from "yup";
 
-import { WarningMessage } from "@app/components/messages";
+import { WarningMessage } from "@app/components/WarningMessage";
 import { usePopUp } from "@app/hooks";
 import {
   useCreateIntegration

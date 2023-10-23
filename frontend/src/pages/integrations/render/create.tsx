@@ -7,7 +7,7 @@ import { faArrowUpRightFromSquare, faBookOpen, faBugs, faCircleInfo } from "@for
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import queryString from "query-string";
 
-import { WarningMessage } from "@app/components/messages";
+import { WarningMessage } from "@app/components/WarningMessage";
 import {
   useCreateIntegration
 } from "@app/hooks/api";
