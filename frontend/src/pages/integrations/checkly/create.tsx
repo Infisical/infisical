@@ -8,6 +8,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 import queryString from "query-string";
 
+import { WarningMessage } from "@app/components/messages";
 import {
   Button,
   Card,
@@ -25,7 +26,6 @@ import {
   useCreateIntegration
 } from "@app/hooks/api";
 
-import WarningMessage from "../../../components/basic/WarningMessage";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById

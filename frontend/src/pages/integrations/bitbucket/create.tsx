@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
+import { WarningMessage } from "@app/components/messages";
 import {
   useCreateIntegration
 } from "@app/hooks/api";
 
-import WarningMessage from "../../../components/basic/WarningMessage";
 import {
   Button,
   Card,

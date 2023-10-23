@@ -1,7 +1,7 @@
 import { faCircleExclamation } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 
-const WarningMessage = ({text}: {text: string}): JSX.Element => {
+export const WarningMessage = ({text}: {text: string}): JSX.Element => {
     return (
     <div>
         <div className="flex flex-col bg-mineshaft-800 border border-mineshaft-600 w-full p-4 max-w-lg mt-6 rounded-md">
@@ -14,5 +14,3 @@ const WarningMessage = ({text}: {text: string}): JSX.Element => {
     </div>
     );
 }
-
-export default WarningMessage;

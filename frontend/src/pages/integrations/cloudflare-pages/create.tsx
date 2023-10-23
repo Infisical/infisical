@@ -2,11 +2,11 @@ import { useEffect,useState } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
+import { WarningMessage } from "@app/components/messages";
 import {
     useCreateIntegration
 , useGetWorkspaceById } from "@app/hooks/api";
 
-import WarningMessage from "../../../components/basic/WarningMessage";
 import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "../../../components/v2";
 import { useGetIntegrationAuthApps, useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
 

@@ -11,12 +11,12 @@ import { motion } from "framer-motion";
 import queryString from "query-string";
 import * as yup from "yup";
 
+import { WarningMessage } from "@app/components/messages";
 import { usePopUp } from "@app/hooks";
 import {
   useCreateIntegration
 } from "@app/hooks/api";
 
-import WarningMessage from "../../../components/basic/WarningMessage";
 import {
   Button,
   Card,
