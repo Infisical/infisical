@@ -10,3 +10,4 @@ export * from "./secrets";
 export * from "./serviceAccount";
 export * from "./serviceTokenData";
 export * from "./serviceTokenDataV3";
+export * from "./apiKeyDataV3";
