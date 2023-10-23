@@ -32,7 +32,6 @@ export default function HasuraCloudAuthorizeIntegrationPage() {
   });
 
   const onFormSubmit = async ({ accessToken }: FormData) => {
-    console.log("onFormSubmit accessToken: ", accessToken);
     try {
       setIsLoading(true);
 

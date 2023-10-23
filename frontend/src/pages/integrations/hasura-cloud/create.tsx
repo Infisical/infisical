@@ -26,9 +26,9 @@ import {
 import { useGetWorkspaceById } from "@app/hooks/api/workspace";
 
 const schema = yup.object({
-  secretPath: yup.string().trim().required("secret path is required"),
-  sourceEnvironment: yup.string().trim().required("project environment is required"),
-  appId: yup.string().trim().required("project is required")
+  secretPath: yup.string().trim().required("Secret path is required"),
+  sourceEnvironment: yup.string().trim().required("Project environment is required"),
+  appId: yup.string().trim().required("Hasura Cloud project is required")
 });
 
 type FormData = yup.InferType<typeof schema>;

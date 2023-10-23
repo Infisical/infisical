@@ -41,7 +41,6 @@ export default function FlyioAuthorizeIntegrationPage() {
   const onFormSubmit = async ({
     accessToken
   }: FormData) => {
-    console.log("onFormSubmit accessToken: ", accessToken);
     try {
       setIsLoading(true);
       
