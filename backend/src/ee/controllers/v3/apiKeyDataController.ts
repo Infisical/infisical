@@ -77,7 +77,7 @@ export const createAPIKeyData = async (req: Request, res: Response) => {
 }
 
 /**
- * Update API key data v2 with id [apiKeyDataId]
+ * Delete API key data v2 with id [apiKeyDataId]
  * @param req 
  * @param res 
  */

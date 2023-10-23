@@ -31,8 +31,6 @@ type Props = {
     handlePopUpToggle: (popUpName: keyof UsePopUpState<["apiKeyV2"]>, state?: boolean) => void;
 };
 
-// TODO: copy to clipboard stuff
-
 export const APIKeyV2Modal = ({
     popUp,
     handlePopUpToggle
