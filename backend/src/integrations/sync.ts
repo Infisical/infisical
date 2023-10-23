@@ -3111,6 +3111,12 @@ const syncSecretsNorthflank = async ({
   );
 };
 
+/** Sync/push [secrets] to Hasura Cloud
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Hasura Cloud integration
+ */
 const syncSecretsHasuraCloud = async ({
   integration,
   secrets,
@@ -3143,31 +3149,18 @@ const syncSecretsHasuraCloud = async ({
     }
   } = ZGetTenantEnv.parse(res.data);
 
-  let currentEnvKeys = new Set<string>();
-
-  if (envVars.environment) {
-    currentEnvKeys = new Set(Object.keys(envVars.environment));
-  }
-  const keysToAdd = new Set(Object.keys(secrets));
-
-  const envKeysToDelete = new Set<string>();
-  const envs: { key: string; value: any }[] = [];
-
-  for (const [key, value] of Object.entries(secrets)) {
-    if (value.value) {
-      envs.push({ key, value: value.value });
-    }
-  }
-
-  for (const currentKey of currentEnvKeys) {
-    if (!keysToAdd.has(currentKey)) {
-      envKeysToDelete.add(currentKey);
-    }
-  }
-
   let currentHash = hash;
 
-  if (envs.length) {
+  const secretsToUpdate = Object.keys(secrets).map((key) => {
+    return ({
+      key,
+      value: secrets[key].value
+    });
+  });
+
+  if (secretsToUpdate.length) {
+    // update secrets
+    
     const addRequest = await standardRequest.post(
       INTEGRATION_HASURA_CLOUD_API_URL,
       {
@@ -3175,7 +3168,7 @@ const syncSecretsHasuraCloud = async ({
           "mutation MyQuery($currentHash: String!, $envs: [UpdateEnvObject!]!, $tenantId: uuid!) { updateTenantEnv(currentHash: $currentHash, envs: $envs, tenantId: $tenantId) { hash envVars} }",
         variables: {
           currentHash,
-          envs,
+          envs: secretsToUpdate,
           tenantId: integration.appId
         }
       },
@@ -3192,8 +3185,12 @@ const syncSecretsHasuraCloud = async ({
       currentHash = addRequestResponse.data.data.updateTenantEnv.hash;
     }
   }
-
-  if (envKeysToDelete.size > 0) {
+  
+  const secretsToDelete = envVars.environment 
+    ? Object.keys(envVars.environment).filter((key) => !(key in secrets))
+    : [];
+    
+  if (secretsToDelete.length) {
     await standardRequest.post(
       INTEGRATION_HASURA_CLOUD_API_URL,
       {
@@ -3204,12 +3201,11 @@ const syncSecretsHasuraCloud = async ({
             envVars
           }
         }
-        
         `,
         variables: {
           id: integration.appId,
           currentHash,
-          env: Array.from(envKeysToDelete)
+          env: secretsToDelete
         }
       },
       {
@@ -3219,10 +3215,6 @@ const syncSecretsHasuraCloud = async ({
         }
       }
     );
-
- 
-
-
   }
 };
 
