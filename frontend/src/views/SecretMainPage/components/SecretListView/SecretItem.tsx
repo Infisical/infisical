@@ -188,12 +188,14 @@ export const SecretItem = memo(
       <>
         <CreateReminderForm
           isOpen={createReminderFormOpen}
-          onClose={(data) => {
+          onOpenChange={(isOpen, data) => {
+            setCreateReminderFormOpen.toggle();
+
             if (data) {
+              console.log(data);
               setValue("reminderCron", data.cron, { shouldDirty: true });
               setValue("reminderNote", data.note, { shouldDirty: true });
             }
-            setCreateReminderFormOpen.off();
           }}
         />
 
