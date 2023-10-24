@@ -69,6 +69,8 @@ export const decryptSecrets = (
       value: secretValue,
       tags: encSecret.tags,
       comment: secretComment,
+      reminderCron: encSecret.secretReminderCron,
+      reminderNote: encSecret.secretReminderNote,
       createdAt: encSecret.createdAt,
       updatedAt: encSecret.updatedAt,
       version: encSecret.version,

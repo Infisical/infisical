@@ -122,6 +122,8 @@ export const SecretListView = ({
     {
       value,
       comment,
+      reminderCron,
+      reminderNote,
       tags,
       skipMultilineEncoding,
       newKey,
@@ -129,6 +131,8 @@ export const SecretListView = ({
     }: Partial<{
       value: string;
       comment: string;
+      reminderCron: string | null;
+      reminderNote: string | null;
       tags: string[];
       skipMultilineEncoding: boolean;
       newKey: string;
@@ -159,6 +163,8 @@ export const SecretListView = ({
         latestFileKey: decryptFileKey,
         tags,
         secretComment: comment,
+        secretReminderCron: reminderCron,
+        secretReminderNote: reminderNote,
         skipMultilineEncoding,
         newSecretName: newKey
       });
@@ -188,14 +194,14 @@ export const SecretListView = ({
       cb?: () => void
     ) => {
       const { key: oldKey } = orgSecret;
-      const { key, value, overrideAction, idOverride, valueOverride, tags, comment } = modSecret;
+      const { key, value, overrideAction, idOverride, valueOverride, tags, comment, reminderCron, reminderNote } = modSecret;
       const hasKeyChanged = oldKey !== key;
 
       const tagIds = tags.map(({ _id }) => _id);
       const oldTagIds = orgSecret.tags.map(({ _id }) => _id);
       const isSameTags = JSON.stringify(tagIds) === JSON.stringify(oldTagIds);
       const isSharedSecUnchanged =
-        (["key", "value", "comment", "skipMultilineEncoding"] as const).every(
+        (["key", "value", "comment", "skipMultilineEncoding", "reminderCron", "reminderNote"] as const).every(
           (el) => orgSecret[el] === modSecret[el]
         ) && isSameTags;
 
@@ -222,13 +228,14 @@ export const SecretListView = ({
             value,
             tags: tagIds,
             comment,
+            reminderCron,
+            reminderNote,
             secretId: orgSecret._id,
             newKey: hasKeyChanged ? key : undefined,
             skipMultilineEncoding: modSecret.skipMultilineEncoding
           });
           if (cb) cb();
         }
-
         queryClient.invalidateQueries(
           secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
         );

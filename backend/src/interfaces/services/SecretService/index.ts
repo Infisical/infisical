@@ -58,6 +58,10 @@ export interface UpdateSecretParams {
   secretCommentCiphertext?: string;
   secretCommentIV?: string;
   secretCommentTag?: string;
+
+  secretReminderCron?: string | null;
+  secretReminderNote?: string | null ;
+
   skipMultilineEncoding?: boolean;
   tags?: string[];
 }
