@@ -96,7 +96,7 @@ module.exports = {
       }
     ]
   },
-  ignorePatterns: ["next.config.js"],
+  ignorePatterns: ["next.config.js", "cypress/**/*.js", "cypress.config.js"],
   settings: {
     "import/resolver": {
       typescript: {

@@ -77,9 +77,10 @@ export const DeleteProjectSection = () => {
         <DeleteActionModal
             isOpen={popUp.deleteWorkspace.isOpen}
             title="Are you sure want to delete this project?"
-            subTitle={`Permanently remove ${currentWorkspace?.name} and all of its data. This action is not reversible, so please be careful.`}
+            subTitle={`Permanently delete ${currentWorkspace?.name} and all of its data. This action is not reversible, so please be careful.`}
             onChange={(isOpen) => handlePopUpToggle("deleteWorkspace", isOpen)}
             deleteKey="confirm"
+            buttonText="Delete Project"
             onDeleteApproved={handleDeleteWorkspaceSubmit}
         />
     </div>

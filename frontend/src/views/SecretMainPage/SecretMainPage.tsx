@@ -239,7 +239,7 @@ export const SecretMainPage = () => {
               onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
             />
             <div className="mt-3 overflow-y-auto overflow-x-hidden thin-scrollbar bg-mineshaft-800 text-left text-bunker-300 rounded-md text-sm">
-              <div className="flex flex-col ">
+              <div className="flex flex-col" id="dashboard">
                 {isNotEmtpy && (
                   <div className="flex font-medium border-b border-mineshaft-600">
                     <div style={{ width: "2.8rem" }} className="px-4 py-3 flex-shrink-0" />

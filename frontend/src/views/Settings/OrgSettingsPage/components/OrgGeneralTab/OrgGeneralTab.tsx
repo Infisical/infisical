@@ -10,7 +10,7 @@ export const OrgGeneralTab = () => {
   const { user } = useUser();
   const { data: members } = useGetOrgUsers(currentOrg?._id ?? "");
 
-  const membershipOrg = members?.find((member) => member.user._id === user._id);
+  const membershipOrg = members?.find((member) => member.user._id === user?._id);
 
   return (
     <div>
