@@ -36,17 +36,17 @@ spec:
         readinessProbe:
           httpGet:
             path: /api/status
-            port: 4000
+            port: 8080
           initialDelaySeconds: 10
           periodSeconds: 10
         ports: 
-        - containerPort: 4000
+        - containerPort: 8080
         envFrom:
         - secretRef:
             name: {{ $backend.kubeSecretRef | default (include "infisical.backend.fullname" .) }}
-        {{- if  $backend.resources }}
-        resources: {{- toYaml $backend.resources | nindent 12 }}
-        {{- end }}
+        # {{- if  $backend.resources }}
+        # resources: {{- toYaml $backend.resources | nindent 12 }}
+        # {{- end }}
 ---
 
 apiVersion: v1
@@ -65,8 +65,8 @@ spec:
     {{- include "infisical.backend.matchLabels" . | nindent 8 }}
   ports:
     - protocol: TCP
-      port: 4000
-      targetPort: 4000 # container port 
+      port: 8080
+      targetPort: 8080 # container port 
       {{- if eq $backend.service.type "NodePort" }}
       nodePort: {{ $backend.service.nodePort }}
       {{- end }}

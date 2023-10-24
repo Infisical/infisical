@@ -202,6 +202,8 @@ export const IntegrationsPage = withProjectPermission(
           integrations={integrations}
           environments={environments}
           onIntegrationDelete={({ _id: id }, cb) => handleIntegrationDelete(id, cb)}
+          isBotActive={bot?.isActive}
+          workspaceId={workspaceId}
         />
         <CloudIntegrationSection
           isLoading={isCloudIntegrationsLoading || isIntegrationAuthLoading}

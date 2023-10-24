@@ -44,6 +44,7 @@ export interface GetSecretParams {
 export interface UpdateSecretParams {
   secretName: string;
   newSecretName?: string;
+  secretId?: string;
   secretKeyCiphertext?: string;
   secretKeyIV?: string;
   secretKeyTag?: string;

@@ -726,7 +726,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                 {infisicalPlatformVersion && (
                   <div className="mb-2 w-full pl-5 duration-200 hover:text-mineshaft-200">
                     <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
-                    Platform Version: {infisicalPlatformVersion}
+                    Version: {infisicalPlatformVersion}
                   </div>
                 )}
               </div>

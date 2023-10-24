@@ -1,7 +1,13 @@
 ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
+ARG INTERCOM_ID=intercom-id
 
-FROM node:16-alpine AS frontend-dependencies
+FROM  node:16-alpine AS base
+
+FROM base AS frontend-dependencies
+
+# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
+RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
@@ -11,7 +17,7 @@ COPY frontend/package.json frontend/package-lock.json frontend/next.config.js ./
 RUN npm ci --only-production --ignore-scripts
 
 # Rebuild the source code only when needed
-FROM node:16-alpine AS frontend-builder
+FROM base AS frontend-builder
 WORKDIR /app
 
 # Copy dependencies
@@ -27,41 +33,38 @@ ARG POSTHOG_API_KEY
 ENV NEXT_PUBLIC_POSTHOG_API_KEY $POSTHOG_API_KEY
 ARG INTERCOM_ID
 ENV NEXT_PUBLIC_INTERCOM_ID $INTERCOM_ID
+ARG INFISICAL_PLATFORM_VERSION
+ENV NEXT_PUBLIC_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
 
 # Build
 RUN npm run build
 
 # Production image
-FROM node:16-alpine AS frontend-runner
+FROM base AS frontend-runner
 WORKDIR /app
 
 RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN adduser --system --uid 1001 non-root-user
 
-RUN mkdir -p /app/.next/cache/images && chown nextjs:nodejs /app/.next/cache/images
+RUN mkdir -p /app/.next/cache/images && chown non-root-user:nodejs /app/.next/cache/images
 VOLUME /app/.next/cache/images
 
-ARG POSTHOG_API_KEY
-ENV NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY \
-  BAKED_NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY
-ARG INTERCOM_ID
-ENV NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID \
-  BAKED_NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID
-
-COPY --chown=nextjs:nodejs --chmod=555 frontend/scripts ./scripts
+COPY --chown=non-root-user:nodejs --chmod=555 frontend/scripts ./scripts
 COPY --from=frontend-builder /app/public ./public
-RUN chown nextjs:nodejs ./public/data
-COPY --from=frontend-builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=frontend-builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+RUN chown non-root-user:nodejs ./public/data
+COPY --from=frontend-builder --chown=non-root-user:nodejs /app/.next/standalone ./
+COPY --from=frontend-builder --chown=non-root-user:nodejs /app/.next/static ./.next/static
 
-USER nextjs
+USER non-root-user
 
 ENV NEXT_TELEMETRY_DISABLED 1
 
 ##
 ## BACKEND
 ##
-FROM node:16-alpine AS backend-build
+FROM base AS backend-build
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 non-root-user
 
 WORKDIR /app
 
@@ -69,10 +72,11 @@ COPY backend/package*.json ./
 RUN npm ci --only-production
 
 COPY /backend .
+COPY --chown=non-root-user:nodejs standalone-entrypoint.sh standalone-entrypoint.sh
 RUN npm run build
 
 # Production stage
-FROM node:16-alpine AS backend-runner
+FROM base AS backend-runner
 
 WORKDIR /app
 
@@ -81,27 +85,44 @@ RUN npm ci --only-production
 
 COPY --from=backend-build /app .
 
+RUN mkdir frontend-build
+
 # Production stage
-FROM node:16-alpine AS production
+FROM base AS production
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 non-root-user
+
+## set pre baked keys
+ARG POSTHOG_API_KEY
+ENV NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY \
+  BAKED_NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY
+ARG INTERCOM_ID=intercom-id
+ENV NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID \
+  BAKED_NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID
 
 WORKDIR / 
 
-# Install PM2
-RUN npm install -g pm2
-# Copy ecosystem.config.js
-COPY ecosystem.config.js .
-
-RUN apk add --no-cache nginx
-
-COPY nginx/default-stand-alone-docker.conf /etc/nginx/nginx.conf
-
 COPY --from=backend-runner /app /backend
 
-COPY --from=frontend-runner /app/ /app/
+COPY --from=frontend-runner /app ./backend/frontend-build
 
-EXPOSE 80
+ENV PORT 8080
 ENV HTTPS_ENABLED false 
+ENV NODE_ENV production
+ENV STANDALONE_BUILD true 
 
-CMD ["pm2-runtime", "start", "ecosystem.config.js"]
+WORKDIR /backend
+
+ENV TELEMETRY_ENABLED true
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \  
+  CMD node healthcheck.js
+
+EXPOSE 8080
+
+USER non-root-user
+
+CMD ["./standalone-entrypoint.sh"]
+
 
 

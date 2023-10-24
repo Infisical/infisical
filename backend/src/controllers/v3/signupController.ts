@@ -5,10 +5,10 @@ import { MembershipOrg, User } from "../../models";
 import { completeAccount } from "../../helpers/user";
 import { initializeDefaultOrg } from "../../helpers/signup";
 import { issueAuthTokens, validateProviderAuthToken } from "../../helpers/auth";
-import { ACCEPTED, INVITED } from "../../variables";
+import { ACCEPTED, AuthTokenType, INVITED } from "../../variables";
 import { standardRequest } from "../../config/request";
-import { getHttpsEnabled, getJwtSignupSecret, getLoopsApiKey } from "../../config";
-import { BadRequestError } from "../../utils/errors";
+import { getAuthSecret, getHttpsEnabled, getLoopsApiKey } from "../../config";
+import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import { TelemetryService } from "../../services";
 import { AuthMethod } from "../../models";
 import { validateRequest } from "../../helpers/validation";
@@ -78,12 +78,11 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
       }
 
       const decodedToken = <jwt.UserIDJwtPayload>(
-        jwt.verify(AUTH_TOKEN_VALUE, await getJwtSignupSecret())
+        jwt.verify(AUTH_TOKEN_VALUE, await getAuthSecret())
       );
-
-      if (decodedToken.userId !== user.id) {
-        throw BadRequestError();
-      }
+      
+      if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) throw UnauthorizedRequestError();
+      if (decodedToken.userId !== user.id) throw UnauthorizedRequestError();
     }
 
     // complete setting up user's account

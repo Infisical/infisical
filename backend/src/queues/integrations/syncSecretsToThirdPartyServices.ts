@@ -40,9 +40,9 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
         const prefix = (integration.metadata?.secretPrefix || "");
         const suffix = (integration.metadata?.secretSuffix || "");
         const newKey = prefix + key + suffix;
-        
+
         suffixedSecrets[newKey] = secrets[key];
-      }      
+      }
     }
 
     const integrationAuth = await IntegrationAuth.findById(integration.integrationAuth);
@@ -67,7 +67,7 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
 })
 
 syncSecretsToThirdPartyServices.on("error", (error) => {
-  console.log("QUEUE ERROR:", error) // eslint-disable-line
+  // console.log("QUEUE ERROR:", error) // eslint-disable-line
 })
 
 export const syncSecretsToActiveIntegrationsQueue = (jobDetails: TSyncSecretsToThirdPartyServices) => {

@@ -131,6 +131,7 @@ export const useUpdateSecretV3 = ({
     mutationFn: async ({
       secretPath = "/",
       type,
+      secretId,
       environment,
       workspaceId,
       secretName,
@@ -157,6 +158,7 @@ export const useUpdateSecretV3 = ({
         environment,
         type,
         secretPath,
+        secretId,
         ...encryptSecret(randomBytes, newSecretName ?? secretName, secretValue, secretComment),
         tags,
         skipMultilineEncoding,

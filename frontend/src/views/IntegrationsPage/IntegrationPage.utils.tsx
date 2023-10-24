@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-import { TCloudIntegration,UserWsKeyPair } from "@app/hooks/api/types";
+import { TCloudIntegration, UserWsKeyPair } from "@app/hooks/api/types";
 
 import {
   decryptAssymmetric,
@@ -32,11 +32,10 @@ export const generateBotKey = (botPublicKey: string, latestKey: UserWsKeyPair) =
 
 export const redirectForProviderAuth = (integrationOption: TCloudIntegration) => {
   try {
-
     // generate CSRF token for OAuth2 code-token exchange integrations
     const state = crypto.randomBytes(16).toString("hex");
     localStorage.setItem("latestCSRFToken", state);
-    
+
     let link = "";
     switch (integrationOption.slug) {
       case "gcp-secret-manager":
@@ -123,6 +122,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "teamcity":
         link = `${window.location.origin}/integrations/teamcity/authorize`;
         break;
+      case "hasura-cloud":
+        link = `${window.location.origin}/integrations/hasura-cloud/authorize`;
+        break;
       default:
         break;
     }
@@ -130,7 +132,6 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
     if (link !== "") {
       window.location.assign(link);
     }
-    
   } catch (err) {
     console.error(err);
   }

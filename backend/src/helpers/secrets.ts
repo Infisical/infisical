@@ -790,6 +790,7 @@ export const getSecretHelper = async ({
 export const updateSecretHelper = async ({
   secretName,
   workspaceId,
+  secretId,
   environment,
   type,
   authData,
@@ -812,10 +813,19 @@ export const updateSecretHelper = async ({
     workspaceId: new Types.ObjectId(workspaceId)
   });
 
-  const oldSecretBlindIndex = await generateSecretBlindIndexWithSaltHelper({
+  let oldSecretBlindIndex = await generateSecretBlindIndexWithSaltHelper({
     secretName,
     salt
   });
+
+  if (secretId) {
+    const secret = await Secret.findOne({
+      workspace: workspaceId,
+      environment,
+      _id: secretId
+    }).select("secretBlindIndex");
+    if (secret && secret.secretBlindIndex) oldSecretBlindIndex = secret.secretBlindIndex;
+  }
 
   let secret: ISecret | null = null;
   const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
@@ -891,6 +901,9 @@ export const updateSecretHelper = async ({
         skipMultilineEncoding,
         secretBlindIndex: newSecretNameBlindIndex,
         $inc: { version: 1 }
+      },
+      {
+        new: true
       }
     );
   }
@@ -1747,6 +1760,22 @@ export const deleteSecretBatchHelper = async ({
   await EESecretService.markDeletedSecretVersions({
     secretIds: deletedSecrets.map((secret) => secret._id)
   });
+
+  const action = await EELogService.createAction({
+    name: ACTION_DELETE_SECRETS,
+    ...getAuthDataPayloadIdObj(authData),
+    workspaceId,
+    secretIds: deletedSecrets.map((secret) => secret._id)
+  });
+
+  action &&
+    (await EELogService.createLog({
+      ...getAuthDataPayloadIdObj(authData),
+      workspaceId,
+      actions: [action],
+      channel: authData.userAgentType,
+      ipAddress: authData.ipAddress
+    }));
 
   await EEAuditLogService.createAuditLog(
     authData,

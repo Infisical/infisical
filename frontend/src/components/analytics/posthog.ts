@@ -10,7 +10,7 @@ export const initPostHog = () => {
   try {
     if (typeof window !== "undefined") {
       // @ts-ignore
-      if (ENV === "production" && TELEMETRY_CAPTURING_ENABLED) {
+      if (ENV === "production" && TELEMETRY_CAPTURING_ENABLED === "true") {
         posthog.init(POSTHOG_API_KEY, {
           api_host: POSTHOG_HOST
         });

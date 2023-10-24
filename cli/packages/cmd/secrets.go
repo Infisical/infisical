@@ -4,14 +4,13 @@ Copyright (c) 2023 Infisical Inc.
 package cmd
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"regexp"
 	"sort"
 	"strings"
 	"unicode"
-
-	"crypto/sha256"
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/crypto"
@@ -441,6 +440,11 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	secretsPath, err := cmd.Flags().GetString("path")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
 	infisicalToken, err := cmd.Flags().GetString("token")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
@@ -451,7 +455,7 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath})
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
@@ -650,8 +654,8 @@ func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]mod
 }
 
 func init() {
-
 	secretsGenerateExampleEnvCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	secretsGenerateExampleEnvCmd.Flags().String("path", "/", "Fetch secrets from within a folder path")
 	secretsCmd.AddCommand(secretsGenerateExampleEnvCmd)
 
 	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")

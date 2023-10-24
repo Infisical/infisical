@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     depends_on:
       - mongo
-    image: infisical/backend:test
+    image: infisical/infisical:test
     command: npm run start
     environment:
       - NODE_ENV=production

@@ -12,7 +12,7 @@ import { AuthMode } from "../../variables";
 router.post(
   "/",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.API_KEY]
   }),
   createFolder
 );
@@ -20,7 +20,7 @@ router.post(
 router.patch(
   "/:folderName",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.API_KEY]
   }),
   updateFolderById
 );
@@ -28,7 +28,7 @@ router.patch(
 router.delete(
   "/:folderName",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.API_KEY]
   }),
   deleteFolder
 );
@@ -36,7 +36,7 @@ router.delete(
 router.get(
   "/",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.API_KEY]
   }),
   getFolders
 );

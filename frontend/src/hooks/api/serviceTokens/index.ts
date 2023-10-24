@@ -4,4 +4,5 @@ export {
     useDeleteServiceToken, 
     useDeleteServiceTokenV3,
     useGetUserWsServiceTokens,
-    useUpdateServiceTokenV3} from "./queries";
+    useUpdateServiceTokenV3
+} from "./queries";

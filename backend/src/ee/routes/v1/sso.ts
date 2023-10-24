@@ -13,7 +13,10 @@ router.get(
     const options = {
         failureRedirect: "/",
         additionalParams: {
-          RelayState: req.query.callback_port ?? ""
+          RelayState: JSON.stringify({
+            spInitiated: true,
+            callbackPort: req.query.callback_port ?? ""
+          })
         },
     };
     passport.authenticate("saml", options)(req, res, next);

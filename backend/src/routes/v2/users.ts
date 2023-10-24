@@ -36,7 +36,7 @@ router.get(
   usersController.getMyOrganizations
 );
 
-router.get(
+router.get( // TODO: deprecate (moving to API Key V2)
   "/me/api-keys",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]

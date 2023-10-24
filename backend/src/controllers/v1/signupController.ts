@@ -4,14 +4,15 @@ import { checkEmailVerification, sendEmailVerification } from "../../helpers/sig
 import { createToken } from "../../helpers/auth";
 import { BadRequestError } from "../../utils/errors";
 import {
+  getAuthSecret,
   getInviteOnlySignup,
   getJwtSignupLifetime,
-  getJwtSignupSecret,
   getSmtpConfigured
 } from "../../config";
 import { validateUserEmail } from "../../validation";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/auth";
+import { AuthTokenType } from "../../variables";
 
 /**
  * Signup step 1: Initialize account for user under email [email] and send a verification code
@@ -95,10 +96,11 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
   // generate temporary signup token
   const token = createToken({
     payload: {
+      authTokenType: AuthTokenType.SIGNUP_TOKEN,
       userId: user._id.toString()
     },
     expiresIn: await getJwtSignupLifetime(),
-    secret: await getJwtSignupSecret()
+    secret: await getAuthSecret()
   });
 
   return res.status(200).send({

@@ -30,7 +30,7 @@ import { EEAuditLogService, EELicenseService } from "../../services";
 import { getJwtServiceTokenSecret } from "../../../config";
 
 /**
- * Return project key for service token
+ * Return project key for service token V3
  * @param req 
  * @param res 
  */
@@ -57,7 +57,7 @@ export const getServiceTokenDataKey = async (req: Request, res: Response) => {
 }
 
 /**
- * Create service token data
+ * Create service token data V3
  * @param req 
  * @param res 
  * @returns 
@@ -165,7 +165,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
 }
 
 /**
- * Update service token data with id [serviceTokenDataId]
+ * Update service token V3 data with id [serviceTokenDataId]
  * @param req 
  * @param res 
  * @returns 

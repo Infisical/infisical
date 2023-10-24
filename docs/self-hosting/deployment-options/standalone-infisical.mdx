@@ -3,11 +3,15 @@ title: "Docker"
 description: "Learn to install Infisical purely on docker"
 ---
 
-The Infisical standalone version combines all the essential components of the application into a single container, making deployment and management more straightforward than using Kubernetes or Docker Compose. 
+The Infisical standalone version combines all the essential components into a single container, making deployment and management more straightforward than other methods. 
 
-Since all the components are bundled into one image, running this version of Infisical requires a minimum of **230MB of memory**.
+## Prerequisites
 
-This guide assumes you have basic knowledge of Docker and have it installed on your system. If you don't have Docker installed, please follow the official installation guide: https://docs.docker.com/get-docker/
+This guide assumes you have basic knowledge of Docker and have it installed on your system. If you don't have Docker installed, please follow the official installation guide [here](https://docs.docker.com/get-docker/).
+
+#### System requirements
+To have a functional deployment, we recommended compute with **2GB of RAM** and **1 CPU**.
+However, depending on your usage, you may need to further scale up system resources to meet demand.
 
 ## Pull the Infisical Docker image
 
@@ -18,59 +22,39 @@ docker pull infisical/infisical:latest
 ```
 
 ## Run with docker 
-The Infisical Docker image requires several required environment variables. 
-Add the required environment variables listed below to your docker run command. View [all configurable environment variables](../configuration/envars)
-
+To run Infisical, we'll need to configure the required configs listed below.
+Other configs can be found [here](../configuration/envars)
 
 <ParamField query="ENCRYPTION_KEY" type="string" default="none" required>
   Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
 </ParamField>
 
-<ParamField query="JWT_SIGNUP_SECRET" type="string" default="none" required>
+<ParamField query="AUTH_SECRET" type="string" default="none" required>
   Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
-</ParamField>
-
-<ParamField query="JWT_REFRESH_SECRET" type="string" default="none" required>
-  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
-</ParamField>
-
-<ParamField query="JWT_AUTH_SECRET" type="string" default="none" required>
-  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
-</ParamField>
-
-<ParamField query="JWT_MFA_SECRET" type="string" default="none" required>
-  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
-</ParamField>
-
-<ParamField query="JWT_SERVICE_SECRET" type="string" default="none" required>
-  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
-</ParamField>
-
-<ParamField query="REDIS_URL" type="string" default="none" required>
-  Redis connection string
 </ParamField>
 
 <ParamField query="MONGO_URL" type="string" default="none" required>
+  A MongoDB connection string. Can use any MongoDB PaaS such as Mongo Atlas, AWS Document DB, etc. 
   *TLS based connection string is not yet supported
+</ParamField>
+
+<ParamField query="REDIS_URL" type="string" default="none">
+  Redis connection string. Only required if you plan to use web integrations.
 </ParamField>
 
 
 Once you have added the required environment variables to your docker run command, execute it in your terminal.
 
 ```bash
-docker run -p 80:80  \
+docker run -p 80:8080  \
 -e ENCRYPTION_KEY=f40c9178624764ad85a6830b37ce239a \
--e JWT_SIGNUP_SECRET=38ea90fb7998b92176080f457d890392 \
--e JWT_REFRESH_SECRET=7764c7bbf3928ad501591a3e005eb364 \
--e JWT_AUTH_SECRET=5239fea3a4720c0e524f814a540e14a2 \
--e JWT_SERVICE_SECRET=8509fb8b90c9b53e9e61d1e35826dcb5  \
+-e AUTH_SECRET=5239fea3a4720c0e524f814a540e14a2 \
 -e MONGO_URL="<>" \
--e REDIS_URL="<>" \
 infisical/infisical:latest
 ```
 
 <Warning>
-  The sample environment variables listed above are only to be used as an example and should not be used in production 
+  The above environment variable values are only to be used as an example and should not be used in production 
 </Warning>
 
 ## Verify the installation:

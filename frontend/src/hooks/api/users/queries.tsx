@@ -7,6 +7,7 @@ import {
 import { apiRequest } from "@app/config/request";
 import { setAuthToken } from "@app/reactQuery";
 
+import { APIKeyDataV2 } from "../apiKeys/types";
 import { useUploadWsKey } from "../keys/queries";
 import { workspaceKeys } from "../workspace/queries";
 import {
@@ -24,12 +25,13 @@ import {
   User
 } from "./types";
 
-const userKeys = {
+export const userKeys = {
   getUser: ["user"] as const,
   userAction: ["user-action"] as const,
   getOrgUsers: (orgId: string) => [{ orgId }, "user"],
   myIp: ["ip"] as const,
   myAPIKeys: ["api-keys"] as const,
+  myAPIKeysV2: ["api-keys-v2"] as const,
   mySessions: ["sessions"] as const,
   myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const
 };
@@ -270,7 +272,7 @@ export const useGetMyIp = () => {
   });
 };
 
-export const useGetMyAPIKeys = () => {
+export const useGetMyAPIKeys = () => { // TODO: deprecate (moving to API Key V2)
   return useQuery({
     queryKey: userKeys.myAPIKeys,
     queryFn: async () => {
@@ -281,7 +283,18 @@ export const useGetMyAPIKeys = () => {
   });
 };
 
-export const useCreateAPIKey = () => {
+export const useGetMyAPIKeysV2 = () => {
+  return useQuery({
+    queryKey: userKeys.myAPIKeysV2,
+    queryFn: async () => {
+      const { data: { apiKeyData } } = await apiRequest.get<{ apiKeyData: APIKeyDataV2[] }>("/api/v3/users/me/api-keys");
+      return apiKeyData;
+    },
+    enabled: true
+  });
+};
+
+export const useCreateAPIKey = () => { // TODO: deprecate (moving to API Key V2)
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ name, expiresIn }: { name: string; expiresIn: number }) => {
@@ -298,7 +311,7 @@ export const useCreateAPIKey = () => {
   });
 };
 
-export const useDeleteAPIKey = () => {
+export const useDeleteAPIKey = () => { // TODO: deprecate (moving to API Key V2)
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (apiKeyDataId: string) => {

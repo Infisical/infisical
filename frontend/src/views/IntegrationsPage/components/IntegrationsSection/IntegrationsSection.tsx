@@ -1,9 +1,12 @@
+import Link from "next/link";
 import { faArrowRight, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { integrationSlugNameMapping } from "public/data/frequentConstants";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
   DeleteActionModal,
   EmptyState,
   FormControl,
@@ -23,17 +26,22 @@ type Props = {
   integrations?: TIntegration[];
   isLoading?: boolean;
   onIntegrationDelete: (integration: TIntegration, cb: () => void) => void;
+  isBotActive: boolean | undefined;
+  workspaceId: string;
 };
 
 export const IntegrationsSection = ({
   integrations = [],
   environments = [],
   isLoading,
-  onIntegrationDelete
+  onIntegrationDelete,
+  isBotActive,
+  workspaceId
 }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteConfirmation"
   ] as const);
+
   return (
     <div className="mb-8">
       <div className="mx-4 mb-4 mt-6 flex flex-col items-start justify-between px-2 text-xl">
@@ -45,7 +53,22 @@ export const IntegrationsSection = ({
           <Skeleton className="h-28" />
         </div>
       )}
-      {!isLoading && !integrations.length && (
+
+      {!isBotActive && (
+        <div className="px-6 py-4">
+          <Alert hideTitle variant="warning">
+            <AlertDescription>
+              All the active integrations will be disabled. Disable End-to-End Encryption in{" "}
+              <Link href={`/project/${workspaceId}/settings`} passHref>
+                <a className="underline underline-offset-2">project settings </a>
+              </Link>
+              to re-enable it .
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      {!isLoading && !integrations.length && isBotActive && (
         <div className="mx-6">
           <EmptyState
             className="rounded-md border border-mineshaft-700 pt-8 pb-4"
@@ -53,7 +76,7 @@ export const IntegrationsSection = ({
           />
         </div>
       )}
-      {!isLoading && (
+      {!isLoading && isBotActive && (
         <div className="flex flex-col space-y-4 p-6 pt-0">
           {integrations?.map((integration) => (
             <div

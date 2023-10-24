@@ -1,29 +1,3 @@
-# secretScanningGitApp:
-#   enabled: false
-#   deploymentAnnotations:
-#     secrets.infisical.com/auto-reload: "true"
-#   image:
-#     repository: infisical/staging_deployment_secret-scanning-git-app
-    
-frontend:
-  enabled: true
-  name: frontend
-  podAnnotations: {}
-  deploymentAnnotations:
-    secrets.infisical.com/auto-reload: "true"
-  replicaCount: 2
-  image:
-    repository: infisical/staging_deployment_frontend
-    tag: "latest"
-    pullPolicy: Always
-  kubeSecretRef: managed-secret-frontend
-  service:
-    annotations: {}
-    type: ClusterIP
-    nodePort: ""
-
-frontendEnvironmentVariables: null
-
 backend:
   enabled: true
   name: backend
@@ -32,7 +6,7 @@ backend:
     secrets.infisical.com/auto-reload: "true"
   replicaCount: 2
   image:
-    repository: infisical/staging_deployment_backend
+    repository: infisical/staging_infisical
     tag: "latest"
     pullPolicy: Always
   kubeSecretRef: managed-backend-secret
@@ -63,14 +37,8 @@ ingress:
   enabled: true
   # annotations:
   #   kubernetes.io/ingress.class: "nginx"
-    # cert-manager.io/issuer: letsencrypt-nginx
+  # cert-manager.io/issuer: letsencrypt-nginx
   hostName: gamma.infisical.com ## <- Replace with your own domain
-  frontend:
-    path: /
-    pathType: Prefix
-  backend:
-    path: /api
-    pathType: Prefix
   tls:
     []
     # - secretName: letsencrypt-nginx
