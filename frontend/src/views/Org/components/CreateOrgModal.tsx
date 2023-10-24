@@ -1,20 +1,20 @@
 import { FC } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/router";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
+import { zodResolver } from "@hookform/resolvers/zod";
+import z from "zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useCreateOrg } from "@app/hooks/api";
 
-const schema = yup
+const schema = z
   .object({
-    name: yup.string().required("Organization name is required")
+    name: z.string().nonempty({ message: "Name is required" })
   })
   .required();
 
-export type FormData = yup.InferType<typeof schema>;
+export type FormData = z.infer<typeof schema>;
 
 interface CreateOrgModalProps {
   isOpen: boolean;
@@ -31,7 +31,7 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
     reset,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: yupResolver(schema),
+    resolver: zodResolver(schema),
     defaultValues: {
       name: ""
     }
@@ -83,15 +83,20 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
               </FormControl>
             )}
           />
-          <Button
-            className=""
-            size="sm"
-            type="submit"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting}
-          >
-            Create
-          </Button>
+          <div className="flex w-full gap-4">
+            <Button
+              className=""
+              size="sm"
+              type="submit"
+              isLoading={isSubmitting}
+              isDisabled={isSubmitting}
+            >
+              Create
+            </Button>
+            <Button className="" size="sm" variant="outline_bg" type="button" onClick={onClose}>
+              Cancel
+            </Button>
+          </div>
         </form>
       </ModalContent>
     </Modal>
