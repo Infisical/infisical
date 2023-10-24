@@ -28,7 +28,7 @@ export interface ISecret {
   secretCommentTag?: string;
   secretCommentHash?: string;
 
-  // ? QUESTION: This works great for workspace-level reminders.
+  // ? NOTE: This works great for workspace-level reminders.
   // ? If we want to do it on a user-basis, we should ideally have a seperate model for reminders.
   secretReminderCron?: string | null;
   secretReminderNote?: string | null;
