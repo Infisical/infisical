@@ -188,7 +188,6 @@ export const SecretItem = memo(
             setCreateReminderFormOpen.toggle();
 
             if (data) {
-              console.log(data);
               setValue("reminderCron", data.cron, { shouldDirty: true });
               setValue("reminderNote", data.note, { shouldDirty: true });
             }
