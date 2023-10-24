@@ -20,6 +20,10 @@ export const formSchema = z.object({
   overrideAction: z.string().trim().optional(),
   comment: z.string().trim().optional(),
   skipMultilineEncoding: z.boolean().optional(),
+
+  reminderCron: z.string().trim().nullable().optional(),
+  reminderNote: z.string().trim().nullable().optional(),
+
   tags: z
     .object({
       _id: z.string(),

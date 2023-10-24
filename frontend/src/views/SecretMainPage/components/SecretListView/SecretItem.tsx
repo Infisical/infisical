@@ -1,9 +1,11 @@
+/* eslint-disable simple-import-sort/imports */
 import { memo, useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faCheck,
+  faClock,
   faClose,
   faCodeBranch,
   faComment,
@@ -17,7 +19,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
-
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -49,6 +50,8 @@ import { DecryptedSecret } from "@app/hooks/api/secrets/types";
 import { WsTag } from "@app/hooks/api/types";
 
 import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
+import { CreateReminderForm } from "./CreateReminderForm";
+
 
 type Props = {
   secret: DecryptedSecret;
@@ -67,6 +70,8 @@ type Props = {
   environment: string;
   secretPath: string;
 };
+
+
 
 export const SecretItem = memo(
   ({
@@ -111,6 +116,7 @@ export const SecretItem = memo(
 
     const overrideAction = watch("overrideAction");
     const hasComment = Boolean(watch("comment"));
+    const hasReminder = Boolean(watch("reminderCron"));
 
     const selectedTags = watch("tags", []);
     const selectedTagsGroupById = selectedTags.reduce<Record<string, boolean>>(
@@ -123,6 +129,7 @@ export const SecretItem = memo(
     });
 
     const [isSecValueCopied, setIsSecValueCopied] = useToggle(false);
+    const [createReminderFormOpen, setCreateReminderFormOpen] = useToggle(false);
     useEffect(() => {
       let timer: NodeJS.Timeout;
       if (isSecValueCopied) {
@@ -177,17 +184,30 @@ export const SecretItem = memo(
     };
 
     return (
+      <>
+
+      <CreateReminderForm
+        isOpen={createReminderFormOpen}
+        onClose={data => {
+          if(data) {
+            setValue("reminderCron", data.cron, {shouldDirty: true});
+            setValue("reminderNote", data.note, {shouldDirty: true});
+          }
+          setCreateReminderFormOpen.off();
+        }}
+      />
+
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <div
           className={twMerge(
-            "shadow-none border-b border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-700",
+            "border-b border-mineshaft-600 bg-mineshaft-800 shadow-none hover:bg-mineshaft-700",
             isDirty && "border-primary-400/50"
           )}
         >
-          <div className="flex group">
+          <div className="group flex">
             <div
               className={twMerge(
-                "flex items-center justify-center w-11 px-4 py-3 h-11",
+                "flex h-11 w-11 items-center justify-center px-4 py-3",
                 isDirty && "text-primary"
               )}
             >
@@ -195,14 +215,14 @@ export const SecretItem = memo(
                 id={`checkbox-${secret._id}`}
                 isChecked={isSelected}
                 onCheckedChange={() => onToggleSecretSelect(secret._id)}
-                className={twMerge("group-hover:flex hidden ml-3", isSelected && "flex")}
+                className={twMerge("ml-3 hidden group-hover:flex", isSelected && "flex")}
               />
               <FontAwesomeIcon
                 icon={faKey}
-                className={twMerge("group-hover:hidden block ml-3", isSelected && "hidden")}
+                className={twMerge("ml-3 block group-hover:hidden", isSelected && "hidden")}
               />
             </div>
-            <div className="w-80 h-11 flex items-center px-4 py-2 flex-shrink-0">
+            <div className="flex h-11 w-80 flex-shrink-0 items-center px-4 py-2">
               <Controller
                 name="key"
                 control={control}
@@ -214,13 +234,13 @@ export const SecretItem = memo(
                     variant="plain"
                     isDisabled={isOverriden}
                     {...field}
-                    className="w-full focus:text-bunker-100 focus:ring-transparent px-0"
+                    className="w-full px-0 focus:text-bunker-100 focus:ring-transparent"
                   />
                 )}
               />
             </div>
             <div
-              className="flex-grow flex items-center border-x border-mineshaft-600 pl-4 pr-2 py-1"
+              className="flex flex-grow items-center border-x border-mineshaft-600 py-1 pl-4 pr-2"
               tabIndex={0}
               role="button"
             >
@@ -255,13 +275,13 @@ export const SecretItem = memo(
                   )}
                 />
               )}
-              <div key="actions" className="h-8 flex self-start flex-shrink-0 transition-all">
+              <div key="actions" className="flex h-8 flex-shrink-0 self-start transition-all">
                 <Tooltip content="Copy secret">
                   <IconButton
                     ariaLabel="copy-value"
                     variant="plain"
                     size="sm"
-                    className="w-0 group-hover:w-5 group-hover:mr-2 overflow-hidden p-0"
+                    className="w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5"
                     onClick={copyTokenToClipboard}
                   >
                     <FontAwesomeIcon icon={isSecValueCopied ? faCheck : faCopy} />
@@ -279,7 +299,7 @@ export const SecretItem = memo(
                           variant="plain"
                           size="sm"
                           className={twMerge(
-                            "w-0 group-hover:w-5 group-hover:mr-2 overflow-hidden p-0 data-[state=open]:w-5",
+                            "w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-5",
                             hasTagsApplied && "w-5 text-primary"
                           )}
                           isDisabled={!isAllowed}
@@ -306,7 +326,7 @@ export const SecretItem = memo(
                         >
                           <div className="flex items-center">
                             <div
-                              className="w-2 h-2 rounded-full mr-2"
+                              className="mr-2 h-2 w-2 rounded-full"
                               style={{ background: tagColor || "#bec2c8" }}
                             />
                             {name}
@@ -342,7 +362,7 @@ export const SecretItem = memo(
                       size="sm"
                       onClick={handleOverrideClick}
                       className={twMerge(
-                        "w-0 group-hover:w-5 group-hover:mr-2 overflow-hidden p-0",
+                        "w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5",
                         isOverriden && "w-5 text-primary"
                       )}
                     >
@@ -350,6 +370,32 @@ export const SecretItem = memo(
                     </IconButton>
                   )}
                 </ProjectPermissionCan>
+
+                        
+                <IconButton
+                className={twMerge(
+                  "w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6",
+                  hasReminder && "w-5 text-primary"
+                )}
+                variant="plain"
+                size="md"
+                ariaLabel="add-reminder"
+              >
+                <Tooltip content="Reminder">
+                  <FontAwesomeIcon
+                onClick={() => {
+                  if(!hasReminder) {
+                    setCreateReminderFormOpen.on();
+                  }
+                  else {
+                     setValue("reminderCron", null, {shouldDirty: true});
+                     setValue("reminderNote", null, {shouldDirty: true});
+                  }
+                }}
+                icon={faClock} />
+                </Tooltip>
+              </IconButton>         
+
                 <Popover>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
@@ -359,7 +405,7 @@ export const SecretItem = memo(
                       <PopoverTrigger asChild disabled={!isAllowed}>
                         <IconButton
                           className={twMerge(
-                            "overflow-hidden w-0 p-0 group-hover:w-5 group-hover:mr-2 data-[state=open]:w-6",
+                            "w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6",
                             hasComment && "w-5 text-primary"
                           )}
                           variant="plain"
@@ -394,7 +440,7 @@ export const SecretItem = memo(
               {!isDirty ? (
                 <motion.div
                   key="options"
-                  className="h-10 flex items-center space-x-4 flex-shrink-0 px-3"
+                  className="flex h-10 flex-shrink-0 items-center space-x-4 px-3"
                   initial={{ x: 0, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: 10, opacity: 0 }}
@@ -404,7 +450,7 @@ export const SecretItem = memo(
                       ariaLabel="more"
                       variant="plain"
                       size="md"
-                      className="group-hover:opacity-100 opacity-0 p-0"
+                      className="p-0 opacity-0 group-hover:opacity-100"
                       onClick={() => onDetailViewSecret(secret)}
                     >
                       <FontAwesomeIcon icon={faEllipsis} size="lg" />
@@ -422,7 +468,7 @@ export const SecretItem = memo(
                         variant="plain"
                         colorSchema="danger"
                         size="md"
-                        className="group-hover:opacity-100 opacity-0 p-0"
+                        className="p-0 opacity-0 group-hover:opacity-100"
                         onClick={() => onDeleteSecret(secret)}
                         isDisabled={!isAllowed}
                       >
@@ -434,7 +480,7 @@ export const SecretItem = memo(
               ) : (
                 <motion.div
                   key="options-save"
-                  className="h-10 flex items-center space-x-4 flex-shrink-0 px-3"
+                  className="flex h-10 flex-shrink-0 items-center space-x-4 px-3"
                   initial={{ x: -10, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: -10, opacity: 0 }}
@@ -446,13 +492,13 @@ export const SecretItem = memo(
                       type="submit"
                       size="md"
                       className={twMerge(
-                        "group-hover:opacity-100 opacity-0 p-0 text-primary",
+                        "p-0 text-primary opacity-0 group-hover:opacity-100",
                         isDirty && "opacity-100"
                       )}
                       isDisabled={isSubmitting}
                     >
                       {isSubmitting ? (
-                        <Spinner className="w-4 h-4 p-0 m-0" />
+                        <Spinner className="m-0 h-4 w-4 p-0" />
                       ) : (
                         <FontAwesomeIcon icon={faCheck} size="lg" className="text-primary" />
                       )}
@@ -464,7 +510,7 @@ export const SecretItem = memo(
                       variant="plain"
                       size="md"
                       className={twMerge(
-                        "group-hover:opacity-100 opacity-0 p-0",
+                        "p-0 opacity-0 group-hover:opacity-100",
                         isDirty && "opacity-100"
                       )}
                       onClick={() => reset()}
@@ -479,6 +525,7 @@ export const SecretItem = memo(
           </div>
         </div>
       </form>
+      </>
     );
   }
 );

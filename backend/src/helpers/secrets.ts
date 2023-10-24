@@ -802,6 +802,8 @@ export const updateSecretHelper = async ({
   secretValueIV,
   secretValueTag,
   secretPath,
+  secretReminderCron,
+  secretReminderNote,
   tags,
   secretCommentCiphertext,
   secretCommentIV,
@@ -866,6 +868,10 @@ export const updateSecretHelper = async ({
         secretCommentIV,
         secretCommentTag,
         secretCommentCiphertext,
+
+        secretReminderCron,
+        secretReminderNote,
+
         skipMultilineEncoding,
         secretBlindIndex: newSecretNameBlindIndex,
         secretKeyIV,
