@@ -65,10 +65,7 @@ import { Octokit } from "@octokit/rest";
 import _ from "lodash";
 import sodium from "libsodium-wrappers";
 import { standardRequest } from "../config/request";
-import {
-  ZGetTenantEnv,
-  ZUpdateTenantEnv
-} from "../validation/hasuraCloudIntegration";
+import { ZGetTenantEnv, ZUpdateTenantEnv } from "../validation/hasuraCloudIntegration";
 
 const getSecretKeyValuePair = (
   secrets: Record<string, { value: string | null; comment?: string } | null>
@@ -1737,22 +1734,11 @@ const syncSecretsCircleCI = async ({
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
-  const circleciOrganizationDetail = (
-    await standardRequest.get(`${INTEGRATION_CIRCLECI_API_URL}/v2/me/collaborations`, {
-      headers: {
-        "Circle-Token": accessToken,
-        "Accept-Encoding": "application/json"
-      }
-    })
-  ).data[0];
-
-  const { slug } = circleciOrganizationDetail;
-
   // sync secrets to CircleCI
   Object.keys(secrets).forEach(
     async (key) =>
       await standardRequest.post(
-        `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
+        `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${integration.appId}/envvar`,
         {
           name: key,
           value: secrets[key].value
@@ -1769,7 +1755,7 @@ const syncSecretsCircleCI = async ({
   // get secrets from CircleCI
   const getSecretsRes = (
     await standardRequest.get(
-      `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
+      `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${integration.appId}/envvar`,
       {
         headers: {
           "Circle-Token": accessToken,
@@ -1783,7 +1769,7 @@ const syncSecretsCircleCI = async ({
   getSecretsRes.forEach(async (sec: any) => {
     if (!(sec.name in secrets)) {
       await standardRequest.delete(
-        `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar/${sec.name}`,
+        `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${integration.appId}/envvar/${sec.name}`,
         {
           headers: {
             "Circle-Token": accessToken,
@@ -1794,7 +1780,6 @@ const syncSecretsCircleCI = async ({
     }
   });
 };
-
 /**
  * Sync/push [secrets] to TravisCI project
  * @param {Object} obj
@@ -3152,15 +3137,15 @@ const syncSecretsHasuraCloud = async ({
   let currentHash = hash;
 
   const secretsToUpdate = Object.keys(secrets).map((key) => {
-    return ({
+    return {
       key,
       value: secrets[key].value
-    });
+    };
   });
 
   if (secretsToUpdate.length) {
     // update secrets
-    
+
     const addRequest = await standardRequest.post(
       INTEGRATION_HASURA_CLOUD_API_URL,
       {
@@ -3185,11 +3170,11 @@ const syncSecretsHasuraCloud = async ({
       currentHash = addRequestResponse.data.data.updateTenantEnv.hash;
     }
   }
-  
-  const secretsToDelete = envVars.environment 
+
+  const secretsToDelete = envVars.environment
     ? Object.keys(envVars.environment).filter((key) => !(key in secrets))
     : [];
-    
+
   if (secretsToDelete.length) {
     await standardRequest.post(
       INTEGRATION_HASURA_CLOUD_API_URL,
