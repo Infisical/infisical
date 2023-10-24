@@ -54,6 +54,7 @@ import {
 import { IIntegrationAuth } from "../models";
 import { Octokit } from "@octokit/rest";
 import { standardRequest } from "../config/request";
+import { ZCircleCiMe } from "../validation/circleCiIntegration";
 
 interface App {
   name: string;
@@ -676,7 +677,7 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
  */
 const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
   const res = (
-    await standardRequest.get(`${INTEGRATION_CIRCLECI_API_URL}/v1.1/projects`, {
+    await standardRequest.get(`${INTEGRATION_CIRCLECI_API_URL}/private/me`, {
       headers: {
         "Circle-Token": accessToken,
         "Accept-Encoding": "application/json"
@@ -684,9 +685,12 @@ const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
     })
   ).data;
 
-  const apps = res?.map((a: any) => {
+  const data = ZCircleCiMe.parse(res);
+
+  const apps = data.followed_projects.map(({ name, slug }) => {
     return {
-      name: a?.reponame
+      name,
+      appId: slug
     };
   });
 
