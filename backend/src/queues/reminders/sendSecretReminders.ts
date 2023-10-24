@@ -35,7 +35,6 @@ sendSecretReminders.process(async (job: Job<TSendSecretReminders>) => {
 
   const memberships = await Membership.find({
     workspace: workspaceId
-    // We need to get the user and organization data for each membership.
   }).populate<{ user: IUser }>("user");
 
   await sendMail({
@@ -43,7 +42,7 @@ sendSecretReminders.process(async (job: Job<TSendSecretReminders>) => {
     subjectLine: "Infisical secret reminder",
     recipients: [...memberships.map((membership) => membership.user.email)],
     substitutions: {
-      reminderNote: job.data.note, // May not exist.
+      reminderNote: job.data.note, // May not be present.
       workspaceName: workspace.name,
       organizationName: organization.name
     }
