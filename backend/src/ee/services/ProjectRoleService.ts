@@ -50,7 +50,8 @@ export enum ProjectPermissionSub {
   Workspace = "workspace",
   Secrets = "secrets",
   SecretRollback = "secret-rollback",
-  SecretApproval = "secret-approval"
+  SecretApproval = "secret-approval",
+  SecretRotation = "secret-rotation"
 }
 
 type SubjectFields = {
@@ -74,6 +75,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.Settings]
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
+  | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
@@ -91,6 +93,11 @@ const buildAdminPermission = () => {
   can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretApproval);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRotation);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretRotation);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.SecretRotation);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback);
@@ -162,6 +169,7 @@ const buildMemberPermission = () => {
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.SecretRollback);
@@ -214,6 +222,7 @@ const buildViewerPermission = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretRotation);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Member);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);

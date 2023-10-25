@@ -27,8 +27,10 @@ import {
   users as eeUsersRouter,
   workspace as eeWorkspaceRouter,
   roles as v1RoleRouter,
-  secretApprovalPolicy as v1SecretApprovalPolicy,
-  secretApprovalRequest as v1SecretApprovalRequest,
+  secretApprovalPolicy as v1SecretApprovalPolicyRouter,
+  secretApprovalRequest as v1SecretApprovalRequestRouter,
+  secretRotation as v1SecretRotation,
+  secretRotationProvider as v1SecretRotationProviderRouter,
   secretScanning as v1SecretScanningRouter
 } from "./ee/routes/v1";
 import { apiKeyData as v3apiKeyDataRouter } from "./ee/routes/v3";
@@ -194,6 +196,8 @@ const main = async () => {
   app.use("/api/v1/cloud-products", eeCloudProductsRouter);
   app.use("/api/v3/api-key", v3apiKeyDataRouter); // new
   app.use("/api/v3/service-token", v3ServiceTokenDataRouter); // new
+  app.use("/api/v1/secret-rotation-providers", v1SecretRotationProviderRouter);
+  app.use("/api/v1/secret-rotations", v1SecretRotation);
 
   // v1 routes
   app.use("/api/v1/signup", v1SignupRouter);
@@ -217,9 +221,9 @@ const main = async () => {
   app.use("/api/v1/webhooks", v1WebhooksRouter);
   app.use("/api/v1/secret-imports", v1SecretImpsRouter);
   app.use("/api/v1/roles", v1RoleRouter);
-  app.use("/api/v1/secret-approvals", v1SecretApprovalPolicy);
+  app.use("/api/v1/secret-approvals", v1SecretApprovalPolicyRouter);
   app.use("/api/v1/sso", v1SSORouter);
-  app.use("/api/v1/secret-approval-requests", v1SecretApprovalRequest);
+  app.use("/api/v1/secret-approval-requests", v1SecretApprovalRequestRouter);
 
   // v2 routes (improvements)
   app.use("/api/v2/signup", v2SignupRouter);

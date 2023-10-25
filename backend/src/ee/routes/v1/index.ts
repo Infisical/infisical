@@ -10,6 +10,8 @@ import secretScanning from "./secretScanning";
 import roles from "./role";
 import secretApprovalPolicy from "./secretApprovalPolicy";
 import secretApprovalRequest from "./secretApprovalRequest";
+import secretRotationProvider from "./secretRotationProvider";
+import secretRotation from "./secretRotation";
 
 export {
   secret,
@@ -23,5 +25,7 @@ export {
   secretScanning,
   roles,
   secretApprovalPolicy,
-  secretApprovalRequest
+  secretApprovalRequest,
+  secretRotationProvider,
+  secretRotation
 };
