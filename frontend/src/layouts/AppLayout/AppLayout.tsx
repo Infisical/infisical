@@ -497,6 +497,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
+                      <Link href={`/project/${currentWorkspace?._id}/secret-rotation`} passHref>
+                        <a className="relative">
+                          <MenuItem
+                            isSelected={
+                              router.asPath === `/project/${currentWorkspace?._id}/secret-rotation`
+                            }
+                            icon="system-outline-189-domain-verification"
+                          >
+                            Secret rotation
+                          </MenuItem>
+                        </a>
+                      </Link>
                       <Link href={`/project/${currentWorkspace?._id}/approval`} passHref>
                         <a className="relative">
                           <MenuItem
