@@ -4,7 +4,7 @@ info:
   description: List of all available APIs that can be consumed
   version: 1.0.0
 servers:
-  - url: https://infisical.com
+  - url: https://app.infisical.com
     description: Production server
   - url: http://localhost:8080
     description: Local server
@@ -3785,7 +3785,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: >-
+      description:
         This security definition uses the HTTP 'bearer' scheme, which allows the
         client to authenticate using a JSON Web Token (JWT) that is passed in
         the Authorization header of the request.
@@ -3793,7 +3793,7 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
-      description: >-
+      description:
         This security definition uses an API key, which is passed in the header
         of the request as the value of the "X-API-Key" header. The client must
         provide a valid key in order to access the API.
