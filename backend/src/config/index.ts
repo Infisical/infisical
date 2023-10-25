@@ -1,6 +1,7 @@
 import { GITLAB_URL } from "../variables";
 
 import InfisicalClient from "infisical-node";
+import { promises as fs } from 'fs';
 
 export const client = new InfisicalClient({
   token: process.env.INFISICAL_TOKEN!,
@@ -8,8 +9,13 @@ export const client = new InfisicalClient({
 
 export const getPort = async () => (await client.getSecret("PORT")).secretValue || 4000;
 export const getEncryptionKey = async () => {
-  const secretValue = (await client.getSecret("ENCRYPTION_KEY")).secretValue;
-  return secretValue === "" ? undefined : secretValue;
+  const file = (await client.getSecret("ENCRYPTION_KEY_FILE")).secretValue;
+  if (file) {
+    return (await fs.readFile(file, 'utf8')).trim();
+  } else {
+    const secretValue = (await client.getSecret("ENCRYPTION_KEY")).secretValue;
+    return secretValue === "" ? undefined : secretValue;
+  }
 }
 export const getRootEncryptionKey = async () => {
   const secretValue = (await client.getSecret("ROOT_ENCRYPTION_KEY")).secretValue;
