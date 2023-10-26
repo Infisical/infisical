@@ -140,7 +140,7 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
     query: { secretPath, environment, workspaceId }
   } = validatedData;
   const {
-    query: { folderId, include_imports: includeImports }
+    query: { include_imports: includeImports }
   } = validatedData;
 
   // if the service token has single scope, it will get all secrets for that scope by default
@@ -154,13 +154,6 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
     secretPath = scope.secretPath;
     environment = scope.environment;
     workspaceId = serviceTokenDetails.workspace.toString();
-  }
-
-  if (folderId && folderId !== "root") {
-    const folder = await Folder.findOne({ workspace: workspaceId, environment });
-    if (!folder) throw BadRequestError({ message: "Folder not found" });
-
-    secretPath = getFolderWithPathFromId(folder.nodes, folderId).folderPath;
   }
 
   if (!environment || !workspaceId)
@@ -177,7 +170,6 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
   const secrets = await SecretService.getSecrets({
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
-    folderId,
     secretPath,
     authData: req.authData
   });
@@ -467,19 +459,12 @@ export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
 export const getSecrets = async (req: Request, res: Response) => {
   const validatedData = await validateRequest(reqValidator.GetSecretsV3, req);
   const {
-    query: { environment, workspaceId, include_imports: includeImports, folderId }
+    query: { environment, workspaceId, include_imports: includeImports }
   } = validatedData;
 
   let {
     query: { secretPath }
   } = validatedData;
-
-  if (folderId && folderId !== "root") {
-    const folder = await Folder.findOne({ workspace: workspaceId, environment });
-    if (!folder) return res.send({ secrets: [] });
-
-    secretPath = getFolderWithPathFromId(folder.nodes, folderId).folderPath;
-  }
 
   const { authVerifier: permissionCheckFn } = await checkSecretsPermission({
     authData: req.authData,
@@ -492,7 +477,6 @@ export const getSecrets = async (req: Request, res: Response) => {
   const secrets = await SecretService.getSecrets({
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
-    folderId,
     secretPath,
     authData: req.authData
   });

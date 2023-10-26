@@ -503,7 +503,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             isSelected={
                               router.asPath === `/project/${currentWorkspace?._id}/secret-rotation`
                             }
-                            icon="system-outline-189-domain-verification"
+                            icon="rotation"
                           >
                             Secret rotation
                           </MenuItem>

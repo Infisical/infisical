@@ -8,7 +8,7 @@ import mysql from "mysql";
 import { client, getRootEncryptionKey } from "../../config";
 import { BotService, TelemetryService } from "../../services";
 import { SecretRotation } from "./models";
-import { providerRotationTemplates } from "./providerTemplates";
+import { rotationTemplates } from "./templates";
 import {
   ISecretRotationData,
   ISecretRotationEncData,
@@ -88,13 +88,14 @@ const secretRotationHttpFn = async (
 
 const secretRotationDbFn = async (func: TDbProviderFunction, variables: ISecretRotationData) => {
   const { type, client, pre, ...dbConnection } = func;
-  const { username, password, host, database, port, query } = interpolate(
+  const { username, password, host, database, port, query, ca } = interpolate(
     dbConnection,
     getInterpolationValue(variables)
   );
+  const ssl = ca ? { rejectUnauthorized: false, ca } : undefined;
   if (host === "localhost" || host === "127.0.0.1") throw new Error("Invalid db host");
   if (client === TDbProviderClients.Pg) {
-    const pgClient = new PgClient({ user: username, password, host, database, port });
+    const pgClient = new PgClient({ user: username, password, host, database, port, ssl });
     await pgClient.connect();
     const res = await pgClient.query(query);
     await pgClient.end();
@@ -106,7 +107,8 @@ const secretRotationDbFn = async (func: TDbProviderFunction, variables: ISecretR
       host,
       database,
       port,
-      connectionLimit: 1
+      connectionLimit: 1,
+      ssl
     });
     const res = await new Promise((resolve, reject) => {
       sqlClient.query(query, (err, data) => {
@@ -193,7 +195,7 @@ secretRotationQueue.process(async (job: Job) => {
       ];
     }>("outputs.secret");
 
-  const infisicalRotationProvider = providerRotationTemplates.find(
+  const infisicalRotationProvider = rotationTemplates.find(
     ({ name }) => name === secretRotation?.provider
   );
 

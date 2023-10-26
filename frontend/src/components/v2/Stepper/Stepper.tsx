@@ -32,7 +32,7 @@ export const Stepper = ({ activeStep, children, direction, className }: StepperP
             <div className="flex items-center space-x-2 flex-shrink-0">
               <div
                 className={twMerge(
-                  "w-6 h-6 flex items-center justify-center font-medium text-mineshaft-800 text-sm rounded-full transition-all",
+                  "w-7 h-7 flex items-center justify-center font-medium text-mineshaft-800 text-sm rounded-full transition-all",
                   isCompleted ? "bg-primary" : "border text-bunker-300 border-primary/30",
                   isActive && "bg-primary text-mineshaft-800"
                 )}
@@ -70,7 +70,7 @@ export type StepProps = {
 
 export const Step = ({ title, description }: StepProps) => {
   return (
-    <div className="flex flex-col space-y-1 text-gray-300">
+    <div className="flex flex-col text-gray-300">
       <div className="font-medium text-sm">{title}</div>
       {description && <div className="text-xs">{description}</div>}
     </div>

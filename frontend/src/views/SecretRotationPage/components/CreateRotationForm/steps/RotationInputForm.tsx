@@ -34,7 +34,6 @@ export const RotationInputForm = ({ onSubmit, onCancel, inputSchema }: Props) =>
           defaultValue={inputSchema.properties[inputName]?.default}
           render={({ field }) => (
             <FormControl
-              className="capitalize"
               key={`provider-input-${inputName}`}
               label={inputName.replaceAll("_", " ")}
               helperText={inputSchema.properties[inputName]?.helperText}

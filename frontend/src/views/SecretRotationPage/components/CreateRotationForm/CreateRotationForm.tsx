@@ -7,7 +7,6 @@ import { TSecretRotationProvider } from "@app/hooks/api/types";
 
 import { useNotificationContext } from "~/components/context/Notifications/NotificationProvider";
 
-import { GeneralDetailsForm, TFormSchema as TGeneralFormSchema } from "./steps/GeneralDetailsForm";
 import { RotationInputForm } from "./steps/RotationInputForm";
 import {
   RotationOutputForm,
@@ -16,13 +15,12 @@ import {
 
 const WIZARD_STEPS = [
   {
-    title: "General"
+    title: "Inputs",
+    description: "Provider secrets"
   },
   {
-    title: "Inputs"
-  },
-  {
-    title: "Secret Mapping"
+    title: "Outputs",
+    description: "Map rotated secrets to keys"
   }
 ];
 
@@ -43,7 +41,6 @@ export const CreateRotationForm = ({
 }: Props) => {
   const [wizardStep, setWizardStep] = useState(0);
   const wizardData = useRef<{
-    general?: TGeneralFormSchema;
     input?: Record<string, string>;
     output?: TRotationOutputSchema;
   }>({});
@@ -58,18 +55,17 @@ export const CreateRotationForm = ({
   };
 
   const handleFormSubmit = async () => {
-    if (!wizardData.current.general || !wizardData.current.input || !wizardData.current.output)
-      return;
+    if (!wizardData.current.input || !wizardData.current.output) return;
     try {
       await createSecretRotation({
         workspaceId,
         provider: provider.name,
         customProvider,
-        secretPath: wizardData.current.general.secretPath,
-        environment: wizardData.current.general.environment,
-        interval: wizardData.current.general.interval,
+        secretPath: wizardData.current.output.secretPath,
+        environment: wizardData.current.output.environment,
+        interval: wizardData.current.output.interval,
         inputs: wizardData.current.input,
-        outputs: wizardData.current.output
+        outputs: wizardData.current.output.secrets
       });
       setWizardStep(0);
       onToggle(false);
@@ -98,49 +94,50 @@ export const CreateRotationForm = ({
         className="max-w-2xl"
       >
         <Stepper activeStep={wizardStep} direction="horizontal" className="mb-4">
-          {WIZARD_STEPS.map(({ title }, index) => (
-            <Step title={title} key={`wizard-stepper-rotation-${index + 1}`} />
+          {WIZARD_STEPS.map(({ title, description }, index) => (
+            <Step
+              title={title}
+              description={description}
+              key={`wizard-stepper-rotation-${index + 1}`}
+            />
           ))}
         </Stepper>
         <AnimatePresence exitBeforeEnter>
           {wizardStep === 0 && (
             <motion.div
-              key="general-step"
+              key="input-step"
               transition={{ duration: 0.1 }}
               initial={{ opacity: 0, translateX: 30 }}
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: -30 }}
             >
-              <GeneralDetailsForm
+              <RotationInputForm
                 onCancel={handleFormCancel}
                 onSubmit={(data) => {
-                  wizardData.current.general = data;
+                  wizardData.current.input = data;
                   setWizardStep((state) => state + 1);
                 }}
+                inputSchema={provider.template?.inputs || {}}
               />
             </motion.div>
           )}
           {wizardStep === 1 && (
-            <RotationInputForm
-              onCancel={handleFormCancel}
-              onSubmit={(data) => {
-                wizardData.current.input = data;
-                setWizardStep((state) => state + 1);
-              }}
-              inputSchema={provider.template?.inputs || {}}
-            />
-          )}
-          {wizardStep === 2 && (
-            <RotationOutputForm
-              environment={wizardData.current.general?.environment || ""}
-              secretPath={wizardData.current.general?.secretPath || "/"}
-              outputSchema={provider.template?.outputs || {}}
-              onCancel={handleFormCancel}
-              onSubmit={async (data) => {
-                wizardData.current.output = data;
-                await handleFormSubmit();
-              }}
-            />
+            <motion.div
+              key="output-step"
+              transition={{ duration: 0.1 }}
+              initial={{ opacity: 0, translateX: 30 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              exit={{ opacity: 0, translateX: -30 }}
+            >
+              <RotationOutputForm
+                outputSchema={provider.template?.outputs || {}}
+                onCancel={handleFormCancel}
+                onSubmit={async (data) => {
+                  wizardData.current.output = data;
+                  await handleFormSubmit();
+                }}
+              />
+            </motion.div>
           )}
         </AnimatePresence>
       </ModalContent>

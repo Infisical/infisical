@@ -1,13 +1,5 @@
-import {
-  ISecretRotationEncData,
-  ISecretRotationProviderTemplate,
-  TCreateSecretRotation,
-  TGetProviderTemplates
-} from "./types";
-import {
-  providerRotationTemplates as infisicalRotationTemplates,
-  providerRotationTemplates
-} from "./providerTemplates";
+import { ISecretRotationEncData, TCreateSecretRotation, TGetProviderTemplates } from "./types";
+import { rotationTemplates } from "./templates";
 import { SecretRotation } from "./models";
 import { client, getRootEncryptionKey } from "../../config";
 import { BadRequestError } from "../../utils/errors";
@@ -19,7 +11,7 @@ const ajv = new Ajv();
 export const getProviderTemplate = async ({ workspaceId }: TGetProviderTemplates) => {
   return {
     custom: [],
-    providers: infisicalRotationTemplates
+    providers: rotationTemplates
   };
 };
 
@@ -32,7 +24,7 @@ export const createSecretRotation = async ({
   inputs,
   outputs
 }: TCreateSecretRotation) => {
-  const rotationTemplate = providerRotationTemplates.find(({ name }) => name === provider);
+  const rotationTemplate = rotationTemplates.find(({ name }) => name === provider);
   if (!rotationTemplate) throw BadRequestError({ message: "Provider not found" });
 
   const formattedInputs: Record<string, unknown> = {};

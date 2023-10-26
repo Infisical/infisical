@@ -163,10 +163,10 @@ export const SecretRotationPage = withProjectPermission(
     };
 
     const handleCreateRotation = async (provider: TSecretRotationProvider) => {
-      if (subscription && !subscription?.secretRotation) {
-        handlePopUpOpen("upgradePlan");
-        return;
-      }
+      // if (subscription && !subscription?.secretRotation) {
+      //   handlePopUpOpen("upgradePlan");
+      //   return;
+      // }
       if (!canCreateRotation) {
         createNotification({ type: "error", text: "Access permission denied!!" });
         return;
