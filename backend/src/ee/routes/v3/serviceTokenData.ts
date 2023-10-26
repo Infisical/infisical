@@ -7,9 +7,14 @@ import { serviceTokenDataController } from "../../controllers/v3";
 router.get(
   "/me/key",
   requireAuth({
-    acceptedAuthModes: [AuthMode.SERVICE_TOKEN_V3]
+    acceptedAuthModes: [AuthMode.SERVICE_ACCESS_TOKEN]
   }),
   serviceTokenDataController.getServiceTokenDataKey
+);
+
+router.post(
+  "/me/token",
+  serviceTokenDataController.refreshToken
 );
 
 router.post(

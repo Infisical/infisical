@@ -34,6 +34,8 @@ type Props = {
         name?: string;
         scopes?: ServiceTokenV3Scope[];
         trustedIps?: ServiceTokenV3TrustedIp[];
+        accessTokenTTL?: number;
+        isRefreshTokenRotationEnabled?: boolean;
       }
     ) => void;
   };
@@ -81,10 +83,9 @@ export const ServiceTokenV3Table = ({
                         <Th>Status</Th>
                         <Th>Scopes</Th>
                         <Th>Trusted IPs</Th>
-                        {/* <Th># Times Used</Th> */}
-                        <Th>Last Used</Th>
+                        <Th>Access Token TTL</Th>
                         <Th>Created At</Th>
-                        <Th>Expires At</Th>
+                        <Th>Valid Until</Th>
                         <Th className="w-5" />
                     </Tr>
                 </THead>
@@ -97,12 +98,12 @@ export const ServiceTokenV3Table = ({
                         _id,
                         name,
                         isActive,
-                        lastUsed,
-                        // usageCount,
                         scopes,
                         trustedIps,
                         createdAt,
-                        expiresAt
+                        expiresAt,
+                        accessTokenTTL,
+                        isRefreshTokenRotationEnabled
                     }) => {
                         return (
                             <Tr className="h-10" key={`st-v3-${_id}`}>
@@ -160,8 +161,7 @@ export const ServiceTokenV3Table = ({
                                         );
                                     })}
                                 </Td> 
-                                {/* <Td>{usageCount}</Td> */}
-                                <Td>{lastUsed ? format(new Date(lastUsed), "yyyy-MM-dd") : "-"}</Td>
+                                <Td>{accessTokenTTL}</Td>
                                 <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
                                 <Td>{expiresAt ? format(new Date(expiresAt), "yyyy-MM-dd") : "-"}</Td>
                                 <Td className="flex justify-end">
@@ -176,7 +176,9 @@ export const ServiceTokenV3Table = ({
                                                         serviceTokenDataId: _id,
                                                         name,
                                                         scopes,
-                                                        trustedIps
+                                                        trustedIps,
+                                                        accessTokenTTL,
+                                                        isRefreshTokenRotationEnabled
                                                     });
                                                 }}
                                                 size="lg"

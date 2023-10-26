@@ -21,6 +21,7 @@ import {
     ModalContent,
     Select,
     SelectItem,
+    Switch,
     UpgradePlanModal
 } from "@app/components/v2";
 import {
@@ -42,7 +43,7 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const expirations = [
-    { label: "Never", value: undefined },
+    { label: "Never", value: "" },
     { label: "1 day", value: "86400" },
     { label: "7 days", value: "604800" },
     { label: "1 month", value: "2592000" },
@@ -60,6 +61,13 @@ const permissionsMap: {
 const schema = yup.object({
     name: yup.string().required("ST V3 name is required"),
     expiresIn: yup.string(),
+    accessTokenTTL: yup
+        .string()
+        .test("is-positive-integer", "Access Token TTL must be a positive integer", (value) => {
+            const num = parseInt(value, 10);
+            return !Number.isNaN(num) && num > 0 && String(num) === value;
+        })
+        .required("Access Token TTL is required"),
     scopes: yup
         .array(
         yup.object({
@@ -79,14 +87,15 @@ const schema = yup.object({
         .required()
         .label("Scope"),
     trustedIps: yup
-    .array(
-      yup.object({
-        ipAddress: yup.string().max(50).required().label("IP Address")
-      })
-    )
-    .min(1)
-    .required()
-    .label("Trusted IP")
+        .array(
+        yup.object({
+            ipAddress: yup.string().max(50).required().label("IP Address")
+        })
+        )
+        .min(1)
+        .required()
+        .label("Trusted IP"),
+    isRefreshTokenRotationEnabled: yup.boolean().default(false)
 }).required();
 
 export type FormData = yup.InferType<typeof schema>;
@@ -118,6 +127,7 @@ export const AddServiceTokenV3Modal = ({
         resolver: yupResolver(schema),
         defaultValues: {
             name: "",
+            accessTokenTTL: "7200",
             scopes: [{ 
                 permission: "read",
                 environment: currentWorkspace?.environments?.[0]?.slug,
@@ -135,6 +145,8 @@ export const AddServiceTokenV3Modal = ({
             name: string;
             scopes: ServiceTokenV3Scope[];
             trustedIps: ServiceTokenV3TrustedIp[];
+            accessTokenTTL: number;
+            isRefreshTokenRotationEnabled: boolean;
         };
         
         if (serviceTokenData) {
@@ -163,11 +175,14 @@ export const AddServiceTokenV3Modal = ({
                     return ({
                         ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
                     });
-                })
+                }),
+                accessTokenTTL: String(serviceTokenData.accessTokenTTL),
+                isRefreshTokenRotationEnabled: serviceTokenData.isRefreshTokenRotationEnabled
             });
         } else {
             reset({
                 name: "",
+                accessTokenTTL: "7200",
                 scopes: [{ 
                     permission: "read",
                     environment: currentWorkspace?.environments?.[0]?.slug,
@@ -186,8 +201,10 @@ export const AddServiceTokenV3Modal = ({
     const onFormSubmit = async ({
         name,
         expiresIn,
+        accessTokenTTL,
         scopes,
-        trustedIps
+        trustedIps,
+        isRefreshTokenRotationEnabled
     }: FormData) => {
         try {
             const serviceTokenData = popUp?.serviceTokenV3?.data as { 
@@ -213,7 +230,9 @@ export const AddServiceTokenV3Modal = ({
                     name,
                     scopes: reformattedScopes,
                     trustedIps,
-                    expiresIn: expiresIn === "" ? undefined : Number(expiresIn)
+                    expiresIn: expiresIn === "" ? undefined : Number(expiresIn),
+                    accessTokenTTL: Number(accessTokenTTL),
+                    isRefreshTokenRotationEnabled
                 });
             } else {
                 // create
@@ -239,21 +258,23 @@ export const AddServiceTokenV3Modal = ({
                     privateKey: localStorage.getItem("PRIVATE_KEY") as string
                 });
 
-                const { serviceToken } = await createMutateAsync({
+                const { refreshToken } = await createMutateAsync({
                     name,
                     workspaceId: currentWorkspace._id,
                     publicKey,
                     scopes: reformattedScopes,
                     trustedIps,
                     expiresIn: expiresIn === "" ? undefined : Number(expiresIn),
+                    accessTokenTTL: Number(accessTokenTTL),
                     encryptedKey: ciphertext,
-                    nonce
+                    nonce,
+                    isRefreshTokenRotationEnabled
                 });
                 
                 const downloadData = {
                     publicKey,
                     privateKey,
-                    serviceToken
+                    refreshToken
                 };
 
                 const blob = new Blob([JSON.stringify(downloadData, null, 2)], { type: "application/json" });
@@ -476,10 +497,10 @@ export const AddServiceTokenV3Modal = ({
                     <Controller
                         control={control}
                         name="expiresIn"
-                        defaultValue="15552000"
+                        defaultValue=""
                         render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                             <FormControl
-                                label={`${popUp?.serviceTokenV3?.data ? "Update" : ""} Expire In`}
+                                label={`${popUp?.serviceTokenV3?.data ? "Update" : ""} Refresh Token Expires In`}
                                 errorText={error?.message}
                                 isError={Boolean(error)}
                                 className="mt-4"
@@ -499,6 +520,38 @@ export const AddServiceTokenV3Modal = ({
                             </FormControl>
                         )}
                     />
+                    <Controller
+                        control={control}
+                        defaultValue="7200"
+                        name="accessTokenTTL"
+                        render={({ field, fieldState: { error } }) => (
+                            <FormControl
+                                label="Access Token TTL (seconds)"
+                                isError={Boolean(error)}
+                                errorText={error?.message}
+                            >
+                            <Input 
+                                {...field} 
+                                placeholder="7200"
+                            />
+                            </FormControl>
+                        )}
+                    />
+                    <div className="mt-8 mb-[2.36rem]">
+                        <Controller
+                            control={control}
+                            name="isRefreshTokenRotationEnabled"
+                            render={({ field: { onChange, value } }) => (
+                                <Switch
+                                    id="label-refresh-token-rotation"
+                                    onCheckedChange={(isChecked) => onChange(isChecked)}
+                                    isChecked={value}
+                                >
+                                    Refresh Token Rotation
+                                </Switch>
+                            )}
+                        />
+                    </div>
                     <div className="mt-8 flex items-center">
                         <Button
                             className="mr-4"

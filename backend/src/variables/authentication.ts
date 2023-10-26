@@ -1,16 +1,20 @@
+// TODO: merge [AuthTokenType] and [AuthMode]
+
 export enum AuthTokenType {
     ACCESS_TOKEN = "accessToken",
     REFRESH_TOKEN = "refreshToken",
-    SIGNUP_TOKEN = "signupToken",
-    MFA_TOKEN = "mfaToken",
-    PROVIDER_TOKEN = "providerToken",
-    API_KEY = "apiKey"
+    SIGNUP_TOKEN = "signupToken", // TODO: remove in favor of claim
+    MFA_TOKEN = "mfaToken", // TODO: remove in favor of claim
+    PROVIDER_TOKEN = "providerToken", // TODO: remove in favor of claim
+    API_KEY = "apiKey",
+    SERVICE_ACCESS_TOKEN = "serviceAccessToken",
+    SERVICE_REFRESH_TOKEN = "serviceRefreshToken"
 }
 
 export enum AuthMode {
     JWT = "jwt",
     SERVICE_TOKEN = "serviceToken",
-    SERVICE_TOKEN_V3 = "serviceTokenV3",
+    SERVICE_ACCESS_TOKEN = "serviceAccessToken",
     API_KEY = "apiKey"
 }
 

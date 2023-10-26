@@ -22,8 +22,7 @@ import {
 import {
 	getAuthSecret,
 	getJwtAuthLifetime,
-	getJwtRefreshLifetime,
-	getJwtServiceTokenSecret
+	getJwtRefreshLifetime
 } from "../config";
 import {
 	AuthMode,
@@ -43,7 +42,7 @@ import { getUserAgentType } from "../utils/posthog";
  * @param {Object} obj
  * @param {Object} obj.headers - HTTP request headers object
  */
-export const validateAuthMode = ({
+export const validateAuthMode = async ({
 	headers,
 	acceptedAuthModes,
 }: {
@@ -84,13 +83,19 @@ export const validateAuthMode = ({
 				authMode = AuthMode.SERVICE_TOKEN;
 				authTokenValue = tokenValue;
 				break;
-			case "stv3":
-				authMode = AuthMode.SERVICE_TOKEN_V3;
-				authTokenValue = parts.slice(1).join(".");
-				break;
-			default:
-				authMode = AuthMode.JWT;
+			default: {
+				const decodedToken = <jwt.UserIDJwtPayload>(
+					jwt.verify(tokenValue, await getAuthSecret())
+				);
+				
+				if (decodedToken.authTokenType === AuthTokenType.SERVICE_ACCESS_TOKEN) {
+					authMode = AuthMode.SERVICE_ACCESS_TOKEN;
+				} else {
+					authMode = AuthMode.JWT;
+				}
+				
 				authTokenValue = tokenValue;
+			}
 		}
 	}
 
@@ -254,23 +259,17 @@ export const getAuthSTDPayload = async ({
 	req: Request,
 	authTokenValue: string;
 }): Promise<ServiceTokenV3AuthData> => {
-	const decodedToken = <jwt.UserIDJwtPayload>(
-		jwt.verify(authTokenValue, await getJwtServiceTokenSecret())
+
+	const decodedToken = <jwt.ServiceRefreshTokenJwtPayload>(
+		jwt.verify(authTokenValue, await getAuthSecret())
 	);
+
+	if (decodedToken.authTokenType !== AuthTokenType.SERVICE_ACCESS_TOKEN) throw UnauthorizedRequestError();
 	
-	const serviceTokenData = await ServiceTokenDataV3.findOneAndUpdate(
-		{
-			_id: new Types.ObjectId(decodedToken._id),
-			isActive: true
-		},
-		{
-			lastUsed: new Date(),
-			$inc: { usageCount: 1 }
-		},
-		{
-			new: true
-		}
-	);
+	const serviceTokenData = await ServiceTokenDataV3.findOne({
+		_id: new Types.ObjectId(decodedToken.serviceTokenDataId),
+		isActive: true
+	});
 	
 	if (!serviceTokenData) {
 		throw UnauthorizedRequestError({ 
@@ -291,7 +290,23 @@ export const getAuthSTDPayload = async ({
 		throw UnauthorizedRequestError({
 			message: "Failed to authenticate",
 		});
+	} else if (decodedToken.tokenVersion !== serviceTokenData.tokenVersion) {
+		// TODO: raise alarm
+		throw UnauthorizedRequestError({
+			message: "Failed to authenticate",
+		});
 	}
+	
+	await ServiceTokenDataV3.findByIdAndUpdate(
+		serviceTokenData._id,
+		{
+			accessTokenLastUsed: new Date(),
+			$inc: { accessTokenUsageCount: 1 }
+		},
+		{
+			new: true
+		}
+	);
 
 	return {
 		actor: {

@@ -60,6 +60,12 @@ import { checkIPAgainstBlocklist } from "../utils/ip";
   }
 };
 
+export const RefreshTokenV3 = z.object({
+  body: z.object({
+    refresh_token: z.string().trim()
+  })
+});
+
 export const CreateServiceTokenV3 = z.object({
   body: z.object({
     name: z.string().trim(),
@@ -80,8 +86,10 @@ export const CreateServiceTokenV3 = z.object({
       .array()
       .min(1),
     expiresIn: z.number().optional(),
+    accessTokenTTL: z.number().int().min(1),
     encryptedKey: z.string().trim(),
-    nonce: z.string().trim()
+    nonce: z.string().trim(),
+    isRefreshTokenRotationEnabled: z.boolean().default(false)
   })
 });
   
@@ -108,7 +116,9 @@ export const UpdateServiceTokenV3 = z.object({
       .array()
       .min(1)
       .optional(),
-    expiresIn: z.number().optional()
+    expiresIn: z.number().optional(),
+    accessTokenTTL: z.number().int().min(1).optional(),
+    isRefreshTokenRotationEnabled: z.boolean().optional()
   }),
 });
 

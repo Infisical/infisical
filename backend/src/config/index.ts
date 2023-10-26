@@ -24,7 +24,6 @@ export const getJwtRefreshLifetime = async () => (await client.getSecret("JWT_RE
 export const getJwtServiceSecret = async () => (await client.getSecret("JWT_SERVICE_SECRET")).secretValue; // TODO: deprecate (related to ST V1)
 export const getJwtSignupLifetime = async () => (await client.getSecret("JWT_SIGNUP_LIFETIME")).secretValue || "15m";
 export const getJwtProviderAuthLifetime = async () => (await client.getSecret("JWT_PROVIDER_AUTH_LIFETIME")).secretValue || "15m";
-export const getJwtServiceTokenSecret = async () => (await client.getSecret("JWT_SERVICE_TOKEN_SECRET")).secretValue;
 export const getMongoURL = async () => (await client.getSecret("MONGO_URL")).secretValue;
 export const getNodeEnv = async () => (await client.getSecret("NODE_ENV")).secretValue || "production";
 export const getVerboseErrorOutput = async () => (await client.getSecret("VERBOSE_ERROR_OUTPUT")).secretValue === "true" && true;

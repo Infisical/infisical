@@ -56,11 +56,15 @@ export type ServiceTokenDataV3 = {
   name: string;
   workspace: string;
   isActive: boolean;
-  lastUsed?: string;
-  usageCount: number;
+  refreshTokenLastUsed?: string;
+  accessTokenLastUsed?: string;
+  refreshTokenUsageCount: number;
+  accessTokenUsageCount: number;
   scopes: ServiceTokenV3Scope[];
   trustedIps: ServiceTokenV3TrustedIp[];
   expiresAt?: string;
+  accessTokenTTL: number;
+  isRefreshTokenRotationEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -74,12 +78,14 @@ export type CreateServiceTokenDataV3DTO = {
     ipAddress: string;
   }[];
   expiresIn?: number;
+  accessTokenTTL: number;
   encryptedKey: string;
   nonce: string;
+  isRefreshTokenRotationEnabled: boolean;
 }
 
 export type CreateServiceTokenDataV3Res = {
-  serviceToken: string;
+  refreshToken: string;
   serviceTokenData: ServiceTokenDataV3;
 }
 
@@ -92,6 +98,8 @@ export type UpdateServiceTokenDataV3DTO = {
     ipAddress: string;
   }[];
   expiresIn?: number;
+  accessTokenTTL?: number;
+  isRefreshTokenRotationEnabled?: boolean;
 }
 
 export type DeleteServiceTokenDataV3DTO = {

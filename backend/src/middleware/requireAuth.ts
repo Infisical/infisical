@@ -35,7 +35,7 @@ const requireAuth = ({
 
 		// validate auth token against accepted auth modes [acceptedAuthModes]
 		// and return token type [authTokenType] and value [authTokenValue]
-		const { authMode, authTokenValue } = validateAuthMode({
+		const { authMode, authTokenValue } = await validateAuthMode({
 			headers: req.headers,
 			acceptedAuthModes,
 		});
@@ -50,7 +50,7 @@ const requireAuth = ({
 				});
 				req.serviceTokenData = authData.authPayload;
 				break;
-			case AuthMode.SERVICE_TOKEN_V3:
+			case AuthMode.SERVICE_ACCESS_TOKEN:
 				authData = await getAuthSTDV3Payload({
 					req,
 					authTokenValue

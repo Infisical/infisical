@@ -28,6 +28,11 @@ declare module "jsonwebtoken" {
     userId: string;
     refreshVersion?: number;
   }
+  export interface ServiceRefreshTokenJwtPayload extends jwt.JwtPayload {
+    serviceTokenDataId: string;
+    authTokenType: string;
+    tokenVersion: number;
+  }
 }
 
 /**
