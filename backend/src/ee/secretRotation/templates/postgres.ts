@@ -68,6 +68,7 @@ export const POSTGRES_TEMPLATE = {
       host: "${inputs.host}",
       database: "${inputs.database}",
       port: "${inputs.port}",
+      ca: "${inputs.ca}",
       query: "SELECT NOW()"
     }
   }

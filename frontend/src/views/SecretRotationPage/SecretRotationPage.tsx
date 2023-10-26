@@ -163,10 +163,10 @@ export const SecretRotationPage = withProjectPermission(
     };
 
     const handleCreateRotation = async (provider: TSecretRotationProvider) => {
-      // if (subscription && !subscription?.secretRotation) {
-      //   handlePopUpOpen("upgradePlan");
-      //   return;
-      // }
+      if (subscription && !subscription?.secretRotation) {
+        handlePopUpOpen("upgradePlan");
+        return;
+      }
       if (!canCreateRotation) {
         createNotification({ type: "error", text: "Access permission denied!!" });
         return;
@@ -392,7 +392,7 @@ export const SecretRotationPage = withProjectPermission(
           title="Are you sure want to delete this rotation?"
           subTitle="This will stop the rotation from dynamically changing. Secret won't be deleted"
           onChange={(isOpen) => handlePopUpToggle("deleteRotation", isOpen)}
-          deleteKey="confirm"
+          deleteKey="delete"
           onDeleteApproved={handleDeleteRotation}
         />
         <UpgradePlanModal
