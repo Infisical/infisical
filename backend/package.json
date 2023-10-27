@@ -56,6 +56,11 @@
     "winston-loki": "^6.0.6",
     "zod": "^3.22.3"
   },
+  "overrides": {
+    "rate-limit-mongo": {
+      "mongodb": "5.8.0"
+    }
+  },
   "name": "infisical-api",
   "version": "1.0.0",
   "main": "src/index.js",
