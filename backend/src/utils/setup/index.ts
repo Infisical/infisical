@@ -31,7 +31,7 @@ import {
   initializeGitLabStrategy,
   initializeGoogleStrategy,
   initializeSamlStrategy
-} from "../auth/passport";
+} from "../authn/passport";
 
 /**
  * Prepare Infisical upon startup. This includes tasks like:

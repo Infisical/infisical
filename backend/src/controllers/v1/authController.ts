@@ -24,6 +24,9 @@ import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/auth";
 
 declare module "jsonwebtoken" {
+  export interface AuthnJwtPayload extends jwt.JwtPayload {
+    authTokenType: AuthTokenType;
+  }
   export interface UserIDJwtPayload extends jwt.JwtPayload {
     userId: string;
     refreshVersion?: number;

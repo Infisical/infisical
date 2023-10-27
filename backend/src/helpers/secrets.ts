@@ -49,7 +49,7 @@ import {
 import { TelemetryService } from "../services";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
 import { EEAuditLogService, EELogService, EESecretService } from "../ee/services";
-import { getAuthDataPayloadIdObj, getAuthDataPayloadUserObj } from "../utils/auth/authDataExtractors";
+import { getAuthDataPayloadIdObj, getAuthDataPayloadUserObj } from "../utils/authn/authDataExtractors";
 import { getFolderByPath, getFolderIdFromServiceToken } from "../services/FolderService";
 import picomatch from "picomatch";
 import path from "path";
