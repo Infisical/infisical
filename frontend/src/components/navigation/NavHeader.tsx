@@ -131,7 +131,7 @@ export default function NavHeader({
       {isFolderMode &&
         secretPathSegments?.map((folderName, index) => {
           const query = { ...router.query };
-          query.secretPath = secretPathSegments.slice(0, index + 1);
+          query.secretPath = `/${secretPathSegments.slice(0, index + 1).join("/")}`;
 
           return (
             <div
