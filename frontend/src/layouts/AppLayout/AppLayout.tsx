@@ -505,7 +505,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             }
                             icon="rotation"
                           >
-                            Secret rotation
+                            Secret Rotation
                           </MenuItem>
                         </a>
                       </Link>
@@ -517,7 +517,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             }
                             icon="system-outline-189-domain-verification"
                           >
-                            Secret approvals
+                            Secret Approvals
                             {Boolean(secretApprovalReqCount?.open) && (
                               <span className="ml-2 rounded border border-primary-400 bg-primary-600 py-0.5 px-1 text-xs font-semibold text-black">
                                 {secretApprovalReqCount?.open}

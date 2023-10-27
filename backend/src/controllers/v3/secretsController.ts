@@ -859,6 +859,14 @@ export const createSecretByNameBatch = async (req: Request, res: Response) => {
     authData: req.authData
   });
 
+  await EventService.handleEvent({
+    event: eventPushSecrets({
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      secretPath
+    })
+  });
+
   return res.status(200).send({
     secrets: createdSecrets
   });
@@ -901,6 +909,14 @@ export const updateSecretByNameBatch = async (req: Request, res: Response) => {
     workspaceId: new Types.ObjectId(workspaceId),
     secrets,
     authData: req.authData
+  });
+
+  await EventService.handleEvent({
+    event: eventPushSecrets({
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      secretPath
+    })
   });
 
   return res.status(200).send({

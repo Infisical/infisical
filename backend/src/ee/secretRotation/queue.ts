@@ -6,7 +6,7 @@ import { Client as PgClient } from "pg";
 import mysql from "mysql";
 
 import { client, getRootEncryptionKey } from "../../config";
-import { BotService, TelemetryService } from "../../services";
+import { BotService, EventService, TelemetryService } from "../../services";
 import { SecretRotation } from "./models";
 import { rotationTemplates } from "./templates";
 import {
@@ -26,6 +26,7 @@ import { ISecret, Secret } from "../../models";
 import { SECRET_SHARED } from "../../variables";
 import { EESecretService } from "../services";
 import { SecretVersion } from "../models";
+import { eventPushSecrets } from "../../events";
 
 const REGEX = /\${([^}]+)}/g;
 const SLUG_ALPHABETS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -380,8 +381,15 @@ secretRotationQueue.process(async (job: Job) => {
       folderId
     });
 
-    const postHogClient = await TelemetryService.getPostHogClient();
+    await EventService.handleEvent({
+      event: eventPushSecrets({
+        workspaceId: secretRotation.workspace,
+        environment: secretRotation.environment,
+        secretPath: secretRotation.secretPath
+      })
+    });
 
+    const postHogClient = await TelemetryService.getPostHogClient();
     if (postHogClient) {
       postHogClient.capture({
         event: "secrets rotated",
@@ -401,6 +409,7 @@ secretRotationQueue.process(async (job: Job) => {
       lastRotatedAt: new Date().toUTCString()
     });
   }
+
   return Promise.resolve();
 });
 
