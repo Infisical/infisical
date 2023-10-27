@@ -111,9 +111,18 @@ export const SecretOverviewPage = () => {
     try {
       // create folder if not existing
       if (secretPath !== "/") {
+        // /hello/world -> ["", "hello","world"]
         const path = secretPath.split("/");
-        const directory = path.slice(0, -1).join("/");
-        const folderName = path.at(-1);
+        // if its empty string on join use and OR gate to convert to /
+        // /hello
+        const directory =
+          path
+            .slice(0, -1)
+            .reduce(
+              (prev, curr, index, arr) => prev + (index + 1 === arr.length ? curr : `/${curr}`),
+              ""
+            ) || "/";
+        const folderName = path.at(-1); // world
         if (folderName && directory) {
           await createFolder({
             workspaceId,
