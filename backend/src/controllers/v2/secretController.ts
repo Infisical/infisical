@@ -11,7 +11,6 @@ import {
   ValidationError as RouteValidationError,
   UnauthorizedRequestError
 } from "../../utils/errors";
-import { AnyBulkWriteOperation } from "mongodb";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
@@ -19,7 +18,7 @@ import {
   SECRET_SHARED
 } from "../../variables";
 import { TelemetryService } from "../../services";
-import { ISecret, Secret, User } from "../../models";
+import { Secret, User } from "../../models";
 import { AccountNotFoundError } from "../../utils/errors";
 
 /**
@@ -145,22 +144,22 @@ export const deleteSecrets = async (req: Request, res: Response) => {
   const secretsUserCanDeleteSet: Set<string> = new Set(
     secretIdsUserCanDelete.map((objectId) => objectId._id.toString())
   );
-  const deleteOperationsToPerform: AnyBulkWriteOperation<ISecret>[] = [];
 
-  let numSecretsDeleted = 0;
-  secretIdsToDelete.forEach((secretIdToDelete) => {
-    if (secretsUserCanDeleteSet.has(secretIdToDelete)) {
-      const deleteOperation = {
-        deleteOne: { filter: { _id: new Types.ObjectId(secretIdToDelete) } }
-      };
-      deleteOperationsToPerform.push(deleteOperation);
-      numSecretsDeleted++;
-    } else {
-      throw RouteValidationError({
-        message: "You cannot delete secrets that you do not have access to"
-      });
-    }
-  });
+  // Filter out IDs that user can delete and then map them to delete operations
+  const deleteOperationsToPerform = secretIdsToDelete
+    .filter(secretIdToDelete => {
+      if (!secretsUserCanDeleteSet.has(secretIdToDelete)) {
+        throw RouteValidationError({
+          message: "You cannot delete secrets that you do not have access to"
+        });
+      }
+      return true;
+    })
+    .map(secretIdToDelete => ({
+      deleteOne: { filter: { _id: new Types.ObjectId(secretIdToDelete) } }
+    }));
+
+  const numSecretsDeleted = deleteOperationsToPerform.length;
 
   await Secret.bulkWrite(deleteOperationsToPerform);
 
