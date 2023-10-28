@@ -16,8 +16,8 @@ export * from "./secretImports";
 export * from "./secretBlindIndexData";
 export * from "./serviceToken"; // TODO: deprecate
 export * from "./serviceAccount"; // TODO: deprecate
-export * from "./serviceAccountKey"; // TODO: deprecate 
-export * from "./serviceAccountOrganizationPermission"; // TODO: deprecate  
+export * from "./serviceAccountKey"; // TODO: deprecate
+export * from "./serviceAccountOrganizationPermission"; // TODO: deprecate
 export * from "./serviceAccountWorkspacePermission"; // TODO: deprecate
 export * from "./tokenData";
 export * from "./user";
@@ -30,3 +30,4 @@ export * from "./tokenVersion";
 export * from "./webhooks";
 export * from "./serviceTokenDataV3";
 export * from "./serviceTokenDataV3Key";
+export * from "./reminder";

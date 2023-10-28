@@ -22,3 +22,4 @@ export * from "./trustedIps";
 export * from "./users";
 export * from "./webhooks";
 export * from "./workspace";
+export * from "./reminders";

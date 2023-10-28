@@ -11,7 +11,8 @@ import {
   faEllipsis,
   faKey,
   faTag,
-  faTags
+  faTags,
+  faBell
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -66,6 +67,7 @@ type Props = {
   onCreateTag: () => void;
   environment: string;
   secretPath: string;
+  onOpenReminder: () => void;
 };
 
 export const SecretItem = memo(
@@ -80,7 +82,8 @@ export const SecretItem = memo(
     onCreateTag,
     onToggleSecretSelect,
     environment,
-    secretPath
+    secretPath,
+    onOpenReminder
   }: Props) => {
     const { currentWorkspace } = useWorkspace();
     const permission = useProjectPermission();
@@ -256,6 +259,7 @@ export const SecretItem = memo(
                 />
               )}
               <div key="actions" className="h-8 flex self-start flex-shrink-0 transition-all">
+
                 <Tooltip content="Copy secret">
                   <IconButton
                     ariaLabel="copy-value"
@@ -267,6 +271,19 @@ export const SecretItem = memo(
                     <FontAwesomeIcon icon={isSecValueCopied ? faCheck : faCopy} />
                   </IconButton>
                 </Tooltip>
+
+                <Tooltip content="Open reminder">
+                  <IconButton
+                    ariaLabel="open-reminder-modal"
+                    variant="plain"
+                    size="sm"
+                    className="w-0 group-hover:w-5 group-hover:mr-2 overflow-hidden p-0"
+                    onClick={onOpenReminder}
+                  >
+                    <FontAwesomeIcon icon={faBell} />
+                  </IconButton>
+                </Tooltip>
+
                 <DropdownMenu>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}

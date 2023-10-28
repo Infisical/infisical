@@ -86,6 +86,7 @@ import {
 import { setup } from "./utils/setup";
 import { syncSecretsToThirdPartyServices } from "./queues/integrations/syncSecretsToThirdPartyServices";
 import { githubPushEventSecretScan } from "./queues/secret-scanning/githubScanPushEvent";
+import "./queues/reminders/reminderEmailTask"
 const SmeeClient = require("smee-client"); // eslint-disable-line
 import path from "path";
 

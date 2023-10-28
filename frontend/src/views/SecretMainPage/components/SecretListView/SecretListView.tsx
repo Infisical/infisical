@@ -4,6 +4,7 @@ import { twMerge } from "tailwind-merge";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { CreateTagModal } from "@app/components/tags/CreateTagModal";
+import { ReminderModal } from "~/components/reminder";
 import { DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 import { useCreateSecretV3, useDeleteSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
@@ -88,12 +89,14 @@ export const SecretListView = ({
   isVisible,
   isProtectedBranch = false
 }: Props) => {
+
   const { createNotification } = useNotificationContext();
   const queryClient = useQueryClient();
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",
     "secretDetail",
-    "createTag"
+    "createTag",
+    "reminder"
   ] as const);
 
   // strip of side effect queries
@@ -175,7 +178,7 @@ export const SecretListView = ({
         secretComment: "",
         skipMultilineEncoding,
         type,
-        latestFileKey: decryptFileKey
+        latestFileKey: decryptFileKey,
       },
       {}
     );
@@ -187,6 +190,7 @@ export const SecretListView = ({
       modSecret: Omit<DecryptedSecret, "tags"> & { tags: { _id: string }[] },
       cb?: () => void
     ) => {
+
       const { key: oldKey } = orgSecret;
       const { key, value, overrideAction, idOverride, valueOverride, tags, comment } = modSecret;
       const hasKeyChanged = oldKey !== key;
@@ -296,6 +300,7 @@ export const SecretListView = ({
     (sec: DecryptedSecret) => handlePopUpOpen("secretDetail", sec),
     []
   );
+  const onOpenReminder = useCallback((secretID: string) => () => handlePopUpOpen("reminder", secretID), [])
 
   return (
     <>
@@ -327,6 +332,7 @@ export const SecretListView = ({
                   onDeleteSecret={onDeleteSecret}
                   onDetailViewSecret={onDetailViewSecret}
                   onCreateTag={onCreateTag}
+                  onOpenReminder={onOpenReminder(secret._id)}
                 />
               ))}
             </div>
@@ -356,6 +362,11 @@ export const SecretListView = ({
       <CreateTagModal
         isOpen={popUp.createTag.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("createTag", isOpen)}
+      />
+      <ReminderModal
+        secretID={popUp.reminder.data as string | undefined}
+        isOpen={popUp.reminder.isOpen}
+        onToggle={(isOpen) => handlePopUpToggle("reminder", isOpen)}
       />
     </>
   );
