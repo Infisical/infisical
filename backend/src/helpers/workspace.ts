@@ -272,6 +272,10 @@ export const deleteWorkspace = async ({
 		}, {
 			session
 		});
+
+		if (!existingSession) {
+			await session.commitTransaction();
+		}
 		
 		return workspace;
 	} catch (err) {
@@ -283,7 +287,6 @@ export const deleteWorkspace = async ({
 		});
 	} finally {
 		if (!existingSession) {
-			await session.commitTransaction();
 			session.endSession();
 		}
 	}
