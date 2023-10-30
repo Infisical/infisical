@@ -31,6 +31,8 @@ export const requestErrorHandler: ErrorRequestHandler = async (
   if (error instanceof RequestError) {
     if (error instanceof TokenExpiredError) {
       error = UnauthorizedRequestError({ stack: error.stack, message: "Token expired" });
+    } else {
+      error = InternalServerError({ context: { exception: error.message }, stack: error.stack });
     }
     await logAndCaptureException((<RequestError>error));
   } else {
