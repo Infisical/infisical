@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { standardRequest } from "../../config/request";
-import { getApps, getTeams, revokeAccess } from "../../integrations";
+import { getApps, getTeams, getGroups, revokeAccess } from "../../integrations";
 import { Bot, IntegrationAuth, Workspace } from "../../models";
 import { EventType } from "../../ee/models";
 import { IntegrationService } from "../../services";
@@ -205,6 +205,40 @@ export const saveIntegrationToken = async (req: Request, res: Response) => {
 
   return res.status(200).send({
     integrationAuth
+  });
+};
+
+/**
+ * Return list of groups allowed for integration with integration authorization id [integrationAuthId]
+ * @param req
+ * @param res
+ * @returns
+ */
+export const getIntegrationAuthGroups = async (req: Request, res: Response) => {
+  const {
+    params: { integrationAuthId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthGroupsV1, req);
+
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
+
+  const groups = await getGroups({
+    integrationAuth: integrationAuth,
+    accessToken: accessToken
+  });
+
+  return res.status(200).send({
+    groups
   });
 };
 

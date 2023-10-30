@@ -10,5 +10,6 @@ export {
   useGetIntegrationAuthTeamCityBuildConfigs,
   useGetIntegrationAuthTeams,
   useGetIntegrationAuthVercelBranches,
-  useSaveIntegrationAccessToken
+  useSaveIntegrationAccessToken,
+  useGetIntegrationAuthGroups
 } from "./queries";

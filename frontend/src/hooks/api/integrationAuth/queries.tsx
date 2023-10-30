@@ -12,7 +12,8 @@ import {
   Org,
   Project,
   Service, 
-  Team, 
+  Team,
+  Group, 
   TeamCityBuildConfig} from "./types";
 
 const integrationAuthKeys = {
@@ -22,6 +23,8 @@ const integrationAuthKeys = {
     [{ integrationAuthId, teamId, workspaceSlug }, "integrationAuthApps"] as const,
   getIntegrationAuthTeams: (integrationAuthId: string) =>
     [{ integrationAuthId }, "integrationAuthTeams"] as const,
+  getIntegrationAuthGroups: (integrationAuthId: string) =>
+  [{ integrationAuthId }, "integrationAuthGroups"] as const,
   getIntegrationAuthVercelBranches: ({
     integrationAuthId,
     appId
@@ -125,6 +128,12 @@ const fetchIntegrationAuthTeams = async (integrationAuthId: string) => {
   return data.teams;
 };
 
+const fetchIntegrationAuthGroups = async (integrationAuthId: string) => {
+  const { data } = await apiRequest.get<{ groups: Group[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/groups`
+  );
+  return data.groups;
+};
 
 const fetchIntegrationAuthVercelBranches = async ({
   integrationAuthId,
@@ -409,6 +418,14 @@ export const useGetIntegrationAuthVercelBranches = ({
         integrationAuthId,
         appId
       }),
+    enabled: true
+  });
+};
+
+export const useGetIntegrationAuthGroups = (integrationAuthId: string) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthGroups(integrationAuthId),
+    queryFn: () => fetchIntegrationAuthGroups(integrationAuthId),
     enabled: true
   });
 };

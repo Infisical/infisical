@@ -9,6 +9,8 @@ import { motion } from "framer-motion";
 import queryString from "query-string";
 
 import {
+  Alert,
+  AlertDescription,
   Button,
   Card,
   CardTitle,
@@ -27,7 +29,8 @@ import {
 
 import {
   useGetIntegrationAuthApps,
-  useGetIntegrationAuthById
+  useGetIntegrationAuthById,
+  useGetIntegrationAuthGroups
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 
@@ -47,6 +50,9 @@ export default function ChecklyCreateIntegrationPage() {
   const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
+  const { data: integrationAuthGroups, isLoading: isintegrationAuthGroupsLoading } = useGetIntegrationAuthGroups(
+    (integrationAuthId as string) ?? ""
+  );
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
@@ -54,6 +60,9 @@ export default function ChecklyCreateIntegrationPage() {
 
   const [targetApp, setTargetApp] = useState("");
   const [targetAppId, setTargetAppId] = useState("");
+
+  const [targetGroup, setTargetGroup] = useState("");
+  const [targetGroupId, setTargetGroupId] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -104,9 +113,10 @@ export default function ChecklyCreateIntegrationPage() {
   return integrationAuth &&
     workspace &&
     selectedSourceEnvironment &&
-    integrationAuthApps &&
+    integrationAuthApps && 
+    integrationAuthGroups &&
     targetApp ? (
-    <div className="flex flex-col h-full w-full items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
+    <div className="flex flex-col w-full py-6 items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
       <Head>
         <title>Set Up Checkly Integration</title>
         <link rel='icon' href='/infisical.ico' />
@@ -175,6 +185,36 @@ export default function ChecklyCreateIntegrationPage() {
                   placeholder="Provide a path, default is /"
                 />
               </FormControl>
+              <FormControl label="Checkly Group">
+                <Select
+                  value={targetGroup}
+                  onValueChange={(val) => setTargetGroup(val)}
+                  className="w-full border border-mineshaft-500"
+                >
+                  <SelectItem value="">
+                    Select an option
+                  </SelectItem>
+                  {integrationAuthGroups.length > 0 ? (
+                    integrationAuthGroups.map((integrationAuthGroup) => (
+                      <SelectItem
+                        value={integrationAuthGroup.name}
+                        key={`target-group-${integrationAuthGroup.name}`}
+                      >
+                        {integrationAuthGroup.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" key="target-group-none" disabled>
+                      No groups found
+                    </SelectItem>
+                  )}
+                </Select>
+              </FormControl>
+              <Alert className="mb-5" hideTitle="true">
+                <AlertDescription>
+                  By default environment variables are synced to the global level, select a group above to sync at the Group level.
+                </AlertDescription>
+              </Alert>
               <FormControl label="Checkly Account">
                 <Select
                   value={targetApp}
@@ -242,7 +282,7 @@ export default function ChecklyCreateIntegrationPage() {
         <title>Set Up Checkly Integration</title>
         <link rel='icon' href='/infisical.ico' />
       </Head>
-      {isIntegrationAuthAppsLoading ? <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" /> : <div className="max-w-md h-max p-6 border border-mineshaft-600 rounded-md bg-mineshaft-800 text-mineshaft-200 flex flex-col text-center">
+      {isIntegrationAuthAppsLoading || isintegrationAuthGroupsLoading ? <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" /> : <div className="max-w-md h-max p-6 border border-mineshaft-600 rounded-md bg-mineshaft-800 text-mineshaft-200 flex flex-col text-center">
         <FontAwesomeIcon icon={faBugs} className="text-6xl my-2 inlineli"/>
         <p>
           Something went wrong. Please contact <a

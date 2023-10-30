@@ -53,6 +53,14 @@ router.get(
 );
 
 router.get(
+  "/:integrationAuthId/groups",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  integrationAuthController.getIntegrationAuthGroups
+);
+
+router.get(
   "/:integrationAuthId/vercel/branches",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]

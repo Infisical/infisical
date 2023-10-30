@@ -26,6 +26,11 @@ export type Environment = {
   environmentId: string;
 };
 
+export type Group = {
+  name: string;
+  groupId: string;
+};
+
 export type Container = {
   name: string;
   containerId: string;
