@@ -1,12 +1,16 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { client, getRootEncryptionKey } from "../../config";
+import { client, getEncryptionKey, getRootEncryptionKey } from "../../config";
 import { Webhook } from "../../models";
 import { getWebhookPayload, triggerWebhookRequest } from "../../services/WebhookService";
 import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
 import { EEAuditLogService } from "../../ee/services";
 import { EventType } from "../../ee/models";
-import { ALGORITHM_AES_256_GCM, ENCODING_SCHEME_BASE64 } from "../../variables";
+import {
+  ALGORITHM_AES_256_GCM,
+  ENCODING_SCHEME_BASE64,
+  ENCODING_SCHEME_UTF8
+} from "../../variables";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/webhooks";
 import {
@@ -15,6 +19,7 @@ import {
   getUserProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
+import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 
 export const createWebhook = async (req: Request, res: Response) => {
   const {
@@ -31,17 +36,31 @@ export const createWebhook = async (req: Request, res: Response) => {
     workspace: workspaceId,
     environment,
     secretPath,
-    url: webhookUrl,
-    algorithm: ALGORITHM_AES_256_GCM,
-    keyEncoding: ENCODING_SCHEME_BASE64
+    url: webhookUrl
   });
 
   if (webhookSecretKey) {
+    const encryptionKey = await getEncryptionKey();
     const rootEncryptionKey = await getRootEncryptionKey();
-    const { ciphertext, iv, tag } = client.encryptSymmetric(webhookSecretKey, rootEncryptionKey);
-    webhook.iv = iv;
-    webhook.tag = tag;
-    webhook.encryptedSecretKey = ciphertext;
+
+    if (rootEncryptionKey) {
+      const { ciphertext, iv, tag } = client.encryptSymmetric(webhookSecretKey, rootEncryptionKey);
+      webhook.iv = iv;
+      webhook.tag = tag;
+      webhook.encryptedSecretKey = ciphertext;
+      webhook.algorithm = ALGORITHM_AES_256_GCM;
+      webhook.keyEncoding = ENCODING_SCHEME_BASE64;
+    } else if (encryptionKey) {
+      const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
+        plaintext: webhookSecretKey,
+        key: encryptionKey
+      });
+      webhook.iv = iv;
+      webhook.tag = tag;
+      webhook.encryptedSecretKey = ciphertext;
+      webhook.algorithm = ALGORITHM_AES_256_GCM;
+      webhook.keyEncoding = ENCODING_SCHEME_UTF8;
+    }
   }
 
   await webhook.save();
