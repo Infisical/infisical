@@ -65,13 +65,11 @@ const WebhookSchema = new Schema<IWebhook>(
       // the encryption algorithm used
       type: String,
       enum: [ALGORITHM_AES_256_GCM],
-      required: true,
       select: false
     },
     keyEncoding: {
       type: String,
       enum: [ENCODING_SCHEME_UTF8, ENCODING_SCHEME_BASE64],
-      required: true,
       select: false
     }
   },
