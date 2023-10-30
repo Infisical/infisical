@@ -5,7 +5,7 @@ import { customAlphabet } from "nanoid";
 import { Client as PgClient } from "pg";
 import mysql from "mysql";
 
-import { client, getRootEncryptionKey } from "../../config";
+import { client, getEncryptionKey, getRootEncryptionKey } from "../../config";
 import { BotService, EventService, TelemetryService } from "../../services";
 import { SecretRotation } from "./models";
 import { rotationTemplates } from "./templates";
@@ -21,9 +21,12 @@ import {
   TProviderFunction,
   TProviderFunctionTypes
 } from "./types";
-import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
+import {
+  decryptSymmetric128BitHexKeyUTF8,
+  encryptSymmetric128BitHexKeyUTF8
+} from "../../utils/crypto";
 import { ISecret, Secret } from "../../models";
-import { SECRET_SHARED } from "../../variables";
+import { ENCODING_SCHEME_BASE64, ENCODING_SCHEME_UTF8, SECRET_SHARED } from "../../variables";
 import { EESecretService } from "../services";
 import { SecretVersion } from "../models";
 import { eventPushSecrets } from "../../events";
@@ -215,13 +218,26 @@ secretRotationQueue.process(async (job: Job) => {
     ) as ISecretRotationProviderTemplate;
 
     // decrypt user  provided inputs for secret rotation
+    const encryptionKey = await getEncryptionKey();
     const rootEncryptionKey = await getRootEncryptionKey();
-    const decryptedData = client.decryptSymmetric(
-      secretRotation.encryptedData,
-      rootEncryptionKey,
-      secretRotation.encryptedDataIV,
-      secretRotation.encryptedDataTag
-    );
+    let decryptedData = "";
+    if (rootEncryptionKey && secretRotation.keyEncoding === ENCODING_SCHEME_BASE64) {
+      // case: encoding scheme is base64
+      decryptedData = client.decryptSymmetric(
+        secretRotation.encryptedData,
+        rootEncryptionKey,
+        secretRotation.encryptedDataIV,
+        secretRotation.encryptedDataTag
+      );
+    } else if (encryptionKey && secretRotation.keyEncoding === ENCODING_SCHEME_UTF8) {
+      // case: encoding scheme is utf8
+      decryptedData = decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secretRotation.encryptedData,
+        iv: secretRotation.encryptedDataIV,
+        tag: secretRotation.encryptedDataTag,
+        key: encryptionKey
+      });
+    }
 
     const variables = JSON.parse(decryptedData) as ISecretRotationEncData;
 

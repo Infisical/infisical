@@ -1,10 +1,16 @@
 import { ISecretRotationEncData, TCreateSecretRotation, TGetProviderTemplates } from "./types";
 import { rotationTemplates } from "./templates";
 import { SecretRotation } from "./models";
-import { client, getRootEncryptionKey } from "../../config";
+import { client, getEncryptionKey, getRootEncryptionKey } from "../../config";
 import { BadRequestError } from "../../utils/errors";
 import Ajv from "ajv";
 import { removeSecretRotationQueue, startSecretRotationQueue } from "./queue";
+import {
+  ALGORITHM_AES_256_GCM,
+  ENCODING_SCHEME_BASE64,
+  ENCODING_SCHEME_UTF8
+} from "../../variables";
+import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 
 const ajv = new Ajv();
 
@@ -51,23 +57,39 @@ export const createSecretRotation = async ({
     creds: []
   };
 
-  const rootEncryptionKey = await getRootEncryptionKey();
-  const { ciphertext, iv, tag } = client.encryptSymmetric(
-    JSON.stringify(encData),
-    rootEncryptionKey
-  );
-
   const secretRotation = new SecretRotation({
     workspace: workspaceId,
     provider,
     environment,
     secretPath,
     interval,
-    outputs: Object.entries(outputs).map(([key, secret]) => ({ key, secret })),
-    encryptedData: ciphertext,
-    encryptedDataIV: iv,
-    encryptedDataTag: tag
+    outputs: Object.entries(outputs).map(([key, secret]) => ({ key, secret }))
   });
+
+  const encryptionKey = await getEncryptionKey();
+  const rootEncryptionKey = await getRootEncryptionKey();
+
+  if (rootEncryptionKey) {
+    const { ciphertext, iv, tag } = client.encryptSymmetric(
+      JSON.stringify(encData),
+      rootEncryptionKey
+    );
+    secretRotation.encryptedDataIV = iv;
+    secretRotation.encryptedDataTag = tag;
+    secretRotation.encryptedData = ciphertext;
+    secretRotation.algorithm = ALGORITHM_AES_256_GCM;
+    secretRotation.keyEncoding = ENCODING_SCHEME_BASE64;
+  } else if (encryptionKey) {
+    const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
+      plaintext: JSON.stringify(encData),
+      key: encryptionKey
+    });
+    secretRotation.encryptedDataIV = iv;
+    secretRotation.encryptedDataTag = tag;
+    secretRotation.encryptedData = ciphertext;
+    secretRotation.algorithm = ALGORITHM_AES_256_GCM;
+    secretRotation.keyEncoding = ENCODING_SCHEME_UTF8;
+  }
 
   await secretRotation.save();
   await startSecretRotationQueue(secretRotation._id.toString(), interval);
