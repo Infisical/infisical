@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { client, getRootEncryptionKey } from "../../config";
+import { client, getEncryptionKey, getRootEncryptionKey } from "../../config";
 import { Webhook } from "../../models";
 import { getWebhookPayload, triggerWebhookRequest } from "../../services/WebhookService";
 import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
@@ -37,8 +37,11 @@ export const createWebhook = async (req: Request, res: Response) => {
   });
 
   if (webhookSecretKey) {
-    const rootEncryptionKey = await getRootEncryptionKey();
-    const { ciphertext, iv, tag } = client.encryptSymmetric(webhookSecretKey, rootEncryptionKey);
+    let encryptionKey = await getRootEncryptionKey();
+    if (!encryptionKey) {
+      encryptionKey = await getEncryptionKey();
+    }
+    const { ciphertext, iv, tag } = client.encryptSymmetric(webhookSecretKey, encryptionKey);
     webhook.iv = iv;
     webhook.tag = tag;
     webhook.encryptedSecretKey = ciphertext;
