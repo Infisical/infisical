@@ -84,6 +84,16 @@ export default function ChecklyCreateIntegrationPage() {
     }
   }, [integrationAuthApps]);
 
+  const handleValueChange = (val) => {
+    const selectedGroup = integrationAuthGroups.find(group => group.name === val);
+      if (selectedGroup) {
+        setTargetGroupId(selectedGroup.groupId);
+      } else {
+        setTargetGroupId("");
+      }
+      setTargetGroup(val);
+  }
+
   const handleButtonClick = async () => {
     try {
       if (!integrationAuth?._id) return;
@@ -96,6 +106,8 @@ export default function ChecklyCreateIntegrationPage() {
         app: targetApp,
         appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
+        targetService: targetGroup,
+        targetServiceId: targetGroupId.toString(),
         secretPath,
         metadata: {
           secretSuffix
@@ -188,7 +200,7 @@ export default function ChecklyCreateIntegrationPage() {
               <FormControl label="Checkly Group">
                 <Select
                   value={targetGroup}
-                  onValueChange={(val) => setTargetGroup(val)}
+                  onValueChange={handleValueChange}
                   className="w-full border border-mineshaft-500"
                 >
                   <SelectItem value="">
