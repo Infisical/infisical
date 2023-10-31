@@ -103,7 +103,7 @@ export type TProviderFunction = THttpProviderFunction | TDbProviderFunction;
 export type TProviderTemplate = {
   inputs: {
     type: "object";
-    properties: Record<string, { type: string; [x: string]: unknown }>;
+    properties: Record<string, { type: string; [x: string]: unknown; desc?: string }>;
     required?: string[];
   };
   outputs: Record<string, unknown>;

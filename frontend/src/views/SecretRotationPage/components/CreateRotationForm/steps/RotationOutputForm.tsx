@@ -35,6 +35,7 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
 
   const environment = watch("environment", environments?.[0]?.slug);
   const secretPath = watch("secretPath");
+  const selectedSecrets = watch("secrets");
 
   const { data: userWsKey } = useGetUserWsKey(workspaceId);
   const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
@@ -114,11 +115,16 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
                 position="popper"
               >
                 {!isSecretsLoading &&
-                  secrets?.map(({ key, _id }) => (
-                    <SelectItem value={_id} key={_id}>
-                      {key}
-                    </SelectItem>
-                  ))}
+                  secrets
+                    ?.filter(
+                      ({ _id }) =>
+                        value === _id || !Object.values(selectedSecrets || {}).includes(_id)
+                    )
+                    ?.map(({ key, _id }) => (
+                      <SelectItem value={_id} key={_id}>
+                        {key}
+                      </SelectItem>
+                    ))}
                 {isSecretsLoading && (
                   <SelectItem value="Loading" isDisabled>
                     <Spinner size="xs" />

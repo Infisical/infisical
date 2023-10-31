@@ -1,4 +1,4 @@
-import { TProviderFunctionTypes, TDbProviderClients, TAssignOp } from "../types";
+import { TAssignOp, TDbProviderClients, TProviderFunctionTypes } from "../types";
 
 export const POSTGRES_TEMPLATE = {
   inputs: {
@@ -9,9 +9,17 @@ export const POSTGRES_TEMPLATE = {
       host: { type: "string" as const },
       database: { type: "string" as const },
       port: { type: "integer" as const, default: "5432" },
-      username1: { type: "string", default: "infisical-pg-user1" },
-      username2: { type: "string", default: "infisical-pg-user2" },
-      ca: { type: "string" }
+      username1: {
+        type: "string",
+        default: "infisical-pg-user1",
+        desc: "This user must be created in your database"
+      },
+      username2: {
+        type: "string",
+        default: "infisical-pg-user2",
+        desc: "This user must be created in your database"
+      },
+      ca: { type: "string", desc: "SSL certificate for db auth(string)" }
     },
     required: [
       "admin_username",

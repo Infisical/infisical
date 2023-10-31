@@ -1,11 +1,15 @@
-import { TProviderFunctionTypes, TAssignOp } from "../types";
+import { TAssignOp, TProviderFunctionTypes } from "../types";
 
 export const SENDGRID_TEMPLATE = {
   inputs: {
     type: "object" as const,
     properties: {
-      admin_api_key: { type: "string" as const },
-      scopes: { type: "array", items: { type: "string" as const } }
+      admin_api_key: { type: "string" as const, desc: "Sendgrid admin api key to create new keys" },
+      scopes: {
+        type: "array",
+        items: { type: "string" as const },
+        desc: "Scopes for created tokens by rotation(Array)"
+      }
     },
     required: ["admin_api_key", "scopes"],
     additionalProperties: false
