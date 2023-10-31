@@ -5,13 +5,13 @@ export const SENDGRID_TEMPLATE = {
     type: "object" as const,
     properties: {
       admin_api_key: { type: "string" as const, desc: "Sendgrid admin api key to create new keys" },
-      scopes: {
+      api_key_scopes: {
         type: "array",
         items: { type: "string" as const },
         desc: "Scopes for created tokens by rotation(Array)"
       }
     },
-    required: ["admin_api_key", "scopes"],
+    required: ["admin_api_key", "api_key_scopes"],
     additionalProperties: false
   },
   outputs: {
@@ -30,7 +30,7 @@ export const SENDGRID_TEMPLATE = {
       },
       body: {
         name: "infisical-${random | 16}",
-        scopes: { ref: "inputs.scopes" }
+        scopes: { ref: "inputs.api_key_scopes" }
       },
       setter: {
         "outputs.api_key": {
