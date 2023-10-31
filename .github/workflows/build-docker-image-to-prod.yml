@@ -39,7 +39,7 @@ jobs:
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           load: true
           context: backend
-          tags: infisical/backend:test
+          tags: infisical/infisical:test
       - name: ⏻ Spawn backend container and dependencies
         run: |
           docker compose -f .github/resources/docker-compose.be-test.yml up --wait --quiet-pull

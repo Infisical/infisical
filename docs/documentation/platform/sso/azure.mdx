@@ -63,12 +63,17 @@ description: "Configure Azure SAML for Infisical SSO"
 
 7. Get IdP values:
 
-Back in the **Set up Single Sign-On with SAML** screen, copy the **Login URL**, **Azure AD Identifier** and **SAML Certificate** to use when finishing configuring Azure SAML in Infisical.
+In the **Set up Single Sign-On with SAML** screen, copy the **Login URL** and **SAML Certificate** to use when finishing configuring Azure SAML in Infisical.
 
-Back in Infisical, set **Login URL** and **Azure AD Identifier** from above. Once you've done that, press **Update** to complete the required configuration.
+![Azure SAML identity provider values 1](../../../images/sso/azure/idp-values.png)
 
-![Azure SAML identity provider values](../../../images/sso/azure/idp-values.png)
-![Azure SAML paste identity provider values](../../../images/sso/azure/idp-values-2.png)
+In the **Properties** screen, copy the **Application ID** to use when finishing configuring Azure SAML in Infisical.
+
+![Azure SAML identity provider values 2](../../../images/sso/azure/idp-values-2.png)
+
+Back in Infisical, set **Login URL**, **Azure Application ID**, and **SAML Certificate** from above. Once you've done that, press **Update** to complete the required configuration.
+
+![Azure SAML paste identity provider values](../../../images/sso/azure/idp-values-3.png)
 
 <Note>
 When pasting the certificate into Infisical, you'll want to retain `-----BEGIN
@@ -89,3 +94,13 @@ Back in Azure, navigate to the **Users and groups** tab and select **+ Add user/
 Enabling SAML SSO enforces all members in your organization to only be able to log into Infisical via Azure.
 
 ![Azure SAML assignment](../../../images/sso/azure/enable-saml.png)
+
+<Note>
+   If you're configuring SAML SSO on a self-hosted instance of Infisical, make sure to
+   set the `JWT_PROVIDER_AUTH_SECRET` and `SITE_URL` environment variable for it to work:
+   
+   - `JWT_PROVIDER_AUTH_SECRET`: This is secret key used for signing and verifying JWT. This could be a randomly-generated 256-bit hex string.
+   - `SITE_URL`: The URL of your self-hosted instance of Infisical - should be an absolute URL including the protocol (e.g. https://app.infisical.com)
+</Note>
+
+

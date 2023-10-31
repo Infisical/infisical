@@ -44,6 +44,7 @@ export interface GetSecretParams {
 export interface UpdateSecretParams {
   secretName: string;
   newSecretName?: string;
+  secretId?: string;
   secretKeyCiphertext?: string;
   secretKeyIV?: string;
   secretKeyTag?: string;
@@ -64,6 +65,7 @@ export interface UpdateSecretParams {
 
 export interface DeleteSecretParams {
   secretName: string;
+  secretId?: string;
   workspaceId: Types.ObjectId;
   environment: string;
   type: "shared" | "personal";

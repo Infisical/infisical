@@ -2,6 +2,8 @@ export {
     useAddOrgPmtMethod,
     useAddOrgTaxId,
     useCreateCustomerPortalSession,
+    useCreateOrg,
+    useDeleteOrgById,
     useDeleteOrgPmtMethod,
     useDeleteOrgTaxId,
     useGetOrganizations, 

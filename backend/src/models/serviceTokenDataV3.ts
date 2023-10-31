@@ -54,6 +54,7 @@ const serviceTokenDataV3Schema = new Schema(
         },
         isActive: {
             type: Boolean,
+            default: true,
             required: true
         },
         lastUsed: {

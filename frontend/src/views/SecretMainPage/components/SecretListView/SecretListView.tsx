@@ -124,13 +124,15 @@ export const SecretListView = ({
       comment,
       tags,
       skipMultilineEncoding,
-      newKey
+      newKey,
+      secretId
     }: Partial<{
       value: string;
       comment: string;
       tags: string[];
       skipMultilineEncoding: boolean;
       newKey: string;
+      secretId: string;
     }> = {}
   ) => {
     if (operation === "delete") {
@@ -139,7 +141,8 @@ export const SecretListView = ({
         workspaceId,
         secretPath,
         secretName: key,
-        type
+        type,
+        secretId
       });
       return;
     }
@@ -150,6 +153,7 @@ export const SecretListView = ({
         workspaceId,
         secretPath,
         secretName: key,
+        secretId,
         secretValue: value || "",
         type,
         latestFileKey: decryptFileKey,
@@ -198,11 +202,14 @@ export const SecretListView = ({
       try {
         // personal secret change
         if (overrideAction === "deleted") {
-          await handleSecretOperation("delete", "personal", oldKey);
+          await handleSecretOperation("delete", "personal", oldKey, {
+            secretId: orgSecret.idOverride
+          });
         } else if (overrideAction && idOverride) {
           await handleSecretOperation("update", "personal", oldKey, {
             value: valueOverride,
             newKey: hasKeyChanged ? key : undefined,
+            secretId: orgSecret.idOverride,
             skipMultilineEncoding: modSecret.skipMultilineEncoding
           });
         } else if (overrideAction) {
@@ -215,6 +222,7 @@ export const SecretListView = ({
             value,
             tags: tagIds,
             comment,
+            secretId: orgSecret._id,
             newKey: hasKeyChanged ? key : undefined,
             skipMultilineEncoding: modSecret.skipMultilineEncoding
           });
@@ -249,9 +257,9 @@ export const SecretListView = ({
   );
 
   const handleSecretDelete = useCallback(async () => {
-    const { key } = popUp.deleteSecret?.data as DecryptedSecret;
+    const { key, _id: secretId } = popUp.deleteSecret?.data as DecryptedSecret;
     try {
-      await handleSecretOperation("delete", "shared", key);
+      await handleSecretOperation("delete", "shared", key, { secretId });
       queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );
@@ -305,7 +313,6 @@ export const SecretListView = ({
               >
                 {namespace}
               </div>
-
               {filteredSecrets.map((secret) => (
                 <SecretItem
                   environment={environment}
@@ -332,6 +339,7 @@ export const SecretListView = ({
         title="Do you want to delete this secret?"
         onChange={(isOpen) => handlePopUpToggle("deleteSecret", isOpen)}
         onDeleteApproved={handleSecretDelete}
+        buttonText="Delete Secret"
       />
       <SecretDetailSidebar
         environment={environment}

@@ -23,40 +23,26 @@ helm repo update
 
 ## Add Helm values 
 
-Create a values.yaml file to configure various installation settings, such as the docker image tags and environment variables for both the frontend and backend. To explore all configurable properties for your values file, [visit this page](https://github.com/Infisical/infisical/tree/main/helm-charts/infisical).
+Create a values.yaml file to configure various installation settings, such as the docker image tags and environment variables. To explore all configurable properties for your values file, [visit this page](https://github.com/Infisical/infisical/tree/main/helm-charts/infisical).
 
 #### Set image tags
 
-By default, the application will use the latest tag to retrieve the required Docker images, which may be appropriate for most cases. 
-However, it's important to specify a particular version of Infisical during installation to prevent any significant updates from disrupting your deployment.
-View [properties for frontend and backend](https://github.com/Infisical/infisical/tree/main/helm-charts/infisical#parameters).
-
+By default, the application will use the `latest` docker image tag. This is okay for test environments; however, for production deployments it is important to pin your deployment to a particular docker image tag to prevent receiving unintended changes.
 <Tip>
-  To find the latest version number of Infisical, follow the links below 
-  - [frontend Docker image](https://hub.docker.com/r/infisical/frontend/tags) 
-  - [backend Docker image](https://hub.docker.com/r/infisical/backend/tags)
+  To find the latest version number of Infisical, click [here](https://hub.docker.com/r/infisical/infisical/tags)
 </Tip>
 
 ```yaml simple-values-example.yaml 
-frontend:
-  name: frontend
-  replicaCount: 2
-  image:
-    repository: infisical/frontend
-    tag: "v0.34.2" # <--- frontend version 
-    pullPolicy: Always
-
 backend:
   replicaCount: 2
   image:
-    repository: infisical/backend
-    tag: "v0.34.2" # <--- backend version 
+    tag: "v0.39.5" # <--- update to the newest version found here https://hub.docker.com/r/infisical/infisical/tags
     pullPolicy: Always
 ```
 
 #### Configure environment variables
 
-You can configure environment variables for the frontend and backend in your Helm values file under the property `frontendEnvironmentVariables` and `backendEnvironmentVariables` respectively. View configurable [environment variables](../configuration/envars).
+You can configure environment variables for your instance of Infisical though the Helm values file under the property `backendEnvironmentVariables`. View configurable [environment variables](../configuration/envars).
 
 Infisical requires the following backend environment variables to be defined: _`ENCRYPTION_KEY`_, _`JWT_SIGNUP_SECRET`_, _`JWT_REFRESH_SECRET`_, _`JWT_AUTH_SECRET`_, _`JWT_MFA_SECRET`_ and _`JWT_SERVICE_SECRET`_. 
 
@@ -87,38 +73,29 @@ Infisical uses Nginx to route external traffic. You can install Nginx along with
 ...
 ingress:
   nginx:
-    enabled: false #<-- if you would like to install nginx along with Infisical
+    enabled: true #<-- if you would like to install nginx along with Infisical
 ```
 
 #### Database 
-Infisical uses a document database as its persistence layer. With this Helm chart, you spin up a MongoDB instance power by Bitnami along side other Infisical services in your cluster. 
+Infisical uses a MongoDB as its persistence layer. With this Helm chart, a MongoDB instance is automatically spun up for use with Infisical. 
 When persistence is enabled, the data will be stored as Kubernetes Persistence Volume. View all [properties for mongodb](https://github.com/Infisical/infisical/tree/main/helm-charts/infisical).
 
 ```yaml simple-values-example.yaml 
 mongodb:
-  enabled: false
+  enabled: true
   persistence:
     enabled: false
 ```
 
-To increase data redundancy, we recommend that you use a managed document database service such as AWS Document DB, MongoDB or similar services instead. 
+To achieve high availability and data redundancy, we recommend that you use a managed document database service such as AWS Document DB, MongoDB or similar services instead of the in cluster database. 
 Managed database connection string can be set in the `backendEnvironmentVariables`.
 
 #### Example helm values
 ```yaml simple-values-example.yaml 
-frontend:
-  name: frontend
-  replicaCount: 2
-  image:
-    repository: infisical/frontend
-    tag: "v0.34.2" # <--- frontend version 
-    pullPolicy: Always
-
 backend:
   replicaCount: 2
   image:
-    repository: infisical/backend
-    tag: "v0.34.2" # <--- backend version 
+    tag: "v0.39.5"
     pullPolicy: Always
 
 backendEnvironmentVariables:
@@ -126,7 +103,7 @@ backendEnvironmentVariables:
 
 ingress:
   nginx:
-    enabled: true #<-- if you would like to install nginx along with Infisical
+    enabled: true
 
 ```
 
@@ -136,22 +113,6 @@ ingress:
     nginx:
       enabled: true
 
-  frontend:
-    enabled: true
-    name: frontend
-    podAnnotations: {}
-    deploymentAnnotations: {}
-    replicaCount: 4
-    image:
-      repository: infisical/frontend
-      tag: "v0.34.2" # <--- frontend version 
-      pullPolicy: IfNotPresent
-    kubeSecretRef: null
-    service:
-      annotations: {}
-      type: ClusterIP
-      nodePort: ""
-
   backend:
     enabled: true
     name: backend
@@ -159,8 +120,7 @@ ingress:
     deploymentAnnotations: {}
     replicaCount: 4
     image:
-      repository: infisical/backend
-      tag: "v0.34.2" # <--- backend version 
+      tag: "v0.39.5"
       pullPolicy: IfNotPresent
     kubeSecretRef: null
     service:
@@ -176,26 +136,9 @@ ingress:
 
   ## Mongo DB persistence 
   mongodb:
-    enabled: false
-    persistence:
-      enabled: false
-
-  ingress:
     enabled: true
-    annotations:
-      cert-manager.io/cluster-issuer: "letsencrypt-prod" # <-- if you are setting up HTTPS
-    hostName: app.infisical.com ## <- Replace with your own domain
-    frontend:
-      path: /
-      pathType: Prefix
-    backend:
-      path: /api
-      pathType: Prefix
-    tls: # <-- if you are setting up HTTPS
-      - secretName: echo-tls
-        hosts:
-          - app.infisical.com
-
+    persistence:
+      enabled: true
   ```
 </Accordion>
 

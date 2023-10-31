@@ -54,9 +54,7 @@ export const SecretTagsSection = (): JSX.Element => {
               colorSchema="secondary"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => {
-                console.log("x");
                 handlePopUpOpen("CreateSecretTag");
-                console.log("x2");
               }}
               isDisabled={!isAllowed}
             >

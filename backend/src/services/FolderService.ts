@@ -5,7 +5,7 @@ import path from "path";
 
 type TAppendFolderDTO = {
   folderName: string;
-  parentFolderId?: string;
+  directory: string;
 };
 
 type TRenameFolderDTO = {
@@ -50,9 +50,8 @@ export const folderBfsTraversal = async (
 // bfs and then append to the folder
 const appendChild = (folders: TFolderSchema, folderName: string) => {
   const folder = folders.children.find(({ name }) => name === folderName);
-  if (folder) {
-    throw new Error("Folder already exists");
-  }
+  if (folder) return { folder, hasCreated: false };
+
   const id = generateFolderId();
   folders.version += 1;
   folders.children.push({
@@ -61,24 +60,32 @@ const appendChild = (folders: TFolderSchema, folderName: string) => {
     children: [],
     version: 1
   });
-  return { id, name: folderName };
+  // last element that is the new one
+  return { folder: folders.children[folders.children.length - 1], hasCreated: true };
 };
 
 // root of append child wrapper
 export const appendFolder = (
   folders: TFolderSchema,
-  { folderName, parentFolderId }: TAppendFolderDTO
-) => {
-  const isRoot = !parentFolderId;
+  { folderName, directory }: TAppendFolderDTO
+): { parent: TFolderSchema; child: TFolderSchema; hasCreated?: boolean } => {
+  if (directory === "/") {
+    const newFolder = appendChild(folders, folderName);
+    return { parent: folders, child: newFolder.folder, hasCreated: newFolder.hasCreated };
+  }
 
-  if (isRoot) {
-    return appendChild(folders, folderName);
+  const segments = directory.split("/").filter(Boolean);
+  const segment = segments.shift();
+  if (segment) {
+    const nestedFolders = appendChild(folders, segment);
+    return appendFolder(nestedFolders.folder, {
+      folderName,
+      directory: path.join("/", ...segments)
+    });
   }
-  const folder = searchByFolderId(folders, parentFolderId);
-  if (!folder) {
-    throw new Error("Parent Folder not found");
-  }
-  return appendChild(folder, folderName);
+
+  const newFolder = appendChild(folders, folderName);
+  return { parent: folders, child: newFolder.folder, hasCreated: newFolder.hasCreated };
 };
 
 export const renameFolder = (

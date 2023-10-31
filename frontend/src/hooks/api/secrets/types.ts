@@ -109,6 +109,7 @@ export type TUpdateSecretsV3DTO = {
   skipMultilineEncoding?: boolean;
   newSecretName?: string;
   secretName: string;
+  secretId?: string;
   secretValue: string;
   secretComment?: string;
   tags?: string[];
@@ -120,6 +121,7 @@ export type TDeleteSecretsV3DTO = {
   type: "shared" | "personal";
   secretPath: string;
   secretName: string;
+  secretId?: string;
 };
 
 export type TCreateSecretBatchDTO = {

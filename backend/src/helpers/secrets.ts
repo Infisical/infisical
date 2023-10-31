@@ -57,10 +57,10 @@ import { getAnImportedSecret } from "../services/SecretImportService";
 
 /**
  * Validate scope for service token v3
- * @param authPayload 
- * @param environment 
- * @param secretPath 
- * @returns 
+ * @param authPayload
+ * @param environment
+ * @param secretPath
+ * @returns
  */
 export const isValidScopeV3 = ({
   authPayload,
@@ -68,37 +68,40 @@ export const isValidScopeV3 = ({
   secretPath,
   requiredPermissions
 }: {
-  authPayload: IServiceTokenDataV3,
-  environment: string,
-  secretPath: string,
-  requiredPermissions: Permission[]
+  authPayload: IServiceTokenDataV3;
+  environment: string;
+  secretPath: string;
+  requiredPermissions: Permission[];
 }) => {
   const { scopes } = authPayload;
-  
+
   const validScope = scopes.find(
     (scope) =>
       picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
       scope.environment === environment
   );
 
-  if (validScope && !requiredPermissions.every(permission => validScope.permissions.includes(permission))) {
+  if (
+    validScope &&
+    !requiredPermissions.every((permission) => validScope.permissions.includes(permission))
+  ) {
     return false;
   }
-  
+
   return Boolean(validScope);
-}
+};
 
 /**
  * Validate scope for service token v2
- * @param authPayload 
- * @param environment 
- * @param secretPath 
- * @returns 
+ * @param authPayload
+ * @param environment
+ * @param secretPath
+ * @returns
  */
 export const isValidScope = (
   authPayload: IServiceTokenData,
   environment: string,
-  secretPath: string,
+  secretPath: string
 ) => {
   const { scopes: tkScopes } = authPayload;
   const validScope = tkScopes.find(
@@ -787,6 +790,7 @@ export const getSecretHelper = async ({
 export const updateSecretHelper = async ({
   secretName,
   workspaceId,
+  secretId,
   environment,
   type,
   authData,
@@ -809,10 +813,19 @@ export const updateSecretHelper = async ({
     workspaceId: new Types.ObjectId(workspaceId)
   });
 
-  const oldSecretBlindIndex = await generateSecretBlindIndexWithSaltHelper({
+  let oldSecretBlindIndex = await generateSecretBlindIndexWithSaltHelper({
     secretName,
     salt
   });
+
+  if (secretId) {
+    const secret = await Secret.findOne({
+      workspace: workspaceId,
+      environment,
+      _id: secretId
+    }).select("secretBlindIndex");
+    if (secret && secret.secretBlindIndex) oldSecretBlindIndex = secret.secretBlindIndex;
+  }
 
   let secret: ISecret | null = null;
   const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
@@ -888,6 +901,9 @@ export const updateSecretHelper = async ({
         skipMultilineEncoding,
         secretBlindIndex: newSecretNameBlindIndex,
         $inc: { version: 1 }
+      },
+      {
+        new: true
       }
     );
   }
@@ -1000,12 +1016,22 @@ export const deleteSecretHelper = async ({
   environment,
   type,
   authData,
-  secretPath = "/"
+  secretPath = "/",
+  // used for update corner case and blindIndex goes wrong way
+  secretId
 }: DeleteSecretParams) => {
-  const secretBlindIndex = await generateSecretBlindIndexHelper({
+  let secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId)
   });
+  if (secretId) {
+    const secret = await Secret.findOne({
+      workspace: workspaceId,
+      environment,
+      _id: secretId
+    }).select("secretBlindIndex");
+    if (secret && secret.secretBlindIndex) secretBlindIndex = secret.secretBlindIndex;
+  }
 
   const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
 
@@ -1734,6 +1760,22 @@ export const deleteSecretBatchHelper = async ({
   await EESecretService.markDeletedSecretVersions({
     secretIds: deletedSecrets.map((secret) => secret._id)
   });
+
+  const action = await EELogService.createAction({
+    name: ACTION_DELETE_SECRETS,
+    ...getAuthDataPayloadIdObj(authData),
+    workspaceId,
+    secretIds: deletedSecrets.map((secret) => secret._id)
+  });
+
+  action &&
+    (await EELogService.createLog({
+      ...getAuthDataPayloadIdObj(authData),
+      workspaceId,
+      actions: [action],
+      channel: authData.userAgentType,
+      ipAddress: authData.ipAddress
+    }));
 
   await EEAuditLogService.createAuditLog(
     authData,

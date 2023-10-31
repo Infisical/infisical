@@ -24,9 +24,10 @@ export * from "./user";
 export * from "./userAction";
 export * from "./workspace";
 export * from "./serviceTokenData"; // TODO: deprecate
-export * from "./apiKeyData";
+export * from "./serviceTokenDataV3";
+export * from "./serviceTokenDataV3Key";
+export * from "./apiKeyData"; // TODO: deprecate
+export * from "./apiKeyDataV2";
 export * from "./loginSRPDetail";
 export * from "./tokenVersion";
 export * from "./webhooks";
-export * from "./serviceTokenDataV3";
-export * from "./serviceTokenDataV3Key";

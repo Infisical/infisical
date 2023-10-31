@@ -28,10 +28,25 @@ Obtain the **Application ID** and **Secret** for your GitLab application.
 
 ![sso gitlab config](/images/sso/gitlab/credentials.png) 
 
-Back in your Infisical instance, add 2-3 new environment variables for the credentials of your GitLab application:
+Back in your Infisical instance, make sure to set the following environment variables:
 
 - `CLIENT_ID_GITLAB_LOGIN`: The **Client ID** of your GitLab application.
 - `CLIENT_SECRET_GITLAB_LOGIN`: The **Secret** of your GitLab application.
 - (optional) `URL_GITLAB_LOGIN`: The URL of your self-hosted instance of GitLab where the OAuth application is registered. If no URL is passed in, this will default to `https://gitlab.com`.
+- `JWT_PROVIDER_AUTH_SECRET`: A secret key used for signing and verifying JWT. This could be a randomly-generated 256-bit hex string.
+- `SITE_URL`: The URL of your self-hosted instance of Infisical - should be an absolute URL including the protocol (e.g. https://app.infisical.com)
    
 Once added, restart your Infisical instance and log in with GitLab.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Why is GitLab SSO not working?">
+    It is likely that you have misconfigured your self-hosted instance of Infisical. You should:
+
+    - Check that you have set the `CLIENT_ID_GITLAB_LOGIN`, `CLIENT_SECRET_GITLAB_LOGIN`, 
+    `JWT_PROVIDER_AUTH_SECRET`, and `SITE_URL` environment variables.
+    - Check that the **Redirect URI** specified in GitLab matches the `SITE_URL` environment variable.
+    For example, if the former is `https://app.infisical.com/api/v1/sso/gitlab` then the latter should be `https://app.infisical.com`.
+  </Accordion>
+</AccordionGroup>

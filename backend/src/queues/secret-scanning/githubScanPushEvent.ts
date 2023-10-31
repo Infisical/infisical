@@ -3,7 +3,7 @@ import { ProbotOctokit } from "probot"
 import { Commit } from "@octokit/webhooks-types";
 import TelemetryService from "../../services/TelemetryService";
 import { sendMail } from "../../helpers";
-import GitRisks from "../../ee/models/gitRisks";
+import { GitRisks } from "../../ee/models";
 import { MembershipOrg, User } from "../../models";
 import { ADMIN } from "../../variables";
 import { convertKeysToLowercase, scanContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";

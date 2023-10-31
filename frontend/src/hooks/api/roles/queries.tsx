@@ -63,10 +63,12 @@ export const useGetRoles = ({ orgId, workspaceId }: TGetRolesDTO) =>
   });
 
 const getUserOrgPermissions = async ({ orgId }: TGetUserOrgPermissionsDTO) => {
+  if (orgId === "") return [];
+
   const { data } = await apiRequest.get<{
     data: { permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[] };
   }>(`/api/v1/roles/organization/${orgId}/permissions`, {});
-
+  
   return data.data.permissions;
 };
 
@@ -74,7 +76,7 @@ export const useGetUserOrgPermissions = ({ orgId }: TGetUserOrgPermissionsDTO) =
   useQuery({
     queryKey: roleQueryKeys.getUserOrgPermissions({ orgId }),
     queryFn: () => getUserOrgPermissions({ orgId }),
-    enabled: Boolean(orgId),
+    // enabled: Boolean(orgId),
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(data);
       const ability = createMongoAbility<OrgPermissionSet>(rule, { conditionsMatcher });

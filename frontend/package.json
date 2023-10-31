@@ -101,7 +101,7 @@
     "uuidv4": "^6.2.13",
     "yaml": "^2.2.2",
     "yup": "^0.32.11",
-    "zod": "^3.22.0",
+    "zod": "^3.22.3",
     "zustand": "^4.4.1"
   },
   "devDependencies": {
@@ -124,6 +124,7 @@
     "@typescript-eslint/eslint-plugin": "^5.48.1",
     "@typescript-eslint/parser": "^5.45.0",
     "autoprefixer": "^10.4.7",
+    "cypress": "^13.3.2",
     "eslint": "^8.32.0",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-config-airbnb-typescript": "^17.0.0",

@@ -23,8 +23,8 @@ type Props = {
   expandableColWidth: number;
   getSecretByKey: (slug: string, key: string) => DecryptedSecret | undefined;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretUpdate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretDelete: (env: string, key: string) => Promise<void>;
+  onSecretUpdate: (env: string, key: string, value: string, secretId?: string) => Promise<void>;
+  onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
 };
 
 export const SecretOverviewTableRow = ({
@@ -149,6 +149,7 @@ export const SecretOverviewTableRow = ({
                               isVisible={isSecretVisible}
                               secretName={secretKey}
                               defaultValue={secret?.value}
+                              secretId={secret?._id}
                               isCreatable={isCreatable}
                               onSecretDelete={onSecretDelete}
                               onSecretCreate={onSecretCreate}

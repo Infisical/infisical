@@ -476,7 +476,7 @@ export const getSecrets = async (req: Request, res: Response) => {
 
   if (folderId && folderId !== "root") {
     const folder = await Folder.findOne({ workspace: workspaceId, environment });
-    if (!folder) throw BadRequestError({ message: "Folder not found" });
+    if (!folder) return res.send({ secrets: [] });
 
     secretPath = getFolderWithPathFromId(folder.nodes, folderId).folderPath;
   }
@@ -673,6 +673,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
       secretValueCiphertext,
       secretValueTag,
       secretValueIV,
+      secretId,
       type,
       environment,
       secretPath,
@@ -741,6 +742,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
     type,
+    secretId,
     authData: req.authData,
     newSecretName,
     secretValueCiphertext,
@@ -777,7 +779,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
  */
 export const deleteSecretByName = async (req: Request, res: Response) => {
   const {
-    body: { type, environment, secretPath, workspaceId },
+    body: { type, environment, secretPath, workspaceId, secretId },
     params: { secretName }
   } = await validateRequest(reqValidator.DeleteSecretByNameV3, req);
 
@@ -813,6 +815,7 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
 
   const { secret } = await SecretService.deleteSecret({
     secretName,
+    secretId,
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
     type,
@@ -958,6 +961,14 @@ export const deleteSecretByNameBatch = async (req: Request, res: Response) => {
     workspaceId: new Types.ObjectId(workspaceId),
     secrets,
     authData: req.authData
+  });
+
+  await EventService.handleEvent({
+    event: eventPushSecrets({
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      secretPath
+    })
   });
 
   return res.status(200).send({

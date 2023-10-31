@@ -33,7 +33,7 @@ reports
 junit.xml
 
 # next.js
-/.next/
+.next/
 /out/
 
 # production
@@ -60,3 +60,5 @@ yarn-error.log*
 
 # Editor specific
 .vscode/*
+
+frontend-build

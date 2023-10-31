@@ -2,7 +2,7 @@ import Queue, { Job } from "bull";
 import { ProbotOctokit } from "probot"
 import TelemetryService from "../../services/TelemetryService";
 import { sendMail } from "../../helpers";
-import GitRisks from "../../ee/models/gitRisks";
+import { GitRisks } from "../../ee/models";
 import { MembershipOrg, User } from "../../models";
 import { ADMIN } from "../../variables";
 import { convertKeysToLowercase, scanFullRepoContentAndGetFindings } from "../../ee/services/GithubSecretScanning/helper";

@@ -12,13 +12,14 @@ import { useToggle } from "@app/hooks";
 type Props = {
   defaultValue?: string | null;
   secretName: string;
+  secretId?: string;
   isCreatable?: boolean;
   isVisible?: boolean;
   environment: string;
   secretPath: string;
   onSecretCreate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretUpdate: (env: string, key: string, value: string) => Promise<void>;
-  onSecretDelete: (env: string, key: string) => Promise<void>;
+  onSecretUpdate: (env: string, key: string, value: string, secretId?: string) => Promise<void>;
+  onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
 };
 
 export const SecretEditRow = ({
@@ -30,7 +31,8 @@ export const SecretEditRow = ({
   onSecretDelete,
   environment,
   secretPath,
-  isVisible
+  isVisible,
+  secretId
 }: Props) => {
   const {
     handleSubmit,
@@ -40,7 +42,7 @@ export const SecretEditRow = ({
     formState: { isDirty, isSubmitting }
   } = useForm({
     values: {
-      value: defaultValue
+      value: defaultValue || null
     }
   });
   const [isDeleting, setIsDeleting] = useToggle();
@@ -68,7 +70,7 @@ export const SecretEditRow = ({
       if (isCreatable) {
         await onSecretCreate(environment, secretName, value);
       } else {
-        await onSecretUpdate(environment, secretName, value);
+        await onSecretUpdate(environment, secretName, value, secretId);
       }
     }
     reset({ value });
@@ -77,8 +79,8 @@ export const SecretEditRow = ({
   const handleDeleteSecret = async () => {
     setIsDeleting.on();
     try {
-      await onSecretDelete(environment, secretName);
-      reset({ value: undefined });
+      await onSecretDelete(environment, secretName, secretId);
+      reset({ value: null });
     } finally {
       setIsDeleting.off();
     }

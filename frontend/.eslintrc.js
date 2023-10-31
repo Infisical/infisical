@@ -8,7 +8,7 @@ module.exports = {
   env: {
     browser: true,
     es2021: true,
-    "es6": true
+    es6: true
   },
   extends: [
     "airbnb",
@@ -96,7 +96,7 @@ module.exports = {
       }
     ]
   },
-  ignorePatterns: ["next.config.js"],
+  ignorePatterns: ["next.config.js", "cypress/**/*.js", "cypress.config.js"],
   settings: {
     "import/resolver": {
       typescript: {

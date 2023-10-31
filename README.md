@@ -33,7 +33,7 @@
     <img src="https://img.shields.io/github/commit-activity/m/infisical/infisical" alt="git commit activity" />
   </a>
   <a href="https://cloudsmith.io/~infisical/repos/">
-    <img src="https://img.shields.io/badge/Downloads-1.38M-orange" alt="Cloudsmith downloads" />
+    <img src="https://img.shields.io/badge/Downloads-2.58M-orange" alt="Cloudsmith downloads" />
   </a>
   <a href="https://infisical.com/slack">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
@@ -133,7 +133,6 @@ Whether it's big or small, we love contributions. Check out our guide to see how
 
 Not sure where to get started? You can:
 
-- [Book a free, non-pressure pairing session / code walkthrough with one of our teammates](https://cal.com/tony-infisical/30-min-meeting-contributing)!
 - Join our <a href="https://infisical.com/slack">Slack</a>, and ask us any questions there.
 - Join our [community calls](https://us06web.zoom.us/j/82623506356) every Wednesday at 11am EST to ask any questions, provide feedback, hangout and more.
 

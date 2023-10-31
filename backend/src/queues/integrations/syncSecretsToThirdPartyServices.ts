@@ -40,9 +40,9 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
         const prefix = (integration.metadata?.secretPrefix || "");
         const suffix = (integration.metadata?.secretSuffix || "");
         const newKey = prefix + key + suffix;
-        
+
         suffixedSecrets[newKey] = secrets[key];
-      }      
+      }
     }
 
     const integrationAuth = await IntegrationAuth.findById(integration.integrationAuth);
@@ -60,13 +60,14 @@ syncSecretsToThirdPartyServices.process(async (job: Job) => {
       integrationAuth,
       secrets: Object.keys(suffixedSecrets).length !== 0 ? suffixedSecrets : secrets,
       accessId: access.accessId === undefined ? null : access.accessId,
-      accessToken: access.accessToken
+      accessToken: access.accessToken,
+      appendices: { prefix: integration.metadata?.secretPrefix || "", suffix: integration.metadata?.secretSuffix || "" }
     });
   }
 })
 
 syncSecretsToThirdPartyServices.on("error", (error) => {
-  console.log("QUEUE ERROR:", error) // eslint-disable-line
+  // console.log("QUEUE ERROR:", error) // eslint-disable-line
 })
 
 export const syncSecretsToActiveIntegrationsQueue = (jobDetails: TSyncSecretsToThirdPartyServices) => {

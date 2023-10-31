@@ -32,6 +32,8 @@ import {
   INTEGRATION_GITLAB,
   INTEGRATION_GITLAB_API_URL,
   INTEGRATION_HASHICORP_VAULT,
+  INTEGRATION_HASURA_CLOUD,
+  INTEGRATION_HASURA_CLOUD_API_URL,
   INTEGRATION_HEROKU,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_LARAVELFORGE,
@@ -63,6 +65,10 @@ import { Octokit } from "@octokit/rest";
 import _ from "lodash";
 import sodium from "libsodium-wrappers";
 import { standardRequest } from "../config/request";
+import {
+  ZGetTenantEnv,
+  ZUpdateTenantEnv
+} from "../validation/hasuraCloudIntegration";
 
 const getSecretKeyValuePair = (
   secrets: Record<string, { value: string | null; comment?: string } | null>
@@ -87,13 +93,15 @@ const syncSecrets = async ({
   integrationAuth,
   secrets,
   accessId,
-  accessToken
+  accessToken,
+  appendices
 }: {
   integration: IIntegration;
   integrationAuth: IIntegrationAuth;
   secrets: Record<string, { value: string; comment?: string }>;
   accessId: string | null;
   accessToken: string;
+  appendices?: { prefix: string; suffix: string };
 }) => {
   switch (integration.integration) {
     case INTEGRATION_GCP_SECRET_MANAGER:
@@ -153,7 +161,8 @@ const syncSecrets = async ({
       await syncSecretsGitHub({
         integration,
         secrets,
-        accessToken
+        accessToken,
+        appendices
       });
       break;
     case INTEGRATION_GITLAB:
@@ -218,7 +227,8 @@ const syncSecrets = async ({
       await syncSecretsCheckly({
         integration,
         secrets,
-        accessToken
+        accessToken,
+        appendices
       });
       break;
     case INTEGRATION_QOVERY:
@@ -297,6 +307,14 @@ const syncSecrets = async ({
       break;
     case INTEGRATION_WINDMILL:
       await syncSecretsWindmill({
+        integration,
+        secrets,
+        accessToken
+      });
+      break;
+
+    case INTEGRATION_HASURA_CLOUD:
+      await syncSecretsHasuraCloud({
         integration,
         secrets,
         accessToken
@@ -959,8 +977,9 @@ const syncSecretsVercel = async ({
       : {}),
     ...(integration?.path
       ? {
-        gitBranch: integration?.path
-      } : {})
+          gitBranch: integration?.path
+        }
+      : {})
   };
 
   const vercelSecrets: VercelSecret[] = (
@@ -988,7 +1007,7 @@ const syncSecretsVercel = async ({
 
     return true;
   });
-  
+
   const res: { [key: string]: VercelSecret } = {};
 
   for await (const vercelSecret of vercelSecrets) {
@@ -1342,11 +1361,13 @@ const syncSecretsNetlify = async ({
 const syncSecretsGitHub = async ({
   integration,
   secrets,
-  accessToken
+  accessToken,
+  appendices
 }: {
   integration: IIntegration;
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
+  appendices?: { prefix: string; suffix: string };
 }) => {
   interface GitHubRepoKey {
     key_id: string;
@@ -1376,7 +1397,7 @@ const syncSecretsGitHub = async ({
   ).data;
 
   // Get local copy of decrypted secrets. We cannot decrypt them as we dont have access to GH private key
-  const encryptedSecrets: GitHubSecretRes = (
+  let encryptedSecrets: GitHubSecretRes = (
     await octokit.request("GET /repos/{owner}/{repo}/actions/secrets", {
       owner: integration.owner,
       repo: integration.app
@@ -1386,6 +1407,24 @@ const syncSecretsGitHub = async ({
       ...obj,
       [secret.name]: secret
     }),
+    {}
+  );
+
+  encryptedSecrets = Object.keys(encryptedSecrets).reduce(
+    (
+      result: {
+        [key: string]: GitHubSecret;
+      },
+      key
+    ) => {
+      if (
+        (appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) &&
+        (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)
+      ) {
+        result[key] = encryptedSecrets[key];
+      }
+      return result;
+    },
     {}
   );
 
@@ -2074,13 +2113,15 @@ const syncSecretsSupabase = async ({
 const syncSecretsCheckly = async ({
   integration,
   secrets,
-  accessToken
+  accessToken,
+  appendices
 }: {
   integration: IIntegration;
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
+  appendices?: { prefix: string; suffix: string };
 }) => {
-  const getSecretsRes = (
+  let getSecretsRes = (
     await standardRequest.get(`${INTEGRATION_CHECKLY_API_URL}/v1/variables`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -2093,6 +2134,24 @@ const syncSecretsCheckly = async ({
       ...obj,
       [secret.key]: secret.value
     }),
+    {}
+  );
+
+  getSecretsRes = Object.keys(getSecretsRes).reduce(
+    (
+      result: {
+        [key: string]: string;
+      },
+      key
+    ) => {
+      if (
+        (appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) &&
+        (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)
+      ) {
+        result[key] = getSecretsRes[key];
+      }
+      return result;
+    },
     {}
   );
 
@@ -2169,18 +2228,20 @@ const syncSecretsQovery = async ({
   secrets: Record<string, { value: string; comment?: string }>;
   accessToken: string;
 }) => {
-  
   const getSecretsRes = (
-    await standardRequest.get(`${INTEGRATION_QOVERY_API_URL}/${integration.scope}/${integration.appId}/environmentVariable`, {
-      headers: {
-        Authorization: `Token ${accessToken}`,
-        "Accept-Encoding": "application/json"
+    await standardRequest.get(
+      `${INTEGRATION_QOVERY_API_URL}/${integration.scope}/${integration.appId}/environmentVariable`,
+      {
+        headers: {
+          Authorization: `Token ${accessToken}`,
+          "Accept-Encoding": "application/json"
+        }
       }
-    })
+    )
   ).data.results.reduce(
     (obj: any, secret: any) => ({
       ...obj,
-      [secret.key]: {"id": secret.id, "value": secret.value}
+      [secret.key]: { id: secret.id, value: secret.value }
     }),
     {}
   );
@@ -3048,6 +3109,113 @@ const syncSecretsNorthflank = async ({
       }
     }
   );
+};
+
+/** Sync/push [secrets] to Hasura Cloud
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Hasura Cloud integration
+ */
+const syncSecretsHasuraCloud = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+}) => {
+  const res = await standardRequest.post(
+    INTEGRATION_HASURA_CLOUD_API_URL,
+    {
+      query:
+        "query MyQuery($tenantId: uuid!) { getTenantEnv(tenantId: $tenantId) { hash envVars } }",
+      variables: {
+        tenantId: integration.appId
+      }
+    },
+    {
+      headers: {
+        Authorization: `pat ${accessToken}`,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+
+  const {
+    data: {
+      getTenantEnv: { hash, envVars }
+    }
+  } = ZGetTenantEnv.parse(res.data);
+
+  let currentHash = hash;
+
+  const secretsToUpdate = Object.keys(secrets).map((key) => {
+    return ({
+      key,
+      value: secrets[key].value
+    });
+  });
+
+  if (secretsToUpdate.length) {
+    // update secrets
+    
+    const addRequest = await standardRequest.post(
+      INTEGRATION_HASURA_CLOUD_API_URL,
+      {
+        query:
+          "mutation MyQuery($currentHash: String!, $envs: [UpdateEnvObject!]!, $tenantId: uuid!) { updateTenantEnv(currentHash: $currentHash, envs: $envs, tenantId: $tenantId) { hash envVars} }",
+        variables: {
+          currentHash,
+          envs: secretsToUpdate,
+          tenantId: integration.appId
+        }
+      },
+      {
+        headers: {
+          Authorization: `pat ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    const addRequestResponse = ZUpdateTenantEnv.safeParse(addRequest.data);
+    if (addRequestResponse.success) {
+      currentHash = addRequestResponse.data.data.updateTenantEnv.hash;
+    }
+  }
+  
+  const secretsToDelete = envVars.environment 
+    ? Object.keys(envVars.environment).filter((key) => !(key in secrets))
+    : [];
+    
+  if (secretsToDelete.length) {
+    await standardRequest.post(
+      INTEGRATION_HASURA_CLOUD_API_URL,
+      {
+        query: `
+        mutation deleteTenantEnv($id: uuid!, $currentHash: String!, $env: [String!]!) {
+          deleteTenantEnv(tenantId: $id, currentHash: $currentHash, deleteEnvs: $env) {
+            hash
+            envVars
+          }
+        }
+        `,
+        variables: {
+          id: integration.appId,
+          currentHash,
+          env: secretsToDelete
+        }
+      },
+      {
+        headers: {
+          Authorization: `pat ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+  }
 };
 
 export { syncSecrets };

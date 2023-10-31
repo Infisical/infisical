@@ -3,8 +3,8 @@ import { ErrorRequestHandler } from "express";
 import { TokenExpiredError } from "jsonwebtoken";
 import { InternalServerError, UnauthorizedRequestError } from "../utils/errors";
 import { getLogger } from "../utils/logger";
-import RequestError, { LogLevel } from "../utils/requestError";
-import { getNodeEnv } from "../config";
+import RequestError from "../utils/requestError";
+import { ForbiddenError } from "@casl/ability";
 
 export const requestErrorHandler: ErrorRequestHandler = async (
   error: RequestError | Error,
@@ -14,41 +14,37 @@ export const requestErrorHandler: ErrorRequestHandler = async (
 ) => {
   if (res.headersSent) return next();
 
-  if (await getNodeEnv() !== "production") {
-    /* eslint-disable no-console */
-    console.error(error);
-  }
-
-  //TODO: Find better way to type check for error. In current setting you need to cast type to get the functions and variables from RequestError
-  if (error instanceof TokenExpiredError) {
-    error = UnauthorizedRequestError({ stack: error.stack, message: "Token expired" });
-  } else if (!(error instanceof RequestError)) {
-    error = InternalServerError({
-      context: { exception: error.message },
-      stack: error.stack,
-    });
+  const logAndCaptureException = async (error: RequestError) => {
     (await getLogger("backend-main")).log(
       (<RequestError>error).levelName.toLowerCase(),
-      (<RequestError>error).message
+      `${error.stack}\n${error.message}`
     );
-  }
 
-  //* Set Sentry user identification if req.user is populated
-  if (req.user !== undefined && req.user !== null) {
-    Sentry.setUser({ email: (req.user as any).email });
-  }
-  //* Only sent error to Sentry if LogLevel is one of the following level 'ERROR', 'EMERGENCY' or 'CRITICAL'
-  //* with this we will eliminate false-positive errors like 'BadRequestError', 'UnauthorizedRequestError' and so on
-  if (
-    [LogLevel.ERROR, LogLevel.EMERGENCY, LogLevel.CRITICAL].includes(
-      (<RequestError>error).level
-    )
-  ) {
+    //* Set Sentry user identification if req.user is populated
+    if (req.user !== undefined && req.user !== null) {
+      Sentry.setUser({ email: (req.user as any).email });
+    }
+
     Sentry.captureException(error);
+  };
+
+  if (error instanceof RequestError) {
+    if (error instanceof TokenExpiredError) {
+      error = UnauthorizedRequestError({ stack: error.stack, message: "Token expired" });
+    }
+    await logAndCaptureException((<RequestError>error));
+  } else {
+    if (error instanceof ForbiddenError) {
+      error = UnauthorizedRequestError({ context: { exception: error.message }, stack: error.stack })
+    } else {
+      error = InternalServerError({ context: { exception: error.message }, stack: error.stack });
+    }
+
+    await logAndCaptureException((<RequestError>error));
   }
 
-  res
-    .status((<RequestError>error).statusCode)
-    .json((<RequestError>error).format(req));
+  delete (<any>error).stacktrace // remove stack trace from being sent to client
+  res.status((<RequestError>error).statusCode).json(error);
+
   next();
 };
