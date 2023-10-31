@@ -5,6 +5,8 @@ import express from "express";
 require("express-async-errors");
 import helmet from "helmet";
 import cors from "cors";
+import { logger } from "./utils/logging";
+import httpLogger from "pino-http";
 import { DatabaseService } from "./services";
 import { EELicenseService, GithubSecretScanningService } from "./ee/services";
 import { setUpHealthEndpoint } from "./services/health";
@@ -73,7 +75,7 @@ import {
   workspaces as v3WorkspacesRouter
 } from "./routes/v3";
 import { healthCheck } from "./routes/status";
-import { getLogger } from "./utils/logger";
+// import { getLogger } from "./utils/logger";
 import { RouteNotFoundError } from "./utils/errors";
 import { requestErrorHandler } from "./middleware/requestErrorHandler";
 import {
@@ -94,12 +96,20 @@ import path from "path";
 let handler: null | any = null;
 
 const main = async () => {
+  const port = await getPort();
+
   await setup();
 
   await EELicenseService.initGlobalFeatureSet();
 
   const app = express();
   app.enable("trust proxy");
+  
+  app.use(httpLogger({
+    logger,
+    autoLogging: false
+  }));
+
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
@@ -164,7 +174,7 @@ const main = async () => {
     const nextApp = new NextServer({
       dev: false,
       dir: nextJsBuildPath,
-      port: await getPort(),
+      port,
       conf,
       hostname: "local",
       customServer: false
@@ -255,8 +265,8 @@ const main = async () => {
 
   app.use(requestErrorHandler);
 
-  const server = app.listen(await getPort(), async () => {
-    (await getLogger("backend-main")).info(`Server started listening at port ${await getPort()}`);
+  const server = app.listen(port, async () => {
+    logger.info(`Server started listening at port ${port}`);
   });
 
   // await createTestUserForDevelopment();

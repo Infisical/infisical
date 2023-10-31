@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
 import { createTerminus } from "@godaddy/terminus";
-import { getLogger } from "../utils/logger";
+import { logger } from "../utils/logging";
 
 export const setUpHealthEndpoint = <T>(server: T) => {
   const onSignal = async () => {
-    (await getLogger("backend-main")).info("Server is starting clean-up");
+    logger.info("Server is starting clean-up");
     return Promise.all([
       new Promise((resolve) => {
         if (mongoose.connection && mongoose.connection.readyState == 1) {

@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/node";
 import { ErrorRequestHandler } from "express";
 import { TokenExpiredError } from "jsonwebtoken";
 import { InternalServerError, UnauthorizedRequestError } from "../utils/errors";
-import { getLogger } from "../utils/logger";
+import { logger } from "../utils/logging";
 import RequestError from "../utils/requestError";
 import { ForbiddenError } from "@casl/ability";
 
@@ -15,10 +15,14 @@ export const requestErrorHandler: ErrorRequestHandler = async (
   if (res.headersSent) return next();
 
   const logAndCaptureException = async (error: RequestError) => {
-    (await getLogger("backend-main")).log(
-      (<RequestError>error).levelName.toLowerCase(),
-      `${error.stack}\n${error.message}`
-    );
+    // TODO: tie pino error-handling to error types/levels
+  
+    // (await getLogger("backend-main")).log(
+    //   (<RequestError>error).levelName.toLowerCase(),
+    //   `${error.stack}\n${error.message}`
+    // );
+    
+    logger.error(error.stack, error.message);
 
     //* Set Sentry user identification if req.user is populated
     if (req.user !== undefined && req.user !== null) {
