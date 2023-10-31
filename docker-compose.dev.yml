@@ -19,7 +19,7 @@ services:
     container_name: infisical-dev-backend
     restart: unless-stopped
     depends_on:
-      - mongo
+      - mongo-setup
       - smtp-server
       - redis
     build:
@@ -58,26 +58,53 @@ services:
       - INFISICAL_TELEMETRY_ENABLED=${TELEMETRY_ENABLED}
     networks:
       - infisical-dev
+  
+  mongo-setup:
+    container_name: mongo-setup
+    image: mongo
+    restart: on-failure
+    volumes:
+      - ./scripts:/scripts
+    entrypoint: [ "/scripts/mongo-dev.sh" ]
+    depends_on:
+      - mongo
+      - mongo2
+    networks:
+      - infisical-dev
 
   mongo:
+    hostname: mongo
     image: mongo
     container_name: infisical-dev-mongo
     restart: always
-    env_file: .env
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=example
+    env_file: .env  
+    ports:
+      - 27017:27017  
     volumes:
       - mongo-data:/data/db
     networks:
       - infisical-dev
+
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0", "--journal", "--dbpath", "/data/db" ]
+
+  mongo2:
+    hostname: mongo2
+    container_name: infisical-mongo-secondary
+    image: mongo
+    ports:
+      - 27018:27018
+    volumes:
+      - mongo-data-2:/data/db
+    networks:
+      - infisical-dev
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0", "--journal", "--dbpath", "/data/db", "--port", "27018" ]
 
   mongo-express:
     container_name: infisical-dev-mongo-express
     image: mongo-express
     restart: always
     depends_on:
-      - mongo
+      - mongo-setup
     env_file: .env
     environment:
       - ME_CONFIG_MONGODB_ADMINUSERNAME=root
@@ -127,6 +154,8 @@ services:
 
 volumes:
   mongo-data:
+    driver: local
+  mongo-data-2:
     driver: local
   redis_data:
     driver: local
