@@ -68,7 +68,6 @@ services:
     entrypoint: [ "/scripts/mongo-dev.sh" ]
     depends_on:
       - mongo
-      - mongo2
     networks:
       - infisical-dev
 
@@ -79,25 +78,16 @@ services:
     restart: always
     env_file: .env  
     ports:
-      - 27017:27017  
+      - 27017:27017 
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=example 
     volumes:
       - mongo-data:/data/db
     networks:
       - infisical-dev
 
-    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0", "--journal", "--dbpath", "/data/db" ]
-
-  mongo2:
-    hostname: mongo2
-    container_name: infisical-mongo-secondary
-    image: mongo
-    ports:
-      - 27018:27018
-    volumes:
-      - mongo-data-2:/data/db
-    networks:
-      - infisical-dev
-    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0", "--journal", "--dbpath", "/data/db", "--port", "27018" ]
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0", "--dbpath", "/data/db" ]
 
   mongo-express:
     container_name: infisical-dev-mongo-express
@@ -154,8 +144,6 @@ services:
 
 volumes:
   mongo-data:
-    driver: local
-  mongo-data-2:
     driver: local
   redis_data:
     driver: local
