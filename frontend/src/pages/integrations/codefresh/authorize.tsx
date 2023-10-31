@@ -86,7 +86,6 @@ export default function CodefreshCreateIntegrationPage() {
           onClick={handleButtonClick}
           colorSchema="primary"
           variant="outline_bg"
-          className="mt-4"
           className="mb-6 mt-2 ml-auto mr-6 w-min"
           isLoading={isLoading}
         >
