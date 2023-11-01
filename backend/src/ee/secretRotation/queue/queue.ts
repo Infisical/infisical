@@ -30,6 +30,7 @@ import {
 const secretRotationQueue = new Queue("secret-rotation-service", process.env.REDIS_URL as string);
 
 secretRotationQueue.process(async (job: Job) => {
+  logger.info(`secretRotationQueue.process: [rotationDocument=${job.data.rotationDocId}]`);
   const rotationStratDocId = job.data.rotationDocId;
   const secretRotation = await SecretRotation.findById(rotationStratDocId)
     .select("+encryptedData +encryptedDataTag +encryptedDataIV +keyEncoding")
