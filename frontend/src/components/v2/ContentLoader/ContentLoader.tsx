@@ -13,7 +13,7 @@ export const ContentLoader = ({ text, frequency = 2000 }: Props) => {
   const [pos, setPos] = useState(0);
   const isTextArray = Array.isArray(text);
   useEffect(() => {
-    let interval: NodeJS.Timer;
+    let interval: NodeJS.Timeout;
     if (isTextArray) {
       interval = setInterval(() => {
         setPos((state) => (state + 1) % text.length);

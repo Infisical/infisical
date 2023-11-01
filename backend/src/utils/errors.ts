@@ -29,7 +29,7 @@ export const UnauthorizedRequestError = (error?: Partial<RequestErrorContext>) =
 });
 
 export const ForbiddenRequestError = (error?: Partial<RequestErrorContext>) => new RequestError({
-    logLevel: error?.logLevel ?? LogLevel.INFO,
+    logLevel: error?.logLevel ?? LogLevel.WARN,
     statusCode: error?.statusCode ?? 403,
     type: error?.type ?? "forbidden",
     message: error?.message ?? "You are not allowed to access this resource",

@@ -153,29 +153,18 @@ Other environment variables are listed below to increase the functionality of yo
       JWT token lifetime expressed in seconds or a string describing a time span
     </ParamField>
 
-{" "}
-
-<ParamField
-  query="MONGO_USERNAME"
-  type="string"
-  default="none"
-  optional
-></ParamField>
-
-{" "}
-
-<ParamField
-  query="MONGO_PASSWORD"
-  type="string"
-  default="none"
-  optional
-></ParamField>
-
-#### Error logging
+#### Logging
 
 Infisical uses Sentry to report error logs
 
-{" "}
+<ParamField
+  query="PINO_LOG_LEVEL"
+  type="string"
+  default="info"
+  optional
+>
+  The minimum log level for application logging; can be one of `trace`, `debug`, `info`, `warn`, `error`, or `fatal`.
+</ParamField>
 
 <ParamField
   query="SENTRY_DSN"
