@@ -18,6 +18,7 @@ import { ENCODING_SCHEME_BASE64, ENCODING_SCHEME_UTF8, SECRET_SHARED } from "../
 import { EESecretService } from "../../services";
 import { SecretVersion } from "../../models";
 import { eventPushSecrets } from "../../../events";
+import { logger } from "../../../utils/logging";
 
 import {
   secretRotationPreSetFn,
@@ -260,7 +261,7 @@ secretRotationQueue.process(async (job: Job) => {
       });
     }
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     await SecretRotation.findByIdAndUpdate(rotationStratDocId, {
       status: "failed",
       statusMessage: (err as Error).message,
