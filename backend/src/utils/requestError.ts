@@ -2,34 +2,30 @@ import { Request } from "express"
 import { getVerboseErrorOutput } from "../config";
 
 export enum LogLevel {
-    DEBUG = 100,
-    INFO = 200,
-    NOTICE = 250,
-    WARNING = 300,
-    ERROR = 400,
-    CRITICAL = 500,
-    ALERT = 550,
-    EMERGENCY = 600,
+  TRACE = 10,
+  DEBUG = 20,
+  INFO = 30,
+  WARN = 40,
+  ERROR = 50,
+  FATAL = 60
 }
 
-export const mapToWinstonLogLevel = (customLogLevel: LogLevel): string => {
+type PinoLogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
+
+export const mapToPinoLogLevel = (customLogLevel: LogLevel): PinoLogLevel => {
   switch (customLogLevel) {
+    case LogLevel.TRACE:
+      return "trace";
     case LogLevel.DEBUG:
       return "debug";
     case LogLevel.INFO:
       return "info";
-    case LogLevel.NOTICE:
-      return "notice";
-    case LogLevel.WARNING:
+    case LogLevel.WARN:
       return "warn";
     case LogLevel.ERROR:
       return "error";
-    case LogLevel.CRITICAL:
-      return "crit";
-    case LogLevel.ALERT:
-      return "alert";
-    case LogLevel.EMERGENCY:
-      return "emerg";
+    case LogLevel.FATAL:
+      return "fatal";
   }
 }
 
@@ -42,10 +38,10 @@ export type RequestErrorContext =  {
 	stack?: string|undefined
 }
 
-export default class RequestError extends Error{
+export default class RequestError extends Error {
 
     private _logLevel: LogLevel
-    private _logName: string
+    private _logName: string;
     statusCode: number
     type: string
     context: Record<string, unknown>
@@ -55,9 +51,10 @@ export default class RequestError extends Error{
     constructor(
         {logLevel, statusCode, type, message, context, stack} : RequestErrorContext
         ){
+        
         super(message)
         this._logLevel = logLevel || LogLevel.INFO
-        this._logName = LogLevel[this._logLevel]
+        this._logName = LogLevel[this._logLevel];
         this.statusCode = statusCode
         this.type = type
         this.context = context || {}
@@ -83,8 +80,12 @@ export default class RequestError extends Error{
         })
     }
 
-    get level(){ return this._logLevel }
-    get levelName(){ return this._logName }
+    get level(){ 
+      return this._logLevel 
+    }
+    get levelName(){ 
+      return this._logName 
+    }
 
     withTags(...tags: string[]|number[]){
         this.context["tags"] = Object.assign(tags, this.context["tags"])
