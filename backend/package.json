@@ -66,7 +66,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node build/index.js",
-    "dev": "nodemon index.js | npx pino-pretty --colorize",
+    "dev": "nodemon index.js | pino-pretty --colorize",
     "swagger-autogen": "node ./swagger/index.ts",
     "build": "rimraf ./build && tsc && cp -R ./src/templates ./build && cp -R ./src/data ./build",
     "lint": "eslint . --ext .ts",
