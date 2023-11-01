@@ -65,7 +65,7 @@ services:
     restart: on-failure
     volumes:
       - ./scripts:/scripts
-    entrypoint: [ "/scripts/mongo-dev.sh" ]
+    entrypoint: [ "/scripts/mongo-init.sh" ]
     depends_on:
       - mongo
       - mongo2
