@@ -12,7 +12,7 @@ import {
 } from "../../variables";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 
-const ajv = new Ajv();
+const ajv = new Ajv({ strict: false });
 
 export const getProviderTemplate = async ({ workspaceId }: TGetProviderTemplates) => {
   return {

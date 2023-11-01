@@ -189,7 +189,7 @@ const secretRotationRemoveFn = async (func: TProviderFunction, variables: ISecre
 secretRotationQueue.process(async (job: Job) => {
   const rotationStratDocId = job.data.rotationDocId;
   const secretRotation = await SecretRotation.findById(rotationStratDocId)
-    .select("+encryptedData +encryptedDataTag +encryptedDataIV")
+    .select("+encryptedData +encryptedDataTag +encryptedDataIV +keyEncoding")
     .populate<{
       outputs: [
         {
