@@ -13,9 +13,12 @@ export const logger = pino({
     },
   },
   transport: {
-    target: "pino-pretty",
-    options: {
-        colorize: true
-    }
+    targets: [
+      {
+        target: "pino-pretty",
+        level: process.env.PINO_LOG_LEVEL || "trace",
+        options: { colorize: true }
+      }
+    ]
   }
 });

@@ -6,7 +6,7 @@
     "@godaddy/terminus": "^4.12.0",
     "@node-saml/passport-saml": "^4.0.4",
     "@octokit/rest": "^19.0.5",
-    "@sentry/node": "^7.49.0",
+    "@sentry/node": "^7.77.0",
     "@sentry/tracing": "^7.48.0",
     "@types/crypto-js": "^4.1.1",
     "@types/libsodium-wrappers": "^0.7.10",
