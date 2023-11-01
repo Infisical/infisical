@@ -5,7 +5,7 @@ services:
     container_name: infisical-backend
     restart: unless-stopped
     depends_on:
-      - mongo
+      - mongo-setup
     image: infisical/infisical:latest
     env_file: .env
     ports:
@@ -27,21 +27,50 @@ services:
     volumes:
       - redis_data:/data
 
+  mongo-setup:
+    container_name: mongo-setup
+    image: mongo
+    restart: on-failure
+    volumes:
+      - ./scripts:/scripts
+    entrypoint: [ "/scripts/mongo-init.sh" ]
+    depends_on:
+      - mongo
+      - mongo2
+    networks:
+      - infisical-dev
+
   mongo:
+    hostname: mongo
     container_name: infisical-mongo
     image: mongo
     restart: always
     env_file: .env
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+    ports:
+      - 27017:27017
     volumes:
       - mongo-data:/data/db
     networks:
       - infisical
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0", "--dbpath", "/data/db" ]
+
+  mongo2:
+    hostname: mongo
+    container_name: infisical-mongo-secondary
+    image: mongo
+    restart: always
+    ports:
+      - 27018:27018
+    volumes:
+      - mongo-data-2:/data/db
+    networks:
+      - infisical
+    ntrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0", "--dbpath", "/data/db", "--port", "27018" ]
 
 volumes:
   mongo-data:
+    driver: local
+  mongo-data-2:
     driver: local
   redis_data:
     driver: local
