@@ -11,14 +11,5 @@ export const logger = pino({
             // node_version: process.version
         };
     },
-  },
-  transport: {
-    targets: [
-      {
-        target: "pino-pretty",
-        level: process.env.PINO_LOG_LEVEL || "trace",
-        options: { colorize: true }
-      }
-    ]
   }
 });
