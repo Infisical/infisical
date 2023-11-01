@@ -50,8 +50,7 @@ export const MYSQL_TEMPLATE = {
       database: "${inputs.database}",
       port: "${inputs.port}",
       ca: "${inputs.ca}",
-      query:
-        "ALTER USER ${internal.username} IDENTIFIED WITH mysql_native_password BY '${internal.rotated_password}'",
+      query: "ALTER USER ${internal.username} IDENTIFIED BY '${internal.rotated_password}'",
       setter: {
         "outputs.db_username": {
           assign: TAssignOp.Direct as const,

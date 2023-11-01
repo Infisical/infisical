@@ -4,7 +4,7 @@ import { SecretRotation } from "./models";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../../config";
 import { BadRequestError } from "../../utils/errors";
 import Ajv from "ajv";
-import { removeSecretRotationQueue, startSecretRotationQueue } from "./queue";
+import { removeSecretRotationQueue, startSecretRotationQueue } from "./queue/queue";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_BASE64,
