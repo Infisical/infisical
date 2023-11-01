@@ -1,11 +1,5 @@
-import {
-    ActorType,
-    EventType
-} from "./enums";
-import {
-  IServiceTokenV3Scope,
-  IServiceTokenV3TrustedIp
-} from "../../../models/serviceTokenDataV3";
+import { ActorType, EventType } from "./enums";
+import { IServiceTokenV3Scope, IServiceTokenV3TrustedIp } from "../../../models/serviceTokenDataV3";
 
 interface UserActorMetadata {
   userId: string;
@@ -28,14 +22,15 @@ export interface ServiceActor {
 }
 
 export interface ServiceActorV3 {
-    type: ActorType.SERVICE_V3;
-    metadata: ServiceActorMetadata;
+  type: ActorType.SERVICE_V3;
+  metadata: ServiceActorMetadata;
 }
 
-export type Actor = 
-    | UserActor
-    | ServiceActor
-    | ServiceActorV3;
+export interface MachineActor {
+  type: ActorType.Machine;
+}
+
+export type Actor = UserActor | ServiceActor | ServiceActorV3 | MachineActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -226,36 +221,36 @@ interface DeleteServiceTokenEvent {
 }
 
 interface CreateServiceTokenV3Event {
-    type: EventType.CREATE_SERVICE_TOKEN_V3;
-    metadata: {
-        name: string;
-        isActive: boolean;
-        scopes: Array<IServiceTokenV3Scope>;
-        trustedIps: Array<IServiceTokenV3TrustedIp>;
-        expiresAt?: Date;
-    }
+  type: EventType.CREATE_SERVICE_TOKEN_V3;
+  metadata: {
+    name: string;
+    isActive: boolean;
+    scopes: Array<IServiceTokenV3Scope>;
+    trustedIps: Array<IServiceTokenV3TrustedIp>;
+    expiresAt?: Date;
+  };
 }
 
 interface UpdateServiceTokenV3Event {
-    type: EventType.UPDATE_SERVICE_TOKEN_V3;
-    metadata: {
-        name?: string;
-        isActive?: boolean;
-        scopes?: Array<IServiceTokenV3Scope>;
-        trustedIps?: Array<IServiceTokenV3TrustedIp>;
-        expiresAt?: Date;
-    }
+  type: EventType.UPDATE_SERVICE_TOKEN_V3;
+  metadata: {
+    name?: string;
+    isActive?: boolean;
+    scopes?: Array<IServiceTokenV3Scope>;
+    trustedIps?: Array<IServiceTokenV3TrustedIp>;
+    expiresAt?: Date;
+  };
 }
 
 interface DeleteServiceTokenV3Event {
-    type: EventType.DELETE_SERVICE_TOKEN_V3;
-    metadata: {
-        name: string;
-        isActive: boolean;
-        scopes: Array<IServiceTokenV3Scope>;
-        expiresAt?: Date;
-        trustedIps: Array<IServiceTokenV3TrustedIp>;
-    }
+  type: EventType.DELETE_SERVICE_TOKEN_V3;
+  metadata: {
+    name: string;
+    isActive: boolean;
+    scopes: Array<IServiceTokenV3Scope>;
+    expiresAt?: Date;
+    trustedIps: Array<IServiceTokenV3TrustedIp>;
+  };
 }
 
 interface CreateEnvironmentEvent {
@@ -427,15 +422,15 @@ interface UpdateUserRole {
 }
 
 interface UpdateUserDeniedPermissions {
-    type: EventType.UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS,
-    metadata: {
-        userId: string;
-        email: string;
-        deniedPermissions: {
-            environmentSlug: string;
-            ability: string;
-        }[]
-    }
+  type: EventType.UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS;
+  metadata: {
+    userId: string;
+    email: string;
+    deniedPermissions: {
+      environmentSlug: string;
+      ability: string;
+    }[];
+  };
 }
 interface SecretApprovalMerge {
   type: EventType.SECRET_APPROVAL_MERGED;

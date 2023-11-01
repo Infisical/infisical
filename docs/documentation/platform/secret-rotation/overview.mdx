@@ -1,0 +1,37 @@
+---
+title: "Secret Rotation Overview"
+description: "Keep your credentials safe by rotation"
+---
+
+Secret rotation is the process of periodically changing the values of secrets. This is done to reduce the risk of secrets being compromised and used to gain unauthorized access to systems or data.
+
+Rotated secrets can be
+1. API key for an external service
+2. Database credentials
+
+## How does the rotation happen?
+
+There are four phases in secret rotation and its triggered periodically in an internval.
+
+1. Creation
+
+System will create secret by calling an external service like an API call, or randomly generate a value. 
+Now there exist three valid secrets.
+
+2. Test
+
+Test the new secret key by some check to ensure its working one. Thus only two will be considered active and the other is considered inactive.
+
+3. Deletion
+
+System will remove the inactive secret and now there exist two valid secrets
+
+4. Finish
+
+System will switch the secret value from the rotated ones and trigger side effects like webhooks and events.
+
+## Infisical Secret Rotation Strategies
+
+1. [SendGrid](./sendgrid)
+2. [PostgreSQL/CockroachDB](./postgres)
+3. [MySQL/MariaDB](./mysql)

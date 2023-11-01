@@ -26,7 +26,6 @@ export interface CreateSecretParams {
 export interface GetSecretsParams {
   workspaceId: Types.ObjectId;
   environment: string;
-  folderId?: string;
   secretPath: string;
   authData: AuthData;
 }

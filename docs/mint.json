@@ -34,7 +34,10 @@
     }
   },
   "topbarLinks": [
-    { "name": "Log In", "url": "https://app.infisical.com/login" }
+    {
+      "name": "Log In",
+      "url": "https://app.infisical.com/login"
+    }
   ],
   "topbarCtaButton": {
     "name": "Start for Free",
@@ -120,6 +123,15 @@
         "documentation/platform/audit-logs",
         "documentation/platform/token",
         "documentation/platform/mfa",
+        {
+          "group": "Secret Rotation",
+          "pages": [
+            "documentation/platform/secret-rotation/overview",
+            "documentation/platform/secret-rotation/sendgrid",
+            "documentation/platform/secret-rotation/postgres",
+            "documentation/platform/secret-rotation/mysql"
+          ]
+        },
         {
           "group": "SSO",
           "pages": [
