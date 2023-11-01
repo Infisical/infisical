@@ -319,7 +319,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             </Button>
                           </DropdownMenuItem>
                         ))}
-                        <DropdownMenuItem key="add-org">
+                        {/* <DropdownMenuItem key="add-org">
                           <Button
                             onClick={() => handlePopUpOpen("createOrg")}
                             variant="plain"
@@ -334,7 +334,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                               Create New Organization
                             </div>
                           </Button>
-                        </DropdownMenuItem>
+                        </DropdownMenuItem> */}
                         <div className="mt-1 h-1 border-t border-mineshaft-600" />
                         <button type="button" onClick={logOutUser} className="w-full">
                           <DropdownMenuItem>Log Out</DropdownMenuItem>
