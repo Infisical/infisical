@@ -160,7 +160,6 @@ volumes:
     driver: local
   mongo-data-2:
     driver: local
-  
   redis_data:
     driver: local
 
