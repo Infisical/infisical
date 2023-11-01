@@ -2,26 +2,42 @@ import axios from "axios";
 import crypto from "crypto";
 import { Types } from "mongoose";
 import picomatch from "picomatch";
-import { client, getRootEncryptionKey } from "../config";
+import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
 import { IWebhook, Webhook } from "../models";
+import { decryptSymmetric128BitHexKeyUTF8 } from "../utils/crypto";
+import { ENCODING_SCHEME_BASE64, ENCODING_SCHEME_UTF8 } from "../variables";
 
 export const triggerWebhookRequest = async (
-  { url, encryptedSecretKey, iv, tag }: IWebhook,
+  { url, encryptedSecretKey, iv, tag, keyEncoding }: IWebhook,
   payload: Record<string, unknown>
 ) => {
   const headers: Record<string, string> = {};
   payload["timestamp"] = Date.now();
 
   if (encryptedSecretKey) {
+    const encryptionKey = await getEncryptionKey();
     const rootEncryptionKey = await getRootEncryptionKey();
-    const secretKey = client.decryptSymmetric(encryptedSecretKey, rootEncryptionKey, iv, tag);
-    const webhookSign = crypto
-      .createHmac("sha256", secretKey)
-      .update(JSON.stringify(payload))
-      .digest("hex");
-    headers["x-infisical-signature"] = `t=${payload["timestamp"]};${webhookSign}`;
+    let secretKey;
+    if (rootEncryptionKey && keyEncoding === ENCODING_SCHEME_BASE64) {
+      // case: encoding scheme is base64
+      secretKey = client.decryptSymmetric(encryptedSecretKey, rootEncryptionKey, iv, tag);
+    } else if (encryptionKey && keyEncoding === ENCODING_SCHEME_UTF8) {
+      // case: encoding scheme is utf8
+      secretKey = decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: encryptedSecretKey,
+        iv: iv,
+        tag: tag,
+        key: encryptionKey
+      });
+    }
+    if (secretKey) {
+      const webhookSign = crypto
+        .createHmac("sha256", secretKey)
+        .update(JSON.stringify(payload))
+        .digest("hex");
+      headers["x-infisical-signature"] = `t=${payload["timestamp"]};${webhookSign}`;
+    }
   }
-
   const req = await axios.post(url, payload, { headers });
   return req;
 };

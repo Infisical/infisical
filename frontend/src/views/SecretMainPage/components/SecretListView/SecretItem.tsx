@@ -172,7 +172,11 @@ export const SecretItem = memo(
 
     const copyTokenToClipboard = () => {
       const [overrideValue, value] = getValues(["value", "valueOverride"]);
-      navigator.clipboard.writeText((overrideValue || value) as string);
+      if (isOverriden) {
+        navigator.clipboard.writeText(value as string);
+      } else {
+        navigator.clipboard.writeText(overrideValue as string);
+      }
       setIsSecValueCopied.on();
     };
 
