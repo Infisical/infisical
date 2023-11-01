@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import crypto from "crypto";
 import { Types } from "mongoose";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../crypto";
@@ -47,6 +46,7 @@ import {
   ProjectPermissionSub,
   memberProjectPermissions
 } from "../../ee/services/ProjectRoleService";
+import { logger } from "../logging";
 
 /**
  * Backfill secrets to ensure that they're all versioned and have
@@ -88,7 +88,7 @@ export const backfillSecretVersions = async () => {
       )
     });
   }
-  console.log("Migration: Secret version migration v1 complete");
+  logger.info("Migration: Secret version migration v1 complete");
 };
 
 /**
@@ -518,7 +518,7 @@ export const backfillSecretFolders = async () => {
       .limit(50);
   }
 
-  console.log("Migration: Folder migration v1 complete");
+  logger.info("Migration: Folder migration v1 complete");
 };
 
 export const backfillServiceToken = async () => {
@@ -534,7 +534,7 @@ export const backfillServiceToken = async () => {
       }
     }
   );
-  console.log("Migration: Service token migration v1 complete");
+  logger.info("Migration: Service token migration v1 complete");
 };
 
 export const backfillIntegration = async () => {
@@ -550,7 +550,7 @@ export const backfillIntegration = async () => {
       }
     }
   );
-  console.log("Migration: Integration migration v1 complete");
+  logger.info("Migration: Integration migration v1 complete");
 };
 
 export const backfillServiceTokenMultiScope = async () => {
@@ -575,7 +575,7 @@ export const backfillServiceTokenMultiScope = async () => {
     }
   }
 
-  console.log("Migration: Service token migration v2 complete");
+  logger.info("Migration: Service token migration v2 complete");
 };
 
 /**
@@ -650,7 +650,7 @@ export const backfillTrustedIps = async () => {
     });
 
     await TrustedIP.bulkWrite(operations);
-    console.log("Backfill: Trusted IPs complete");
+    logger.info("Backfill: Trusted IPs complete");
   }
 };
 
@@ -698,7 +698,7 @@ export const backfillPermission = async () => {
 
   if (lock) {
     try {
-      console.info("Lock acquired for script [backfillPermission]");
+      logger.info("Lock acquired for script [backfillPermission]");
 
       const memberships = await Membership.find({
         deniedPermissions: {
@@ -801,7 +801,7 @@ export const backfillPermission = async () => {
         }
       }
 
-      console.info("Backfill: Finished converting old denied permission in workspace to viewers");
+      logger.info("Backfill: Finished converting old denied permission in workspace to viewers");
 
       await MembershipOrg.updateMany(
         {
@@ -814,14 +814,14 @@ export const backfillPermission = async () => {
         }
       );
 
-      console.info("Backfill: Finished converting owner role to member");
+      logger.info("Backfill: Finished converting owner role to member");
 
     } catch (error) {
-      console.error("An error occurred when running script [backfillPermission]:", error);
+      logger.error(error, "An error occurred when running script [backfillPermission]");
     }
 
   } else {
-    console.info("Could not acquire lock for script [backfillPermission], skipping");
+    logger.info("Could not acquire lock for script [backfillPermission], skipping");
   }
 };
 
@@ -837,5 +837,5 @@ export const migrateRoleFromOwnerToAdmin = async () => {
     }
   );
 
-  console.info("Backfill: Finished converting owner role to member");
+  logger.info("Backfill: Finished converting owner role to member");
 }
