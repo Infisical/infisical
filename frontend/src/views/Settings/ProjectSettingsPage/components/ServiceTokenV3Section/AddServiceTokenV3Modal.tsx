@@ -64,6 +64,10 @@ const schema = yup.object({
     accessTokenTTL: yup
         .string()
         .test("is-positive-integer", "Access Token TTL must be a positive integer", (value) => {
+            if (typeof value === "undefined") {
+                return false;
+            }
+            
             const num = parseInt(value, 10);
             return !Number.isNaN(num) && num > 0 && String(num) === value;
         })
