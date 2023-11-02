@@ -9,8 +9,6 @@ import { motion } from "framer-motion";
 import queryString from "query-string";
 
 import {
-  Alert,
-  AlertDescription,
   Button,
   Card,
   CardTitle,
@@ -30,7 +28,7 @@ import {
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById,
-  useGetIntegrationAuthGroups
+  useGetIntegrationAuthChecklyGroups
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 
@@ -45,26 +43,24 @@ export default function ChecklyCreateIntegrationPage() {
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
+  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [secretPath, setSecretPath] = useState("/");
+  const [secretSuffix, setSecretSuffix] = useState("");
+
+  const [targetAppId, setTargetAppId] = useState("");
+  const [targetGroupId, setTargetGroupId] = useState("");
+
+  const [isLoading, setIsLoading] = useState(false);
+
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
   const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
-  const { data: integrationAuthGroups, isLoading: isintegrationAuthGroupsLoading } = useGetIntegrationAuthGroups(
-    (integrationAuthId as string) ?? ""
-  );
-
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
-  const [secretPath, setSecretPath] = useState("/");
-  const [secretSuffix, setSecretSuffix] = useState("");
-
-  const [targetApp, setTargetApp] = useState("");
-  const [targetAppId, setTargetAppId] = useState("");
-
-  const [targetGroup, setTargetGroup] = useState("");
-  const [targetGroupId, setTargetGroupId] = useState("");
-
-  const [isLoading, setIsLoading] = useState(false);
+  const { data: integrationAuthGroups, isLoading: isintegrationAuthGroupsLoading } = useGetIntegrationAuthChecklyGroups({
+    integrationAuthId: (integrationAuthId as string) ?? "",
+    accountId: targetAppId
+  });
 
   useEffect(() => {
     if (workspace) {
@@ -73,26 +69,14 @@ export default function ChecklyCreateIntegrationPage() {
   }, [workspace]);
 
   useEffect(() => {
-    // TODO: handle case where apps can be empty
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
-        setTargetApp(integrationAuthApps[0].name);
-        setTargetAppId(String(integrationAuthApps[0].appId));
+        setTargetAppId(integrationAuthApps[0].appId as string);
       } else {
-        setTargetApp("none");
+        setTargetAppId("none");
       }
     }
   }, [integrationAuthApps]);
-
-  const handleValueChange = (val) => {
-    const selectedGroup = integrationAuthGroups.find(group => group.name === val);
-      if (selectedGroup) {
-        setTargetGroupId(selectedGroup.groupId);
-      } else {
-        setTargetGroupId("");
-      }
-      setTargetGroup(val);
-  }
 
   const handleButtonClick = async () => {
     try {
@@ -100,14 +84,23 @@ export default function ChecklyCreateIntegrationPage() {
 
       setIsLoading(true);
 
+      const targetApp = integrationAuthApps?.find(
+        (integrationAuthApp) => integrationAuthApp.appId === targetAppId
+      );
+      const targetGroup = integrationAuthGroups?.find(
+        (group) => group.groupId === Number(targetGroupId)
+      );
+      
+      if (!targetApp) return;
+      
       await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
-        app: targetApp,
-        appId: targetAppId,
+        app: targetApp?.name,
+        appId: targetApp?.appId,
         sourceEnvironment: selectedSourceEnvironment,
-        targetService: targetGroup,
-        targetServiceId: targetGroupId.toString(),
+        targetService: targetGroup?.name,
+        targetServiceId: String(targetGroup?.groupId),
         secretPath,
         metadata: {
           secretSuffix
@@ -127,7 +120,7 @@ export default function ChecklyCreateIntegrationPage() {
     selectedSourceEnvironment &&
     integrationAuthApps && 
     integrationAuthGroups &&
-    targetApp ? (
+    targetAppId ? (
     <div className="flex flex-col w-full py-6 items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
       <Head>
         <title>Set Up Checkly Integration</title>
@@ -197,48 +190,18 @@ export default function ChecklyCreateIntegrationPage() {
                   placeholder="Provide a path, default is /"
                 />
               </FormControl>
-              <FormControl label="Checkly Group">
-                <Select
-                  value={targetGroup}
-                  onValueChange={handleValueChange}
-                  className="w-full border border-mineshaft-500"
-                >
-                  <SelectItem value="">
-                    Select an option
-                  </SelectItem>
-                  {integrationAuthGroups.length > 0 ? (
-                    integrationAuthGroups.map((integrationAuthGroup) => (
-                      <SelectItem
-                        value={integrationAuthGroup.name}
-                        key={`target-group-${integrationAuthGroup.name}`}
-                      >
-                        {integrationAuthGroup.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" key="target-group-none" disabled>
-                      No groups found
-                    </SelectItem>
-                  )}
-                </Select>
-              </FormControl>
-              <Alert className="mb-5" hideTitle="true">
-                <AlertDescription>
-                  By default environment variables are synced to the global level, select a group above to sync at the Group level.
-                </AlertDescription>
-              </Alert>
               <FormControl label="Checkly Account">
                 <Select
-                  value={targetApp}
-                  onValueChange={(val) => setTargetApp(val)}
+                  value={targetAppId}
+                  onValueChange={(val) => setTargetAppId(val)}
                   className="w-full border border-mineshaft-500"
                   isDisabled={integrationAuthApps.length === 0}
                 >
                   {integrationAuthApps.length > 0 ? (
                     integrationAuthApps.map((integrationAuthApp) => (
                       <SelectItem
-                        value={integrationAuthApp.name}
-                        key={`target-app-${integrationAuthApp.name}`}
+                        value={integrationAuthApp.appId as string}
+                        key={`target-app-${integrationAuthApp.appId as string}`}
                       >
                         {integrationAuthApp.name}
                       </SelectItem>
@@ -246,6 +209,28 @@ export default function ChecklyCreateIntegrationPage() {
                   ) : (
                     <SelectItem value="none" key="target-app-none">
                       No apps found
+                    </SelectItem>
+                  )}
+                </Select>
+              </FormControl>
+              <FormControl label="Checkly Group (Optional)">
+                <Select
+                  value={targetGroupId}
+                  onValueChange={(val) => setTargetGroupId(val)}
+                  className="w-full border border-mineshaft-500"
+                >
+                  {integrationAuthGroups.length > 0 ? (
+                    integrationAuthGroups.map((integrationAuthGroup) => (
+                      <SelectItem
+                        value={String(integrationAuthGroup.groupId)}
+                        key={`target-group-${String(integrationAuthGroup.groupId)}`}
+                      >
+                        {integrationAuthGroup.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" key="target-group-none">
+                      No groups found
                     </SelectItem>
                   )}
                 </Select>

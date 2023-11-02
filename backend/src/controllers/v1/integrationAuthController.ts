@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { standardRequest } from "../../config/request";
-import { getApps, getTeams, getGroups, revokeAccess } from "../../integrations";
+import { getApps, getTeams, revokeAccess } from "../../integrations";
 import { Bot, IntegrationAuth, Workspace } from "../../models";
 import { EventType } from "../../ee/models";
 import { IntegrationService } from "../../services";
@@ -10,6 +10,7 @@ import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
   INTEGRATION_BITBUCKET_API_URL,
+  INTEGRATION_CHECKLY_API_URL,
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_NORTHFLANK_API_URL,
   INTEGRATION_QOVERY_API_URL,
@@ -208,40 +209,6 @@ export const saveIntegrationToken = async (req: Request, res: Response) => {
 };
 
 /**
- * Return list of groups allowed for integration with integration authorization id [integrationAuthId]
- * @param req
- * @param res
- * @returns
- */
-export const getIntegrationAuthGroups = async (req: Request, res: Response) => {
-  const {
-    params: { integrationAuthId }
-  } = await validateRequest(reqValidator.GetIntegrationAuthGroupsV1, req);
-
-  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
-    integrationAuthId: new ObjectId(integrationAuthId)
-  });
-
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
-  ForbiddenError.from(permission).throwUnlessCan(
-    ProjectPermissionActions.Read,
-    ProjectPermissionSub.Integrations
-  );
-
-  const groups = await getGroups({
-    integrationAuth: integrationAuth,
-    accessToken: accessToken
-  });
-
-  return res.status(200).send({
-    groups
-  });
-};
-
-/**
  * Return list of applications allowed for integration with integration authorization id [integrationAuthId]
  * @param req
  * @param res
@@ -377,6 +344,59 @@ export const getIntegrationAuthVercelBranches = async (req: Request, res: Respon
     branches
   });
 };
+
+/**
+ * Return list of Checkly groups for a specific user
+ * @param req
+ * @param res
+ */
+export const getIntegrationAuthChecklyGroups = async (req: Request, res: Response) => {
+  const {
+    params: { integrationAuthId },
+    query: { accountId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthChecklyGroupsV1, req);
+  
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new Types.ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getUserProjectPermissions(
+    req.user._id,
+    integrationAuth.workspace.toString()
+  );
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
+
+  interface ChecklyGroup {
+    id: number;
+    name: string;
+  }
+  
+  if (accountId && accountId !== "") {
+    const { data }: { data: ChecklyGroup[] } = (
+      await standardRequest.get(`${INTEGRATION_CHECKLY_API_URL}/v1/check-groups`, {
+          headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json",
+              "X-Checkly-Account": accountId
+          }
+      })
+    );
+    
+    return res.status(200).send({
+      groups: data.map((g: ChecklyGroup) => ({
+        name: g.name,
+        groupId: g.id,
+      }))
+    });
+  }
+
+  return res.status(200).send({
+    groups: []
+  });
+}
 
 /**
  * Return list of Qovery Orgs for a specific user

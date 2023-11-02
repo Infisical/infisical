@@ -117,9 +117,12 @@ export const GetIntegrationAuthVercelBranchesV1 = z.object({
   })
 });
 
-export const GetIntegrationAuthGroupsV1 = z.object({
+export const GetIntegrationAuthChecklyGroupsV1 = z.object({
   params: z.object({
     integrationAuthId: z.string().trim()
+  }),
+  query: z.object({
+    accountId: z.string().trim()
   })
 });
 

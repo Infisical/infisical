@@ -6,6 +6,7 @@ import { workspaceKeys } from "../workspace/queries";
 import { 
   App, 
   BitBucketWorkspace, 
+  ChecklyGroup, 
   Environment, 
   IntegrationAuth, 
   NorthflankSecretGroup,
@@ -13,8 +14,8 @@ import {
   Project,
   Service, 
   Team,
-  Group, 
-  TeamCityBuildConfig} from "./types";
+  TeamCityBuildConfig
+} from "./types";
 
 const integrationAuthKeys = {
   getIntegrationAuthById: (integrationAuthId: string) =>
@@ -23,8 +24,6 @@ const integrationAuthKeys = {
     [{ integrationAuthId, teamId, workspaceSlug }, "integrationAuthApps"] as const,
   getIntegrationAuthTeams: (integrationAuthId: string) =>
     [{ integrationAuthId }, "integrationAuthTeams"] as const,
-  getIntegrationAuthGroups: (integrationAuthId: string) =>
-  [{ integrationAuthId }, "integrationAuthGroups"] as const,
   getIntegrationAuthVercelBranches: ({
     integrationAuthId,
     appId
@@ -32,6 +31,14 @@ const integrationAuthKeys = {
     integrationAuthId: string;
     appId: string;
   }) => [{ integrationAuthId, appId }, "integrationAuthVercelBranches"] as const,
+  getIntegrationAuthChecklyGroups: ({
+    integrationAuthId,
+    accountId
+  }: {
+    integrationAuthId: string;
+    accountId: string;
+  }) => 
+  [{ integrationAuthId, accountId }, "integrationAuthChecklyGroups"] as const,
   getIntegrationAuthQoveryOrgs: (integrationAuthId: string) => 
   [{ integrationAuthId }, "integrationAuthQoveryOrgs"] as const,
   getIntegrationAuthQoveryProjects: ({
@@ -128,10 +135,22 @@ const fetchIntegrationAuthTeams = async (integrationAuthId: string) => {
   return data.teams;
 };
 
-const fetchIntegrationAuthGroups = async (integrationAuthId: string) => {
-  const { data } = await apiRequest.get<{ groups: Group[] }>(
-    `/api/v1/integration-auth/${integrationAuthId}/groups`
+const fetchIntegrationAuthChecklyGroups = async ({
+  integrationAuthId,
+  accountId
+}: {
+  integrationAuthId: string;
+  accountId: string;
+}) => {
+  const { data } = await apiRequest.get<{ groups: ChecklyGroup[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/checkly/groups`,
+    {
+      params: {
+        accountId
+      }
+    }
   );
+
   return data.groups;
 };
 
@@ -422,10 +441,22 @@ export const useGetIntegrationAuthVercelBranches = ({
   });
 };
 
-export const useGetIntegrationAuthGroups = (integrationAuthId: string) => {
+export const useGetIntegrationAuthChecklyGroups = ({
+  integrationAuthId,
+  accountId
+}: {
+  integrationAuthId: string;
+  accountId: string;
+}) => {
   return useQuery({
-    queryKey: integrationAuthKeys.getIntegrationAuthGroups(integrationAuthId),
-    queryFn: () => fetchIntegrationAuthGroups(integrationAuthId),
+    queryKey: integrationAuthKeys.getIntegrationAuthChecklyGroups({
+      integrationAuthId,
+      accountId
+    }),
+    queryFn: () => fetchIntegrationAuthChecklyGroups({
+      integrationAuthId,
+      accountId
+    }),
     enabled: true
   });
 };

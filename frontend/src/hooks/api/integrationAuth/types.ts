@@ -26,9 +26,9 @@ export type Environment = {
   environmentId: string;
 };
 
-export type Group = {
+export type ChecklyGroup = {
   name: string;
-  groupId: string;
+  groupId: number;
 };
 
 export type Container = {

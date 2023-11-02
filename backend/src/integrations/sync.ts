@@ -2104,7 +2104,7 @@ const syncSecretsSupabase = async ({
 };
 
 /**
- * Sync/push [secrets] to Checkly app
+ * Sync/push [secrets] to Checkly app/group
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
@@ -2123,6 +2123,8 @@ const syncSecretsCheckly = async ({
 }) => {
 
   if (integration.targetServiceId) {
+    // sync secrets to checkly group envars
+
     let getGroupSecretsRes = (
       await standardRequest.get(`${INTEGRATION_CHECKLY_API_URL}/v1/check-groups/${integration.targetServiceId}`, {
         headers: {
@@ -2162,48 +2164,22 @@ const syncSecretsCheckly = async ({
       value: secrets[key].value
     }));
 
-    // add secrets
-    for await (const key of Object.keys(secrets)) {
-      
-      if (!(key in getGroupSecretsRes)) {
-        // case: secret does not exist in checkly group
-        // -> add secret
-
-        await standardRequest.put(
-          `${INTEGRATION_CHECKLY_API_URL}/v1/check-groups/${integration.targetServiceId}`,
-          {
-            environmentVariables: groupEnvironmentVariables
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: "application/json",
-              "X-Checkly-Account": integration.appId
-            }
-          }
-        );
-      } else {
-        // case: secret exists in checkly group
-        // -> update/set secret
-  
-        if (secrets[key] !== getGroupSecretsRes[key]) {
-          await standardRequest.put(
-            `${INTEGRATION_CHECKLY_API_URL}/v1/check-groups/${integration.targetServiceId}`,
-            {
-              environmentVariables: groupEnvironmentVariables
-            },
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: "application/json",
-                "X-Checkly-Account": integration.appId
-              }
-            }
-          );
+    await standardRequest.put(
+      `${INTEGRATION_CHECKLY_API_URL}/v1/check-groups/${integration.targetServiceId}`,
+      {
+        environmentVariables: groupEnvironmentVariables
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+          "X-Checkly-Account": integration.appId
         }
       }
-    }
+    );
   } else {
+    // sync secrets to checkly global envars
+    
     let getSecretsRes = (
       await standardRequest.get(`${INTEGRATION_CHECKLY_API_URL}/v1/variables`, {
         headers: {
