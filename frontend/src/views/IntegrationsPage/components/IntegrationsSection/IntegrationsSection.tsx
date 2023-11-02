@@ -54,7 +54,7 @@ export const IntegrationsSection = ({
         </div>
       )}
 
-      {!isBotActive && (
+      {!isBotActive && Boolean(integrations.length) && (
         <div className="px-6 py-4">
           <Alert hideTitle variant="warning">
             <AlertDescription>
@@ -119,7 +119,7 @@ export const IntegrationsSection = ({
                     {integrationSlugNameMapping[integration.integration]}
                   </div>
                 </div>
-                {(integration.integration === "qovery") && (
+                {integration.integration === "qovery" && (
                   <div className="flex flex-row">
                     <div className="ml-2 flex flex-col">
                       <FormLabel label="Org" />
@@ -162,7 +162,8 @@ export const IntegrationsSection = ({
                     </div>
                   </div>
                 )}
-                {((integration.integration === "checkly") || (integration.integration === "github")) && (
+                {(integration.integration === "checkly" ||
+                  integration.integration === "github") && (
                   <div className="ml-2 flex flex-col">
                     <FormLabel label="Secret Suffix" />
                     <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">

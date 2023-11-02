@@ -212,12 +212,13 @@ export const getUserPermissions = async (req: Request, res: Response) => {
   const {
     params: { orgId }
   } = await validateRequest(GetUserPermission, req);
-  
-  const { permission } = await getUserOrgPermissions(req.user._id, orgId);
+
+  const { permission, membership } = await getUserOrgPermissions(req.user._id, orgId);
 
   res.status(200).json({
     data: {
-      permissions: packRules(permission.rules)
+      permissions: packRules(permission.rules),
+      membership
     }
   });
 };
@@ -226,11 +227,12 @@ export const getUserWorkspacePermissions = async (req: Request, res: Response) =
   const {
     params: { workspaceId }
   } = await validateRequest(GetUserProjectPermission, req);
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission, membership } = await getUserProjectPermissions(req.user._id, workspaceId);
 
   res.status(200).json({
     data: {
-      permissions: packRules(permission.rules)
+      permissions: packRules(permission.rules),
+      membership
     }
   });
 };

@@ -21,7 +21,7 @@ export const OrgPermissionCan: FunctionComponent<Props> = ({
   allowedLabel,
   ...props
 }) => {
-  const permission = useOrgPermission();
+  const { permission } = useOrgPermission();
 
   return (
     <Can {...props} passThrough={passThrough} ability={props?.ability || permission}>
