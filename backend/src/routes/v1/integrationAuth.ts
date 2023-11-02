@@ -61,6 +61,14 @@ router.get(
 );
 
 router.get(
+  "/:integrationAuthId/checkly/groups",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  integrationAuthController.getIntegrationAuthChecklyGroups
+);
+
+router.get(
   "/:integrationAuthId/qovery/orgs",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]

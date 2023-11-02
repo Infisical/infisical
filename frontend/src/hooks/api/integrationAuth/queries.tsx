@@ -6,14 +6,16 @@ import { workspaceKeys } from "../workspace/queries";
 import { 
   App, 
   BitBucketWorkspace, 
+  ChecklyGroup, 
   Environment, 
   IntegrationAuth, 
   NorthflankSecretGroup,
   Org,
   Project,
   Service, 
-  Team, 
-  TeamCityBuildConfig} from "./types";
+  Team,
+  TeamCityBuildConfig
+} from "./types";
 
 const integrationAuthKeys = {
   getIntegrationAuthById: (integrationAuthId: string) =>
@@ -29,6 +31,14 @@ const integrationAuthKeys = {
     integrationAuthId: string;
     appId: string;
   }) => [{ integrationAuthId, appId }, "integrationAuthVercelBranches"] as const,
+  getIntegrationAuthChecklyGroups: ({
+    integrationAuthId,
+    accountId
+  }: {
+    integrationAuthId: string;
+    accountId: string;
+  }) => 
+  [{ integrationAuthId, accountId }, "integrationAuthChecklyGroups"] as const,
   getIntegrationAuthQoveryOrgs: (integrationAuthId: string) => 
   [{ integrationAuthId }, "integrationAuthQoveryOrgs"] as const,
   getIntegrationAuthQoveryProjects: ({
@@ -125,6 +135,24 @@ const fetchIntegrationAuthTeams = async (integrationAuthId: string) => {
   return data.teams;
 };
 
+const fetchIntegrationAuthChecklyGroups = async ({
+  integrationAuthId,
+  accountId
+}: {
+  integrationAuthId: string;
+  accountId: string;
+}) => {
+  const { data } = await apiRequest.get<{ groups: ChecklyGroup[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/checkly/groups`,
+    {
+      params: {
+        accountId
+      }
+    }
+  );
+
+  return data.groups;
+};
 
 const fetchIntegrationAuthVercelBranches = async ({
   integrationAuthId,
@@ -409,6 +437,26 @@ export const useGetIntegrationAuthVercelBranches = ({
         integrationAuthId,
         appId
       }),
+    enabled: true
+  });
+};
+
+export const useGetIntegrationAuthChecklyGroups = ({
+  integrationAuthId,
+  accountId
+}: {
+  integrationAuthId: string;
+  accountId: string;
+}) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthChecklyGroups({
+      integrationAuthId,
+      accountId
+    }),
+    queryFn: () => fetchIntegrationAuthChecklyGroups({
+      integrationAuthId,
+      accountId
+    }),
     enabled: true
   });
 };

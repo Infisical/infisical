@@ -1,11 +1,12 @@
 import Redis, { Redis as TRedis } from "ioredis";
+import { logger } from "../utils/logging";
 
 let redisClient: TRedis | null;
 
 if (process.env.REDIS_URL) {
   redisClient = new Redis(process.env.REDIS_URL as string);
 } else {
-  console.warn("Redis URL not set, skipping Redis initialization.");
+  logger.warn("Redis URL not set, skipping Redis initialization.");
   redisClient = null;
 }
 
