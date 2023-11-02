@@ -209,7 +209,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         user = req.authData.authPayload._id;
     }
     
-    const isActive = false;
+    const isActive = true;
     const serviceTokenData = await new ServiceTokenDataV3({
         name,
         user,

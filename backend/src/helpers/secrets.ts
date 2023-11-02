@@ -553,14 +553,22 @@ export const getSecretsHelper = async ({
   workspaceId,
   environment,
   authData,
-  folderId,
   secretPath = "/"
 }: GetSecretsParams) => {
   let secrets: ISecret[] = [];
   // if using service token filter towards the folderId by secretpath
 
-  if (!folderId) {
-    folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
+  const folders = await Folder.findOne({
+    workspace: workspaceId,
+    environment
+  });
+  let folderId = "root";
+  if (!folders && folderId !== "root") return [];
+  // get folder from folder tree
+  if (folders) {
+    const folder = getFolderByPath(folders.nodes, secretPath);
+    if (!folder) return [];
+    folderId = folder?.id;
   }
 
   // get personal secrets first

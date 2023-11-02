@@ -12,6 +12,7 @@ export type SubscriptionPlan = {
   secretVersioning: boolean;
   slug: string;
   secretApproval: string;
+  secretRotation: string;
   tier: number;
   workspaceLimit: number;
   workspacesUsed: number;

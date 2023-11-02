@@ -12,6 +12,7 @@ export * from "./secretApproval";
 export * from "./secretApprovalRequest";
 export * from "./secretFolders";
 export * from "./secretImports";
+export * from "./secretRotation";
 export * from "./secrets";
 export * from "./secretSnapshots";
 export * from "./serviceAccounts";

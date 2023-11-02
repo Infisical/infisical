@@ -32,6 +32,7 @@ import {
   initializeGoogleStrategy,
   initializeSamlStrategy
 } from "../authn/passport";
+import { logger } from "../logging";
 
 /**
  * Prepare Infisical upon startup. This includes tasks like:
@@ -45,8 +46,7 @@ import {
  */
 export const setup = async () => {
   if ((await getRedisUrl()) === undefined || (await getRedisUrl()) === "") {
-    // eslint-disable-next-line no-console
-    console.error(
+    logger.error(
       "WARNING: Redis is not yet configured. Infisical may not function as expected without it."
     );
   }
