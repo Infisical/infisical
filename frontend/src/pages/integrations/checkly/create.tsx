@@ -3,7 +3,7 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faArrowUpRightFromSquare, faBookOpen, faBugs, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 import queryString from "query-string";
@@ -121,7 +121,7 @@ export default function ChecklyCreateIntegrationPage() {
     integrationAuthApps && 
     integrationAuthGroups &&
     targetAppId ? (
-    <div className="flex flex-col w-full py-6 items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
+    <div className="flex h-full flex-col w-full py-6 items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
       <Head>
         <title>Set Up Checkly Integration</title>
         <link rel='icon' href='/infisical.ico' />
@@ -266,12 +266,6 @@ export default function ChecklyCreateIntegrationPage() {
           Create Integration
         </Button>
       </Card>
-      <div className="border-t border-mineshaft-800 w-full max-w-md mt-6"/>
-      <div className="flex flex-col bg-mineshaft-800 border border-mineshaft-600 w-full p-4 max-w-lg mt-6 rounded-md">
-        <div className="flex flex-row items-center"><FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl"/> <span className="ml-3 text-md text-mineshaft-100">Pro Tips</span></div>
-        <span className="text-mineshaft-300 text-sm mt-4">After creating an integration, your secrets will start syncing immediately. This might cause an unexpected override of current secrets in Checkly with secrets from Infisical.</span>
-        <span className="text-mineshaft-300 text-sm mt-4">If you have multiple Checkly integrations and are using suffixes for at least one of them, you will have to add suffixes for all the active Checkly integrations – otherwise you might run into rare unexpected behavior.</span>
-      </div>
     </div>
   ) : (
     <div className="flex justify-center items-center w-full h-full">
