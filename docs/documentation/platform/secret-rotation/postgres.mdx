@@ -1,0 +1,37 @@
+---
+title: "PostgreSQL/CockroachDB"
+description: "Rotated database user password of a postgreSQL or cochroach db"
+---
+
+Infisical will update periodically the provided database user's password.
+
+<Warning>
+	At present Infisical do require access to your database. We will soon be released Infisical agent based rotation which would help you rotate without direct database access from Infisical cloud.
+</Warning>
+
+## Working
+
+1. User's has to create the two user's for Infisical to rotate and provide them required database access
+2. Infisical will connect with your database with admin access
+3. If last rotated one was username1, then username2 is chosen to be rotated
+5. Update it's password with random value
+6. After testing it gets saved to the provided secret mapping
+
+## Rotation Configuration
+
+1. Head over to Secret Rotation configuration page of your project by clicking on side bar `Secret Rotation`
+2. Click on `PostgreSQL`
+3. Provide the inputs
+	- Admin Username: DB admin username
+	- Admin Password: DB admin password
+	- Host: DB host
+	- Port: DB port(number)
+	- Username1: The first username in two to rotate
+	- Username2: The second username in two to rotate
+	- CA: Certificate to connect with database(string)
+4. Final step
+	- Select `Environment`, `Secret Path` and `Interval` to rotate the secrets
+	- Finally select the secrets in your provided board to replace with new secret after each rotation
+	- Your done and good to go.
+
+Congrats. You have 10x your PostgreSQL/CockroachDB access security. 

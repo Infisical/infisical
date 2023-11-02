@@ -1,5 +1,5 @@
 import { PostHog } from "posthog-node";
-import { getLogger } from "../utils/logger";
+import { logger } from "../utils/logging";
 import { AuthData } from "../interfaces/middleware";
 import {
   getNodeEnv,
@@ -22,13 +22,13 @@ class Telemetry {
    * Logs telemetry enable/disable notice.
    */
   static logTelemetryMessage = async () => {
+
     if(!(await getTelemetryEnabled())){
-      (await getLogger("backend-main")).info([
-        "",
+      [
         "To improve, Infisical collects telemetry data about general usage.",
         "This helps us understand how the product is doing and guide our product development to create the best possible platform; it also helps us demonstrate growth as we support Infisical as open-source software.",
         "To opt into telemetry, you can set `TELEMETRY_ENABLED=true` within the environment variables.",
-      ].join("\n"))
+      ].forEach(line => logger.info(line));
     }
   }
 

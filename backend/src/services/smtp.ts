@@ -16,7 +16,7 @@ import {
   getSmtpSecure,
   getSmtpUsername,
 } from "../config";
-import { getLogger } from "../utils/logger";
+import { logger } from "../utils/logging";
 
 export const initSmtp = async () => {
   const mailOpts: SMTPConnection.Options = {
@@ -84,15 +84,14 @@ export const initSmtp = async () => {
     .then(async () => {
       Sentry.setUser(null);
       Sentry.captureMessage("SMTP - Successfully connected");
-      (await getLogger("backend-main")).info(
-        "SMTP - Successfully connected"
-      );
+      logger.info("SMTP - Successfully connected");
     })
     .catch(async (err) => {
       Sentry.setUser(null);
       Sentry.captureException(
         `SMTP - Failed to connect to ${await getSmtpHost()}:${await getSmtpPort()} \n\t${err}`
       );
+      logger.error(err, `SMTP - Failed to connect to ${await getSmtpHost()}:${await getSmtpPort()}`);
     });
 
   return transporter;

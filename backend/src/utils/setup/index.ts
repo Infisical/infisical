@@ -11,7 +11,6 @@ import {
   backfillBots,
   backfillEncryptionMetadata,
   backfillIntegration,
-  backfillPermission,
   backfillSecretBlindIndexData,
   backfillSecretFolders,
   backfillSecretVersions,
@@ -28,6 +27,7 @@ import {
 } from "./reencryptData";
 import { getMongoURL, getNodeEnv, getRedisUrl, getSentryDSN } from "../../config";
 import { initializePassport } from "../auth";
+import { logger } from "../logging";
 
 /**
  * Prepare Infisical upon startup. This includes tasks like:
@@ -41,7 +41,7 @@ import { initializePassport } from "../auth";
  */
 export const setup = async () => {
   if ((await getRedisUrl()) === undefined || (await getRedisUrl()) === "") {
-    console.error(
+    logger.error(
       "WARNING: Redis is not yet configured. Infisical may not function as expected without it."
     );
   }

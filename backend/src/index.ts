@@ -5,6 +5,8 @@ import express from "express";
 require("express-async-errors");
 import helmet from "helmet";
 import cors from "cors";
+import { logger } from "./utils/logging";
+import httpLogger from "pino-http";
 import { DatabaseService } from "./services";
 import { EELicenseService, GithubSecretScanningService } from "./ee/services";
 import { setUpHealthEndpoint } from "./services/health";
@@ -25,8 +27,10 @@ import {
   users as eeUsersRouter,
   workspace as eeWorkspaceRouter,
   roles as v1RoleRouter,
-  secretApprovalPolicy as v1SecretApprovalPolicy,
-  secretApprovalRequest as v1SecretApprovalRequest,
+  secretApprovalPolicy as v1SecretApprovalPolicyRouter,
+  secretApprovalRequest as v1SecretApprovalRequestRouter,
+  secretRotation as v1SecretRotation,
+  secretRotationProvider as v1SecretRotationProviderRouter,
   secretScanning as v1SecretScanningRouter
 } from "./ee/routes/v1";
 import { apiKeyData as v3apiKeyDataRouter } from "./ee/routes/v3";
@@ -73,7 +77,7 @@ import {
   workspaces as v3WorkspacesRouter
 } from "./routes/v3";
 import { healthCheck } from "./routes/status";
-import { getLogger } from "./utils/logger";
+// import { getLogger } from "./utils/logger";
 import { RouteNotFoundError } from "./utils/errors";
 import { requestErrorHandler } from "./middleware/requestErrorHandler";
 import {
@@ -94,12 +98,20 @@ import path from "path";
 let handler: null | any = null;
 
 const main = async () => {
+  const port = await getPort();
+
   await setup();
 
   await EELicenseService.initGlobalFeatureSet();
 
   const app = express();
   app.enable("trust proxy");
+  
+  app.use(httpLogger({
+    logger,
+    autoLogging: false
+  }));
+
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
@@ -164,7 +176,7 @@ const main = async () => {
     const nextApp = new NextServer({
       dev: false,
       dir: nextJsBuildPath,
-      port: await getPort(),
+      port,
       conf,
       hostname: "local",
       customServer: false
@@ -184,6 +196,8 @@ const main = async () => {
   app.use("/api/v1/cloud-products", eeCloudProductsRouter);
   app.use("/api/v3/api-key", v3apiKeyDataRouter); // new
   app.use("/api/v3/service-token", v3ServiceTokenDataRouter); // new
+  app.use("/api/v1/secret-rotation-providers", v1SecretRotationProviderRouter);
+  app.use("/api/v1/secret-rotations", v1SecretRotation);
 
   // v1 routes
   app.use("/api/v1/signup", v1SignupRouter);
@@ -207,9 +221,9 @@ const main = async () => {
   app.use("/api/v1/webhooks", v1WebhooksRouter);
   app.use("/api/v1/secret-imports", v1SecretImpsRouter);
   app.use("/api/v1/roles", v1RoleRouter);
-  app.use("/api/v1/secret-approvals", v1SecretApprovalPolicy);
+  app.use("/api/v1/secret-approvals", v1SecretApprovalPolicyRouter);
   app.use("/api/v1/sso", v1SSORouter);
-  app.use("/api/v1/secret-approval-requests", v1SecretApprovalRequest);
+  app.use("/api/v1/secret-approval-requests", v1SecretApprovalRequestRouter);
 
   // v2 routes (improvements)
   app.use("/api/v2/signup", v2SignupRouter);
@@ -255,8 +269,8 @@ const main = async () => {
 
   app.use(requestErrorHandler);
 
-  const server = app.listen(await getPort(), async () => {
-    (await getLogger("backend-main")).info(`Server started listening at port ${await getPort()}`);
+  const server = app.listen(port, async () => {
+    logger.info(`Server started listening at port ${port}`);
   });
 
   // await createTestUserForDevelopment();

@@ -13,6 +13,12 @@ export type {
 export { ApprovalStatus, CommitType } from "./secretApprovalRequest/types";
 export type { TSecretFolder } from "./secretFolders/types";
 export type { TImportedSecrets, TSecretImports } from "./secretImports/types";
+export type {
+  TGetSecretRotationProviders,
+  TProviderTemplate,
+  TSecretRotationProvider,
+  TSecretRotationProviderList
+} from "./secretRotation/types";
 export * from "./secrets/types";
 export type { CreateServiceTokenDTO, ServiceToken } from "./serviceTokens/types";
 export type { SubscriptionPlan } from "./subscriptions/types";

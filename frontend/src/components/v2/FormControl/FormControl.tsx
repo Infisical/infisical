@@ -9,16 +9,24 @@ export type FormLabelProps = {
   isRequired?: boolean;
   label?: ReactNode;
   icon?: ReactNode;
+  className?: string;
 };
 
-export const FormLabel = ({ id, label, isRequired, icon }: FormLabelProps) => (
+export const FormLabel = ({ id, label, isRequired, icon, className }: FormLabelProps) => (
   <Label.Root
-    className="mb-0.5 ml-1 block flex items-center text-sm font-normal text-mineshaft-400"
+    className={twMerge(
+      "mb-0.5 ml-1 block flex items-center text-sm font-normal text-mineshaft-400",
+      className
+    )}
     htmlFor={id}
   >
     {label}
     {isRequired && <span className="ml-1 text-red">*</span>}
-    {icon && <span className="ml-2 text-mineshaft-300 hover:text-mineshaft-200 cursor-default">{icon}</span>}
+    {icon && (
+      <span className="ml-2 text-mineshaft-300 hover:text-mineshaft-200 cursor-default">
+        {icon}
+      </span>
+    )}
   </Label.Root>
 );
 

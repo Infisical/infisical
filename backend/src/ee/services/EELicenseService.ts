@@ -38,6 +38,7 @@ interface FeatureSet {
     trial_end: number | null;
     has_used_trial: boolean;
     secretApproval: boolean;
+    secretRotation: boolean;
 }
 
 /**
@@ -74,7 +75,8 @@ class EELicenseService {
         status: null,
         trial_end: null,
         has_used_trial: true,
-        secretApproval: false
+        secretApproval: false,
+        secretRotation: true,
     }
 
     public localFeatureSet: NodeCache;

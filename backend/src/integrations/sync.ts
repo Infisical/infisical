@@ -2104,7 +2104,7 @@ const syncSecretsSupabase = async ({
 };
 
 /**
- * Sync/push [secrets] to Checkly app
+ * Sync/push [secrets] to Checkly app/group
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
@@ -2121,94 +2121,154 @@ const syncSecretsCheckly = async ({
   accessToken: string;
   appendices?: { prefix: string; suffix: string };
 }) => {
-  let getSecretsRes = (
-    await standardRequest.get(`${INTEGRATION_CHECKLY_API_URL}/v1/variables`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "application/json",
-        "X-Checkly-Account": integration.appId
-      }
-    })
-  ).data.reduce(
-    (obj: any, secret: any) => ({
-      ...obj,
-      [secret.key]: secret.value
-    }),
-    {}
-  );
 
-  getSecretsRes = Object.keys(getSecretsRes).reduce(
-    (
-      result: {
-        [key: string]: string;
-      },
-      key
-    ) => {
-      if (
-        (appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) &&
-        (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)
-      ) {
-        result[key] = getSecretsRes[key];
-      }
-      return result;
-    },
-    {}
-  );
+  if (integration.targetServiceId) {
+    // sync secrets to checkly group envars
 
-  // add secrets
-  for await (const key of Object.keys(secrets)) {
-    if (!(key in getSecretsRes)) {
-      // case: secret does not exist in checkly
-      // -> add secret
-      await standardRequest.post(
-        `${INTEGRATION_CHECKLY_API_URL}/v1/variables`,
-        {
-          key,
-          value: secrets[key].value
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            "X-Checkly-Account": integration.appId
-          }
-        }
-      );
-    } else {
-      // case: secret exists in checkly
-      // -> update/set secret
-
-      if (secrets[key] !== getSecretsRes[key]) {
-        await standardRequest.put(
-          `${INTEGRATION_CHECKLY_API_URL}/v1/variables/${key}`,
-          {
-            value: secrets[key].value
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-              Accept: "application/json",
-              "X-Checkly-Account": integration.appId
-            }
-          }
-        );
-      }
-    }
-  }
-
-  for await (const key of Object.keys(getSecretsRes)) {
-    if (!(key in secrets)) {
-      // delete secret
-      await standardRequest.delete(`${INTEGRATION_CHECKLY_API_URL}/v1/variables/${key}`, {
+    let getGroupSecretsRes = (
+      await standardRequest.get(`${INTEGRATION_CHECKLY_API_URL}/v1/check-groups/${integration.targetServiceId}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           Accept: "application/json",
           "X-Checkly-Account": integration.appId
         }
-      });
+      })
+    ).data.environmentVariables.reduce(
+      (obj: any, secret: any) => ({
+        ...obj,
+        [secret.key]: secret.value
+      }),
+      {}
+    );
+
+    getGroupSecretsRes = Object.keys(getGroupSecretsRes).reduce(
+      (
+        result: {
+          [key: string]: string;
+        },
+        key
+      ) => {
+        if (
+          (appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) &&
+          (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)
+        ) {
+          result[key] = getGroupSecretsRes[key];
+        }
+        return result;
+      },
+      {}
+    );
+
+    const groupEnvironmentVariables = Object.keys(secrets).map(key => ({
+      key,
+      value: secrets[key].value
+    }));
+
+    await standardRequest.put(
+      `${INTEGRATION_CHECKLY_API_URL}/v1/check-groups/${integration.targetServiceId}`,
+      {
+        environmentVariables: groupEnvironmentVariables
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+          "X-Checkly-Account": integration.appId
+        }
+      }
+    );
+  } else {
+    // sync secrets to checkly global envars
+    
+    let getSecretsRes = (
+      await standardRequest.get(`${INTEGRATION_CHECKLY_API_URL}/v1/variables`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json",
+          "X-Checkly-Account": integration.appId
+        }
+      })
+    ).data.reduce(
+      (obj: any, secret: any) => ({
+        ...obj,
+        [secret.key]: secret.value
+      }),
+      {}
+    );
+  
+    getSecretsRes = Object.keys(getSecretsRes).reduce(
+      (
+        result: {
+          [key: string]: string;
+        },
+        key
+      ) => {
+        if (
+          (appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) &&
+          (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)
+        ) {
+          result[key] = getSecretsRes[key];
+        }
+        return result;
+      },
+      {}
+    );
+  
+    // add secrets
+    for await (const key of Object.keys(secrets)) {
+      if (!(key in getSecretsRes)) {
+        // case: secret does not exist in checkly
+        // -> add secret
+        await standardRequest.post(
+          `${INTEGRATION_CHECKLY_API_URL}/v1/variables`,
+          {
+            key,
+            value: secrets[key].value
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              "X-Checkly-Account": integration.appId
+            }
+          }
+        );
+      } else {
+        // case: secret exists in checkly
+        // -> update/set secret
+  
+        if (secrets[key] !== getSecretsRes[key]) {
+          await standardRequest.put(
+            `${INTEGRATION_CHECKLY_API_URL}/v1/variables/${key}`,
+            {
+              value: secrets[key].value
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                "X-Checkly-Account": integration.appId
+              }
+            }
+          );
+        }
+      }
     }
+  
+    for await (const key of Object.keys(getSecretsRes)) {
+      if (!(key in secrets)) {
+        // delete secret
+        await standardRequest.delete(`${INTEGRATION_CHECKLY_API_URL}/v1/variables/${key}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+            "X-Checkly-Account": integration.appId
+          }
+        });
+      }
+    }  
   }
 };
 

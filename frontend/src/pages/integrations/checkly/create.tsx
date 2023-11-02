@@ -3,7 +3,7 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faArrowUpRightFromSquare, faBookOpen, faBugs, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 import queryString from "query-string";
@@ -27,7 +27,8 @@ import {
 
 import {
   useGetIntegrationAuthApps,
-  useGetIntegrationAuthById
+  useGetIntegrationAuthById,
+  useGetIntegrationAuthChecklyGroups
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 
@@ -42,20 +43,24 @@ export default function ChecklyCreateIntegrationPage() {
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
+  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [secretPath, setSecretPath] = useState("/");
+  const [secretSuffix, setSecretSuffix] = useState("");
+
+  const [targetAppId, setTargetAppId] = useState("");
+  const [targetGroupId, setTargetGroupId] = useState("");
+
+  const [isLoading, setIsLoading] = useState(false);
+
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
   const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
-
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
-  const [secretPath, setSecretPath] = useState("/");
-  const [secretSuffix, setSecretSuffix] = useState("");
-
-  const [targetApp, setTargetApp] = useState("");
-  const [targetAppId, setTargetAppId] = useState("");
-
-  const [isLoading, setIsLoading] = useState(false);
+  const { data: integrationAuthGroups, isLoading: isintegrationAuthGroupsLoading } = useGetIntegrationAuthChecklyGroups({
+    integrationAuthId: (integrationAuthId as string) ?? "",
+    accountId: targetAppId
+  });
 
   useEffect(() => {
     if (workspace) {
@@ -64,13 +69,11 @@ export default function ChecklyCreateIntegrationPage() {
   }, [workspace]);
 
   useEffect(() => {
-    // TODO: handle case where apps can be empty
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
-        setTargetApp(integrationAuthApps[0].name);
-        setTargetAppId(String(integrationAuthApps[0].appId));
+        setTargetAppId(integrationAuthApps[0].appId as string);
       } else {
-        setTargetApp("none");
+        setTargetAppId("none");
       }
     }
   }, [integrationAuthApps]);
@@ -81,12 +84,23 @@ export default function ChecklyCreateIntegrationPage() {
 
       setIsLoading(true);
 
+      const targetApp = integrationAuthApps?.find(
+        (integrationAuthApp) => integrationAuthApp.appId === targetAppId
+      );
+      const targetGroup = integrationAuthGroups?.find(
+        (group) => group.groupId === Number(targetGroupId)
+      );
+      
+      if (!targetApp) return;
+      
       await mutateAsync({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
-        app: targetApp,
-        appId: targetAppId,
+        app: targetApp?.name,
+        appId: targetApp?.appId,
         sourceEnvironment: selectedSourceEnvironment,
+        targetService: targetGroup?.name,
+        targetServiceId: targetGroup?.groupId ? String(targetGroup?.groupId) : undefined,
         secretPath,
         metadata: {
           secretSuffix
@@ -104,9 +118,10 @@ export default function ChecklyCreateIntegrationPage() {
   return integrationAuth &&
     workspace &&
     selectedSourceEnvironment &&
-    integrationAuthApps &&
-    targetApp ? (
-    <div className="flex flex-col h-full w-full items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
+    integrationAuthApps && 
+    integrationAuthGroups &&
+    targetAppId ? (
+    <div className="flex h-full flex-col w-full py-6 items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
       <Head>
         <title>Set Up Checkly Integration</title>
         <link rel='icon' href='/infisical.ico' />
@@ -177,16 +192,16 @@ export default function ChecklyCreateIntegrationPage() {
               </FormControl>
               <FormControl label="Checkly Account">
                 <Select
-                  value={targetApp}
-                  onValueChange={(val) => setTargetApp(val)}
+                  value={targetAppId}
+                  onValueChange={(val) => setTargetAppId(val)}
                   className="w-full border border-mineshaft-500"
                   isDisabled={integrationAuthApps.length === 0}
                 >
                   {integrationAuthApps.length > 0 ? (
                     integrationAuthApps.map((integrationAuthApp) => (
                       <SelectItem
-                        value={integrationAuthApp.name}
-                        key={`target-app-${integrationAuthApp.name}`}
+                        value={integrationAuthApp.appId as string}
+                        key={`target-app-${integrationAuthApp.appId as string}`}
                       >
                         {integrationAuthApp.name}
                       </SelectItem>
@@ -194,6 +209,28 @@ export default function ChecklyCreateIntegrationPage() {
                   ) : (
                     <SelectItem value="none" key="target-app-none">
                       No apps found
+                    </SelectItem>
+                  )}
+                </Select>
+              </FormControl>
+              <FormControl label="Checkly Group (Optional)">
+                <Select
+                  value={targetGroupId}
+                  onValueChange={(val) => setTargetGroupId(val)}
+                  className="w-full border border-mineshaft-500"
+                >
+                  {integrationAuthGroups.length > 0 ? (
+                    integrationAuthGroups.map((integrationAuthGroup) => (
+                      <SelectItem
+                        value={String(integrationAuthGroup.groupId)}
+                        key={`target-group-${String(integrationAuthGroup.groupId)}`}
+                      >
+                        {integrationAuthGroup.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" key="target-group-none">
+                      No groups found
                     </SelectItem>
                   )}
                 </Select>
@@ -229,12 +266,6 @@ export default function ChecklyCreateIntegrationPage() {
           Create Integration
         </Button>
       </Card>
-      <div className="border-t border-mineshaft-800 w-full max-w-md mt-6"/>
-      <div className="flex flex-col bg-mineshaft-800 border border-mineshaft-600 w-full p-4 max-w-lg mt-6 rounded-md">
-        <div className="flex flex-row items-center"><FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl"/> <span className="ml-3 text-md text-mineshaft-100">Pro Tips</span></div>
-        <span className="text-mineshaft-300 text-sm mt-4">After creating an integration, your secrets will start syncing immediately. This might cause an unexpected override of current secrets in Checkly with secrets from Infisical.</span>
-        <span className="text-mineshaft-300 text-sm mt-4">If you have multiple Checkly integrations and are using suffixes for at least one of them, you will have to add suffixes for all the active Checkly integrations – otherwise you might run into rare unexpected behavior.</span>
-      </div>
     </div>
   ) : (
     <div className="flex justify-center items-center w-full h-full">
@@ -242,7 +273,7 @@ export default function ChecklyCreateIntegrationPage() {
         <title>Set Up Checkly Integration</title>
         <link rel='icon' href='/infisical.ico' />
       </Head>
-      {isIntegrationAuthAppsLoading ? <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" /> : <div className="max-w-md h-max p-6 border border-mineshaft-600 rounded-md bg-mineshaft-800 text-mineshaft-200 flex flex-col text-center">
+      {isIntegrationAuthAppsLoading || isintegrationAuthGroupsLoading ? <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" /> : <div className="max-w-md h-max p-6 border border-mineshaft-600 rounded-md bg-mineshaft-800 text-mineshaft-200 flex flex-col text-center">
         <FontAwesomeIcon icon={faBugs} className="text-6xl my-2 inlineli"/>
         <p>
           Something went wrong. Please contact <a

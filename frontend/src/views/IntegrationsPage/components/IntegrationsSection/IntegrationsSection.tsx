@@ -162,14 +162,23 @@ export const IntegrationsSection = ({
                     </div>
                   </div>
                 )}
-                {(integration.integration === "checkly" ||
-                  integration.integration === "github") && (
-                  <div className="ml-2 flex flex-col">
-                    <FormLabel label="Secret Suffix" />
-                    <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
-                      {integration?.metadata?.secretSuffix || "-"}
+                {((integration.integration === "checkly") || (integration.integration === "github")) && (
+                  <>
+                    {integration.targetService && (
+                      <div className="ml-2">
+                        <FormLabel label="Group" />
+                        <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                          {integration.targetService}
+                        </div>
+                      </div>
+                    )}
+                    <div className="ml-2">
+                      <FormLabel label="Secret Suffix" />
+                      <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                        {integration?.metadata?.secretSuffix || "-"}
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
               <div className="flex cursor-default items-center">
