@@ -15,7 +15,7 @@ export const OrgIncidentContactsSection = () => {
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addContact"
   ] as const);
-  const permission = useOrgPermission();
+  const { permission } = useOrgPermission();
 
   return (
     <div className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600">
