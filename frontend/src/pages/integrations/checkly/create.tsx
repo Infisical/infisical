@@ -100,7 +100,7 @@ export default function ChecklyCreateIntegrationPage() {
         appId: targetApp?.appId,
         sourceEnvironment: selectedSourceEnvironment,
         targetService: targetGroup?.name,
-        targetServiceId: String(targetGroup?.groupId),
+        targetServiceId: targetGroup?.groupId ? String(targetGroup?.groupId) : undefined,
         secretPath,
         metadata: {
           secretSuffix
