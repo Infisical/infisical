@@ -287,6 +287,14 @@ interface AddWorkspaceMemberEvent {
   };
 }
 
+interface AddBatchWorkspaceMemberEvent {
+  type: EventType.ADD_BATCH_WORKSPACE_MEMBER;
+  metadata: Array<{
+    userId: string;
+    email: string;
+  }>;
+}
+
 interface RemoveWorkspaceMemberEvent {
   type: EventType.REMOVE_WORKSPACE_MEMBER;
   metadata: {
@@ -494,6 +502,7 @@ export type Event =
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent
   | AddWorkspaceMemberEvent
+  | AddBatchWorkspaceMemberEvent
   | RemoveWorkspaceMemberEvent
   | CreateFolderEvent
   | UpdateFolderEvent

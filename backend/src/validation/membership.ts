@@ -78,3 +78,19 @@ export const DenyMembershipPermissionV1 = z.object({
     permissions: z.object({}).array()
   })
 });
+
+export const AddUserToWorkspaceV2 = z.object({
+  params: z.object({
+    workspaceId: z.string().trim()
+  }),
+  body: z.object({
+    members: z
+      .object({
+        orgMembershipId: z.string().trim(),
+        workspaceEncryptedKey: z.string().trim(),
+        workspaceEncryptedNonce: z.string().trim()
+      })
+      .array()
+      .min(1)
+  })
+});

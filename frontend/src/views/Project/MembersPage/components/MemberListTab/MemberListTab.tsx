@@ -59,7 +59,7 @@ type Props = {
 };
 
 const addMemberFormSchema = z.object({
-  email: z.string().email().trim()
+  orgMembershipId: z.string().trim()
 });
 
 type TAddMemberForm = z.infer<typeof addMemberFormSchema>;
@@ -100,13 +100,25 @@ export const MemberListTab = ({ roles = [], isRolesLoading }: Props) => {
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
   const { mutateAsync: updateUserWorkspaceRole } = useUpdateUserWorkspaceRole();
 
-  const onAddMember = async ({ email }: TAddMemberForm) => {
+  const onAddMember = async ({ orgMembershipId }: TAddMemberForm) => {
     if (!currentOrg?._id) return;
+    // TODO(akhilmhdh): Move to memory storage
+    const userPrivateKey = localStorage.getItem("PRIVATE_KEY");
+    if (!userPrivateKey || !wsKey) {
+      createNotification({
+        text: "Failed to find private key. Try re-login"
+      });
+      return;
+    }
+    const orgUser = (orgUsers || []).find(({ _id }) => _id === orgMembershipId);
+    if (!orgUser) return;
 
     try {
       await addUserToWorkspace({
-        email,
-        workspaceId
+        workspaceId,
+        userPrivateKey,
+        decryptKey: wsKey,
+        members: [{ orgMembershipId, userPublicKey: orgUser.user.publicKey }]
       });
       createNotification({
         text: "Successfully invited user to the organization.",
@@ -365,7 +377,7 @@ export const MemberListTab = ({ roles = [], isRolesLoading }: Props) => {
               <Controller
                 control={control}
                 defaultValue={filteredOrgUsers?.[0]?.user?.email}
-                name="email"
+                name="orgMembershipId"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl label="Email" isError={Boolean(error)} errorText={error?.message}>
                     <Select
@@ -376,7 +388,7 @@ export const MemberListTab = ({ roles = [], isRolesLoading }: Props) => {
                       onValueChange={field.onChange}
                     >
                       {filteredOrgUsers.map(({ _id: orgUserId, user: u }) => (
-                        <SelectItem value={u?.email} key={`org-membership-join-${orgUserId}`}>
+                        <SelectItem value={orgUserId} key={`org-membership-join-${orgUserId}`}>
                           {u?.email}
                         </SelectItem>
                       ))}

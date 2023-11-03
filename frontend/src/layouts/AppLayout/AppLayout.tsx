@@ -72,6 +72,7 @@ import {
   useRegisterUserAction,
   useUploadWsKey
 } from "@app/hooks/api";
+import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
 import { CreateOrgModal } from "@app/views/Org/components";
 
 interface LayoutProps {
@@ -249,11 +250,19 @@ export const AppLayout = ({ children }: LayoutProps) => {
       if (addMembers) {
         // not using hooks because need at this point only
         const orgUsers = await fetchOrgUsers(currentOrg._id);
-        orgUsers.forEach(({ status, user: orgUser }) => {
-          // skip if status of org user is not accepted
-          // this orgUser is the person who created the ws
-          if (status !== "accepted" || user.email === orgUser.email) return;
-          addWsUser.mutate({ email: orgUser.email, workspaceId: newWorkspaceId });
+        const decryptKey = await fetchUserWsKey(newWorkspaceId);
+        await addWsUser.mutateAsync({
+          workspaceId: newWorkspaceId,
+          decryptKey,
+          userPrivateKey: PRIVATE_KEY,
+          members: orgUsers
+            .filter(
+              ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
+            )
+            .map(({ user: orgUser, _id: orgMembershipId }) => ({
+              userPublicKey: orgUser.publicKey,
+              orgMembershipId
+            }))
         });
       }
       createNotification({ text: "Workspace created", type: "success" });
@@ -288,13 +297,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary text-sm">
                             {currentOrg?.name.charAt(0)}
                           </div>
-                          <div className="pl-3 text-sm text-mineshaft-100">
-                            {currentOrg?.name}{" "}
-                            <FontAwesomeIcon
-                              icon={faAngleDown}
-                              className="pl-1 pt-1 text-xs text-mineshaft-300"
-                            />
+                          <div
+                            className="pl-2 text-sm text-mineshaft-100 text-ellipsis overflow-hidden"
+                            style={{ maxWidth: "140px" }}
+                          >
+                            {currentOrg?.name}
                           </div>
+                          <FontAwesomeIcon
+                            icon={faAngleDown}
+                            className="pl-1 pt-1 text-xs text-mineshaft-300"
+                          />
                         </div>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="p-1">
@@ -346,7 +358,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         asChild
                         className="p-1 hover:bg-primary-400 hover:text-black data-[state=open]:bg-primary-400 data-[state=open]:text-black"
                       >
-                        <div className="child flex h-6 w-6 items-center justify-center rounded-full bg-mineshaft pr-1 text-xs text-mineshaft-300 hover:bg-mineshaft-500">
+                        <div
+                          className="child flex items-center justify-center rounded-full bg-mineshaft pr-1 text-mineshaft-300 hover:bg-mineshaft-500"
+                          style={{ fontSize: "11px", width: "26px", height: "26px" }}
+                        >
                           {user?.firstName?.charAt(0)}
                           {user?.lastName && user?.lastName?.charAt(0)}
                         </div>

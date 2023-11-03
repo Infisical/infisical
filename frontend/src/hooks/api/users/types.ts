@@ -5,9 +5,9 @@ export enum AuthMethod {
   GOOGLE = "google",
   GITHUB = "github",
   GITLAB = "gitlab",
-	OKTA_SAML = "okta-saml",
-	AZURE_SAML = "azure-saml",
-	JUMPCLOUD_SAML = "jumpcloud-saml"
+  OKTA_SAML = "okta-saml",
+  AZURE_SAML = "azure-saml",
+  JUMPCLOUD_SAML = "jumpcloud-saml"
 }
 
 export type User = {
@@ -53,12 +53,12 @@ export type TWorkspaceUser = OrgUser;
 
 export type AddUserToWsDTO = {
   workspaceId: string;
-  email: string;
-};
-
-export type AddUserToWsRes = {
-  invitee: OrgUser["user"];
-  latestKey: UserWsKeyPair;
+  decryptKey: UserWsKeyPair;
+  userPrivateKey: string;
+  members: {
+    orgMembershipId: string;
+    userPublicKey: string;
+  }[];
 };
 
 export type UpdateOrgUserRoleDTO = {

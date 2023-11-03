@@ -1,19 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import {
-  decryptAssymmetric,
-  encryptAssymmetric
-} from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 import { setAuthToken } from "@app/reactQuery";
 
 import { APIKeyDataV2 } from "../apiKeys/types";
-import { useUploadWsKey } from "../keys/queries";
-import { workspaceKeys } from "../workspace/queries";
 import {
   AddUserToOrgDTO,
-  AddUserToWsDTO,
-  AddUserToWsRes,
   APIKeyData,
   AuthMethod,
   CreateAPIKeyRes,
@@ -49,7 +41,9 @@ export const useDeleteUser = () => {
 
   return useMutation({
     mutationFn: async () => {
-      const { data: { user } } = await apiRequest.delete<{ user: User }>("/api/v2/users/me");
+      const {
+        data: { user }
+      } = await apiRequest.delete<{ user: User }>("/api/v2/users/me");
       return user;
     },
     onSuccess: () => {
@@ -134,43 +128,7 @@ export const useGetOrgUsers = (orgId: string) =>
   });
 
 // mutation
-export const useAddUserToWs = () => {
-  const uploadWsKey = useUploadWsKey();
-  const queryClient = useQueryClient();
-
-  return useMutation<{ data: AddUserToWsRes }, {}, AddUserToWsDTO>({
-    mutationFn: ({ email, workspaceId }) =>
-      apiRequest.post(`/api/v1/workspace/${workspaceId}/invite-signup`, { email }),
-    onSuccess: ({ data }, { workspaceId }) => {
-      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
-      if (!PRIVATE_KEY) return;
-
-      // assymmetrically decrypt symmetric key with local private key
-      const key = decryptAssymmetric({
-        ciphertext: data.latestKey.encryptedKey,
-        nonce: data.latestKey.nonce,
-        publicKey: data.latestKey.sender.publicKey,
-        privateKey: PRIVATE_KEY
-      });
-
-      const { ciphertext: inviteeCipherText, nonce: inviteeNonce } = encryptAssymmetric({
-        plaintext: key,
-        publicKey: data.invitee.publicKey,
-        privateKey: PRIVATE_KEY
-      });
-
-      uploadWsKey.mutate({
-        encryptedKey: inviteeCipherText,
-        nonce: inviteeNonce,
-        userId: data.invitee._id,
-        workspaceId
-      });
-
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(workspaceId));
-    }
-  });
-};
-
+// TODO(akhilmhdh): move all mutation to mutation file
 export const useAddUserToOrg = () => {
   const queryClient = useQueryClient();
   type Response = {
@@ -254,12 +212,11 @@ export const useLogoutUser = () => {
       localStorage.removeItem("PRIVATE_KEY");
       localStorage.removeItem("orgData.id");
       localStorage.removeItem("projectData.id");
-      
+
       queryClient.clear();
     }
   });
-}
-
+};
 
 export const useGetMyIp = () => {
   return useQuery({
@@ -272,7 +229,8 @@ export const useGetMyIp = () => {
   });
 };
 
-export const useGetMyAPIKeys = () => { // TODO: deprecate (moving to API Key V2)
+export const useGetMyAPIKeys = () => {
+  // TODO: deprecate (moving to API Key V2)
   return useQuery({
     queryKey: userKeys.myAPIKeys,
     queryFn: async () => {
@@ -287,14 +245,17 @@ export const useGetMyAPIKeysV2 = () => {
   return useQuery({
     queryKey: userKeys.myAPIKeysV2,
     queryFn: async () => {
-      const { data: { apiKeyData } } = await apiRequest.get<{ apiKeyData: APIKeyDataV2[] }>("/api/v3/users/me/api-keys");
+      const {
+        data: { apiKeyData }
+      } = await apiRequest.get<{ apiKeyData: APIKeyDataV2[] }>("/api/v3/users/me/api-keys");
       return apiKeyData;
     },
     enabled: true
   });
 };
 
-export const useCreateAPIKey = () => { // TODO: deprecate (moving to API Key V2)
+export const useCreateAPIKey = () => {
+  // TODO: deprecate (moving to API Key V2)
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ name, expiresIn }: { name: string; expiresIn: number }) => {
@@ -311,7 +272,8 @@ export const useCreateAPIKey = () => { // TODO: deprecate (moving to API Key V2)
   });
 };
 
-export const useDeleteAPIKey = () => { // TODO: deprecate (moving to API Key V2)
+export const useDeleteAPIKey = () => {
+  // TODO: deprecate (moving to API Key V2)
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (apiKeyDataId: string) => {
