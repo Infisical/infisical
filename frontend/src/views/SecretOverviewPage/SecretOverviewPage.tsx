@@ -41,6 +41,7 @@ import {
 } from "@app/hooks/api";
 
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
+import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
 
@@ -259,6 +260,7 @@ export const SecretOverviewPage = () => {
 
   return (
     <div className="container mx-auto px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+      <ProjectIndexSecretsSection decryptFileKey={latestFileKey!} />
       <div className="relative right-5 ml-4">
         <NavHeader pageName={t("dashboard.title")} isProjectRelated />
       </div>
