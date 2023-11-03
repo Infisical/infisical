@@ -34,7 +34,8 @@ export const workspaceKeys = {
   getUserWsEnvironments: (workspaceId: string) => ["workspace-env", { workspaceId }] as const,
   getWorkspaceAuditLogs: (workspaceId: string) => [{ workspaceId }] as const,
   getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }] as const,
-  getWorkspaceServiceTokenDataV3: (workspaceId: string) => [{ workspaceId }, "workspace-service-token-data-v3"] as const
+  getWorkspaceServiceTokenDataV3: (workspaceId: string) =>
+    [{ workspaceId }, "workspace-service-token-data-v3"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -53,7 +54,7 @@ const fetchWorkspaceIndexStatus = async (workspaceId: string) => {
   return data;
 };
 
-const fetchWorkspaceSecrets = async (workspaceId: string) => {
+export const fetchWorkspaceSecrets = async (workspaceId: string) => {
   const {
     data: { secrets }
   } = await apiRequest.get<{ secrets: EncryptedSecret[] }>(
@@ -253,9 +254,18 @@ export const useReorderWsEnvironment = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, ReorderEnvironmentsDTO>({
-    mutationFn: ({ workspaceID, environmentSlug, environmentName, otherEnvironmentSlug, otherEnvironmentName}) => {
+    mutationFn: ({
+      workspaceID,
+      environmentSlug,
+      environmentName,
+      otherEnvironmentSlug,
+      otherEnvironmentName
+    }) => {
       return apiRequest.patch(`/api/v2/workspace/${workspaceID}/environments`, {
-        environmentSlug, environmentName, otherEnvironmentSlug, otherEnvironmentName
+        environmentSlug,
+        environmentName,
+        otherEnvironmentSlug,
+        otherEnvironmentName
       });
     },
     onSuccess: () => {
