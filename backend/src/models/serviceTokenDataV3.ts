@@ -25,9 +25,14 @@ export interface IServiceTokenDataV3 extends Document {
     user: Types.ObjectId;
     publicKey: string;
     isActive: boolean;
-    lastUsed?: Date;
-    usageCount: number;
+    refreshTokenLastUsed?: Date;
+    accessTokenLastUsed?: Date;
+    refreshTokenUsageCount: number;
+    accessTokenUsageCount: number;
+    tokenVersion: number;
+    isRefreshTokenRotationEnabled: boolean;
     expiresAt?: Date;
+    accessTokenTTL: number;
     scopes: Array<IServiceTokenV3Scope>;
     trustedIps: Array<IServiceTokenV3TrustedIp>;
 }
@@ -57,19 +62,43 @@ const serviceTokenDataV3Schema = new Schema(
             default: true,
             required: true
         },
-        lastUsed: {
+        refreshTokenLastUsed: {
             type: Date,
             required: false
         },
-        usageCount: {
+        accessTokenLastUsed: {
+            type: Date,
+            required: false
+        },
+        refreshTokenUsageCount: {
             type: Number,
             default: 0,
             required: true
         },
-        expiresAt: {
+        accessTokenUsageCount: {
+            type: Number,
+            default: 0,
+            required: true
+        },
+        tokenVersion: {
+            type: Number,
+            default: 1,
+            required: true
+        },
+        isRefreshTokenRotationEnabled: {
+            type: Boolean,
+            default: false,
+            required: true
+        },
+        expiresAt: { // consider revising field name
             type: Date,
             required: false,
-            expires: 0
+            // expires: 0
+        },
+        accessTokenTTL: { // seconds
+            type: Number,
+            default: 7200,
+            required: true
         },
         scopes: {
             type: [

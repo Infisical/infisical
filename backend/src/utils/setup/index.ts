@@ -26,7 +26,12 @@ import {
   reencryptSecretBlindIndexDataSalts
 } from "./reencryptData";
 import { getMongoURL, getNodeEnv, getRedisUrl, getSentryDSN } from "../../config";
-import { initializePassport } from "../auth";
+import {
+  initializeGitHubStrategy,
+  initializeGitLabStrategy,
+  initializeGoogleStrategy,
+  initializeSamlStrategy
+} from "../authn/passport";
 import { logger } from "../logging";
 
 /**
@@ -55,7 +60,11 @@ export const setup = async () => {
   // initializing global feature set
   await EELicenseService.initGlobalFeatureSet();
 
-  await initializePassport();
+  // initializing auth strategies
+  await initializeGoogleStrategy();
+  await initializeGitHubStrategy()
+  await initializeGitLabStrategy();
+  await initializeSamlStrategy();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY

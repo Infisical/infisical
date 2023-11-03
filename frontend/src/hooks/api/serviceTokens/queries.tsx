@@ -88,14 +88,18 @@ export const useUpdateServiceTokenV3 = () => {
       isActive,
       scopes,
       trustedIps,
-      expiresIn
+      expiresIn,
+      accessTokenTTL,
+      isRefreshTokenRotationEnabled
     }) => {
       const { data: { serviceTokenData } } = await apiRequest.patch(`/api/v3/service-token/${serviceTokenDataId}`, {
         name,
         isActive,
         scopes,
         trustedIps,
-        expiresIn
+        expiresIn,
+        accessTokenTTL,
+        isRefreshTokenRotationEnabled
       });
 
       return serviceTokenData;

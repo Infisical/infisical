@@ -1,14 +1,9 @@
 import jwt from "jsonwebtoken";
 import { NextFunction, Request, Response } from "express";
-import {
-	getAuthAPIKeyPayload,
-	getAuthSTDPayload,
-	getAuthSTDV3Payload,
-	getAuthUserPayload,
-	validateAuthMode,
-} from "../helpers/auth";
 import { AuthMode } from "../variables";
 import { AuthData } from "../interfaces/middleware";
+import { extractAuthMode, getAuthData } from "../utils/authn/helpers";
+import { UnauthorizedRequestError } from "../utils/errors";
 
 declare module "jsonwebtoken" {
 	export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -32,42 +27,39 @@ const requireAuth = ({
 	acceptedAuthModes: AuthMode[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
+		
+		// extract auth mode
+		const { authMode, authTokenValue } = await extractAuthMode({
+			headers: req.headers
+		});
 
-		// validate auth token against accepted auth modes [acceptedAuthModes]
-		// and return token type [authTokenType] and value [authTokenValue]
-		const { authMode, authTokenValue } = validateAuthMode({
-			headers: req.headers,
-			acceptedAuthModes,
+		// validate auth mode
+		if (!acceptedAuthModes.includes(authMode)) throw UnauthorizedRequestError({
+			message: "Failed to authenticate unaccepted authentication mode"
 		});
 		
-		let authData: AuthData;
+		// get auth data / payload
+		const authData: AuthData = await getAuthData({
+			authMode,
+			authTokenValue,
+			ipAddress: req.realIP,
+			userAgent: req.headers["user-agent"] ?? ""
+		});
 		
 		switch (authMode) {
 			case AuthMode.SERVICE_TOKEN:
-				authData = await getAuthSTDPayload({
-					req,
-					authTokenValue,
-				});
 				req.serviceTokenData = authData.authPayload;
 				break;
-			case AuthMode.SERVICE_TOKEN_V3:
-				authData = await getAuthSTDV3Payload({
-					req,
-					authTokenValue
-				});
+			case AuthMode.SERVICE_ACCESS_TOKEN:
+				req.serviceTokenData = authData.authPayload;
 				break;
 			case AuthMode.API_KEY:
-				authData = await getAuthAPIKeyPayload({
-					req,
-					authTokenValue
-				});
+				req.user = authData.authPayload;
+				break;
+			case AuthMode.API_KEY_V2:
 				req.user = authData.authPayload;
 				break;
 			case AuthMode.JWT:
-				authData = await getAuthUserPayload({
-					req,
-					authTokenValue
-				});
 				req.user = authData.authPayload;
 				break;
 		}
