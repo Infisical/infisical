@@ -1,15 +1,19 @@
+import { AuthData } from "../../../interfaces/middleware";
 import jwt from "jsonwebtoken";
 import { getAuthSecret } from "../../../config";
 import { ActorType } from "../../../ee/models";
 import { AuthMode, AuthTokenType } from "../../../variables";
 import { UnauthorizedRequestError } from "../../errors";
-import { validateAPIKey } from "./apiKey";
-import { validateAPIKeyV2 } from "./apiKeyV2";
-import { validateServiceTokenV2 } from "./serviceTokenV2";
-import { validateServiceTokenV3 } from "./serviceTokenV3";
-import { validateJWT } from "./jwt";
+import {
+  validateAPIKey,
+  validateAPIKeyV2,
+  validateJWT,
+  validateServiceTokenV2,
+  validateServiceTokenV3
+} from "../authModeValidators";
 import { getUserAgentType } from "../../posthog";
-import { AuthData } from "../../../interfaces/middleware";
+
+export * from "./authDataExtractors";
 
 interface ExtractAuthModeParams {
     headers: { [key: string]: string | string[] | undefined }

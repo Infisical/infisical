@@ -1,10 +1,10 @@
 import { APIKeySection } from "../APIKeySection";
-import { APIKeyV2Section } from "../APIKeyV2Section";
+// import { APIKeyV2Section } from "../APIKeyV2Section";
 
 export const PersonalAPIKeyTab = () => {
     return (
         <>
-            <APIKeyV2Section />
+            {/* <APIKeyV2Section /> */}
             <APIKeySection />
         </>
     );

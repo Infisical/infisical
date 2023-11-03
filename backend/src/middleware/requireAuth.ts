@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import { NextFunction, Request, Response } from "express";
 import { AuthMode } from "../variables";
 import { AuthData } from "../interfaces/middleware";
-import { extractAuthMode, getAuthData } from "../utils/authn/authMode";
+import { extractAuthMode, getAuthData } from "../utils/authn/helpers";
 import { UnauthorizedRequestError } from "../utils/errors";
 
 declare module "jsonwebtoken" {

@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form"; 
-import { faPlus, faXmark, faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy,faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { motion } from "framer-motion";
 import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
 import * as yup from "yup";
+
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
     decryptAssymmetric,
@@ -21,8 +23,11 @@ import {
     Select,
     SelectItem,
     Switch,
-    UpgradePlanModal
-} from "@app/components/v2";
+    Tab,
+    TabList,
+    TabPanel,
+    Tabs,
+    UpgradePlanModal} from "@app/components/v2";
 import {
     useSubscription,
     useWorkspace 
@@ -41,6 +46,11 @@ import {
     ServiceTokenV3TrustedIp 
 } from "@app/hooks/api/serviceTokens/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+
+enum TabSections {
+    General = "general",
+    Advanced = "advanced"
+}
 
 const expirations = [
     { label: "Never", value: "" },
@@ -343,246 +353,269 @@ export const AddServiceTokenV3Modal = ({
             <ModalContent title={`${popUp?.serviceTokenV3?.data ? "Update" : "Create"} Service Token V3`}>
                 {!hasServiceTokenJSON ? (
                     <form onSubmit={handleSubmit(onFormSubmit)}>
-                        <Controller
-                            control={control}
-                            defaultValue=""
-                            name="name"
-                            render={({ field, fieldState: { error } }) => (
-                                <FormControl
-                                    label="Name"
-                                    isError={Boolean(error)}
-                                    errorText={error?.message}
+                        <Tabs defaultValue={TabSections.General}>
+                            <TabList>
+                                <div className="flex flex-row border-b border-mineshaft-600 w-full">
+                                    <Tab value={TabSections.General}>General</Tab>
+                                    <Tab value={TabSections.Advanced}>Advanced</Tab>
+                                </div>
+                            </TabList>
+                            <TabPanel value={TabSections.General}>
+                                <motion.div
+                                    key="panel-1"
+                                    transition={{ duration: 0.15 }}
+                                    initial={{ opacity: 0, translateX: 30 }}
+                                    animate={{ opacity: 1, translateX: 0 }}
+                                    exit={{ opacity: 0, translateX: 30 }}
                                 >
-                                <Input 
-                                    {...field} 
-                                    placeholder="My ST V3"
-                                />
-                                </FormControl>
-                            )}
-                        />
-                        {tokenScopes.map(({ id }, index) => (
-                            <div className="flex items-end space-x-2 mb-3" key={id}>
-                                <Controller
-                                    control={control}
-                                    name={`scopes.${index}.permission`}
-                                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                                        <FormControl
-                                            className="mb-0"
-                                            label={index === 0 ? "Permission" : undefined}
-                                            errorText={error?.message}
-                                            isError={Boolean(error)}
-                                        >
-                                        <Select
-                                            defaultValue={field.value}
-                                            {...field}
-                                            onValueChange={(e) => onChange(e)}
-                                            className="w-36"
-                                        >
-                                            <SelectItem value="read" key="st-v3-read">
-                                                Read
-                                            </SelectItem>
-                                            <SelectItem value="readWrite" key="st-v3-write">
-                                                Read &amp; Write
-                                            </SelectItem>
-                                        </Select>
-                                        </FormControl>
-                                    )}
-                                />
-                                <Controller
-                                    control={control}
-                                    name={`scopes.${index}.environment`}
-                                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                                        <FormControl
-                                            className="mb-0"
-                                            label={index === 0 ? "Environment" : undefined}
-                                            errorText={error?.message}
-                                            isError={Boolean(error)}
-                                        >
-                                        <Select
-                                            defaultValue={field.value}
-                                            {...field}
-                                            onValueChange={(e) => onChange(e)}
-                                            className="w-36"
-                                        >
-                                            {currentWorkspace?.environments.map(({ name, slug }) => (
-                                            <SelectItem value={slug} key={slug}>
-                                                {name}
-                                            </SelectItem>
-                                            ))}
-                                        </Select>
-                                        </FormControl>
-                                    )}
-                                />
-                                <Controller
-                                    control={control}
-                                    name={`scopes.${index}.secretPath`}
-                                    defaultValue="/"
-                                    render={({ field, fieldState: { error } }) => (
-                                        <FormControl
-                                            className="mb-0 flex-grow"
-                                            label={index === 0 ? "Secrets Path" : undefined}
-                                            isError={Boolean(error)}
-                                            errorText={error?.message}
-                                        >
-                                        <Input {...field} placeholder="can be /, /nested/**, /**/deep" />
-                                        </FormControl>
-                                    )}
-                                />
-                                <IconButton
-                                    onClick={() => remove(index)}
-                                    size="lg"
-                                    colorSchema="danger"
-                                    variant="plain"
-                                    ariaLabel="update"
-                                    className="p-3"
-                                    >
-                                    <FontAwesomeIcon icon={faXmark} />
-                                </IconButton>
-                            </div>
-                        ))}
-                        <div className="my-4 ml-1">
-                            <Button
-                                variant="outline_bg"
-                                onClick={() =>
-                                    append({
-                                        permission: "read",
-                                        environment: currentWorkspace?.environments?.[0]?.slug || "",
-                                        secretPath: "/"
-                                    })
-                                }
-                                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                                size="xs"
-                            >
-                                Add Scope
-                            </Button>
-                        </div>
-                        {tokenTrustedIps.map(({ id }, index) => (
-                            <div className="flex items-end space-x-2 mb-3" key={id}>
-                                <Controller
-                                    control={control}
-                                    name={`trustedIps.${index}.ipAddress`}
-                                    defaultValue="0.0.0.0/0"
-                                    render={({ field, fieldState: { error } }) => {
-                                        return (
+                                    <Controller
+                                        control={control}
+                                        defaultValue=""
+                                        name="name"
+                                        render={({ field, fieldState: { error } }) => (
                                             <FormControl
-                                                className="mb-0 flex-grow"
-                                                label={index === 0 ? "Trusted IP" : undefined}
+                                                label="Name"
                                                 isError={Boolean(error)}
                                                 errorText={error?.message}
                                             >
                                             <Input 
-                                                value={field.value}
-                                                onChange={(e) => {
+                                                {...field} 
+                                                placeholder="My ST V3"
+                                            />
+                                            </FormControl>
+                                        )}
+                                    />
+                                    {tokenScopes.map(({ id }, index) => (
+                                        <div className="flex items-end space-x-2 mb-3" key={id}>
+                                            <Controller
+                                                control={control}
+                                                name={`scopes.${index}.permission`}
+                                                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                                                    <FormControl
+                                                        className="mb-0"
+                                                        label={index === 0 ? "Permission" : undefined}
+                                                        errorText={error?.message}
+                                                        isError={Boolean(error)}
+                                                    >
+                                                    <Select
+                                                        defaultValue={field.value}
+                                                        {...field}
+                                                        onValueChange={(e) => onChange(e)}
+                                                        className="w-36"
+                                                    >
+                                                        <SelectItem value="read" key="st-v3-read">
+                                                            Read
+                                                        </SelectItem>
+                                                        <SelectItem value="readWrite" key="st-v3-write">
+                                                            Read &amp; Write
+                                                        </SelectItem>
+                                                    </Select>
+                                                    </FormControl>
+                                                )}
+                                            />
+                                            <Controller
+                                                control={control}
+                                                name={`scopes.${index}.environment`}
+                                                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                                                    <FormControl
+                                                        className="mb-0"
+                                                        label={index === 0 ? "Environment" : undefined}
+                                                        errorText={error?.message}
+                                                        isError={Boolean(error)}
+                                                    >
+                                                    <Select
+                                                        defaultValue={field.value}
+                                                        {...field}
+                                                        onValueChange={(e) => onChange(e)}
+                                                        className="w-36"
+                                                    >
+                                                        {currentWorkspace?.environments.map(({ name, slug }) => (
+                                                        <SelectItem value={slug} key={slug}>
+                                                            {name}
+                                                        </SelectItem>
+                                                        ))}
+                                                    </Select>
+                                                    </FormControl>
+                                                )}
+                                            />
+                                            <Controller
+                                                control={control}
+                                                name={`scopes.${index}.secretPath`}
+                                                defaultValue="/"
+                                                render={({ field, fieldState: { error } }) => (
+                                                    <FormControl
+                                                        className="mb-0 flex-grow"
+                                                        label={index === 0 ? "Secrets Path" : undefined}
+                                                        isError={Boolean(error)}
+                                                        errorText={error?.message}
+                                                    >
+                                                    <Input {...field} placeholder="can be /, /nested/**, /**/deep" />
+                                                    </FormControl>
+                                                )}
+                                            />
+                                            <IconButton
+                                                onClick={() => remove(index)}
+                                                size="lg"
+                                                colorSchema="danger"
+                                                variant="plain"
+                                                ariaLabel="update"
+                                                className="p-3"
+                                                >
+                                                <FontAwesomeIcon icon={faXmark} />
+                                            </IconButton>
+                                        </div>
+                                    ))}
+                                    <div className="my-4 ml-1">
+                                        <Button
+                                            variant="outline_bg"
+                                            onClick={() =>
+                                                append({
+                                                    permission: "read",
+                                                    environment: currentWorkspace?.environments?.[0]?.slug || "",
+                                                    secretPath: "/"
+                                                })
+                                            }
+                                            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                                            size="xs"
+                                        >
+                                            Add Scope
+                                        </Button>
+                                    </div>
+                                    <Controller
+                                        control={control}
+                                        name="expiresIn"
+                                        defaultValue=""
+                                        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                                            <FormControl
+                                                label={`${popUp?.serviceTokenV3?.data ? "Update" : ""} Refresh Token Expires In`}
+                                                errorText={error?.message}
+                                                isError={Boolean(error)}
+                                                className="mt-4"
+                                            >
+                                                <Select
+                                                    defaultValue={field.value}
+                                                    {...field}
+                                                    onValueChange={(e) => onChange(e)}
+                                                    className="w-full"
+                                                >
+                                                    {expirations.map(({ label, value }) => (
+                                                        <SelectItem value={String(value || "")} key={`api-key-expiration-${label}`}>
+                                                            {label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        )}
+                                    />
+                                </motion.div>
+                            </TabPanel>
+                            <TabPanel value={TabSections.Advanced}>
+                                <div>
+                                    {tokenTrustedIps.map(({ id }, index) => (
+                                        <div className="flex items-end space-x-2 mb-3" key={id}>
+                                            <Controller
+                                                control={control}
+                                                name={`trustedIps.${index}.ipAddress`}
+                                                defaultValue="0.0.0.0/0"
+                                                render={({ field, fieldState: { error } }) => {
+                                                    return (
+                                                        <FormControl
+                                                            className="mb-0 flex-grow"
+                                                            label={index === 0 ? "Trusted IP" : undefined}
+                                                            isError={Boolean(error)}
+                                                            errorText={error?.message}
+                                                        >
+                                                        <Input 
+                                                            value={field.value}
+                                                            onChange={(e) => {
+                                                                if (subscription?.ipAllowlisting) {
+                                                                    field.onChange(e);
+                                                                    return;
+                                                                }
+                                                                
+                                                                handlePopUpOpen("upgradePlan");
+                                                            }}
+                                                            placeholder="123.456.789.0" 
+                                                        />
+                                                        </FormControl>
+                                                    );
+                                                }}
+                                            />
+                                            <IconButton
+                                                onClick={() => {
                                                     if (subscription?.ipAllowlisting) {
-                                                        field.onChange(e);
+                                                        removeTrustedIp(index);
                                                         return;
                                                     }
                                                     
                                                     handlePopUpOpen("upgradePlan");
                                                 }}
-                                                placeholder="123.456.789.0" 
+                                                size="lg"
+                                                colorSchema="danger"
+                                                variant="plain"
+                                                ariaLabel="update"
+                                                className="p-3"
+                                            >
+                                                <FontAwesomeIcon icon={faXmark} />
+                                            </IconButton>
+                                        </div>
+                                    ))}
+                                    <div className="my-4 ml-1">
+                                        <Button
+                                            variant="outline_bg"
+                                            onClick={() => {
+                                                if (subscription?.ipAllowlisting) {
+                                                    appendTrustedIp({
+                                                        ipAddress: "0.0.0.0/0"
+                                                    })
+                                                    return;
+                                                }
+
+                                                handlePopUpOpen("upgradePlan");
+                                            }}
+                                            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                                            size="xs"
+                                        >
+                                            Add IP Address
+                                        </Button>
+                                    </div>
+                                    <Controller
+                                        control={control}
+                                        defaultValue="7200"
+                                        name="accessTokenTTL"
+                                        render={({ field, fieldState: { error } }) => (
+                                            <FormControl
+                                                label="Access Token TTL (seconds)"
+                                                isError={Boolean(error)}
+                                                errorText={error?.message}
+                                            >
+                                            <Input 
+                                                {...field} 
+                                                placeholder="7200"
                                             />
                                             </FormControl>
-                                        );
-                                    }}
-                                />
-                                <IconButton
-                                    onClick={() => {
-                                        if (subscription?.ipAllowlisting) {
-                                            removeTrustedIp(index);
-                                            return;
-                                        }
-                                        
-                                        handlePopUpOpen("upgradePlan");
-                                    }}
-                                    size="lg"
-                                    colorSchema="danger"
-                                    variant="plain"
-                                    ariaLabel="update"
-                                    className="p-3"
-                                >
-                                    <FontAwesomeIcon icon={faXmark} />
-                                </IconButton>
-                            </div>
-                        ))}
-                        <div className="my-4 ml-1">
-                            <Button
-                                variant="outline_bg"
-                                onClick={() => {
-                                    if (subscription?.ipAllowlisting) {
-                                        appendTrustedIp({
-                                            ipAddress: "0.0.0.0/0"
-                                        })
-                                        return;
-                                    }
-
-                                    handlePopUpOpen("upgradePlan");
-                                }}
-                                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                                size="xs"
-                            >
-                                Add IP Address
-                            </Button>
-                        </div>
-                        <Controller
-                            control={control}
-                            name="expiresIn"
-                            defaultValue=""
-                            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                                <FormControl
-                                    label={`${popUp?.serviceTokenV3?.data ? "Update" : ""} Refresh Token Expires In`}
-                                    errorText={error?.message}
-                                    isError={Boolean(error)}
-                                    className="mt-4"
-                                >
-                                    <Select
-                                        defaultValue={field.value}
-                                        {...field}
-                                        onValueChange={(e) => onChange(e)}
-                                        className="w-full"
-                                    >
-                                        {expirations.map(({ label, value }) => (
-                                            <SelectItem value={String(value || "")} key={`api-key-expiration-${label}`}>
-                                                {label}
-                                            </SelectItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            )}
-                        />
-                        <Controller
-                            control={control}
-                            defaultValue="7200"
-                            name="accessTokenTTL"
-                            render={({ field, fieldState: { error } }) => (
-                                <FormControl
-                                    label="Access Token TTL (seconds)"
-                                    isError={Boolean(error)}
-                                    errorText={error?.message}
-                                >
-                                <Input 
-                                    {...field} 
-                                    placeholder="7200"
-                                />
-                                </FormControl>
-                            )}
-                        />
-                        <div className="mt-8 mb-[2.36rem]">
-                            <Controller
-                                control={control}
-                                name="isRefreshTokenRotationEnabled"
-                                render={({ field: { onChange, value } }) => (
-                                    <Switch
-                                        id="label-refresh-token-rotation"
-                                        onCheckedChange={(isChecked) => onChange(isChecked)}
-                                        isChecked={value}
-                                    >
-                                        Refresh Token Rotation
-                                    </Switch>
-                                )}
-                            />
-                        </div>
-                        <div className="mt-8 flex items-center">
+                                        )}
+                                    />
+                                    <div className="mt-8">
+                                        <Controller
+                                            control={control}
+                                            name="isRefreshTokenRotationEnabled"
+                                            render={({ field: { onChange, value } }) => (
+                                                <Switch
+                                                    id="label-refresh-token-rotation"
+                                                    onCheckedChange={(isChecked) => onChange(isChecked)}
+                                                    isChecked={value}
+                                                >
+                                                    Refresh Token Rotation
+                                                </Switch>
+                                            )}
+                                        />
+                                        <p className="mt-4 text-sm font-normal text-mineshaft-400">When enabled, as a result of exchanging a refresh token, a new refresh token will be issued and the existing token will be invalidated.</p>
+                                    </div>
+                                </div>
+                            </TabPanel>
+                        </Tabs>
+                        <div className="flex items-center">
                             <Button
                                 className="mr-4"
                                 size="sm"
