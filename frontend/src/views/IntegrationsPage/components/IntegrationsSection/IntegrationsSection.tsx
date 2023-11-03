@@ -54,7 +54,7 @@ export const IntegrationsSection = ({
         </div>
       )}
 
-      {!isBotActive && (
+      {!isBotActive && Boolean(integrations.length) && (
         <div className="px-6 py-4">
           <Alert hideTitle variant="warning">
             <AlertDescription>
@@ -119,7 +119,7 @@ export const IntegrationsSection = ({
                     {integrationSlugNameMapping[integration.integration]}
                   </div>
                 </div>
-                {(integration.integration === "qovery") && (
+                {integration.integration === "qovery" && (
                   <div className="flex flex-row">
                     <div className="ml-2 flex flex-col">
                       <FormLabel label="Org" />

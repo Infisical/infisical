@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useContext } from "react";
 
 import { useGetUserOrgPermissions } from "@app/hooks/api";
+import { OrgUser } from "@app/hooks/api/types";
 
 import { useOrganization } from "../OrganizationContext";
 import { TOrgPermission } from "./types";
@@ -9,7 +10,10 @@ type Props = {
   children: ReactNode;
 };
 
-const OrgPermissionContext = createContext<null | TOrgPermission>(null);
+const OrgPermissionContext = createContext<null | {
+  permission: TOrgPermission;
+  membership: OrgUser | null;
+}>(null);
 
 export const OrgPermissionProvider = ({ children }: Props): JSX.Element => {
   const { currentOrg } = useOrganization();

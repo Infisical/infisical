@@ -1,37 +1,44 @@
----
-title: "Secret Rotation Overview"
-description: "Keep your credentials safe by rotation"
----
+# Secret Rotation Overview
 
-Secret rotation is the process of periodically changing the values of secrets. This is done to reduce the risk of secrets being compromised and used to gain unauthorized access to systems or data.
+## Introduction
 
-Rotated secrets can be
-1. API key for an external service
-2. Database credentials
+Secret rotation is a process that involves updating secret credentials periodically to minimize the risk of their compromise. 
+Rotating secrets helps prevent unauthorized access to systems and sensitive data by ensuring that old credentials are replaced with new ones regularly.
 
-## How does the rotation happen?
+Rotated secrets may include, but are not limited to:
 
-There are four phases in secret rotation and its triggered periodically in an internval.
+1. API keys for external services
+2. Database credentials for various platforms
 
-1. Creation
+## Rotation Process
 
-System will create secret by calling an external service like an API call, or randomly generate a value. 
-Now there exist three valid secrets.
+The practice of rotating secrets is a systematic and interval-based operation, carried out in four fundamental phases.
 
-2. Test
+### 1. Creation
 
-Test the new secret key by some check to ensure its working one. Thus only two will be considered active and the other is considered inactive.
+The system initiates the rotation process by either making an API call to an external service or generating a new secret value internally.
+Upon successful creation, the system will temporarily have three versions of the secret:
 
-3. Deletion
+- **Current active secret**: The one currently in use.
+- **Future active secret (pending)**: The newly created secret, awaiting validation.
+- **Previous active secret**: The old secret, soon to be retired.
 
-System will remove the inactive secret and now there exist two valid secrets
+### 2. Testing
 
-4. Finish
+The newly generated secret is subjected to a verification process to ensure its validity and functionality.
+This involves conducting checks or tests that simulate actual operations the secret would perform.
+Only the current active and the future active (pending) secrets are considered operational at this stage, while the previous active secret remains in standby mode.
 
-System will switch the secret value from the rotated ones and trigger side effects like webhooks and events.
+### 3. Deletion
+
+Post-verification, the system deactivates and deletes the previous active secret, leaving only the current and future active (pending) secrets in the system.
+
+### 4. Activation
+
+Finally, the system promotes the future active (pending) secret to be the new current active secret. It then triggers necessary side effects, such as invoking webhooks and generating events, to notify other services of the change.
 
 ## Infisical Secret Rotation Strategies
 
-1. [SendGrid](./sendgrid)
-2. [PostgreSQL/CockroachDB](./postgres)
-3. [MySQL/MariaDB](./mysql)
+1. [SendGrid Integration](./sendgrid)
+2. [PostgreSQL/CockroachDB Implementation](./postgres)
+3. [MySQL/MariaDB Configuration](./mysql)
