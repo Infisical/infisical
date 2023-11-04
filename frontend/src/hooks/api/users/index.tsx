@@ -1,7 +1,7 @@
+export { useAddUserToWs } from "./mutation";
 export {
   fetchOrgUsers,
   useAddUserToOrg,
-  useAddUserToWs,
   useCreateAPIKey,
   useDeleteAPIKey,
   useDeleteOrgMembership,

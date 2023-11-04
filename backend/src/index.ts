@@ -67,7 +67,8 @@ import {
   signup as v2SignupRouter,
   tags as v2TagsRouter,
   users as v2UsersRouter,
-  workspace as v2WorkspaceRouter
+  workspace as v2WorkspaceRouter,
+  membership as v2MembershipController
 } from "./routes/v2";
 import {
   auth as v3AuthRouter,
@@ -87,7 +88,7 @@ import {
   getSecretScanningPrivateKey,
   getSecretScanningWebhookProxy,
   getSecretScanningWebhookSecret,
-  getSiteURL,
+  getSiteURL
 } from "./config";
 import { setup } from "./utils/setup";
 import { syncSecretsToThirdPartyServices } from "./queues/integrations/syncSecretsToThirdPartyServices";
@@ -106,11 +107,13 @@ const main = async () => {
 
   const app = express();
   app.enable("trust proxy");
-  
-  app.use(httpLogger({
-    logger,
-    autoLogging: false
-  }));
+
+  app.use(
+    httpLogger({
+      logger,
+      autoLogging: false
+    })
+  );
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
@@ -230,6 +233,7 @@ const main = async () => {
   app.use("/api/v2/auth", v2AuthRouter);
   app.use("/api/v2/users", v2UsersRouter);
   app.use("/api/v2/organizations", v2OrganizationsRouter);
+  app.use("/api/v2/workspace", v2MembershipController);
   app.use("/api/v2/workspace", v2EnvironmentRouter);
   app.use("/api/v2/workspace", v2TagsRouter);
   app.use("/api/v2/workspace", v2WorkspaceRouter);

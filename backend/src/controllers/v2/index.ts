@@ -9,17 +9,19 @@ import * as secretsController from "./secretsController";
 import * as serviceAccountsController from "./serviceAccountsController";
 import * as environmentController from "./environmentController";
 import * as tagController from "./tagController";
+import * as membershipController from "./membershipController";
 
 export {
-    authController,
-    signupController,
-    usersController,
-    organizationsController,
-    workspaceController,
-    serviceTokenDataController,
-    secretController,
-    secretsController,
-    serviceAccountsController,
-    environmentController,
-    tagController,
-}
+  authController,
+  signupController,
+  usersController,
+  organizationsController,
+  workspaceController,
+  serviceTokenDataController,
+  secretController,
+  secretsController,
+  serviceAccountsController,
+  environmentController,
+  tagController,
+  membershipController
+};

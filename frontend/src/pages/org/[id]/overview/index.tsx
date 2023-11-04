@@ -33,6 +33,7 @@ import * as yup from "yup";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
 import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
+import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   Checkbox,
@@ -58,10 +59,9 @@ import {
   useRegisterUserAction,
   useUploadWsKey
 } from "@app/hooks/api";
+import { fetchUserWsKey } from "@app/hooks/api/keys/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
-
-import { encryptAssymmetric } from "../../../../components/utilities/cryptography/crypto";
 
 const features = [
   {
@@ -527,11 +527,19 @@ const OrganizationPage = withPermission(
         if (addMembers) {
           // not using hooks because need at this point only
           const orgUsers = await fetchOrgUsers(currentOrg);
-          orgUsers.forEach(({ status, user: orgUser }) => {
-            // skip if status of org user is not accepted
-            // this orgUser is the person who created the ws
-            if (status !== "accepted" || user.email === orgUser.email) return;
-            addWsUser.mutate({ email: orgUser.email, workspaceId: newWorkspaceId });
+          const decryptKey = await fetchUserWsKey(newWorkspaceId);
+          await addWsUser.mutateAsync({
+            workspaceId: newWorkspaceId,
+            decryptKey,
+            userPrivateKey: PRIVATE_KEY,
+            members: orgUsers
+              .filter(
+                ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
+              )
+              .map(({ user: orgUser, _id: orgMembershipId }) => ({
+                userPublicKey: orgUser.publicKey,
+                orgMembershipId
+              }))
           });
         }
         createNotification({ text: "Workspace created", type: "success" });
@@ -682,7 +690,10 @@ const OrganizationPage = withPermission(
             </div>
           )}
         </div>
-        {!(new Date().getTime() - new Date(user?.createdAt).getTime() < 30 * 24 * 60 * 60 * 1000) && (
+        {!(
+          new Date().getTime() - new Date(user?.createdAt).getTime() <
+          30 * 24 * 60 * 60 * 1000
+        ) && (
           <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
             <p className="mr-4 mb-4 font-semibold text-white">Onboarding Guide</p>
             <div className="mb-3 grid w-full grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
