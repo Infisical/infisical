@@ -1,3 +1,4 @@
+import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { 
@@ -24,10 +25,11 @@ import {
   getUserProjectPermissions
 } from "../../services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability"; 
-import { BadRequestError, ResourceNotFoundError } from "../../../utils/errors";
+import { BadRequestError, ResourceNotFoundError, UnauthorizedRequestError } from "../../../utils/errors";
 import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
 import { EEAuditLogService, EELicenseService } from "../../services";
-import { getJwtServiceTokenSecret } from "../../../config";
+import { getAuthSecret } from "../../../config";
+import { AuthTokenType } from "../../../variables";
 
 /**
  * Return project key for service token V3
@@ -57,6 +59,99 @@ export const getServiceTokenDataKey = async (req: Request, res: Response) => {
 }
 
 /**
+ * Return access and refresh token as per refresh operation
+ * @param req 
+ * @param res 
+ */
+ export const refreshToken = async (req: Request, res: Response) => {
+    const {
+        body: {
+            refresh_token
+        }
+    } = await validateRequest(reqValidator.RefreshTokenV3, req);
+
+    const decodedToken = <jwt.ServiceRefreshTokenJwtPayload>(
+		jwt.verify(refresh_token, await getAuthSecret())
+	);
+    
+    if (decodedToken.authTokenType !== AuthTokenType.SERVICE_REFRESH_TOKEN) throw UnauthorizedRequestError();
+    
+    let serviceTokenData = await ServiceTokenDataV3.findOne({
+        _id: new Types.ObjectId(decodedToken.serviceTokenDataId),
+        isActive: true
+    });
+    
+    if (!serviceTokenData) throw UnauthorizedRequestError();
+
+    if (decodedToken.tokenVersion !== serviceTokenData.tokenVersion) {
+        // raise alarm
+        throw UnauthorizedRequestError();
+    }
+    
+    const response: {
+        refresh_token?: string;
+        access_token: string;
+        expires_in: number;
+        token_type: string;
+    } = {
+        refresh_token,
+        access_token: "",
+        expires_in: 0,
+        token_type: "Bearer"
+    };
+
+    if (serviceTokenData.isRefreshTokenRotationEnabled) {
+        serviceTokenData = await ServiceTokenDataV3.findByIdAndUpdate(
+            serviceTokenData._id,
+            {
+                $inc: {
+                    tokenVersion: 1
+                }
+            },
+            {
+                new: true
+            }
+        );
+        
+        if (!serviceTokenData) throw BadRequestError();
+        
+        response.refresh_token = createToken({
+            payload: {
+                serviceTokenDataId: serviceTokenData._id.toString(),
+                authTokenType: AuthTokenType.SERVICE_REFRESH_TOKEN,
+                tokenVersion: serviceTokenData.tokenVersion
+            },
+            secret: await getAuthSecret()
+        });
+    }
+
+    response.access_token = createToken({
+        payload: {
+            serviceTokenDataId: serviceTokenData._id.toString(),
+            authTokenType: AuthTokenType.SERVICE_ACCESS_TOKEN,
+            tokenVersion: serviceTokenData.tokenVersion
+        },
+        expiresIn: serviceTokenData.accessTokenTTL,
+        secret: await getAuthSecret()
+    });
+
+    response.expires_in = serviceTokenData.accessTokenTTL;
+
+    await ServiceTokenDataV3.findByIdAndUpdate(
+        serviceTokenData._id,
+        {
+            refreshTokenLastUsed: new Date(),
+            $inc: { refreshTokenUsageCount: 1 }
+        },
+        {
+            new: true
+        }
+    );
+    
+    return res.status(200).send(response);
+}
+
+/**
  * Create service token data V3
  * @param req 
  * @param res 
@@ -71,8 +166,10 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             scopes,
             trustedIps,
             expiresIn, 
+            accessTokenTTL,
+            isRefreshTokenRotationEnabled,
             encryptedKey, // for ServiceTokenDataV3Key
-            nonce // for ServiceTokenDataV3Key
+            nonce, // for ServiceTokenDataV3Key
         }
     } = await validateRequest(reqValidator.CreateServiceTokenV3, req);
     const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
@@ -118,11 +215,15 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         user,
         workspace: new Types.ObjectId(workspaceId),
         publicKey,
-        usageCount: 0,
+        refreshTokenUsageCount: 0,
+        accessTokenUsageCount: 0,
+        tokenVersion: 1,
         trustedIps: reformattedTrustedIps,
         scopes,
         isActive,
-        expiresAt
+        expiresAt,
+        accessTokenTTL,
+        isRefreshTokenRotationEnabled
     }).save();
     
     await new ServiceTokenDataV3Key({
@@ -133,18 +234,19 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         workspace: new Types.ObjectId(workspaceId)
     }).save();
     
-    const token = createToken({
+    const refreshToken = createToken({
         payload: {
-            _id: serviceTokenData._id.toString()
+            serviceTokenDataId: serviceTokenData._id.toString(),
+            authTokenType: AuthTokenType.SERVICE_REFRESH_TOKEN,
+            tokenVersion: serviceTokenData.tokenVersion
         },
-        expiresIn,
-        secret: await getJwtServiceTokenSecret()
+        secret: await getAuthSecret()
     });
     
     await EEAuditLogService.createAuditLog(
         req.authData,
         {
-            type: EventType.CREATE_SERVICE_TOKEN_V3,
+            type: EventType.CREATE_SERVICE_TOKEN_V3, // TODO: update
             metadata: {
                 name,
                 isActive,
@@ -160,7 +262,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
     
     return res.status(200).send({
         serviceTokenData,
-        serviceToken: `stv3.${token}`
+        refreshToken
     });
 }
 
@@ -178,7 +280,9 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
             isActive,
             scopes,
             trustedIps,
-            expiresIn
+            expiresIn,
+            accessTokenTTL,
+            isRefreshTokenRotationEnabled
         }
     } = await validateRequest(reqValidator.UpdateServiceTokenV3, req);
 
@@ -233,13 +337,15 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
             isActive,
             scopes,
             trustedIps: reformattedTrustedIps,
-            expiresAt
+            expiresAt,
+            accessTokenTTL,
+            isRefreshTokenRotationEnabled
         },
         {
             new: true
         }
     );
-    
+
     if (!serviceTokenData) throw BadRequestError({
         message: "Failed to update service token"
     });

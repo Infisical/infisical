@@ -10,6 +10,8 @@ import * as cloudProductsController from "./cloudProductsController";
 import * as roleController from "./roleController";
 import * as secretApprovalPolicyController from "./secretApprovalPolicyController";
 import * as secretApprovalRequestController from "./secretApprovalRequestsController";
+import * as secretRotationProviderController from "./secretRotationProviderController";
+import * as secretRotationController from "./secretRotationController";
 
 export {
   secretController,
@@ -23,5 +25,7 @@ export {
   cloudProductsController,
   roleController,
   secretApprovalPolicyController,
-  secretApprovalRequestController
+  secretApprovalRequestController,
+  secretRotationProviderController,
+  secretRotationController
 };

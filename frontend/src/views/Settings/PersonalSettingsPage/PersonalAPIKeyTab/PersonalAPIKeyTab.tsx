@@ -1,5 +1,5 @@
-// import { APIKeyV2Section } from "../APIKeyV2Section";
 import { APIKeySection } from "../APIKeySection";
+// import { APIKeyV2Section } from "../APIKeyV2Section";
 
 export const PersonalAPIKeyTab = () => {
     return (

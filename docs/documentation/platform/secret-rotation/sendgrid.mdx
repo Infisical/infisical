@@ -1,0 +1,31 @@
+---
+title: "Twilio SendGrid"
+description: "Rotate Twilio SendGrid API keys"
+---
+
+Twilio SendGrid is a cloud-based email delivery platform that helps businesses send transactional and marketing emails.
+It uses an API key to do various operations. Using Infisical you can easily dynamically change the keys.
+
+## Working
+
+1. Infisical will need an admin token of SendGrid to create API keys dynamically.
+2. Using the given admin token and scope by user Infisical will create and rotate API keys periodically
+3. Under the hood infisical uses [SendGrid API](https://docs.sendgrid.com/api-reference/api-keys/create-api-keys)
+
+## Rotation Configuration
+
+1. Head over to Secret Rotation configuration page of your project by clicking on side bar `Secret Rotation`
+2. Click on `Twilio SendGrid Card`
+3. Provide the inputs
+	- Admin API Key: 
+		SendGrid admin key to create lower scoped API keys.
+	- API Key Scopes
+		SendGrid generated API Key's scopes. For more info refer [this doc](https://docs.sendgrid.com/api-reference/api-key-permissions/api-key-permissions)
+
+4. Final step
+	- Select `Environment`, `Secret Path` and `Interval` to rotate the secrets
+	- Finally select the secrets in your provided board to replace with new secret after each rotation
+	- Your done and good to go.
+
+Now your output mapped secret value will be replaced periodically by SendGrid.
+		

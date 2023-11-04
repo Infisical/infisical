@@ -228,7 +228,6 @@ export const GetSecretsRawV3 = z.object({
     workspaceId: z.string().trim().optional(),
     environment: z.string().trim().optional(),
     secretPath: z.string().trim().default("/"),
-    folderId: z.string().trim().optional(),
     include_imports: z
       .enum(["true", "false"])
       .default("false")
@@ -302,7 +301,6 @@ export const GetSecretsV3 = z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
     secretPath: z.string().trim().default("/"),
-    folderId: z.string().trim().optional(),
     include_imports: z
       .enum(["true", "false"])
       .default("false")

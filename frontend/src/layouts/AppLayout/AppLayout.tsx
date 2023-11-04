@@ -319,7 +319,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             </Button>
                           </DropdownMenuItem>
                         ))}
-                        <DropdownMenuItem key="add-org">
+                        {/* <DropdownMenuItem key="add-org">
                           <Button
                             onClick={() => handlePopUpOpen("createOrg")}
                             variant="plain"
@@ -334,7 +334,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                               Create New Organization
                             </div>
                           </Button>
-                        </DropdownMenuItem>
+                        </DropdownMenuItem> */}
                         <div className="mt-1 h-1 border-t border-mineshaft-600" />
                         <button type="button" onClick={logOutUser} className="w-full">
                           <DropdownMenuItem>Log Out</DropdownMenuItem>
@@ -497,6 +497,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
+                      <Link href={`/project/${currentWorkspace?._id}/secret-rotation`} passHref>
+                        <a className="relative">
+                          <MenuItem
+                            isSelected={
+                              router.asPath === `/project/${currentWorkspace?._id}/secret-rotation`
+                            }
+                            icon="rotation"
+                          >
+                            Secret Rotation
+                          </MenuItem>
+                        </a>
+                      </Link>
                       <Link href={`/project/${currentWorkspace?._id}/approval`} passHref>
                         <a className="relative">
                           <MenuItem
@@ -505,7 +517,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             }
                             icon="system-outline-189-domain-verification"
                           >
-                            Secret approvals
+                            Secret Approvals
                             {Boolean(secretApprovalReqCount?.open) && (
                               <span className="ml-2 rounded border border-primary-400 bg-primary-600 py-0.5 px-1 text-xs font-semibold text-black">
                                 {secretApprovalReqCount?.open}
