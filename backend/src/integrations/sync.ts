@@ -733,11 +733,11 @@ const syncSecretsAWSParameterStore = async ({
   if (!accessId) return;
 
   const ssm = new SSM({
+    region: integration.region,
     credentials: {
       accessKeyId: accessId,
       secretAccessKey: accessToken
-    },
-    region: integration.region
+    }
   });
 
   const params = {
