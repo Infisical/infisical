@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { Types } from "mongoose";
-import { IOrganization, ISecret, IServiceAccount, IUser, Membership } from "../models";
+import { IOrganization, ISecret, IUser, Membership } from "../models";
 import { validateMembership } from "../helpers/membership";
 import _ from "lodash";
 import { BadRequestError, UnauthorizedRequestError, ValidationError } from "../utils/errors";
@@ -170,35 +170,6 @@ export const validateUserClientForSecrets = async ({
       }
     }
   });
-};
-
-/**
- * Validate that user (client) can access service account [serviceAccount]
- * with required permissions [requiredPermissions]
- * @param {Object} obj
- * @param {User} obj.user - user client
- * @param {ServiceAccount} obj.serviceAccount - service account to validate against
- * @param {String[]} requiredPermissions - required permissions as part of the endpoint
- */
-export const validateUserClientForServiceAccount = async ({
-  user,
-  serviceAccount,
-  requiredPermissions
-}: {
-  user: IUser;
-  serviceAccount: IServiceAccount;
-  requiredPermissions?: string[];
-}) => {
-  if (!serviceAccount.user.equals(user._id)) {
-    // case: user who created service account is not the
-    // same user that is on the request
-    await validateMembershipOrg({
-      userId: user._id,
-      organizationId: serviceAccount.organization,
-      acceptedRoles: [],
-      acceptedStatuses: []
-    });
-  }
 };
 
 /**

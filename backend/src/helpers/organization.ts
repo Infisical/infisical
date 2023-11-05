@@ -23,13 +23,11 @@ import {
   Workspace
 } from "../models";
 import {
-  Action,
   AuditLog,
   FolderVersion,
   GitAppInstallationSession,
   GitAppOrganizationInstallation,
   GitRisks,
-  Log,
   Role,
   SSOConfig,
   SecretApprovalPolicy,
@@ -283,18 +281,6 @@ export const deleteOrganization = async ({
   });
 
   await AuditLog.deleteMany({
-    workspace: {
-      $in: workspaceIds
-    }
-  });
-
-  await Log.deleteMany({
-    workspace: {
-      $in: workspaceIds
-    }
-  });
-
-  await Action.deleteMany({
     workspace: {
       $in: workspaceIds
     }

@@ -8,7 +8,6 @@ import {
   getTelemetryEnabled,
 } from "../config";
 import {
-  ServiceAccount,
   ServiceTokenData,
   User,
 } from "../models";
@@ -56,16 +55,11 @@ class Telemetry {
     let distinctId = "";
     if (authData.authPayload instanceof User) {
       distinctId = authData.authPayload.email;
-    } else if (authData.authPayload instanceof ServiceAccount) {
-      distinctId = `sa.${authData.authPayload._id.toString()}`;
     } else if (authData.authPayload instanceof ServiceTokenData) {
-      
       if (authData.authPayload.user) {
         const user = await User.findById(authData.authPayload.user, "email");
         if (!user) throw AccountNotFoundError();
         distinctId = user.email; 
-      } else if (authData.authPayload.serviceAccount) {
-        distinctId = distinctId = `sa.${authData.authPayload.serviceAccount.toString()}`;
       }
     }
     

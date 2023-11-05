@@ -1,12 +1,8 @@
 import { Types } from "mongoose";
 import { Request, Response } from "express";
 import { Folder, ISecret, Secret, ServiceTokenData, Tag } from "../../models";
-import { AuditLog, EventType, IAction, SecretVersion } from "../../ee/models";
+import { AuditLog, EventType, SecretVersion } from "../../ee/models";
 import {
-  ACTION_ADD_SECRETS,
-  ACTION_DELETE_SECRETS,
-  ACTION_READ_SECRETS,
-  ACTION_UPDATE_SECRETS,
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
   K8_USER_AGENT_NAME,
@@ -15,7 +11,7 @@ import {
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import { EventService } from "../../services";
 import { eventPushSecrets } from "../../events";
-import { EEAuditLogService, EELogService, EESecretService } from "../../ee/services";
+import { EEAuditLogService, EESecretService } from "../../ee/services";
 import { SecretService, TelemetryService } from "../../services";
 import { getUserAgentType } from "../../utils/posthog";
 import { PERMISSION_WRITE_SECRETS } from "../../variables";
@@ -82,7 +78,6 @@ export const batchSecrets = async (req: Request, res: Response) => {
   const createSecrets: any[] = [];
   const updateSecrets: any[] = [];
   const deleteSecrets: { _id: Types.ObjectId; secretName: string }[] = [];
-  const actions: IAction[] = [];
 
   // get secret blind index salt
   const salt = await SecretService.getSecretBlindIndexSalt({
@@ -224,16 +219,6 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
     await AuditLog.insertMany(auditLogs);
 
-    const addAction = (await EELogService.createAction({
-      name: ACTION_ADD_SECRETS,
-      userId: req.user?._id,
-      serviceAccountId: req.serviceAccount?._id,
-      serviceTokenDataId: req.serviceTokenData?._id,
-      workspaceId: new Types.ObjectId(workspaceId),
-      secretIds: createdSecrets.map((n) => n._id)
-    })) as IAction;
-    actions.push(addAction);
-
     if (postHogClient) {
       postHogClient.capture({
         event: "secrets added",
@@ -350,14 +335,6 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
     await AuditLog.insertMany(auditLogs);
 
-    const updateAction = (await EELogService.createAction({
-      name: ACTION_UPDATE_SECRETS,
-      userId: req.user._id,
-      workspaceId: new Types.ObjectId(workspaceId),
-      secretIds: updatedSecrets.map((u) => u._id)
-    })) as IAction;
-    actions.push(updateAction);
-
     if (postHogClient) {
       postHogClient.capture({
         event: "secrets modified",
@@ -428,14 +405,6 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
     await AuditLog.insertMany(auditLogs);
 
-    const deleteAction = (await EELogService.createAction({
-      name: ACTION_DELETE_SECRETS,
-      userId: req.user._id,
-      workspaceId: new Types.ObjectId(workspaceId),
-      secretIds: deleteSecretIds
-    })) as IAction;
-    actions.push(deleteAction);
-
     if (postHogClient) {
       postHogClient.capture({
         event: "secrets deleted",
@@ -449,17 +418,6 @@ export const batchSecrets = async (req: Request, res: Response) => {
         }
       });
     }
-  }
-
-  if (actions.length > 0) {
-    // (EE) create (audit) log
-    await EELogService.createLog({
-      userId: req.user._id.toString(),
-      workspaceId: new Types.ObjectId(workspaceId),
-      actions,
-      channel,
-      ipAddress: req.realIP
-    });
   }
 
   // // trigger event - push secrets
@@ -731,27 +689,6 @@ export const createSecrets = async (req: Request, res: Response) => {
     )
   });
 
-  const addAction = await EELogService.createAction({
-    name: ACTION_ADD_SECRETS,
-    userId: req.user?._id,
-    serviceAccountId: req.serviceAccount?._id,
-    serviceTokenDataId: req.serviceTokenData?._id,
-    workspaceId: new Types.ObjectId(workspaceId),
-    secretIds: newlyCreatedSecrets.map((n) => n._id)
-  });
-
-  // (EE) create (audit) log
-  addAction &&
-    (await EELogService.createLog({
-      userId: req.user?._id,
-      serviceAccountId: req.serviceAccount?._id,
-      serviceTokenDataId: req.serviceTokenData?._id,
-      workspaceId: new Types.ObjectId(workspaceId),
-      actions: [addAction],
-      channel,
-      ipAddress: req.realIP
-    }));
-
   // (EE) take a secret snapshot
   await EESecretService.takeSecretSnapshot({
     workspaceId: new Types.ObjectId(workspaceId),
@@ -960,22 +897,6 @@ export const getSecrets = async (req: Request, res: Response) => {
     secrets = await Secret.find(secretQuery).populate("tags");
   }
 
-  // case: client authorization is via service account
-  if (req.serviceAccount) {
-    const secretQuery: any = {
-      workspace: workspaceId,
-      environment,
-      folder: folderId,
-      user: { $exists: false } // shared secrets only from workspace
-    };
-
-    if (tagIds.length > 0) {
-      secretQuery.tags = { $in: tagIds };
-    }
-
-    secrets = await Secret.find(secretQuery).populate("tags");
-  }
-
   // TODO(akhilmhdh) - secret-imp change this to org type
   let importedSecrets: any[] = [];
   if (include_imports) {
@@ -987,28 +908,6 @@ export const getSecrets = async (req: Request, res: Response) => {
       () => false
     );
   }
-
-  const channel = getUserAgentType(req.headers["user-agent"]);
-
-  const readAction = await EELogService.createAction({
-    name: ACTION_READ_SECRETS,
-    userId: req.user?._id,
-    serviceAccountId: req.serviceAccount?._id,
-    serviceTokenDataId: req.serviceTokenData?._id,
-    workspaceId: new Types.ObjectId(workspaceId as string),
-    secretIds: secrets.map((n: any) => n._id)
-  });
-
-  readAction &&
-    (await EELogService.createLog({
-      userId: req.user?._id,
-      serviceAccountId: req.serviceAccount?._id,
-      serviceTokenDataId: req.serviceTokenData?._id,
-      workspaceId: new Types.ObjectId(workspaceId as string),
-      actions: [readAction],
-      channel,
-      ipAddress: req.realIP
-    }));
 
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -1247,27 +1146,6 @@ export const updateSecrets = async (req: Request, res: Response) => {
     //   });
     // }, 10000);
 
-    const updateAction = await EELogService.createAction({
-      name: ACTION_UPDATE_SECRETS,
-      userId: req.user?._id,
-      serviceAccountId: req.serviceAccount?._id,
-      serviceTokenDataId: req.serviceTokenData?._id,
-      workspaceId: new Types.ObjectId(key),
-      secretIds: workspaceSecretObj[key].map((secret: ISecret) => secret._id)
-    });
-
-    // (EE) create (audit) log
-    updateAction &&
-      (await EELogService.createLog({
-        userId: req.user?._id,
-        serviceAccountId: req.serviceAccount?._id,
-        serviceTokenDataId: req.serviceTokenData?._id,
-        workspaceId: new Types.ObjectId(key),
-        actions: [updateAction],
-        channel,
-        ipAddress: req.realIP
-      }));
-
     // (EE) take a secret snapshot
     // IMP(akhilmhdh): commented out due to unknown where the environment is
     // await EESecretService.takeSecretSnapshot({
@@ -1387,26 +1265,6 @@ export const deleteSecrets = async (req: Request, res: Response) => {
     //     workspaceId: new Types.ObjectId(key)
     //   })
     // });
-    const deleteAction = await EELogService.createAction({
-      name: ACTION_DELETE_SECRETS,
-      userId: req.user?._id,
-      serviceAccountId: req.serviceAccount?._id,
-      serviceTokenDataId: req.serviceTokenData?._id,
-      workspaceId: new Types.ObjectId(key),
-      secretIds: workspaceSecretObj[key].map((secret: ISecret) => secret._id)
-    });
-
-    // (EE) create (audit) log
-    deleteAction &&
-      (await EELogService.createLog({
-        userId: req.user?._id,
-        serviceAccountId: req.serviceAccount?._id,
-        serviceTokenDataId: req.serviceTokenData?._id,
-        workspaceId: new Types.ObjectId(key),
-        actions: [deleteAction],
-        channel,
-        ipAddress: req.realIP
-      }));
 
     // (EE) take a secret snapshot
     // IMP(akhilmhdh): Not sure how to take secretSnapshot

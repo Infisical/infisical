@@ -23,7 +23,6 @@ import {
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 import { SecretImport } from "../../models";
-import { ServiceAccountWorkspacePermission } from "../../models";
 import { Webhook } from "../../models";
 
 /**
@@ -398,11 +397,6 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
     { workspace: workspaceId, "imports.environment": oldEnvironmentSlug },
     { $set: { "imports.$[element].environment": environmentSlug } },
     { arrayFilters: [{ "element.environment": oldEnvironmentSlug }] },
-  );
-
-  await ServiceAccountWorkspacePermission.updateMany(
-    { workspace: workspaceId, environment: oldEnvironmentSlug },
-    { environment: environmentSlug }
   );
 
   await Webhook.updateMany(

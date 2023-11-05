@@ -15,10 +15,6 @@ export * from "./folder";
 export * from "./secretImports";
 export * from "./secretBlindIndexData";
 export * from "./serviceToken"; // TODO: deprecate
-export * from "./serviceAccount"; // TODO: deprecate
-export * from "./serviceAccountKey"; // TODO: deprecate 
-export * from "./serviceAccountOrganizationPermission"; // TODO: deprecate  
-export * from "./serviceAccountWorkspacePermission"; // TODO: deprecate
 export * from "./tokenData";
 export * from "./user";
 export * from "./userAction";

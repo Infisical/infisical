@@ -3,7 +3,6 @@ import { Types } from "mongoose";
 import { 
   Membership, 
   MembershipOrg, 
-  ServiceAccount, 
   Workspace 
 } from "../../models";
 import { Role } from "../../ee/models";
@@ -327,23 +326,6 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
 
   return res.status(200).send({
     workspaces
-  });
-};
-
-/**
- * Return service accounts for organization with id [organizationId]
- * @param req
- * @param res
- */
-export const getOrganizationServiceAccounts = async (req: Request, res: Response) => {
-  const { organizationId } = req.params;
-
-  const serviceAccounts = await ServiceAccount.find({
-    organization: new Types.ObjectId(organizationId)
-  });
-
-  return res.status(200).send({
-    serviceAccounts
   });
 };
 

@@ -4,7 +4,6 @@ import membership from "./membership";
 import organizations from "./organizations";
 import secret from "./secret"; // deprecated
 import secrets from "./secrets";
-import serviceAccounts from "./serviceAccounts";
 import serviceTokenData from "./serviceTokenData";
 import signup from "./signup";
 import tags from "./tags";
@@ -20,7 +19,6 @@ export {
   secret,
   secrets,
   serviceTokenData,
-  serviceAccounts,
   environment,
   tags,
   membership
