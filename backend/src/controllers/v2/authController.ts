@@ -8,10 +8,8 @@ import { createToken, issueAuthTokens } from "../../helpers/auth";
 import { checkUserDevice } from "../../helpers/user";
 import { sendMail } from "../../helpers/nodemailer";
 import { TokenService } from "../../services";
-import { EELogService } from "../../ee/services";
 import { BadRequestError, InternalServerError } from "../../utils/errors";
-import { ACTION_LOGIN, AuthTokenType, TOKEN_EMAIL_MFA } from "../../variables";
-import { getUserAgentType } from "../../utils/posthog"; // TODO: move this
+import { AuthTokenType, TOKEN_EMAIL_MFA } from "../../variables";
 import { getAuthSecret, getHttpsEnabled, getJwtMfaLifetime } from "../../config";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/auth";
@@ -190,19 +188,6 @@ export const login2 = async (req: Request, res: Response) => {
           response.protectedKeyTag = user.protectedKeyTag;
         }
 
-        const loginAction = await EELogService.createAction({
-          name: ACTION_LOGIN,
-          userId: user._id
-        });
-
-        loginAction &&
-          (await EELogService.createLog({
-            userId: user._id,
-            actions: [loginAction],
-            channel: getUserAgentType(req.headers["user-agent"]),
-            ipAddress: req.ip
-          }));
-
         return res.status(200).send(response);
       }
 
@@ -329,19 +314,6 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
     resObj.protectedKeyIV = user.protectedKeyIV;
     resObj.protectedKeyTag = user.protectedKeyTag;
   }
-
-  const loginAction = await EELogService.createAction({
-    name: ACTION_LOGIN,
-    userId: user._id
-  });
-
-  loginAction &&
-    (await EELogService.createLog({
-      userId: user._id,
-      actions: [loginAction],
-      channel: getUserAgentType(req.headers["user-agent"]),
-      ipAddress: req.realIP
-    }));
 
   return res.status(200).send(resObj);
 };

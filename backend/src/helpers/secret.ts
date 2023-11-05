@@ -1,12 +1,8 @@
 import { Types } from "mongoose";
 import { ISecret, Secret } from "../models";
-import { EELogService, EESecretService } from "../ee/services";
-import { IAction, SecretVersion } from "../ee/models";
+import { EESecretService } from "../ee/services";
+import { SecretVersion } from "../ee/models";
 import {
-  ACTION_ADD_SECRETS,
-  ACTION_DELETE_SECRETS,
-  ACTION_READ_SECRETS,
-  ACTION_UPDATE_SECRETS,
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
   SECRET_PERSONAL,
@@ -320,7 +316,6 @@ export const v2PushSecrets = async ({
   ipAddress: string;
 }): Promise<void> => {
   // TODO: clean up function and fix up types
-  const actions: IAction[] = [];
 
   // construct useful data structures
   const oldSecrets = await getSecrets({
@@ -356,15 +351,6 @@ export const v2PushSecrets = async ({
     await EESecretService.markDeletedSecretVersions({
       secretIds: toDelete,
     });
-
-    const deleteAction = await EELogService.createAction({
-      name: ACTION_DELETE_SECRETS,
-      userId: new Types.ObjectId(userId),
-      workspaceId: new Types.ObjectId(userId),
-      secretIds: toDelete,
-    });
-
-    deleteAction && actions.push(deleteAction);
   }
 
   const toUpdate = oldSecrets.filter((s) => {
@@ -451,15 +437,6 @@ export const v2PushSecrets = async ({
         };
       }),
     });
-
-    const updateAction = await EELogService.createAction({
-      name: ACTION_UPDATE_SECRETS,
-      userId: new Types.ObjectId(userId),
-      workspaceId: new Types.ObjectId(workspaceId),
-      secretIds: toUpdate.map((u) => u._id),
-    });
-
-    updateAction && actions.push(updateAction);
   }
 
   // handle adding new secrets
@@ -494,14 +471,6 @@ export const v2PushSecrets = async ({
         });
       }),
     });
-
-    const addAction = await EELogService.createAction({
-      name: ACTION_ADD_SECRETS,
-      userId: new Types.ObjectId(userId),
-      workspaceId: new Types.ObjectId(workspaceId),
-      secretIds: newSecrets.map((n) => n._id),
-    });
-    addAction && actions.push(addAction);
   }
 
   // (EE) take a secret snapshot
@@ -509,17 +478,6 @@ export const v2PushSecrets = async ({
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
   });
-
-  // (EE) create (audit) log
-  if (actions.length > 0) {
-    await EELogService.createLog({
-      userId: new Types.ObjectId(userId),
-      workspaceId: new Types.ObjectId(workspaceId),
-      actions,
-      channel,
-      ipAddress,
-    });
-  }
 };
 
 /**
@@ -588,22 +546,6 @@ export const pullSecrets = async ({
     workspaceId,
     environment,
   });
-
-  const readAction = await EELogService.createAction({
-    name: ACTION_READ_SECRETS,
-    userId: new Types.ObjectId(userId),
-    workspaceId: new Types.ObjectId(workspaceId),
-    secretIds: secrets.map((n: any) => n._id),
-  });
-
-  readAction &&
-    (await EELogService.createLog({
-      userId: new Types.ObjectId(userId),
-      workspaceId: new Types.ObjectId(workspaceId),
-      actions: [readAction],
-      channel,
-      ipAddress,
-    }));
 
   return secrets;
 };

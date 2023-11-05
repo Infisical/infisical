@@ -19,11 +19,9 @@ import {
 	Workspace
 } from "../models";
 import {
-	Action,
 	AuditLog,
 	FolderVersion,
 	IPType,
-	Log,
 	SecretApprovalPolicy,
 	SecretApprovalRequest,
 	SecretSnapshot,
@@ -190,14 +188,6 @@ export const deleteWorkspace = async ({
 	});
 
 	await AuditLog.deleteMany({
-		workspace: workspace._id
-	});
-
-	await Log.deleteMany({
-		workspace: workspace._id
-	});
-
-	await Action.deleteMany({
 		workspace: workspace._id
 	});
 

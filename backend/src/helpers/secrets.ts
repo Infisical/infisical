@@ -29,10 +29,6 @@ import {
   UnauthorizedRequestError
 } from "../utils/errors";
 import {
-  ACTION_ADD_SECRETS,
-  ACTION_DELETE_SECRETS,
-  ACTION_READ_SECRETS,
-  ACTION_UPDATE_SECRETS,
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_BASE64,
   ENCODING_SCHEME_UTF8,
@@ -48,8 +44,8 @@ import {
 } from "../utils/crypto";
 import { TelemetryService } from "../services";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
-import { EEAuditLogService, EELogService, EESecretService } from "../ee/services";
-import { getAuthDataPayloadIdObj, getAuthDataPayloadUserObj } from "../utils/authn/helpers";
+import { EEAuditLogService, EESecretService } from "../ee/services";
+import { getAuthDataPayloadUserObj } from "../utils/authn/helpers";
 import { getFolderByPath, getFolderIdFromServiceToken } from "../services/FolderService";
 import picomatch from "picomatch";
 import path from "path";
@@ -478,23 +474,6 @@ export const createSecretHelper = async ({
     secretVersions: [secretVersion]
   });
 
-  // (EE) create (audit) log
-  const action = await EELogService.createAction({
-    name: ACTION_ADD_SECRETS,
-    ...getAuthDataPayloadIdObj(authData),
-    workspaceId,
-    secretIds: [secret._id]
-  });
-
-  action &&
-    (await EELogService.createLog({
-      ...getAuthDataPayloadIdObj(authData),
-      workspaceId,
-      actions: [action],
-      channel: authData.userAgentType,
-      ipAddress: authData.ipAddress
-    }));
-
   await EEAuditLogService.createAuditLog(
     authData,
     {
@@ -596,23 +575,6 @@ export const getSecretsHelper = async ({
       .populate("tags")
       .lean()
   );
-
-  // (EE) create (audit) log
-  const action = await EELogService.createAction({
-    name: ACTION_READ_SECRETS,
-    ...getAuthDataPayloadIdObj(authData),
-    workspaceId,
-    secretIds: secrets.map((secret) => secret._id)
-  });
-
-  action &&
-    (await EELogService.createLog({
-      ...getAuthDataPayloadIdObj(authData),
-      workspaceId,
-      actions: [action],
-      channel: authData.userAgentType,
-      ipAddress: authData.ipAddress
-    }));
 
   await EEAuditLogService.createAuditLog(
     authData,
@@ -724,23 +686,6 @@ export const getSecretHelper = async ({
   }
 
   if (!secret) throw SecretNotFoundError();
-
-  // (EE) create (audit) log
-  const action = await EELogService.createAction({
-    name: ACTION_READ_SECRETS,
-    ...getAuthDataPayloadIdObj(authData),
-    workspaceId,
-    secretIds: [secret._id]
-  });
-
-  action &&
-    (await EELogService.createLog({
-      ...getAuthDataPayloadIdObj(authData),
-      workspaceId,
-      actions: [action],
-      channel: authData.userAgentType,
-      ipAddress: authData.ipAddress
-    }));
 
   await EEAuditLogService.createAuditLog(
     authData,
@@ -945,23 +890,6 @@ export const updateSecretHelper = async ({
     secretVersions: [secretVersion]
   });
 
-  // (EE) create (audit) log
-  const action = await EELogService.createAction({
-    name: ACTION_UPDATE_SECRETS,
-    ...getAuthDataPayloadIdObj(authData),
-    workspaceId,
-    secretIds: [secret._id]
-  });
-
-  action &&
-    (await EELogService.createLog({
-      ...getAuthDataPayloadIdObj(authData),
-      workspaceId,
-      actions: [action],
-      channel: authData.userAgentType,
-      ipAddress: authData.ipAddress
-    }));
-
   await EEAuditLogService.createAuditLog(
     authData,
     {
@@ -1088,23 +1016,6 @@ export const deleteSecretHelper = async ({
   await EESecretService.markDeletedSecretVersions({
     secretIds: secrets.map((secret) => secret._id)
   });
-
-  // (EE) create (audit) log
-  const action = await EELogService.createAction({
-    name: ACTION_DELETE_SECRETS,
-    ...getAuthDataPayloadIdObj(authData),
-    workspaceId,
-    secretIds: secrets.map((secret) => secret._id)
-  });
-
-  action &&
-    (await EELogService.createLog({
-      ...getAuthDataPayloadIdObj(authData),
-      workspaceId,
-      actions: [action],
-      channel: authData.userAgentType,
-      ipAddress: authData.ipAddress
-    }));
 
   await EEAuditLogService.createAuditLog(
     authData,
@@ -1768,22 +1679,6 @@ export const deleteSecretBatchHelper = async ({
   await EESecretService.markDeletedSecretVersions({
     secretIds: deletedSecrets.map((secret) => secret._id)
   });
-
-  const action = await EELogService.createAction({
-    name: ACTION_DELETE_SECRETS,
-    ...getAuthDataPayloadIdObj(authData),
-    workspaceId,
-    secretIds: deletedSecrets.map((secret) => secret._id)
-  });
-
-  action &&
-    (await EELogService.createLog({
-      ...getAuthDataPayloadIdObj(authData),
-      workspaceId,
-      actions: [action],
-      channel: authData.userAgentType,
-      ipAddress: authData.ipAddress
-    }));
 
   await EEAuditLogService.createAuditLog(
     authData,

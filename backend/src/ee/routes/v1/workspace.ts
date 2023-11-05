@@ -29,14 +29,6 @@ router.post(
 );
 
 router.get(
-  "/:workspaceId/logs",
-  requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
-  }),
-  workspaceController.getWorkspaceLogs
-);
-
-router.get(
   "/:workspaceId/audit-logs",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]

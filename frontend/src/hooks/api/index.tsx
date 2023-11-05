@@ -15,7 +15,6 @@ export * from "./secretImports";
 export * from "./secretRotation";
 export * from "./secrets";
 export * from "./secretSnapshots";
-export * from "./serviceAccounts";
 export * from "./serviceTokens";
 export * from "./ssoConfig";
 export * from "./subscriptions";

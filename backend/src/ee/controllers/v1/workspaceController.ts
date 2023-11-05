@@ -17,7 +17,6 @@ import {
   FolderVersion,
   IPType,
   ISecretVersion,
-  Log,
   SecretSnapshot,
   SecretVersion,
   ServiceActor,
@@ -38,7 +37,6 @@ import {
   DeleteWorkspaceTrustedIpV1,
   GetWorkspaceAuditLogActorFilterOptsV1,
   GetWorkspaceAuditLogsV1,
-  GetWorkspaceLogsV1,
   GetWorkspaceSecretSnapshotsCountV1,
   GetWorkspaceSecretSnapshotsV1,
   GetWorkspaceTrustedIpsV1,
@@ -560,112 +558,6 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
 
   return res.status(200).send({
     secrets
-  });
-};
-
-/**
- * Return (audit) logs for workspace with id [workspaceId]
- * @param req
- * @param res
- * @returns
- */
-export const getWorkspaceLogs = async (req: Request, res: Response) => {
-  /* 
-    #swagger.summary = 'Return project (audit) logs'
-    #swagger.description = 'Return project (audit) logs'
-    
-    #swagger.security = [{
-        "apiKeyAuth": []
-    }]
-
-	#swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
-		"required": true,
-		"type": "string"
-	} 
-
-	#swagger.parameters['userId'] = {
-		"description": "ID of project member",
-		"required": false,
-		"type": "string"
-	} 
-
-	#swagger.parameters['offset'] = {
-		"description": "Number of logs to skip",
-		"required": false,
-		"type": "string"
-	}
-
-	#swagger.parameters['limit'] = {
-		"description": "Maximum number of logs to return",
-		"required": false,
-		"type": "string"
-	}
-
-	#swagger.parameters['sortBy'] = {
-		"description": "Order to sort the logs by",
-		"schema": {
-			"type": "string",
-			"@enum": ["oldest", "recent"]
-		},
-		"required": false
-	}
-
-	#swagger.parameters['actionNames'] = {
-		"description": "Names of log actions (comma-separated)",
-		"required": false,
-		"type": "string"
-	}
-
-    #swagger.responses[200] = {
-        content: {
-            "application/json": {
-                schema: { 
-					"type": "object",
-					"properties": {
-						"logs": {
-							"type": "array",
-							"items": {
-								$ref: "#/components/schemas/Log" 
-							},
-							"description": "Project logs"
-						}
-					}
-                }
-            }           
-        }
-    }   
-    */
-  const {
-    query: { limit, offset, userId, sortBy, actionNames },
-    params: { workspaceId }
-  } = await validateRequest(GetWorkspaceLogsV1, req);
-
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
-  ForbiddenError.from(permission).throwUnlessCan(
-    ProjectPermissionActions.Read,
-    ProjectPermissionSub.AuditLogs
-  );
-
-  const logs = await Log.find({
-    workspace: workspaceId,
-    ...(userId ? { user: userId } : {}),
-    ...(actionNames
-      ? {
-          actionNames: {
-            $in: actionNames.split(",")
-          }
-        }
-      : {})
-  })
-    .sort({ createdAt: sortBy === "recent" ? -1 : 1 })
-    .skip(offset)
-    .limit(limit)
-    .populate("actions")
-    .populate("user serviceAccount serviceTokenData");
-
-  return res.status(200).send({
-    logs
   });
 };
 

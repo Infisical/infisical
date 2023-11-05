@@ -6,14 +6,8 @@ const jsrp = require("jsrp");
 import { LoginSRPDetail, TokenVersion, User } from "../../models";
 import { clearTokens, createToken, issueAuthTokens } from "../../helpers/auth";
 import { checkUserDevice } from "../../helpers/user";
-import { 
-  ACTION_LOGIN,
-  ACTION_LOGOUT, 
-  AuthTokenType 
-} from "../../variables";
+import { AuthTokenType } from "../../variables";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import { EELogService } from "../../ee/services";
-import { getUserAgentType } from "../../utils/posthog";
 import {
   getAuthSecret,
   getHttpsEnabled,
@@ -145,19 +139,6 @@ export const login2 = async (req: Request, res: Response) => {
           secure: await getHttpsEnabled()
         });
 
-        const loginAction = await EELogService.createAction({
-          name: ACTION_LOGIN,
-          userId: user._id
-        });
-
-        loginAction &&
-          (await EELogService.createLog({
-            userId: user._id,
-            actions: [loginAction],
-            channel: getUserAgentType(req.headers["user-agent"]),
-            ipAddress: req.realIP
-          }));
-
         // return (access) token in response
         return res.status(200).send({
           token: tokens.token,
@@ -193,19 +174,6 @@ export const logout = async (req: Request, res: Response) => {
     sameSite: "strict",
     secure: (await getHttpsEnabled()) as boolean
   });
-
-  const logoutAction = await EELogService.createAction({
-    name: ACTION_LOGOUT,
-    userId: req.user._id
-  });
-
-  logoutAction &&
-    (await EELogService.createLog({
-      userId: req.user._id,
-      actions: [logoutAction],
-      channel: getUserAgentType(req.headers["user-agent"]),
-      ipAddress: req.realIP
-    }));
 
   return res.status(200).send({
     message: "Successfully logged out."

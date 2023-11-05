@@ -18,7 +18,6 @@ const swaggerFile = require("../spec.json");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import { apiLimiter } from "./helpers/rateLimiter";
 import {
-  action as eeActionRouter,
   cloudProducts as eeCloudProductsRouter,
   organizations as eeOrganizationsRouter,
   sso as eeSSORouter,
@@ -193,7 +192,6 @@ const main = async () => {
   app.use("/api/v1/secret-snapshot", eeSecretSnapshotRouter);
   app.use("/api/v1/users", eeUsersRouter);
   app.use("/api/v1/workspace", eeWorkspaceRouter);
-  app.use("/api/v1/action", eeActionRouter);
   app.use("/api/v1/organizations", eeOrganizationsRouter);
   app.use("/api/v1/sso", eeSSORouter);
   app.use("/api/v1/cloud-products", eeCloudProductsRouter);
@@ -240,14 +238,13 @@ const main = async () => {
   app.use("/api/v2/secret", v2SecretRouter); // deprecate
   app.use("/api/v2/secrets", v2SecretsRouter); // note: in the process of moving to v3/secrets
   app.use("/api/v2/service-token", v2ServiceTokenDataRouter);
-  // app.use("/api/v2/service-accounts", v2ServiceAccountsRouter); // new
 
   // v3 routes (experimental)
   app.use("/api/v3/auth", v3AuthRouter);
   app.use("/api/v3/secrets", v3SecretsRouter);
   app.use("/api/v3/workspaces", v3WorkspacesRouter);
   app.use("/api/v3/signup", v3SignupRouter);
-  app.use("/api/v3/users", v3UsersRouter);
+  app.use("/api/v3/us", v3UsersRouter);
 
   // api docs
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));

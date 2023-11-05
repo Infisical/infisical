@@ -4,7 +4,6 @@ import organizations from "./organizations";
 import sso from "./sso";
 import users from "./users";
 import workspace from "./workspace";
-import action from "./action";
 import cloudProducts from "./cloudProducts";
 import secretScanning from "./secretScanning";
 import roles from "./role";
@@ -20,7 +19,6 @@ export {
   sso,
   users,
   workspace,
-  action,
   cloudProducts,
   secretScanning,
   roles,

@@ -182,16 +182,6 @@ export const SecretSnapshotNotFoundError = (error?: Partial<RequestErrorContext>
     stack: error?.stack,
 });
 
-//* ----->[ACTION ERRORS]<-----
-export const ActionNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
-    logLevel: error?.logLevel ?? LogLevel.ERROR,
-    statusCode: error?.statusCode ?? 404,
-    type: error?.type ?? "action_not_found_error",
-    message: error?.message ?? "The requested action was not found",
-    context: error?.context,
-    stack: error?.stack,
-});
-
 //* ----->[SERVICE TOKEN DATA ERRORS]<-----
 export const ServiceTokenDataNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.ERROR,
@@ -211,25 +201,6 @@ export const APIKeyDataNotFoundError = (error?: Partial<RequestErrorContext>) =>
     context: error?.context,
     stack: error?.stack,
 });
-
-//* ----->[SERVICE_ACCOUNT ERRORS]<-----
-export const ServiceAccountNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
-    logLevel: error?.logLevel ?? LogLevel.ERROR,
-    statusCode: error?.statusCode ?? 404,
-    type: error?.type ?? "service_account_not_found_error",
-    message: error?.message ?? "The requested service account was not found",
-    context: error?.context,
-    stack: error?.stack,
-});
-
-export const ServiceAccountKeyNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
-    logLevel: error?.logLevel ?? LogLevel.ERROR,
-    statusCode: error?.statusCode ?? 404,
-    type: error?.type ?? "service_account_key_not_found_error",
-    message: error?.message ?? "The requested service account key was not found",
-    context: error?.context,
-    stack: error?.stack,
-})
 
 export const BotNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.ERROR,

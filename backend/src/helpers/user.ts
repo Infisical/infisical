@@ -10,10 +10,6 @@ import {
   User,
   UserAction
 } from "../models";
-import {
-  Action,
-  Log
-} from "../ee/models";
 import { sendMail } from "./nodemailer";
 import {
   InternalServerError,
@@ -244,14 +240,6 @@ export const deleteUser = async ({
   });
 
   await APIKeyData.deleteMany({
-    user: user._id
-  });
-
-  await Action.deleteMany({
-    user: user._id
-  }); 
-  
-  await Log.deleteMany({
     user: user._id
   });
 
