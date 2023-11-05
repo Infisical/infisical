@@ -60,7 +60,6 @@ import {
   INTEGRATION_WINDMILL,
   INTEGRATION_WINDMILL_API_URL
 } from "../variables";
-import AWS from "aws-sdk";
 import { SSM } from "@aws-sdk/client-ssm";
 import { Octokit } from "@octokit/rest";
 import _ from "lodash";
@@ -733,26 +732,11 @@ const syncSecretsAWSParameterStore = async ({
 }) => {
   if (!accessId) return;
 
-  // JS SDK v3 does not support global configuration.
-  // Codemod has attempted to pass values to each service client in this file.
-  // You may need to update clients outside of this file, if they use global config.
-  AWS.config.update({
-    region: integration.region,
-    accessKeyId: accessId,
-    secretAccessKey: accessToken
-  });
-
   const ssm = new SSM({
     credentials: {
       accessKeyId: accessId,
       secretAccessKey: accessToken
     },
-
-    // The transformation for apiVersion is not implemented.
-    // Refer to UPGRADING.md on aws-sdk-js-v3 for changes needed.
-    // Please create/upvote feature request on aws-sdk-js-codemod for apiVersion.
-    apiVersion: "2014-11-06",
-
     region: integration.region
   });
 
@@ -817,15 +801,6 @@ const syncSecretsAWSParameterStore = async ({
         });
     }
   });
-
-  // JS SDK v3 does not support global configuration.
-  // Codemod has attempted to pass values to each service client in this file.
-  // You may need to update clients outside of this file, if they use global config.
-  AWS.config.update({
-    region: undefined,
-    accessKeyId: undefined,
-    secretAccessKey: undefined
-  });
 };
 
 /**
@@ -851,15 +826,6 @@ const syncSecretsAWSSecretManager = async ({
   const secKeyVal = getSecretKeyValuePair(secrets);
   try {
     if (!accessId) return;
-
-    // JS SDK v3 does not support global configuration.
-    // Codemod has attempted to pass values to each service client in this file.
-    // You may need to update clients outside of this file, if they use global config.
-    AWS.config.update({
-      region: integration.region,
-      accessKeyId: accessId,
-      secretAccessKey: accessToken
-    });
 
     secretsManager = new SecretsManagerClient({
       region: integration.region,
@@ -889,15 +855,6 @@ const syncSecretsAWSSecretManager = async ({
         })
       );
     }
-
-    // JS SDK v3 does not support global configuration.
-    // Codemod has attempted to pass values to each service client in this file.
-    // You may need to update clients outside of this file, if they use global config.
-    AWS.config.update({
-      region: undefined,
-      accessKeyId: undefined,
-      secretAccessKey: undefined
-    });
   } catch (err) {
     if (err instanceof ResourceNotFoundException && secretsManager) {
       await secretsManager.send(
@@ -907,14 +864,6 @@ const syncSecretsAWSSecretManager = async ({
         })
       );
     }
-    // JS SDK v3 does not support global configuration.
-    // Codemod has attempted to pass values to each service client in this file.
-    // You may need to update clients outside of this file, if they use global config.
-    AWS.config.update({
-      region: undefined,
-      accessKeyId: undefined,
-      secretAccessKey: undefined
-    });
   }
 };
 
