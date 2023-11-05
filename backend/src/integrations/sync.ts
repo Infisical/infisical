@@ -61,6 +61,7 @@ import {
   INTEGRATION_WINDMILL_API_URL
 } from "../variables";
 import AWS from "aws-sdk";
+import { SSM } from "@aws-sdk/client-ssm";
 import { Octokit } from "@octokit/rest";
 import _ from "lodash";
 import sodium from "libsodium-wrappers";
@@ -732,14 +733,26 @@ const syncSecretsAWSParameterStore = async ({
 }) => {
   if (!accessId) return;
 
+  // JS SDK v3 does not support global configuration.
+  // Codemod has attempted to pass values to each service client in this file.
+  // You may need to update clients outside of this file, if they use global config.
   AWS.config.update({
     region: integration.region,
     accessKeyId: accessId,
     secretAccessKey: accessToken
   });
 
-  const ssm = new AWS.SSM({
+  const ssm = new SSM({
+    credentials: {
+      accessKeyId: accessId,
+      secretAccessKey: accessToken
+    },
+
+    // The transformation for apiVersion is not implemented.
+    // Refer to UPGRADING.md on aws-sdk-js-v3 for changes needed.
+    // Please create/upvote feature request on aws-sdk-js-codemod for apiVersion.
     apiVersion: "2014-11-06",
+
     region: integration.region
   });
 
@@ -749,7 +762,7 @@ const syncSecretsAWSParameterStore = async ({
     WithDecryption: true
   };
 
-  const parameterList = (await ssm.getParametersByPath(params).promise()).Parameters;
+  const parameterList = (await ssm.getParametersByPath(params)).Parameters;
 
   let awsParameterStoreSecretsObj: {
     [key: string]: any;
@@ -775,8 +788,7 @@ const syncSecretsAWSParameterStore = async ({
           Type: "SecureString",
           Value: secrets[key].value,
           Overwrite: true
-        })
-        .promise();
+        });
     } else {
       // case: secret exists in AWS parameter store
 
@@ -789,8 +801,7 @@ const syncSecretsAWSParameterStore = async ({
             Type: "SecureString",
             Value: secrets[key].value,
             Overwrite: true
-          })
-          .promise();
+          });
       }
     }
   });
@@ -803,11 +814,13 @@ const syncSecretsAWSParameterStore = async ({
       await ssm
         .deleteParameter({
           Name: awsParameterStoreSecretsObj[key].Name
-        })
-        .promise();
+        });
     }
   });
 
+  // JS SDK v3 does not support global configuration.
+  // Codemod has attempted to pass values to each service client in this file.
+  // You may need to update clients outside of this file, if they use global config.
   AWS.config.update({
     region: undefined,
     accessKeyId: undefined,
@@ -839,6 +852,9 @@ const syncSecretsAWSSecretManager = async ({
   try {
     if (!accessId) return;
 
+    // JS SDK v3 does not support global configuration.
+    // Codemod has attempted to pass values to each service client in this file.
+    // You may need to update clients outside of this file, if they use global config.
     AWS.config.update({
       region: integration.region,
       accessKeyId: accessId,
@@ -874,6 +890,9 @@ const syncSecretsAWSSecretManager = async ({
       );
     }
 
+    // JS SDK v3 does not support global configuration.
+    // Codemod has attempted to pass values to each service client in this file.
+    // You may need to update clients outside of this file, if they use global config.
     AWS.config.update({
       region: undefined,
       accessKeyId: undefined,
@@ -888,6 +907,9 @@ const syncSecretsAWSSecretManager = async ({
         })
       );
     }
+    // JS SDK v3 does not support global configuration.
+    // Codemod has attempted to pass values to each service client in this file.
+    // You may need to update clients outside of this file, if they use global config.
     AWS.config.update({
       region: undefined,
       accessKeyId: undefined,
