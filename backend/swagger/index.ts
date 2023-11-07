@@ -17,7 +17,7 @@ const generateOpenAPISpec = async () => {
     host: ["https://infisical.com"],
     servers: [
       {
-        url: "https://infisical.com",
+        url: "https://app.infisical.com",
         description: "Production server",
       },
       {
@@ -111,7 +111,7 @@ const generateOpenAPISpec = async () => {
         secretValueTag: "",
         secretCommentCiphertext: "",
         secretCommentIV: "",
-        secretCommentTag: "", 
+        secretCommentTag: "",
       },
       UpdateSecret: {
         id: "",
@@ -196,7 +196,7 @@ const generateOpenAPISpec = async () => {
         secretKeyTag: "",
         secretValueCiphertext: "",
         secretValueIV: "",
-        secretValueTag: "", 
+        secretValueTag: "",
       },
       ServiceTokenData: {
         _id: "",
@@ -223,7 +223,7 @@ const generateOpenAPISpec = async () => {
   const endpointsFiles = ["../src/index.ts"];
 
   const spec = await swaggerAutogen(outputJSONFile, endpointsFiles, doc);
-  
+
   await fs.writeFile(outputYAMLFile, yaml.dump(spec.data));
 }
 

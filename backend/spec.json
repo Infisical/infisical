@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://infisical.com",
+      "url": "https://app.infisical.com",
       "description": "Production server"
     },
     {
@@ -867,64 +867,6 @@
         }
       }
     },
-    "/api/v1/sso/redirect/google": {
-      "get": {
-        "description": "",
-        "parameters": [
-          {
-            "name": "callback_port",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "default": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/v1/sso/google": {
-      "get": {
-        "description": "",
-        "responses": {
-          "default": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/v1/sso/redirect/github": {
-      "get": {
-        "description": "",
-        "parameters": [
-          {
-            "name": "callback_port",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "default": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/v1/sso/github": {
-      "get": {
-        "description": "",
-        "responses": {
-          "default": {
-            "description": ""
-          }
-        }
-      }
-    },
     "/api/v1/sso/redirect/saml2/{ssoIdentifier}": {
       "get": {
         "description": "",
@@ -1007,6 +949,70 @@
     "/api/v1/cloud-products/": {
       "get": {
         "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v3/service-token/me/key": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v3/service-token/": {
+      "post": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v3/service-token/{serviceTokenDataId}": {
+      "patch": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "serviceTokenDataId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      },
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "serviceTokenDataId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -1194,14 +1200,6 @@
     },
     "/api/v1/organization/": {
       "get": {
-        "description": "",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "post": {
         "description": "",
         "responses": {
           "200": {
@@ -2188,6 +2186,126 @@
         }
       }
     },
+    "/api/v1/integration-auth/{integrationAuthId}/qovery/orgs": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "integrationAuthId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/integration-auth/{integrationAuthId}/qovery/projects": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "integrationAuthId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/integration-auth/{integrationAuthId}/qovery/environments": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "integrationAuthId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/integration-auth/{integrationAuthId}/qovery/apps": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "integrationAuthId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/integration-auth/{integrationAuthId}/qovery/containers": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "integrationAuthId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/integration-auth/{integrationAuthId}/qovery/jobs": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "integrationAuthId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/integration-auth/{integrationAuthId}/railway/environments": {
       "get": {
         "description": "",
@@ -2470,19 +2588,27 @@
         ]
       }
     },
-    "/api/v1/folders/{folderId}": {
+    "/api/v1/folders/{folderName}": {
       "patch": {
         "summary": "Update a folder by ID",
         "description": "Update the name of a folder in a specified workspace and environment by its ID",
         "parameters": [
           {
-            "name": "folderId",
+            "name": "folderName",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "ID of the folder to be updated"
+            }
+          },
+          {
+            "name": "folderId",
+            "description": "ID of the folder to be updated",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2565,13 +2691,21 @@
         "description": "Delete the specified folder from a specified workspace and environment using its ID",
         "parameters": [
           {
-            "name": "folderId",
+            "name": "folderName",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "description": "ID of the folder to be deleted"
+            }
+          },
+          {
+            "name": "folderId",
+            "description": "ID of the folder to be deleted",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -3213,6 +3347,259 @@
         }
       }
     },
+    "/api/v1/secret-approvals/": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/secret-approvals/board": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/secret-approvals/{id}": {
+      "patch": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/sso/redirect/google": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "callback_port",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/sso/google": {
+      "get": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/sso/redirect/github": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "callback_port",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/sso/github": {
+      "get": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/sso/redirect/gitlab": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "callback_port",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/sso/gitlab": {
+      "get": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/secret-approval-requests/": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/secret-approval-requests/count": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/secret-approval-requests/{id}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/secret-approval-requests/{id}/merge": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/secret-approval-requests/{id}/review": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/secret-approval-requests/{id}/status": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v2/signup/complete-account/signup": {
       "post": {
         "description": "",
@@ -3449,36 +3836,6 @@
         }
       }
     },
-    "/api/v2/users/me": {
-      "get": {
-        "summary": "Retrieve the current user on the request",
-        "description": "Retrieve the current user on the request",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "user": {
-                      "type": "object",
-                      "$ref": "#/components/schemas/CurrentUser",
-                      "description": "Current user on request"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "apiKeyAuth": []
-          }
-        ]
-      }
-    },
     "/api/v2/users/me/mfa": {
       "patch": {
         "description": "",
@@ -3590,6 +3947,44 @@
             "description": "OK"
           }
         }
+      },
+      "delete": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v2/users/me": {
+      "get": {
+        "summary": "Retrieve the current user on the request",
+        "description": "Retrieve the current user on the request",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "$ref": "#/components/schemas/CurrentUser",
+                      "description": "Current user on request"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ]
       },
       "delete": {
         "description": "",
@@ -3800,6 +4195,36 @@
     },
     "/api/v2/organizations/{organizationId}/service-accounts": {
       "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v2/organizations/": {
+      "post": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v2/organizations/{organizationId}": {
+      "delete": {
         "description": "",
         "parameters": [
           {
@@ -5196,6 +5621,32 @@
         }
       }
     },
+    "/api/v3/secrets/batch": {
+      "post": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "patch": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v3/secrets/{secretName}": {
       "post": {
         "description": "",
@@ -5312,6 +5763,26 @@
     },
     "/api/v3/workspaces/{workspaceId}/secrets/names": {
       "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v3/workspaces/{workspaceId}/service-token": {
+      "get": {
         "description": "",
         "parameters": [
           {

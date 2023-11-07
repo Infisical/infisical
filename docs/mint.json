@@ -27,11 +27,7 @@
     "thumbsRating": true
   },
   "api": {
-    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"],
-    "auth": {
-      "method": "key",
-      "name": "X-API-KEY"
-    }
+    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"]
   },
   "topbarLinks": [
     {
