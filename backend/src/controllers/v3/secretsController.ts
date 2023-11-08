@@ -23,7 +23,7 @@ import {
   validateServiceTokenDataV3ClientForWorkspace
 } from "../../validation";
 import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variables";
-import { ActorType } from "../../ee/models";
+import { ActorType, TrustedIP } from "../../ee/models";
 import { UnauthorizedRequestError } from "../../utils/errors";
 import { AuthData } from "../../interfaces/middleware";
 import {
@@ -461,7 +461,6 @@ export const getSecrets = async (req: Request, res: Response) => {
   const {
     query: { environment, workspaceId, include_imports: includeImports }
   } = validatedData;
-
   let {
     query: { secretPath }
   } = validatedData;
@@ -473,7 +472,32 @@ export const getSecrets = async (req: Request, res: Response) => {
     secretPath,
     secretAction: ProjectPermissionActions.Read
   });
-
+  
+  const ipAddress = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+  // Check if the IP is already added to the workspace with the same environment
+  // If no, return error
+  const trustedIp = await TrustedIP.find({
+    workspaceId: new Types.ObjectId(workspaceId),
+    ipAddress,
+    $or: [
+      {
+        environment
+      },
+      // If the environment is not specified, it means that the IP is trusted for all environments in the workspace
+      {
+        environment: "all"
+      },
+      // If the environment is not specified and undefined for the old DB rows,
+      // it means that the IP is trusted for all environments in the workspace
+      {
+        environment: undefined
+      }
+    ]
+  });
+  if (!trustedIp) {
+    throw UnauthorizedRequestError({ message: "IP is not trusted" });
+  }
+  
   const secrets = await SecretService.getSecrets({
     workspaceId: new Types.ObjectId(workspaceId),
     environment,
@@ -484,7 +508,7 @@ export const getSecrets = async (req: Request, res: Response) => {
   if (includeImports) {
     const folders = await Folder.findOne({ workspace: workspaceId, environment });
     let folderId = "root";
-    // if folder exist get it and replace folderid with new one
+    // if folder exists get it and replace folderId with new one
     if (folders) {
       const folder = getFolderByPath(folders.nodes, secretPath as string);
       if (!folder) {

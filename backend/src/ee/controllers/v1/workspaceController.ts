@@ -723,7 +723,7 @@ export const getWorkspaceTrustedIps = async (req: Request, res: Response) => {
 export const addWorkspaceTrustedIp = async (req: Request, res: Response) => {
   const {
     params: { workspaceId },
-    body: { comment, isActive, ipAddress: ip }
+    body: { comment, isActive, ipAddress: ip, environment }
   } = await validateRequest(AddWorkspaceTrustedIpV1, req);
 
   const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
@@ -734,9 +734,8 @@ export const addWorkspaceTrustedIp = async (req: Request, res: Response) => {
 
   const workspace = await Workspace.findById(workspaceId);
   if (!workspace) throw BadRequestError({ message: "Workspace not found" });
-
+  
   const plan = await EELicenseService.getPlan(workspace.organization);
-
   if (!plan.ipAllowlisting)
     return res.status(400).send({
       message:
@@ -744,21 +743,20 @@ export const addWorkspaceTrustedIp = async (req: Request, res: Response) => {
     });
 
   const isValidIPOrCidr = isValidIpOrCidr(ip);
-
   if (!isValidIPOrCidr)
     return res.status(400).send({
       message: "The IP is not a valid IPv4, IPv6, or CIDR block"
     });
-
+  
   const { ipAddress, type, prefix } = extractIPDetails(ip);
-
   const trustedIp = await new TrustedIP({
     workspace: new Types.ObjectId(workspaceId),
     ipAddress,
     type,
     prefix,
     isActive,
-    comment
+    comment,
+    environment
   }).save();
 
   await EEAuditLogService.createAuditLog(
@@ -768,7 +766,8 @@ export const addWorkspaceTrustedIp = async (req: Request, res: Response) => {
       metadata: {
         trustedIpId: trustedIp._id.toString(),
         ipAddress: trustedIp.ipAddress,
-        prefix: trustedIp.prefix
+        prefix: trustedIp.prefix,
+        environment: trustedIp.environment
       }
     },
     {
@@ -789,7 +788,7 @@ export const addWorkspaceTrustedIp = async (req: Request, res: Response) => {
 export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
   const {
     params: { workspaceId, trustedIpId },
-    body: { ipAddress: ip, comment }
+    body: { ipAddress: ip, comment, environment }
   } = await validateRequest(UpdateWorkspaceTrustedIpV1, req);
 
   const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
@@ -822,6 +821,7 @@ export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
     ipAddress: string;
     type: IPType;
     comment: string;
+    environment: string;
     prefix?: number;
     $unset?: {
       prefix: number;
@@ -829,7 +829,8 @@ export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
   } = {
     ipAddress,
     type,
-    comment
+    comment,
+    environment
   };
 
   if (prefix !== undefined) {
@@ -861,7 +862,8 @@ export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
       metadata: {
         trustedIpId: trustedIp._id.toString(),
         ipAddress: trustedIp.ipAddress,
-        prefix: trustedIp.prefix
+        prefix: trustedIp.prefix,
+        environment: trustedIp.environment
       }
     },
     {
@@ -918,7 +920,8 @@ export const deleteWorkspaceTrustedIp = async (req: Request, res: Response) => {
       metadata: {
         trustedIpId: trustedIp._id.toString(),
         ipAddress: trustedIp.ipAddress,
-        prefix: trustedIp.prefix
+        prefix: trustedIp.prefix,
+        environment: trustedIp.environment
       }
     },
     {

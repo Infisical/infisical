@@ -176,6 +176,7 @@ interface AddTrustedIPEvent {
   metadata: {
     trustedIpId: string;
     ipAddress: string;
+    environment?: string;
     prefix?: number;
   };
 }
@@ -185,6 +186,7 @@ interface UpdateTrustedIPEvent {
   metadata: {
     trustedIpId: string;
     ipAddress: string;
+    environment?: string;
     prefix?: number;
   };
 }
@@ -194,6 +196,7 @@ interface DeleteTrustedIPEvent {
   metadata: {
     trustedIpId: string;
     ipAddress: string;
+    environment?: string;
     prefix?: number;
   };
 }

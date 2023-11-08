@@ -145,6 +145,7 @@ export const AddWorkspaceTrustedIpV1 = z.object({
   }),
   body: z.object({
     ipAddress: z.string().trim(),
+    environment: z.string().trim().default(""),
     comment: z.string().trim().default(""),
     isActive: z.boolean()
   })
@@ -157,7 +158,8 @@ export const UpdateWorkspaceTrustedIpV1 = z.object({
   }),
   body: z.object({
     ipAddress: z.string().trim(),
-    comment: z.string().trim().default("")
+    comment: z.string().trim().default(""),
+    environment: z.string().trim().default(""),
   })
 });
 

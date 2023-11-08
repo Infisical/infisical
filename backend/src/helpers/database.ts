@@ -21,6 +21,7 @@ export const initDatabaseHelper = async ({
         logger.info("Database connection established");
 
     } catch (err) {
+        // @ts-ignore
         logger.error(err, "Unable to establish database connection");
     }
 
@@ -28,7 +29,7 @@ export const initDatabaseHelper = async ({
 }
 
 /**
- * Close database conection
+ * Close database connection
  */
 export const closeDatabaseHelper = async () => {
     if (mongoose.connection && mongoose.connection.readyState === 1) {

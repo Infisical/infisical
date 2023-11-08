@@ -58,6 +58,7 @@ export const IPAllowlistTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: 
             <Tr>
               <Th className="flex-1">IP Address / Range</Th>
               <Th className="flex-1">Format</Th>
+              <Th className="flex-1">Environment</Th>
               <Th className="flex-1">Comment</Th>
               {/* <Th className="flex-1">Status</Th> */}
               <Th className="w-5" />
@@ -69,11 +70,12 @@ export const IPAllowlistTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: 
               data?.length > 0 &&
               data
                 .sort((a, b) => a.ipAddress.localeCompare(b.ipAddress))
-                .map(({ _id, ipAddress, comment, type, prefix, isActive }) => {
+                .map(({ _id, ipAddress, comment, environment, type, prefix, isActive }) => {
                   return (
                     <Tr key={`ip-access-range-${_id}`} className="h-10">
                       <Td>{`${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`}</Td>
                       <Td>{formatType(type, prefix)}</Td>
+                      <Td>{environment}</Td>
                       <Td>{comment}</Td>
                       {/* <Td>
                                         <div className="flex items-center">

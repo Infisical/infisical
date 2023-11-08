@@ -1,10 +1,5 @@
 # backend
 node_modules
-.env
-.env.dev
-.env.gamma
-.env.prod
-.env.infisical
 
 *~
 *.swp
@@ -25,8 +20,6 @@ node_modules
 /.pnp
 .pnp.js
 
-.env
-
 # testing
 coverage
 reports
@@ -38,9 +31,6 @@ junit.xml
 
 # production
 /build
-
-# misc
-.DS_Store
 
 # debug
 npm-debug.log*
@@ -54,11 +44,16 @@ yarn-error.log*
 .env.production.local
 .vercel
 .env.infisical
+.env
+.env.dev
+.env.gamma
+.env.prod
 
 # Infisical init
 .infisical.json
 
 # Editor specific
 .vscode/*
+.idea/*
 
 frontend-build

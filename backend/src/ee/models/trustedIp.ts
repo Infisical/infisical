@@ -8,6 +8,7 @@ export enum IPType {
 export interface ITrustedIP {
     _id: Types.ObjectId;
     workspace: Types.ObjectId;
+    environment?: string;
     ipAddress: string;
     type: "ipv4" | "ipv6", // either IPv4/IPv6 address or network IPv4/IPv6 address
     isActive: boolean;
@@ -21,6 +22,10 @@ const trustedIpSchema = new Schema<ITrustedIP>(
             type: Schema.Types.ObjectId,
             ref: "Workspace",
             required: true
+        },
+        environment: {
+            type: String,
+            required: false
         },
         ipAddress: {
             type: String,
