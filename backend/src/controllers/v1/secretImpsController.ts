@@ -524,8 +524,7 @@ export const getSecretImports = async (req: Request, res: Response) => {
                     "type": "object",
                     "properties": {
                         "secretImport": {
-                            "type": "object",
-                            "description": "Details of a secret import"
+                          $ref: '#/definitions/SecretImport'
                         }
                     }
                 }

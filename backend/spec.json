@@ -2448,14 +2448,21 @@
                       "properties": {
                         "id": {
                           "type": "string",
+                          "description": "ID of folder",
                           "example": "someFolderId"
                         },
                         "name": {
                           "type": "string",
+                          "description": "Name of folder",
                           "example": "my_folder"
+                        },
+                        "version": {
+                          "type": "number",
+                          "description": "Version of folder",
+                          "example": 1
                         }
                       },
-                      "description": "Details of the created folder"
+                      "description": "Details of created folder"
                     }
                   }
                 }
@@ -2614,6 +2621,7 @@
                   "properties": {
                     "message": {
                       "type": "string",
+                      "description": "Success message",
                       "example": "Successfully updated folder"
                     },
                     "folder": {
@@ -2621,11 +2629,13 @@
                       "properties": {
                         "name": {
                           "type": "string",
+                          "description": "Name of updated folder",
                           "example": "updated_folder_name"
                         },
                         "id": {
                           "type": "string",
-                          "example": "someFolderId"
+                          "description": "ID of created folder",
+                          "example": "abc123"
                         }
                       },
                       "description": "Details of the updated folder"
@@ -2709,6 +2719,7 @@
                   "properties": {
                     "message": {
                       "type": "string",
+                      "description": "Success message",
                       "example": "successfully deleted folders"
                     },
                     "folders": {
@@ -2718,15 +2729,17 @@
                         "properties": {
                           "id": {
                             "type": "string",
-                            "example": "someFolderId"
+                            "description": "ID of deleted folder",
+                            "example": "abc123"
                           },
                           "name": {
                             "type": "string",
+                            "description": "Name of deleted folder",
                             "example": "someFolderName"
                           }
                         }
                       },
-                      "description": "List of IDs and names of the deleted folders"
+                      "description": "List of IDs and names of deleted folders"
                     }
                   }
                 }
@@ -3079,8 +3092,7 @@
                   "type": "object",
                   "properties": {
                     "secretImport": {
-                      "type": "object",
-                      "description": "Details of a secret import"
+                      "$ref": "#/components/schemas/SecretImport"
                     }
                   }
                 }
@@ -4299,7 +4311,42 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Sucess message",
+                      "example": "Successfully created environment"
+                    },
+                    "workspace": {
+                      "type": "string",
+                      "description": "ID of workspace where environment was created",
+                      "example": "abc123"
+                    },
+                    "environment": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "Name of created environment",
+                          "example": "Staging"
+                        },
+                        "slug": {
+                          "type": "string",
+                          "description": "Slug of created environment",
+                          "example": "staging"
+                        }
+                      }
+                    }
+                  },
+                  "description": "Details of the created environment"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request"
@@ -4360,21 +4407,25 @@
                   "properties": {
                     "message": {
                       "type": "string",
+                      "description": "Success message",
                       "example": "Successfully update environment"
                     },
                     "workspace": {
                       "type": "string",
-                      "example": "someWorkspaceId"
+                      "description": "ID of workspace where environment was updated",
+                      "example": "abc123"
                     },
                     "environment": {
                       "type": "object",
                       "properties": {
                         "name": {
                           "type": "string",
+                          "description": "Name of updated environment",
                           "example": "Staging-Renamed"
                         },
                         "slug": {
                           "type": "string",
+                          "description": "Slug of updated environment",
                           "example": "staging-renamed"
                         }
                       }
@@ -4465,15 +4516,18 @@
                   "properties": {
                     "message": {
                       "type": "string",
+                      "description": "Success message",
                       "example": "Successfully deleted environment"
                     },
                     "workspace": {
                       "type": "string",
-                      "example": "someWorkspaceId"
+                      "description": "ID of workspace where environment was deleted",
+                      "example": "abc123"
                     },
                     "environment": {
                       "type": "string",
-                      "example": "dev-environment"
+                      "description": "Slug of deleted environment",
+                      "example": "dev"
                     }
                   },
                   "description": "Response after deleting an environment from a workspace"
@@ -4484,8 +4538,7 @@
         },
         "security": [
           {
-            "apiKeyAuth": [],
-            "bearerAuth": []
+            "apiKeyAuth": []
           }
         ],
         "requestBody": {
@@ -5535,7 +5588,23 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "secrets": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RawSecret"
+                      },
+                      "description": "List of secrets"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5608,7 +5677,19 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "secret": {
+                      "$ref": "#/components/schemas/RawSecret"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5634,7 +5715,14 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RawSecret"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5711,7 +5799,14 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RawSecret"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5783,7 +5878,20 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "secret": {
+                      "$ref": "#/components/schemas/RawSecret"
+                    }
+                  },
+                  "description": "The deleted secret"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -6436,6 +6544,73 @@
           "secretCommentTag": {
             "type": "string",
             "example": ""
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2023-01-13T14:16:12.210Z"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2023-01-13T14:16:12.210Z"
+          }
+        }
+      },
+      "RawSecret": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "abc123"
+          },
+          "version": {
+            "type": "number",
+            "example": 1
+          },
+          "workspace": {
+            "type": "string",
+            "example": "abc123"
+          },
+          "environment": {
+            "type": "string",
+            "example": "dev"
+          },
+          "secretKey": {
+            "type": "string",
+            "example": "STRIPE_KEY"
+          },
+          "secretValue": {
+            "type": "string",
+            "example": "abc123"
+          },
+          "secretComment": {
+            "type": "string",
+            "example": "Lorem ipsum"
+          }
+        }
+      },
+      "SecretImport": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": ""
+          },
+          "workspace": {
+            "type": "string",
+            "example": "abc123"
+          },
+          "environment": {
+            "type": "string",
+            "example": "dev"
+          },
+          "folderId": {
+            "type": "string",
+            "example": "root"
+          },
+          "imports": {
+            "type": "array",
+            "example": [],
+            "items": {}
           },
           "updatedAt": {
             "type": "string",

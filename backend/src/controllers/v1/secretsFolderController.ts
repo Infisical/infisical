@@ -79,14 +79,21 @@ export const createFolder = async (req: Request, res: Response) => {
                             "properties": {
                                 "id": {
                                     "type": "string",
+                                    "description": "ID of folder",
                                     "example": "someFolderId"
                                 },
                                 "name": {
                                     "type": "string",
+                                    "description": "Name of folder",
                                     "example": "my_folder"
+                                },
+                                "version": {
+                                    "type": "number",
+                                    "description": "Version of folder",
+                                    "example": 1
                                 }
                             },
-                            "description": "Details of the created folder"
+                            "description": "Details of created folder"
                         }
                     }
                 }
@@ -275,6 +282,7 @@ export const updateFolderById = async (req: Request, res: Response) => {
                     "properties": {
                         "message": {
                             "type": "string",
+                            "description": "Success message",
                             "example": "Successfully updated folder"
                         },
                         "folder": {
@@ -282,11 +290,13 @@ export const updateFolderById = async (req: Request, res: Response) => {
                             "properties": {
                                 "name": {
                                     "type": "string",
+                                    "description": "Name of updated folder",
                                     "example": "updated_folder_name"
                                 },
                                 "id": {
                                     "type": "string",
-                                    "example": "someFolderId"
+                                    "description": "ID of created folder",
+                                    "example": "abc123"
                                 }
                             },
                             "description": "Details of the updated folder"
@@ -444,6 +454,7 @@ export const deleteFolder = async (req: Request, res: Response) => {
                     "properties": {
                         "message": {
                             "type": "string",
+                            "description": "Success message",
                             "example": "successfully deleted folders"
                         },
                         "folders": {
@@ -453,15 +464,17 @@ export const deleteFolder = async (req: Request, res: Response) => {
                                 "properties": {
                                     "id": {
                                         "type": "string",
-                                        "example": "someFolderId"
+                                        "description": "ID of deleted folder",
+                                        "example": "abc123"
                                     },
                                     "name": {
                                         "type": "string",
+                                        "description": "Name of deleted folder",
                                         "example": "someFolderName"
                                     }
                                 }
                             },
-                            "description": "List of IDs and names of the deleted folders"
+                            "description": "List of IDs and names of deleted folders"
                         }
                     }
                 }

@@ -143,6 +143,24 @@ const generateOpenAPISpec = async () => {
         updatedAt: "2023-01-13T14:16:12.210Z",
         createdAt: "2023-01-13T14:16:12.210Z",
       },
+      RawSecret: {
+        _id: "abc123",
+        version: 1,
+        workspace: "abc123",
+        environment: "dev",
+        secretKey: "STRIPE_KEY",
+        secretValue: "abc123",
+        secretComment: "Lorem ipsum"
+      },
+      SecretImport: {
+        _id: "",
+        workspace: "abc123",
+        environment: "dev",
+        folderId: "root",
+        imports: [],
+        updatedAt: "2023-01-13T14:16:12.210Z",
+        createdAt: "2023-01-13T14:16:12.210Z"
+      },
       Log: {
         _id: "",
         user: {

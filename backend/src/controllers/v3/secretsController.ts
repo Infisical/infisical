@@ -171,6 +171,25 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
       "type": "boolean",
       "in": "query"
     }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "secrets": {
+                            "type": "array",
+                            "items": {
+                              $ref: '#/definitions/RawSecret'
+                            },
+                            "description": "List of secrets"
+                        }
+                    }
+                }
+            }
+        }
+    }
   */
   const validatedData = await validateRequest(reqValidator.GetSecretsRawV3, req);
   let {
@@ -313,6 +332,21 @@ export const getSecretByNameRaw = async (req: Request, res: Response) => {
       "type": "boolean",
       "in": "query"
     }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "secret": {
+                          $ref: '#/definitions/RawSecret'
+                        }
+                    }
+                }
+            }
+        }
+    }
   */
   const {
     query: { secretPath, environment, workspaceId, type, include_imports },
@@ -414,6 +448,16 @@ export const createSecretRaw = async (req: Request, res: Response) => {
                         },
                     },
                     "required": ["workspaceId", "environment", "secretValue"]
+                }
+            }
+        }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": {
+                  $ref: '#/definitions/RawSecret'
                 }
             }
         }
@@ -561,6 +605,16 @@ export const updateSecretByNameRaw = async (req: Request, res: Response) => {
             }
         }
     }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": {
+                  $ref: '#/definitions/RawSecret'
+                }
+            }
+        }
+    }
   */
   const {
     params: { secretName },
@@ -663,6 +717,22 @@ export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
                         }
                     },
                     "required": ["workspaceId", "environment"]
+                }
+            }
+        }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "secret": {
+                      $ref: '#/definitions/RawSecret'
+                    }
+                  },
+                  "description": "The deleted secret"
                 }
             }
         }

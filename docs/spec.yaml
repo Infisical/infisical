@@ -1491,11 +1491,17 @@ paths:
                     properties:
                       id:
                         type: string
+                        description: ID of folder
                         example: someFolderId
                       name:
                         type: string
+                        description: Name of folder
                         example: my_folder
-                    description: Details of the created folder
+                      version:
+                        type: number
+                        description: Version of folder
+                        example: 1
+                    description: Details of created folder
         '400':
           description: >-
             Bad Request. For example, 'Folder name cannot contain spaces. Only
@@ -1601,16 +1607,19 @@ paths:
                 properties:
                   message:
                     type: string
+                    description: Success message
                     example: Successfully updated folder
                   folder:
                     type: object
                     properties:
                       name:
                         type: string
+                        description: Name of updated folder
                         example: updated_folder_name
                       id:
                         type: string
-                        example: someFolderId
+                        description: ID of created folder
+                        example: abc123
                     description: Details of the updated folder
         '400':
           description: >-
@@ -1667,6 +1676,7 @@ paths:
                 properties:
                   message:
                     type: string
+                    description: Success message
                     example: successfully deleted folders
                   folders:
                     type: array
@@ -1675,11 +1685,13 @@ paths:
                       properties:
                         id:
                           type: string
-                          example: someFolderId
+                          description: ID of deleted folder
+                          example: abc123
                         name:
                           type: string
+                          description: Name of deleted folder
                           example: someFolderName
-                    description: List of IDs and names of the deleted folders
+                    description: List of IDs and names of deleted folders
         '400':
           description: Bad Request. Reasons can include 'The folder doesn't exist'
         '401':
@@ -1909,8 +1921,7 @@ paths:
                 type: object
                 properties:
                   secretImport:
-                    type: object
-                    description: Details of a secret import
+                    $ref: '#/components/schemas/SecretImport'
         '401':
           description: Unauthorized access due to invalid token or scope
         '403':
@@ -2659,6 +2670,31 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Sucess message
+                    example: Successfully created environment
+                  workspace:
+                    type: string
+                    description: ID of workspace where environment was created
+                    example: abc123
+                  environment:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        description: Name of created environment
+                        example: Staging
+                      slug:
+                        type: string
+                        description: Slug of created environment
+                        example: staging
+                description: Details of the created environment
         '400':
           description: Bad Request
       security:
@@ -2700,18 +2736,22 @@ paths:
                 properties:
                   message:
                     type: string
+                    description: Success message
                     example: Successfully update environment
                   workspace:
                     type: string
-                    example: someWorkspaceId
+                    description: ID of workspace where environment was updated
+                    example: abc123
                   environment:
                     type: object
                     properties:
                       name:
                         type: string
+                        description: Name of updated environment
                         example: Staging-Renamed
                       slug:
                         type: string
+                        description: Slug of updated environment
                         example: staging-renamed
                 description: Details of the renamed environment
       security:
@@ -2769,17 +2809,19 @@ paths:
                 properties:
                   message:
                     type: string
+                    description: Success message
                     example: Successfully deleted environment
                   workspace:
                     type: string
-                    example: someWorkspaceId
+                    description: ID of workspace where environment was deleted
+                    example: abc123
                   environment:
                     type: string
-                    example: dev-environment
+                    description: Slug of deleted environment
+                    example: dev
                 description: Response after deleting an environment from a workspace
       security:
         - apiKeyAuth: []
-          bearerAuth: []
       requestBody:
         content:
           application/json:
@@ -3425,6 +3467,16 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secrets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RawSecret'
+                    description: List of secrets
       security:
         - apiKeyAuth: []
           bearerAuth: []
@@ -3472,6 +3524,13 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret:
+                    $ref: '#/components/schemas/RawSecret'
       security:
         - apiKeyAuth: []
           bearerAuth: []
@@ -3488,6 +3547,10 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RawSecret'
       security:
         - apiKeyAuth: []
           bearerAuth: []
@@ -3544,6 +3607,10 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RawSecret'
       security:
         - apiKeyAuth: []
           bearerAuth: []
@@ -3596,6 +3663,14 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret:
+                    $ref: '#/components/schemas/RawSecret'
+                description: The deleted secret
       security:
         - apiKeyAuth: []
           bearerAuth: []
@@ -4038,6 +4113,55 @@ components:
         secretCommentTag:
           type: string
           example: ''
+        updatedAt:
+          type: string
+          example: '2023-01-13T14:16:12.210Z'
+        createdAt:
+          type: string
+          example: '2023-01-13T14:16:12.210Z'
+    RawSecret:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: abc123
+        version:
+          type: number
+          example: 1
+        workspace:
+          type: string
+          example: abc123
+        environment:
+          type: string
+          example: dev
+        secretKey:
+          type: string
+          example: STRIPE_KEY
+        secretValue:
+          type: string
+          example: abc123
+        secretComment:
+          type: string
+          example: Lorem ipsum
+    SecretImport:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: ''
+        workspace:
+          type: string
+          example: abc123
+        environment:
+          type: string
+          example: dev
+        folderId:
+          type: string
+          example: root
+        imports:
+          type: array
+          example: []
+          items: {}
         updatedAt:
           type: string
           example: '2023-01-13T14:16:12.210Z'
