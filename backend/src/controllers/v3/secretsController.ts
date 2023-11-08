@@ -8,7 +8,7 @@ import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
 import { Folder, IMembership, IServiceTokenData, IServiceTokenDataV3 } from "../../models";
 import { Permission } from "../../models/serviceTokenDataV3";
-import { getFolderByPath, getFolderWithPathFromId } from "../../services/FolderService";
+import { getFolderByPath } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/secrets";
@@ -135,6 +135,43 @@ const checkSecretsPermission = async ({
  * @param res
  */
 export const getSecretsRaw = async (req: Request, res: Response) => {
+  /*
+    #swagger.summary = 'List secrets'
+    #swagger.description = 'List secrets'
+    
+    #swagger.security = [{
+      "apiKeyAuth": [],
+      "bearerAuth": []
+    }]
+
+    #swagger.parameters['workspaceId'] = {
+      "description": "ID of workspace where to get secrets from",
+      "required": true,
+      "type": "string",
+      "in": "query"
+    }
+
+    #swagger.parameters['environment'] = {
+      "description": "Slug of environment where to get secrets from",
+      "required": true,
+      "type": "string",
+      "in": "query"
+    }
+
+    #swagger.parameters['secretPath'] = {
+      "description": "Path where to update secret like / or /foo/bar. Default is /",
+      "required": false,
+      "type": "string",
+      "in": "query"
+    }
+
+    #swagger.parameters['include_imports'] = {
+      "description": "Whether or not to include imported secrets. Default is false",
+      "required": false,
+      "type": "boolean",
+      "in": "query"
+    }
+  */
   const validatedData = await validateRequest(reqValidator.GetSecretsRawV3, req);
   let {
     query: { secretPath, environment, workspaceId }
@@ -226,6 +263,57 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
  * @param res
  */
 export const getSecretByNameRaw = async (req: Request, res: Response) => {
+  /*
+    #swagger.summary = 'Get secret'
+    #swagger.description = 'Get secret'
+    
+    #swagger.security = [{
+      "apiKeyAuth": [],
+      "bearerAuth": []
+    }]
+
+    #swagger.parameters['secretName'] = {
+      "description": "Name of secret to get",
+      "required": true,
+      "type": "string",
+      "in": "path"
+    }
+
+    #swagger.parameters['workspaceId'] = {
+      "description": "ID of workspace where to get secret",
+      "required": true,
+      "type": "string",
+      "in": "query"
+    }
+
+    #swagger.parameters['environment'] = {
+      "description": "Slug of environment where to get secret",
+      "required": true,
+      "type": "string",
+      "in": "query"
+    }
+
+    #swagger.parameters['secretPath'] = {
+      "description": "Path where to update secret like / or /foo/bar. Default is /",
+      "required": false,
+      "type": "string",
+      "in": "query"
+    }
+
+    #swagger.parameters['type'] = {
+      "description": "Type of secret to get; either shared or personal. Default is shared.",
+      "required": true,
+      "type": "string",
+      "in": "query"
+    }
+
+    #swagger.parameters['include_imports'] = {
+      "description": "Whether or not to include imported secrets. Default is false",
+      "required": false,
+      "type": "boolean",
+      "in": "query"
+    }
+  */
   const {
     query: { secretPath, environment, workspaceId, type, include_imports },
     params: { secretName }
@@ -267,12 +355,76 @@ export const getSecretByNameRaw = async (req: Request, res: Response) => {
  * @param res
  */
 export const createSecretRaw = async (req: Request, res: Response) => {
+  /*
+    #swagger.summary = 'Create secret'
+    #swagger.description = 'Create secret'
+    
+    #swagger.security = [{
+        "apiKeyAuth": [],
+        "bearerAuth": []
+    }]
+
+    #swagger.parameters['secretName'] = {
+        "description": "Name of secret to create",
+        "required": true,
+        "type": "string",
+        "in": "path"
+    }
+
+    #swagger.requestBody = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "workspaceId": {
+                            "type": "string",
+                            "description": "ID of the workspace where to create secret",
+                            "example": "someWorkspaceId"
+                        },
+                        "environment": {
+                            "type": "string",
+                            "description": "Slug of environment where to create secret",
+                            "example": "dev"
+                        },
+                        "secretPath": {
+                            "type": "string",
+                            "description": "Path where to create secret. Default is /",
+                            "example": "/foo/bar"
+                        },
+                        "secretValue": {
+                            "type": "string",
+                            "description": "Value of secret to create",
+                            "example": "Some value"
+                        },
+                        "secretComment": {
+                            "type": "string",
+                            "description": "Comment for secret to create",
+                            "example": "Some comment"
+                        },
+                        "type": {
+                            "type": "string",
+                            "description": "Type of secret to create; either shared or personal. Default is shared.",
+                            "example": "shared"
+                        },
+                        "skipMultilineEncoding": {
+                            "type": "boolean",
+                            "description": "Convert multi line secrets into one line by wrapping",
+                            "example": "true"
+                        },
+                    },
+                    "required": ["workspaceId", "environment", "secretValue"]
+                }
+            }
+        }
+    }
+  */
   const {
     params: { secretName },
     body: {
-      secretPath,
-      environment,
       workspaceId,
+      environment,
+      secretPath,
       type,
       secretValue,
       secretComment,
@@ -351,9 +503,68 @@ export const createSecretRaw = async (req: Request, res: Response) => {
  * @param res
  */
 export const updateSecretByNameRaw = async (req: Request, res: Response) => {
+  /*
+    #swagger.summary = 'Update secret'
+    #swagger.description = 'Update secret'
+    
+    #swagger.security = [{
+        "apiKeyAuth": [],
+        "bearerAuth": []
+    }]
+
+    #swagger.parameters['secretName'] = {
+        "description": "Name of secret to update",
+        "required": true,
+        "type": "string",
+        "in": "path"
+    }
+
+    #swagger.requestBody = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "workspaceId": {
+                            "type": "string",
+                            "description": "ID of the workspace where to update secret",
+                            "example": "someWorkspaceId"
+                        },
+                        "environment": {
+                            "type": "string",
+                            "description": "Slug of environment where to update secret",
+                            "example": "dev"
+                        },
+                        "secretPath": {
+                            "type": "string",
+                            "description": "Path where to update secret like / or /foo/bar. Default is /",
+                            "example": "/foo/bar"
+                        },
+                        "secretValue": {
+                            "type": "string",
+                            "description": "Value of secret to update to",
+                            "example": "Some value"
+                        },
+                        "type": {
+                            "type": "string",
+                            "description": "Type of secret to update; either shared or personal. Default is shared.",
+                            "example": "shared"
+                        },
+                        "skipMultilineEncoding": {
+                            "type": "boolean",
+                            "description": "Convert multi line secrets into one line by wrapping",
+                            "example": "true"
+                        },
+                    },
+                    "required": ["workspaceId", "environment", "secretValue"]
+                }
+            }
+        }
+    }
+  */
   const {
     params: { secretName },
-    body: { secretValue, environment, secretPath, type, workspaceId, skipMultilineEncoding }
+    body: { workspaceId, environment, secretValue, secretPath, type, skipMultilineEncoding }
   } = await validateRequest(reqValidator.UpdateSecretByNameRawV3, req);
 
   await checkSecretsPermission({
@@ -408,6 +619,55 @@ export const updateSecretByNameRaw = async (req: Request, res: Response) => {
  * @param res
  */
 export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
+  /*
+    #swagger.summary = 'Delete secret'
+    #swagger.description = 'Delete secret'
+    
+    #swagger.security = [{
+      "apiKeyAuth": [],
+      "bearerAuth": []
+    }]
+
+    #swagger.parameters['secretName'] = {
+      "description": "Name of secret to delete",
+      "required": true,
+      "type": "string",
+      "in": "path"
+    }
+
+    #swagger.requestBody = {
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "workspaceId": {
+                            "type": "string",
+                            "description": "ID of workspace where to delete secret",
+                            "example": "someWorkspaceId"
+                        },
+                        "environment": {
+                            "type": "string",
+                            "description": "Slug of Environment where to delete secret",
+                            "example": "dev"
+                        },
+                        "secretPath": {
+                            "type": "string",
+                            "description": "Path where to delete secret. Default is /",
+                            "example": "/foo/bar"
+                        },
+                        "type": {
+                            "type": "string",
+                            "description": "Type of secret to delete; either shared or personal. Default is shared",
+                            "example": "shared"
+                        }
+                    },
+                    "required": ["workspaceId", "environment"]
+                }
+            }
+        }
+    }
+  */
   const {
     params: { secretName },
     body: { environment, secretPath, type, workspaceId }
@@ -462,7 +722,7 @@ export const getSecrets = async (req: Request, res: Response) => {
     query: { environment, workspaceId, include_imports: includeImports }
   } = validatedData;
 
-  let {
+  const {
     query: { secretPath }
   } = validatedData;
 

@@ -304,98 +304,6 @@
         }
       }
     },
-    "/api/v1/workspace/{workspaceId}/logs": {
-      "get": {
-        "summary": "Return project (audit) logs",
-        "description": "Return project (audit) logs",
-        "parameters": [
-          {
-            "name": "workspaceId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "ID of project"
-          },
-          {
-            "name": "userId",
-            "description": "ID of project member",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "offset",
-            "description": "Number of logs to skip",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "description": "Maximum number of logs to return",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "sortBy",
-            "description": "Order to sort the logs by",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "oldest",
-                "recent"
-              ]
-            },
-            "required": false,
-            "in": "query"
-          },
-          {
-            "name": "actionNames",
-            "description": "Names of log actions (comma-separated)",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "logs": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Log"
-                      },
-                      "description": "Project logs"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "apiKeyAuth": []
-          }
-        ]
-      }
-    },
     "/api/v1/workspace/{workspaceId}/audit-logs": {
       "get": {
         "description": "",
@@ -533,26 +441,6 @@
           },
           "400": {
             "description": "Bad Request"
-          }
-        }
-      }
-    },
-    "/api/v1/action/{actionId}": {
-      "get": {
-        "description": "",
-        "parameters": [
-          {
-            "name": "actionId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
           }
         }
       }
@@ -956,8 +844,66 @@
         }
       }
     },
+    "/api/v3/api-key/": {
+      "post": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v3/api-key/{apiKeyDataId}": {
+      "patch": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "apiKeyDataId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "apiKeyDataId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v3/service-token/me/key": {
       "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v3/service-token/me/token": {
+      "post": {
         "description": "",
         "responses": {
           "200": {
@@ -1006,6 +952,74 @@
         "parameters": [
           {
             "name": "serviceTokenDataId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/secret-rotation-providers/{workspaceId}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/secret-rotations/": {
+      "post": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/secret-rotations/restart": {
+      "post": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/secret-rotations/{id}": {
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -1091,15 +1105,6 @@
     "/api/v1/auth/logout": {
       "post": {
         "description": "",
-        "parameters": [
-          {
-            "name": "user-agent",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -2186,6 +2191,26 @@
         }
       }
     },
+    "/api/v1/integration-auth/{integrationAuthId}/checkly/groups": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "integrationAuthId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/integration-auth/{integrationAuthId}/qovery/orgs": {
       "get": {
         "description": "",
@@ -2408,8 +2433,8 @@
     },
     "/api/v1/folders/": {
       "post": {
-        "summary": "Create a folder",
-        "description": "Create a new folder in a specified workspace and environment",
+        "summary": "Create folder",
+        "description": "Create folder",
         "responses": {
           "200": {
             "description": "OK",
@@ -2446,7 +2471,8 @@
         },
         "security": [
           {
-            "apiKeyAuth": []
+            "apiKeyAuth": [],
+            "bearerAuth": []
           }
         ],
         "requestBody": {
@@ -2457,23 +2483,23 @@
                 "properties": {
                   "workspaceId": {
                     "type": "string",
-                    "description": "ID of the workspace where the folder will be created",
+                    "description": "ID of the workspace where to create folder",
                     "example": "someWorkspaceId"
                   },
                   "environment": {
                     "type": "string",
-                    "description": "Environment where the folder will reside",
+                    "description": "Slug of environment where to create folder",
                     "example": "production"
                   },
                   "folderName": {
                     "type": "string",
-                    "description": "Name of the folder to be created",
+                    "description": "Name of folder to create",
                     "example": "my_folder"
                   },
-                  "parentFolderId": {
+                  "directory": {
                     "type": "string",
-                    "description": "ID of the parent folder under which this folder will be created. If not specified, it will be created at the root level.",
-                    "example": "someParentFolderId"
+                    "description": "Path where to create folder like / or /foo/bar. Default is /",
+                    "example": "/foo/bar"
                   }
                 },
                 "required": [
@@ -2487,12 +2513,12 @@
         }
       },
       "get": {
-        "summary": "Retrieve folders based on specific conditions",
-        "description": "Fetches folders from the specified workspace and environment, optionally providing either a parentFolderId or a parentFolderPath to narrow down results",
+        "summary": "Get folders",
+        "description": "Get folders",
         "parameters": [
           {
             "name": "workspaceId",
-            "description": "ID of the workspace from which the folders are to be fetched",
+            "description": "ID of the workspace where to get folders from",
             "required": true,
             "in": "query",
             "schema": {
@@ -2501,7 +2527,7 @@
           },
           {
             "name": "environment",
-            "description": "Environment where the folder is located",
+            "description": "Slug of environment where to get folders from",
             "required": true,
             "in": "query",
             "schema": {
@@ -2509,17 +2535,8 @@
             }
           },
           {
-            "name": "parentFolderId",
-            "description": "ID of the parent folder",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "parentFolderPath",
-            "description": "Path of the parent folder, like /folder1/folder2",
+            "name": "directory",
+            "description": "Path where to get fodlers from like / or /foo/bar. Default is /",
             "required": false,
             "in": "query",
             "schema": {
@@ -2551,23 +2568,6 @@
                         }
                       },
                       "description": "List of folders"
-                    },
-                    "dir": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "name": {
-                            "type": "string",
-                            "example": "parentFolderName"
-                          },
-                          "id": {
-                            "type": "string",
-                            "example": "parentFolderId"
-                          }
-                        }
-                      },
-                      "description": "List of directories"
                     }
                   }
                 }
@@ -2583,15 +2583,16 @@
         },
         "security": [
           {
-            "apiKeyAuth": []
+            "apiKeyAuth": [],
+            "bearerAuth": []
           }
         ]
       }
     },
     "/api/v1/folders/{folderName}": {
       "patch": {
-        "summary": "Update a folder by ID",
-        "description": "Update the name of a folder in a specified workspace and environment by its ID",
+        "summary": "Update folder",
+        "description": "Update folder",
         "parameters": [
           {
             "name": "folderName",
@@ -2599,16 +2600,8 @@
             "required": true,
             "schema": {
               "type": "string"
-            }
-          },
-          {
-            "name": "folderId",
-            "description": "ID of the folder to be updated",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
+            },
+            "description": "Name of folder to update"
           }
         ],
         "responses": {
@@ -2651,7 +2644,8 @@
         },
         "security": [
           {
-            "apiKeyAuth": []
+            "apiKeyAuth": [],
+            "bearerAuth": []
           }
         ],
         "requestBody": {
@@ -2662,18 +2656,23 @@
                 "properties": {
                   "workspaceId": {
                     "type": "string",
-                    "description": "ID of the workspace where the folder is located",
+                    "description": "ID of workspace where to update folder",
                     "example": "someWorkspaceId"
                   },
                   "environment": {
                     "type": "string",
-                    "description": "Environment where the folder is located",
+                    "description": "Slug of environment where to update folder",
                     "example": "production"
                   },
                   "name": {
                     "type": "string",
-                    "description": "New name for the folder",
+                    "description": "Name of folder to update to",
                     "example": "updated_folder_name"
+                  },
+                  "directory": {
+                    "type": "string",
+                    "description": "Path where to update folder like / or /foo/bar. Default is /",
+                    "example": "/foo/bar"
                   }
                 },
                 "required": [
@@ -2687,8 +2686,8 @@
         }
       },
       "delete": {
-        "summary": "Delete a folder by ID",
-        "description": "Delete the specified folder from a specified workspace and environment using its ID",
+        "summary": "Delete folder",
+        "description": "Delete folder",
         "parameters": [
           {
             "name": "folderName",
@@ -2696,16 +2695,8 @@
             "required": true,
             "schema": {
               "type": "string"
-            }
-          },
-          {
-            "name": "folderId",
-            "description": "ID of the folder to be deleted",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
+            },
+            "description": "Name of folder to delete"
           }
         ],
         "responses": {
@@ -2751,7 +2742,8 @@
         },
         "security": [
           {
-            "apiKeyAuth": []
+            "apiKeyAuth": [],
+            "bearerAuth": []
           }
         ],
         "requestBody": {
@@ -2762,13 +2754,18 @@
                 "properties": {
                   "workspaceId": {
                     "type": "string",
-                    "description": "ID of the workspace where the folder is located",
+                    "description": "ID of the workspace where to delete folder",
                     "example": "someWorkspaceId"
                   },
                   "environment": {
                     "type": "string",
-                    "description": "Environment where the folder is located",
+                    "description": "Slug of environment where to delete folder",
                     "example": "production"
+                  },
+                  "directory": {
+                    "type": "string",
+                    "description": "Path where to delete folder like / or /foo/bar. Default is /",
+                    "example": "/foo/bar"
                   }
                 },
                 "required": [
@@ -2961,7 +2958,7 @@
     "/api/v1/secret-imports/": {
       "post": {
         "summary": "Create secret import",
-        "description": "Create a new secret import for a specified workspace and environment",
+        "description": "Create secret import",
         "responses": {
           "200": {
             "description": "OK",
@@ -2998,30 +2995,30 @@
                 "properties": {
                   "workspaceId": {
                     "type": "string",
-                    "description": "ID of the workspace where the secret import will be created",
+                    "description": "ID of workspace where to create secret import",
                     "example": "someWorkspaceId"
                   },
                   "environment": {
                     "type": "string",
-                    "description": "Environment to import to",
-                    "example": "production"
+                    "description": "Slug of environment where to create secret import",
+                    "example": "dev"
                   },
-                  "folderId": {
+                  "directory": {
                     "type": "string",
-                    "description": "Folder ID. Use root for the root folder.",
-                    "example": "my_folder"
+                    "description": "Path where to create secret import like / or /foo/bar. Default is /",
+                    "example": "/foo/bar"
                   },
                   "secretImport": {
                     "type": "object",
                     "properties": {
                       "environment": {
                         "type": "string",
-                        "description": "Import from environment",
+                        "description": "Slug of environment to import from",
                         "example": "development"
                       },
                       "secretPath": {
                         "type": "string",
-                        "description": "Import from secret path",
+                        "description": "Path where to import from like / or /foo/bar.",
                         "example": "/user/oauth"
                       }
                     }
@@ -3030,7 +3027,8 @@
                 "required": [
                   "workspaceId",
                   "environment",
-                  "folderName"
+                  "directory",
+                  "secretImport"
                 ]
               }
             }
@@ -3038,13 +3036,13 @@
         }
       },
       "get": {
-        "summary": "Retrieve secret imports",
-        "description": "Fetches the secret imports based on the workspaceId, environment, and folderId",
+        "summary": "Get secret imports",
+        "description": "Get secret imports",
         "parameters": [
           {
             "name": "workspaceId",
             "in": "query",
-            "description": "ID of the workspace of secret imports to get",
+            "description": "ID of workspace where to get secret imports from",
             "required": true,
             "example": "workspace12345",
             "schema": {
@@ -3054,7 +3052,7 @@
           {
             "name": "environment",
             "in": "query",
-            "description": "Environment of secret imports to get",
+            "description": "Slug of environment where to get secret imports from",
             "required": true,
             "example": "production",
             "schema": {
@@ -3062,9 +3060,9 @@
             }
           },
           {
-            "name": "folderId",
+            "name": "directory",
             "in": "query",
-            "description": "ID of the folder containing the secret imports. Default: root",
+            "description": "Path where to get secret imports from like / or /foo/bar. Default is /",
             "required": false,
             "example": "folder12345",
             "schema": {
@@ -3100,8 +3098,8 @@
     },
     "/api/v1/secret-imports/{id}": {
       "put": {
-        "summary": "Update a secret import",
-        "description": "Updates an existing secret import based on the provided ID and new import details",
+        "summary": "Update secret import",
+        "description": "Update secret import",
         "parameters": [
           {
             "name": "id",
@@ -3110,7 +3108,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "ID of the secret import to be updated",
+            "description": "ID of secret import to update",
             "example": "import12345"
           }
         ],
@@ -3149,19 +3147,19 @@
                 "properties": {
                   "secretImports": {
                     "type": "array",
-                    "description": "List of new secret imports",
+                    "description": "List of secret imports to update to",
                     "items": {
                       "type": "object",
                       "properties": {
                         "environment": {
                           "type": "string",
-                          "description": "Environment of the secret import",
-                          "example": "production"
+                          "description": "Slug of environment to import from",
+                          "example": "dev"
                         },
                         "secretPath": {
                           "type": "string",
-                          "description": "Path of the secret import",
-                          "example": "/path/to/secret"
+                          "description": "Path where to import secrets from like / or /foo/bar",
+                          "example": "/foo/bar"
                         }
                       },
                       "required": [
@@ -3190,7 +3188,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "ID of the secret import",
+            "description": "ID of parent secret import document from which to delete secret import",
             "example": "12345abcde"
           }
         ],
@@ -3221,12 +3219,12 @@
                 "properties": {
                   "secretImportEnv": {
                     "type": "string",
-                    "description": "Import from environment",
+                    "description": "Slug of environment of import to delete",
                     "example": "someWorkspaceId"
                   },
                   "secretImportPath": {
                     "type": "string",
-                    "description": "Import from secret path",
+                    "description": "Path like / or /foo/bar of import to delete",
                     "example": "production"
                   }
                 },
@@ -4193,26 +4191,6 @@
         ]
       }
     },
-    "/api/v2/organizations/{organizationId}/service-accounts": {
-      "get": {
-        "description": "",
-        "parameters": [
-          {
-            "name": "organizationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/api/v2/organizations/": {
       "post": {
         "description": "",
@@ -4243,10 +4221,28 @@
         }
       }
     },
-    "/api/v2/workspace/{workspaceId}/environments": {
+    "/api/v2/workspace/{workspaceId}/memberships": {
       "post": {
-        "summary": "Create environment",
-        "description": "Create environment",
+        "description": "",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "summary": "Return project memberships",
+        "description": "Return project memberships",
         "parameters": [
           {
             "name": "workspaceId",
@@ -4266,32 +4262,44 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Successfully created new environment"
-                    },
-                    "workspace": {
-                      "type": "string",
-                      "example": "someWorkspaceId"
-                    },
-                    "environment": {
-                      "type": "object",
-                      "properties": {
-                        "name": {
-                          "type": "string",
-                          "example": "someEnvironmentName"
-                        },
-                        "slug": {
-                          "type": "string",
-                          "example": "someEnvironmentSlug"
-                        }
-                      }
+                    "memberships": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Membership"
+                      },
+                      "description": "Memberships of project"
                     }
-                  },
-                  "description": "Response after creating a new environment"
+                  }
                 }
               }
             }
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v2/workspace/{workspaceId}/environments": {
+      "post": {
+        "summary": "Create environment",
+        "description": "Create environment",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of workspace where to create environment"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           },
           "400": {
             "description": "Bad Request"
@@ -4310,12 +4318,12 @@
                 "properties": {
                   "environmentName": {
                     "type": "string",
-                    "description": "Name of the environment",
+                    "description": "Name of the environment to create",
                     "example": "development"
                   },
                   "environmentSlug": {
                     "type": "string",
-                    "description": "Slug of the environment",
+                    "description": "Slug of environment to create",
                     "example": "dev-environment"
                   }
                 },
@@ -4329,8 +4337,8 @@
         }
       },
       "put": {
-        "summary": "Rename workspace environment",
-        "description": "Rename a specific environment within a workspace",
+        "summary": "Update environment",
+        "description": "Update environment",
         "parameters": [
           {
             "name": "workspaceId",
@@ -4339,7 +4347,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "ID of the workspace"
+            "description": "ID of workspace where to update environment"
           }
         ],
         "responses": {
@@ -4378,6 +4386,11 @@
             }
           }
         },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -4386,17 +4399,17 @@
                 "properties": {
                   "environmentName": {
                     "type": "string",
-                    "description": "New name for the environment",
+                    "description": "Name of environment to update to",
                     "example": "Staging-Renamed"
                   },
                   "environmentSlug": {
                     "type": "string",
-                    "description": "New slug for the environment",
+                    "description": "Slug of environment to update to",
                     "example": "staging-renamed"
                   },
                   "oldEnvironmentSlug": {
                     "type": "string",
-                    "description": "Current slug of the environment to rename",
+                    "description": "Current slug of environment",
                     "example": "staging-old"
                   }
                 },
@@ -4429,8 +4442,8 @@
         }
       },
       "delete": {
-        "summary": "Delete workspace environment",
-        "description": "Delete a specific environment from a workspace",
+        "summary": "Delete environment",
+        "description": "Delete environment",
         "parameters": [
           {
             "name": "workspaceId",
@@ -4439,7 +4452,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "ID of the workspace"
+            "description": "ID of workspace where to delete environment"
           }
         ],
         "responses": {
@@ -4471,7 +4484,8 @@
         },
         "security": [
           {
-            "apiKeyAuth": []
+            "apiKeyAuth": [],
+            "bearerAuth": []
           }
         ],
         "requestBody": {
@@ -4482,8 +4496,8 @@
                 "properties": {
                   "environmentSlug": {
                     "type": "string",
-                    "description": "Slug of the environment to delete",
-                    "example": "dev-environment"
+                    "description": "Slug of environment to delete",
+                    "example": "dev"
                   }
                 },
                 "required": [
@@ -4743,49 +4757,6 @@
             "description": "OK"
           }
         }
-      }
-    },
-    "/api/v2/workspace/{workspaceId}/memberships": {
-      "get": {
-        "summary": "Return project memberships",
-        "description": "Return project memberships",
-        "parameters": [
-          {
-            "name": "workspaceId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "ID of project"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "memberships": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Membership"
-                      },
-                      "description": "Memberships of project"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "apiKeyAuth": []
-          }
-        ]
       }
     },
     "/api/v2/workspace/{workspaceId}/memberships/{membershipId}": {
@@ -5299,13 +5270,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "name": "user-agent",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "responses": {
@@ -5529,17 +5493,63 @@
     },
     "/api/v3/secrets/raw": {
       "get": {
-        "description": "",
+        "summary": "List secrets",
+        "description": "List secrets",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "description": "ID of workspace where to get secrets from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "description": "Slug of environment where to get secrets from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "secretPath",
+            "description": "Path where to update secret like / or /foo/bar. Default is /",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_imports",
+            "description": "Whether or not to include imported secrets. Default is false",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
           }
-        }
+        },
+        "security": [
+          {
+            "apiKeyAuth": [],
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v3/secrets/raw/{secretName}": {
       "get": {
-        "description": "",
+        "summary": "Get secret",
+        "description": "Get secret",
         "parameters": [
           {
             "name": "secretName",
@@ -5547,6 +5557,52 @@
             "required": true,
             "schema": {
               "type": "string"
+            },
+            "description": "Name of secret to get"
+          },
+          {
+            "name": "workspaceId",
+            "description": "ID of workspace where to get secret",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "description": "Slug of environment where to get secret",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "secretPath",
+            "description": "Path where to update secret like / or /foo/bar. Default is /",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "description": "Type of secret to get; either shared or personal. Default is shared.",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_imports",
+            "description": "Whether or not to include imported secrets. Default is false",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -5554,10 +5610,17 @@
           "200": {
             "description": "OK"
           }
-        }
+        },
+        "security": [
+          {
+            "apiKeyAuth": [],
+            "bearerAuth": []
+          }
+        ]
       },
       "post": {
-        "description": "",
+        "summary": "Create secret",
+        "description": "Create secret",
         "parameters": [
           {
             "name": "secretName",
@@ -5565,17 +5628,76 @@
             "required": true,
             "schema": {
               "type": "string"
-            }
+            },
+            "description": "Name of secret to create"
           }
         ],
         "responses": {
           "200": {
             "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": [],
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "description": "ID of the workspace where to create secret",
+                    "example": "someWorkspaceId"
+                  },
+                  "environment": {
+                    "type": "string",
+                    "description": "Slug of environment where to create secret",
+                    "example": "dev"
+                  },
+                  "secretPath": {
+                    "type": "string",
+                    "description": "Path where to create secret. Default is /",
+                    "example": "/foo/bar"
+                  },
+                  "secretValue": {
+                    "type": "string",
+                    "description": "Value of secret to create",
+                    "example": "Some value"
+                  },
+                  "secretComment": {
+                    "type": "string",
+                    "description": "Comment for secret to create",
+                    "example": "Some comment"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Type of secret to create; either shared or personal. Default is shared.",
+                    "example": "shared"
+                  },
+                  "skipMultilineEncoding": {
+                    "type": "boolean",
+                    "description": "Convert multi line secrets into one line by wrapping",
+                    "example": "true"
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "environment",
+                  "secretValue"
+                ]
+              }
+            }
           }
         }
       },
       "patch": {
-        "description": "",
+        "summary": "Update secret",
+        "description": "Update secret",
         "parameters": [
           {
             "name": "secretName",
@@ -5583,17 +5705,71 @@
             "required": true,
             "schema": {
               "type": "string"
-            }
+            },
+            "description": "Name of secret to update"
           }
         ],
         "responses": {
           "200": {
             "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": [],
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "description": "ID of the workspace where to update secret",
+                    "example": "someWorkspaceId"
+                  },
+                  "environment": {
+                    "type": "string",
+                    "description": "Slug of environment where to update secret",
+                    "example": "dev"
+                  },
+                  "secretPath": {
+                    "type": "string",
+                    "description": "Path where to update secret like / or /foo/bar. Default is /",
+                    "example": "/foo/bar"
+                  },
+                  "secretValue": {
+                    "type": "string",
+                    "description": "Value of secret to update to",
+                    "example": "Some value"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Type of secret to update; either shared or personal. Default is shared.",
+                    "example": "shared"
+                  },
+                  "skipMultilineEncoding": {
+                    "type": "boolean",
+                    "description": "Convert multi line secrets into one line by wrapping",
+                    "example": "true"
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "environment",
+                  "secretValue"
+                ]
+              }
+            }
           }
         }
       },
       "delete": {
-        "description": "",
+        "summary": "Delete secret",
+        "description": "Delete secret",
         "parameters": [
           {
             "name": "secretName",
@@ -5601,12 +5777,54 @@
             "required": true,
             "schema": {
               "type": "string"
-            }
+            },
+            "description": "Name of secret to delete"
           }
         ],
         "responses": {
           "200": {
             "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": [],
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "description": "ID of workspace where to delete secret",
+                    "example": "someWorkspaceId"
+                  },
+                  "environment": {
+                    "type": "string",
+                    "description": "Slug of Environment where to delete secret",
+                    "example": "dev"
+                  },
+                  "secretPath": {
+                    "type": "string",
+                    "description": "Path where to delete secret. Default is /",
+                    "example": "/foo/bar"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Type of secret to delete; either shared or personal. Default is shared",
+                    "example": "shared"
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "environment"
+                ]
+              }
+            }
           }
         }
       }
@@ -5829,6 +6047,16 @@
           },
           "403": {
             "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v3/us/me/api-keys": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -6468,13 +6696,13 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "This security definition uses the HTTP 'bearer' scheme, which allows the client to authenticate using a JSON Web Token (JWT) that is passed in the Authorization header of the request."
+        "description": "A service token in Infisical"
       },
       "apiKeyAuth": {
         "type": "apiKey",
         "in": "header",
         "name": "X-API-Key",
-        "description": "This security definition uses an API key, which is passed in the header of the request as the value of the \"X-API-Key\" header. The client must provide a valid key in order to access the API."
+        "description": "An API Key in Infisical"
       }
     }
   }
