@@ -330,7 +330,6 @@
             "api-reference/endpoints/workspaces/update-membership",
             "api-reference/endpoints/workspaces/delete-membership",
             "api-reference/endpoints/workspaces/workspace-key",
-            "api-reference/endpoints/workspaces/logs",
             "api-reference/endpoints/workspaces/secret-snapshots",
             "api-reference/endpoints/workspaces/rollback-snapshot"
           ]
@@ -338,7 +337,6 @@
         {
           "group": "Environments",
           "pages": [
-            "api-reference/endpoints/environments/list",
             "api-reference/endpoints/environments/create",
             "api-reference/endpoints/environments/update",
             "api-reference/endpoints/environments/delete"
@@ -360,9 +358,7 @@
             "api-reference/endpoints/secrets/create",
             "api-reference/endpoints/secrets/read",
             "api-reference/endpoints/secrets/update",
-            "api-reference/endpoints/secrets/delete",
-            "api-reference/endpoints/secrets/versions",
-            "api-reference/endpoints/secrets/rollback-version"
+            "api-reference/endpoints/secrets/delete"
           ]
         },
         {

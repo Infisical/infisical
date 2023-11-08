@@ -38,29 +38,16 @@ export const createWorkspaceEnvironment = async (req: Request, res: Response) =>
     #swagger.description = 'Create environment'
 
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
     }]
 
 	#swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
+		"description": "ID of workspace where to create environment",
 		"required": true,
-		"type": "string"
+		"type": "string",
+    "in": "path"
 	}
-
-  /*
-    #swagger.summary = 'Create environment'
-    #swagger.description = 'Create environment'
-
-    #swagger.security = [{
-        "apiKeyAuth": []
-    }]
-
-	#swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
-		"required": true,
-		"type": "string"
-	}
-
+  
   #swagger.requestBody = {
       content: {
           "application/json": {
@@ -69,12 +56,12 @@ export const createWorkspaceEnvironment = async (req: Request, res: Response) =>
                   "properties": {
                       "environmentName": {
                           "type": "string",
-                          "description": "Name of the environment",
+                          "description": "Name of the environment to create",
                           "example": "development"
                       },
                       "environmentSlug": {
                           "type": "string",
-                          "description": "Slug of the environment",
+                          "description": "Slug of environment to create",
                           "example": "dev-environment"
                       }
                   },
@@ -85,38 +72,42 @@ export const createWorkspaceEnvironment = async (req: Request, res: Response) =>
   }
 
   #swagger.responses[200] = {
-      content: {
-          "application/json": {
-              "schema": {
-                  "type": "object",
-                  "properties": {
-                      "message": {
-                          "type": "string",
-                          "example": "Successfully created new environment"
-                      },
-                      "workspace": {
-                          "type": "string",
-                          "example": "someWorkspaceId"
-                      },
-                      "environment": {
-                          "type": "object",
-                          "properties": {
-                              "name": {
-                                  "type": "string",
-                                  "example": "someEnvironmentName"
-                              },
-                              "slug": {
-                                  "type": "string",
-                                  "example": "someEnvironmentSlug"
-                              }
-                          }
-                      }
-                  },
-                  "description": "Response after creating a new environment"
-              }
-          }
-      }
-  }
+        content: {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "message": {
+                            "type": "string",
+                            "description": "Sucess message",
+                            "example": "Successfully created environment"
+                        },
+                        "workspace": {
+                            "type": "string",
+                            "description": "ID of workspace where environment was created",
+                            "example": "abc123"
+                        },
+                        "environment": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "description": "Name of created environment",
+                                    "example": "Staging"
+                                },
+                                "slug": {
+                                    "type": "string",
+                                    "description": "Slug of created environment",
+                                    "example": "staging"
+                                }
+                            }
+                        }
+                    },
+                    "description": "Details of the created environment"
+                }
+            }
+        }
+    }
   */
   const {
     params: { workspaceId },
@@ -246,15 +237,19 @@ export const reorderWorkspaceEnvironments = async (req: Request, res: Response) 
  */
 export const renameWorkspaceEnvironment = async (req: Request, res: Response) => {
   /*
-    #swagger.summary = 'Rename workspace environment'
-    #swagger.description = 'Rename a specific environment within a workspace'
+    #swagger.summary = 'Update environment'
+    #swagger.description = 'Update environment'
+
+    #swagger.security = [{
+        "apiKeyAuth": [],
+    }]
 
     #swagger.parameters['workspaceId'] = {
-    "description": "ID of the workspace",
-    "required": true,
-    "type": "string",
-        "in": "path"
-  }
+      "description": "ID of workspace where to update environment",
+      "required": true,
+      "type": "string",
+      "in": "path"
+    }
 
     #swagger.requestBody = {
         content: {
@@ -264,17 +259,17 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
                     "properties": {
                         "environmentName": {
                             "type": "string",
-                            "description": "New name for the environment",
+                            "description": "Name of environment to update to",
                             "example": "Staging-Renamed"
                         },
                         "environmentSlug": {
                             "type": "string",
-                            "description": "New slug for the environment",
+                            "description": "Slug of environment to update to",
                             "example": "staging-renamed"
                         },
                         "oldEnvironmentSlug": {
                             "type": "string",
-                            "description": "Current slug of the environment to rename",
+                            "description": "Current slug of environment",
                             "example": "staging-old"
                         }
                     },
@@ -292,21 +287,25 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
                     "properties": {
                         "message": {
                             "type": "string",
+                            "description": "Success message",
                             "example": "Successfully update environment"
                         },
                         "workspace": {
                             "type": "string",
-                            "example": "someWorkspaceId"
+                            "description": "ID of workspace where environment was updated",
+                            "example": "abc123"
                         },
                         "environment": {
                             "type": "object",
                             "properties": {
                                 "name": {
                                     "type": "string",
+                                    "description": "Name of updated environment",
                                     "example": "Staging-Renamed"
                                 },
                                 "slug": {
                                     "type": "string",
+                                    "description": "Slug of updated environment",
                                     "example": "staging-renamed"
                                 }
                             }
@@ -447,19 +446,19 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
  */
 export const deleteWorkspaceEnvironment = async (req: Request, res: Response) => {
   /*
-    #swagger.summary = 'Delete workspace environment'
-    #swagger.description = 'Delete a specific environment from a workspace'
+    #swagger.summary = 'Delete environment'
+    #swagger.description = 'Delete environment'
 
     #swagger.security = [{
         "apiKeyAuth": []
     }]
 
     #swagger.parameters['workspaceId'] = {
-		"description": "ID of the workspace",
-		"required": true,
-		"type": "string",
-        "in": "path"
-	}
+      "description": "ID of workspace where to delete environment",
+      "required": true,
+      "type": "string",
+      "in": "path"
+	  }
 
     #swagger.requestBody = {
         content: {
@@ -469,8 +468,8 @@ export const deleteWorkspaceEnvironment = async (req: Request, res: Response) =>
                     "properties": {
                         "environmentSlug": {
                             "type": "string",
-                            "description": "Slug of the environment to delete",
-                            "example": "dev-environment"
+                            "description": "Slug of environment to delete",
+                            "example": "dev"
                         }
                     },
                     "required": ["environmentSlug"]
@@ -487,15 +486,18 @@ export const deleteWorkspaceEnvironment = async (req: Request, res: Response) =>
                     "properties": {
                         "message": {
                             "type": "string",
+                            "description": "Success message",
                             "example": "Successfully deleted environment"
                         },
                         "workspace": {
                             "type": "string",
-                            "example": "someWorkspaceId"
+                            "description": "ID of workspace where environment was deleted",
+                            "example": "abc123"
                         },
                         "environment": {
                             "type": "string",
-                            "example": "dev-environment"
+                            "description": "Slug of deleted environment",
+                            "example": "dev"
                         }
                     },
                     "description": "Response after deleting an environment from a workspace"

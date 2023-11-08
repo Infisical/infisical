@@ -30,13 +30,13 @@ const generateOpenAPISpec = async () => {
         type: "http",
         scheme: "bearer",
         bearerFormat: "JWT",
-        description: "This security definition uses the HTTP 'bearer' scheme, which allows the client to authenticate using a JSON Web Token (JWT) that is passed in the Authorization header of the request.",
+        description: "A service token in Infisical",
       },
       apiKeyAuth: {
         type: "apiKey",
         in: "header",
         name: "X-API-Key",
-        description: 'This security definition uses an API key, which is passed in the header of the request as the value of the "X-API-Key" header. The client must provide a valid key in order to access the API.',
+        description: "An API Key in Infisical",
       },
     },
     definitions: {
@@ -142,6 +142,24 @@ const generateOpenAPISpec = async () => {
         secretCommentTag: "",
         updatedAt: "2023-01-13T14:16:12.210Z",
         createdAt: "2023-01-13T14:16:12.210Z",
+      },
+      RawSecret: {
+        _id: "abc123",
+        version: 1,
+        workspace: "abc123",
+        environment: "dev",
+        secretKey: "STRIPE_KEY",
+        secretValue: "abc123",
+        secretComment: "Lorem ipsum"
+      },
+      SecretImport: {
+        _id: "",
+        workspace: "abc123",
+        environment: "dev",
+        folderId: "root",
+        imports: [],
+        updatedAt: "2023-01-13T14:16:12.210Z",
+        createdAt: "2023-01-13T14:16:12.210Z"
       },
       Log: {
         _id: "",

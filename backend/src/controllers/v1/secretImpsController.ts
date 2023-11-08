@@ -22,7 +22,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 export const createSecretImp = async (req: Request, res: Response) => {
   /* 
     #swagger.summary = 'Create secret import'
-    #swagger.description = 'Create a new secret import for a specified workspace and environment'
+    #swagger.description = 'Create secret import'
 
     #swagger.requestBody = {
         content: {
@@ -32,36 +32,36 @@ export const createSecretImp = async (req: Request, res: Response) => {
                     "properties": {
                         "workspaceId": {
                             "type": "string",
-                            "description": "ID of the workspace where the secret import will be created",
+                            "description": "ID of workspace where to create secret import",
                             "example": "someWorkspaceId"
                         },
                         "environment": {
                             "type": "string",
-                            "description": "Environment to import to",
-                            "example": "production"
+                            "description": "Slug of environment where to create secret import",
+                            "example": "dev"
                         },
-                        "folderId": {
+                        "directory": {
                             "type": "string",
-                            "description": "Folder ID. Use root for the root folder.",
-                            "example": "my_folder"
+                            "description": "Path where to create secret import like / or /foo/bar. Default is /",
+                            "example": "/foo/bar"
                         },
                         "secretImport": {
                             "type": "object",
                             "properties": {
                               "environment": {
                                 "type": "string",
-                                "description": "Import from environment",
+                                "description": "Slug of environment to import from",
                                 "example": "development"
                               },
                               "secretPath": {
                                 "type": "string",
-                                "description": "Import from secret path",
+                                "description": "Path where to import from like / or /foo/bar.",
                                 "example": "/user/oauth"
                               }
                             }
                         }
                     },
-                    "required": ["workspaceId", "environment", "folderName"]
+                    "required": ["workspaceId", "environment", "directory", "secretImport"]
                 }
             }
         }
@@ -206,12 +206,12 @@ export const createSecretImp = async (req: Request, res: Response) => {
  */
 export const updateSecretImport = async (req: Request, res: Response) => {
   /*
-    #swagger.summary = 'Update a secret import'
-    #swagger.description = 'Updates an existing secret import based on the provided ID and new import details'
+    #swagger.summary = 'Update secret import'
+    #swagger.description = 'Update secret import'
 
     #swagger.parameters['id'] = {
         in: 'path',
-        description: 'ID of the secret import to be updated',
+        description: 'ID of secret import to update',
         required: true,
         type: 'string',
         example: 'import12345'
@@ -225,19 +225,19 @@ export const updateSecretImport = async (req: Request, res: Response) => {
                     "properties": {
                         "secretImports": {
                             "type": "array",
-                            "description": "List of new secret imports",
+                            "description": "List of secret imports to update to",
                             "items": {
                                 "type": "object",
                                 "properties": {
                                     "environment": {
                                         "type": "string",
-                                        "description": "Environment of the secret import",
-                                        "example": "production"
+                                        "description": "Slug of environment to import from",
+                                        "example": "dev"
                                     },
                                     "secretPath": {
                                         "type": "string",
-                                        "description": "Path of the secret import",
-                                        "example": "/path/to/secret"
+                                        "description": "Path where to import secrets from like / or /foo/bar",
+                                        "example": "/foo/bar"
                                     }
                                 },
                                 "required": ["environment", "secretPath"]
@@ -364,7 +364,7 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
 
     #swagger.parameters['id'] = {
         in: 'path',
-        description: 'ID of the secret import',
+        description: 'ID of parent secret import document from which to delete secret import',
         required: true,
         type: 'string',
         example: '12345abcde'
@@ -378,12 +378,12 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
                     "properties": {
                         "secretImportEnv": {
                             "type": "string",
-                            "description": "Import from environment",
+                            "description": "Slug of environment of import to delete",
                             "example": "someWorkspaceId"
                         },
                         "secretImportPath": {
                             "type": "string",
-                            "description": "Import from secret path",
+                            "description": "Path like / or /foo/bar of import to delete",
                             "example": "production"
                         }
                     },
@@ -489,12 +489,12 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
  */
 export const getSecretImports = async (req: Request, res: Response) => {
   /*
-    #swagger.summary = 'Retrieve secret imports'
-    #swagger.description = 'Fetches the secret imports based on the workspaceId, environment, and folderId'
+    #swagger.summary = 'Get secret imports'
+    #swagger.description = 'Get secret imports'
 
     #swagger.parameters['workspaceId'] = {
         in: 'query',
-        description: 'ID of the workspace of secret imports to get',
+        description: 'ID of workspace where to get secret imports from',
         required: true,
         type: 'string',
         example: 'workspace12345'
@@ -502,15 +502,15 @@ export const getSecretImports = async (req: Request, res: Response) => {
 
     #swagger.parameters['environment'] = {
         in: 'query',
-        description: 'Environment of secret imports to get',
+        description: 'Slug of environment where to get secret imports from',
         required: true,
         type: 'string',
         example: 'production'
     }
 
-    #swagger.parameters['folderId'] = {
+    #swagger.parameters['directory'] = {
         in: 'query',
-        description: 'ID of the folder containing the secret imports. Default: root',
+        description: 'Path where to get secret imports from like / or /foo/bar. Default is /',
         required: false,
         type: 'string',
         example: 'folder12345'
@@ -524,8 +524,7 @@ export const getSecretImports = async (req: Request, res: Response) => {
                     "type": "object",
                     "properties": {
                         "secretImport": {
-                            "type": "object",
-                            "description": "Details of a secret import"
+                          $ref: '#/definitions/SecretImport'
                         }
                     }
                 }

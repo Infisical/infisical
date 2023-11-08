@@ -27,11 +27,12 @@ const ERR_FOLDER_NOT_FOUND = BadRequestError({ message: "The folder doesn't exis
 // verify workspace id/environment
 export const createFolder = async (req: Request, res: Response) => {
   /* 
-    #swagger.summary = 'Create a folder'
-    #swagger.description = 'Create a new folder in a specified workspace and environment'
+    #swagger.summary = 'Create folder'
+    #swagger.description = 'Create folder'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
     #swagger.requestBody = {
@@ -42,23 +43,23 @@ export const createFolder = async (req: Request, res: Response) => {
                     "properties": {
                         "workspaceId": {
                             "type": "string",
-                            "description": "ID of the workspace where the folder will be created",
+                            "description": "ID of the workspace where to create folder",
                             "example": "someWorkspaceId"
                         },
                         "environment": {
                             "type": "string",
-                            "description": "Environment where the folder will reside",
+                            "description": "Slug of environment where to create folder",
                             "example": "production"
                         },
                         "folderName": {
                             "type": "string",
-                            "description": "Name of the folder to be created",
+                            "description": "Name of folder to create",
                             "example": "my_folder"
                         },
-                        "parentFolderId": {
+                        "directory": {
                             "type": "string",
-                            "description": "ID of the parent folder under which this folder will be created. If not specified, it will be created at the root level.",
-                            "example": "someParentFolderId"
+                            "description": "Path where to create folder like / or /foo/bar. Default is /",
+                            "example": "/foo/bar"
                         }
                     },
                     "required": ["workspaceId", "environment", "folderName"]
@@ -78,14 +79,21 @@ export const createFolder = async (req: Request, res: Response) => {
                             "properties": {
                                 "id": {
                                     "type": "string",
+                                    "description": "ID of folder",
                                     "example": "someFolderId"
                                 },
                                 "name": {
                                     "type": "string",
+                                    "description": "Name of folder",
                                     "example": "my_folder"
+                                },
+                                "version": {
+                                    "type": "number",
+                                    "description": "Version of folder",
+                                    "example": 1
                                 }
                             },
-                            "description": "Details of the created folder"
+                            "description": "Details of created folder"
                         }
                     }
                 }
@@ -219,18 +227,18 @@ export const createFolder = async (req: Request, res: Response) => {
  */
 export const updateFolderById = async (req: Request, res: Response) => {
   /* 
-    #swagger.summary = 'Update a folder by ID'
-    #swagger.description = 'Update the name of a folder in a specified workspace and environment by its ID'
+    #swagger.summary = 'Update folder'
+    #swagger.description = 'Update folder'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
-    #swagger.parameters['folderId'] = {
-        "description": "ID of the folder to be updated",
+    #swagger.parameters['folderName'] = {
+        "description": "Name of folder to update",
         "required": true,
-        "type": "string",
-        "in": "path"
+        "type": "string"
     }
 
     #swagger.requestBody = {
@@ -241,18 +249,23 @@ export const updateFolderById = async (req: Request, res: Response) => {
                     "properties": {
                         "workspaceId": {
                             "type": "string",
-                            "description": "ID of the workspace where the folder is located",
+                            "description": "ID of workspace where to update folder",
                             "example": "someWorkspaceId"
                         },
                         "environment": {
                             "type": "string",
-                            "description": "Environment where the folder is located",
+                            "description": "Slug of environment where to update folder",
                             "example": "production"
                         },
                         "name": {
                             "type": "string",
-                            "description": "New name for the folder",
+                            "description": "Name of folder to update to",
                             "example": "updated_folder_name"
+                        },
+                        "directory": {
+                            "type": "string",
+                            "description": "Path where to update folder like / or /foo/bar. Default is /",
+                            "example": "/foo/bar"
                         }
                     },
                     "required": ["workspaceId", "environment", "name"]
@@ -269,6 +282,7 @@ export const updateFolderById = async (req: Request, res: Response) => {
                     "properties": {
                         "message": {
                             "type": "string",
+                            "description": "Success message",
                             "example": "Successfully updated folder"
                         },
                         "folder": {
@@ -276,11 +290,13 @@ export const updateFolderById = async (req: Request, res: Response) => {
                             "properties": {
                                 "name": {
                                     "type": "string",
+                                    "description": "Name of updated folder",
                                     "example": "updated_folder_name"
                                 },
                                 "id": {
                                     "type": "string",
-                                    "example": "someFolderId"
+                                    "description": "ID of created folder",
+                                    "example": "abc123"
                                 }
                             },
                             "description": "Details of the updated folder"
@@ -387,15 +403,16 @@ export const updateFolderById = async (req: Request, res: Response) => {
  */
 export const deleteFolder = async (req: Request, res: Response) => {
   /* 
-    #swagger.summary = 'Delete a folder by ID'
-    #swagger.description = 'Delete the specified folder from a specified workspace and environment using its ID'
+    #swagger.summary = 'Delete folder'
+    #swagger.description = 'Delete folder'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
-    #swagger.parameters['folderId'] = {
-        "description": "ID of the folder to be deleted",
+    #swagger.parameters['folderName'] = {
+        "description": "Name of folder to delete",
         "required": true,
         "type": "string",
         "in": "path"
@@ -409,13 +426,18 @@ export const deleteFolder = async (req: Request, res: Response) => {
                     "properties": {
                         "workspaceId": {
                             "type": "string",
-                            "description": "ID of the workspace where the folder is located",
+                            "description": "ID of the workspace where to delete folder",
                             "example": "someWorkspaceId"
                         },
                         "environment": {
                             "type": "string",
-                            "description": "Environment where the folder is located",
+                            "description": "Slug of environment where to delete folder",
                             "example": "production"
+                        },
+                        "directory": {
+                            "type": "string",
+                            "description": "Path where to delete folder like / or /foo/bar. Default is /",
+                            "example": "/foo/bar"
                         }
                     },
                     "required": ["workspaceId", "environment"]
@@ -432,6 +454,7 @@ export const deleteFolder = async (req: Request, res: Response) => {
                     "properties": {
                         "message": {
                             "type": "string",
+                            "description": "Success message",
                             "example": "successfully deleted folders"
                         },
                         "folders": {
@@ -441,15 +464,17 @@ export const deleteFolder = async (req: Request, res: Response) => {
                                 "properties": {
                                     "id": {
                                         "type": "string",
-                                        "example": "someFolderId"
+                                        "description": "ID of deleted folder",
+                                        "example": "abc123"
                                     },
                                     "name": {
                                         "type": "string",
+                                        "description": "Name of deleted folder",
                                         "example": "someFolderName"
                                     }
                                 }
                             },
-                            "description": "List of IDs and names of the deleted folders"
+                            "description": "List of IDs and names of deleted folders"
                         }
                     }
                 }
@@ -540,43 +565,37 @@ export const deleteFolder = async (req: Request, res: Response) => {
 
 /**
  * Get folders for workspace with id [workspaceId] and environment [environment]
- * considering [parentFolderId] and [parentFolderPath]
+ * considering directory/path [directory]
  * @param req
  * @param res
  * @returns
  */
 export const getFolders = async (req: Request, res: Response) => {
   /*
-    #swagger.summary = 'Retrieve folders based on specific conditions'
-    #swagger.description = 'Fetches folders from the specified workspace and environment, optionally providing either a parentFolderId or a parentFolderPath to narrow down results'
+    #swagger.summary = 'Get folders'
+    #swagger.description = 'Get folders'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
     #swagger.parameters['workspaceId'] = {
-        "description": "ID of the workspace from which the folders are to be fetched",
+        "description": "ID of the workspace where to get folders from",
         "required": true,
         "type": "string",
         "in": "query"
     }
 
     #swagger.parameters['environment'] = {
-        "description": "Environment where the folder is located",
+        "description": "Slug of environment where to get folders from",
         "required": true,
         "type": "string",
         "in": "query"
     }
 
-    #swagger.parameters['parentFolderId'] = {
-        "description": "ID of the parent folder",
-        "required": false,
-        "type": "string",
-        "in": "query"
-    }
-
-    #swagger.parameters['parentFolderPath'] = {
-        "description": "Path of the parent folder, like /folder1/folder2",
+    #swagger.parameters['directory'] = {
+        "description": "Path where to get fodlers from like / or /foo/bar. Default is /",
         "required": false,
         "type": "string",
         "in": "query"
@@ -604,23 +623,6 @@ export const getFolders = async (req: Request, res: Response) => {
                                 }
                             },
                             "description": "List of folders"
-                        },
-                        "dir": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string",
-                                        "example": "parentFolderName"
-                                    },
-                                    "id": {
-                                        "type": "string",
-                                        "example": "parentFolderId"
-                                    }
-                                }
-                            },
-                            "description": "List of directories"
                         }
                     }
                 }
