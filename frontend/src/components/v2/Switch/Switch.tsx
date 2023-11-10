@@ -3,7 +3,7 @@ import * as SwitchPrimitive from "@radix-ui/react-switch";
 import { twMerge } from "tailwind-merge";
 
 export type SwitchProps = Omit<SwitchPrimitive.SwitchProps, "checked" | "disabled" | "required"> & {
-  children: ReactNode;
+  children?: ReactNode;
   id: string;
   isChecked?: boolean;
   isRequired?: boolean;

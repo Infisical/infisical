@@ -14,6 +14,7 @@ export type User = {
   createdAt: Date;
   updatedAt: Date;
   email: string;
+  superAdmin: boolean;
   firstName?: string;
   lastName?: string;
   authProvider?: AuthMethod;

@@ -1,0 +1,1 @@
+export { SignUpPage } from "./SignUpPage";
