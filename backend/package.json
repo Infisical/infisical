@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@aws-sdk/client-ssm": "3.319.0",
+    "@aws-sdk/client-ssm": "^3.319.0",
     "@aws-sdk/client-secrets-manager": "^3.319.0",
     "@casl/ability": "^6.5.0",
     "@casl/mongoose": "^7.2.1",
