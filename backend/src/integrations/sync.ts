@@ -733,12 +733,7 @@ const syncSecretsAWSParameterStore = async ({
   if (!accessId) return;
 
   const ssm = new SSM({
-    // The key apiVersion is no longer supported in v3, and can be removed.
-    // @deprecated The client uses the "latest" apiVersion.
-    apiVersion: "2014-11-06",
-
     region: integration.region,
-
     credentials: {
       accessKeyId: accessId,
       secretAccessKey: accessToken
