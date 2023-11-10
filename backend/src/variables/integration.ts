@@ -32,6 +32,7 @@ export const INTEGRATION_QOVERY = "qovery";
 export const INTEGRATION_TERRAFORM_CLOUD = "terraform-cloud";
 export const INTEGRATION_HASHICORP_VAULT = "hashicorp-vault";
 export const INTEGRATION_CLOUDFLARE_PAGES = "cloudflare-pages";
+export const INTEGRATION_CLOUDFLARE_WORKERS = "cloudflare-workers";
 export const INTEGRATION_BITBUCKET = "bitbucket";
 export const INTEGRATION_CODEFRESH = "codefresh";
 export const INTEGRATION_WINDMILL = "windmill";
@@ -59,6 +60,7 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUDFLARE_WORKERS,
   INTEGRATION_CODEFRESH,
   INTEGRATION_WINDMILL,
   INTEGRATION_BITBUCKET,
@@ -101,6 +103,7 @@ export const INTEGRATION_CHECKLY_API_URL = "https://api.checklyhq.com";
 export const INTEGRATION_QOVERY_API_URL = "https://api.qovery.com";
 export const INTEGRATION_TERRAFORM_CLOUD_API_URL = "https://app.terraform.io";
 export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = "https://api.cloudflare.com";
+export const INTEGRATION_CLOUDFLARE_WORKERS_API_URL = "https://api.cloudflare.com";
 export const INTEGRATION_BITBUCKET_API_URL = "https://api.bitbucket.org";
 export const INTEGRATION_CODEFRESH_API_URL = "https://g.codefresh.io/api";
 export const INTEGRATION_WINDMILL_API_URL = "https://app.windmill.dev/api";
@@ -310,6 +313,15 @@ export const getIntegrationOptions = async () => {
     {
       name: "Cloudflare Pages",
       slug: "cloudflare-pages",
+      image: "Cloudflare.png",
+      isAvailable: true,
+      type: "pat",
+      clientId: "",
+      docsLink: ""
+    },
+    {
+      name: "Cloudflare Workers",
+      slug: "cloudflare-workers",
       image: "Cloudflare.png",
       isAvailable: true,
       type: "pat",
