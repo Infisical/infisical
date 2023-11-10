@@ -10,6 +10,8 @@ import {
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_CLOUDFLARE_PAGES_API_URL,
+  INTEGRATION_CLOUDFLARE_WORKERS,
+  INTEGRATION_CLOUDFLARE_WORKERS_API_URL,
   INTEGRATION_CLOUD_66,
   INTEGRATION_CLOUD_66_API_URL,
   INTEGRATION_CODEFRESH,
@@ -182,6 +184,12 @@ const getApps = async ({
       break;
     case INTEGRATION_CLOUDFLARE_PAGES:
       apps = await getAppsCloudflarePages({
+        accessToken,
+        accountId: accessId
+      });
+      break;
+    case INTEGRATION_CLOUDFLARE_WORKERS:
+      apps = await getAppsCloudflareWorkers({
         accessToken,
         accountId: accessId
       });
@@ -962,6 +970,40 @@ const getAppsCloudflarePages = async ({
   const apps = data.result.map((a: any) => {
     return {
       name: a.name,
+      appId: a.id
+    };
+  });
+  return apps;
+};
+
+/**
+ * Return list of projects for the Cloudflare Workers integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - api key for the Cloudflare API
+ * @returns {Object[]} apps - Cloudflare Workers projects
+ * @returns {String} apps.id - Id of Cloudflare Workers project
+ * @returns {String} apps.name - Id of Cloudflare Workers project (Cloudflare workers API does not return the name)
+ */
+const getAppsCloudflareWorkers = async ({
+  accessToken,
+  accountId
+}: {
+  accessToken: string;
+  accountId?: string;
+}) => {
+  const { data } = await standardRequest.get(
+    `${INTEGRATION_CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/services`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      }
+    }
+  );
+
+  const apps = data.result.map((a: any) => {
+    return {
+      name: a.id,
       appId: a.id
     };
   });
