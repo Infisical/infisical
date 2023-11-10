@@ -33,6 +33,7 @@ import {
   initializeSamlStrategy
 } from "../authn/passport";
 import { logger } from "../logging";
+import { bootstrap } from "../../bootstrap";
 
 /**
  * Prepare Infisical upon startup. This includes tasks like:
@@ -55,14 +56,15 @@ export const setup = async () => {
   await TelemetryService.logTelemetryMessage();
 
   // initializing SMTP configuration
-  setTransporter(await initSmtp());
+  const transporter = await initSmtp();
+  setTransporter(transporter);
 
   // initializing global feature set
   await EELicenseService.initGlobalFeatureSet();
 
   // initializing auth strategies
   await initializeGoogleStrategy();
-  await initializeGitHubStrategy()
+  await initializeGitHubStrategy();
   await initializeGitLabStrategy();
   await initializeSamlStrategy();
 
@@ -73,6 +75,7 @@ export const setup = async () => {
 
   // initializing the database connection
   await DatabaseService.initDatabase(await getMongoURL());
+  await bootstrap({ transporter });
 
   /**
    * NOTE: the order in this setup function is critical.
@@ -92,7 +95,7 @@ export const setup = async () => {
   await backfillTrustedIps();
   await backfillUserAuthMethods();
   // await backfillPermission();
-  await migrateRoleFromOwnerToAdmin()
+  await migrateRoleFromOwnerToAdmin();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY

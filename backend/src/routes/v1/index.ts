@@ -18,6 +18,7 @@ import integrationAuth from "./integrationAuth";
 import secretsFolder from "./secretsFolder";
 import webhooks from "./webhook";
 import secretImps from "./secretImps";
+import admin from "./admin";
 
 export {
   signup,
@@ -39,5 +40,6 @@ export {
   secretsFolder,
   webhooks,
   secretImps,
-  sso
+  sso,
+  admin
 };
