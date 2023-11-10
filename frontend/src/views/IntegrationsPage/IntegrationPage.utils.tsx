@@ -101,6 +101,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "cloudflare-pages":
         link = `${window.location.origin}/integrations/cloudflare-pages/authorize`;
         break;
+      case "cloudflare-workers":
+        link = `${window.location.origin}/integrations/cloudflare-workers/authorize`;
+        break;
       case "bitbucket":
         link = `https://bitbucket.org/site/oauth2/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/bitbucket/oauth2/callback&state=${state}`;
         break;
