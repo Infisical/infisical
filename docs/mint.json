@@ -212,7 +212,8 @@
           ]
         },
         "integrations/platforms/kubernetes",
-        "integrations/frameworks/terraform"
+        "integrations/frameworks/terraform",
+        "integrations/platforms/ansible"
       ]
     },
     {
@@ -254,7 +255,8 @@
         "integrations/cicd/circleci",
         "integrations/cicd/travisci",
         "integrations/cicd/bitbucket",
-        "integrations/cicd/codefresh"
+        "integrations/cicd/codefresh",
+        "integrations/cicd/jenkins"
       ]
     },
     {
