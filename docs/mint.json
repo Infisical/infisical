@@ -241,15 +241,20 @@
         "integrations/cloud/northflank",
         "integrations/cloud/hasura-cloud",
         "integrations/cloud/terraform-cloud",
-        "integrations/cloud/teamcity",
         "integrations/cloud/cloudflare-pages",
-        "integrations/cloud/checkly",
         "integrations/cloud/qovery",
         "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",
         "integrations/cloud/gcp-secret-manager",
         "integrations/cloud/cloud-66",
-        "integrations/cloud/windmill",
+        "integrations/cloud/windmill"
+      ]
+    },
+    {
+      "group": "CI/CD Integrations",
+      "pages": [
+        "integrations/cloud/teamcity",
+        "integrations/cloud/checkly",
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",
         "integrations/cicd/circleci",
