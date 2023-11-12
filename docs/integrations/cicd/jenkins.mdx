@@ -1,0 +1,122 @@
+---
+title: "Jenkins"
+description: "How to effective and securely manage secrets in Jenkins using Infisical"
+---
+
+Prerequisites:
+
+- Set up and add secrets to [Infisical](https://app.infisical.com). 
+- You have a working Jenkins installation with the [credentials plugin](https://plugins.jenkins.io/credentials/) installed.
+- You have the Infisical CLI installed on your Jenkins executor nodes or container images.
+
+## Add Infisical Service Token to Jenkins
+
+After setting up your project in Infisical and adding the Infisical CLI to container images, you will need to add the Infisical Service Token to Jenkins. Once you have generated the token, browse to **Manage Jenkins > Manage Credentials** in your Jenkins installation.
+
+![Jenkins step 1](../../images/integrations/jenkins/jenkins_1.png)
+
+Click on the credential store you want to store the Infisical Service Token in. In this case, we're using the default Jenkins global store. 
+
+<Info>
+  Each of your projects will have a different INFISICAL_SERVICE_TOKEN though.
+  As a result, it may make sense to spread these out into separate credential domains depending on your use case.
+</Info>
+
+![Jenkins step 2](../../images/integrations/jenkins/jenkins_2.png)
+
+Now, click Add Credentials.
+
+![Jenkins step 3](../../images/integrations/jenkins/jenkins_3.png)
+
+Choose **Secret text** from the **Kind** dropdown menu, paste the Infisical Service Token into the **Secret** field, enter `INFISICAL_SERVICE_TOKEN` into the **Description** field, and click **OK**.
+
+![Jenkins step 4](../../images/integrations/jenkins/jenkins_4.png)
+
+When you're done, you should have a credential similar to the one below:
+
+![Jenkins step 5](../../images/integrations/jenkins/jenkins_5.png)
+
+
+## Use Infisical in a Freestyle Project
+
+To use Infisical in a Freestyle Project job, you'll need to expose the credential you created above in an environment variable. First, click New Item from the dashboard navigation sidebar:
+
+![Jenkins step 6](../../images/integrations/jenkins/jenkins_6.png)
+
+Enter the name of the job, choose the **Freestyle Project** option, and click **OK**.
+
+![Jenkins step 7](../../images/integrations/jenkins/jenkins_7.png)
+
+Scroll down to the **Build Environment** section and enable the **Use secret text(s) or file(s)** option. Then click **Add** under the **Bindings** section and choose **Secret text** from the dropdown menu.
+
+![Jenkins step 8](../../images/integrations/jenkins/jenkins_8.png)
+
+Enter INFISICAL_SERVICE_TOKEN in the **Variable** field, select the **Specific credentials** option from the Credentials section and choose INFISICAL_SERVICE_TOKEN from the dropdown menu.
+
+![Jenkins step 9](../../images/integrations/jenkins/jenkins_9.png)
+
+Scroll down to the **Build** section and choose **Execute shell** from the **Add build step** menu.
+
+![Jenkins step 10](../../images/integrations/jenkins/jenkins_10.png)
+
+In the command field, enter the following command and click **Save**:
+
+```
+infisical run -- printenv
+```
+
+![Jenkins step 11](../../images/integrations/jenkins/jenkins_11.png)
+
+Finally, click **Build Now** from the navigation sidebar to test your new job.
+
+<Info>
+  Running into issues? Join Infisical's [community Slack](https://infisical.com/slack) for quick support.
+</Info>
+
+
+
+## Use Infisical in a Jenkins Pipeline
+
+To use Infisical in a Pipeline job, you'll need to expose the credential you created above as an environment variable. First, click **New Item** from the dashboard navigation sidebar:
+
+![Jenkins step 6](../../images/integrations/jenkins/jenkins_6.png)
+
+Enter the name of the job, choose the **Pipeline** option, and click OK.
+
+![Jenkins step 12](../../images/integrations/jenkins/jenkins_12.png)
+
+Scroll down to the **Pipeline** section, paste the following into the **Script** field, and click **Save**.
+
+```
+pipeline {
+    agent any
+    
+    environment {
+        INFISICAL_SERVICE_TOKEN = credentials('INFISICAL_SERVICE_TOKEN')
+    }
+
+    stages {
+        stage('Run Infisical') {
+            steps {
+                sh("infisical secrets")
+                
+                // doesn't work
+                // sh("docker run --rm test-container infisical secrets")
+                
+                // works
+                // sh("docker run -e INFISICAL_SERVICE_TOKEN=${INFISICAL_SERVICE_TOKEN} --rm test-container infisical secrets")
+                
+                // doesn't work
+                // sh("docker-compose up -d")
+                
+                // works
+                // sh("INFISICAL_SERVICE_TOKEN=${INFISICAL_SERVICE_TOKEN} docker-compose up -d")
+            }
+        }
+    }
+}
+```
+
+This is a very basic sample that you can work from. Jenkins injects the INFISICAL_SERVICE_TOKEN environment variable defined in the pipeline into the shell the commands execute with, but there are some situations where that won't pass through properly – notably if you're executing docker containers on the executor machine. The examples above should give you some idea for how that will work.
+
+Finally, click **Build Now** from the navigation sidebar to test your new job.
