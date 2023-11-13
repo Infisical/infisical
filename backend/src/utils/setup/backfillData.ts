@@ -860,8 +860,7 @@ export const migrationAssignSuperadmin = async () => {
     return;
   }
 
-  const isNewInstance = !users.length;
-  if (!isNewInstance) {
+  if (users.length) {
     let superAdminUserId = "";
     const firstAccount = users?.[0];
     if (firstAccount.email === "test@localhost.local" && users.length === 2) {
