@@ -1,9 +1,8 @@
 import * as Sentry from "@sentry/node";
-import { DatabaseService, TelemetryService } from "../../services";
+import { TelemetryService } from "../../services";
 import { setTransporter } from "../../helpers/nodemailer";
 import { EELicenseService } from "../../ee/services";
 import { initSmtp } from "../../services/smtp";
-import { createTestUserForDevelopment } from "../addDevelopmentUser";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import { validateEncryptionKeysConfig } from "./validateConfig";
 import {
@@ -18,14 +17,15 @@ import {
   backfillServiceTokenMultiScope,
   backfillTrustedIps,
   backfillUserAuthMethods,
-  migrateRoleFromOwnerToAdmin
+  migrateRoleFromOwnerToAdmin,
+  migrationAssignSuperadmin
 } from "./backfillData";
 import {
   reencryptBotOrgKeys,
   reencryptBotPrivateKeys,
   reencryptSecretBlindIndexDataSalts
 } from "./reencryptData";
-import { getMongoURL, getNodeEnv, getRedisUrl, getSentryDSN } from "../../config";
+import { getNodeEnv, getRedisUrl, getSentryDSN } from "../../config";
 import {
   initializeGitHubStrategy,
   initializeGitLabStrategy,
@@ -73,8 +73,6 @@ export const setup = async () => {
   // await reencryptBotPrivateKeys();
   // await reencryptSecretBlindIndexDataSalts();
 
-  // initializing the database connection
-  await DatabaseService.initDatabase(await getMongoURL());
   await bootstrap({ transporter });
 
   /**
@@ -96,6 +94,7 @@ export const setup = async () => {
   await backfillUserAuthMethods();
   // await backfillPermission();
   await migrateRoleFromOwnerToAdmin();
+  await migrationAssignSuperadmin();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY
@@ -111,5 +110,7 @@ export const setup = async () => {
     environment: await getNodeEnv()
   });
 
-  await createTestUserForDevelopment();
+  // akhilmhdh: removed dev account as we have now admin account onboarding flow
+  // That will be user's first account going forward
+  // await createTestUserForDevelopment();
 };

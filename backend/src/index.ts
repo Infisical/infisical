@@ -82,6 +82,7 @@ import { healthCheck } from "./routes/status";
 import { RouteNotFoundError } from "./utils/errors";
 import { requestErrorHandler } from "./middleware/requestErrorHandler";
 import {
+  getMongoURL,
   getNodeEnv,
   getPort,
   getSecretScanningGitAppId,
@@ -102,8 +103,10 @@ let handler: null | any = null;
 const main = async () => {
   const port = await getPort();
 
-  await setup();
+  // initializing the database connection
+  await DatabaseService.initDatabase(await getMongoURL());
   const serverCfg = await serverConfigInit();
+  await setup();
 
   await EELicenseService.initGlobalFeatureSet();
 
