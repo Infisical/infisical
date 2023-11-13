@@ -1,11 +1,11 @@
 ---
 title: "Jenkins"
-description: "How to effective and securely manage secrets in Jenkins using Infisical"
+description: "How to effectively and securely manage secrets in Jenkins using Infisical"
 ---
 
 Prerequisites:
 
-- Set up and add secrets to [Infisical](https://app.infisical.com). 
+- Set up and add secrets to [Infisical](https://app.infisical.com).
 - You have a working Jenkins installation with the [credentials plugin](https://plugins.jenkins.io/credentials/) installed.
 - You have the Infisical CLI installed on your Jenkins executor nodes or container images.
 
@@ -15,7 +15,7 @@ After setting up your project in Infisical and adding the Infisical CLI to conta
 
 ![Jenkins step 1](../../images/integrations/jenkins/jenkins_1.png)
 
-Click on the credential store you want to store the Infisical Service Token in. In this case, we're using the default Jenkins global store. 
+Click on the credential store you want to store the Infisical Service Token in. In this case, we're using the default Jenkins global store.
 
 <Info>
   Each of your projects will have a different INFISICAL_SERVICE_TOKEN though.
@@ -90,7 +90,7 @@ Scroll down to the **Pipeline** section, paste the following into the **Script**
 ```
 pipeline {
     agent any
-    
+
     environment {
         INFISICAL_SERVICE_TOKEN = credentials('INFISICAL_SERVICE_TOKEN')
     }
@@ -99,16 +99,16 @@ pipeline {
         stage('Run Infisical') {
             steps {
                 sh("infisical secrets")
-                
+
                 // doesn't work
                 // sh("docker run --rm test-container infisical secrets")
-                
+
                 // works
                 // sh("docker run -e INFISICAL_SERVICE_TOKEN=${INFISICAL_SERVICE_TOKEN} --rm test-container infisical secrets")
-                
+
                 // doesn't work
                 // sh("docker-compose up -d")
-                
+
                 // works
                 // sh("INFISICAL_SERVICE_TOKEN=${INFISICAL_SERVICE_TOKEN} docker-compose up -d")
             }

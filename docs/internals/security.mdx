@@ -56,15 +56,15 @@ Within Infisical, a critical security concern is an attacker gaining access to s
 
 ### JWT / API Key
 
-This token category is used by users and included in requests made from the Infisical Web UI or elsewhere to the Infisical API. 
+This token category is used by users and included in requests made from the Infisical Web UI or elsewhere to the Infisical API.
 
 Each token is authenticated against the API and mapped to an existing user in Infisical. If no existing user is found for the token, the request is rejected by the API. Each token assumes the permission set of the user that it is mapped to. For example, if a user corresponding to a token is not allowed access to a certain organization or project, then the token is also not be valid for any requests concerning those specific resources.
 
-In the event of compromise, an attacker could use the token to impersonate the associated user and perform actions within the permission set of that user. While they could retrieve secrets for a project that the user is part of, they could not, however, decrypt secrets if the project follows Infisical's default zero-knowlege architecture. In any case, it would be critical for the user to invalidate this token and change their password immediately to prevent further unintended actions and consequences.
+In the event of compromise, an attacker could use the token to impersonate the associated user and perform actions within the permission set of that user. While they could retrieve secrets for a project that the user is part of, they could not, however, decrypt secrets if the project follows Infisical's default zero-knowledge architecture. In any case, it would be critical for the user to invalidate this token and change their password immediately to prevent further unintended actions and consequences.
 
 ### Service token
 
-This token category is provisioned by users for applications and infrastructure to perform secret operations against the Infisical API. 
+This token category is provisioned by users for applications and infrastructure to perform secret operations against the Infisical API.
 
 Each token is scoped to a project in Infisical and configurable with an expiration date and permission set (also known as **scopes**) for specific environment(s) and path(s) within them. For example, you may provision an application a service token to authenticate against the Infisical API and retrieve secrets from some `/environment-variables` path in the production environment of a project. If the token is tried for another project, environment, or path outside of its permission set, then it is rejected by the API.
 
@@ -87,7 +87,7 @@ Since these encryption operations occur on the client-side, the Infisical API is
 
 ### High availability
 
-Infisical leverages the robust container orchestration capabilities of Kubernetes and the inherent high availability features of the storage backend (i.e. Bitnami MongoDB) to ensure resilience and fault tolerance. 
+Infisical leverages the robust container orchestration capabilities of Kubernetes and the inherent high availability features of the storage backend (i.e. Bitnami MongoDB) to ensure resilience and fault tolerance.
 
 - Kubernetes: By deploying multiple replicas of Infisical application on Kubernetes, operations continue even if a single instance fails. Kubernetes Services facilitate load balancing, effectively distributing traffic across your application’s instances and ensuring optimal performance.
 - Storage backend: Bitnami MongoDB supports replica sets, which provide data redundancy and automatic failover for the underlying database.
@@ -103,7 +103,7 @@ If using [Infisical Cloud](https://app.infisical.com), snapshots of MongoDB data
 
 ### Offline usage
 
-Many teams and organizations use the [Infisical CLI](https://infisical.com/docs/cli/overview) to fetch and inject secrets back from Infisical into their applications and infrastructure locally; the CLI has offline fallback capabiltiies.
+Many teams and organizations use the [Infisical CLI](https://infisical.com/docs/cli/overview) to fetch and inject secrets back from Infisical into their applications and infrastructure locally; the CLI has offline fallback capabilities.
 
 If you have previously retrieved secrets for a specific project and environment, the `run/secret` command will utilize the saved secrets, even when offline, on subsequent fetch attempts to ensure that you always have access to secrets.
 
@@ -111,7 +111,7 @@ If you have previously retrieved secrets for a specific project and environment,
 
 ### Web application
 
-Infisical utilizes the latest HTTP security headers and employs a strict Content-Security-Policy to mitigate XSS. 
+Infisical utilizes the latest HTTP security headers and employs a strict Content-Security-Policy to mitigate XSS.
 
 JWT tokens are stored in browser memory and appended to outbound requests requiring authentication; refresh tokens are stored in `HttpOnly` cookies and included in future requests to `/api/token` for JWT token renewal.
 
@@ -119,7 +119,7 @@ JWT tokens are stored in browser memory and appended to outbound requests requir
 
 Infisical supports several authentication methods including email/password, Google SSO, GitHub SSO, and SAML 2.0 (Okta, Azure, JumpCloud); Infisical also currently offers email-based 2FA with authenticator app methods coming in Q1 2024.
 
-Infisical uses the [secure remote password protocol](https://en.wikipedia.org/wiki/Secure_Remote_Password_protocol#:~:text=The%20SRP%20protocol%20has%20a,the%20user%20to%20the%20server), commonly found in other zero-knowledge platform architectures, for authentication. 
+Infisical uses the [secure remote password protocol](https://en.wikipedia.org/wiki/Secure_Remote_Password_protocol#:~:text=The%20SRP%20protocol%20has%20a,the%20user%20to%20the%20server), commonly found in other zero-knowledge platform architectures, for authentication.
 Put simply, the protocol enables Infisical to validate a user's knowledge of their password without ever seeing it by constructing a mutual secret; we use this protocol because each user's password is used to seed the generation of a master encryption/decryption key via KDF for that user which the platform
 should not see.
 
@@ -141,7 +141,7 @@ For example, you can define a role provisioning access to secrets in a specific 
 
 ### Audit logging
 
-Infisical's audit logging feature spans 25+ events, tracking everything from permissioning changes to queries and mutations applied to secrets, for security and compliance teams at enterprises to monitor information access in the event of any suspicious activity or incident review. Every event is timestamped and information about actor, source (i.e. IP address, user-agent, etc.), and relevant metadata is included.
+Infisical's audit logging feature spans 25+ events, tracking everything from permission changes to queries and mutations applied to secrets, for security and compliance teams at enterprises to monitor information access in the event of any suspicious activity or incident review. Every event is timestamped and information about actor, source (i.e. IP address, user-agent, etc.), and relevant metadata is included.
 
 ### IP allowlisting
 
@@ -151,7 +151,7 @@ By default, each project is initialized with the `0.0.0.0/0` entry, representing
 
 ## Penetration testing
 
-Infisical hires external third parties to perform regular security assessment and penetration testing of the platform. 
+Infisical hires external third parties to perform regular security assessment and penetration testing of the platform.
 
 Most recently, Infisical commissioned cybersecurity firm [Oneleet](https://www.oneleet.com) to perform a full-coverage, gray box penetration test against the platform's entire attack surface to identify vulnerabilities according to industry standards (OWASP, ASVS, WSTG, TOP-10, etc.).
 
@@ -162,7 +162,7 @@ Please email security@infisical.com to request any reports including a letter of
 Whether or not Infisical or your employees can access data in the Infisical instance and/or storage backend depends on many factors how you use Infisical:
 
 - Infisical Self-Hosted: Self-hosting Infisical is common amongst organizations that prefer to keep data on their own infrastructure usually to adhere to strict regulatory and compliance requirements. In this option, organizations retain full control over their data and therefore govern the data access policy of their Infisical instance and storage backend.
-- Infisical Cloud: Using Infisical's managed service, [Infisical Cloud](https://app.infisical.com) means delegating data oversight and management to Infisical.  Under our policy controls, employees are only granted access to parts of infrastructure according to principle of least privilege; this is especially relevent to customer data can only be accessed currently by executive management of Infisical. Moreover, any changes to sensitive customer data is prohibited without explicit customer approval.
+- Infisical Cloud: Using Infisical's managed service, [Infisical Cloud](https://app.infisical.com) means delegating data oversight and management to Infisical.  Under our policy controls, employees are only granted access to parts of infrastructure according to principle of least privilege; this is especially relevant to customer data can only be accessed currently by executive management of Infisical. Moreover, any changes to sensitive customer data is prohibited without explicit customer approval.
 
 It should be noted that, even on Infisical Cloud, it is physically impossible for employees of Infisical to view the values of secrets if users have not explicitly granted Infisical access to their project (i.e. opted out of zero-knowledge).
 
