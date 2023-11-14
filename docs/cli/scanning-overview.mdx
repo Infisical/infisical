@@ -3,11 +3,11 @@ title: 'Secret scanning'
 description: "Scan and prevent secret leaks in your code base"
 ---
 
-Building upon its core functionality of fetching and injecting secrets into your applications, Infisical now takes a significant step forward in bolstering your code security. 
-We've enhanced our CLI tool to include a powerful scanning feature, capable of identifying more than 140 different types of secret leaks in your codebase. 
-In addition to scanning for past leaks, this new addition also actively aids in preventing future leaks. 
+Building upon its core functionality of fetching and injecting secrets into your applications, Infisical now takes a significant step forward in bolstering your code security.
+We've enhanced our CLI tool to include a powerful scanning feature, capable of identifying more than 140 different types of secret leaks in your codebase.
+In addition to scanning for past leaks, this new addition also actively aids in preventing future leaks.
 
-# Scanning 
+# Scanning
 <Tabs>
   <Tab title="Scanning files, directories and or git history">
 	```bash
@@ -19,18 +19,18 @@ In addition to scanning for past leaks, this new addition also actively aids in 
 
 	The `infisical scan` command serves to scan repositories, directories, and files. It's compatible with both individual developer machines and Continuous Integration (CI) environments.
 
-	When you run `infisical scan` on a Git repository, Infisical will parses the output of a `git log -p` command. This command generates [patches](https://stackoverflow.com/questions/8279602/what-is-a-patch-in-git-version-control) that Infisical uses to identify secrets in your code. 
-	You can configure the range of commits that `git log` will cover using the `--log-opts` flag. 
-	Any options you can use with `git log -p` are valid for `--log-opts`. 
+	When you run `infisical scan` on a Git repository, Infisical will parses the output of a `git log -p` command. This command generates [patches](https://stackoverflow.com/questions/8279602/what-is-a-patch-in-git-version-control) that Infisical uses to identify secrets in your code.
+	You can configure the range of commits that `git log` will cover using the `--log-opts` flag.
+	Any options you can use with `git log -p` are valid for `--log-opts`.
 
 	For instance, to instruct Infisical to scan a specific range of commits, use the following command: `infisical scan --log-opts="--all commitA..commitB"`. For more details, refer to the [Git log documentation](https://git-scm.com/docs/git-log).
 
-	To scan individual files and directories, use the `--no-git` flag. 
+	To scan individual files and directories, use the `--no-git` flag.
 
 	**View [full details for this command](./commands/scan)**
   </Tab>
   <Tab title="Scanning uncommitted files ">
-	```bash 
+	```bash
 	infisical scan git-changes
 
 	# Display the full secret findings
@@ -39,8 +39,8 @@ In addition to scanning for past leaks, this new addition also actively aids in 
 
 	Scanning for secrets before you commit your changes is great way to prevent leaks. Infisical makes this easy with the sub command `git-changes`.
 
-	The `git-changes` scans for uncommitted changes in a Git repository, and is especially designed for use on developer machines, aligning with the ['shift left'](https://cloud.google.com/architecture/devops/devops-tech-shifting-left-on-security) security approach. 
-	When `git-changes` is run on a Git repository, Infisical parses the output from a `git diff` command. 
+	The `git-changes` scans for uncommitted changes in a Git repository, and is especially designed for use on developer machines, aligning with the ['shift left'](https://cloud.google.com/architecture/devops/devops-tech-shifting-left-on-security) security approach.
+	When `git-changes` is run on a Git repository, Infisical parses the output from a `git diff` command.
 
 	To scan changes in commits that have been staged via `git add`, you can add the `--staged` flag to the sub command. This flag is particularly useful when using Infisical CLI as a pre-commit tool.
 
@@ -63,14 +63,14 @@ This hook scans the changes you're about to commit for any exposed secrets. If a
 
 To install this git hook, go into your local git repository and run the following command.
 
-```bash 
+```bash
 infisical scan install --pre-commit-hook
 ```
 
 To disable this hook after installing it, run the command `git config --bool hooks.infisical-scan false`
 
-### Third party hooks management 
-If you would rather handle your pre-commit hook outside of the standard `.git/hooks` directory, you can quickly achieve this by adding the following command into your pre-commit script. 
+### Third party hooks management
+If you would rather handle your pre-commit hook outside of the standard `.git/hooks` directory, you can quickly achieve this by adding the following command into your pre-commit script.
 For instance, if you utilize [Husky](https://typicode.github.io/husky/) for managing your Git hooks, you can insert the command provided below into your `.husky/pre-commit` file.
 
 ```bash
@@ -111,7 +111,7 @@ To customize the scan, such as specifying your own rules or establishing excepti
 title = "Some title"
 
 
-# This configuration is the foundation that can be expanded. If there are any overlapping rules 
+# This configuration is the foundation that can be expanded. If there are any overlapping rules
 # between this base and the expanded configuration, the rules in this base will take priority.
 # Another aspect of extending configurations is the ability to link multiple files, up to a depth of 2.
 # "Allowlist" arrays get appended and may have repeated elements.
@@ -150,12 +150,12 @@ tags = ["tag","another tag"]
 secretGroup = 3
 
 # Float representing the minimum shannon entropy a regex group must have to be considered a secret.
-# Shannon entropy measures how random a data is. Since secrets are usually composed of many random characters, they typically have high entropy 
+# Shannon entropy measures how random a data is. Since secrets are usually composed of many random characters, they typically have high entropy
 entropy = 3.5
 
 # Keywords are used for pre-regex check filtering.
-# If rule has keywords but the text fragment being scanned doesn't have at least one of it's keywords, it will be skipped for processing further. 
-# Ideally these values should either be part of the idenitifer or unique strings specific to the rule's regex
+# If rule has keywords but the text fragment being scanned doesn't have at least one of it's keywords, it will be skipped for processing further.
+# Ideally these values should either be part of the identifier or unique strings specific to the rule's regex
 # (introduced in v8.6.0)
 keywords = [
 	"auth",
@@ -181,7 +181,7 @@ regexes = [
 	'''getenv''',
 ]
 # note: stopwords targets the extracted secret, not the entire regex match
-# if the extracted secret is found in the stopwords list, the finding will be skipped (i.e not included in report) 
+# if the extracted secret is found in the stopwords list, the finding will be skipped (i.e not included in report)
 stopwords = [
 	'''client''',
 	'''endpoint''',
@@ -210,7 +210,7 @@ regexes = [
 	'''(9[0-9]{2}|666)-\d{2}-\d{4}''',
 ]
 # note: stopwords targets the extracted secret, not the entire regex match
-# if the extracted secret is found in the stopwords list, the finding will be skipped (i.e not included in report) 
+# if the extracted secret is found in the stopwords list, the finding will be skipped (i.e not included in report)
 stopwords = [
 	'''client''',
 	'''endpoint''',
@@ -223,18 +223,18 @@ stopwords = [
 # Ignoring Known Secrets
 If you're intentionally committing a test secret that `infisical scan` might flag, you can instruct Infisical to overlook that secret with the methods listed below.
 
-### infisical-scan:ignore 
+### infisical-scan:ignore
 
 To ignore a secret contained in line of code, simply add `infisical-scan:ignore ` at the end of the line as comment in the given programming.
 
 ```js example.js
 function helloWorld() {
-    console.log("8dyfuiRyq=vVc3RRr_edRk-fK__JItpZ"); // infisical-scan:ignore 
+    console.log("8dyfuiRyq=vVc3RRr_edRk-fK__JItpZ"); // infisical-scan:ignore
 }
 ```
 
 ### .infisicalignore
-An alternative method to exclude specific findings involves creating a .infisicalignore file at your repository's root. 
+An alternative method to exclude specific findings involves creating a .infisicalignore file at your repository's root.
 You can then add the fingerprints of the findings you wish to exclude. The Infisical scan report provides a unique Fingerprint for each secret found.
 By incorporating these Fingerprints into the .infisicalignore file, Infisical will skip the corresponding secret findings in subsequent scans.
 

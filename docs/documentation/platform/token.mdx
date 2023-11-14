@@ -45,16 +45,16 @@ Also, note that Infisical supports [glob patterns](https://www.malikbrowne.com/b
 ![token add](../../images/project-token-old-permissions.png)
 
 In the above screenshot, you can see that we are creating a token token with `read` access to all subfolders at any depth
-of the `/common` path within the development environment of the project; the token expires in 6 months and can be used from any IP address. 
+of the `/common` path within the development environment of the project; the token expires in 6 months and can be used from any IP address.
 
 **FAQ**
 
 <AccordionGroup>
 <Accordion title="Why is the Infisical API rejecting my service token?">
   There are a few reasons for why this might happen:
-  
+
   - The service token has expired.
-  - The service token is insufficently permissioned to interact with the secrets in the given environment and path.
+  - The service token is insufficiently permissioned to interact with the secrets in the given environment and path.
   - You are attempting to access a `/raw` secrets endpoint that requires your project to disable E2EE.
   - (If using ST V3) The service token has not been activated yet.
   - (If using ST V3) The service token is being used from an untrusted IP.
