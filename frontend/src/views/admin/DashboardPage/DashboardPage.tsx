@@ -31,9 +31,9 @@ export const AdminDashboardPage = () => {
   return (
     <div className="container mx-auto max-w-7xl pb-12 text-white dark:[color-scheme:dark]">
       <div className="mb-8">
-        <div className="mx-4 mb-4 mt-6 flex flex-col items-start justify-between px-2 text-xl">
+        <div className="mb-4 mt-6 flex flex-col items-start justify-between text-xl">
           <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
-          <p className="text-base text-bunker-300">Manage your Infisical.</p>
+          <p className="text-base text-bunker-300">Manage your Infisical</p>
         </div>
       </div>
       {isUserLoading || isNotAllowed ? (

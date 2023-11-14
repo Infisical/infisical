@@ -4,6 +4,7 @@ import { getServerConfig, updateServerConfig as setServerConfig } from "../../co
 import { initializeDefaultOrg, issueAuthTokens } from "../../helpers";
 import { validateRequest } from "../../helpers/validation";
 import { User } from "../../models";
+import { TelemetryService } from "../../services";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import * as reqValidator from "../../validation/admin";
 
@@ -70,6 +71,18 @@ export const adminSignUp = async (req: Request, res: Response) => {
   });
 
   const token = tokens.token;
+
+  const postHogClient = await TelemetryService.getPostHogClient();
+  if (postHogClient) {
+    postHogClient.capture({
+      event: "admin initialization",
+      properties: {
+        email: user.email,
+        lastName,
+        firstName
+      }
+    });
+  }
 
   // store (refresh) token in httpOnly cookie
   res.cookie("jid", tokens.refreshToken, {
