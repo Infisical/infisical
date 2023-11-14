@@ -12,6 +12,7 @@ import InitialSignupStep from "@app/components/signup/InitialSignupStep";
 import TeamInviteStep from "@app/components/signup/TeamInviteStep";
 import UserInfoStep from "@app/components/signup/UserInfoStep";
 import SecurityClient from "@app/components/utilities/SecurityClient";
+import { useServerConfig } from "@app/context";
 import { useVerifyEmailVerificationCode } from "@app/hooks/api";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -34,6 +35,13 @@ export default function SignUp() {
   const [isCodeInputCheckLoading, setIsCodeInputCheckLoading] = useState(false);
   const { t } = useTranslation();
   const { mutateAsync } = useVerifyEmailVerificationCode();
+  const { config } = useServerConfig();
+
+  useEffect(() => {
+    if (!config.allowSignUp) {
+      router.push("/login");
+    }
+  }, [config.allowSignUp]);
 
   useEffect(() => {
     const tryAuth = async () => {
@@ -65,7 +73,7 @@ export default function SignUp() {
         const { token } = await mutateAsync({ email, code });
         SecurityClient.setSignupToken(token);
         setStep(3);
-      } catch(err) {
+      } catch (err) {
         console.error(err);
         setCodeError(true);
       }

@@ -336,5 +336,9 @@
     "step5-invite-team": "Invite your team",
     "step5-subtitle": "Infisical is meant to be used with your teammates. Invite them to test it out.",
     "step5-skip": "Skip"
+  },
+  "admin": {
+    "signup-title": "Admin Sign Up",
+    "dashboard": "Admin Dashboard"
   }
 }

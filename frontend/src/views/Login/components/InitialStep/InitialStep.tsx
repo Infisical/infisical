@@ -12,7 +12,7 @@ import { useNotificationContext } from "@app/components/context/Notifications/No
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import { Button, Input } from "@app/components/v2";
-import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+import { useServerConfig } from "@app/context";
 
 import { navigateUserToOrg } from "../../Login.utils";
 
@@ -30,7 +30,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState(false);
-  const { data: serverDetails } = useFetchServerStatus();
+  const { config } = useServerConfig();
   const queryParams = new URLSearchParams(window.location.search);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
@@ -84,7 +84,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
             setIsLoading(false);
             return;
           }
-          
+
           await navigateUserToOrg(router);
 
           // case: login does not require MFA step
@@ -225,7 +225,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
         </Button>
       </div>
       {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
-      {!serverDetails?.inviteOnlySignup ? (
+      {config.allowSignUp ? (
         <div className="mt-6 flex flex-row text-sm text-bunker-400">
           <Link href="/signup">
             <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
@@ -236,7 +236,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
       ) : (
         <div />
       )}
-      <div className="flex flex-row text-sm text-bunker-400">
+      <div className="flex flex-row text-sm text-bunker-400 mt-2">
         <Link href="/verify-email">
           <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
             Forgot password? Recover your account

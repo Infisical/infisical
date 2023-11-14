@@ -18,7 +18,7 @@ type Props = {
 // Provide a context for whole app to notify user is authorized or not
 export const AuthProvider = ({ children }: Props): JSX.Element => {
   const { isLoading } = useGetAuthToken();
-  const { pathname, push } = useRouter();
+  const { pathname, push, asPath } = useRouter();
   const [isReady, setIsReady] = useToggle(false);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }: Props): JSX.Element => {
     if (!isLoading) {
       // not a public path and not authenticated kick to login page
       if (!publicPaths.includes(pathname) && !isLoggedIn()) {
-        push("/login").then(() => {
+        push({ pathname: "/login", query: { redirect: asPath } }).then(() => {
           setIsReady.on();
         });
       } else {
@@ -40,7 +40,12 @@ export const AuthProvider = ({ children }: Props): JSX.Element => {
   if (isLoading || !isReady) {
     return (
       <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
-        <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" />
+        <img
+          src="/images/loading/loading.gif"
+          height={70}
+          width={120}
+          alt="infisical loading indicator"
+        />
       </div>
     );
   }

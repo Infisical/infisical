@@ -559,6 +559,7 @@ const OrganizationPage = withPermission(
 
     useEffect(() => {
       onboardingCheck({
+        orgId: currentOrg,
         setHasUserClickedIntro,
         setHasUserClickedSlack,
         setHasUserPushedSecrets,

@@ -20,6 +20,7 @@ import {
   OrgPermissionProvider,
   OrgProvider,
   ProjectPermissionProvider,
+  ServerConfigProvider,
   SubscriptionProvider,
   UserProvider,
   WorkspaceProvider
@@ -84,36 +85,42 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
     return (
       <QueryClientProvider client={queryClient}>
         <NotificationProvider>
-          <AuthProvider>
-            <Component {...pageProps} />
-          </AuthProvider>
+          <ServerConfigProvider>
+            <AuthProvider>
+              <Component {...pageProps} />
+            </AuthProvider>
+          </ServerConfigProvider>
         </NotificationProvider>
       </QueryClientProvider>
     );
   }
 
+  const Layout = Component?.layout || AppLayout;
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider>
-          <OrgProvider>
-            <OrgPermissionProvider>
-              <WorkspaceProvider>
-                <ProjectPermissionProvider>
-                  <SubscriptionProvider>
-                    <UserProvider>
-                      <NotificationProvider>
-                        <AppLayout>
-                          <Component {...pageProps} />
-                        </AppLayout>
-                      </NotificationProvider>
-                    </UserProvider>
-                  </SubscriptionProvider>
-                </ProjectPermissionProvider>
-              </WorkspaceProvider>
-            </OrgPermissionProvider>
-          </OrgProvider>
-        </AuthProvider>
+        <NotificationProvider>
+          <ServerConfigProvider>
+            <AuthProvider>
+              <OrgProvider>
+                <OrgPermissionProvider>
+                  <WorkspaceProvider>
+                    <ProjectPermissionProvider>
+                      <SubscriptionProvider>
+                        <UserProvider>
+                          <Layout>
+                            <Component {...pageProps} />
+                          </Layout>
+                        </UserProvider>
+                      </SubscriptionProvider>
+                    </ProjectPermissionProvider>
+                  </WorkspaceProvider>
+                </OrgPermissionProvider>
+              </OrgProvider>
+            </AuthProvider>
+          </ServerConfigProvider>
+        </NotificationProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

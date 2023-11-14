@@ -3,13 +3,15 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { twMerge } from "tailwind-merge";
 
 type Props = {
   text?: string | string[];
   frequency?: number;
+  className?: string;
 };
 
-export const ContentLoader = ({ text, frequency = 2000 }: Props) => {
+export const ContentLoader = ({ text, frequency = 2000, className }: Props) => {
   const [pos, setPos] = useState(0);
   const isTextArray = Array.isArray(text);
   useEffect(() => {
@@ -23,7 +25,12 @@ export const ContentLoader = ({ text, frequency = 2000 }: Props) => {
   }, []);
 
   return (
-    <div className="container mx-auto flex relative flex-col h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark] space-y-8">
+    <div
+      className={twMerge(
+        "container mx-auto flex relative flex-col h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark] space-y-8",
+        className
+      )}
+    >
       <img src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
       {text && isTextArray && (
         <AnimatePresence exitBeforeEnter>

@@ -1,4 +1,5 @@
 export * from "./apiKeys";
+export * from "./admin"
 export * from "./auditLogs";
 export * from "./auth";
 export * from "./bots";
