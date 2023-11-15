@@ -18,6 +18,7 @@ services:
   redis:
     image: redis
     container_name: infisical-dev-redis
+    env_file: .env
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
     ports:
