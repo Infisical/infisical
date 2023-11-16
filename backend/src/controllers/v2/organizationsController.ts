@@ -1,24 +1,16 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { 
-  Membership, 
-  MembershipOrg, 
-  Workspace 
-} from "../../models";
+import { Membership, MembershipOrg, Workspace } from "../../models";
 import { Role } from "../../ee/models";
 import { deleteMembershipOrg } from "../../helpers/membershipOrg";
-import { 
+import {
   createOrganization as create,
   deleteOrganization,
   updateSubscriptionOrgQuantity
 } from "../../helpers/organization";
 import { addMembershipsOrg } from "../../helpers/membershipOrg";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import {
-  ACCEPTED,
-  ADMIN,
-  CUSTOM 
-} from "../../variables";
+import { ACCEPTED, ADMIN, CUSTOM } from "../../variables";
 import * as reqValidator from "../../validation/organization";
 import { validateRequest } from "../../helpers/validation";
 import {
@@ -155,7 +147,7 @@ export const updateOrganizationMembership = async (req: Request, res: Response) 
     OrgPermissionSubjects.Member
   );
 
-  const isCustomRole = !["admin", "member", "owner"].includes(role);
+  const isCustomRole = !["admin", "member"].includes(role);
   if (isCustomRole) {
     const orgRole = await Role.findOne({ slug: role, isOrgRole: true });
     if (!orgRole) throw BadRequestError({ message: "Role not found" });
@@ -336,7 +328,7 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
  * @param res
  * @returns
  */
- export const createOrganization = async (req: Request, res: Response) => {
+export const createOrganization = async (req: Request, res: Response) => {
   const {
     body: { name }
   } = await validateRequest(reqValidator.CreateOrgv2, req);
@@ -361,27 +353,27 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
 
 /**
  * Delete organization with id [organizationId]
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
 export const deleteOrganizationById = async (req: Request, res: Response) => {
   const {
     params: { organizationId }
   } = await validateRequest(reqValidator.DeleteOrgv2, req);
-  
+
   const membershipOrg = await MembershipOrg.findOne({
     user: req.user._id,
     organization: new Types.ObjectId(organizationId),
     role: ADMIN
   });
-  
+
   if (!membershipOrg) throw UnauthorizedRequestError();
-  
+
   const organization = await deleteOrganization({
     organizationId: new Types.ObjectId(organizationId)
   });
-  
+
   return res.status(200).send({
     organization
   });
-}
+};
