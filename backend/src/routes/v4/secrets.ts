@@ -2,12 +2,11 @@ import express from "express";
 const router = express.Router();
 import { requireAuth} from "../../middleware";
 import { secretsController } from "../../controllers/v4";
-import { AuthMode } from "../../variables";
 
 router.get(
     "/",
     requireAuth({
-        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN, AuthMode.SERVICE_TOKEN]
+        acceptedAuthModes: []
     }),
     secretsController.getSecrets
 );
@@ -15,7 +14,7 @@ router.get(
 router.get(
     "/:secretName",
     requireAuth({
-        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN, AuthMode.SERVICE_TOKEN]
+        acceptedAuthModes: []
     }),
     secretsController.getSecret
 );
@@ -23,7 +22,7 @@ router.get(
 router.post(
     "/:secretName",
     requireAuth({
-        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN, AuthMode.SERVICE_TOKEN]
+        acceptedAuthModes: []
     }),
     secretsController.createSecret
 );
@@ -31,7 +30,7 @@ router.post(
 router.patch(
     "/:secretName",
     requireAuth({
-        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN, AuthMode.SERVICE_TOKEN]
+        acceptedAuthModes: []
     }),
     secretsController.updateSecret
 );
@@ -39,7 +38,7 @@ router.patch(
 router.delete(
     "/:secretName",
     requireAuth({
-        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN, AuthMode.SERVICE_TOKEN]
+        acceptedAuthModes: []
     }),
     secretsController.deleteSecret
 );
