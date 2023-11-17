@@ -1,13 +1,13 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { EventService } from "../../services";
-import { eventPushSecrets } from "../../events";
+import { BotService, SecretService } from "../../services";
+import { getAllImportedSecrets } from "../../services/SecretImportService";
+import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { ProjectPermissionActions } from "../../ee/services/ProjectRoleService";
-import { checkSecretsPermission } from "../../helpers";
+import { checkSecretsPermission, packageSecretV4 } from "../../helpers";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/secrets";
-
-// TODO: find place to put endpoint spec
+import { getFolderIdFromServiceToken } from "../../services/FolderService";
 
 /**
  * Get secrets in project with id
@@ -34,9 +34,41 @@ export const getSecrets = async (req: Request, res: Response) => {
         secretAction: ProjectPermissionActions.Read
     });
 
-    // secrets
+    const secrets = await SecretService.getSecrets({
+        workspaceId: new Types.ObjectId(projectId),
+        environment: environmentSlug,
+        secretPath: path,
+        authData: req.authData
+    });
+
+    const key = await BotService.getWorkspaceKeyWithBot({
+        workspaceId: new Types.ObjectId(projectId)
+    });
+
+    let packagedSecrets = secrets.map((secret) => packageSecretV4({
+        secret,
+        key
+    }));
+    
+    const folderId = await getFolderIdFromServiceToken(projectId, environmentSlug, path);
+    
+    if (includeImports) {
+        const importGroups = await getAllImportedSecrets(
+            projectId,
+            environmentSlug,
+            folderId,
+            () => true
+        );
+        
+        importGroups.forEach((importGroup) => {
+            packagedSecrets = packagedSecrets.concat(
+                importGroup.secrets.map((secret) => packageSecretV4({ secret, key }))
+            );
+        });
+    }
+
     return res.status(200).send({
-        secrets: []
+        secrets: packagedSecrets
     });
 }
 
@@ -68,9 +100,28 @@ export const getSecret = async (req: Request, res: Response) => {
         secretPath: path,
         secretAction: ProjectPermissionActions.Read
     });
+    
+    const secret = await SecretService.getSecret({
+        secretName,
+        workspaceId: new Types.ObjectId(projectId),
+        environment: environmentSlug,
+        type,
+        secretPath: path,
+        authData: req.authData,
+        include_imports: includeImports
+    });
+
+    const key = await BotService.getWorkspaceKeyWithBot({
+        workspaceId: new Types.ObjectId(projectId)
+    });
+    
+    const packagedSecret = packageSecretV4({
+        secret,
+        key
+    });
 
     return res.status(200).send({
-        secret: ""
+        secret: packagedSecret
     });
 }
 
@@ -105,16 +156,63 @@ export const createSecret = async (req: Request, res: Response) =>{
         secretAction: ProjectPermissionActions.Create
     });
 
-    await EventService.handleEvent({
-        event: eventPushSecrets({
-            workspaceId: new Types.ObjectId(projectId),
-            environment: environmentSlug,
-            secretPath: path
-        })
+    const key = await BotService.getWorkspaceKeyWithBot({
+        workspaceId: new Types.ObjectId(projectId)
+    });
+
+    const { 
+        ciphertext: secretKeyCiphertext,
+        iv: secretKeyIV, 
+        tag: secretKeyTag
+    } = encryptSymmetric128BitHexKeyUTF8({
+        plaintext: secretName,
+        key
+    });
+
+    const { 
+        ciphertext: secretValueCiphertext,
+        iv: secretValueIV,
+        tag: secretValueTag
+    } = encryptSymmetric128BitHexKeyUTF8({
+        plaintext: secretValue,
+        key
+    });
+
+    const { 
+        ciphertext: secretCommentCiphertext,
+        iv: secretCommentIV,
+        tag: secretCommentTag
+    } = encryptSymmetric128BitHexKeyUTF8({
+        plaintext: secretComment,
+        key
+    });
+
+    const secret = await SecretService.createSecret({
+        secretName,
+        workspaceId: new Types.ObjectId(projectId),
+        environment: environmentSlug,
+        type,
+        authData: req.authData,
+        secretKeyCiphertext,
+        secretKeyIV,
+        secretKeyTag,
+        secretValueCiphertext,
+        secretValueIV,
+        secretValueTag,
+        secretPath: path,
+        secretCommentCiphertext,
+        secretCommentIV,
+        secretCommentTag,
+        skipMultilineEncoding
+    });
+
+    const packagedSecret = packageSecretV4({
+        secret,
+        key
     });
 
     return res.status(200).send({
-        secret: ""
+        secret: packagedSecret
     });
 }
 
@@ -139,9 +237,9 @@ export const updateSecret = async (req: Request, res: Response) => {
             secretComment,
             skipMultilineEncoding
         }
-    } = await validateRequest(reqValidator.CreateSecretV4, req);
+    } = await validateRequest(reqValidator.UpdateSecretV4, req);
 
-    const { membership } = await checkSecretsPermission({
+    await checkSecretsPermission({
         authData: req.authData,
         workspaceId: projectId,
         environment: environmentSlug,
@@ -149,16 +247,57 @@ export const updateSecret = async (req: Request, res: Response) => {
         secretAction: ProjectPermissionActions.Edit
     });
 
-    await EventService.handleEvent({
-        event: eventPushSecrets({
-            workspaceId: new Types.ObjectId(projectId),
-            environment: environmentSlug,
-            secretPath: path
-        })
+    const key = await BotService.getWorkspaceKeyWithBot({
+        workspaceId: new Types.ObjectId(projectId)
+    });
+    
+    let secretValueCiphertext, secretValueIV, secretValueTag;
+    if (secretValue) {
+        const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
+            plaintext: secretValue,
+            key
+        });
+
+        secretValueCiphertext = ciphertext;
+        secretValueIV = iv;
+        secretValueTag = tag;
+    }
+
+    let secretCommentCiphertext, secretCommentIV, secretCommentTag;
+    if (secretComment) {
+        const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
+            plaintext: secretComment,
+            key
+        });
+
+        secretCommentCiphertext = ciphertext;
+        secretCommentIV = iv;
+        secretCommentTag = tag;
+    }
+
+    const secret = await SecretService.updateSecret({
+        secretName,
+        workspaceId: new Types.ObjectId(projectId),
+        environment: environmentSlug,
+        type,
+        authData: req.authData,
+        secretValueCiphertext,
+        secretValueIV,
+        secretValueTag,
+        secretCommentCiphertext,
+        secretCommentIV,
+        secretCommentTag,
+        secretPath: path,
+        skipMultilineEncoding
+    });
+
+    const packagedSecret = packageSecretV4({
+        secret,
+        key
     });
 
     return res.status(200).send({
-        secret: ""
+        secret: packagedSecret
     });
 }
 
@@ -182,23 +321,33 @@ export const deleteSecret = async (req: Request, res: Response) => {
         }
     } = await validateRequest(reqValidator.DeleteSecretV4, req);
 
-    const { membership } = await checkSecretsPermission({
+    await checkSecretsPermission({
         authData: req.authData,
         workspaceId: projectId,
         environment: environmentSlug,
         secretPath: path,
         secretAction: ProjectPermissionActions.Delete
     });
+    
+    const key = await BotService.getWorkspaceKeyWithBot({
+        workspaceId: new Types.ObjectId(projectId)
+    });
 
-    await EventService.handleEvent({
-        event: eventPushSecrets({
-            workspaceId: new Types.ObjectId(projectId),
-            environment: environmentSlug,
-            secretPath: path
-        })
+    const { secret } = await SecretService.deleteSecret({
+        secretName,
+        workspaceId: new Types.ObjectId(projectId),
+        environment: environmentSlug,
+        type,
+        authData: req.authData,
+        secretPath: path
+    });
+    
+    const packagedSecret = packageSecretV4({
+        secret,
+        key
     });
 
     return res.status(200).send({
-        secret: ""
+        secret: packagedSecret
     });
 }

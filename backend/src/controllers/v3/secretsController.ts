@@ -6,7 +6,7 @@ import { BotService } from "../../services";
 import { 
   checkSecretsPermission, 
   containsGlobPatterns,
-  repackageSecretToRaw
+  repackageSecretV3ToRaw
 } from "../../helpers/secrets";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
@@ -147,21 +147,21 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
     );
     return res.status(200).send({
       secrets: secrets.map((secret) =>
-        repackageSecretToRaw({
+      repackageSecretV3ToRaw({
           secret,
           key
         })
       ),
       imports: importedSecrets.map((el) => ({
         ...el,
-        secrets: el.secrets.map((secret) => repackageSecretToRaw({ secret, key }))
+        secrets: el.secrets.map((secret) => repackageSecretV3ToRaw({ secret, key }))
       }))
     });
   }
 
   return res.status(200).send({
     secrets: secrets.map((secret) => {
-      const rep = repackageSecretToRaw({
+      const rep = repackageSecretV3ToRaw({
         secret,
         key
       });
@@ -270,7 +270,7 @@ export const getSecretByNameRaw = async (req: Request, res: Response) => {
   });
 
   return res.status(200).send({
-    secret: repackageSecretToRaw({
+    secret: repackageSecretV3ToRaw({
       secret,
       key
     })
@@ -416,19 +416,11 @@ export const createSecretRaw = async (req: Request, res: Response) => {
     skipMultilineEncoding
   });
 
-  await EventService.handleEvent({
-    event: eventPushSecrets({
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath
-    })
-  });
-
   const secretWithoutBlindIndex = secret.toObject();
   delete secretWithoutBlindIndex.secretBlindIndex;
 
   return res.status(200).send({
-    secret: repackageSecretToRaw({
+    secret: repackageSecretV3ToRaw({
       secret: secretWithoutBlindIndex,
       key
     })
@@ -545,16 +537,8 @@ export const updateSecretByNameRaw = async (req: Request, res: Response) => {
     skipMultilineEncoding
   });
 
-  await EventService.handleEvent({
-    event: eventPushSecrets({
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath
-    })
-  });
-
   return res.status(200).send({
-    secret: repackageSecretToRaw({
+    secret: repackageSecretV3ToRaw({
       secret,
       key
     })
@@ -667,7 +651,7 @@ export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
   });
 
   return res.status(200).send({
-    secret: repackageSecretToRaw({
+    secret: repackageSecretV3ToRaw({
       secret,
       key
     })
@@ -854,14 +838,6 @@ export const createSecret = async (req: Request, res: Response) => {
     skipMultilineEncoding
   });
 
-  await EventService.handleEvent({
-    event: eventPushSecrets({
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath
-    })
-  });
-
   const secretWithoutBlindIndex = secret.toObject();
   delete secretWithoutBlindIndex.secretBlindIndex;
 
@@ -967,14 +943,6 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     secretKeyIV
   });
 
-  await EventService.handleEvent({
-    event: eventPushSecrets({
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath
-    })
-  });
-
   return res.status(200).send({
     secret
   });
@@ -1031,14 +999,6 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
     secretPath
   });
 
-  await EventService.handleEvent({
-    event: eventPushSecrets({
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath
-    })
-  });
-
   return res.status(200).send({
     secret
   });
@@ -1081,14 +1041,6 @@ export const createSecretByNameBatch = async (req: Request, res: Response) => {
     workspaceId: new Types.ObjectId(workspaceId),
     secrets,
     authData: req.authData
-  });
-
-  await EventService.handleEvent({
-    event: eventPushSecrets({
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath
-    })
   });
 
   return res.status(200).send({
@@ -1135,14 +1087,6 @@ export const updateSecretByNameBatch = async (req: Request, res: Response) => {
     authData: req.authData
   });
 
-  await EventService.handleEvent({
-    event: eventPushSecrets({
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath
-    })
-  });
-
   return res.status(200).send({
     secrets: updatedSecrets
   });
@@ -1185,14 +1129,6 @@ export const deleteSecretByNameBatch = async (req: Request, res: Response) => {
     workspaceId: new Types.ObjectId(workspaceId),
     secrets,
     authData: req.authData
-  });
-
-  await EventService.handleEvent({
-    event: eventPushSecrets({
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      secretPath
-    })
   });
 
   return res.status(200).send({

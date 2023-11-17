@@ -470,7 +470,7 @@ export const GetSecretV4 = z.object({
     projectId: z.string().trim(),
     environmentSlug: z.string().trim(),
     path: z.string().trim().default("/"),
-    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).optional(),
+    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).default(SECRET_PERSONAL),
     includeImports: z
       .enum(["true", "false"])
       .default("true")
@@ -486,7 +486,7 @@ export const CreateSecretV4 = z.object({
     projectId: z.string().trim(),
     environmentSlug: z.string().trim(),
     path: z.string().trim().default("/"),
-    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]),
+    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).default(SECRET_SHARED),
     secretValue: z
       .string()
       .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
@@ -508,7 +508,7 @@ export const UpdateSecretV4 = z.object({
       .string()
       .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
       .optional(),
-    secretComment: z.string().trim().optional().default(""),
+    secretComment: z.string().trim().optional(),
     skipMultilineEncoding: z.boolean().optional()
   })
 });

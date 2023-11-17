@@ -1,13 +1,13 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth, requireBlindIndicesEnabled, requireE2EEOff} from "../../middleware";
+import { requireAuth} from "../../middleware";
 import { secretsController } from "../../controllers/v4";
 import { AuthMode } from "../../variables";
 
 router.get(
     "/",
     requireAuth({
-        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN]
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN, AuthMode.SERVICE_TOKEN]
     }),
     secretsController.getSecrets
 );
@@ -15,13 +15,7 @@ router.get(
 router.get(
     "/:secretName",
     requireAuth({
-        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN]
-    }),
-    requireBlindIndicesEnabled({
-        locationWorkspaceId: "query"
-    }),
-    requireE2EEOff({
-        locationWorkspaceId: "query"
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN, AuthMode.SERVICE_TOKEN]
     }),
     secretsController.getSecret
 );
@@ -29,13 +23,7 @@ router.get(
 router.post(
     "/:secretName",
     requireAuth({
-        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN]
-    }),
-    requireBlindIndicesEnabled({
-        locationWorkspaceId: "body"
-    }),
-    requireE2EEOff({
-        locationWorkspaceId: "body"
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN, AuthMode.SERVICE_TOKEN]
     }),
     secretsController.createSecret
 );
@@ -43,13 +31,7 @@ router.post(
 router.patch(
     "/:secretName",
     requireAuth({
-        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN]
-    }),
-    requireBlindIndicesEnabled({
-        locationWorkspaceId: "body"
-    }),
-    requireE2EEOff({
-        locationWorkspaceId: "body"
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN, AuthMode.SERVICE_TOKEN]
     }),
     secretsController.updateSecret
 );
@@ -57,13 +39,7 @@ router.patch(
 router.delete(
     "/:secretName",
     requireAuth({
-        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN]
-    }),
-    requireBlindIndicesEnabled({
-        locationWorkspaceId: "body"
-    }),
-    requireE2EEOff({
-        locationWorkspaceId: "body"
+        acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY_V2, AuthMode.SERVICE_ACCESS_TOKEN, AuthMode.SERVICE_TOKEN]
     }),
     secretsController.deleteSecret
 );

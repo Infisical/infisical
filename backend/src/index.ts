@@ -77,6 +77,9 @@ import {
   users as v3UsersRouter,
   workspaces as v3WorkspacesRouter
 } from "./routes/v3";
+import {
+  secrets as v4SecretsRouter
+} from "./routes/v4";
 import { healthCheck } from "./routes/status";
 // import { getLogger } from "./utils/logger";
 import { RouteNotFoundError } from "./utils/errors";
@@ -252,6 +255,9 @@ const main = async () => {
   app.use("/api/v3/workspaces", v3WorkspacesRouter);
   app.use("/api/v3/signup", v3SignupRouter);
   app.use("/api/v3/us", v3UsersRouter);
+  
+  // v4 routes (user-facing)
+  app.use("/api/v4/secrets", v4SecretsRouter);
 
   // api docs
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));

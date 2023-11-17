@@ -51,9 +51,9 @@ export interface UpdateSecretParams {
   environment: string;
   type: "shared" | "personal";
   authData: AuthData;
-  secretValueCiphertext: string;
-  secretValueIV: string;
-  secretValueTag: string;
+  secretValueCiphertext?: string;
+  secretValueIV?: string;
+  secretValueTag?: string;
   secretPath: string;
   secretCommentCiphertext?: string;
   secretCommentIV?: string;

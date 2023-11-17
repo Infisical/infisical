@@ -120,6 +120,7 @@ const secretSchema = new Schema<ISecret>(
     },
     skipMultilineEncoding: {
       type: Boolean,
+      default: false,
       required: false
     },
     algorithm: {

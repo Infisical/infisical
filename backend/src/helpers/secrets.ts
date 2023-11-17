@@ -45,7 +45,8 @@ import {
   decryptSymmetric128BitHexKeyUTF8,
   encryptSymmetric128BitHexKeyUTF8
 } from "../utils/crypto";
-import { TelemetryService } from "../services";
+import { EventService, TelemetryService } from "../services";
+import { eventPushSecrets } from "../events";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
 import { EEAuditLogService, EESecretService } from "../ee/services";
 import { getAuthDataPayloadUserObj } from "../utils/authn/helpers";
@@ -228,13 +229,12 @@ const ERR_FOLDER_NOT_FOUND = BadRequestError({ message: "Folder not found" });
 
 /**
  * Returns an object containing secret [secret] but with its value, key, comment decrypted.
- *
  * Precondition: the workspace for secret [secret] must have E2EE disabled
  * @param {ISecret} secret - secret to repackage to raw
  * @param {String} key - symmetric key to use to decrypt secret
  * @returns
  */
-export const repackageSecretToRaw = ({ secret, key }: { secret: ISecret; key: string }) => {
+export const repackageSecretV3ToRaw = ({ secret, key }: { secret: ISecret; key: string }) => {
   const secretKey = decryptSymmetric128BitHexKeyUTF8({
     ciphertext: secret.secretKeyCiphertext,
     iv: secret.secretKeyIV,
@@ -269,7 +269,8 @@ export const repackageSecretToRaw = ({ secret, key }: { secret: ISecret; key: st
     user: secret.user,
     secretKey,
     secretValue,
-    secretComment
+    secretComment,
+    skipMultilineEncoding: secret.skipMultilineEncoding
   };
 };
 
@@ -626,6 +627,14 @@ export const createSecretHelper = async ({
     });
   }
 
+  await EventService.handleEvent({
+    event: eventPushSecrets({
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      secretPath
+    })
+  });
+
   return secret;
 };
 
@@ -864,7 +873,7 @@ export const updateSecretHelper = async ({
   secretValueIV,
   secretValueTag,
   secretPath,
-  tags,
+  tags, // maybe this can accept just a secretComment?
   secretCommentCiphertext,
   secretCommentIV,
   secretCommentTag,
@@ -959,6 +968,9 @@ export const updateSecretHelper = async ({
         secretKeyIV,
         secretKeyTag,
         secretKeyCiphertext,
+        secretCommentCiphertext,
+        secretCommentIV,
+        secretCommentTag,
         tags,
         skipMultilineEncoding,
         secretBlindIndex: newSecretNameBlindIndex,
@@ -986,9 +998,12 @@ export const updateSecretHelper = async ({
     secretKeyCiphertext: secret.secretKeyCiphertext,
     secretKeyIV: secret.secretKeyIV,
     secretKeyTag: secret.secretKeyTag,
-    secretValueCiphertext,
-    secretValueIV,
-    secretValueTag,
+    secretValueCiphertext: secret.secretValueCiphertext,
+    secretValueIV: secret.secretValueIV,
+    secretValueTag: secret.secretValueTag,
+    secretCommentCiphertext: secret.secretCommentCiphertext,
+    secretCommentIV: secret.secretCommentIV,
+    secretCommentTag: secret.secretCommentTag,
     skipMultilineEncoding,
     algorithm: ALGORITHM_AES_256_GCM,
     keyEncoding: ENCODING_SCHEME_UTF8
@@ -1041,6 +1056,14 @@ export const updateSecretHelper = async ({
       }
     });
   }
+
+  await EventService.handleEvent({
+    event: eventPushSecrets({
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      secretPath
+    })
+  });
 
   return secret;
 };
@@ -1168,6 +1191,14 @@ export const deleteSecretHelper = async ({
       }
     });
   }
+
+  await EventService.handleEvent({
+    event: eventPushSecrets({
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      secretPath
+    })
+  });
 
   return {
     secrets,
@@ -1516,6 +1547,14 @@ export const createSecretBatchHelper = async ({
     });
   }
 
+  await EventService.handleEvent({
+    event: eventPushSecrets({
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      secretPath
+    })
+  });
+
   return newlyCreatedSecrets;
 };
 
@@ -1711,6 +1750,14 @@ export const updateSecretBatchHelper = async ({
     });
   }
 
+  await EventService.handleEvent({
+    event: eventPushSecrets({
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      secretPath
+    })
+  });
+
   return;
 };
 
@@ -1834,7 +1881,54 @@ export const deleteSecretBatchHelper = async ({
     });
   }
 
+  await EventService.handleEvent({
+    event: eventPushSecrets({
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      secretPath
+    })
+  });
+
   return {
     secrets: deletedSecrets
   };
 };
+
+// --- v4/secrets helpers
+export const packageSecretV4 = ({
+  secret,
+  key
+}: {
+  secret: ISecret;
+  key: string;
+}) => {
+
+  const {
+    _id,
+    version,
+    workspace,
+    type,
+    environment,
+    user,
+    secretKey,
+    secretValue,
+    secretComment,
+    skipMultilineEncoding
+  } = repackageSecretV3ToRaw({
+    secret,
+    key
+  });
+
+  return ({
+    _id,
+    version,
+    projectId: workspace,
+    environmentSlug: environment,
+    type,
+    user,
+    secretName: secretKey,
+    secretValue,
+    secretComment,
+    skipMultilineEncoding
+  });
+}
