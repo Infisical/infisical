@@ -449,3 +449,80 @@ export const DeleteSecretByNameBatchV3 = z.object({
       .min(1)
   })
 });
+
+export const GetSecretsV4 = z.object({
+  query: z.object({
+    projectId: z.string().trim(),
+    environmentSlug: z.string().trim(),
+    path: z.string().trim().default("/"),
+    includeImports: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true")
+  })
+});
+
+export const GetSecretV4 = z.object({
+  params: z.object({
+    secretName: z.string().trim()
+  }),
+  query: z.object({
+    projectId: z.string().trim(),
+    environmentSlug: z.string().trim(),
+    path: z.string().trim().default("/"),
+    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).optional(),
+    includeImports: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true")
+  })
+});
+
+export const CreateSecretV4 = z.object({
+  params: z.object({
+    secretName: z.string().trim()
+  }),
+  body: z.object({
+    projectId: z.string().trim(),
+    environmentSlug: z.string().trim(),
+    path: z.string().trim().default("/"),
+    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]),
+    secretValue: z
+      .string()
+      .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
+    secretComment: z.string().trim().optional().default(""),
+    skipMultilineEncoding: z.boolean().optional().default(false),
+  })
+});
+
+export const UpdateSecretV4 = z.object({
+  params: z.object({
+    secretName: z.string().trim()
+  }),
+  body: z.object({
+    projectId: z.string().trim(),
+    environmentSlug: z.string().trim(),
+    path: z.string().trim().default("/"),
+    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).default(SECRET_SHARED),
+    secretValue: z
+      .string()
+      .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
+      .optional(),
+    secretComment: z.string().trim().optional().default(""),
+    skipMultilineEncoding: z.boolean().optional()
+  })
+});
+
+export const DeleteSecretV4 = z.object({
+  params: z.object({
+    secretName: z.string().trim()
+  }),
+  body: z.object({
+    projectId: z.string().trim(),
+    environmentSlug: z.string().trim(),
+    path: z.string().trim().default("/"),
+    type: z.enum([SECRET_SHARED, SECRET_PERSONAL]).default(SECRET_SHARED)
+  })
+});
+
+

@@ -3,130 +3,24 @@ import { Types } from "mongoose";
 import { EventService, SecretService } from "../../services";
 import { eventPushSecrets } from "../../events";
 import { BotService } from "../../services";
-import { containsGlobPatterns, isValidScopeV3, repackageSecretToRaw } from "../../helpers/secrets";
+import { 
+  checkSecretsPermission, 
+  containsGlobPatterns,
+  repackageSecretToRaw
+} from "../../helpers/secrets";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
-import { Folder, IMembership, IServiceTokenData, IServiceTokenDataV3 } from "../../models";
-import { Permission } from "../../models/serviceTokenDataV3";
+import { Folder, IServiceTokenData } from "../../models";
 import { getFolderByPath } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/secrets";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  getUserProjectPermissions
-} from "../../ee/services/ProjectRoleService";
-import { ForbiddenError, subject } from "@casl/ability";
-import {
-  validateServiceTokenDataClientForWorkspace,
-  validateServiceTokenDataV3ClientForWorkspace
-} from "../../validation";
-import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variables";
-import { ActorType } from "../../ee/models";
-import { UnauthorizedRequestError } from "../../utils/errors";
-import { AuthData } from "../../interfaces/middleware";
+import { ProjectPermissionActions } from "../../ee/services/ProjectRoleService";
 import {
   generateSecretApprovalRequest,
   getSecretPolicyOfBoard
 } from "../../ee/services/SecretApprovalService";
 import { CommitType } from "../../ee/models/secretApprovalRequest";
-import { IRole } from "../../ee/models/role";
-
-const checkSecretsPermission = async ({
-  authData,
-  workspaceId,
-  environment,
-  secretPath,
-  secretAction
-}: {
-  authData: AuthData;
-  workspaceId: string;
-  environment: string;
-  secretPath: string;
-  secretAction: ProjectPermissionActions; // CRUD
-}): Promise<{
-  authVerifier: (env: string, secPath: string) => boolean;
-  membership?: Omit<IMembership, "customRole"> & { customRole: IRole };
-}> => {
-  let STV2RequiredPermissions = [];
-  let STV3RequiredPermissions: Permission[] = [];
-
-  switch (secretAction) {
-    case ProjectPermissionActions.Create:
-      STV2RequiredPermissions = [PERMISSION_WRITE_SECRETS];
-      STV3RequiredPermissions = [Permission.WRITE];
-      break;
-    case ProjectPermissionActions.Read:
-      STV2RequiredPermissions = [PERMISSION_READ_SECRETS];
-      STV3RequiredPermissions = [Permission.READ];
-      break;
-    case ProjectPermissionActions.Edit:
-      STV2RequiredPermissions = [PERMISSION_WRITE_SECRETS];
-      STV3RequiredPermissions = [Permission.WRITE];
-      break;
-    case ProjectPermissionActions.Delete:
-      STV2RequiredPermissions = [PERMISSION_WRITE_SECRETS];
-      STV3RequiredPermissions = [Permission.WRITE];
-      break;
-  }
-
-  switch (authData.actor.type) {
-    case ActorType.USER: {
-      const { permission, membership } = await getUserProjectPermissions(
-        authData.actor.metadata.userId,
-        workspaceId
-      );
-      ForbiddenError.from(permission).throwUnlessCan(
-        secretAction,
-        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-      );
-      return {
-        authVerifier: (env: string, secPath: string) =>
-          permission.can(
-            secretAction,
-            subject(ProjectPermissionSub.Secrets, {
-              environment: env,
-              secretPath: secPath
-            })
-          ),
-        membership
-      };
-    }
-    case ActorType.SERVICE: {
-      await validateServiceTokenDataClientForWorkspace({
-        serviceTokenData: authData.authPayload as IServiceTokenData,
-        workspaceId: new Types.ObjectId(workspaceId),
-        environment,
-        secretPath,
-        requiredPermissions: STV2RequiredPermissions
-      });
-      return { authVerifier: () => true };
-    }
-    case ActorType.SERVICE_V3: {
-      await validateServiceTokenDataV3ClientForWorkspace({
-        authData,
-        serviceTokenData: authData.authPayload as IServiceTokenDataV3,
-        workspaceId: new Types.ObjectId(workspaceId),
-        environment,
-        secretPath,
-        requiredPermissions: STV3RequiredPermissions
-      });
-      return {
-        authVerifier: (env: string, secPath: string) =>
-          isValidScopeV3({
-            authPayload: authData.authPayload as IServiceTokenDataV3,
-            environment: env,
-            secretPath: secPath,
-            requiredPermissions: STV3RequiredPermissions
-          })
-      };
-    }
-    default: {
-      throw UnauthorizedRequestError();
-    }
-  }
-};
 
 /**
  * Return secrets for workspace with id [workspaceId] and environment

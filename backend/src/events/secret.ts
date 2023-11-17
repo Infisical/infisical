@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { EVENT_PULL_SECRETS, EVENT_PUSH_SECRETS } from "../variables";
+import { EVENT_PUSH_SECRETS } from "../variables";
 
 interface PushSecret {
   ciphertextKey: string;
@@ -33,20 +33,6 @@ const eventPushSecrets = ({
     workspaceId,
     environment,
     secretPath,
-    payload: {}
-  };
-};
-
-/**
- * Return event for pulling secrets
- * @param {Object} obj
- * @param {String} obj.workspaceId - id of workspace to pull secrets from
- * @returns
- */
-const eventPullSecrets = ({ workspaceId }: { workspaceId: string }) => {
-  return {
-    name: EVENT_PULL_SECRETS,
-    workspaceId,
     payload: {}
   };
 };
