@@ -72,7 +72,6 @@ func (r *InfisicalSecretReconciler) GetInfisicalTokenFromKubeSecret(ctx context.
 	// default to new secret ref structure
 	secretName := infisicalSecret.Spec.Authentication.ServiceToken.ServiceTokenSecretReference.SecretName
 	secretNamespace := infisicalSecret.Spec.Authentication.ServiceToken.ServiceTokenSecretReference.SecretNamespace
-
 	// fall back to previous secret ref
 	if secretName == "" {
 		secretName = infisicalSecret.Spec.TokenSecretReference.SecretName
@@ -129,6 +128,13 @@ func (r *InfisicalSecretReconciler) GetInfisicalServiceAccountCredentialsFromKub
 
 func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, secretsFromAPI []model.SingleEnvironmentVariable, encryptedSecretsResponse api.GetEncryptedSecretsV3Response) error {
 	plainProcessedSecrets := make(map[string][]byte)
+	secretType := infisicalSecret.Spec.ManagedSecretReference.SecretType
+
+	// Set the default secret type to "Opaque" if not provided
+	if secretType == "" {
+		secretType = "Opaque"
+	}
+
 	for _, secret := range secretsFromAPI {
 		plainProcessedSecrets[secret.Key] = []byte(secret.Value) // plain process
 	}
@@ -142,7 +148,7 @@ func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context
 				SECRET_VERSION_ANNOTATION: encryptedSecretsResponse.ETag,
 			},
 		},
-		Type: "Opaque",
+		Type: corev1.SecretType(secretType),
 		Data: plainProcessedSecrets,
 	}
 
@@ -151,7 +157,7 @@ func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context
 		return fmt.Errorf("unable to create the managed Kubernetes secret : %w", err)
 	}
 
-	fmt.Println("Successfully created a managed Kubernetes secret with your Infisical secrets")
+	fmt.Printf("Successfully created a managed Kubernetes secret with your Infisical secrets. Type: %s\n", secretType)
 	return nil
 }
 

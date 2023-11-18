@@ -41,6 +41,10 @@ type KubeSecretReference struct {
 	// The name space where the Kubernetes Secret is located
 	// +kubebuilder:validation:Required
 	SecretNamespace string `json:"secretNamespace"`
+
+	// The Kubernetes Secret type. More info: https://kubernetes.io/docs/concepts/configuration/secret/#secret-types
+	// +kubebuilder:validation:Optional
+	SecretType string `json:"secretType"`
 }
 
 // InfisicalSecretSpec defines the desired state of InfisicalSecret
