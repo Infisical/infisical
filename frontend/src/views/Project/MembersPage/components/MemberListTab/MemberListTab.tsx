@@ -160,7 +160,7 @@ export const MemberListTab = () => {
 
   const findRoleFromId = useCallback(
     (roleId: string) => {
-      return roles.find(({ _id: id }) => id === roleId);
+      return (roles || []).find(({ _id: id }) => id === roleId);
     },
     [roles]
   );
@@ -305,7 +305,7 @@ export const MemberListTab = () => {
                                     onRoleChange(membershipId, selectedRole)
                                   }
                                 >
-                                  {roles
+                                  {(roles || [])
                                     .filter(({ slug }) =>
                                       slug === "owner" ? isIamOwner || role === "owner" : true
                                     )

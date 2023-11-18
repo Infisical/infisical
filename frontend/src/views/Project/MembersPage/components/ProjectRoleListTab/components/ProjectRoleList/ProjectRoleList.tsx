@@ -64,6 +64,8 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
     }
   };
 
+  // roles={roles as TRole<string>[]}
+
   return (
     <div className="w-full">
       <div className="mb-4 flex">
@@ -99,7 +101,7 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
             </THead>
             <TBody>
               {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
-              {roles?.map((role) => {
+              {(roles as TRole<string>[])?.map((role) => {
                 const { _id: id, name, slug } = role;
                 const isNonMutatable = ["admin", "member", "viewer"].includes(slug);
 
