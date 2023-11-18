@@ -47,3 +47,39 @@ export const ReorderWorkspaceEnvironmentsV2 = z.object({
     otherEnvironmentName: z.string().trim()
   })
 });
+
+export const CreateEnvironmentV4 = z.object({
+  body: z.object({
+    projectId: z.string().trim(),
+    environmentSlug: z.string().trim(),
+    environmentName: z.string().trim()
+  })
+});
+
+export const GetEnvironmentsV4 = z.object({
+  body: z.object({
+    projectId: z.string().trim(),
+    environmentSlug: z.string().trim(),
+    environmentName: z.string().trim()
+  })
+});
+
+export const UpdateEnvironmentV4 = z.object({
+  params: z.object({
+    environmentSlug: z.string().trim(),
+  }),
+  body: z.object({
+    projectId: z.string().trim(),
+    environmentName: z.string().trim().optional(),
+    newEnvironmentSlug: z.string().trim().optional()
+  })
+});
+
+export const DeleteEnvironmentV4 = z.object({
+  params: z.object({
+    environmentSlug: z.string().trim()
+  }),
+  body: z.object({
+    projectId: z.string().trim()
+  })
+});

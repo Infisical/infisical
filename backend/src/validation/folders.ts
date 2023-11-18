@@ -41,10 +41,8 @@ export const GetFoldersV1 = z.object({
 });
 
 export const CreateFolderV2 = z.object({
-  params: z.object({
-    folderName: z.string().trim()
-  }),
   body: z.object({
+    folderName: z.string().trim(),
     projectId: z.string().trim(),
     environmentSlug: z.string().trim(),
     path: z.string().trim().default("/")

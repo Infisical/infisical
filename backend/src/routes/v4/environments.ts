@@ -1,7 +1,7 @@
 import express from "express";
 const router = express.Router();
-import { requireAuth} from "../../middleware";
-import { foldersController } from "../../controllers/v4";
+import { requireAuth } from "../../middleware";
+import { environmentsController } from "../../controllers/v4";
 // import { AuthMode } from "../../variables";
 
 router.post(
@@ -9,7 +9,7 @@ router.post(
     requireAuth({
         acceptedAuthModes: []
     }),
-    foldersController.createFolder
+    environmentsController.createEnvironment
 );
 
 router.get(
@@ -17,23 +17,23 @@ router.get(
     requireAuth({
         acceptedAuthModes: []
     }),
-    foldersController.getFolders
+    environmentsController.getEnvironments
 );
 
 router.patch(
-    ":/folderName",
+    "/:environmentSlug",
     requireAuth({
         acceptedAuthModes: []
     }),
-    foldersController.updateFolder
+    environmentsController.updateEnvironment
 );
 
 router.delete(
-    "/:folderName",
+    "/:environmentSlug",
     requireAuth({
         acceptedAuthModes: []
     }),
-    foldersController.deleteFolder
-);
+    environmentsController.deleteEnvironment
+)
 
 export default router;
