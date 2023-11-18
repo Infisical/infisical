@@ -100,7 +100,7 @@ const serviceTokenDataV3Schema = new Schema(
             default: 7200,
             required: true
         },
-        scopes: {
+        scopes: { // TODO: consider switching this out for roles instead
             type: [
                 {
                     environment: {

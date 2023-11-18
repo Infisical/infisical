@@ -3,12 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Tab } from "@headlessui/react";
 
 import { ProjectGeneralTab } from "./components/ProjectGeneralTab";
-import { ProjectServiceTokensTab } from "./components/ProjectServiceTokensTab";
 import { WebhooksTab } from "./components/WebhooksTab";
 
 const tabs = [
   { name: "General", key: "tab-project-general" },
-  { name: "Service Tokens", key: "tab-project-service-tokens" },
   { name: "Webhooks", key: "tab-project-webhooks" }
 ];
 
@@ -40,9 +38,6 @@ export const ProjectSettingsPage = () => {
           <Tab.Panels>
             <Tab.Panel>
               <ProjectGeneralTab />
-            </Tab.Panel>
-            <Tab.Panel>
-              <ProjectServiceTokensTab />
             </Tab.Panel>
             <Tab.Panel>
               <WebhooksTab />
