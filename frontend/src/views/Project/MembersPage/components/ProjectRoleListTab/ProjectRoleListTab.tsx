@@ -8,13 +8,8 @@ import { TRole } from "@app/hooks/api/roles/types";
 import { ProjectRoleList } from "./components/ProjectRoleList";
 import { ProjectRoleModifySection } from "./components/ProjectRoleModifySection";
 
-type Props = {
-  roles?: TRole<string>[];
-  isRolesLoading?: boolean;
-};
-
 export const ProjectRoleListTab = withProjectPermission(
-  ({ roles = [], isRolesLoading }: Props) => {
+  () => {
     const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["editRole"] as const);
 
     return popUp.editRole.isOpen ? (
@@ -38,11 +33,7 @@ export const ProjectRoleListTab = withProjectPermission(
         animate={{ opacity: 1, translateX: 0 }}
         exit={{ opacity: 0, translateX: -30 }}
       >
-        <ProjectRoleList
-          roles={roles}
-          isRolesLoading={isRolesLoading}
-          onSelectRole={(role) => handlePopUpOpen("editRole", role)}
-        />
+        <ProjectRoleList onSelectRole={(role) => handlePopUpOpen("editRole", role)} />
       </motion.div>
     );
   },

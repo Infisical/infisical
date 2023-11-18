@@ -46,17 +46,11 @@ import {
   useAddUserToWs,
   useDeleteUserFromWorkspace,
   useGetOrgUsers,
+  useGetRoles,
   useGetUserWsKey,
   useGetWorkspaceUsers,
   useUpdateUserWorkspaceRole,
-  useUploadWsKey
-} from "@app/hooks/api";
-import { TRole } from "@app/hooks/api/roles/types";
-
-type Props = {
-  roles?: TRole<string>[];
-  isRolesLoading?: boolean;
-};
+  useUploadWsKey} from "@app/hooks/api";
 
 const addMemberFormSchema = z.object({
   orgMembershipId: z.string().trim()
@@ -64,7 +58,7 @@ const addMemberFormSchema = z.object({
 
 type TAddMemberForm = z.infer<typeof addMemberFormSchema>;
 
-export const MemberListTab = ({ roles = [], isRolesLoading }: Props) => {
+export const MemberListTab = () => {
   const { createNotification } = useNotificationContext();
   const { t } = useTranslation();
 
@@ -76,6 +70,10 @@ export const MemberListTab = ({ roles = [], isRolesLoading }: Props) => {
   const orgId = currentOrg?._id || "";
   const workspaceId = currentWorkspace?._id || "";
 
+  const { data: roles, isLoading: isRolesLoading } = useGetRoles({
+    orgId,
+    workspaceId
+  });
   const { data: wsKey } = useGetUserWsKey(workspaceId);
   const { data: members, isLoading: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
   const { data: orgUsers } = useGetOrgUsers(orgId);
