@@ -3,11 +3,10 @@ import { Types } from "mongoose";
 import { EventService, SecretService } from "../../services";
 import { eventPushSecrets } from "../../events";
 import { BotService } from "../../services";
-import { containsGlobPatterns, isValidScopeV3, repackageSecretToRaw } from "../../helpers/secrets";
+import { containsGlobPatterns, repackageSecretToRaw } from "../../helpers/secrets";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
 import { Folder, IMembership, IServiceTokenData, IServiceTokenDataV3 } from "../../models";
-import { Permission } from "../../models/serviceTokenDataV3";
 import { getFolderByPath } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
 import { validateRequest } from "../../helpers/validation";
@@ -50,24 +49,19 @@ const checkSecretsPermission = async ({
   membership?: Omit<IMembership, "customRole"> & { customRole: IRole };
 }> => {
   let STV2RequiredPermissions = [];
-  let STV3RequiredPermissions: Permission[] = [];
 
   switch (secretAction) {
     case ProjectPermissionActions.Create:
       STV2RequiredPermissions = [PERMISSION_WRITE_SECRETS];
-      STV3RequiredPermissions = [Permission.WRITE];
       break;
     case ProjectPermissionActions.Read:
       STV2RequiredPermissions = [PERMISSION_READ_SECRETS];
-      STV3RequiredPermissions = [Permission.READ];
       break;
     case ProjectPermissionActions.Edit:
       STV2RequiredPermissions = [PERMISSION_WRITE_SECRETS];
-      STV3RequiredPermissions = [Permission.WRITE];
       break;
     case ProjectPermissionActions.Delete:
       STV2RequiredPermissions = [PERMISSION_WRITE_SECRETS];
-      STV3RequiredPermissions = [Permission.WRITE];
       break;
   }
 
@@ -104,23 +98,27 @@ const checkSecretsPermission = async ({
       return { authVerifier: () => true };
     }
     case ActorType.SERVICE_V3: {
+      
+      // TODO: redo this part
       await validateServiceTokenDataV3ClientForWorkspace({
         authData,
         serviceTokenData: authData.authPayload as IServiceTokenDataV3,
         workspaceId: new Types.ObjectId(workspaceId),
         environment,
-        secretPath,
-        requiredPermissions: STV3RequiredPermissions
       });
-      return {
-        authVerifier: (env: string, secPath: string) =>
-          isValidScopeV3({
-            authPayload: authData.authPayload as IServiceTokenDataV3,
-            environment: env,
-            secretPath: secPath,
-            requiredPermissions: STV3RequiredPermissions
-          })
-      };
+      
+      // TODO: return an authVerifier
+      
+      // return {
+      //   authVerifier: (env: string, secPath: string) =>
+      //     isValidScopeV3({
+      //       authPayload: authData.authPayload as IServiceTokenDataV3,
+      //       environment: env,
+      //       secretPath: secPath,
+      //       requiredPermissions: STV3RequiredPermissions
+      //     })
+      // };
+      return { authVerifier: () => true }
     }
     default: {
       throw UnauthorizedRequestError();

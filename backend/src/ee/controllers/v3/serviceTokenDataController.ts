@@ -8,13 +8,11 @@ import {
     ServiceTokenDataV3Key,
     Workspace
 } from "../../../models";
-import {
-    IServiceTokenV3Scope, 
-    IServiceTokenV3TrustedIp 
-} from "../../../models/serviceTokenDataV3";
+import { IServiceTokenV3TrustedIp } from "../../../models/serviceTokenDataV3";
 import {
     ActorType,
-    EventType
+    EventType,
+    Role
 } from "../../models";
 import { validateRequest } from "../../../helpers/validation";
 import * as reqValidator from "../../../validation/serviceTokenDataV3";
@@ -29,7 +27,7 @@ import { BadRequestError, ResourceNotFoundError, UnauthorizedRequestError } from
 import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
 import { EEAuditLogService, EELicenseService } from "../../services";
 import { getAuthSecret } from "../../../config";
-import { AuthTokenType } from "../../../variables";
+import { ADMIN, AuthTokenType, CUSTOM, MEMBER, VIEWER } from "../../../variables";
 
 /**
  * Return project key for service token V3
@@ -163,7 +161,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             name, 
             workspaceId, 
             publicKey, 
-            scopes,
+            role,
             trustedIps,
             expiresIn, 
             accessTokenTTL,
@@ -180,6 +178,19 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
     
     const workspace = await Workspace.findById(workspaceId);
     if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+
+    const isCustomRole = ![ADMIN, MEMBER, VIEWER].includes(role);
+    
+    let customRole;
+    if (isCustomRole) {
+        customRole = await Role.findOne({
+            slug: role,
+            isOrgRole: false,
+            workspace: workspace._id
+        });
+        
+        if (!customRole) throw BadRequestError({ message: "Role not found" });
+    }
 
     const plan = await EELicenseService.getPlan(workspace.organization);
     
@@ -219,7 +230,8 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         accessTokenUsageCount: 0,
         tokenVersion: 1,
         trustedIps: reformattedTrustedIps,
-        scopes,
+        role: isCustomRole ? CUSTOM : role,
+        customRole,
         isActive,
         expiresAt,
         accessTokenTTL,
@@ -250,7 +262,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             metadata: {
                 name,
                 isActive,
-                scopes: scopes as Array<IServiceTokenV3Scope>,
+                role,
                 trustedIps: reformattedTrustedIps as Array<IServiceTokenV3TrustedIp>,
                 expiresAt
             }
@@ -278,7 +290,7 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
         body: { 
             name, 
             isActive,
-            scopes,
+            role,
             trustedIps,
             expiresIn,
             accessTokenTTL,
@@ -303,6 +315,20 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
 
     const workspace = await Workspace.findById(serviceTokenData.workspace);
     if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+
+    let customRole;
+    if (role) {
+        const isCustomRole = ![ADMIN, MEMBER, VIEWER].includes(role);
+        if (isCustomRole) {
+            customRole = await Role.findOne({
+                slug: role,
+                isOrgRole: false,
+                workspace: workspace._id
+            });
+            
+            if (!customRole) throw BadRequestError({ message: "Role not found" });
+        }
+    }
 
     const plan = await EELicenseService.getPlan(workspace.organization);
 
@@ -335,7 +361,15 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
         {
             name,
             isActive,
-            scopes,
+            role: customRole ? CUSTOM : role,
+            ...(customRole ? {
+                customRole 
+            } : {}),
+            ...(role && !customRole ? { // non-custom role
+                $unset: {
+                    customRole: 1
+                }
+            } : {}),
             trustedIps: reformattedTrustedIps,
             expiresAt,
             accessTokenTTL,
@@ -357,7 +391,7 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
             metadata: {
                 name: serviceTokenData.name,
                 isActive,
-                scopes: scopes as Array<IServiceTokenV3Scope>,
+                role,
                 trustedIps: reformattedTrustedIps as Array<IServiceTokenV3TrustedIp>,
                 expiresAt
             }
@@ -415,7 +449,7 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
             metadata: {
                 name: serviceTokenData.name,
                 isActive: serviceTokenData.isActive,
-                scopes: serviceTokenData.scopes as Array<IServiceTokenV3Scope>,
+                role: serviceTokenData.role,
                 trustedIps: serviceTokenData.trustedIps as Array<IServiceTokenV3TrustedIp>,
                 expiresAt: serviceTokenData.expiresAt
             }

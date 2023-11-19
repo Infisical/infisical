@@ -22,8 +22,7 @@ import {
     useGetWorkspaceServiceTokenDataV3,
     useUpdateServiceTokenV3
 } from "@app/hooks/api";
-import { Permission } from "@app/hooks/api/serviceTokens/enums"
-import { ServiceTokenV3Scope, ServiceTokenV3TrustedIp } from "@app/hooks/api/serviceTokens/types"
+import { ServiceTokenV3TrustedIp } from "@app/hooks/api/serviceTokens/types"
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -32,7 +31,7 @@ type Props = {
       data?: {
         serviceTokenDataId?: string;
         name?: string;
-        scopes?: ServiceTokenV3Scope[];
+        role?: string;
         trustedIps?: ServiceTokenV3TrustedIp[];
         accessTokenTTL?: number;
         isRefreshTokenRotationEnabled?: boolean;
@@ -81,7 +80,7 @@ export const ServiceTokenV3Table = ({
                     <Tr>
                         <Th>Name</Th>
                         <Th>Status</Th>
-                        <Th>Scopes</Th>
+                        <Th>Role</Th>
                         <Th>Trusted IPs</Th>
                         <Th>Access Token TTL</Th>
                         <Th>Created At</Th>
@@ -98,7 +97,7 @@ export const ServiceTokenV3Table = ({
                         _id,
                         name,
                         isActive,
-                        scopes,
+                        role,
                         trustedIps,
                         createdAt,
                         expiresAt,
@@ -128,26 +127,7 @@ export const ServiceTokenV3Table = ({
                                         )}
                                     </ProjectPermissionCan>
                                 </Td>
-                                <Td>
-                                    {scopes.map((scope) => {
-                                        let permissionText = "read"
-                                        if (
-                                            scope.permissions.includes(Permission.WRITE) &&
-                                            scope.permissions.includes(Permission.READ)
-                                        ) {
-                                            permissionText = "readWrite";
-                                        }
-                                        
-                                        return (
-                                            <p key={`service-token-${_id}-scope-${scope.environment}-${scope.secretPath}`}>
-                                                <span className="font-bold">
-                                                    {permissionText}
-                                                </span>
-                                                {` @${scope.environment} - ${scope.secretPath}`}
-                                            </p>
-                                        );
-                                    })}
-                                </Td> 
+                                <Td>{role}</Td> 
                                 <Td>
                                     {trustedIps.map(({
                                         _id: trustedIpId,
@@ -175,7 +155,7 @@ export const ServiceTokenV3Table = ({
                                                     handlePopUpOpen("serviceTokenV3", {
                                                         serviceTokenDataId: _id,
                                                         name,
-                                                        scopes,
+                                                        role,
                                                         trustedIps,
                                                         accessTokenTTL,
                                                         isRefreshTokenRotationEnabled

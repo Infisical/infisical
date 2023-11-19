@@ -1,11 +1,10 @@
 import { Types } from "mongoose";
 import { IServiceTokenDataV3 } from "../models";
-import { Permission } from "../models/serviceTokenDataV3";
 import { z } from "zod";
 import { UnauthorizedRequestError } from "../utils/errors";
-import { isValidScopeV3 } from "../helpers";
 import { AuthData } from "../interfaces/middleware";
 import { checkIPAgainstBlocklist } from "../utils/ip";
+import { MEMBER } from "../variables";
 
 /**
  * Validate that service token (client) can access workspace
@@ -22,15 +21,13 @@ import { checkIPAgainstBlocklist } from "../utils/ip";
   serviceTokenData,
   workspaceId,
   environment,
-  secretPath = "/",
-  requiredPermissions
+  // secretPath = "/",
 }: {
   authData: AuthData;
   serviceTokenData: IServiceTokenDataV3;
   workspaceId: Types.ObjectId;
   environment?: string;
-  secretPath?: string;
-  requiredPermissions: Permission[];
+  // secretPath?: string;
 }) => {
   
   // validate ST V3 IP address
@@ -47,16 +44,19 @@ import { checkIPAgainstBlocklist } from "../utils/ip";
   }
   
   if (environment) {
-    const isValid = isValidScopeV3({
-      authPayload: serviceTokenData,
-      environment,
-      secretPath,
-      requiredPermissions
-    });
     
-    if (!isValid) throw UnauthorizedRequestError({
-      message: "Failed service token authorization for the given workspace"
-    });
+    // TODO: validation fun for ST V3
+    
+    // const isValid = isValidScopeV3({
+    //   authPayload: serviceTokenData,
+    //   environment,
+    //   secretPath,
+    //   requiredPermissions
+    // });
+    
+    // if (!isValid) throw UnauthorizedRequestError({
+    //   message: "Failed service token authorization for the given workspace"
+    // });
   }
 };
 
@@ -71,20 +71,14 @@ export const CreateServiceTokenV3 = z.object({
     name: z.string().trim(),
     workspaceId: z.string().trim(),
     publicKey: z.string().trim(),
-    scopes: z
-      .object({
-        permissions: z.enum(["read", "write"]).array(),
-        environment: z.string().trim(),
-        secretPath: z.string().trim()
-      })
-      .array()
-      .min(1),
-    trustedIps: z
+    role: z.string().trim().min(1).default(MEMBER),
+    trustedIps: z // TODO: provide default
       .object({
         ipAddress: z.string().trim(),
       })
       .array()
-      .min(1),
+      .min(1)
+      .default([{ ipAddress: "0.0.0.0/0" }]),
     expiresIn: z.number().optional(),
     accessTokenTTL: z.number().int().min(1),
     encryptedKey: z.string().trim(),
@@ -100,15 +94,7 @@ export const UpdateServiceTokenV3 = z.object({
   body: z.object({
     name: z.string().trim().optional(),
     isActive: z.boolean().optional(),
-    scopes: z
-      .object({
-        permissions: z.enum(["read", "write"]).array(),
-        environment: z.string().trim(),
-        secretPath: z.string().trim()
-      })
-      .array()
-      .min(1)
-      .optional(),
+    role: z.string().trim().min(1).optional(),
     trustedIps: z
       .object({
         ipAddress: z.string().trim()
