@@ -63,3 +63,18 @@ type GetAllSecretsParameters struct {
 	SecretsPath              string
 	IncludeImport            bool
 }
+
+type SetAllSecretsParameters struct {
+	SecretsToSet           []string
+	Environment              string
+	EnvironmentPassedViaFlag bool
+	InfisicalToken           string
+	WorkspaceId              string
+	SecretsPath              string
+}
+
+type SecretSetOperation struct {
+	SecretKey       string
+	SecretValue     string
+	SecretOperation string
+}
