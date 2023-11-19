@@ -8,7 +8,7 @@ import { EEAuditLogService } from "../../ee/services";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { sendMail } from "../../helpers";
 import { validateRequest } from "../../helpers/validation";
@@ -27,7 +27,11 @@ export const addUserToWorkspace = async (req: Request, res: Response) => {
   if (!workspace) throw new Error("Failed to find workspace");
 
   // check permission
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Create,
     ProjectPermissionSub.Member

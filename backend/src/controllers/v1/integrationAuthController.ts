@@ -25,7 +25,7 @@ import * as reqValidator from "../../validation/integrationAuth";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 import { getIntegrationAuthAccessHelper } from "../../helpers";
@@ -40,15 +40,15 @@ export const getIntegrationAuth = async (req: Request, res: Response) => {
 
   const integrationAuth = await IntegrationAuth.findById(integrationAuthId);
 
-  if (!integrationAuth)
-    return res.status(400).send({
-      message: "Failed to find integration authorization"
-    });
+  if (!integrationAuth) return res.status(400).send({
+    message: "Failed to find integration authorization"
+  });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -79,7 +79,11 @@ export const oAuthExchange = async (req: Request, res: Response) => {
   } = await validateRequest(reqValidator.OauthExchangeV1, req);
   if (!INTEGRATION_SET.has(integration)) throw new Error("Failed to validate integration");
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Create,
     ProjectPermissionSub.Integrations
@@ -131,7 +135,11 @@ export const saveIntegrationToken = async (req: Request, res: Response) => {
     body: { workspaceId, integration, url, accessId, namespace, accessToken, refreshToken }
   } = await validateRequest(reqValidator.SaveIntegrationAccessTokenV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Create,
     ProjectPermissionSub.Integrations
@@ -224,11 +232,12 @@ export const getIntegrationAuthApps = async (req: Request, res: Response) => {
   const { integrationAuth, accessToken, accessId } = await getIntegrationAuthAccessHelper({
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
+  
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -263,10 +272,11 @@ export const getIntegrationAuthTeams = async (req: Request, res: Response) => {
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -299,10 +309,11 @@ export const getIntegrationAuthVercelBranches = async (req: Request, res: Respon
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -360,10 +371,11 @@ export const getIntegrationAuthChecklyGroups = async (req: Request, res: Respons
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -413,10 +425,11 @@ export const getIntegrationAuthQoveryOrgs = async (req: Request, res: Response) 
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -465,10 +478,11 @@ export const getIntegrationAuthQoveryProjects = async (req: Request, res: Respon
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -526,10 +540,11 @@ export const getIntegrationAuthQoveryEnvironments = async (req: Request, res: Re
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -587,10 +602,11 @@ export const getIntegrationAuthQoveryApps = async (req: Request, res: Response) 
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -648,10 +664,11 @@ export const getIntegrationAuthQoveryContainers = async (req: Request, res: Resp
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -709,10 +726,11 @@ export const getIntegrationAuthQoveryJobs = async (req: Request, res: Response) 
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -771,10 +789,11 @@ export const getIntegrationAuthRailwayEnvironments = async (req: Request, res: R
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -864,10 +883,11 @@ export const getIntegrationAuthRailwayServices = async (req: Request, res: Respo
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -988,10 +1008,11 @@ export const getIntegrationAuthBitBucketWorkspaces = async (req: Request, res: R
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -1044,10 +1065,11 @@ export const getIntegrationAuthNorthflankSecretGroups = async (req: Request, res
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -1132,10 +1154,11 @@ export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: 
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -1201,10 +1224,11 @@ export const deleteIntegrationAuth = async (req: Request, res: Response) => {
     integrationAuthId: new Types.ObjectId(integrationAuthId)
   });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Delete,
     ProjectPermissionSub.Integrations

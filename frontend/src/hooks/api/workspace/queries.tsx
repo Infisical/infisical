@@ -12,14 +12,12 @@ import {
   CreateWorkspaceDTO,
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
-  GetWsEnvironmentDTO,
   NameWorkspaceSecretsDTO,
   RenameWorkspaceDTO,
   ReorderEnvironmentsDTO,
   ToggleAutoCapitalizationDTO,
   UpdateEnvironmentDTO,
-  Workspace,
-  WorkspaceEnv
+  Workspace
 } from "./types";
 
 export const workspaceKeys = {
@@ -31,7 +29,6 @@ export const workspaceKeys = {
   getWorkspaceAuthorization: (workspaceId: string) => [{ workspaceId }, "workspace-authorizations"],
   getWorkspaceIntegrations: (workspaceId: string) => [{ workspaceId }, "workspace-integrations"],
   getAllUserWorkspace: ["workspaces"] as const,
-  getUserWsEnvironments: (workspaceId: string) => ["workspace-env", { workspaceId }] as const,
   getWorkspaceAuditLogs: (workspaceId: string) => [{ workspaceId }] as const,
   getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }] as const,
   getWorkspaceServiceTokenDataV3: (workspaceId: string) =>
@@ -102,21 +99,6 @@ const fetchUserWorkspaceMemberships = async (orgId: string) => {
   );
   return data;
 };
-
-const fetchUserWsEnvironments = async (workspaceId: string) => {
-  const { data } = await apiRequest.get<{ accessibleEnvironments: WorkspaceEnv[] }>(
-    `/api/v2/workspace/${workspaceId}/environments`
-  );
-  return data.accessibleEnvironments;
-};
-
-export const useGetUserWsEnvironments = ({ workspaceId, onSuccess }: GetWsEnvironmentDTO) =>
-  useQuery({
-    enabled: Boolean(workspaceId),
-    onSuccess,
-    queryKey: workspaceKeys.getUserWsEnvironments(workspaceId),
-    queryFn: () => fetchUserWsEnvironments(workspaceId)
-  });
 
 // to get all userids in an org with the workspace they are part of
 export const useGetUserWorkspaceMemberships = (orgId: string) =>

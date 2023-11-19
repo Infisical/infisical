@@ -26,11 +26,11 @@ export interface ServiceActorV3 {
   metadata: ServiceActorMetadata;
 }
 
-export interface MachineActor {
-  type: ActorType.Machine;
-}
+// export interface MachineActor {
+//   type: ActorType.Machine;
+// }
 
-export type Actor = UserActor | ServiceActor | ServiceActorV3 | MachineActor;
+export type Actor = UserActor | ServiceActor | ServiceActorV3;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;

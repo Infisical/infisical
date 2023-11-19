@@ -7,7 +7,6 @@ export {
   useDeleteWsEnvironment,
   useGetUserWorkspaceMemberships,
   useGetUserWorkspaces,
-  useGetUserWsEnvironments,
   useGetWorkspaceAuthorizations,
   useGetWorkspaceById,
   useGetWorkspaceIndexStatus,

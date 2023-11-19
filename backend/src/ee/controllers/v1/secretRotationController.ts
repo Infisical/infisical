@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
+import { Types } from "mongoose";
 import { validateRequest } from "../../../helpers/validation";
 import * as reqValidator from "../../validation/secretRotation";
 import * as secretRotationService from "../../secretRotation/service";
 import {
-  getUserProjectPermissions,
   ProjectPermissionActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  getAuthDataProjectPermissions
 } from "../../services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 
@@ -23,7 +24,11 @@ export const createSecretRotation = async (req: Request, res: Response) => {
     }
   } = await validateRequest(reqValidator.createSecretRotationV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Create,
     ProjectPermissionSub.SecretRotation
@@ -49,7 +54,12 @@ export const restartSecretRotations = async (req: Request, res: Response) => {
   } = await validateRequest(reqValidator.restartSecretRotationV1, req);
 
   const doc = await secretRotationService.getSecretRotationById({ id });
-  const { permission } = await getUserProjectPermissions(req.user._id, doc.workspace.toString());
+
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: doc.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.SecretRotation
@@ -65,7 +75,12 @@ export const deleteSecretRotations = async (req: Request, res: Response) => {
   } = await validateRequest(reqValidator.removeSecretRotationV1, req);
 
   const doc = await secretRotationService.getSecretRotationById({ id });
-  const { permission } = await getUserProjectPermissions(req.user._id, doc.workspace.toString());
+
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: doc.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Delete,
     ProjectPermissionSub.SecretRotation
@@ -80,7 +95,11 @@ export const getSecretRotations = async (req: Request, res: Response) => {
     query: { workspaceId }
   } = await validateRequest(reqValidator.getSecretRotationV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretRotation

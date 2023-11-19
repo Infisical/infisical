@@ -25,7 +25,7 @@ import * as reqValidator from "../../validation";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 
 /**
@@ -39,7 +39,11 @@ export const getWorkspacePublicKeys = async (req: Request, res: Response) => {
     params: { workspaceId }
   } = await validateRequest(reqValidator.GetWorkspacePublicKeysV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Member
@@ -72,7 +76,11 @@ export const getWorkspaceMemberships = async (req: Request, res: Response) => {
     params: { workspaceId }
   } = await validateRequest(reqValidator.GetWorkspaceMembershipsV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Member
@@ -195,7 +203,11 @@ export const deleteWorkspace = async (req: Request, res: Response) => {
     params: { workspaceId }
   } = await validateRequest(reqValidator.DeleteWorkspaceV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Delete,
     ProjectPermissionSub.Workspace
@@ -223,7 +235,11 @@ export const changeWorkspaceName = async (req: Request, res: Response) => {
     body: { name }
   } = await validateRequest(reqValidator.ChangeWorkspaceNameV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.Workspace
@@ -257,7 +273,12 @@ export const getWorkspaceIntegrations = async (req: Request, res: Response) => {
   const {
     params: { workspaceId }
   } = await validateRequest(reqValidator.GetWorkspaceIntegrationsV1, req);
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -283,7 +304,11 @@ export const getWorkspaceIntegrationAuthorizations = async (req: Request, res: R
     params: { workspaceId }
   } = await validateRequest(reqValidator.GetWorkspaceIntegrationAuthorizationsV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -309,7 +334,11 @@ export const getWorkspaceServiceTokens = async (req: Request, res: Response) => 
     params: { workspaceId }
   } = await validateRequest(reqValidator.GetWorkspaceServiceTokensV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.ServiceTokens

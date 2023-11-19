@@ -20,7 +20,7 @@ import { createToken } from "../../../helpers/auth";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability"; 
 import { BadRequestError, ResourceNotFoundError, UnauthorizedRequestError } from "../../../utils/errors";
@@ -170,7 +170,11 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             nonce, // for ServiceTokenDataV3Key
         }
     } = await validateRequest(reqValidator.CreateServiceTokenV3, req);
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const { permission } = await getAuthDataProjectPermissions({
+        authData: req.authData,
+        workspaceId: new Types.ObjectId(workspaceId)
+      });
+
     ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Create,
         ProjectPermissionSub.ServiceTokens
@@ -303,10 +307,10 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
         message: "Service token not found" 
     });
     
-    const { permission } = await getUserProjectPermissions(
-        req.user._id,
-        serviceTokenData.workspace.toString()
-    );
+    const { permission } = await getAuthDataProjectPermissions({
+        authData: req.authData,
+        workspaceId: serviceTokenData.workspace
+    });
     
     ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Edit,
@@ -422,10 +426,10 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
         message: "Service token not found" 
     });
     
-    const { permission } = await getUserProjectPermissions(
-        req.user._id,
-        serviceTokenData.workspace.toString()
-    );
+    const { permission } = await getAuthDataProjectPermissions({
+        authData: req.authData,
+        workspaceId: serviceTokenData.workspace
+    });
     
     ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Delete,
