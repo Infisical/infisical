@@ -1,0 +1,7 @@
+{
+  "watch": "./src",
+  "verbose": true,
+  "ignore": [".git", "node_modules"],
+  "exec": "node esbuild.config.js && node dist/index.js",
+  "ext": "ts json"
+}
