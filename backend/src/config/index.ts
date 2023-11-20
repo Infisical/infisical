@@ -89,6 +89,21 @@ export const getClientSecretGitLabLogin = async () =>
 export const getUrlGitLabLogin = async () =>
   (await client.getSecret("URL_GITLAB_LOGIN")).secretValue || GITLAB_URL;
 
+export const getAwsCloudWatchLog = async () => {
+  const logGroupName =
+    (await client.getSecret("AWS_CLOUDWATCH_LOG_GROUP_NAME")).secretValue || "infisical-log-stream";
+  const region = (await client.getSecret("AWS_CLOUDWATCH_LOG_REGION")).secretValue;
+  const accessKeyId = (await client.getSecret("AWS_CLOUDWATCH_LOG_ACCESS_KEY_ID")).secretValue;
+  const accessKeySecret = (await client.getSecret("AWS_CLOUDWATCH_LOG_ACCESS_KEY_SECRET"))
+    .secretValue;
+  const interval = parseInt(
+    (await client.getSecret("AWS_CLOUDWATCH_LOG_INTERVAL")).secretValue || 1000,
+    10
+  );
+  if (!region || !accessKeyId || !accessKeySecret) return;
+  return { logGroupName, region, accessKeySecret, accessKeyId, interval };
+};
+
 export const getPostHogHost = async () =>
   (await client.getSecret("POSTHOG_HOST")).secretValue || "https://app.posthog.com";
 export const getPostHogProjectApiKey = async () =>
