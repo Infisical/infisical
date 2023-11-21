@@ -4,17 +4,6 @@ import {
     UserAgentType
 } from "./enums";
 
-enum Permission {
-    READ = "read",
-    READ_WRITE = "readWrite"
-}
-
-interface Scope {
-    environment: string;
-    secretPath: string;
-    permission: Permission;
-}
-
 interface UserActorMetadata {
   userId: string;
   email: string;
@@ -211,7 +200,7 @@ interface CreateServiceTokenV3Event {
     metadata: {
         name: string;
         isActive: boolean;
-        scopes: Array<Scope>;
+        role: string;
         expiresAt?: Date;
     }
 }
@@ -221,7 +210,7 @@ interface UpdateServiceTokenV3Event {
     metadata: {
         name?: string;
         isActive?: boolean;
-        scopes?: Array<Scope>;
+        role?: string;
         expiresAt?: Date;
     }
 }
@@ -231,7 +220,7 @@ interface DeleteServiceTokenV3Event {
     metadata: {
         name: string;
         isActive: boolean;
-        scopes: Array<Scope>;
+        role?: string;
         expiresAt?: Date;
     }
 }

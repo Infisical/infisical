@@ -74,6 +74,7 @@ export const MemberListTab = () => {
     orgId,
     workspaceId
   });
+
   const { data: wsKey } = useGetUserWsKey(workspaceId);
   const { data: members, isLoading: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
   const { data: orgUsers } = useGetOrgUsers(orgId);

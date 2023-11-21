@@ -13,7 +13,7 @@ import * as reqValidator from "../../validation/integration";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 
@@ -51,11 +51,12 @@ export const createIntegration = async (req: Request, res: Response) => {
     );
 
   if (!integrationAuth) throw BadRequestError({ message: "Integration auth not found" });
-
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integrationAuth.workspace._id.toString()
-  );
+  
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace._id
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Create,
     ProjectPermissionSub.Integrations
@@ -164,10 +165,11 @@ export const updateIntegration = async (req: Request, res: Response) => {
   const integration = await Integration.findById(integrationId);
   if (!integration) throw BadRequestError({ message: "Integration not found" });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integration.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integration.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.Integrations
@@ -234,10 +236,11 @@ export const deleteIntegration = async (req: Request, res: Response) => {
   const integration = await Integration.findById(integrationId);
   if (!integration) throw BadRequestError({ message: "Integration not found" });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    integration.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integration.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Delete,
     ProjectPermissionSub.Integrations
@@ -285,7 +288,11 @@ export const manualSync = async (req: Request, res: Response) => {
     body: { workspaceId, environment }
   } = await validateRequest(reqValidator.ManualSyncV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.Integrations

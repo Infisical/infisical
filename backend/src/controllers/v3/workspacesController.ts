@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { validateRequest } from "../../helpers/validation";
-import { Secret, ServiceTokenDataV3 } from "../../models";
+import { Membership, Secret, ServiceTokenDataV3, User } from "../../models";
 import { SecretService } from "../../services";
-import { getUserProjectPermissions } from "../../ee/services/ProjectRoleService";
+import { getAuthDataProjectPermissions } from "../../ee/services/ProjectRoleService";
 import { UnauthorizedRequestError } from "../../utils/errors";
 import * as reqValidator from "../../validation/workspace";
 
@@ -19,9 +19,22 @@ export const getWorkspaceBlindIndexStatus = async (req: Request, res: Response) 
     params: { workspaceId }
   } = await validateRequest(reqValidator.GetWorkspaceBlinkIndexStatusV3, req);
 
-  const { membership } = await getUserProjectPermissions(req.user._id, workspaceId);
-  if (membership.role !== "admin")
-    throw UnauthorizedRequestError({ message: "User must be an admin" });
+  await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  if (req.authData.authPayload instanceof User) {
+    const membership = await Membership.findOne({
+      user: req.authData.authPayload._id,
+      workspace: new Types.ObjectId(workspaceId)
+    });
+    
+    if (!membership) throw UnauthorizedRequestError();
+
+    if (membership.role !== "admin")
+      throw UnauthorizedRequestError({ message: "User must be an admin" });
+  }
 
   const secretsWithoutBlindIndex = await Secret.countDocuments({
     workspace: new Types.ObjectId(workspaceId),
@@ -41,9 +54,22 @@ export const getWorkspaceSecrets = async (req: Request, res: Response) => {
     params: { workspaceId }
   } = await validateRequest(reqValidator.GetWorkspaceSecretsV3, req);
 
-  const { membership } = await getUserProjectPermissions(req.user._id, workspaceId);
-  if (membership.role !== "admin")
-    throw UnauthorizedRequestError({ message: "User must be an admin" });
+  await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  if (req.authData.authPayload instanceof User) {
+    const membership = await Membership.findOne({
+      user: req.authData.authPayload._id,
+      workspace: new Types.ObjectId(workspaceId)
+    });
+    
+    if (!membership) throw UnauthorizedRequestError();
+
+    if (membership.role !== "admin")
+      throw UnauthorizedRequestError({ message: "User must be an admin" });
+  }
 
   const secrets = await Secret.find({
     workspace: new Types.ObjectId(workspaceId)
@@ -65,9 +91,22 @@ export const nameWorkspaceSecrets = async (req: Request, res: Response) => {
     body: { secretsToUpdate }
   } = await validateRequest(reqValidator.NameWorkspaceSecretsV3, req);
 
-  const { membership } = await getUserProjectPermissions(req.user._id, workspaceId);
-  if (membership.role !== "admin")
-    throw UnauthorizedRequestError({ message: "User must be an admin" });
+  await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  if (req.authData.authPayload instanceof User) {
+    const membership = await Membership.findOne({
+      user: req.authData.authPayload._id,
+      workspace: new Types.ObjectId(workspaceId)
+    });
+    
+    if (!membership) throw UnauthorizedRequestError();
+
+    if (membership.role !== "admin")
+      throw UnauthorizedRequestError({ message: "User must be an admin" });
+  }
 
   // get secret blind index salt
   const salt = await SecretService.getSecretBlindIndexSalt({
@@ -109,7 +148,7 @@ export const getWorkspaceServiceTokenData = async (req: Request, res: Response) 
   
   const serviceTokenData = await ServiceTokenDataV3.find({
     workspace: new Types.ObjectId(workspaceId)
-  });
+  }).populate("customRole");
   
   return res.status(200).send({
     serviceTokenData

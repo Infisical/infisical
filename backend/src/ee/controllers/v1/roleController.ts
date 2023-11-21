@@ -1,4 +1,6 @@
 import { Request, Response } from "express";
+import { Types } from "mongoose";
+import { Membership, User } from "../../../models";
 import {
   CreateRoleSchema,
   DeleteRoleSchema,
@@ -11,7 +13,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   adminProjectPermissions,
-  getUserProjectPermissions,
+  getAuthDataProjectPermissions,
   memberProjectPermissions,
   viewerProjectPermission
 } from "../../services/ProjectRoleService";
@@ -39,7 +41,10 @@ export const createRole = async (req: Request, res: Response) => {
       throw BadRequestError({ message: "user doesn't have the permission." });
     }
   } else {
-    const { permission } = await getUserProjectPermissions(req.user.id, workspaceId);
+    const { permission } = await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: new Types.ObjectId(workspaceId)
+    });
     if (permission.cannot(ProjectPermissionActions.Create, ProjectPermissionSub.Role)) {
       throw BadRequestError({ message: "User doesn't have the permission." });
     }
@@ -82,7 +87,11 @@ export const updateRole = async (req: Request, res: Response) => {
       throw BadRequestError({ message: "User doesn't have the org permission." });
     }
   } else {
-    const { permission } = await getUserProjectPermissions(req.user.id, workspaceId);
+    const { permission } = await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: new Types.ObjectId(workspaceId)
+    });
+
     if (permission.cannot(ProjectPermissionActions.Edit, ProjectPermissionSub.Role)) {
       throw BadRequestError({ message: "User doesn't have the workspace permission." });
     }
@@ -134,7 +143,11 @@ export const deleteRole = async (req: Request, res: Response) => {
       throw BadRequestError({ message: "User doesn't have the org permission." });
     }
   } else {
-    const { permission } = await getUserProjectPermissions(req.user.id, role.workspace.toString());
+    const { permission } = await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: role.workspace
+    });
+
     if (permission.cannot(ProjectPermissionActions.Delete, ProjectPermissionSub.Role)) {
       throw BadRequestError({ message: "User doesn't have the workspace permission." });
     }
@@ -162,7 +175,11 @@ export const getRoles = async (req: Request, res: Response) => {
       throw BadRequestError({ message: "User doesn't have the org permission." });
     }
   } else {
-    const { permission } = await getUserProjectPermissions(req.user.id, workspaceId);
+    const { permission } = await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: new Types.ObjectId(workspaceId)
+    });
+
     if (permission.cannot(ProjectPermissionActions.Read, ProjectPermissionSub.Role)) {
       throw BadRequestError({ message: "User doesn't have the workspace permission." });
     }
@@ -227,7 +244,19 @@ export const getUserWorkspacePermissions = async (req: Request, res: Response) =
   const {
     params: { workspaceId }
   } = await validateRequest(GetUserProjectPermission, req);
-  const { permission, membership } = await getUserProjectPermissions(req.user._id, workspaceId);
+
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+  
+  let membership;
+  if (req.authData.authPayload instanceof User) {
+    membership = await Membership.findOne({
+      user: req.authData.authPayload._id,
+      workspace: new Types.ObjectId(workspaceId)
+    })
+  }
 
   res.status(200).json({
     data: {

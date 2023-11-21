@@ -3,11 +3,16 @@ import { Types } from "mongoose";
 import { EventService, SecretService } from "../../services";
 import { eventPushSecrets } from "../../events";
 import { BotService } from "../../services";
-import { containsGlobPatterns, isValidScopeV3, repackageSecretToRaw } from "../../helpers/secrets";
+import { containsGlobPatterns, repackageSecretToRaw } from "../../helpers/secrets";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
-import { Folder, IMembership, IServiceTokenData, IServiceTokenDataV3 } from "../../models";
-import { Permission } from "../../models/serviceTokenDataV3";
+import { 
+  Folder, 
+  IServiceTokenData, 
+  Membership,
+  ServiceTokenData, 
+  User 
+} from "../../models";
 import { getFolderByPath } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
 import { validateRequest } from "../../helpers/validation";
@@ -15,13 +20,10 @@ import * as reqValidator from "../../validation/secrets";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError, subject } from "@casl/ability";
-import {
-  validateServiceTokenDataClientForWorkspace,
-  validateServiceTokenDataV3ClientForWorkspace
-} from "../../validation";
+import { validateServiceTokenDataClientForWorkspace } from "../../validation";
 import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variables";
 import { ActorType } from "../../ee/models";
 import { UnauthorizedRequestError } from "../../utils/errors";
@@ -31,7 +33,6 @@ import {
   getSecretPolicyOfBoard
 } from "../../ee/services/SecretApprovalService";
 import { CommitType } from "../../ee/models/secretApprovalRequest";
-import { IRole } from "../../ee/models/role";
 
 const checkSecretsPermission = async ({
   authData,
@@ -47,36 +48,31 @@ const checkSecretsPermission = async ({
   secretAction: ProjectPermissionActions; // CRUD
 }): Promise<{
   authVerifier: (env: string, secPath: string) => boolean;
-  membership?: Omit<IMembership, "customRole"> & { customRole: IRole };
 }> => {
   let STV2RequiredPermissions = [];
-  let STV3RequiredPermissions: Permission[] = [];
 
   switch (secretAction) {
     case ProjectPermissionActions.Create:
       STV2RequiredPermissions = [PERMISSION_WRITE_SECRETS];
-      STV3RequiredPermissions = [Permission.WRITE];
       break;
     case ProjectPermissionActions.Read:
       STV2RequiredPermissions = [PERMISSION_READ_SECRETS];
-      STV3RequiredPermissions = [Permission.READ];
       break;
     case ProjectPermissionActions.Edit:
       STV2RequiredPermissions = [PERMISSION_WRITE_SECRETS];
-      STV3RequiredPermissions = [Permission.WRITE];
       break;
     case ProjectPermissionActions.Delete:
       STV2RequiredPermissions = [PERMISSION_WRITE_SECRETS];
-      STV3RequiredPermissions = [Permission.WRITE];
       break;
   }
 
   switch (authData.actor.type) {
     case ActorType.USER: {
-      const { permission, membership } = await getUserProjectPermissions(
-        authData.actor.metadata.userId,
-        workspaceId
-      );
+      const { permission } = await getAuthDataProjectPermissions({
+        authData,
+        workspaceId: new Types.ObjectId(workspaceId)
+      });
+
       ForbiddenError.from(permission).throwUnlessCan(
         secretAction,
         subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -89,8 +85,7 @@ const checkSecretsPermission = async ({
               environment: env,
               secretPath: secPath
             })
-          ),
-        membership
+          )
       };
     }
     case ActorType.SERVICE: {
@@ -104,22 +99,24 @@ const checkSecretsPermission = async ({
       return { authVerifier: () => true };
     }
     case ActorType.SERVICE_V3: {
-      await validateServiceTokenDataV3ClientForWorkspace({
+      const { permission } = await getAuthDataProjectPermissions({
         authData,
-        serviceTokenData: authData.authPayload as IServiceTokenDataV3,
-        workspaceId: new Types.ObjectId(workspaceId),
-        environment,
-        secretPath,
-        requiredPermissions: STV3RequiredPermissions
+        workspaceId: new Types.ObjectId(workspaceId)
       });
+      
+      ForbiddenError.from(permission).throwUnlessCan(
+        secretAction,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
       return {
         authVerifier: (env: string, secPath: string) =>
-          isValidScopeV3({
-            authPayload: authData.authPayload as IServiceTokenDataV3,
-            environment: env,
-            secretPath: secPath,
-            requiredPermissions: STV3RequiredPermissions
-          })
+          permission.can(
+            secretAction,
+            subject(ProjectPermissionSub.Secrets, {
+              environment: env,
+              secretPath: secPath
+            })
+          )
       };
     }
     default: {
@@ -199,17 +196,20 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
     query: { include_imports: includeImports }
   } = validatedData;
 
-  // if the service token has single scope, it will get all secrets for that scope by default
-  const serviceTokenDetails: IServiceTokenData = req?.serviceTokenData;
-  if (
-    serviceTokenDetails &&
-    serviceTokenDetails.scopes.length == 1 &&
-    !containsGlobPatterns(serviceTokenDetails.scopes[0].secretPath)
-  ) {
-    const scope = serviceTokenDetails.scopes[0];
-    secretPath = scope.secretPath;
-    environment = scope.environment;
-    workspaceId = serviceTokenDetails.workspace.toString();
+  if (req.authData.authPayload instanceof ServiceTokenData) {
+
+    // if the service token has single scope, it will get all secrets for that scope by default
+    const serviceTokenDetails: IServiceTokenData = req?.serviceTokenData;
+    if (
+      serviceTokenDetails &&
+      serviceTokenDetails.scopes.length == 1 &&
+      !containsGlobPatterns(serviceTokenDetails.scopes[0].secretPath)
+    ) {
+      const scope = serviceTokenDetails.scopes[0];
+      secretPath = scope.secretPath;
+      environment = scope.environment;
+      workspaceId = serviceTokenDetails.workspace.toString();
+    }
   }
 
   if (!environment || !workspaceId)
@@ -900,7 +900,7 @@ export const createSecret = async (req: Request, res: Response) => {
     params: { secretName }
   } = await validateRequest(reqValidator.CreateSecretV3, req);
 
-  const { membership } = await checkSecretsPermission({
+  await checkSecretsPermission({
     authData: req.authData,
     workspaceId,
     environment,
@@ -908,35 +908,42 @@ export const createSecret = async (req: Request, res: Response) => {
     secretAction: ProjectPermissionActions.Create
   });
 
-  if (membership && type !== "personal") {
-    const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-    if (secretApprovalPolicy) {
-      const secretApprovalRequest = await generateSecretApprovalRequest({
-        workspaceId,
-        environment,
-        secretPath,
-        policy: secretApprovalPolicy,
-        commiterMembershipId: membership._id.toString(),
-        authData: req.authData,
-        data: {
-          [CommitType.CREATE]: [
-            {
-              secretName,
-              secretValueCiphertext,
-              secretValueIV,
-              secretValueTag,
-              secretCommentIV,
-              secretCommentTag,
-              secretCommentCiphertext,
-              skipMultilineEncoding,
-              secretKeyTag,
-              secretKeyCiphertext,
-              secretKeyIV
-            }
-          ]
-        }
-      });
-      return res.send({ approval: secretApprovalRequest });
+  if (req.authData.authPayload instanceof User) {
+    const membership = await Membership.findOne({
+      user: req.authData.authPayload._id,
+      workspace: new Types.ObjectId(workspaceId)
+    });
+  
+    if (membership && type !== "personal") {
+      const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+      if (secretApprovalPolicy) {
+        const secretApprovalRequest = await generateSecretApprovalRequest({
+          workspaceId,
+          environment,
+          secretPath,
+          policy: secretApprovalPolicy,
+          commiterMembershipId: membership._id.toString(),
+          authData: req.authData,
+          data: {
+            [CommitType.CREATE]: [
+              {
+                secretName,
+                secretValueCiphertext,
+                secretValueIV,
+                secretValueTag,
+                secretCommentIV,
+                secretCommentTag,
+                secretCommentCiphertext,
+                skipMultilineEncoding,
+                secretKeyTag,
+                secretKeyCiphertext,
+                secretKeyIV
+              }
+            ]
+          }
+        });
+        return res.send({ approval: secretApprovalRequest });
+      }
     }
   }
 
@@ -1009,7 +1016,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     throw BadRequestError({ message: "Missing encrypted key" });
   }
 
-  const { membership } = await checkSecretsPermission({
+  await checkSecretsPermission({
     authData: req.authData,
     workspaceId,
     environment,
@@ -1017,37 +1024,44 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     secretAction: ProjectPermissionActions.Edit
   });
 
-  if (membership && type !== "personal") {
-    const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-    if (secretApprovalPolicy) {
-      const secretApprovalRequest = await generateSecretApprovalRequest({
-        workspaceId,
-        environment,
-        secretPath,
-        policy: secretApprovalPolicy,
-        commiterMembershipId: membership._id.toString(),
-        authData: req.authData,
-        data: {
-          [CommitType.UPDATE]: [
-            {
-              secretName,
-              newSecretName,
-              secretValueCiphertext,
-              secretValueIV,
-              secretValueTag,
-              tags,
-              secretCommentIV,
-              secretCommentTag,
-              secretCommentCiphertext,
-              skipMultilineEncoding,
-              secretKeyTag,
-              secretKeyCiphertext,
-              secretKeyIV
-            }
-          ]
-        }
-      });
-      return res.send({ approval: secretApprovalRequest });
+  if (req.authData.authPayload instanceof User) {
+    const membership = await Membership.findOne({
+      user: req.authData.authPayload._id,
+      workspace: new Types.ObjectId(workspaceId)
+    });
+
+    if (membership && type !== "personal") {
+      const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+      if (secretApprovalPolicy) {
+        const secretApprovalRequest = await generateSecretApprovalRequest({
+          workspaceId,
+          environment,
+          secretPath,
+          policy: secretApprovalPolicy,
+          commiterMembershipId: membership._id.toString(),
+          authData: req.authData,
+          data: {
+            [CommitType.UPDATE]: [
+              {
+                secretName,
+                newSecretName,
+                secretValueCiphertext,
+                secretValueIV,
+                secretValueTag,
+                tags,
+                secretCommentIV,
+                secretCommentTag,
+                secretCommentCiphertext,
+                skipMultilineEncoding,
+                secretKeyTag,
+                secretKeyCiphertext,
+                secretKeyIV
+              }
+            ]
+          }
+        });
+        return res.send({ approval: secretApprovalRequest });
+      }
     }
   }
 
@@ -1097,7 +1111,7 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
     params: { secretName }
   } = await validateRequest(reqValidator.DeleteSecretByNameV3, req);
 
-  const { membership } = await checkSecretsPermission({
+  await checkSecretsPermission({
     authData: req.authData,
     workspaceId,
     environment,
@@ -1105,25 +1119,32 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
     secretAction: ProjectPermissionActions.Delete
   });
 
-  if (membership && type !== "personal") {
-    const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-    if (secretApprovalPolicy) {
-      const secretApprovalRequest = await generateSecretApprovalRequest({
-        workspaceId,
-        environment,
-        secretPath,
-        authData: req.authData,
-        policy: secretApprovalPolicy,
-        commiterMembershipId: membership._id.toString(),
-        data: {
-          [CommitType.DELETE]: [
-            {
-              secretName
-            }
-          ]
-        }
-      });
-      return res.send({ approval: secretApprovalRequest });
+  if (req.authData.authPayload instanceof User) {
+    const membership = await Membership.findOne({
+      user: req.authData.authPayload._id,
+      workspace: new Types.ObjectId(workspaceId)
+    });
+    
+    if (membership && type !== "personal") {
+      const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+      if (secretApprovalPolicy) {
+        const secretApprovalRequest = await generateSecretApprovalRequest({
+          workspaceId,
+          environment,
+          secretPath,
+          authData: req.authData,
+          policy: secretApprovalPolicy,
+          commiterMembershipId: membership._id.toString(),
+          data: {
+            [CommitType.DELETE]: [
+              {
+                secretName
+              }
+            ]
+          }
+        });
+        return res.send({ approval: secretApprovalRequest });
+      }
     }
   }
 
@@ -1155,7 +1176,7 @@ export const createSecretByNameBatch = async (req: Request, res: Response) => {
     body: { secrets, secretPath, environment, workspaceId }
   } = await validateRequest(reqValidator.CreateSecretByNameBatchV3, req);
 
-  const { membership } = await checkSecretsPermission({
+  await checkSecretsPermission({
     authData: req.authData,
     workspaceId,
     environment,
@@ -1163,21 +1184,28 @@ export const createSecretByNameBatch = async (req: Request, res: Response) => {
     secretAction: ProjectPermissionActions.Create
   });
 
-  if (membership) {
-    const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-    if (secretApprovalPolicy) {
-      const secretApprovalRequest = await generateSecretApprovalRequest({
-        workspaceId,
-        environment,
-        secretPath,
-        authData: req.authData,
-        policy: secretApprovalPolicy,
-        commiterMembershipId: membership._id.toString(),
-        data: {
-          [CommitType.CREATE]: secrets.filter(({ type }) => type === "shared")
-        }
-      });
-      return res.send({ approval: secretApprovalRequest });
+  if (req.authData.authPayload instanceof User) {
+    const membership = await Membership.findOne({
+      user: req.authData.authPayload._id,
+      workspace: new Types.ObjectId(workspaceId)
+    });
+    
+    if (membership) {
+      const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+      if (secretApprovalPolicy) {
+        const secretApprovalRequest = await generateSecretApprovalRequest({
+          workspaceId,
+          environment,
+          secretPath,
+          authData: req.authData,
+          policy: secretApprovalPolicy,
+          commiterMembershipId: membership._id.toString(),
+          data: {
+            [CommitType.CREATE]: secrets.filter(({ type }) => type === "shared")
+          }
+        });
+        return res.send({ approval: secretApprovalRequest });
+      }
     }
   }
 
@@ -1207,7 +1235,7 @@ export const updateSecretByNameBatch = async (req: Request, res: Response) => {
     body: { secrets, secretPath, environment, workspaceId }
   } = await validateRequest(reqValidator.UpdateSecretByNameBatchV3, req);
 
-  const { membership } = await checkSecretsPermission({
+  await checkSecretsPermission({
     authData: req.authData,
     workspaceId,
     environment,
@@ -1215,21 +1243,28 @@ export const updateSecretByNameBatch = async (req: Request, res: Response) => {
     secretAction: ProjectPermissionActions.Edit
   });
 
-  if (membership) {
-    const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-    if (secretApprovalPolicy) {
-      const secretApprovalRequest = await generateSecretApprovalRequest({
-        workspaceId,
-        environment,
-        secretPath,
-        policy: secretApprovalPolicy,
-        commiterMembershipId: membership._id.toString(),
-        data: {
-          [CommitType.UPDATE]: secrets.filter(({ type }) => type === "shared")
-        },
-        authData: req.authData
-      });
-      return res.send({ approval: secretApprovalRequest });
+  if (req.authData.authPayload instanceof User) {
+    const membership = await Membership.findOne({
+      user: req.authData.authPayload._id,
+      workspace: new Types.ObjectId(workspaceId)
+    });
+    
+    if (membership) {
+      const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+      if (secretApprovalPolicy) {
+        const secretApprovalRequest = await generateSecretApprovalRequest({
+          workspaceId,
+          environment,
+          secretPath,
+          policy: secretApprovalPolicy,
+          commiterMembershipId: membership._id.toString(),
+          data: {
+            [CommitType.UPDATE]: secrets.filter(({ type }) => type === "shared")
+          },
+          authData: req.authData
+        });
+        return res.send({ approval: secretApprovalRequest });
+      }
     }
   }
 
@@ -1258,8 +1293,8 @@ export const deleteSecretByNameBatch = async (req: Request, res: Response) => {
   const {
     body: { secrets, secretPath, environment, workspaceId }
   } = await validateRequest(reqValidator.DeleteSecretByNameBatchV3, req);
-
-  const { membership } = await checkSecretsPermission({
+  
+  await checkSecretsPermission({
     authData: req.authData,
     workspaceId,
     environment,
@@ -1267,21 +1302,28 @@ export const deleteSecretByNameBatch = async (req: Request, res: Response) => {
     secretAction: ProjectPermissionActions.Delete
   });
 
-  if (membership) {
-    const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
-    if (secretApprovalPolicy) {
-      const secretApprovalRequest = await generateSecretApprovalRequest({
-        workspaceId,
-        environment,
-        secretPath,
-        policy: secretApprovalPolicy,
-        commiterMembershipId: membership._id.toString(),
-        data: {
-          [CommitType.DELETE]: secrets.filter(({ type }) => type === "shared")
-        },
-        authData: req.authData
-      });
-      return res.send({ approval: secretApprovalRequest });
+  if (req.authData.authPayload instanceof User) {
+    const membership = await Membership.findOne({
+      user: req.authData.authPayload._id,
+      workspace: new Types.ObjectId(workspaceId)
+    });
+
+    if (membership) {
+      const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+      if (secretApprovalPolicy) {
+        const secretApprovalRequest = await generateSecretApprovalRequest({
+          workspaceId,
+          environment,
+          secretPath,
+          policy: secretApprovalPolicy,
+          commiterMembershipId: membership._id.toString(),
+          data: {
+            [CommitType.DELETE]: secrets.filter(({ type }) => type === "shared")
+          },
+          authData: req.authData
+        });
+        return res.send({ approval: secretApprovalRequest });
+      }
     }
   }
 

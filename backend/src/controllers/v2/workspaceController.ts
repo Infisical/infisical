@@ -16,7 +16,7 @@ import * as reqValidator from "../../validation";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 
@@ -272,7 +272,11 @@ export const getWorkspaceMemberships = async (req: Request, res: Response) => {
     params: { workspaceId }
   } = await validateRequest(reqValidator.GetWorkspaceMembershipsV2, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Member
@@ -352,7 +356,11 @@ export const updateWorkspaceMembership = async (req: Request, res: Response) => 
     body: { role }
   } = await validateRequest(reqValidator.UpdateWorkspaceMembershipsV2, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.Member
@@ -420,7 +428,11 @@ export const deleteWorkspaceMembership = async (req: Request, res: Response) => 
     params: { workspaceId, membershipId }
   } = await validateRequest(reqValidator.DeleteWorkspaceMembershipsV2, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Delete,
     ProjectPermissionSub.Member
@@ -452,7 +464,11 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
     body: { autoCapitalization }
   } = await validateRequest(reqValidator.ToggleAutoCapitalizationV2, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.Settings

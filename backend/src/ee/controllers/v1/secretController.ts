@@ -5,7 +5,7 @@ import { Folder, Secret } from "../../../models";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../services/ProjectRoleService";
 import { BadRequestError } from "../../../utils/errors";
 import * as reqValidator from "../../../validation";
@@ -74,7 +74,11 @@ export const getSecretVersions = async (req: Request, res: Response) => {
     throw BadRequestError({ message: "Failed to find secret" });
   }
 
-  const { permission } = await getUserProjectPermissions(req.user._id, secret.workspace.toString());
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: secret.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretRollback
@@ -157,10 +161,12 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
   if (!toBeUpdatedSec) {
     throw BadRequestError({ message: "Failed to find secret" });
   }
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    toBeUpdatedSec.workspace.toString()
-  );
+
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: toBeUpdatedSec.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Create,
     ProjectPermissionSub.SecretRollback

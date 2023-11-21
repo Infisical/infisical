@@ -1,5 +1,3 @@
-import { Permission } from "./enums";
-
 export type ServiceTokenScope = {
   environment: string;
   secretPath: string;
@@ -38,12 +36,6 @@ export type DeleteServiceTokenRes = { serviceTokenData: ServiceToken };
 
 // --- v3
 
-export type ServiceTokenV3Scope = {
-  permissions: Permission[];
-  environment: string;
-  secretPath: string;
-};
-
 export type ServiceTokenV3TrustedIp = {
   _id: string;
   ipAddress: string;
@@ -54,13 +46,17 @@ export type ServiceTokenV3TrustedIp = {
 export type ServiceTokenDataV3 = {
   _id: string;
   name: string;
+  role: string;
+  customRole?: {
+    name: string;
+    slug: string;
+  };
   workspace: string;
   isActive: boolean;
   refreshTokenLastUsed?: string;
   accessTokenLastUsed?: string;
   refreshTokenUsageCount: number;
   accessTokenUsageCount: number;
-  scopes: ServiceTokenV3Scope[];
   trustedIps: ServiceTokenV3TrustedIp[];
   expiresAt?: string;
   accessTokenTTL: number;
@@ -71,9 +67,9 @@ export type ServiceTokenDataV3 = {
 
 export type CreateServiceTokenDataV3DTO = {
   name: string;
+  role?: string;
   workspaceId: string;
   publicKey: string;
-  scopes: ServiceTokenV3Scope[];
   trustedIps: {
     ipAddress: string;
   }[];
@@ -93,7 +89,7 @@ export type UpdateServiceTokenDataV3DTO = {
   serviceTokenDataId: string;
   isActive?: boolean;
   name?: string;
-  scopes?: ServiceTokenV3Scope[];
+  role?: string;
   trustedIps?: {
     ipAddress: string;
   }[];
