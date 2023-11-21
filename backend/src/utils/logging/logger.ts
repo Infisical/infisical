@@ -19,7 +19,7 @@ export const initLogger = async () => {
   const isProduction = nodeEnv === "production";
   const targets: pino.TransportMultiOptions["targets"][number][] = [
     isProduction
-      ? { level: "info", target: "pino/file", options: { destination: 'logs/infisical-backend/logs.txt', mkdir: true } }
+      ? { level: "info", target: "pino/file", options: {} }
       : {
         level: "info",
         target: "pino-pretty", // must be installed separately
