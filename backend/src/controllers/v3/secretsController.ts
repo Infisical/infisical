@@ -6,7 +6,13 @@ import { BotService } from "../../services";
 import { containsGlobPatterns, repackageSecretToRaw } from "../../helpers/secrets";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
-import { Folder, IServiceTokenData, Membership, User } from "../../models";
+import { 
+  Folder, 
+  IServiceTokenData, 
+  Membership,
+  ServiceTokenData, 
+  User 
+} from "../../models";
 import { getFolderByPath } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
 import { validateRequest } from "../../helpers/validation";
@@ -190,17 +196,20 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
     query: { include_imports: includeImports }
   } = validatedData;
 
-  // if the service token has single scope, it will get all secrets for that scope by default
-  const serviceTokenDetails: IServiceTokenData = req?.serviceTokenData;
-  if (
-    serviceTokenDetails &&
-    serviceTokenDetails.scopes.length == 1 &&
-    !containsGlobPatterns(serviceTokenDetails.scopes[0].secretPath)
-  ) {
-    const scope = serviceTokenDetails.scopes[0];
-    secretPath = scope.secretPath;
-    environment = scope.environment;
-    workspaceId = serviceTokenDetails.workspace.toString();
+  if (req.authData.authPayload instanceof ServiceTokenData) {
+
+    // if the service token has single scope, it will get all secrets for that scope by default
+    const serviceTokenDetails: IServiceTokenData = req?.serviceTokenData;
+    if (
+      serviceTokenDetails &&
+      serviceTokenDetails.scopes.length == 1 &&
+      !containsGlobPatterns(serviceTokenDetails.scopes[0].secretPath)
+    ) {
+      const scope = serviceTokenDetails.scopes[0];
+      secretPath = scope.secretPath;
+      environment = scope.environment;
+      workspaceId = serviceTokenDetails.workspace.toString();
+    }
   }
 
   if (!environment || !workspaceId)

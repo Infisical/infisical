@@ -32,6 +32,10 @@ type Props = {
         serviceTokenDataId?: string;
         name?: string;
         role?: string;
+        customRole?: {
+            name: string;
+            slug: string;
+        };
         trustedIps?: ServiceTokenV3TrustedIp[];
         accessTokenTTL?: number;
         isRefreshTokenRotationEnabled?: boolean;
@@ -46,7 +50,7 @@ export const ServiceTokenV3Table = ({
     const { currentWorkspace } = useWorkspace();
     const { data, isLoading } = useGetWorkspaceServiceTokenDataV3(currentWorkspace?._id || "");
     const { mutateAsync: updateMutateAsync } = useUpdateServiceTokenV3();
-    
+
     const handleToggleServiceTokenDataStatus = async ({
         serviceTokenDataId,
         isActive
@@ -98,6 +102,7 @@ export const ServiceTokenV3Table = ({
                         name,
                         isActive,
                         role,
+                        customRole,
                         trustedIps,
                         createdAt,
                         expiresAt,
@@ -127,7 +132,7 @@ export const ServiceTokenV3Table = ({
                                         )}
                                     </ProjectPermissionCan>
                                 </Td>
-                                <Td>{role}</Td> 
+                                <Td>{customRole?.slug ?? role}</Td> 
                                 <Td>
                                     {trustedIps.map(({
                                         _id: trustedIpId,
@@ -156,6 +161,7 @@ export const ServiceTokenV3Table = ({
                                                         serviceTokenDataId: _id,
                                                         name,
                                                         role,
+                                                        customRole,
                                                         trustedIps,
                                                         accessTokenTTL,
                                                         isRefreshTokenRotationEnabled

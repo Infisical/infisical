@@ -148,7 +148,7 @@ export const getWorkspaceServiceTokenData = async (req: Request, res: Response) 
   
   const serviceTokenData = await ServiceTokenDataV3.find({
     workspace: new Types.ObjectId(workspaceId)
-  });
+  }).populate("customRole");
   
   return res.status(200).send({
     serviceTokenData

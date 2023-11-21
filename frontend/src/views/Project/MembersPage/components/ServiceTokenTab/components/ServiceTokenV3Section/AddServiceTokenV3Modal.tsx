@@ -151,6 +151,10 @@ export const AddServiceTokenV3Modal = ({
             serviceTokenDataId: string;
             name: string;
             role: string;
+            customRole: {
+                name: string;
+                slug: string;
+            };
             trustedIps: ServiceTokenV3TrustedIp[];
             accessTokenTTL: number;
             isRefreshTokenRotationEnabled: boolean;
@@ -161,7 +165,7 @@ export const AddServiceTokenV3Modal = ({
         if (serviceTokenData) {
             reset({
                 name: serviceTokenData.name,
-                role: serviceTokenData.role,
+                role: serviceTokenData?.customRole?.slug ?? serviceTokenData.role,
                 trustedIps: serviceTokenData.trustedIps.map(({ 
                     ipAddress, 
                     prefix 

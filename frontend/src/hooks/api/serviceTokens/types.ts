@@ -47,6 +47,10 @@ export type ServiceTokenDataV3 = {
   _id: string;
   name: string;
   role: string;
+  customRole?: {
+    name: string;
+    slug: string;
+  };
   workspace: string;
   isActive: boolean;
   refreshTokenLastUsed?: string;

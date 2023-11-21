@@ -2,7 +2,7 @@
 import { motion } from "framer-motion";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 
 import { MemberListTab } from "./components/MemberListTab";
