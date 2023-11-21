@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 
 import { 
     ServiceTokenSection, 
-    ServiceTokenV3Section 
+    // ServiceTokenV3Section 
 } from "./components";
 
 export const ServiceTokenTab = () => {
@@ -14,7 +14,7 @@ export const ServiceTokenTab = () => {
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: 30 }}
         >
-            <ServiceTokenV3Section />
+            {/* <ServiceTokenV3Section /> */}
             <ServiceTokenSection />
         </motion.div>
     );
