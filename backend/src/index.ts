@@ -5,7 +5,7 @@ import express from "express";
 require("express-async-errors");
 import helmet from "helmet";
 import cors from "cors";
-import { logger } from "./utils/logging";
+import { initLogger, logger } from "./utils/logging";
 import httpLogger from "pino-http";
 import { DatabaseService } from "./services";
 import { EELicenseService, GithubSecretScanningService } from "./ee/services";
@@ -101,6 +101,7 @@ import { serverConfigInit } from "./config/serverConfig";
 let handler: null | any = null;
 
 const main = async () => {
+  await initLogger();
   const port = await getPort();
 
   // initializing the database connection
