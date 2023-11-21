@@ -58,7 +58,7 @@ export const validateClientForWorkspace = async ({
         environment,
         requiredPermissions
       });
-      return { membership, workspace};
+      return { membership, workspace };
     case ActorType.SERVICE_V3:
       throw UnauthorizedRequestError({
         message: "Failed service token authorization for organization"
@@ -121,8 +121,8 @@ export const GetWorkspaceAuditLogsV1 = z.object({
     userAgentType: z.nativeEnum(UserAgentType).nullable().optional(),
     startDate: z.string().datetime().nullable().optional(),
     endDate: z.string().datetime().nullable().optional(),
-    offset: z.coerce.number(),
-    limit: z.coerce.number(),
+    offset: z.coerce.number().default(0),
+    limit: z.coerce.number().default(20),
     actor: z.string().nullish().optional()
   })
 });

@@ -577,7 +577,7 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
     ProjectPermissionActions.Read,
     ProjectPermissionSub.AuditLogs
   );
-  
+
   const query = {
     workspace: new Types.ObjectId(workspaceId),
     ...(eventType
@@ -611,14 +611,9 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
         }
       : {})
   };
-
   const auditLogs = await AuditLog.find(query).sort({ createdAt: -1 }).skip(offset).limit(limit);
-
-  const totalCount = await AuditLog.countDocuments(query);
-
   return res.status(200).send({
-    auditLogs,
-    totalCount
+    auditLogs
   });
 };
 
@@ -666,7 +661,7 @@ export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Res
       name: serviceTokenData.name
     }
   }));
-  
+
   const serviceV3Actors: ServiceActorV3[] = (
     await ServiceTokenDataV3.find({
       workspace: new Types.ObjectId(workspaceId)
@@ -678,12 +673,8 @@ export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Res
       name: serviceTokenData.name
     }
   }));
-  
-  const actors = [
-    ...userActors, 
-    ...serviceActors,
-    ...serviceV3Actors
-  ];
+
+  const actors = [...userActors, ...serviceActors, ...serviceV3Actors];
 
   return res.status(200).send({
     actors

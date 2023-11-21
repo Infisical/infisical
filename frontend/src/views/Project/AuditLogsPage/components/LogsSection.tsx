@@ -13,78 +13,54 @@ import { LogsTable } from "./LogsTable";
 import { AuditLogFilterFormData, auditLogFilterFormSchema } from "./types";
 
 export const LogsSection = () => {
-    const { subscription } = useSubscription();
-    const router = useRouter();
-    
-    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-        "upgradePlan"
-    ] as const);
-    
-    const {
-        control,
-        reset,
-        watch,
-        setValue,
-    } = useForm<AuditLogFilterFormData>({
-        resolver: yupResolver(auditLogFilterFormSchema),
-        defaultValues: {
-            page: 1,
-            perPage: 10
-        }
-    });
-    
-    useEffect(() => {
-        if (subscription && !subscription.auditLogs) {
-            handlePopUpOpen("upgradePlan");
-        }
-    }, [subscription]);
+  const { subscription } = useSubscription();
+  const router = useRouter();
 
-    const eventType = watch("eventType") as EventType | undefined;
-    const userAgentType = watch("userAgentType") as UserAgentType | undefined;
-    const actor = watch("actor");
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
-    const startDate = watch("startDate");
-    const endDate = watch("endDate");
+  const { control, reset, watch } = useForm<AuditLogFilterFormData>({
+    resolver: yupResolver(auditLogFilterFormSchema),
+    defaultValues: {
+      page: 1,
+      perPage: 10
+    }
+  });
 
-    const page = watch("page") as number;
-    const perPage = watch("perPage") as number;
-    
-    return (
-        <div 
-            // className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
-        >
-            {/* <div className="flex items-center mb-8">
-                <h2 className="text-xl font-semibold flex-1 text-white">
-                    Audit Logs
-                </h2>
-            </div> */}
-            <LogsFilter 
-                control={control} 
-                reset={reset}
-            />
-            <LogsTable
-                eventType={eventType}
-                userAgentType={userAgentType}
-                actor={actor}
-                startDate={startDate}
-                endDate={endDate}
-                page={page}
-                perPage={perPage}
-                setValue={setValue}
-            />
-            <UpgradePlanModal
-                isOpen={popUp.upgradePlan.isOpen}
-                onOpenChange={(isOpen) => {
-                    
-                    if (!isOpen) {
-                        router.back();
-                        return;
-                    }
+  useEffect(() => {
+    if (subscription && !subscription.auditLogs) {
+      handlePopUpOpen("upgradePlan");
+    }
+  }, [subscription]);
 
-                    handlePopUpToggle("upgradePlan", isOpen)
-                }}
-                text="You can use audit logs if you switch to a paid Infisical plan."
-            />
-        </div>
-    );
- }
+  const eventType = watch("eventType") as EventType | undefined;
+  const userAgentType = watch("userAgentType") as UserAgentType | undefined;
+  const actor = watch("actor");
+
+  const startDate = watch("startDate");
+  const endDate = watch("endDate");
+
+  return (
+    <div>
+      <LogsFilter control={control} reset={reset} />
+      <LogsTable
+        eventType={eventType}
+        userAgentType={userAgentType}
+        actor={actor}
+        startDate={startDate}
+        endDate={endDate}
+      />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            router.back();
+            return;
+          }
+
+          handlePopUpToggle("upgradePlan", isOpen);
+        }}
+        text="You can use audit logs if you switch to a paid Infisical plan."
+      />
+    </div>
+  );
+};
