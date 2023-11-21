@@ -9,14 +9,14 @@ export const initLogger = async () => {
   const isProduction = nodeEnv === "production";
   const targets: pino.TransportMultiOptions["targets"][number][] = [
     isProduction
-      ? { level: "trace", target: "pino/file", options: {} }
+      ? { level: "info", target: "pino/file", options: { destination: 'logs/infisical-backend/logs.txt', mkdir: true } }
       : {
-          level: "info",
-          target: "pino-pretty", // must be installed separately
-          options: {
-            colorize: true
-          }
+        level: "info",
+        target: "pino-pretty", // must be installed separately
+        options: {
+          colorize: true
         }
+      }
   ];
 
   if (awsCloudWatchLogCfg) {
@@ -40,7 +40,7 @@ export const initLogger = async () => {
 
   logger = pino(
     {
-      level: process.env.PINO_LOG_LEVEL || "trace",
+      level: process.env.PINO_LOG_LEVEL || "info",
       formatters: {
         bindings: (bindings) => {
           return {
