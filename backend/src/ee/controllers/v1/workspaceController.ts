@@ -567,6 +567,83 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
  * @param res
  */
 export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
+  /* 
+    #swagger.summary = 'Return audit logs'
+    #swagger.description = 'Return audit logs'
+    
+    #swagger.security = [{
+      "apiKeyAuth": [],
+      "bearerAuth": []
+    }]
+
+    #swagger.parameters['workspaceId'] = {
+      "description": "ID of the workspace where to get folders from",
+      "required": true,
+      "type": "string",
+      "in": "path"
+    }
+
+    #swagger.parameters['offset'] = {
+      "description": "Number of versions to skip",
+      "required": false,
+      "type": "string"
+    }
+
+    #swagger.parameters['limit'] = {
+      "description": "Maximum number of versions to return",
+      "required": false,
+      "type": "string"
+    }
+
+   #swagger.parameters['startDate'] = {
+      "description": "Filter logs from the provided date",
+      "required": false,
+      "type": "string"
+    }
+
+   #swagger.parameters['endDate'] = {
+      "description": "Filter logs till the provided date",
+      "required": false,
+      "type": "string"
+    }
+
+    #swagger.parameters['eventType'] = {
+      "description": "Type  of event",
+      "required": false,
+      "type": "string",
+    }
+
+    #swagger.parameters['userAgentType'] = {
+      "description": "Type  of event",
+      "required": false,
+      "type": "string",
+    }
+
+    #swagger.parameters['actor'] = {
+      "description": "Source of operation. It can be user, service token etc",
+      "required": false,
+      "type": "string"
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                schema: { 
+                  "type": "object",
+                  "properties": {
+                        "auditLogs": {
+                            "type": "array",
+                            "items": {
+			      $ref: "#/components/schemas/AuditLog",
+                            },
+                            "description": "List of audit log"                        
+                          },
+                  }
+                }
+            }           
+        }
+    }   
+    */
   const {
     query: { limit, offset, endDate, eventType, startDate, userAgentType, actor },
     params: { workspaceId }

@@ -306,7 +306,8 @@
     },
     "/api/v1/workspace/{workspaceId}/audit-logs": {
       "get": {
-        "description": "",
+        "summary": "Return audit logs",
+        "description": "Return audit logs",
         "parameters": [
           {
             "name": "workspaceId",
@@ -314,14 +315,100 @@
             "required": true,
             "schema": {
               "type": "string"
+            },
+            "description": "ID of the workspace where to get folders from"
+          },
+          {
+            "name": "offset",
+            "description": "Number of versions to skip",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "description": "Maximum number of versions to return",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "description": "Filter logs from the provided date",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "description": "Filter logs till the provided date",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "eventType",
+            "description": "Type of event",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userAgentType",
+            "description": "Type of event",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actor",
+            "description": "Source of operation. It can be user, service token etc",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "auditLogs": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AuditLog"
+                      },
+                      "description": "List of audit log"
+                    }
+                  }
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "apiKeyAuth": [],
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspace/{workspaceId}/audit-logs/filters/actors": {
@@ -1125,6 +1212,43 @@
     "/api/v1/auth/sessions": {
       "delete": {
         "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/config": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "patch": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/signup": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -6862,6 +6986,61 @@
           "createdAt": {
             "type": "string",
             "example": "2023-01-13T14:16:12.210Z"
+          }
+        }
+      },
+      "AuditLog": {
+        "type": "object",
+        "properties": {
+          "actor": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "example": ""
+              },
+              "metadata": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          },
+          "organization": {
+            "type": "string",
+            "example": ""
+          },
+          "workspace": {
+            "type": "string",
+            "example": ""
+          },
+          "ipAddress": {
+            "type": "string",
+            "example": ""
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "example": ""
+              },
+              "metadata": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          },
+          "userAgent": {
+            "type": "string",
+            "example": ""
+          },
+          "userAgentType": {
+            "type": "string",
+            "example": ""
+          },
+          "expiresAt": {
+            "type": "string",
+            "example": ""
           }
         }
       }
