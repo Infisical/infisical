@@ -1,10 +1,11 @@
+import { Types } from "mongoose";
 import { ForbiddenError, subject } from "@casl/ability";
 import { Request, Response } from "express";
 import { nanoid } from "nanoid";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../services/ProjectRoleService";
 import { validateRequest } from "../../../helpers/validation";
 import { SecretApprovalPolicy } from "../../models/secretApprovalPolicy";
@@ -19,7 +20,11 @@ export const createSecretApprovalPolicy = async (req: Request, res: Response) =>
     body: { approvals, secretPath, approvers, environment, workspaceId, name }
   } = await validateRequest(reqValidator.CreateSecretApprovalRule, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Create,
     ProjectPermissionSub.SecretApproval
@@ -49,10 +54,11 @@ export const updateSecretApprovalPolicy = async (req: Request, res: Response) =>
   const secretApproval = await SecretApprovalPolicy.findById(id);
   if (!secretApproval) throw ERR_SECRET_APPROVAL_NOT_FOUND;
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    secretApproval.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: secretApproval.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.SecretApproval
@@ -78,10 +84,11 @@ export const deleteSecretApprovalPolicy = async (req: Request, res: Response) =>
   const secretApproval = await SecretApprovalPolicy.findById(id);
   if (!secretApproval) throw ERR_SECRET_APPROVAL_NOT_FOUND;
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    secretApproval.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: secretApproval.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Delete,
     ProjectPermissionSub.SecretApproval
@@ -99,7 +106,11 @@ export const getSecretApprovalPolicy = async (req: Request, res: Response) => {
     query: { workspaceId }
   } = await validateRequest(reqValidator.GetSecretApprovalRuleList, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretApproval
@@ -117,7 +128,11 @@ export const getSecretApprovalPolicyOfBoard = async (req: Request, res: Response
     query: { workspaceId, environment, secretPath }
   } = await validateRequest(reqValidator.GetSecretApprovalPolicyOfABoard, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     subject(ProjectPermissionSub.Secrets, { secretPath, environment })

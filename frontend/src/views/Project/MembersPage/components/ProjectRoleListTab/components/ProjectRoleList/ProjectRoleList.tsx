@@ -25,24 +25,26 @@ import {
   useWorkspace
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useDeleteRole } from "@app/hooks/api";
+import { useDeleteRole, useGetRoles } from "@app/hooks/api";
 import { TRole } from "@app/hooks/api/roles/types";
 
 type Props = {
-  isRolesLoading?: boolean;
-  roles?: TRole<string>[];
   onSelectRole: (role?: TRole<string>) => void;
 };
 
-export const ProjectRoleList = ({ isRolesLoading, roles = [], onSelectRole }: Props) => {
+export const ProjectRoleList = ({ onSelectRole }: Props) => {
   const [searchRoles, setSearchRoles] = useState("");
+  const { createNotification } = useNotificationContext();
+  const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["deleteRole"] as const);
   const { currentOrg } = useOrganization();
   const { currentWorkspace } = useWorkspace();
   const orgId = currentOrg?._id || "";
   const workspaceId = currentWorkspace?._id || "";
-
-  const { createNotification } = useNotificationContext();
-  const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["deleteRole"] as const);
+  
+  const { data: roles, isLoading: isRolesLoading } = useGetRoles({
+    orgId,
+    workspaceId
+  });
 
   const { mutateAsync: deleteRole } = useDeleteRole();
 
@@ -61,6 +63,8 @@ export const ProjectRoleList = ({ isRolesLoading, roles = [], onSelectRole }: Pr
       createNotification({ type: "error", text: "Failed to create role" });
     }
   };
+
+  // roles={roles as TRole<string>[]}
 
   return (
     <div className="w-full">
@@ -97,7 +101,7 @@ export const ProjectRoleList = ({ isRolesLoading, roles = [], onSelectRole }: Pr
             </THead>
             <TBody>
               {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
-              {roles?.map((role) => {
+              {(roles as TRole<string>[])?.map((role) => {
                 const { _id: id, name, slug } = role;
                 const isNonMutatable = ["admin", "member", "viewer"].includes(slug);
 

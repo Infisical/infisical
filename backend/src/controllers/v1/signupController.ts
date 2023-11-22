@@ -2,10 +2,8 @@ import { Request, Response } from "express";
 import { AuthMethod, User } from "../../models";
 import { checkEmailVerification, sendEmailVerification } from "../../helpers/signup";
 import { createToken } from "../../helpers/auth";
-import { BadRequestError } from "../../utils/errors";
 import {
   getAuthSecret,
-  getInviteOnlySignup,
   getJwtSignupLifetime,
   getSmtpConfigured
 } from "../../config";
@@ -66,16 +64,6 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
     return res.status(403).send({
       error: "Failed email verification for complete user"
     });
-  }
-
-  if (await getInviteOnlySignup()) {
-    // Only one user can create an account without being invited. The rest need to be invited in order to make an account
-    const userCount = await User.countDocuments({});
-    if (userCount != 0) {
-      throw BadRequestError({
-        message: "New user sign ups are not allowed at this time. You must be invited to sign up."
-      });
-    }
   }
 
   // verify email

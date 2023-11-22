@@ -15,6 +15,9 @@
     "skipLibCheck": true,
     "typeRoots": ["./src/types", "./node_modules/@types"]
   },
+  "ts-node": {
+    "swc": true
+  },
   "include": ["src/**/*"],
   "exclude": ["node_modules"]
 }

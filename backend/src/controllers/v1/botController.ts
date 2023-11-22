@@ -7,7 +7,7 @@ import * as reqValidator from "../../validation/bot";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 import { BadRequestError } from "../../utils/errors";
@@ -28,7 +28,11 @@ export const getBotByWorkspaceId = async (req: Request, res: Response) => {
   const {
     params: { workspaceId }
   } = await validateRequest(reqValidator.GetBotByWorkspaceIdV1, req);
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Integrations
@@ -70,7 +74,11 @@ export const setBotActiveState = async (req: Request, res: Response) => {
   }
   const userId = req.user._id;
 
-  const { permission } = await getUserProjectPermissions(userId, bot.workspace.toString());
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: bot.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.Integrations

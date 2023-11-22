@@ -16,7 +16,6 @@ const yyyy = today.getFullYear();
 
 const todayFormatted = `${mm}/${dd}/${yyyy}`;
 
-
 function createPdfHeader(doc: jsPDF, personalName: string) {
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, 600, 900, "F");
@@ -92,5 +91,15 @@ function generateBackupPDF({ personalName, personalEmail, generatedKey }: PDFPro
   doc.save("Infisical Emergency Kit.pdf");
 }
 
-export default generateBackupPDF;
+/**
+ * This function generate a pdf with a secret key for a user.
+ */
+export function generateBackupPDFAsync({ personalName, personalEmail, generatedKey }: PDFProps) {
+  // eslint-disable-next-line new-cap
+  const doc = new jsPDF("p", "pt", "a4", true);
+  createPdfHeader(doc, personalName);
+  createPdfContent(doc, personalEmail, generatedKey);
+  return doc.save("Infisical Emergency Kit.pdf", { returnPromise: true });
+}
 
+export default generateBackupPDF;

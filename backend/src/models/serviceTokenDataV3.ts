@@ -1,16 +1,6 @@
 import { Document, Schema, Types, model } from "mongoose";
 import { IPType } from "../ee/models";
-
-export enum Permission {
-    READ = "read",
-    WRITE = "write"
-}
-
-export interface IServiceTokenV3Scope {
-    environment: string;
-    secretPath: string;
-    permissions: Permission[];
-}
+import { ADMIN, CUSTOM, MEMBER, VIEWER } from "../variables";
 
 export interface IServiceTokenV3TrustedIp {
     ipAddress: string;
@@ -33,7 +23,8 @@ export interface IServiceTokenDataV3 extends Document {
     isRefreshTokenRotationEnabled: boolean;
     expiresAt?: Date;
     accessTokenTTL: number;
-    scopes: Array<IServiceTokenV3Scope>;
+    role: "admin" | "member" | "viewer" | "custom";
+    customRole: Types.ObjectId;
     trustedIps: Array<IServiceTokenV3TrustedIp>;
 }
 
@@ -100,27 +91,14 @@ const serviceTokenDataV3Schema = new Schema(
             default: 7200,
             required: true
         },
-        scopes: {
-            type: [
-                {
-                    environment: {
-                        type: String,
-                        required: true
-                    },
-                    secretPath: {
-                        type: String,
-                        default: "/",
-                        required: true
-                    },
-                    permissions: {
-                        type: [String],
-                        enum: [Permission.READ, Permission.WRITE],
-                        default: [Permission.READ],
-                        required: true
-                    }
-                }
-            ],
+        role: {
+            type: String,
+            enum: [ADMIN, MEMBER, VIEWER, CUSTOM],
             required: true
+        },
+        customRole: {
+            type: Schema.Types.ObjectId,
+            ref: "Role"
         },
         trustedIps: {
             type: [

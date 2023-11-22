@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
-import { getUserProjectPermissions } from "../../services/ProjectRoleService";
 import { validateRequest } from "../../../helpers/validation";
-import { Folder } from "../../../models";
+import { Folder, Membership, User } from "../../../models";
 import { ApprovalStatus, SecretApprovalRequest } from "../../models/secretApprovalRequest";
 import * as reqValidator from "../../validation/secretApprovalRequest";
 import { getFolderWithPathFromId } from "../../../services/FolderService";
@@ -17,7 +16,15 @@ export const getSecretApprovalRequestCount = async (req: Request, res: Response)
     query: { workspaceId }
   } = await validateRequest(reqValidator.getSecretApprovalRequestCount, req);
 
-  const { membership } = await getUserProjectPermissions(req.user._id, workspaceId);
+  if (!(req.authData.authPayload instanceof User)) return;
+  
+  const membership = await Membership.findOne({
+    user: req.authData.authPayload._id,
+    workspace: new Types.ObjectId(workspaceId)
+  });
+  
+  if (!membership) throw UnauthorizedRequestError();
+
   const approvalRequestCount = await SecretApprovalRequest.aggregate([
     {
       $match: {
@@ -65,7 +72,14 @@ export const getSecretApprovalRequests = async (req: Request, res: Response) => 
     query: { status, committer, workspaceId, environment, limit, offset }
   } = await validateRequest(reqValidator.getSecretApprovalRequests, req);
 
-  const { membership } = await getUserProjectPermissions(req.user._id, workspaceId);
+  if (!(req.authData.authPayload instanceof User)) return;
+  
+  const membership = await Membership.findOne({
+    user: req.authData.authPayload._id,
+    workspace: new Types.ObjectId(workspaceId)
+  });
+  
+  if (!membership) throw UnauthorizedRequestError();
 
   const query = {
     workspace: new Types.ObjectId(workspaceId),
@@ -148,10 +162,15 @@ export const getSecretApprovalRequestDetails = async (req: Request, res: Respons
   if (!secretApprovalRequest)
     throw BadRequestError({ message: "Secret approval request not found" });
 
-  const { membership } = await getUserProjectPermissions(
-    req.user._id,
-    secretApprovalRequest.workspace.toString()
-  );
+  if (!(req.authData.authPayload instanceof User)) return;
+
+  const membership = await Membership.findOne({
+    user: req.authData.authPayload._id,
+    workspace: secretApprovalRequest.workspace
+  });
+  
+  if (!membership) throw UnauthorizedRequestError();
+
   // allow to fetch only if its admin or is the committer or approver
   if (
     membership.role !== "admin" &&
@@ -190,10 +209,15 @@ export const updateSecretApprovalReviewStatus = async (req: Request, res: Respon
   if (!secretApprovalRequest)
     throw BadRequestError({ message: "Secret approval request not found" });
 
-  const { membership } = await getUserProjectPermissions(
-    req.user._id,
-    secretApprovalRequest.workspace.toString()
-  );
+  if (!(req.authData.authPayload instanceof User)) return;
+
+  const membership = await Membership.findOne({
+    user: req.authData.authPayload._id,
+    workspace: secretApprovalRequest.workspace
+  });
+  
+  if (!membership) throw UnauthorizedRequestError();
+
   if (
     membership.role !== "admin" &&
     secretApprovalRequest.committer !== membership.id &&
@@ -227,10 +251,15 @@ export const mergeSecretApprovalRequest = async (req: Request, res: Response) =>
   if (!secretApprovalRequest)
     throw BadRequestError({ message: "Secret approval request not found" });
 
-  const { membership } = await getUserProjectPermissions(
-    req.user._id,
-    secretApprovalRequest.workspace.toString()
-  );
+  if (!(req.authData.authPayload instanceof User)) return;
+
+  const membership = await Membership.findOne({
+    user: req.authData.authPayload._id,
+    workspace: secretApprovalRequest.workspace
+  });
+  
+  if (!membership) throw UnauthorizedRequestError();
+
   if (
     membership.role !== "admin" &&
     secretApprovalRequest.committer !== membership.id &&
@@ -272,10 +301,14 @@ export const updateSecretApprovalRequestStatus = async (req: Request, res: Respo
   if (!secretApprovalRequest)
     throw BadRequestError({ message: "Secret approval request not found" });
 
-  const { membership } = await getUserProjectPermissions(
-    req.user._id,
-    secretApprovalRequest.workspace.toString()
-  );
+  if (!(req.authData.authPayload instanceof User)) return;
+
+  const membership = await Membership.findOne({
+    user: req.authData.authPayload._id,
+    workspace: secretApprovalRequest.workspace
+  });
+  
+  if (!membership) throw UnauthorizedRequestError();
 
   if (
     membership.role !== "admin" &&

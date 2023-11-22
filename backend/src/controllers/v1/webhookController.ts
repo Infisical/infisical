@@ -16,7 +16,7 @@ import * as reqValidator from "../../validation/webhooks";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
@@ -26,7 +26,11 @@ export const createWebhook = async (req: Request, res: Response) => {
     body: { webhookUrl, webhookSecretKey, environment, workspaceId, secretPath }
   } = await validateRequest(reqValidator.CreateWebhookV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Create,
     ProjectPermissionSub.Webhooks
@@ -98,11 +102,11 @@ export const updateWebhook = async (req: Request, res: Response) => {
   if (!webhook) {
     throw BadRequestError({ message: "Webhook not found!!" });
   }
-
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    webhook.workspace.toString()
-  );
+  
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: webhook.workspace
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.Webhooks
@@ -146,10 +150,11 @@ export const deleteWebhook = async (req: Request, res: Response) => {
     throw ResourceNotFoundError({ message: "Webhook not found!!" });
   }
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    webhook.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: webhook.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Delete,
     ProjectPermissionSub.Webhooks
@@ -193,10 +198,11 @@ export const testWebhook = async (req: Request, res: Response) => {
     throw BadRequestError({ message: "Webhook not found!!" });
   }
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    webhook.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: webhook.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Webhooks
@@ -236,8 +242,12 @@ export const listWebhooks = async (req: Request, res: Response) => {
   const {
     query: { environment, workspaceId, secretPath }
   } = await validateRequest(reqValidator.ListWebhooksV1, req);
-
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Webhooks

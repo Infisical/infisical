@@ -12,14 +12,12 @@ import {
 import { EventType, SecretVersion } from "../../ee/models";
 import { EEAuditLogService, EELicenseService } from "../../ee/services";
 import { BadRequestError, WorkspaceNotFoundError } from "../../utils/errors";
-import _ from "lodash";
-import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variables";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/environments";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 import { SecretImport } from "../../models";
@@ -114,7 +112,11 @@ export const createWorkspaceEnvironment = async (req: Request, res: Response) =>
     body: { environmentName, environmentSlug }
   } = await validateRequest(reqValidator.CreateWorkspaceEnvironmentV2, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Create,
     ProjectPermissionSub.Environments
@@ -191,7 +193,11 @@ export const reorderWorkspaceEnvironments = async (req: Request, res: Response) 
     body: { environmentName, environmentSlug, otherEnvironmentSlug, otherEnvironmentName }
   } = await validateRequest(reqValidator.ReorderWorkspaceEnvironmentsV2, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.Environments
@@ -322,7 +328,11 @@ export const renameWorkspaceEnvironment = async (req: Request, res: Response) =>
     body: { environmentName, environmentSlug, oldEnvironmentSlug }
   } = await validateRequest(reqValidator.UpdateWorkspaceEnvironmentV2, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.Environments
@@ -511,7 +521,11 @@ export const deleteWorkspaceEnvironment = async (req: Request, res: Response) =>
     body: { environmentSlug }
   } = await validateRequest(reqValidator.DeleteWorkspaceEnvironmentV2, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Delete,
     ProjectPermissionSub.Environments
@@ -587,98 +601,4 @@ export const deleteWorkspaceEnvironment = async (req: Request, res: Response) =>
     workspace: workspaceId,
     environment: environmentSlug
   });
-};
-
-// TODO(akhilmhdh) after rbac this can be completely removed
-export const getAllAccessibleEnvironmentsOfWorkspace = async (req: Request, res: Response) => {
-  /*
-    #swagger.summary = 'Get all accessible environments of a workspace'
-    #swagger.description = 'Fetch all environments that the user has access to in a specified workspace'
-
-    #swagger.security = [{
-        "apiKeyAuth": []
-    }]
-
-    #swagger.parameters['workspaceId'] = {
-		"description": "ID of the workspace",
-		"required": true,
-		"type": "string",
-        "in": "path"
-	}
-
-    #swagger.responses[200] = {
-        content: {
-            "application/json": {
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "accessibleEnvironments": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string",
-                                        "example": "Development"
-                                    },
-                                    "slug": {
-                                        "type": "string",
-                                        "example": "development"
-                                    },
-                                    "isWriteDenied": {
-                                        "type": "boolean",
-                                        "example": false
-                                    },
-                                    "isReadDenied": {
-                                        "type": "boolean",
-                                        "example": false
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "description": "List of environments the user has access to in the specified workspace"
-                }
-            }
-        }
-    }
-  */
-  const {
-    params: { workspaceId }
-  } = await validateRequest(reqValidator.GetAllAccessibileEnvironmentsOfWorkspaceV2, req);
-
-  const { membership: workspacesUserIsMemberOf } = await getUserProjectPermissions(
-    req.user._id,
-    workspaceId
-  );
-
-  const accessibleEnvironments: any = [];
-  const deniedPermission = workspacesUserIsMemberOf.deniedPermissions;
-
-  const relatedWorkspace = await Workspace.findById(workspaceId);
-  if (!relatedWorkspace) {
-    throw BadRequestError();
-  }
-  relatedWorkspace.environments.forEach((environment) => {
-    const isReadBlocked = _.some(deniedPermission, {
-      environmentSlug: environment.slug,
-      ability: PERMISSION_READ_SECRETS
-    });
-    const isWriteBlocked = _.some(deniedPermission, {
-      environmentSlug: environment.slug,
-      ability: PERMISSION_WRITE_SECRETS
-    });
-    if (isReadBlocked && isWriteBlocked) {
-      return;
-    } else {
-      accessibleEnvironments.push({
-        name: environment.name,
-        slug: environment.slug,
-        isWriteDenied: isWriteBlocked,
-        isReadDenied: isReadBlocked
-      });
-    }
-  });
-
-  res.json({ accessibleEnvironments });
 };

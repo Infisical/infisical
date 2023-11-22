@@ -5,7 +5,7 @@ import express from "express";
 require("express-async-errors");
 import helmet from "helmet";
 import cors from "cors";
-import { logger } from "./utils/logging";
+import { initLogger, logger } from "./utils/logging";
 import httpLogger from "pino-http";
 import { DatabaseService } from "./services";
 import { EELicenseService, GithubSecretScanningService } from "./ee/services";
@@ -35,6 +35,7 @@ import {
 import { apiKeyData as v3apiKeyDataRouter } from "./ee/routes/v3";
 import { serviceTokenData as v3ServiceTokenDataRouter } from "./ee/routes/v3";
 import {
+  admin as v1AdminRouter,
   auth as v1AuthRouter,
   bot as v1BotRouter,
   integrationAuth as v1IntegrationAuthRouter,
@@ -81,6 +82,7 @@ import { healthCheck } from "./routes/status";
 import { RouteNotFoundError } from "./utils/errors";
 import { requestErrorHandler } from "./middleware/requestErrorHandler";
 import {
+  getMongoURL,
   getNodeEnv,
   getPort,
   getSecretScanningGitAppId,
@@ -94,12 +96,20 @@ import { syncSecretsToThirdPartyServices } from "./queues/integrations/syncSecre
 import { githubPushEventSecretScan } from "./queues/secret-scanning/githubScanPushEvent";
 const SmeeClient = require("smee-client"); // eslint-disable-line
 import path from "path";
+import { serverConfigInit } from "./config/serverConfig";
+import { initRedis } from "./services/RedisService";
 
 let handler: null | any = null;
 
 const main = async () => {
+  await initLogger();
+
   const port = await getPort();
 
+  // initializing the database connection + redis 
+  await initRedis()
+  await DatabaseService.initDatabase(await getMongoURL());
+  const serverCfg = await serverConfigInit();
   await setup();
 
   await EELicenseService.initGlobalFeatureSet();
@@ -203,6 +213,7 @@ const main = async () => {
   // v1 routes
   app.use("/api/v1/signup", v1SignupRouter);
   app.use("/api/v1/auth", v1AuthRouter);
+  app.use("/api/v1/admin", v1AdminRouter);
   app.use("/api/v1/bot", v1BotRouter);
   app.use("/api/v1/user", v1UserRouter);
   app.use("/api/v1/user-action", v1UserActionRouter);
@@ -271,7 +282,22 @@ const main = async () => {
   app.use(requestErrorHandler);
 
   const server = app.listen(port, async () => {
-    logger.info(`Server started listening at port ${port}`);
+    if (!serverCfg.initialized) {
+      logger.info(`Welcome to Infisical
+
+Create your Infisical administrator account at:
+http://localhost:${port}/admin/signup
+`);
+    } else {
+      logger.info(`Welcome back!
+
+To access Infisical Administrator Panel open
+http://localhost:${port}/admin
+
+To access Infisical server
+http://localhost:${port}
+`);
+    }
   });
 
   // await createTestUserForDevelopment();

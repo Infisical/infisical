@@ -30,11 +30,6 @@ export type CreateWorkspaceDTO = {
   organizationId: string;
 };
 
-export type GetWsEnvironmentDTO = {
-  workspaceId: string;
-  onSuccess?: (data: WorkspaceEnv[]) => void;
-};
-
 export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };
 export type ToggleAutoCapitalizationDTO = { workspaceID: string; state: boolean };
 

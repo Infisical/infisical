@@ -399,6 +399,13 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             />
                           </DropdownMenuItem>
                         </a>
+                        {user?.superAdmin && (
+                          <Link href="/admin" legacyBehavior>
+                            <DropdownMenuItem className="mt-1 border-t border-mineshaft-600">
+                              Admin Panel
+                            </DropdownMenuItem>
+                          </Link>
+                        )}
                         <div className="mt-1 h-1 border-t border-mineshaft-600" />
                         <button type="button" onClick={logOutUser} className="w-full">
                           <DropdownMenuItem>Log Out</DropdownMenuItem>
@@ -498,7 +505,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             }
                             icon="system-outline-96-groups"
                           >
-                            {t("nav.menu.members")}
+                            Access Control
                           </MenuItem>
                         </a>
                       </Link>
@@ -541,19 +548,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      
-                      {/* <Link href={`/project/${currentWorkspace?._id}/allowlist`} passHref>
-                        <a>
-                          <MenuItem
-                            isSelected={
-                              router.asPath === `/project/${currentWorkspace?._id}/allowlist`
-                            }
-                            icon="system-outline-126-verified"
-                          >
-                            IP Allowlist
-                          </MenuItem>
-                        </a>
-                      </Link> */}
                       <Link href={`/project/${currentWorkspace?._id}/audit-logs`} passHref>
                         <a>
                           <MenuItem
