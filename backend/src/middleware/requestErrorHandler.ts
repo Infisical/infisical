@@ -15,7 +15,7 @@ export const requestErrorHandler: ErrorRequestHandler = async (
   if (res.headersSent) return next();
 
   let error: RequestError;
-  
+
   switch (true) {
     case err instanceof TokenExpiredError:
       error = UnauthorizedRequestError({ stack: err.stack, message: "Token expired" });
@@ -31,7 +31,7 @@ export const requestErrorHandler: ErrorRequestHandler = async (
       break;
   }
 
-  logger[mapToPinoLogLevel(error.level)](error);
+  logger[mapToPinoLogLevel(error.level)]({ msg: error });
 
   if (req.user) {
     Sentry.setUser({ email: (req.user as any).email });

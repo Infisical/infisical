@@ -97,14 +97,17 @@ import { githubPushEventSecretScan } from "./queues/secret-scanning/githubScanPu
 const SmeeClient = require("smee-client"); // eslint-disable-line
 import path from "path";
 import { serverConfigInit } from "./config/serverConfig";
+import { initRedis } from "./services/RedisService";
 
 let handler: null | any = null;
 
 const main = async () => {
   await initLogger();
+
   const port = await getPort();
 
-  // initializing the database connection
+  // initializing the database connection + redis 
+  await initRedis()
   await DatabaseService.initDatabase(await getMongoURL());
   const serverCfg = await serverConfigInit();
   await setup();
