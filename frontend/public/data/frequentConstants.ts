@@ -24,6 +24,7 @@ const integrationSlugNameMapping: Mapping = {
   teamcity: "TeamCity",
   "hashicorp-vault": "Vault",
   "cloudflare-pages": "Cloudflare Pages",
+  "cloudflare-workers": "Cloudflare Workers",
   codefresh: "Codefresh",
   "digital-ocean-app-platform": "Digital Ocean App Platform",
   bitbucket: "BitBucket",
