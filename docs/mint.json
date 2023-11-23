@@ -242,6 +242,7 @@
         "integrations/cloud/hasura-cloud",
         "integrations/cloud/terraform-cloud",
         "integrations/cloud/cloudflare-pages",
+        "integrations/cloud/cloudflare-workers",
         "integrations/cloud/qovery",
         "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",
@@ -380,6 +381,10 @@
         {
           "group": "Service Tokens",
           "pages": ["api-reference/endpoints/service-tokens/get"]
+        },
+        {
+          "group": "Audit Logs",
+          "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
         }
       ]
     },

@@ -18,6 +18,8 @@ import {
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_CLOUDFLARE_PAGES_API_URL,
+  INTEGRATION_CLOUDFLARE_WORKERS,
+  INTEGRATION_CLOUDFLARE_WORKERS_API_URL,
   INTEGRATION_CLOUD_66,
   INTEGRATION_CLOUD_66_API_URL,
   INTEGRATION_CODEFRESH,
@@ -256,6 +258,14 @@ const syncSecrets = async ({
       break;
     case INTEGRATION_CLOUDFLARE_PAGES:
       await syncSecretsCloudflarePages({
+        integration,
+        secrets,
+        accessId,
+        accessToken
+      });
+      break;
+    case INTEGRATION_CLOUDFLARE_WORKERS:
+      await syncSecretsCloudflareWorkers({
         integration,
         secrets,
         accessId,
@@ -2744,6 +2754,98 @@ const syncSecretsCloudflarePages = async ({
       }
     }
   );
+};
+
+/**
+ * Sync/push [secrets] to Cloudflare Workers project with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - API token for Cloudflare workers
+ */
+const syncSecretsCloudflareWorkers = async ({
+  integration,
+  secrets,
+  accessId,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessId: string | null;
+  accessToken: string;
+}) => {
+  // get secrets from cloudflare workers
+  const getSecretsRes = (
+    await standardRequest.get(
+      `${INTEGRATION_CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accessId}/workers/scripts/${integration.app}/secrets`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json"
+        }
+      }
+    )
+  ).data.result;
+
+  const secretsObj: any = getSecretKeyValuePair(secrets);
+
+  for (const [key, val] of Object.entries(secretsObj)) {
+    secretsObj[key] = { type: "secret_text", value: val };
+  }
+
+  // get deleted secrets list
+  const deletedSecretKeys: string[] = [];
+  if (getSecretsRes) {
+    getSecretsRes.forEach((secretRes: any) => {
+      if (!(Object.keys(secrets).includes(secretRes.name))) {
+        deletedSecretKeys.push(secretRes.name);
+      }
+    })
+  }
+
+  deletedSecretKeys.forEach(async (secretKey) => {
+    await standardRequest.delete(
+      `${INTEGRATION_CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accessId}/workers/scripts/${integration.app}/secrets/${secretKey}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json"
+        }
+      }
+    );
+  });
+
+  interface ConvertedSecret {
+    name: string;
+    text: string;
+    type: string;
+  }
+
+  interface SecretsObj {
+    [key: string]: {
+      type: string;
+      value: string;
+    };
+  }
+
+  const data: ConvertedSecret[] = Object.entries(secretsObj as SecretsObj).map(([name, secret]) => ({
+    name,
+    text: secret.value,
+    type: "secret_text"
+  }));
+
+  data.forEach(async (secret) => {
+    await standardRequest.put(
+      `${INTEGRATION_CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accessId}/workers/scripts/${integration.app}/secrets`,
+      secret,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json"
+        }
+      }
+    );
+  })
 };
 
 /**

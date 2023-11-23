@@ -6,6 +6,7 @@ import {
   INTEGRATION_CHECKLY,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUDFLARE_WORKERS,
   INTEGRATION_CLOUD_66,
   INTEGRATION_CODEFRESH,
   INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
@@ -71,6 +72,7 @@ export interface IIntegration {
     | "teamcity"
     | "hashicorp-vault"
     | "cloudflare-pages"
+    | "cloudflare-workers"
     | "bitbucket"
     | "codefresh"
     | "digital-ocean-app-platform"
@@ -179,6 +181,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_TEAMCITY,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
+        INTEGRATION_CLOUDFLARE_WORKERS,
         INTEGRATION_CODEFRESH,
         INTEGRATION_WINDMILL,
         INTEGRATION_BITBUCKET,

@@ -8,6 +8,7 @@ import {
   INTEGRATION_BITBUCKET,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUDFLARE_WORKERS,
   INTEGRATION_CLOUD_66,
   INTEGRATION_CODEFRESH,
   INTEGRATION_DIGITAL_OCEAN_APP_PLATFORM,
@@ -55,6 +56,7 @@ export interface IIntegrationAuth extends Document {
     | "checkly"
     | "qovery"
     | "cloudflare-pages"
+    | "cloudflare-workers"
     | "codefresh"
     | "digital-ocean-app-platform"
     | "bitbucket"
@@ -113,6 +115,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_TERRAFORM_CLOUD,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
+        INTEGRATION_CLOUDFLARE_WORKERS,
         INTEGRATION_CODEFRESH,
         INTEGRATION_WINDMILL,
         INTEGRATION_BITBUCKET,
