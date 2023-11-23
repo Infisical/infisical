@@ -1,6 +1,6 @@
 import { AbilityBuilder, MongoAbility, RawRuleOf, createMongoAbility } from "@casl/ability";
 import { MembershipOrg } from "../../models";
-import { IRole } from "../models/role";
+import { IRole } from "../models";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import { ACCEPTED } from "../../variables";
 import { conditionsMatcher } from "./ProjectRoleService";
@@ -20,7 +20,8 @@ export enum OrgPermissionSubjects {
   IncidentAccount = "incident-contact",
   Sso = "sso",
   Billing = "billing",
-  SecretScanning = "secret-scanning"
+  SecretScanning = "secret-scanning",
+  ServiceTokens = "service-tokens" // TODO: consider renaming
 }
 
 export type OrgPermissionSet =
@@ -32,7 +33,8 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
   | [OrgPermissionActions, OrgPermissionSubjects.Sso]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
-  | [OrgPermissionActions, OrgPermissionSubjects.Billing];
+  | [OrgPermissionActions, OrgPermissionSubjects.Billing]
+  | [OrgPermissionActions, OrgPermissionSubjects.ServiceTokens];
 
 const buildAdminPermission = () => {
   const { can, build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
@@ -75,6 +77,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Billing);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Billing);
 
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.ServiceTokens);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.ServiceTokens);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.ServiceTokens);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.ServiceTokens);
+
   return build({ conditionsMatcher });
 };
 
@@ -98,6 +105,11 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.SecretScanning);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.SecretScanning);
 
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.ServiceTokens);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.ServiceTokens);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.ServiceTokens);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.ServiceTokens);
+
   return build({ conditionsMatcher });
 };
 
@@ -105,6 +117,7 @@ export const memberPermissions = buildMemberPermission();
 
 export const getUserOrgPermissions = async (userId: string, orgId: string) => {
   // TODO(akhilmhdh): speed this up by pulling from cache later
+  
   const membership = await MembershipOrg.findOne({
     user: userId,
     organization: orgId,

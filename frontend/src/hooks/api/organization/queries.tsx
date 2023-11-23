@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { ServiceMembershipOrg } from "../serviceTokens/types";
 import {
   BillingDetails,
   Invoice,
@@ -15,7 +16,7 @@ import {
   TaxID
 } from "./types";
 
-const organizationKeys = {
+export const organizationKeys = {
   getUserOrganizations: ["organization"] as const,
   getOrgPlanBillingInfo: (orgId: string) => [{ orgId }, "organization-plan-billing"] as const,
   getOrgPlanTable: (orgId: string) => [{ orgId }, "organization-plan-table"] as const,
@@ -25,7 +26,8 @@ const organizationKeys = {
   getOrgPmtMethods: (orgId: string) => [{ orgId }, "organization-pmt-methods"] as const,
   getOrgTaxIds: (orgId: string) => [{ orgId }, "organization-tax-ids"] as const,
   getOrgInvoices: (orgId: string) => [{ orgId }, "organization-invoices"] as const,
-  getOrgLicenses: (orgId: string) => [{ orgId }, "organization-licenses"] as const
+  getOrgLicenses: (orgId: string) => [{ orgId }, "organization-licenses"] as const,
+  getOrgServiceMemberships: (orgId: string) => [{ orgId }, "organization-service-memberships"] as const,
 };
 
 export const fetchOrganizations = async () => {
@@ -344,6 +346,22 @@ export const useGetOrgLicenses = (organizationId: string) => {
       );
 
       return data;
+    },
+    enabled: true
+  });
+};
+
+export const useGetOrgServiceMemberships = (organizationId: string) => {
+  return useQuery({
+    queryKey: organizationKeys.getOrgServiceMemberships(organizationId),
+    queryFn: async () => {
+      const {
+        data: { serviceMemberships }
+      } = await apiRequest.get<{ serviceMemberships: ServiceMembershipOrg[] }>(
+        `/api/v2/organizations/${organizationId}/service-memberships`
+      );
+
+      return serviceMemberships;
     },
     enabled: true
   });

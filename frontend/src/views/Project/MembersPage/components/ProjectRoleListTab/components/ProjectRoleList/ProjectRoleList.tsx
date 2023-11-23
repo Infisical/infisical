@@ -64,8 +64,6 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
     }
   };
 
-  // roles={roles as TRole<string>[]}
-
   return (
     <div className="w-full">
       <div className="mb-4 flex">

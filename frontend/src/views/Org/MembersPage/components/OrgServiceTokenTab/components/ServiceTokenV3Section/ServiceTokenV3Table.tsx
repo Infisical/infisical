@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import { ProjectPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
     EmptyState,
     IconButton,
@@ -17,11 +17,13 @@ import {
     THead,
     Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub , useWorkspace } from "@app/context";
+import { 
+    OrgPermissionActions,
+    OrgPermissionSubjects,
+    useOrganization} from "@app/context";
 import {
-    useGetWorkspaceServiceTokenDataV3,
-    useUpdateServiceTokenV3
-} from "@app/hooks/api";
+    useGetOrgServiceMemberships,
+    useUpdateServiceTokenV3} from "@app/hooks/api";
 import { ServiceTokenV3TrustedIp } from "@app/hooks/api/serviceTokens/types"
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -47,9 +49,9 @@ export const ServiceTokenV3Table = ({
     handlePopUpOpen
 }: Props) => {
     const { createNotification } = useNotificationContext();
-    const { currentWorkspace } = useWorkspace();
-    const { data, isLoading } = useGetWorkspaceServiceTokenDataV3(currentWorkspace?._id || "");
+    const { currentOrg } = useOrganization();
     const { mutateAsync: updateMutateAsync } = useUpdateServiceTokenV3();
+    const { data, isLoading } = useGetOrgServiceMemberships(currentOrg?._id || "");
 
     const handleToggleServiceTokenDataStatus = async ({
         serviceTokenDataId,
@@ -85,9 +87,9 @@ export const ServiceTokenV3Table = ({
                         <Th>Name</Th>
                         <Th>Status</Th>
                         <Th>Role</Th>
-                        <Th>Trusted IPs</Th>
-                        <Th>Access Token TTL</Th>
-                        <Th>Created At</Th>
+                        {/* <Th>Trusted IPs</Th> */}
+                        {/* <Th>Access Token TTL</Th> */}
+                        {/* <Th>Created At</Th> */}
                         <Th>Valid Until</Th>
                         <Th className="w-5" />
                     </Tr>
@@ -98,24 +100,26 @@ export const ServiceTokenV3Table = ({
                     data &&
                     data.length > 0 &&
                     data.map(({
-                        _id,
-                        name,
-                        isActive,
+                        service: {
+                            _id,
+                            name,
+                            isActive,
+                            trustedIps,
+                            // createdAt,
+                            expiresAt,
+                            accessTokenTTL,
+                            isRefreshTokenRotationEnabled
+                        },
                         role,
-                        customRole,
-                        trustedIps,
-                        createdAt,
-                        expiresAt,
-                        accessTokenTTL,
-                        isRefreshTokenRotationEnabled
+                        customRole
                     }) => {
                         return (
                             <Tr className="h-10" key={`st-v3-${_id}`}>
                                 <Td>{name}</Td>
                                 <Td>
-                                    <ProjectPermissionCan
-                                        I={ProjectPermissionActions.Edit}
-                                        a={ProjectPermissionSub.ServiceTokens}
+                                    <OrgPermissionCan
+                                        I={OrgPermissionActions.Edit}
+                                        a={OrgPermissionSubjects.ServiceTokens}
                                     >
                                         {(isAllowed) => (
                                             <Switch
@@ -130,10 +134,10 @@ export const ServiceTokenV3Table = ({
                                                 <p className="w-12 mr-4">{isActive ? "Active" : "Inactive"}</p>
                                             </Switch>
                                         )}
-                                    </ProjectPermissionCan>
+                                    </OrgPermissionCan>
                                 </Td>
                                 <Td>{customRole?.slug ?? role}</Td> 
-                                <Td>
+                                {/* <Td>
                                     {trustedIps.map(({
                                         _id: trustedIpId,
                                         ipAddress,
@@ -145,14 +149,14 @@ export const ServiceTokenV3Table = ({
                                             </p>
                                         );
                                     })}
-                                </Td> 
-                                <Td>{accessTokenTTL}</Td>
-                                <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
+                                </Td>  */}
+                                {/* <Td>{accessTokenTTL}</Td> */}
+                                {/* <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td> */}
                                 <Td>{expiresAt ? format(new Date(expiresAt), "yyyy-MM-dd") : "-"}</Td>
                                 <Td className="flex justify-end">
-                                    <ProjectPermissionCan
-                                        I={ProjectPermissionActions.Edit}
-                                        a={ProjectPermissionSub.ServiceTokens}
+                                    <OrgPermissionCan
+                                        I={OrgPermissionActions.Edit}
+                                        a={OrgPermissionSubjects.ServiceTokens}
                                     >
                                         {(isAllowed) => (
                                             <IconButton
@@ -176,10 +180,10 @@ export const ServiceTokenV3Table = ({
                                                 <FontAwesomeIcon icon={faPencil} />
                                             </IconButton>
                                         )}
-                                    </ProjectPermissionCan>
-                                    <ProjectPermissionCan
-                                        I={ProjectPermissionActions.Delete}
-                                        a={ProjectPermissionSub.ServiceTokens}
+                                    </OrgPermissionCan>
+                                    <OrgPermissionCan
+                                        I={OrgPermissionActions.Delete}
+                                        a={OrgPermissionSubjects.ServiceTokens}
                                     >
                                         {(isAllowed) => (
                                             <IconButton
@@ -199,7 +203,7 @@ export const ServiceTokenV3Table = ({
                                                 <FontAwesomeIcon icon={faXmark} />
                                             </IconButton>
                                         )}
-                                    </ProjectPermissionCan>
+                                    </OrgPermissionCan>
                                 </Td>
                             </Tr>
                         );

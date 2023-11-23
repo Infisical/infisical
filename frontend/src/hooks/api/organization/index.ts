@@ -14,6 +14,7 @@ export {
     useGetOrgPlansTable,
     useGetOrgPlanTable,
     useGetOrgPmtMethods,
+    useGetOrgServiceMemberships,
     useGetOrgTaxIds,
     useGetOrgTrialUrl,
     useRenameOrg, 

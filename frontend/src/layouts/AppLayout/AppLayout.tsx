@@ -591,7 +591,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             isSelected={router.asPath === `/org/${currentOrg?._id}/members`}
                             icon="system-outline-96-groups"
                           >
-                            Members
+                            Access Control
                           </MenuItem>
                         </a>
                       </Link>

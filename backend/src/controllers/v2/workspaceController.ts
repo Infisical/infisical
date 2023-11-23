@@ -1,6 +1,14 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Key, Membership, ServiceTokenData, Workspace } from "../../models";
+import { 
+  Key, 
+  Membership, 
+  ServiceMembership, 
+  ServiceTokenData,
+  ServiceTokenDataV3,
+  Workspace
+} from "../../models";
+import { Role } from "../../ee/models";
 import {
   pullSecrets as pull,
   v2PushSecrets as push,
@@ -19,6 +27,8 @@ import {
   getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
+import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
+import { ADMIN, MEMBER, VIEWER } from "../../variables";
 
 interface V2PushSecret {
   type: string; // personal or shared
@@ -491,3 +501,136 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
     workspace
   });
 };
+
+/**
+ * Add service account with id [serviceId] to workspace
+ * with id [workspaceId]
+ * @param req 
+ * @param res 
+ */
+export const addWorkspaceServiceMembership = async (req: Request, res: Response) => {
+  const {
+    params: { workspaceId },
+    body: {
+      serviceId,
+      role
+    }
+  } = await validateRequest(reqValidator.AddWorkspaceServiceMemberV2, req);
+  
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.ServiceTokens
+  );
+  
+  let serviceMembership = await ServiceMembership.findOne({
+    service: new Types.ObjectId(serviceId),
+    workspace: new Types.ObjectId(workspaceId)
+  });
+
+  if (serviceMembership) throw BadRequestError({
+    message: "Service account already exists in workspace"
+  });
+
+  const serviceTokenData = await ServiceTokenDataV3.findById(serviceId);
+  if (!serviceTokenData) throw ResourceNotFoundError();
+  
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw ResourceNotFoundError();
+  
+  if (!serviceTokenData.organization.equals(workspace.organization)) throw BadRequestError({
+    message: "Failed to add service account to workspace in another organization"
+  });
+
+  let customRole;
+  if (role) {
+    const isCustomRole = ![ADMIN, MEMBER, VIEWER].includes(role);
+    if (isCustomRole) {
+      customRole = await Role.findOne({
+        slug: role,
+        isOrgRole: false,
+        workspace: new Types.ObjectId(workspaceId)
+      });
+      
+      if (!customRole) throw BadRequestError({ message: "Role not found" });
+    }
+  }
+  
+  serviceMembership = await new ServiceMembership({
+    service: serviceTokenData._id,
+    workspace: new Types.ObjectId(workspaceId),
+    role,
+    customRole
+  }).save();
+
+  return res.status(200).send({
+    serviceMembership
+  });
+}
+
+/**
+ * Add service account with id [serviceId] to workspace
+ * with id [workspaceId]
+ * @param req 
+ * @param res 
+ */
+ export const deleteWorkspaceServiceMembership = async (req: Request, res: Response) => {
+  const {
+    params: { workspaceId, serviceId }
+  } = await validateRequest(reqValidator.DeleteWorkspaceServiceMemberV2, req);
+  
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.ServiceTokens
+  );
+  
+  const serviceMembership = await ServiceMembership.findOneAndDelete({
+    service: new Types.ObjectId(serviceId),
+    workspace: new Types.ObjectId(workspaceId)
+  });
+  
+  if (!serviceMembership) throw ResourceNotFoundError();
+
+  return res.status(200).send({
+    serviceMembership
+  });
+}
+
+/**
+ * Return list of service memberships for workspace with id [workspaceId]
+ * @param req
+ * @param res 
+ * @returns 
+ */
+ export const getWorkspaceServiceMemberships = async (req: Request, res: Response) => {
+  const {
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.GetWorkspaceServiceMembersV2, req);
+
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.ServiceTokens
+  );
+
+  const serviceMemberships = await ServiceMembership.find({
+    workspace: new Types.ObjectId(workspaceId)
+  }).populate("service customRole");
+
+  return res.status(200).send({
+    serviceMemberships
+  });
+}

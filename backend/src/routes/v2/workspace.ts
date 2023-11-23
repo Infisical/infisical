@@ -93,4 +93,29 @@ router.patch(
   workspaceController.toggleAutoCapitalization
 );
 
+// TODO: consider endpoint restructuring
+router.post(
+  "/:workspaceId/service-memberships",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+  }),
+  workspaceController.addWorkspaceServiceMembership
+);
+
+router.delete(
+  "/:workspaceId/service-memberships/:serviceId",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+  }),
+  workspaceController.deleteWorkspaceServiceMembership
+);
+
+router.get(
+  "/:workspaceId/service-memberships",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  workspaceController.getWorkspaceServiceMemberships
+);
+
 export default router;

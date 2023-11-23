@@ -1,6 +1,5 @@
 import { Document, Schema, Types, model } from "mongoose";
 import { IPType } from "../ee/models";
-import { ADMIN, CUSTOM, MEMBER, VIEWER } from "../variables";
 
 export interface IServiceTokenV3TrustedIp {
     ipAddress: string;
@@ -11,9 +10,8 @@ export interface IServiceTokenV3TrustedIp {
 export interface IServiceTokenDataV3 extends Document {
     _id: Types.ObjectId;
     name: string;
-    workspace: Types.ObjectId;
+    organization: Types.ObjectId;
     user: Types.ObjectId;
-    publicKey: string;
     isActive: boolean;
     refreshTokenLastUsed?: Date;
     accessTokenLastUsed?: Date;
@@ -23,8 +21,6 @@ export interface IServiceTokenDataV3 extends Document {
     isRefreshTokenRotationEnabled: boolean;
     expiresAt?: Date;
     accessTokenTTL: number;
-    role: "admin" | "member" | "viewer" | "custom";
-    customRole: Types.ObjectId;
     trustedIps: Array<IServiceTokenV3TrustedIp>;
 }
 
@@ -34,18 +30,14 @@ const serviceTokenDataV3Schema = new Schema(
             type: String,
             required: true
         },
-        workspace: {
+        organization: {
             type: Schema.Types.ObjectId,
-            ref: "Workspace",
+            ref: "Organization",
             required: true
         },
         user: {
             type: Schema.Types.ObjectId,
             ref: "User",
-            required: true
-        },
-        publicKey: {
-            type: String,
             required: true
         },
         isActive: {
@@ -90,15 +82,6 @@ const serviceTokenDataV3Schema = new Schema(
             type: Number,
             default: 7200,
             required: true
-        },
-        role: {
-            type: String,
-            enum: [ADMIN, MEMBER, VIEWER, CUSTOM],
-            required: true
-        },
-        customRole: {
-            type: Schema.Types.ObjectId,
-            ref: "Role"
         },
         trustedIps: {
             type: [

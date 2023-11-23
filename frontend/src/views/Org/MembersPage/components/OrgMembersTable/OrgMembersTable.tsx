@@ -55,19 +55,13 @@ import {
   useAddUserToOrg,
   useDeleteOrgMembership,
   useGetOrgUsers,
+  useGetRoles,
   useGetSSOConfig,
   useGetUserWorkspaceMemberships,
   useGetUserWsKey,
   useUpdateOrgUserRole,
-  useUploadWsKey
-} from "@app/hooks/api";
-import { TRole } from "@app/hooks/api/roles/types";
+  useUploadWsKey} from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
-
-type Props = {
-  roles?: TRole<undefined>[];
-  isRolesLoading?: boolean;
-};
 
 const addMemberFormSchema = yup.object({
   email: yup.string().email().required().label("Email").trim().lowercase()
@@ -75,7 +69,7 @@ const addMemberFormSchema = yup.object({
 
 type TAddMemberForm = yup.InferType<typeof addMemberFormSchema>;
 
-export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
+export const OrgMembersTable = () => {
   const router = useRouter();
   const { createNotification } = useNotificationContext();
 
@@ -86,6 +80,10 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
   const orgId = currentOrg?._id || "";
   const workspaceId = currentWorkspace?._id || "";
 
+  const { data: roles, isLoading: isRolesLoading } = useGetRoles({
+    orgId
+  });
+  
   const { data: ssoConfig, isLoading: isLoadingSSOConfig } = useGetSSOConfig(orgId);
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
   const { data: serverDetails } = useFetchServerStatus();
@@ -211,7 +209,7 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
 
   const findRoleFromId = useCallback(
     (roleId: string) => {
-      return roles.find(({ _id: id }) => id === roleId);
+      return (roles || []).find(({ _id: id }) => id === roleId);
     },
     [roles]
   );
@@ -377,7 +375,7 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
                                       onRoleChange(orgMembershipId, selectedRole)
                                     }
                                   >
-                                    {roles
+                                    {(roles || [])
                                       .filter(({ slug }) =>
                                         slug === "owner" ? isIamOwner || role === "owner" : true
                                       )

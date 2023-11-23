@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace/queries";
+import { organizationKeys } from "../organization/queries";
 import {
   CreateServiceTokenDataV3DTO,
   CreateServiceTokenDataV3Res,
@@ -74,7 +74,7 @@ export const useCreateServiceTokenV3 = () => {
       return data;
     },
     onSuccess: ({ serviceTokenData }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceServiceTokenDataV3(serviceTokenData.workspace));
+      queryClient.invalidateQueries(organizationKeys.getOrgServiceMemberships(serviceTokenData.organization));
     }
   });
 };
@@ -104,8 +104,8 @@ export const useUpdateServiceTokenV3 = () => {
 
       return serviceTokenData;
     },
-    onSuccess: ({ workspace }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceServiceTokenDataV3(workspace));
+    onSuccess: ({ organization }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgServiceMemberships(organization));
     }
   });
 };
@@ -119,8 +119,8 @@ export const useDeleteServiceTokenV3 = () => {
       const { data: { serviceTokenData } } = await apiRequest.delete(`/api/v3/service-token/${serviceTokenDataId}`);
       return serviceTokenData;
     },
-    onSuccess: ({ workspace }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceServiceTokenDataV3(workspace));
+    onSuccess: ({ organization }) => {
+      queryClient.invalidateQueries(organizationKeys.getOrgServiceMemberships(organization));
     }
   });
 };

@@ -8,6 +8,7 @@ import { AuthData } from "../interfaces/middleware";
 import { z } from "zod";
 import { EventType, UserAgentType } from "../ee/models";
 import { UnauthorizedRequestError } from "../utils/errors";
+import { MEMBER } from "../variables";
 
 /**
  * Validate authenticated clients for workspace with id [workspaceId] based
@@ -279,6 +280,29 @@ export const ToggleAutoCapitalizationV2 = z.object({
   })
 });
 
+export const AddWorkspaceServiceMemberV2 = z.object({
+  params: z.object({
+    workspaceId: z.string().trim()
+  }),
+  body: z.object({
+    serviceId: z.string().trim(), // TODO: consider renaming
+    role: z.string().trim().min(1).default(MEMBER),
+  })
+});
+
+export const DeleteWorkspaceServiceMemberV2 = z.object({
+  params: z.object({
+    workspaceId: z.string().trim(),
+    serviceId: z.string().trim()
+  })
+});
+
+export const GetWorkspaceServiceMembersV2 = z.object({
+  params: z.object({
+    workspaceId: z.string().trim()
+  }),
+});
+
 export const GetWorkspaceBlinkIndexStatusV3 = z.object({
   params: z.object({
     workspaceId: z.string().trim()
@@ -302,11 +326,5 @@ export const NameWorkspaceSecretsV3 = z.object({
         _id: z.string().trim()
       })
       .array()
-  })
-});
-
-export const GetWorkspaceServiceTokenDataV3 = z.object({
-  params: z.object({
-    workspaceId: z.string().trim()
   })
 });

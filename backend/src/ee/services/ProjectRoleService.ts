@@ -12,7 +12,12 @@ import { FieldCondition, FieldInstruction, JsInterpreter } from "@ucast/mongo2js
 import picomatch from "picomatch";
 import { AuthData } from "../../interfaces/middleware";
 import { ActorType, IRole } from "../models";
-import { Membership, ServiceTokenData, ServiceTokenDataV3 } from "../../models";
+import { 
+  IServiceTokenDataV3, 
+  Membership, 
+  ServiceMembership,
+  ServiceTokenData
+} from "../../models";
 import { ADMIN, CUSTOM, MEMBER, VIEWER } from "../../variables";
 import { checkIPAgainstBlocklist } from "../../utils/ip";
 
@@ -265,10 +270,10 @@ export const getAuthDataProjectPermissions = async ({
         user: authData.authPayload._id,
         workspace: workspaceId
       })
-        .populate<{
-          customRole: IRole & { permissions: RawRuleOf<MongoAbility<ProjectPermissionSet>>[] };
-        }>("customRole")
-        .exec();
+      .populate<{
+        customRole: IRole & { permissions: RawRuleOf<MongoAbility<ProjectPermissionSet>>[] };
+      }>("customRole")
+      .exec();
     
       if (!membership || (membership.role === "custom" && !membership.customRole)) {
         throw UnauthorizedRequestError();
@@ -285,24 +290,27 @@ export const getAuthDataProjectPermissions = async ({
       break;
     }
     case ActorType.SERVICE_V3: {
-      const serviceTokenData = await ServiceTokenDataV3
-        .findById(authData.authPayload._id)
-        .populate<{
-          customRole: IRole & { permissions: RawRuleOf<MongoAbility<ProjectPermissionSet>>[] };
-        }>("customRole")
-        .exec();
-        
-      if (!serviceTokenData || (serviceTokenData.role === "custom" && !serviceTokenData.customRole)) {
+      const serviceMembership = await ServiceMembership.findOne({
+        service: authData.authPayload._id,
+        workspace: workspaceId
+      })
+      .populate<{
+        customRole: IRole & { permissions: RawRuleOf<MongoAbility<ProjectPermissionSet>>[] };
+        service: IServiceTokenDataV3
+      }>("customRole service")
+      .exec();
+      
+      if (!serviceMembership || (serviceMembership.role === "custom" && !serviceMembership.customRole)) {
         throw UnauthorizedRequestError();
       }
 
       checkIPAgainstBlocklist({
         ipAddress: authData.ipAddress,
-        trustedIps: serviceTokenData.trustedIps
+        trustedIps: serviceMembership.service.trustedIps
       });
     
-      role = serviceTokenData.role;
-      customRole = serviceTokenData.customRole;
+      role = serviceMembership.role;
+      customRole = serviceMembership.customRole;
       break;
     }
     default:

@@ -2,13 +2,13 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import { ProjectPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCan } from "@app/components/permissions";
 import { 
   Button,
   DeleteActionModal
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
-import { withProjectPermission } from "@app/hoc";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { withPermission } from "@app/hoc";
 import {
   useDeleteServiceTokenV3
 } from "@app/hooks/api";
@@ -17,7 +17,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { AddServiceTokenV3Modal } from "./AddServiceTokenV3Modal";
 import { ServiceTokenV3Table } from "./ServiceTokenV3Table";
 
-export const ServiceTokenV3Section = withProjectPermission(
+export const ServiceTokenV3Section = withPermission(
   () => {
     const { createNotification } = useNotificationContext();
     const { mutateAsync: deleteMutateAsync } = useDeleteServiceTokenV3();
@@ -51,11 +51,11 @@ export const ServiceTokenV3Section = withProjectPermission(
         <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="flex justify-between mb-8">
             <p className="text-xl font-semibold text-mineshaft-100">
-              Service Tokens V3 (Beta)
+              Service Accounts (Beta)
             </p>
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Create}
-              a={ProjectPermissionSub.ServiceTokens}
+            <OrgPermissionCan
+              I={OrgPermissionActions.Create}
+              a={OrgPermissionSubjects.ServiceTokens}
             >
               {(isAllowed) => (
                 <Button
@@ -65,10 +65,10 @@ export const ServiceTokenV3Section = withProjectPermission(
                   onClick={() => handlePopUpOpen("serviceTokenV3")}
                   isDisabled={!isAllowed}
                 >
-                  Create token
+                  Create account
                 </Button>
               )}
-            </ProjectPermissionCan>
+            </OrgPermissionCan>
           </div>
           <ServiceTokenV3Table 
             handlePopUpOpen={handlePopUpOpen}
@@ -94,5 +94,5 @@ export const ServiceTokenV3Section = withProjectPermission(
         </div>
     );
   },
-  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.ServiceTokens }
+  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.ServiceTokens }
 );

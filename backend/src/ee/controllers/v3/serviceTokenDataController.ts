@@ -1,12 +1,11 @@
 import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { 
-    IServiceTokenDataV3,
-    IUser,
+import {
     ServiceTokenDataV3,
-    ServiceTokenDataV3Key,
-    Workspace
+    ServiceTokenDataV3Key, // TODO: remove
+    Organization,
+    ServiceMembershipOrg
 } from "../../../models";
 import { IServiceTokenV3TrustedIp } from "../../../models/serviceTokenDataV3";
 import {
@@ -17,44 +16,13 @@ import {
 import { validateRequest } from "../../../helpers/validation";
 import * as reqValidator from "../../../validation/serviceTokenDataV3";
 import { createToken } from "../../../helpers/auth";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  getAuthDataProjectPermissions
-} from "../../services/ProjectRoleService";
-import { ForbiddenError } from "@casl/ability"; 
+
+
 import { BadRequestError, ResourceNotFoundError, UnauthorizedRequestError } from "../../../utils/errors";
 import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
 import { EEAuditLogService, EELicenseService } from "../../services";
 import { getAuthSecret } from "../../../config";
-import { ADMIN, AuthTokenType, CUSTOM, MEMBER, VIEWER } from "../../../variables";
-
-/**
- * Return project key for service token V3
- * @param req 
- * @param res 
- */
-export const getServiceTokenDataKey = async (req: Request, res: Response) => {
-    const key = await ServiceTokenDataV3Key.findOne({
-        serviceTokenData: (req.authData.authPayload as IServiceTokenDataV3)._id
-    }).populate<{ sender: IUser }>("sender", "publicKey");
-    
-    if (!key) throw ResourceNotFoundError({
-        message: "Failed to find project key for service token"
-    });
-    
-    const { _id, workspace, encryptedKey, nonce, sender: { publicKey } } = key;
-    
-    return res.status(200).send({
-        key: {
-            _id,
-            workspace,
-            encryptedKey,
-            publicKey,
-            nonce
-        }
-    });
-}
+import { ADMIN, AuthTokenType, CUSTOM, MEMBER } from "../../../variables";
 
 /**
  * Return access and refresh token as per refresh operation
@@ -159,44 +127,45 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
     const {
         body: { 
             name, 
-            workspaceId, 
-            publicKey, 
+            organizationId, 
             role,
             trustedIps,
             expiresIn, 
             accessTokenTTL,
-            isRefreshTokenRotationEnabled,
-            encryptedKey, // for ServiceTokenDataV3Key
-            nonce, // for ServiceTokenDataV3Key
+            isRefreshTokenRotationEnabled
         }
     } = await validateRequest(reqValidator.CreateServiceTokenV3, req);
-    const { permission } = await getAuthDataProjectPermissions({
-        authData: req.authData,
-        workspaceId: new Types.ObjectId(workspaceId)
-      });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Create,
-        ProjectPermissionSub.ServiceTokens
-    );
+    // const { permission } = await getAuthDataProjectPermissions({
+    //     authData: req.authData,
+    //     workspaceId: new Types.ObjectId(workspaceId)
+    //   });
+
+    // ForbiddenError.from(permission).throwUnlessCan(
+    //     ProjectPermissionActions.Create,
+    //     ProjectPermissionSub.ServiceTokens
+    // );
     
-    const workspace = await Workspace.findById(workspaceId);
-    if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+    // const workspace = await Workspace.findById(workspaceId);
+    // if (!workspace) throw BadRequestError({ message: "Workspace not found" });
 
-    const isCustomRole = ![ADMIN, MEMBER, VIEWER].includes(role);
+    const organization = await Organization.findById(organizationId);
+    if (!organization) throw BadRequestError({ message: "Organization not found" });
+
+    const isCustomRole = ![ADMIN, MEMBER].includes(role);
     
     let customRole;
     if (isCustomRole) {
         customRole = await Role.findOne({
             slug: role,
-            isOrgRole: false,
-            workspace: workspace._id
+            isOrgRole: true,
+            organization: new Types.ObjectId(organizationId)
         });
         
         if (!customRole) throw BadRequestError({ message: "Role not found" });
     }
 
-    const plan = await EELicenseService.getPlan(workspace.organization);
+    const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
     
     // validate trusted ips
     const reformattedTrustedIps = trustedIps.map((trustedIp) => {
@@ -228,26 +197,22 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
     const serviceTokenData = await new ServiceTokenDataV3({
         name,
         user,
-        workspace: new Types.ObjectId(workspaceId),
-        publicKey,
+        organization: new Types.ObjectId(organizationId),
         refreshTokenUsageCount: 0,
         accessTokenUsageCount: 0,
         tokenVersion: 1,
         trustedIps: reformattedTrustedIps,
-        role: isCustomRole ? CUSTOM : role,
-        customRole,
         isActive,
         expiresAt,
         accessTokenTTL,
         isRefreshTokenRotationEnabled
     }).save();
     
-    await new ServiceTokenDataV3Key({
-        encryptedKey,
-        nonce,
-        sender: req.user._id,
-        serviceTokenData: serviceTokenData._id,
-        workspace: new Types.ObjectId(workspaceId)
+    await new ServiceMembershipOrg({
+        service: serviceTokenData._id,
+        organization: serviceTokenData.organization,
+        role: isCustomRole ? CUSTOM : role,
+        customRole
     }).save();
     
     const refreshToken = createToken({
@@ -262,7 +227,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
     await EEAuditLogService.createAuditLog(
         req.authData,
         {
-            type: EventType.CREATE_SERVICE_TOKEN_V3, // TODO: update
+            type: EventType.CREATE_SERVICE_TOKEN_V3,
             metadata: {
                 name,
                 isActive,
@@ -272,7 +237,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             }
         },
         {
-            workspaceId: new Types.ObjectId(workspaceId)
+            organizationId: new Types.ObjectId(organizationId)
         }
     );
     
@@ -294,7 +259,7 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
         body: { 
             name, 
             isActive,
-            role,
+            role, // bring this somewhere else?
             trustedIps,
             expiresIn,
             accessTokenTTL,
@@ -307,34 +272,34 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
         message: "Service token not found" 
     });
     
-    const { permission } = await getAuthDataProjectPermissions({
-        authData: req.authData,
-        workspaceId: serviceTokenData.workspace
-    });
+    // const { permission } = await getAuthDataProjectPermissions({
+    //     authData: req.authData,
+    //     workspaceId: serviceTokenData.workspace
+    // });
     
-    ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Edit,
-        ProjectPermissionSub.ServiceTokens
-    );
+    // ForbiddenError.from(permission).throwUnlessCan(
+    //     ProjectPermissionActions.Edit,
+    //     ProjectPermissionSub.ServiceTokens
+    // );
 
-    const workspace = await Workspace.findById(serviceTokenData.workspace);
-    if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+    // const workspace = await Workspace.findById(serviceTokenData.workspace);
+    // if (!workspace) throw BadRequestError({ message: "Workspace not found" });
 
     let customRole;
     if (role) {
-        const isCustomRole = ![ADMIN, MEMBER, VIEWER].includes(role);
+        const isCustomRole = ![ADMIN, MEMBER].includes(role);
         if (isCustomRole) {
             customRole = await Role.findOne({
                 slug: role,
-                isOrgRole: false,
-                workspace: workspace._id
+                isOrgRole: true,
+                organization: serviceTokenData.organization
             });
             
             if (!customRole) throw BadRequestError({ message: "Role not found" });
         }
     }
 
-    const plan = await EELicenseService.getPlan(workspace.organization);
+    const plan = await EELicenseService.getPlan(serviceTokenData.organization);
 
     // validate trusted ips
     let reformattedTrustedIps;
@@ -365,15 +330,7 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
         {
             name,
             isActive,
-            role: customRole ? CUSTOM : role,
-            ...(customRole ? {
-                customRole 
-            } : {}),
-            ...(role && !customRole ? { // non-custom role
-                $unset: {
-                    customRole: 1
-                }
-            } : {}),
+            
             trustedIps: reformattedTrustedIps,
             expiresAt,
             accessTokenTTL,
@@ -387,6 +344,26 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
     if (!serviceTokenData) throw BadRequestError({
         message: "Failed to update service token"
     });
+    
+    await ServiceMembershipOrg.findOneAndUpdate(
+        {
+            service: serviceTokenData._id
+        },
+        {
+            role: customRole ? CUSTOM : role,
+            ...(customRole ? {
+                customRole 
+            } : {}),
+            ...(role && !customRole ? { // non-custom role
+                $unset: {
+                    customRole: 1
+                }
+            } : {})
+        },
+        {
+            new: true
+        }
+    );
 
     await EEAuditLogService.createAuditLog(
         req.authData,
@@ -401,7 +378,7 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
             }
         },
         {
-            workspaceId: serviceTokenData.workspace
+            organizationId: serviceTokenData.organization
         }
     );
 
@@ -426,19 +403,27 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
         message: "Service token not found" 
     });
     
-    const { permission } = await getAuthDataProjectPermissions({
-        authData: req.authData,
-        workspaceId: serviceTokenData.workspace
-    });
+    // const { permission } = await getAuthDataProjectPermissions({
+    //     authData: req.authData,
+    //     workspaceId: serviceTokenData.workspace
+    // });
     
-    ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Delete,
-        ProjectPermissionSub.ServiceTokens
-    );
+    // ForbiddenError.from(permission).throwUnlessCan(
+    //     ProjectPermissionActions.Delete,
+    //     ProjectPermissionSub.ServiceTokens
+    // );
     
     serviceTokenData = await ServiceTokenDataV3.findByIdAndDelete(serviceTokenDataId);
     
     if (!serviceTokenData) throw BadRequestError({
+        message: "Failed to delete service token"
+    });
+
+    const serviceMembershipOrg = await ServiceMembershipOrg.findOneAndDelete({
+        service: serviceTokenData._id,
+    });
+    
+    if (!serviceMembershipOrg) throw BadRequestError({
         message: "Failed to delete service token"
     });
     
@@ -453,13 +438,13 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
             metadata: {
                 name: serviceTokenData.name,
                 isActive: serviceTokenData.isActive,
-                role: serviceTokenData.role,
+                role: serviceMembershipOrg.role,
                 trustedIps: serviceTokenData.trustedIps as Array<IServiceTokenV3TrustedIp>,
                 expiresAt: serviceTokenData.expiresAt
             }
         },
         {
-            workspaceId: serviceTokenData.workspace
+            organizationId: serviceTokenData.organization
         }
     );
 

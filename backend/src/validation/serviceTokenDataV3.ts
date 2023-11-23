@@ -10,8 +10,7 @@ export const RefreshTokenV3 = z.object({
 export const CreateServiceTokenV3 = z.object({
   body: z.object({
     name: z.string().trim(),
-    workspaceId: z.string().trim(),
-    publicKey: z.string().trim(),
+    organizationId: z.string().trim(),
     role: z.string().trim().min(1).default(MEMBER),
     trustedIps: z // TODO: provide default
       .object({
@@ -22,8 +21,6 @@ export const CreateServiceTokenV3 = z.object({
       .default([{ ipAddress: "0.0.0.0/0" }]),
     expiresIn: z.number().optional(),
     accessTokenTTL: z.number().int().min(1),
-    encryptedKey: z.string().trim(),
-    nonce: z.string().trim(),
     isRefreshTokenRotationEnabled: z.boolean().default(false)
   })
 });

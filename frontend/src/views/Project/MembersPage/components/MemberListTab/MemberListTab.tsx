@@ -78,7 +78,7 @@ export const MemberListTab = () => {
   const { data: wsKey } = useGetUserWsKey(workspaceId);
   const { data: members, isLoading: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
   const { data: orgUsers } = useGetOrgUsers(orgId);
-
+  
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -205,7 +205,7 @@ export const MemberListTab = () => {
       ({ status, user: u }) => status === "accepted" && !wsUserEmails.has(u.email)
     );
   }, [orgUsers, members]);
-
+  
   const onGrantAccess = async (grantedUserId: string, publicKey: string) => {
     try {
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;

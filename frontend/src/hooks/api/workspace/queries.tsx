@@ -5,7 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
 import { EncryptedSecret } from "../secrets/types";
-import { ServiceTokenDataV3 } from "../serviceTokens/types";
+import { ServiceMembership } from "../serviceTokens/types";
 import { TWorkspaceUser } from "../users/types";
 import {
   CreateEnvironmentDTO,
@@ -32,7 +32,8 @@ export const workspaceKeys = {
   getWorkspaceAuditLogs: (workspaceId: string) => [{ workspaceId }] as const,
   getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }] as const,
   getWorkspaceServiceTokenDataV3: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-service-token-data-v3"] as const
+    [{ workspaceId }, "workspace-service-token-data-v3"] as const,
+  getWorkspaceServiceMemberships: (workspaceId: string) => [{ workspaceId }, "organization-service-memberships"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -356,17 +357,69 @@ export const useUpdateUserWorkspaceRole = () => {
   });
 };
 
-export const useGetWorkspaceServiceTokenDataV3 = (workspaceId: string) => {
-  return useQuery({
-    queryKey: workspaceKeys.getWorkspaceServiceTokenDataV3(workspaceId),
-    queryFn: async () => {
+export const useAddServiceToWorkspace = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      serviceId,
+      workspaceId,
+      role
+    }: {
+      serviceId: string;
+      workspaceId: string;
+      role?: string;
+    }) => {
+
       const {
-        data: { serviceTokenData }
-      } = await apiRequest.get<{ serviceTokenData: ServiceTokenDataV3[] }>(
-        `/api/v3/workspaces/${workspaceId}/service-token`
+        data: { serviceMembership }
+      } = await apiRequest.post(`/api/v2/workspace/${workspaceId}/service-memberships`, {
+        serviceId,
+        role
+      });
+      
+      return serviceMembership;
+    },
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceServiceMemberships(workspaceId));
+    }
+  });
+};
+
+export const useDeleteServiceFromWorkspace = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      serviceId,
+      workspaceId,
+    }: {
+      serviceId: string;
+      workspaceId: string;
+    }) => {
+      
+      const {
+        data: { serviceMembership }
+      } = await apiRequest.delete(`/api/v2/workspace/${workspaceId}/service-memberships/${serviceId}`);
+      
+      return serviceMembership;
+    },
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceServiceMemberships(workspaceId));
+    }
+  });
+};
+
+export const useGetWorkspaceServiceMemberships = (workspaceId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceServiceMemberships(workspaceId),
+    queryFn: async () => {
+      
+      const {
+        data: { serviceMemberships }
+      } = await apiRequest.get<{ serviceMemberships: ServiceMembership[] }>(
+        `/api/v2/workspace/${workspaceId}/service-memberships`
       );
 
-      return serviceTokenData;
+      return serviceMemberships;
     },
     enabled: true
   });

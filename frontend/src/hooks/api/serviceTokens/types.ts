@@ -1,3 +1,5 @@
+import { TRole } from "../roles/types";
+
 export type ServiceTokenScope = {
   environment: string;
   secretPath: string;
@@ -46,12 +48,7 @@ export type ServiceTokenV3TrustedIp = {
 export type ServiceTokenDataV3 = {
   _id: string;
   name: string;
-  role: string;
-  customRole?: {
-    name: string;
-    slug: string;
-  };
-  workspace: string;
+  organization: string;
   isActive: boolean;
   refreshTokenLastUsed?: string;
   accessTokenLastUsed?: string;
@@ -65,18 +62,35 @@ export type ServiceTokenDataV3 = {
   updatedAt: string;
 };
 
+export type ServiceMembershipOrg = {
+  _id: string;
+  service: ServiceTokenDataV3;
+  organization: string;
+  role: "admin" | "member" | "viewer" | "custom";
+  customRole?: TRole;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ServiceMembership = {
+  _id: string;
+  service: ServiceTokenDataV3;
+  organization: string;
+  role: "admin" | "member" | "viewer" | "custom";
+  customRole?: TRole;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type CreateServiceTokenDataV3DTO = {
   name: string;
+  organizationId: string;
   role?: string;
-  workspaceId: string;
-  publicKey: string;
   trustedIps: {
     ipAddress: string;
   }[];
   expiresIn?: number;
   accessTokenTTL: number;
-  encryptedKey: string;
-  nonce: string;
   isRefreshTokenRotationEnabled: boolean;
 }
 

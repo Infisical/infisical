@@ -4,15 +4,9 @@ import { faCheck, faCopy,faPlus, faXmark } from "@fortawesome/free-solid-svg-ico
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { motion } from "framer-motion";
-import nacl from "tweetnacl";
-import { encodeBase64 } from "tweetnacl-util";
 import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import {
-    decryptAssymmetric,
-    encryptAssymmetric
-} from "@app/components/utilities/cryptography/crypto";
 import {
     Button,
     FormControl,
@@ -30,15 +24,14 @@ import {
     UpgradePlanModal} from "@app/components/v2";
 import {
     useOrganization,
-    useSubscription,
-    useWorkspace
+    useSubscription
 } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { 
     useCreateServiceTokenV3,
     useGetRoles,
-    useGetUserWsKey,
-    useUpdateServiceTokenV3} from "@app/hooks/api";
+    useUpdateServiceTokenV3
+} from "@app/hooks/api";
 import { ServiceTokenV3TrustedIp } from "@app/hooks/api/serviceTokens/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -101,17 +94,13 @@ export const AddServiceTokenV3Modal = ({
 
     const { subscription } = useSubscription();
     const { currentOrg } = useOrganization();
-    const { currentWorkspace } = useWorkspace();
 
     const orgId = currentOrg?._id || "";
-    const workspaceId = currentWorkspace?._id || "";
 
     const { data: roles } = useGetRoles({
-        orgId,
-        workspaceId
+        orgId
     });
     
-    const { data: latestFileKey } = useGetUserWsKey(workspaceId);
     const { mutateAsync: createMutateAsync } = useCreateServiceTokenV3();
     const { mutateAsync: updateMutateAsync } = useUpdateServiceTokenV3();
     const { createNotification } = useNotificationContext();
@@ -200,6 +189,7 @@ export const AddServiceTokenV3Modal = ({
         isRefreshTokenRotationEnabled
     }: FormData) => {
         try {
+            
             const serviceTokenData = popUp?.serviceTokenV3?.data as { 
                 serviceTokenDataId: string;
                 name: string;
@@ -221,63 +211,22 @@ export const AddServiceTokenV3Modal = ({
                 
                 handlePopUpToggle("serviceTokenV3", false);
             } else {
-                // create
-                if (!workspaceId) return;
-                if (!latestFileKey) return;
-                
-                const pair = nacl.box.keyPair();
-                const secretKeyUint8Array = pair.secretKey;
-                const publicKeyUint8Array = pair.publicKey;
-                const privateKey = encodeBase64(secretKeyUint8Array);
-                const publicKey = encodeBase64(publicKeyUint8Array);
-                
-                const key = decryptAssymmetric({
-                    ciphertext: latestFileKey.encryptedKey,
-                    nonce: latestFileKey.nonce,
-                    publicKey: latestFileKey.sender.publicKey,
-                    privateKey: localStorage.getItem("PRIVATE_KEY") as string
-                });
-                
-                const { ciphertext, nonce } = encryptAssymmetric({
-                    plaintext: key,
-                    publicKey,
-                    privateKey: localStorage.getItem("PRIVATE_KEY") as string
-                });
 
                 const { refreshToken } = await createMutateAsync({
                     name,
                     role,
-                    workspaceId,
-                    publicKey,
+                    organizationId: orgId,
                     trustedIps,
                     expiresIn: expiresIn === "" ? undefined : Number(expiresIn),
                     accessTokenTTL: Number(accessTokenTTL),
-                    encryptedKey: ciphertext,
-                    nonce,
                     isRefreshTokenRotationEnabled
                 });
-                
-                const downloadData = {
-                    public_key: publicKey,
-                    private_key: privateKey,
-                    refresh_token: refreshToken
-                };
 
-                const serviceTokenJSON = JSON.stringify(downloadData, null, 2);
-                setNewServiceTokenJSON(serviceTokenJSON);
-
-                const blob = new Blob([serviceTokenJSON], { type: "application/json" });
-                const href = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = href;
-                link.download = `infisical_${name}.json`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                setNewServiceTokenJSON(refreshToken);
             }
             
             createNotification({
-                text: `Successfully ${popUp?.serviceTokenV3?.data ? "updated" : "created"} ST V3`,
+                text: `Successfully ${popUp?.serviceTokenV3?.data ? "updated" : "created"} service account`,
                 type: "success"
             });
 
@@ -285,7 +234,7 @@ export const AddServiceTokenV3Modal = ({
         } catch (err) {
             console.error(err);
             createNotification({
-                text: `Failed to ${popUp?.serviceTokenV3?.data ? "updated" : "created"} ST V3`,
+                text: `Failed to ${popUp?.serviceTokenV3?.data ? "updated" : "created"} service account`,
                 type: "error"
             });
         }
@@ -302,7 +251,7 @@ export const AddServiceTokenV3Modal = ({
                 setNewServiceTokenJSON("");
             }}
         >
-            <ModalContent title={`${popUp?.serviceTokenV3?.data ? "Update" : "Create"} Service Token V3`}>
+            <ModalContent title={`${popUp?.serviceTokenV3?.data ? "Update" : "Create"} Service Account`}>
                 {!hasServiceTokenJSON ? (
                     <form onSubmit={handleSubmit(onFormSubmit)}>
                         <Tabs defaultValue={TabSections.General}>

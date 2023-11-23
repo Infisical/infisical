@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Membership, MembershipOrg, Workspace } from "../../models";
+import { 
+  Membership, 
+  MembershipOrg, 
+  ServiceMembershipOrg,
+  Workspace
+} from "../../models";
 import { Role } from "../../ee/models";
 import { deleteMembershipOrg } from "../../helpers/membershipOrg";
 import {
@@ -377,3 +382,23 @@ export const deleteOrganizationById = async (req: Request, res: Response) => {
     organization
   });
 };
+
+/**
+ * Return list of service memberships for organization with id [organizationId]
+ * @param req
+ * @param res 
+ * @returns 
+ */
+export const getOrganizationServiceMemberships = async (req: Request, res: Response) => {
+  const {
+    params: { organizationId }
+  } = await validateRequest(reqValidator.GetOrgServiceMembersV2, req);
+  
+  const serviceMemberships = await ServiceMembershipOrg.find({
+    organization: new Types.ObjectId(organizationId)
+  }).populate("service customRole");
+
+  return res.status(200).send({
+    serviceMemberships
+  });
+}
