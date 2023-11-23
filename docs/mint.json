@@ -242,6 +242,7 @@
         "integrations/cloud/hasura-cloud",
         "integrations/cloud/terraform-cloud",
         "integrations/cloud/cloudflare-pages",
+        "integrations/cloud/cloudflare-workers",
         "integrations/cloud/qovery",
         "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",
