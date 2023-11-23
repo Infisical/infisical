@@ -306,7 +306,8 @@
     },
     "/api/v1/workspace/{workspaceId}/audit-logs": {
       "get": {
-        "description": "",
+        "summary": "Return audit logs",
+        "description": "Return audit logs",
         "parameters": [
           {
             "name": "workspaceId",
@@ -314,14 +315,99 @@
             "required": true,
             "schema": {
               "type": "string"
+            },
+            "description": "ID of the workspace where to get folders from"
+          },
+          {
+            "name": "offset",
+            "description": "Number of logs to skip before starting to return logs for pagination",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "description": "Maximum number of logs to return for pagination",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "description": "Filter logs from this date in ISO-8601 format",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "description": "Filter logs till this date in ISO-8601 format",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "eventType",
+            "description": "Filter by type of event such as get-secrets, get-secret, create-secret, update-secret, delete-secret, etc.",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userAgentType",
+            "description": "Filter by type of user agent such as web, cli, k8-operator, or other",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actor",
+            "description": "Filter by actor such as user or service",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "auditLogs": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AuditLog"
+                      },
+                      "description": "List of audit log"
+                    }
+                  }
+                }
+              }
+            }
           }
-        }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ]
       }
     },
     "/api/v1/workspace/{workspaceId}/audit-logs/filters/actors": {
@@ -1125,6 +1211,43 @@
     "/api/v1/auth/sessions": {
       "delete": {
         "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/config": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "patch": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/signup": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -4560,65 +4683,6 @@
             }
           }
         }
-      },
-      "get": {
-        "summary": "Get all accessible environments of a workspace",
-        "description": "Fetch all environments that the user has access to in a specified workspace",
-        "parameters": [
-          {
-            "name": "workspaceId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "ID of the workspace"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "accessibleEnvironments": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "name": {
-                            "type": "string",
-                            "example": "Development"
-                          },
-                          "slug": {
-                            "type": "string",
-                            "example": "development"
-                          },
-                          "isWriteDenied": {
-                            "type": "boolean",
-                            "example": false
-                          },
-                          "isReadDenied": {
-                            "type": "boolean",
-                            "example": false
-                          }
-                        }
-                      }
-                    }
-                  },
-                  "description": "List of environments the user has access to in the specified workspace"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "apiKeyAuth": []
-          }
-        ]
       }
     },
     "/api/v2/workspace/{workspaceId}/tags": {
@@ -6862,6 +6926,61 @@
           "createdAt": {
             "type": "string",
             "example": "2023-01-13T14:16:12.210Z"
+          }
+        }
+      },
+      "AuditLog": {
+        "type": "object",
+        "properties": {
+          "actor": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "example": ""
+              },
+              "metadata": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          },
+          "organization": {
+            "type": "string",
+            "example": ""
+          },
+          "workspace": {
+            "type": "string",
+            "example": ""
+          },
+          "ipAddress": {
+            "type": "string",
+            "example": ""
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "example": ""
+              },
+              "metadata": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          },
+          "userAgent": {
+            "type": "string",
+            "example": ""
+          },
+          "userAgentType": {
+            "type": "string",
+            "example": ""
+          },
+          "expiresAt": {
+            "type": "string",
+            "example": ""
           }
         }
       }
