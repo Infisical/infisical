@@ -583,8 +583,7 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
     #swagger.description = 'Return audit logs'
     
     #swagger.security = [{
-      "apiKeyAuth": [],
-      "bearerAuth": []
+      "apiKeyAuth": []
     }]
 
     #swagger.parameters['workspaceId'] = {
@@ -595,43 +594,43 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
     }
 
     #swagger.parameters['offset'] = {
-      "description": "Number of versions to skip",
+      "description": "Number of logs to skip before starting to return logs for pagination",
       "required": false,
       "type": "string"
     }
 
     #swagger.parameters['limit'] = {
-      "description": "Maximum number of versions to return",
+      "description": "Maximum number of logs to return for pagination",
       "required": false,
       "type": "string"
     }
 
    #swagger.parameters['startDate'] = {
-      "description": "Filter logs from the provided date",
+      "description": "Filter logs from this date in ISO-8601 format",
       "required": false,
       "type": "string"
     }
 
    #swagger.parameters['endDate'] = {
-      "description": "Filter logs till the provided date",
+      "description": "Filter logs till this date in ISO-8601 format",
       "required": false,
       "type": "string"
     }
 
     #swagger.parameters['eventType'] = {
-      "description": "Type  of event",
+      "description": "Filter by type of event such as get-secrets, get-secret, create-secret, update-secret, delete-secret, etc.",
       "required": false,
       "type": "string",
     }
 
     #swagger.parameters['userAgentType'] = {
-      "description": "Type  of event",
+      "description": "Filter by type of user agent such as web, cli, k8-operator, or other",
       "required": false,
       "type": "string",
     }
 
     #swagger.parameters['actor'] = {
-      "description": "Source of operation. It can be user, service token etc",
+      "description": "Filter by actor such as user or service",
       "required": false,
       "type": "string"
     }

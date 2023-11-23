@@ -320,7 +320,7 @@
           },
           {
             "name": "offset",
-            "description": "Number of versions to skip",
+            "description": "Number of logs to skip before starting to return logs for pagination",
             "required": false,
             "in": "query",
             "schema": {
@@ -329,7 +329,7 @@
           },
           {
             "name": "limit",
-            "description": "Maximum number of versions to return",
+            "description": "Maximum number of logs to return for pagination",
             "required": false,
             "in": "query",
             "schema": {
@@ -338,7 +338,7 @@
           },
           {
             "name": "startDate",
-            "description": "Filter logs from the provided date",
+            "description": "Filter logs from this date in ISO-8601 format",
             "required": false,
             "in": "query",
             "schema": {
@@ -347,7 +347,7 @@
           },
           {
             "name": "endDate",
-            "description": "Filter logs till the provided date",
+            "description": "Filter logs till this date in ISO-8601 format",
             "required": false,
             "in": "query",
             "schema": {
@@ -356,7 +356,7 @@
           },
           {
             "name": "eventType",
-            "description": "Type of event",
+            "description": "Filter by type of event such as get-secrets, get-secret, create-secret, update-secret, delete-secret, etc.",
             "required": false,
             "in": "query",
             "schema": {
@@ -365,7 +365,7 @@
           },
           {
             "name": "userAgentType",
-            "description": "Type of event",
+            "description": "Filter by type of user agent such as web, cli, k8-operator, or other",
             "required": false,
             "in": "query",
             "schema": {
@@ -374,7 +374,7 @@
           },
           {
             "name": "actor",
-            "description": "Source of operation. It can be user, service token etc",
+            "description": "Filter by actor such as user or service",
             "required": false,
             "in": "query",
             "schema": {
@@ -405,8 +405,7 @@
         },
         "security": [
           {
-            "apiKeyAuth": [],
-            "bearerAuth": []
+            "apiKeyAuth": []
           }
         ]
       }
@@ -4684,65 +4683,6 @@
             }
           }
         }
-      },
-      "get": {
-        "summary": "Get all accessible environments of a workspace",
-        "description": "Fetch all environments that the user has access to in a specified workspace",
-        "parameters": [
-          {
-            "name": "workspaceId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "ID of the workspace"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "accessibleEnvironments": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "name": {
-                            "type": "string",
-                            "example": "Development"
-                          },
-                          "slug": {
-                            "type": "string",
-                            "example": "development"
-                          },
-                          "isWriteDenied": {
-                            "type": "boolean",
-                            "example": false
-                          },
-                          "isReadDenied": {
-                            "type": "boolean",
-                            "example": false
-                          }
-                        }
-                      }
-                    }
-                  },
-                  "description": "List of environments the user has access to in the specified workspace"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "apiKeyAuth": []
-          }
-        ]
       }
     },
     "/api/v2/workspace/{workspaceId}/tags": {
