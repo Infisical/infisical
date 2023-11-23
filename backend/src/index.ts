@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-require("express-async-errors");
+import "express-async-errors";
 import helmet from "helmet";
 import cors from "cors";
 import { initLogger, logger } from "./utils/logging";
