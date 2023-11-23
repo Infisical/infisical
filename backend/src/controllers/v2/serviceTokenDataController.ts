@@ -11,7 +11,7 @@ import * as reqValidator from "../../validation/serviceTokenData";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 import { Types } from "mongoose";
@@ -75,7 +75,12 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
   const {
     body: { workspaceId, permissions, tag, encryptedKey, scopes, name, expiresIn, iv }
   } = await validateRequest(reqValidator.CreateServiceTokenV2, req);
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Create,
     ProjectPermissionSub.ServiceTokens
@@ -151,10 +156,11 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
   let serviceTokenData = await ServiceTokenData.findById(serviceTokenDataId);
   if (!serviceTokenData) throw BadRequestError({ message: "Service token not found" });
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    serviceTokenData.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: serviceTokenData.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Delete,
     ProjectPermissionSub.ServiceTokens

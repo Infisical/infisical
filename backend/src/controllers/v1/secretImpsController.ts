@@ -1,4 +1,6 @@
+
 import { Request, Response } from "express";
+import { Types } from "mongoose";
 import { isValidScope } from "../../helpers";
 import { Folder, IServiceTokenData, SecretImport, ServiceTokenData } from "../../models";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
@@ -15,7 +17,7 @@ import * as reqValidator from "../../validation/secretImports";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError, subject } from "@casl/ability";
 
@@ -105,7 +107,11 @@ export const createSecretImp = async (req: Request, res: Response) => {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   } else {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const { permission } = await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: new Types.ObjectId(workspaceId)
+    });
+    
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: directory })
@@ -313,10 +319,11 @@ export const updateSecretImport = async (req: Request, res: Response) => {
     }
   } else {
     // non token entry check
-    const { permission } = await getUserProjectPermissions(
-      req.user._id,
-      importSecDoc.workspace.toString()
-    );
+    const { permission } = await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: importSecDoc.workspace
+    });
+    
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, {
@@ -442,10 +449,11 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   } else {
-    const { permission } = await getUserProjectPermissions(
-      req.user._id,
-      importSecDoc.workspace.toString()
-    );
+    const { permission } = await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: importSecDoc.workspace
+    });
+    
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, {
@@ -550,7 +558,11 @@ export const getSecretImports = async (req: Request, res: Response) => {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   } else {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const { permission } = await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: new Types.ObjectId(workspaceId)
+    });
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, {
@@ -604,7 +616,11 @@ export const getAllSecretsFromImport = async (req: Request, res: Response) => {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   } else {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const { permission } = await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: new Types.ObjectId(workspaceId)
+    });
+    
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, {
@@ -657,10 +673,11 @@ export const getAllSecretsFromImport = async (req: Request, res: Response) => {
     permissionCheckFn = (env: string, secPath: string) =>
       isValidScope(req.authData.authPayload as IServiceTokenData, env, secPath);
   } else {
-    const { permission } = await getUserProjectPermissions(
-      req.user._id,
-      importSecDoc.workspace.toString()
-    );
+    const { permission } = await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: importSecDoc.workspace
+    });
+    
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, {

@@ -27,7 +27,6 @@ import {
 } from "../../models";
 import { EESecretService } from "../../services";
 import { getLatestSecretVersionIds } from "../../helpers/secretVersion";
-// import Folder, { TFolderSchema } from "../../../models/folder";
 import { getFolderByPath, searchByFolderId } from "../../../services/FolderService";
 import { EEAuditLogService, EELicenseService } from "../../services";
 import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
@@ -46,7 +45,7 @@ import {
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 import { BadRequestError } from "../../../utils/errors";
@@ -107,7 +106,11 @@ export const getWorkspaceSecretSnapshots = async (req: Request, res: Response) =
     query: { environment, directory, offset, limit }
   } = await validateRequest(GetWorkspaceSecretSnapshotsV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretRollback
@@ -148,7 +151,11 @@ export const getWorkspaceSecretSnapshotsCount = async (req: Request, res: Respon
     query: { environment, directory }
   } = await validateRequest(GetWorkspaceSecretSnapshotsCountV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretRollback
@@ -238,7 +245,11 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
     body: { directory, environment, version }
   } = await validateRequest(RollbackWorkspaceSecretSnapshotV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Create,
     ProjectPermissionSub.SecretRollback
@@ -649,7 +660,11 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
     params: { workspaceId }
   } = await validateRequest(GetWorkspaceAuditLogsV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.AuditLogs
@@ -704,7 +719,11 @@ export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Res
     params: { workspaceId }
   } = await validateRequest(GetWorkspaceAuditLogActorFilterOptsV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.AuditLogs
@@ -768,7 +787,11 @@ export const getWorkspaceTrustedIps = async (req: Request, res: Response) => {
     params: { workspaceId }
   } = await validateRequest(GetWorkspaceTrustedIpsV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.IpAllowList
@@ -794,7 +817,11 @@ export const addWorkspaceTrustedIp = async (req: Request, res: Response) => {
     body: { comment, isActive, ipAddress: ip }
   } = await validateRequest(AddWorkspaceTrustedIpV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Create,
     ProjectPermissionSub.IpAllowList
@@ -860,7 +887,11 @@ export const updateWorkspaceTrustedIp = async (req: Request, res: Response) => {
     body: { ipAddress: ip, comment }
   } = await validateRequest(UpdateWorkspaceTrustedIpV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.IpAllowList
@@ -952,7 +983,11 @@ export const deleteWorkspaceTrustedIp = async (req: Request, res: Response) => {
     params: { workspaceId, trustedIpId }
   } = await validateRequest(DeleteWorkspaceTrustedIpV1, req);
 
-  const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Delete,
     ProjectPermissionSub.IpAllowList

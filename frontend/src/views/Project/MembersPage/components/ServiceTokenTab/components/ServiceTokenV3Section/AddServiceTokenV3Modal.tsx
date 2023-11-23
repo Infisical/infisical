@@ -29,22 +29,17 @@ import {
     Tabs,
     UpgradePlanModal} from "@app/components/v2";
 import {
+    useOrganization,
     useSubscription,
-    useWorkspace 
+    useWorkspace
 } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { 
     useCreateServiceTokenV3,
+    useGetRoles,
     useGetUserWsKey,
-    useUpdateServiceTokenV3
-} from "@app/hooks/api";
-import {
-    Permission
-} from "@app/hooks/api/serviceTokens/enums";
-import { 
-    ServiceTokenV3Scope, 
-    ServiceTokenV3TrustedIp 
-} from "@app/hooks/api/serviceTokens/types";
+    useUpdateServiceTokenV3} from "@app/hooks/api";
+import { ServiceTokenV3TrustedIp } from "@app/hooks/api/serviceTokens/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 enum TabSections {
@@ -61,13 +56,6 @@ const expirations = [
     { label: "12 months", value: "31104000" }
 ];
 
-const permissionsMap: {
-    [key: string]: Permission[]
-} = {
-    "read": [Permission.READ],
-    "readWrite": [Permission.READ, Permission.WRITE],
-}
-
 const schema = yup.object({
     name: yup.string().required("ST V3 name is required"),
     expiresIn: yup.string(),
@@ -82,24 +70,7 @@ const schema = yup.object({
             return !Number.isNaN(num) && num > 0 && String(num) === value;
         })
         .required("Access Token TTL is required"),
-    scopes: yup
-        .array(
-        yup.object({
-            permission: yup.string().oneOf(Object.keys(permissionsMap), "Invalid permission").required().label("Permission"),
-            environment: yup.string().max(50).required().label("Environment"),
-            secretPath: yup
-            .string()
-            .required()
-            .default("/")
-            .label("Secret Path")
-            .transform((val) =>
-                typeof val === "string" && val.at(-1) === "/" && val.length > 1 ? val.slice(0, -1) : val
-            )
-        })
-        )
-        .min(1)
-        .required()
-        .label("Scope"),
+    role: yup.string().required("ST V3 role is required"),
     trustedIps: yup
         .array(
         yup.object({
@@ -129,9 +100,18 @@ export const AddServiceTokenV3Modal = ({
     const [isServiceTokenJSONCopied, setIsServiceTokenJSONCopied] = useToggle(false);
 
     const { subscription } = useSubscription();
+    const { currentOrg } = useOrganization();
     const { currentWorkspace } = useWorkspace();
 
-    const { data: latestFileKey } = useGetUserWsKey(currentWorkspace?._id ?? "");
+    const orgId = currentOrg?._id || "";
+    const workspaceId = currentWorkspace?._id || "";
+
+    const { data: roles } = useGetRoles({
+        orgId,
+        workspaceId
+    });
+    
+    const { data: latestFileKey } = useGetUserWsKey(workspaceId);
     const { mutateAsync: createMutateAsync } = useCreateServiceTokenV3();
     const { mutateAsync: updateMutateAsync } = useUpdateServiceTokenV3();
     const { createNotification } = useNotificationContext();
@@ -145,11 +125,6 @@ export const AddServiceTokenV3Modal = ({
         defaultValues: {
             name: "",
             accessTokenTTL: "7200",
-            scopes: [{ 
-                permission: "read",
-                environment: currentWorkspace?.environments?.[0]?.slug,
-                secretPath: "/", 
-            }],
             trustedIps: [{
                 ipAddress: "0.0.0.0/0"
             }]
@@ -175,31 +150,22 @@ export const AddServiceTokenV3Modal = ({
         const serviceTokenData = popUp?.serviceTokenV3?.data as { 
             serviceTokenDataId: string;
             name: string;
-            scopes: ServiceTokenV3Scope[];
+            role: string;
+            customRole: {
+                name: string;
+                slug: string;
+            };
             trustedIps: ServiceTokenV3TrustedIp[];
             accessTokenTTL: number;
             isRefreshTokenRotationEnabled: boolean;
         };
         
+        if (!roles?.length) return;
+    
         if (serviceTokenData) {
             reset({
                 name: serviceTokenData.name,
-                scopes: serviceTokenData.scopes.map(({
-                    environment,
-                    secretPath,
-                    permissions
-                }: ServiceTokenV3Scope) => {
-                    let permission = "read";
-                    if (permissions.includes(Permission.WRITE)) {
-                        permission = "readWrite";
-                    }
-
-                    return ({
-                        environment,
-                        secretPath,
-                        permission
-                    })
-                }),
+                role: serviceTokenData?.customRole?.slug ?? serviceTokenData.role,
                 trustedIps: serviceTokenData.trustedIps.map(({ 
                     ipAddress, 
                     prefix 
@@ -215,26 +181,21 @@ export const AddServiceTokenV3Modal = ({
             reset({
                 name: "",
                 accessTokenTTL: "7200",
-                scopes: [{ 
-                    permission: "read",
-                    environment: currentWorkspace?.environments?.[0]?.slug,
-                    secretPath: "/", 
-                }],
+                role: roles[0].slug,
                 trustedIps: [{
                     ipAddress: "0.0.0.0/0"
                 }]
             });
         }
-    }, [popUp?.serviceTokenV3?.data]);
+    }, [popUp?.serviceTokenV3?.data, roles]);
     
-    const { fields: tokenScopes, append, remove } = useFieldArray({ control, name: "scopes" });
     const { fields: tokenTrustedIps, append: appendTrustedIp, remove: removeTrustedIp } = useFieldArray({ control, name: "trustedIps" });
     
     const onFormSubmit = async ({
         name,
         expiresIn,
         accessTokenTTL,
-        scopes,
+        role,
         trustedIps,
         isRefreshTokenRotationEnabled
     }: FormData) => {
@@ -242,17 +203,8 @@ export const AddServiceTokenV3Modal = ({
             const serviceTokenData = popUp?.serviceTokenV3?.data as { 
                 serviceTokenDataId: string;
                 name: string;
-                scopes: any;
+                role: string;
             };
-            
-            // convert read/readWrite permission => ["read", "write"] format
-            const reformattedScopes = scopes.map((scope) => {
-                return ({
-                    environment: scope.environment,
-                    secretPath: scope.secretPath,
-                    permissions: permissionsMap[scope.permission]
-                });
-            });
             
             if (serviceTokenData) {
                 // update
@@ -260,7 +212,7 @@ export const AddServiceTokenV3Modal = ({
                 await updateMutateAsync({
                     serviceTokenDataId: serviceTokenData.serviceTokenDataId,
                     name,
-                    scopes: reformattedScopes,
+                    role,
                     trustedIps,
                     expiresIn: expiresIn === "" ? undefined : Number(expiresIn),
                     accessTokenTTL: Number(accessTokenTTL),
@@ -270,7 +222,7 @@ export const AddServiceTokenV3Modal = ({
                 handlePopUpToggle("serviceTokenV3", false);
             } else {
                 // create
-                if (!currentWorkspace?._id) return;
+                if (!workspaceId) return;
                 if (!latestFileKey) return;
                 
                 const pair = nacl.box.keyPair();
@@ -294,9 +246,9 @@ export const AddServiceTokenV3Modal = ({
 
                 const { refreshToken } = await createMutateAsync({
                     name,
-                    workspaceId: currentWorkspace._id,
+                    role,
+                    workspaceId,
                     publicKey,
-                    scopes: reformattedScopes,
                     trustedIps,
                     expiresIn: expiresIn === "" ? undefined : Number(expiresIn),
                     accessTokenTTL: Number(accessTokenTTL),
@@ -385,102 +337,32 @@ export const AddServiceTokenV3Modal = ({
                                             </FormControl>
                                         )}
                                     />
-                                    {tokenScopes.map(({ id }, index) => (
-                                        <div className="flex items-end space-x-2 mb-3" key={id}>
-                                            <Controller
-                                                control={control}
-                                                name={`scopes.${index}.permission`}
-                                                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                                                    <FormControl
-                                                        className="mb-0"
-                                                        label={index === 0 ? "Permission" : undefined}
-                                                        errorText={error?.message}
-                                                        isError={Boolean(error)}
-                                                    >
-                                                    <Select
-                                                        defaultValue={field.value}
-                                                        {...field}
-                                                        onValueChange={(e) => onChange(e)}
-                                                        className="w-36"
-                                                    >
-                                                        <SelectItem value="read" key="st-v3-read">
-                                                            Read
-                                                        </SelectItem>
-                                                        <SelectItem value="readWrite" key="st-v3-write">
-                                                            Read &amp; Write
-                                                        </SelectItem>
-                                                    </Select>
-                                                    </FormControl>
-                                                )}
-                                            />
-                                            <Controller
-                                                control={control}
-                                                name={`scopes.${index}.environment`}
-                                                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                                                    <FormControl
-                                                        className="mb-0"
-                                                        label={index === 0 ? "Environment" : undefined}
-                                                        errorText={error?.message}
-                                                        isError={Boolean(error)}
-                                                    >
-                                                    <Select
-                                                        defaultValue={field.value}
-                                                        {...field}
-                                                        onValueChange={(e) => onChange(e)}
-                                                        className="w-36"
-                                                    >
-                                                        {currentWorkspace?.environments.map(({ name, slug }) => (
-                                                        <SelectItem value={slug} key={slug}>
+                                    <Controller
+                                        control={control}
+                                        name="role"
+                                        defaultValue=""
+                                        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                                            <FormControl
+                                                label={`${popUp?.serviceTokenV3?.data ? "Update" : ""} Role`}
+                                                errorText={error?.message}
+                                                isError={Boolean(error)}
+                                                className="mt-4"
+                                            >
+                                                <Select
+                                                    defaultValue={field.value}
+                                                    {...field}
+                                                    onValueChange={(e) => onChange(e)}
+                                                    className="w-full"
+                                                >
+                                                    {(roles || []).map(({ name, slug }) => (
+                                                        <SelectItem value={slug} key={`st-role-${slug}`}>
                                                             {name}
                                                         </SelectItem>
-                                                        ))}
-                                                    </Select>
-                                                    </FormControl>
-                                                )}
-                                            />
-                                            <Controller
-                                                control={control}
-                                                name={`scopes.${index}.secretPath`}
-                                                defaultValue="/"
-                                                render={({ field, fieldState: { error } }) => (
-                                                    <FormControl
-                                                        className="mb-0 flex-grow"
-                                                        label={index === 0 ? "Secrets Path" : undefined}
-                                                        isError={Boolean(error)}
-                                                        errorText={error?.message}
-                                                    >
-                                                    <Input {...field} placeholder="can be /, /nested/**, /**/deep" />
-                                                    </FormControl>
-                                                )}
-                                            />
-                                            <IconButton
-                                                onClick={() => remove(index)}
-                                                size="lg"
-                                                colorSchema="danger"
-                                                variant="plain"
-                                                ariaLabel="update"
-                                                className="p-3"
-                                                >
-                                                <FontAwesomeIcon icon={faXmark} />
-                                            </IconButton>
-                                        </div>
-                                    ))}
-                                    <div className="my-4 ml-1">
-                                        <Button
-                                            variant="outline_bg"
-                                            onClick={() =>
-                                                append({
-                                                    permission: "read",
-                                                    environment: currentWorkspace?.environments?.[0]?.slug || "",
-                                                    secretPath: "/"
-                                                })
-                                            }
-                                            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                                            size="xs"
-                                        >
-                                            Add Scope
-                                        </Button>
-                                    </div>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        )}
+                                    />
                                     <Controller
                                         control={control}
                                         name="expiresIn"

@@ -17,7 +17,7 @@ import {
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import * as reqValidator from "../../validation/folders";
@@ -125,7 +125,11 @@ export const createFolder = async (req: Request, res: Response) => {
     }
   } else {
     // user check
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const { permission } = await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: new Types.ObjectId(workspaceId)
+    });
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: directory })
@@ -332,7 +336,11 @@ export const updateFolderById = async (req: Request, res: Response) => {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   } else {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const { permission } = await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: new Types.ObjectId(workspaceId)
+    });
+  
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: directory })
@@ -502,7 +510,11 @@ export const deleteFolder = async (req: Request, res: Response) => {
     }
   } else {
     // check that user is a member of the workspace
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const { permission } = await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: new Types.ObjectId(workspaceId)
+    });
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: directory })
@@ -649,7 +661,10 @@ export const getFolders = async (req: Request, res: Response) => {
     }
   } else {
     // check that user is a member of the workspace
-    await getUserProjectPermissions(req.user._id, workspaceId);
+    await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: new Types.ObjectId(workspaceId)
+    });
   }
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });

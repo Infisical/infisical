@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import {
   AbilityBuilder,
   ForcedSubject,
@@ -6,11 +7,14 @@ import {
   buildMongoQueryMatcher,
   createMongoAbility
 } from "@casl/ability";
-import { Membership } from "../../models";
-import { IRole } from "../models/role";
-import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
+import { UnauthorizedRequestError } from "../../utils/errors";
 import { FieldCondition, FieldInstruction, JsInterpreter } from "@ucast/mongo2js";
 import picomatch from "picomatch";
+import { AuthData } from "../../interfaces/middleware";
+import { ActorType, IRole } from "../models";
+import { Membership, ServiceTokenData, ServiceTokenDataV3 } from "../../models";
+import { ADMIN, CUSTOM, MEMBER, VIEWER } from "../../variables";
+import { checkIPAgainstBlocklist } from "../../utils/ip";
 
 const $glob: FieldInstruction<string> = {
   type: "field",
@@ -239,31 +243,89 @@ const buildViewerPermission = () => {
 
 export const viewerProjectPermission = buildViewerPermission();
 
-export const getUserProjectPermissions = async (userId: string, workspaceId: string) => {
-  // TODO(akhilmhdh): speed this up by pulling from cache later
-  const membership = await Membership.findOne({
-    user: userId,
-    workspace: workspaceId
-  })
-    .populate<{
-      customRole: IRole & { permissions: RawRuleOf<MongoAbility<ProjectPermissionSet>>[] };
-    }>("customRole")
-    .exec();
+/**
+ * Return permissions for user/service pertaining to workspace with id [workspaceId]
+ * 
+ * Note: should not rely on this function for ST V2 authorization logic
+ * b/c ST V2 does not support role-based access control
+ */
+export const getAuthDataProjectPermissions = async ({
+  authData,
+  workspaceId
+}: {
+  authData: AuthData;
+  workspaceId: Types.ObjectId;
+}) => {
+  let role: "admin" | "member" | "viewer" | "custom";
+  let customRole;
+  
+  switch (authData.actor.type) {
+    case ActorType.USER: {
+      const membership = await Membership.findOne({
+        user: authData.authPayload._id,
+        workspace: workspaceId
+      })
+        .populate<{
+          customRole: IRole & { permissions: RawRuleOf<MongoAbility<ProjectPermissionSet>>[] };
+        }>("customRole")
+        .exec();
+    
+      if (!membership || (membership.role === "custom" && !membership.customRole)) {
+        throw UnauthorizedRequestError();
+      }
+      
+      role = membership.role;
+      customRole = membership.customRole;
+      break;
+    }
+    case ActorType.SERVICE: {
+      const serviceTokenData = await ServiceTokenData.findById(authData.authPayload._id);
+      if (!serviceTokenData || !serviceTokenData.workspace.equals(workspaceId)) throw UnauthorizedRequestError();
+      role = "viewer";
+      break;
+    }
+    case ActorType.SERVICE_V3: {
+      const serviceTokenData = await ServiceTokenDataV3
+        .findById(authData.authPayload._id)
+        .populate<{
+          customRole: IRole & { permissions: RawRuleOf<MongoAbility<ProjectPermissionSet>>[] };
+        }>("customRole")
+        .exec();
+        
+      if (!serviceTokenData || (serviceTokenData.role === "custom" && !serviceTokenData.customRole)) {
+        throw UnauthorizedRequestError();
+      }
 
-  if (!membership || (membership.role === "custom" && !membership.customRole)) {
-    throw UnauthorizedRequestError({ message: "User doesn't belong to organization" });
+      checkIPAgainstBlocklist({
+        ipAddress: authData.ipAddress,
+        trustedIps: serviceTokenData.trustedIps
+      });
+    
+      role = serviceTokenData.role;
+      customRole = serviceTokenData.customRole;
+      break;
+    }
+    default:
+      throw UnauthorizedRequestError();
   }
 
-  if (membership.role === "admin") return { permission: adminProjectPermissions, membership };
-  if (membership.role === "member") return { permission: memberProjectPermissions, membership };
-  if (membership.role === "viewer") return { permission: viewerProjectPermission, membership };
-
-  if (membership.role === "custom") {
-    const permission = createMongoAbility<ProjectPermissionSet>(membership.customRole.permissions, {
-      conditionsMatcher
-    });
-    return { permission, membership };
+  switch (role) {
+    case ADMIN:
+      return { permission: adminProjectPermissions };
+    case MEMBER:
+      return { permission: memberProjectPermissions };
+    case VIEWER:
+      return { permission: viewerProjectPermission };
+    case CUSTOM: {
+      if (!customRole) throw UnauthorizedRequestError();
+      return { 
+        permission: createMongoAbility<ProjectPermissionSet>(
+          customRole.permissions, 
+          { conditionsMatcher }
+        )
+      };
+    }
+    default:
+      throw UnauthorizedRequestError();
   }
-
-  throw BadRequestError({ message: "User role not found" });
-};
+}

@@ -1,5 +1,5 @@
 import { ActorType, EventType } from "./enums";
-import { IServiceTokenV3Scope, IServiceTokenV3TrustedIp } from "../../../models/serviceTokenDataV3";
+import { IServiceTokenV3TrustedIp } from "../../../models/serviceTokenDataV3";
 
 interface UserActorMetadata {
   userId: string;
@@ -26,11 +26,11 @@ export interface ServiceActorV3 {
   metadata: ServiceActorMetadata;
 }
 
-export interface MachineActor {
-  type: ActorType.Machine;
-}
+// export interface MachineActor {
+//   type: ActorType.Machine;
+// }
 
-export type Actor = UserActor | ServiceActor | ServiceActorV3 | MachineActor;
+export type Actor = UserActor | ServiceActor | ServiceActorV3;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -225,7 +225,7 @@ interface CreateServiceTokenV3Event {
   metadata: {
     name: string;
     isActive: boolean;
-    scopes: Array<IServiceTokenV3Scope>;
+    role: string;
     trustedIps: Array<IServiceTokenV3TrustedIp>;
     expiresAt?: Date;
   };
@@ -236,7 +236,7 @@ interface UpdateServiceTokenV3Event {
   metadata: {
     name?: string;
     isActive?: boolean;
-    scopes?: Array<IServiceTokenV3Scope>;
+    role?: string;
     trustedIps?: Array<IServiceTokenV3TrustedIp>;
     expiresAt?: Date;
   };
@@ -247,7 +247,7 @@ interface DeleteServiceTokenV3Event {
   metadata: {
     name: string;
     isActive: boolean;
-    scopes: Array<IServiceTokenV3Scope>;
+    role: string;
     expiresAt?: Date;
     trustedIps: Array<IServiceTokenV3TrustedIp>;
   };

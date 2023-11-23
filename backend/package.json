@@ -97,6 +97,8 @@
   "devDependencies": {
     "@jest/globals": "^29.3.1",
     "@posthog/plugin-scaffold": "^1.3.4",
+    "@swc/core": "^1.3.99",
+    "@swc/helpers": "^0.5.3",
     "@types/bcrypt": "^5.0.0",
     "@types/bcryptjs": "^2.4.2",
     "@types/bull": "^4.10.0",
@@ -127,6 +129,7 @@
     "nodemon": "^2.0.19",
     "npm": "^8.19.3",
     "pino-pretty": "^10.2.3",
+    "regenerator-runtime": "^0.14.0",
     "smee-client": "^1.2.3",
     "supertest": "^6.3.3",
     "swagger-autogen": "^2.23.5",

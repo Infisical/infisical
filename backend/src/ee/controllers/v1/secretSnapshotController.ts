@@ -4,7 +4,7 @@ import { validateRequest } from "../../../helpers/validation";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../services/ProjectRoleService";
 import * as reqValidator from "../../../validation/secretSnapshot";
 import { ISecretVersion, SecretSnapshot, TFolderRootVersionSchema } from "../../models";
@@ -33,10 +33,11 @@ export const getSecretSnapshot = async (req: Request, res: Response) => {
 
   if (!secretSnapshot) throw new Error("Failed to find secret snapshot");
 
-  const { permission } = await getUserProjectPermissions(
-    req.user._id,
-    secretSnapshot.workspace.toString()
-  );
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: secretSnapshot.workspace
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretRollback

@@ -36,12 +36,4 @@ router.delete(
   environmentController.deleteWorkspaceEnvironment
 );
 
-router.get(
-  "/:workspaceId/environments",
-  requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
-  }),
-  environmentController.getAllAccessibleEnvironmentsOfWorkspace
-);
-
 export default router;

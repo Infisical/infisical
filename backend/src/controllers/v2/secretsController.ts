@@ -39,7 +39,7 @@ import {
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getUserProjectPermissions
+  getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError, subject } from "@casl/ability";
 
@@ -159,7 +159,11 @@ export const batchSecrets = async (req: Request, res: Response) => {
   }
   // not using service token  using auth
   if (!(req.authData.authPayload instanceof ServiceTokenData)) {
-    const { permission } = await getUserProjectPermissions(req.user._id, workspaceId);
+    const { permission } = await getAuthDataProjectPermissions({
+      authData: req.authData,
+      workspaceId: new Types.ObjectId(workspaceId)
+    });
+
     if (createSecrets.length)
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Create,

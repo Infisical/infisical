@@ -85,8 +85,8 @@ export const useUpdateServiceTokenV3 = () => {
     mutationFn: async ({
       serviceTokenDataId,
       name,
+      role,
       isActive,
-      scopes,
       trustedIps,
       expiresIn,
       accessTokenTTL,
@@ -94,8 +94,8 @@ export const useUpdateServiceTokenV3 = () => {
     }) => {
       const { data: { serviceTokenData } } = await apiRequest.patch(`/api/v3/service-token/${serviceTokenDataId}`, {
         name,
+        role,
         isActive,
-        scopes,
         trustedIps,
         expiresIn,
         accessTokenTTL,
