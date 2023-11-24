@@ -27,7 +27,8 @@ import {
 } from "@app/context";
 import {
     useGetRoles,
-    useGetWorkspaceMachineMemberships
+    useGetWorkspaceMachineMemberships,
+    useUpdateMachineWorkspaceRole
 } from "@app/hooks/api";
 import { MachineTrustedIp} from "@app/hooks/api/machineIdentities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -66,6 +67,8 @@ export const MachineIdentityTable = ({
         workspaceId
     });
 
+    const { mutateAsync: updateMutateAsync } = useUpdateMachineWorkspaceRole();
+
     const handleChangeRole = async ({
         machineId,
         role
@@ -73,20 +76,13 @@ export const MachineIdentityTable = ({
         machineId: string;
         role: string;
     }) => {
-
         try {
-            
-            console.log("handle project-level role change vals: ", {
+
+            await updateMutateAsync({
                 machineId,
+                workspaceId,
                 role
             });
-            
-            // TODO: change role
-
-            // await updateMutateAsync({
-            //     serviceTokenDataId,
-            //     role
-            // });
             
             createNotification({
                 text: "Successfully updated machine identity role",

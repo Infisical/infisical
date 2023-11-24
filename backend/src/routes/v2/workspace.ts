@@ -101,6 +101,14 @@ router.post(
   workspaceController.addMachineToWorkspace
 );
 
+router.patch(
+  "/:workspaceId/machine-memberships/:machineId",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+  }),
+  workspaceController.updateMachineWorkspaceRole
+);
+
 router.delete(
   "/:workspaceId/machine-memberships/:machineId",
   requireAuth({

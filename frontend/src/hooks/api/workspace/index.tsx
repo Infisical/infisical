@@ -20,6 +20,6 @@ export {
   useRenameWorkspace,
   useReorderWsEnvironment,
   useToggleAutoCapitalization,
+  useUpdateMachineWorkspaceRole,
   useUpdateUserWorkspaceRole,
-  useUpdateWsEnvironment,
-} from "./queries";
+  useUpdateWsEnvironment} from "./queries";

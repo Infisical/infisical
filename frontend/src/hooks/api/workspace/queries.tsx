@@ -31,7 +31,7 @@ export const workspaceKeys = {
   getAllUserWorkspace: ["workspaces"] as const,
   getWorkspaceAuditLogs: (workspaceId: string) => [{ workspaceId }] as const,
   getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }] as const,
-  getWorkspaceServiceMemberships: (workspaceId: string) => [{ workspaceId }, "organization-service-memberships"] as const
+  getWorkspaceMachineMemberships: (workspaceId: string) => [{ workspaceId }, "workspace-machine-memberships"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -378,7 +378,34 @@ export const useAddMachineToWorkspace = () => {
       return serviceMembership;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceServiceMemberships(workspaceId));
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceMachineMemberships(workspaceId));
+    }
+  });
+};
+
+export const useUpdateMachineWorkspaceRole = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      machineId,
+      workspaceId,
+      role
+    }: {
+      machineId: string;
+      workspaceId: string;
+      role?: string;
+    }) => {
+
+      const {
+        data: { serviceMembership }
+      } = await apiRequest.patch(`/api/v2/workspace/${workspaceId}/machine-memberships/${machineId}`, {
+        role
+      });
+      
+      return serviceMembership;
+    },
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceMachineMemberships(workspaceId));
     }
   });
 };
@@ -401,7 +428,7 @@ export const useDeleteMachineFromWorkspace = () => {
       return serviceMembership;
     },
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceServiceMemberships(workspaceId));
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceMachineMemberships(workspaceId));
     }
   });
 };
@@ -409,7 +436,7 @@ export const useDeleteMachineFromWorkspace = () => {
 
 export const useGetWorkspaceMachineMemberships = (workspaceId: string) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceServiceMemberships(workspaceId),
+    queryKey: workspaceKeys.getWorkspaceMachineMemberships(workspaceId),
     queryFn: async () => {
       
       const {

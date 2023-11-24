@@ -532,7 +532,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
   });
 
   if (machineMembership) throw BadRequestError({
-    message: "Service account already exists in workspace"
+    message: "Machine identity already exists in workspace"
   });
 
   const machineIdentity = await MachineIdentity.findById(machineId);
@@ -542,7 +542,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
   if (!workspace) throw ResourceNotFoundError();
   
   if (!machineIdentity.organization.equals(workspace.organization)) throw BadRequestError({
-    message: "Failed to add service account to workspace in another organization"
+    message: "Failed to add machine identity to workspace in another organization"
   });
 
   let customRole;
@@ -572,7 +572,83 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
 }
 
 /**
- * Add service account with id [machineId] to workspace
+ * Update role of machine identity with id [machineId] in workspace
+ * with id [workspaceId] to [role]
+ * @param req 
+ * @param res 
+ */
+ export const updateMachineWorkspaceRole = async (req: Request, res: Response) => {
+  const {
+    params: { workspaceId, machineId },
+    body: {
+      role
+    }
+  } = await validateRequest(reqValidator.AddWorkspaceServiceMemberV2, req);
+  
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.ServiceTokens
+  );
+  
+  let machineMembership = await MachineMembership.findOne({
+    machineIdentity: new Types.ObjectId(machineId),
+    workspace: new Types.ObjectId(workspaceId)
+  });
+
+  if (!machineMembership) throw BadRequestError({
+    message: "Machine identity does not exist in workspace"
+  });
+
+  const machineIdentity = await MachineIdentity.findById(machineId);
+  if (!machineIdentity) throw ResourceNotFoundError();
+  
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw ResourceNotFoundError();
+  
+  if (!machineIdentity.organization.equals(workspace.organization)) throw BadRequestError({
+    message: "Failed to add machine identity to workspace in another organization"
+  });
+
+  let customRole;
+  if (role) {
+    const isCustomRole = ![ADMIN, MEMBER, VIEWER].includes(role);
+    if (isCustomRole) {
+      customRole = await Role.findOne({
+        slug: role,
+        isOrgRole: false,
+        workspace: new Types.ObjectId(workspaceId)
+      });
+      
+      if (!customRole) throw BadRequestError({ message: "Role not found" });
+    }
+  }
+  
+  machineMembership = await MachineMembership.findOneAndUpdate(
+    {
+      machineIdentity: machineIdentity._id,
+      workspace: new Types.ObjectId(workspaceId),
+    },
+    {
+      role,
+      customRole
+    },
+    {
+      new: true
+    }
+  );
+
+  return res.status(200).send({
+    machineMembership
+  });
+}
+
+/**
+ * Delete machine identity with id [machineId] to workspace
  * with id [workspaceId]
  * @param req 
  * @param res 
