@@ -5,7 +5,8 @@ import {
     ServiceTokenDataV3,
     ServiceTokenDataV3Key, // TODO: remove
     Organization,
-    ServiceMembershipOrg
+    ServiceMembershipOrg,
+    ServiceMembership
 } from "../../../models";
 import { IServiceTokenV3TrustedIp } from "../../../models/serviceTokenDataV3";
 import {
@@ -426,9 +427,13 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
     if (!serviceMembershipOrg) throw BadRequestError({
         message: "Failed to delete service token"
     });
-    
+
     await ServiceTokenDataV3Key.findOneAndDelete({
         serviceTokenData: serviceTokenData._id
+    });
+    
+    await ServiceMembership.deleteMany({
+        service: serviceTokenData._id,
     });
     
     await EEAuditLogService.createAuditLog(

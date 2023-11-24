@@ -1,4 +1,5 @@
-import { faKey, faPencil,faXmark } from "@fortawesome/free-solid-svg-icons";
+import { useCallback } from "react";
+import { faPencil,faServer, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
@@ -7,7 +8,8 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import {
     EmptyState,
     IconButton,
-    Switch,
+    Select,
+    SelectItem,
     Table,
     TableContainer,
     TableSkeleton,
@@ -23,6 +25,7 @@ import {
     useOrganization} from "@app/context";
 import {
     useGetOrgServiceMemberships,
+    useGetRoles,
     useUpdateServiceTokenV3} from "@app/hooks/api";
 import { ServiceTokenV3TrustedIp } from "@app/hooks/api/serviceTokens/types"
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -50,34 +53,74 @@ export const ServiceTokenV3Table = ({
 }: Props) => {
     const { createNotification } = useNotificationContext();
     const { currentOrg } = useOrganization();
+    const orgId = currentOrg?._id || "";
+
     const { mutateAsync: updateMutateAsync } = useUpdateServiceTokenV3();
     const { data, isLoading } = useGetOrgServiceMemberships(currentOrg?._id || "");
-
-    const handleToggleServiceTokenDataStatus = async ({
+    
+    const { data: roles } = useGetRoles({
+        orgId
+    });
+    
+    const handleChangeRole = async ({
         serviceTokenDataId,
-        isActive
+        role
     }: {
         serviceTokenDataId: string;
-        isActive: boolean;
+        role: string;
     }) => {
         try {
+            
             await updateMutateAsync({
                 serviceTokenDataId,
-                isActive
+                role
             });
-
+            
             createNotification({
-                text: `Successfully ${isActive ? "enabled" : "disabled"} service token v3`,
+                text: "Successfully updated service account role",
                 type: "success"
-              });
-        } catch (err) {
-            console.log(err);
-            createNotification({
-                text: `Failed to ${isActive ? "enable" : "disable"} service token v3`,
-                type: "error"
             });
+        } catch (err) {
+            console.error(err);
+            createNotification({
+                text: "Failed to update service account role",
+                type: "error"
+              });
         }
     }
+
+    // const handleToggleStatus = async ({
+    //     serviceTokenDataId,
+    //     isActive
+    // }: {
+    //     serviceTokenDataId: string;
+    //     isActive: boolean;
+    // }) => {
+    //     try {
+    //         await updateMutateAsync({
+    //             serviceTokenDataId,
+    //             isActive
+    //         });
+
+    //         createNotification({
+    //             text: `Successfully ${isActive ? "enabled" : "disabled"} service token v3`,
+    //             type: "success"
+    //           });
+    //     } catch (err) {
+    //         console.log(err);
+    //         createNotification({
+    //             text: `Failed to ${isActive ? "enable" : "disable"} service token v3`,
+    //             type: "error"
+    //         });
+    //     }
+    // }
+
+    const findRoleFromId = useCallback(
+        (roleId: string) => {
+        return (roles || []).find(({ _id: id }) => id === roleId);
+        },
+        [roles]
+    );
       
     return (
         <TableContainer>
@@ -85,7 +128,7 @@ export const ServiceTokenV3Table = ({
                 <THead>
                     <Tr>
                         <Th>Name</Th>
-                        <Th>Status</Th>
+                        {/* <Th>Status</Th> */}
                         <Th>Role</Th>
                         {/* <Th>Trusted IPs</Th> */}
                         {/* <Th>Access Token TTL</Th> */}
@@ -103,7 +146,7 @@ export const ServiceTokenV3Table = ({
                         service: {
                             _id,
                             name,
-                            isActive,
+                            // isActive,
                             trustedIps,
                             // createdAt,
                             expiresAt,
@@ -116,7 +159,7 @@ export const ServiceTokenV3Table = ({
                         return (
                             <Tr className="h-10" key={`st-v3-${_id}`}>
                                 <Td>{name}</Td>
-                                <Td>
+                                {/* <Td>
                                     <OrgPermissionCan
                                         I={OrgPermissionActions.Edit}
                                         a={OrgPermissionSubjects.ServiceTokens}
@@ -124,7 +167,7 @@ export const ServiceTokenV3Table = ({
                                         {(isAllowed) => (
                                             <Switch
                                                 id={`enable-service-token-${_id}`}
-                                                onCheckedChange={(value) => handleToggleServiceTokenDataStatus({
+                                                onCheckedChange={(value) => handleToggleStatus({
                                                     serviceTokenDataId: _id,
                                                     isActive: value
                                                 })}
@@ -135,8 +178,39 @@ export const ServiceTokenV3Table = ({
                                             </Switch>
                                         )}
                                     </OrgPermissionCan>
-                                </Td>
-                                <Td>{customRole?.slug ?? role}</Td> 
+                                </Td> */}
+                                <Td>
+                                    <OrgPermissionCan
+                                        I={OrgPermissionActions.Edit}
+                                        a={OrgPermissionSubjects.ServiceTokens}
+                                    >
+                                        {(isAllowed) => {
+                                            return (
+                                                <Select
+                                                    value={
+                                                        role === "custom" ? findRoleFromId(customRole)?.slug : role
+                                                    }
+                                                    isDisabled={!isAllowed}
+                                                    className="w-40 bg-mineshaft-600"
+                                                    dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
+                                                    onValueChange={(selectedRole) => 
+                                                        handleChangeRole({
+                                                            serviceTokenDataId: _id,
+                                                            role: selectedRole
+                                                        })
+                                                    }
+                                                >
+                                                    {(roles || [])
+                                                        .map(({ slug, name: roleName }) => (
+                                                            <SelectItem value={slug} key={`owner-option-${slug}`}>
+                                                            {roleName}
+                                                            </SelectItem>
+                                                        ))}
+                                                </Select>
+                                            );
+                                        }}
+                                    </OrgPermissionCan>
+                                </Td> 
                                 {/* <Td>
                                     {trustedIps.map(({
                                         _id: trustedIpId,
@@ -211,7 +285,7 @@ export const ServiceTokenV3Table = ({
                     {!isLoading && data && data?.length === 0 && (
                         <Tr>
                             <Td colSpan={7}>
-                                <EmptyState title="No service token v3 on file" icon={faKey} />
+                                <EmptyState title="No system users have been created in this organization" icon={faServer} />
                             </Td>
                         </Tr>
                     )}

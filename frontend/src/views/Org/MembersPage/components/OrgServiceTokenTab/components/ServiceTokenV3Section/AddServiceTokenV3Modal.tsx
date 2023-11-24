@@ -154,6 +154,7 @@ export const AddServiceTokenV3Modal = ({
         if (serviceTokenData) {
             reset({
                 name: serviceTokenData.name,
+                expiresIn: "",
                 role: serviceTokenData?.customRole?.slug ?? serviceTokenData.role,
                 trustedIps: serviceTokenData.trustedIps.map(({ 
                     ipAddress, 
@@ -169,6 +170,7 @@ export const AddServiceTokenV3Modal = ({
         } else {
             reset({
                 name: "",
+                expiresIn: "",
                 accessTokenTTL: "7200",
                 role: roles[0].slug,
                 trustedIps: [{
@@ -312,7 +314,12 @@ export const AddServiceTokenV3Modal = ({
                                             </FormControl>
                                         )}
                                     />
-                                    <Controller
+                                    
+                                </motion.div>
+                            </TabPanel>
+                            <TabPanel value={TabSections.Advanced}>
+                                <div>
+                                <Controller
                                         control={control}
                                         name="expiresIn"
                                         defaultValue=""
@@ -338,10 +345,6 @@ export const AddServiceTokenV3Modal = ({
                                             </FormControl>
                                         )}
                                     />
-                                </motion.div>
-                            </TabPanel>
-                            <TabPanel value={TabSections.Advanced}>
-                                <div>
                                     {tokenTrustedIps.map(({ id }, index) => (
                                         <div className="flex items-end space-x-2 mb-3" key={id}>
                                             <Controller
@@ -456,7 +459,11 @@ export const AddServiceTokenV3Modal = ({
                             >
                                 {popUp?.serviceTokenV3?.data ? "Update" : "Create"}
                             </Button>
-                            <Button colorSchema="secondary" variant="plain">
+                            <Button 
+                                colorSchema="secondary" 
+                                variant="plain"
+                                onClick={() => handlePopUpToggle("serviceTokenV3", false)}
+                            >
                                 Cancel
                             </Button>
                         </div>

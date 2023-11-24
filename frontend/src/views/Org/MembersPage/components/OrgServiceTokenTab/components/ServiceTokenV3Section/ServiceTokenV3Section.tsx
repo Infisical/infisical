@@ -51,7 +51,7 @@ export const ServiceTokenV3Section = withPermission(
         <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="flex justify-between mb-8">
             <p className="text-xl font-semibold text-mineshaft-100">
-              Service Accounts (Beta)
+              Machines
             </p>
             <OrgPermissionCan
               I={OrgPermissionActions.Create}

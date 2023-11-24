@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { motion } from "framer-motion";
-
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
 
-import { OrgMembersTable } from "./components/OrgMembersTable";
-import { OrgRoleTabSection } from "./components/OrgRoleTabSection";
-import { OrgServiceTokenTab } from "./components/OrgServiceTokenTab";
+import {
+  OrgMembersTab,
+  OrgRoleTabSection,
+  OrgServiceTokenTab
+} from "./components";
 
 enum TabSections {
   Member = "members",
@@ -25,20 +25,12 @@ export const MembersPage = withPermission(
           </p>
           <Tabs defaultValue={TabSections.Member}>
             <TabList>
-              <Tab value={TabSections.Member}>Members</Tab>
-              <Tab value={TabSections.ServiceTokens}>Service Accounts</Tab>
+              <Tab value={TabSections.Member}>People</Tab>
+              <Tab value={TabSections.ServiceTokens}>Machine Identities</Tab>
               <Tab value={TabSections.Roles}>Roles</Tab>
             </TabList>
             <TabPanel value={TabSections.Member}>
-              <motion.div
-                key="panel-1"
-                transition={{ duration: 0.15 }}
-                initial={{ opacity: 0, translateX: 30 }}
-                animate={{ opacity: 1, translateX: 0 }}
-                exit={{ opacity: 0, translateX: 30 }}
-              >
-                <OrgMembersTable />
-              </motion.div>
+              <OrgMembersTab />
             </TabPanel>
             <TabPanel value={TabSections.ServiceTokens}>
               <OrgServiceTokenTab />

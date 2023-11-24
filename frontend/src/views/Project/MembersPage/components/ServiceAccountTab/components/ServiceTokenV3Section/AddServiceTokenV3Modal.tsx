@@ -19,12 +19,13 @@ import {
 } from "@app/context";
 import { useAddServiceToWorkspace ,
     useGetOrgServiceMemberships,
-    useGetWorkspaceServiceMemberships
-} from "@app/hooks/api";
+    useGetRoles,
+    useGetWorkspaceServiceMemberships} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup.object({
-    serviceTokenDataId: yup.string()
+    serviceTokenDataId: yup.string().required("ST V3 id is required"),
+    role: yup.string().required("ST V3 role is required")
 }).required();
 
 export type FormData = yup.InferType<typeof schema>;
@@ -38,6 +39,7 @@ export const AddServiceTokenV3Modal = ({
     popUp,
     handlePopUpToggle
 }: Props) => {
+    
     const { createNotification } = useNotificationContext();
     const { currentOrg } = useOrganization();
     const { currentWorkspace } = useWorkspace();
@@ -47,6 +49,11 @@ export const AddServiceTokenV3Modal = ({
 
     const { data: orgServices } = useGetOrgServiceMemberships(orgId);
     const { data: services } = useGetWorkspaceServiceMemberships(workspaceId);
+    const { data: roles } = useGetRoles({
+        orgId,
+        workspaceId
+    });
+
     const addServiceToWorkspace = useAddServiceToWorkspace();
     
     const filteredOrgServices = useMemo(() => {
@@ -71,18 +78,19 @@ export const AddServiceTokenV3Modal = ({
     });
     
     const onFormSubmit = async ({
-        serviceTokenDataId
+        serviceTokenDataId,
+        role
     }: FormData) => {
-        
         try {
+            
             await addServiceToWorkspace.mutateAsync({
                 workspaceId,
                 serviceId: serviceTokenDataId as string,
-                role: "member"
+                role
             });
 
             createNotification({
-                text: `Successfully ${popUp?.serviceTokenV3?.data ? "updated" : "created"} ST V3`,
+                text: "Successfully added service account to project",
                 type: "success"
             });
 
@@ -91,7 +99,7 @@ export const AddServiceTokenV3Modal = ({
         } catch (err) {
             console.error(err);
             createNotification({
-                text: `Failed to ${popUp?.serviceTokenV3?.data ? "updated" : "created"} ST V3`,
+                text: "Failed to add service account to project",
                 type: "error"
             });
         }
@@ -117,7 +125,6 @@ export const AddServiceTokenV3Modal = ({
                                     label="Service Account"
                                     errorText={error?.message}
                                     isError={Boolean(error)}
-                                    className="mt-4"
                                 >
                                     <Select
                                         defaultValue={field.value}
@@ -128,6 +135,32 @@ export const AddServiceTokenV3Modal = ({
                                         {filteredOrgServices.map(({ service }) => (
                                             <SelectItem value={service._id} key={`org-service-${service._id}`}>
                                                 {service.name}
+                                            </SelectItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            )}
+                        />
+                        <Controller
+                            control={control}
+                            name="role"
+                            defaultValue=""
+                            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                                <FormControl
+                                    label="Role"
+                                    errorText={error?.message}
+                                    isError={Boolean(error)}
+                                    className="mt-4"
+                                >
+                                    <Select
+                                        defaultValue={field.value}
+                                        {...field}
+                                        onValueChange={(e) => onChange(e)}
+                                        className="w-full"
+                                    >
+                                        {(roles || []).map(({ name, slug }) => (
+                                            <SelectItem value={slug} key={`st-role-${slug}`}>
+                                                {name}
                                             </SelectItem>
                                         ))}
                                     </Select>

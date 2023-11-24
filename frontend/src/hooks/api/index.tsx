@@ -1,5 +1,5 @@
-export * from "./apiKeys";
 export * from "./admin"
+export * from "./apiKeys";
 export * from "./auditLogs";
 export * from "./auth";
 export * from "./bots";
@@ -16,6 +16,7 @@ export * from "./secretImports";
 export * from "./secretRotation";
 export * from "./secrets";
 export * from "./secretSnapshots";
+export * from "./serverDetails";
 export * from "./serviceTokens";
 export * from "./ssoConfig";
 export * from "./subscriptions";

@@ -98,6 +98,7 @@ const fetchUserWorkspaceMemberships = async (orgId: string) => {
   const { data } = await apiRequest.get<Record<string, Workspace[]>>(
     `/api/v1/organization/${orgId}/workspace-memberships`
   );
+  
   return data;
 };
 
@@ -384,6 +385,8 @@ export const useAddServiceToWorkspace = () => {
     }
   });
 };
+
+// TODO: update
 
 export const useDeleteServiceFromWorkspace = () => {
   const queryClient = useQueryClient();
