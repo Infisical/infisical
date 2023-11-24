@@ -41,6 +41,16 @@ var initCmd = &cobra.Command{
 			}
 		}
 
+		environment, err := cmd.Flags().GetString("env")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		path, err := cmd.Flags().GetString("path")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		userCreds, err := util.GetCurrentLoggedInUserDetails()
 		if err != nil {
 			util.HandleError(err, "Unable to get your login details")
@@ -79,7 +89,14 @@ var initCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
-		err = writeWorkspaceFile(workspaces[index])
+		selectedWorkspace := workspaces[index]
+		workspaceFile := models.WorkspaceConfigFile{
+			WorkspaceId:        selectedWorkspace.ID,
+			DefaultEnvironment: environment,
+			DefaultSecretsPath: path,
+		}
+
+		err = writeWorkspaceFile(workspaceFile)
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -91,14 +108,13 @@ var initCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(initCmd)
+	initCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
+	initCmd.Flags().String("path", "/", "get secrets within a folder path")
 }
 
-func writeWorkspaceFile(selectedWorkspace models.Workspace) error {
-	workspaceFileToSave := models.WorkspaceConfigFile{
-		WorkspaceId: selectedWorkspace.ID,
-	}
+func writeWorkspaceFile(workspaceFile models.WorkspaceConfigFile) error {
 
-	marshalledWorkspaceFile, err := json.MarshalIndent(workspaceFileToSave, "", "    ")
+	marshalledWorkspaceFile, err := json.MarshalIndent(workspaceFile, "", "    ")
 	if err != nil {
 		return err
 	}
