@@ -290,27 +290,27 @@ export const getAuthDataProjectPermissions = async ({
       break;
     }
     case ActorType.SERVICE_V3: {
-      const serviceMembership = await MachineMembership.findOne({
+      const machineMembership = await MachineMembership.findOne({
         machineIdentity: authData.authPayload._id,
         workspace: workspaceId
       })
       .populate<{
         customRole: IRole & { permissions: RawRuleOf<MongoAbility<ProjectPermissionSet>>[] };
         machineIdentity: IMachineIdentity
-      }>("customRole service")
+      }>("customRole machineIdentity")
       .exec();
       
-      if (!serviceMembership || (serviceMembership.role === "custom" && !serviceMembership.customRole)) {
+      if (!machineMembership || (machineMembership.role === "custom" && !machineMembership.customRole)) {
         throw UnauthorizedRequestError();
       }
 
       checkIPAgainstBlocklist({
         ipAddress: authData.ipAddress,
-        trustedIps: serviceMembership.machineIdentity.trustedIps
+        trustedIps: machineMembership.machineIdentity.trustedIps
       });
     
-      role = serviceMembership.role;
-      customRole = serviceMembership.customRole;
+      role = machineMembership.role;
+      customRole = machineMembership.customRole;
       break;
     }
     default:
