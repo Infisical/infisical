@@ -32,9 +32,9 @@ export enum EventType {
   DELETE_TRUSTED_IP = "delete-trusted-ip",
   CREATE_SERVICE_TOKEN = "create-service-token", // v2
   DELETE_SERVICE_TOKEN = "delete-service-token", // v2
-  CREATE_SERVICE_TOKEN_V3 = "create-service-token-v3", // v3
-  UPDATE_SERVICE_TOKEN_V3 = "update-service-token-v3", // v3
-  DELETE_SERVICE_TOKEN_V3 = "delete-service-token-v3", // v3
+  CREATE_MACHINE_IDENTITY = "create-machine-identity",
+  UPDATE_MACHINE_IDENTITY = "update-machine-identity",
+  DELETE_MACHINE_IDENTITY = "delete-machine-identity",
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",

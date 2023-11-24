@@ -28,9 +28,9 @@ import {
 } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { 
-    useCreateServiceTokenV3,
+    useCreateMachineIdentity,
     useGetRoles,
-    useUpdateServiceTokenV3
+    useUpdateMachineIdentity
 } from "@app/hooks/api";
 import { ServiceTokenV3TrustedIp } from "@app/hooks/api/serviceTokens/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -79,16 +79,17 @@ const schema = yup.object({
 export type FormData = yup.InferType<typeof schema>;
 
 type Props = {
-  popUp: UsePopUpState<["serviceTokenV3", "upgradePlan"]>;
+  popUp: UsePopUpState<["machineIdentity", "upgradePlan"]>;
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
-  handlePopUpToggle: (popUpName: keyof UsePopUpState<["serviceTokenV3", "upgradePlan"]>, state?: boolean) => void;
+  handlePopUpToggle: (popUpName: keyof UsePopUpState<["machineIdentity", "upgradePlan"]>, state?: boolean) => void;
 };
 
-export const AddServiceTokenV3Modal = ({
+export const AddMachineIdentityModal = ({
     popUp,
     handlePopUpOpen,
     handlePopUpToggle
 }: Props) => {
+    const { createNotification } = useNotificationContext();
     const [newServiceTokenJSON, setNewServiceTokenJSON] = useState("");
     const [isServiceTokenJSONCopied, setIsServiceTokenJSONCopied] = useToggle(false);
 
@@ -101,9 +102,9 @@ export const AddServiceTokenV3Modal = ({
         orgId
     });
     
-    const { mutateAsync: createMutateAsync } = useCreateServiceTokenV3();
-    const { mutateAsync: updateMutateAsync } = useUpdateServiceTokenV3();
-    const { createNotification } = useNotificationContext();
+    const { mutateAsync: createMutateAsync } = useCreateMachineIdentity();
+    const { mutateAsync: updateMutateAsync } = useUpdateMachineIdentity();
+    
     const {
         control,
         handleSubmit,
@@ -136,8 +137,9 @@ export const AddServiceTokenV3Modal = ({
     };
     
     useEffect(() => {
-        const serviceTokenData = popUp?.serviceTokenV3?.data as { 
-            serviceTokenDataId: string;
+        
+        const machineIdentity = popUp?.machineIdentity?.data as { 
+            machineId: string;
             name: string;
             role: string;
             customRole: {
@@ -148,15 +150,15 @@ export const AddServiceTokenV3Modal = ({
             accessTokenTTL: number;
             isRefreshTokenRotationEnabled: boolean;
         };
-        
+
         if (!roles?.length) return;
     
-        if (serviceTokenData) {
+        if (machineIdentity) {
             reset({
-                name: serviceTokenData.name,
+                name: machineIdentity.name,
                 expiresIn: "",
-                role: serviceTokenData?.customRole?.slug ?? serviceTokenData.role,
-                trustedIps: serviceTokenData.trustedIps.map(({ 
+                role: machineIdentity?.customRole?.slug ?? machineIdentity.role,
+                trustedIps: machineIdentity.trustedIps.map(({ 
                     ipAddress, 
                     prefix 
                 }: ServiceTokenV3TrustedIp) => {
@@ -164,8 +166,8 @@ export const AddServiceTokenV3Modal = ({
                         ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
                     });
                 }),
-                accessTokenTTL: String(serviceTokenData.accessTokenTTL),
-                isRefreshTokenRotationEnabled: serviceTokenData.isRefreshTokenRotationEnabled
+                accessTokenTTL: String(machineIdentity.accessTokenTTL),
+                isRefreshTokenRotationEnabled: machineIdentity.isRefreshTokenRotationEnabled
             });
         } else {
             reset({
@@ -178,7 +180,7 @@ export const AddServiceTokenV3Modal = ({
                 }]
             });
         }
-    }, [popUp?.serviceTokenV3?.data, roles]);
+    }, [popUp?.machineIdentity?.data, roles]);
     
     const { fields: tokenTrustedIps, append: appendTrustedIp, remove: removeTrustedIp } = useFieldArray({ control, name: "trustedIps" });
     
@@ -192,17 +194,17 @@ export const AddServiceTokenV3Modal = ({
     }: FormData) => {
         try {
             
-            const serviceTokenData = popUp?.serviceTokenV3?.data as { 
-                serviceTokenDataId: string;
+            const machineIdentity = popUp?.machineIdentity?.data as { 
+                machineId: string;
                 name: string;
                 role: string;
             };
             
-            if (serviceTokenData) {
+            if (machineIdentity) {
                 // update
                 
                 await updateMutateAsync({
-                    serviceTokenDataId: serviceTokenData.serviceTokenDataId,
+                    machineId: machineIdentity.machineId,
                     name,
                     role,
                     trustedIps,
@@ -211,7 +213,7 @@ export const AddServiceTokenV3Modal = ({
                     isRefreshTokenRotationEnabled
                 });
                 
-                handlePopUpToggle("serviceTokenV3", false);
+                handlePopUpToggle("machineIdentity", false);
             } else {
 
                 const { refreshToken } = await createMutateAsync({
@@ -228,7 +230,7 @@ export const AddServiceTokenV3Modal = ({
             }
             
             createNotification({
-                text: `Successfully ${popUp?.serviceTokenV3?.data ? "updated" : "created"} service account`,
+                text: `Successfully ${popUp?.machineIdentity?.data ? "updated" : "created"} machine identity`,
                 type: "success"
             });
 
@@ -236,7 +238,7 @@ export const AddServiceTokenV3Modal = ({
         } catch (err) {
             console.error(err);
             createNotification({
-                text: `Failed to ${popUp?.serviceTokenV3?.data ? "updated" : "created"} service account`,
+                text: `Failed to ${popUp?.machineIdentity?.data ? "updated" : "created"} machine identity`,
                 type: "error"
             });
         }
@@ -246,14 +248,14 @@ export const AddServiceTokenV3Modal = ({
     
     return (
         <Modal
-            isOpen={popUp?.serviceTokenV3?.isOpen}
+            isOpen={popUp?.machineIdentity?.isOpen}
                 onOpenChange={(isOpen) => {
-                handlePopUpToggle("serviceTokenV3", isOpen);
+                handlePopUpToggle("machineIdentity", isOpen);
                 reset();
                 setNewServiceTokenJSON("");
             }}
         >
-            <ModalContent title={`${popUp?.serviceTokenV3?.data ? "Update" : "Create"} Service Account`}>
+            <ModalContent title={`${popUp?.machineIdentity?.data ? "Update" : "Create"} Machine Identity`}>
                 {!hasServiceTokenJSON ? (
                     <form onSubmit={handleSubmit(onFormSubmit)}>
                         <Tabs defaultValue={TabSections.General}>
@@ -283,7 +285,7 @@ export const AddServiceTokenV3Modal = ({
                                             >
                                             <Input 
                                                 {...field} 
-                                                placeholder="My ST V3"
+                                                placeholder="Machine 1"
                                             />
                                             </FormControl>
                                         )}
@@ -294,7 +296,7 @@ export const AddServiceTokenV3Modal = ({
                                         defaultValue=""
                                         render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                                             <FormControl
-                                                label={`${popUp?.serviceTokenV3?.data ? "Update" : ""} Role`}
+                                                label={`${popUp?.machineIdentity?.data ? "Update" : ""} Role`}
                                                 errorText={error?.message}
                                                 isError={Boolean(error)}
                                                 className="mt-4"
@@ -325,7 +327,7 @@ export const AddServiceTokenV3Modal = ({
                                         defaultValue=""
                                         render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                                             <FormControl
-                                                label={`${popUp?.serviceTokenV3?.data ? "Update" : ""} Refresh Token Expires In`}
+                                                label={`${popUp?.machineIdentity?.data ? "Update" : ""} Refresh Token Expires In`}
                                                 errorText={error?.message}
                                                 isError={Boolean(error)}
                                                 className="mt-4"
@@ -457,12 +459,12 @@ export const AddServiceTokenV3Modal = ({
                                 isLoading={isSubmitting}
                                 isDisabled={isSubmitting}
                             >
-                                {popUp?.serviceTokenV3?.data ? "Update" : "Create"}
+                                {popUp?.machineIdentity?.data ? "Update" : "Create"}
                             </Button>
                             <Button 
                                 colorSchema="secondary" 
                                 variant="plain"
-                                onClick={() => handlePopUpToggle("serviceTokenV3", false)}
+                                onClick={() => handlePopUpToggle("machineIdentity", false)}
                             >
                                 Cancel
                             </Button>

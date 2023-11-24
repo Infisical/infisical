@@ -217,7 +217,3 @@ export const DeleteOrgv2 = z.object({
 export const GetOrgServiceMembersV2 = z.object({
   params: z.object({ organizationId: z.string().trim() })
 });
-
-export const GetOrgServiceTokenDataV3V2 = z.object({
-  params: z.object({ organizationId: z.string().trim() })
-});

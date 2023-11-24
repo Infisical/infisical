@@ -6,7 +6,7 @@ import {
 import { AuthMode } from "../../variables";
 import { serviceTokenDataController } from "../../controllers/v2";
 
-router.get( // TODO: deprecate (moving to ST V3)
+router.get( // TODO: deprecate (moving to machine identity)
   "/",
   requireAuth({
     acceptedAuthModes: [AuthMode.SERVICE_TOKEN]
@@ -14,7 +14,7 @@ router.get( // TODO: deprecate (moving to ST V3)
   serviceTokenDataController.getServiceTokenData
 );
 
-router.post( // TODO: deprecate (moving to ST V3)
+router.post( // TODO: deprecate (moving to machine identity)
   "/",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
@@ -22,7 +22,7 @@ router.post( // TODO: deprecate (moving to ST V3)
   serviceTokenDataController.createServiceTokenData
 );
 
-router.delete( // TODO: deprecate (moving to ST V3)
+router.delete( // TODO: deprecate (moving to machine identity)
   "/:serviceTokenDataId",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]

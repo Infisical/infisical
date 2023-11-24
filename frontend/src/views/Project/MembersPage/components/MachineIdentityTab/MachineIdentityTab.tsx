@@ -1,17 +1,19 @@
 import { motion } from "framer-motion";
 
-import { ServiceTokenV3Section } from "./components";
+import { 
+    MachineIdentitySection
+} from "./components";
 
-export const OrgServiceTokenTab = () => {
+export const MachineIdentityTab = () => {
     return (
         <motion.div
-            key="panel-service-token"
+            key="panel-machine-identity"
             transition={{ duration: 0.15 }}
             initial={{ opacity: 0, translateX: 30 }}
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: 30 }}
         >
-            <ServiceTokenV3Section />
+            <MachineIdentitySection />
         </motion.div>
     );
 }

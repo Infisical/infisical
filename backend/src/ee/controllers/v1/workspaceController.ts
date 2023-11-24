@@ -2,10 +2,10 @@ import { Request, Response } from "express";
 import { PipelineStage, Types } from "mongoose";
 import {
   Folder,
+  MachineIdentity,
   Membership,
   Secret,
   ServiceTokenData,
-  ServiceTokenDataV3,
   TFolderSchema,
   User,
   Workspace
@@ -758,14 +758,14 @@ export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Res
   }));
 
   const serviceV3Actors: ServiceActorV3[] = (
-    await ServiceTokenDataV3.find({
+    await MachineIdentity.find({
       workspace: new Types.ObjectId(workspaceId)
     })
-  ).map((serviceTokenData) => ({
+  ).map((machineIdentity) => ({
     type: ActorType.SERVICE_V3,
     metadata: {
-      serviceId: serviceTokenData._id.toString(),
-      name: serviceTokenData.name
+      serviceId: machineIdentity._id.toString(),
+      name: machineIdentity.name
     }
   }));
 

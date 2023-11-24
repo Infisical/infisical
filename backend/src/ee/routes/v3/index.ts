@@ -1,7 +1,7 @@
-import serviceTokenData from "./serviceTokenData";
+import machineIdentity from "./machineIdentity";
 import apiKeyData from "./apiKeyData";
 
 export {
-    serviceTokenData,
+    machineIdentity,
     apiKeyData
 }

@@ -6,14 +6,13 @@ import {
 	Integration,
 	IntegrationAuth,
 	Key,
+	MachineMembership,
 	Membership,
 	Secret,
 	SecretBlindIndexData,
 	SecretImport,
 	ServiceToken,
 	ServiceTokenData,
-	ServiceTokenDataV3,
-	ServiceTokenDataV3Key,
 	Tag,
 	Webhook,
 	Workspace
@@ -178,12 +177,8 @@ export const deleteWorkspace = async ({
 	await ServiceTokenData.deleteMany({
 		workspace: workspace._id
 	});
-
-	await ServiceTokenDataV3.deleteMany({
-		workspace: workspace._id
-	});
-
-	await ServiceTokenDataV3Key.deleteMany({
+	
+	await MachineMembership.deleteMany({
 		workspace: workspace._id
 	});
 

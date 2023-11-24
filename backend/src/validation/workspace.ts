@@ -282,10 +282,10 @@ export const ToggleAutoCapitalizationV2 = z.object({
 
 export const AddWorkspaceServiceMemberV2 = z.object({
   params: z.object({
-    workspaceId: z.string().trim()
+    workspaceId: z.string().trim(),
+    machineId: z.string().trim()
   }),
   body: z.object({
-    serviceId: z.string().trim(), // TODO: consider renaming
     role: z.string().trim().min(1).default(MEMBER),
   })
 });
@@ -293,7 +293,7 @@ export const AddWorkspaceServiceMemberV2 = z.object({
 export const DeleteWorkspaceServiceMemberV2 = z.object({
   params: z.object({
     workspaceId: z.string().trim(),
-    serviceId: z.string().trim()
+    machineId: z.string().trim()
   })
 });
 

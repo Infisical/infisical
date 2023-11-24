@@ -55,11 +55,11 @@ router.delete(
 );
 
 router.get(
-  "/:organizationId/service-memberships",
+  "/:organizationId/machine-memberships",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  organizationsController.getOrganizationServiceMemberships
+  organizationsController.getOrganizationMachineMemberships
 );
 
 export default router;

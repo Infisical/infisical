@@ -8,6 +8,9 @@ import {
   Integration,
   IntegrationAuth,
   Key,
+  MachineIdentity,
+  MachineMembership,
+  MachineMembershipOrg,
   Membership,
   MembershipOrg,
   Organization,
@@ -16,8 +19,6 @@ import {
   SecretImport,
   ServiceToken,
   ServiceTokenData,
-  ServiceTokenDataV3,
-  ServiceTokenDataV3Key,
   Tag,
   Webhook,
   Workspace
@@ -121,6 +122,14 @@ export const deleteOrganization = async ({
   if (!organization) throw ResourceNotFoundError();
   
   await MembershipOrg.deleteMany({
+    organization: organization._id
+  });
+  
+  await MachineIdentity.deleteMany({
+    organization: organization._id
+  });
+  
+  await MachineMembershipOrg.deleteMany({
     organization: organization._id
   });
   
@@ -268,13 +277,7 @@ export const deleteOrganization = async ({
     }
   });
 
-  await ServiceTokenDataV3.deleteMany({
-    workspace: {
-      $in: workspaceIds
-    }
-  });
-  
-  await ServiceTokenDataV3Key.deleteMany({
+  await MachineMembership.deleteMany({
     workspace: {
       $in: workspaceIds
     }

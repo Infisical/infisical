@@ -17,25 +17,27 @@ import {
     useOrganization,
     useWorkspace
 } from "@app/context";
-import { useAddServiceToWorkspace ,
-    useGetOrgServiceMemberships,
+import { 
+    useAddMachineToWorkspace,
+    useGetMachineMembershipOrgs,
     useGetRoles,
-    useGetWorkspaceServiceMemberships} from "@app/hooks/api";
+    useGetWorkspaceMachineMemberships
+} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup.object({
-    serviceTokenDataId: yup.string().required("ST V3 id is required"),
+    machineId: yup.string().required("ST V3 id is required"),
     role: yup.string().required("ST V3 role is required")
 }).required();
 
 export type FormData = yup.InferType<typeof schema>;
 
 type Props = {
-  popUp: UsePopUpState<["serviceTokenV3"]>;
-  handlePopUpToggle: (popUpName: keyof UsePopUpState<["serviceTokenV3"]>, state?: boolean) => void;
+  popUp: UsePopUpState<["machineIdentity"]>;
+  handlePopUpToggle: (popUpName: keyof UsePopUpState<["machineIdentity"]>, state?: boolean) => void;
 };
 
-export const AddServiceTokenV3Modal = ({
+export const AddMachineIdentityModal = ({
     popUp,
     handlePopUpToggle
 }: Props) => {
@@ -47,26 +49,27 @@ export const AddServiceTokenV3Modal = ({
     const orgId = currentOrg?._id || "";
     const workspaceId = currentWorkspace?._id || "";
 
-    const { data: orgServices } = useGetOrgServiceMemberships(orgId);
-    const { data: services } = useGetWorkspaceServiceMemberships(workspaceId);
+    const { data: machineMembershipOrgs } = useGetMachineMembershipOrgs(orgId);
+    const { data: machineMemberships } = useGetWorkspaceMachineMemberships(workspaceId);
+
     const { data: roles } = useGetRoles({
         orgId,
         workspaceId
     });
 
-    const addServiceToWorkspace = useAddServiceToWorkspace();
+    const { mutateAsync: addMachineToWorkspaceMutateAsync } = useAddMachineToWorkspace();
     
-    const filteredOrgServices = useMemo(() => {
-        const wsServiceIds = new Map();
+    const filteredMachineMembershipOrgs = useMemo(() => {
+        const wsMachineIds = new Map();
         
-        services?.forEach((service) => {
-            wsServiceIds.set(service.service._id, true);
+        machineMemberships?.forEach((machineMembership) => {
+            wsMachineIds.set(machineMembership.machineIdentity._id, true);
         });
         
-        return (orgServices || []).filter(
-          ({ service: s }) => !wsServiceIds.has(s._id)
+        return (machineMembershipOrgs || []).filter(
+          ({ machineIdentity: mi }) => !wsMachineIds.has(mi._id)
         );
-    }, [orgServices, services]);
+    }, [machineMembershipOrgs, machineMemberships]);
     
     const {
         control,
@@ -78,28 +81,27 @@ export const AddServiceTokenV3Modal = ({
     });
     
     const onFormSubmit = async ({
-        serviceTokenDataId,
+        machineId,
         role
     }: FormData) => {
         try {
-            
-            await addServiceToWorkspace.mutateAsync({
+            await addMachineToWorkspaceMutateAsync({
                 workspaceId,
-                serviceId: serviceTokenDataId as string,
+                machineId,
                 role
             });
 
             createNotification({
-                text: "Successfully added service account to project",
+                text: "Successfully added machine identity to project",
                 type: "success"
             });
 
             reset();
-            handlePopUpToggle("serviceTokenV3", false);
+            handlePopUpToggle("machineIdentity", false);
         } catch (err) {
             console.error(err);
             createNotification({
-                text: "Failed to add service account to project",
+                text: "Failed to add machine identity to project",
                 type: "error"
             });
         }
@@ -107,19 +109,19 @@ export const AddServiceTokenV3Modal = ({
     
     return (
         <Modal
-            isOpen={popUp?.serviceTokenV3?.isOpen}
+            isOpen={popUp?.machineIdentity?.isOpen}
                 onOpenChange={(isOpen) => {
-                handlePopUpToggle("serviceTokenV3", isOpen);
+                handlePopUpToggle("machineIdentity", isOpen);
                 reset();
             }}
         >
-            <ModalContent title="Add a service account to the project">
-                {filteredOrgServices.length ? (
+            <ModalContent title="Add Machine Identity to Project">
+                {filteredMachineMembershipOrgs.length ? (
                     <form onSubmit={handleSubmit(onFormSubmit)}>
                         <Controller
                             control={control}
-                            name="serviceTokenDataId"
-                            defaultValue={filteredOrgServices?.[0]?._id}
+                            name="machineId"
+                            defaultValue={filteredMachineMembershipOrgs?.[0]?._id}
                             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                                 <FormControl
                                     label="Service Account"
@@ -132,9 +134,9 @@ export const AddServiceTokenV3Modal = ({
                                         onValueChange={(e) => onChange(e)}
                                         className="w-full"
                                     >
-                                        {filteredOrgServices.map(({ service }) => (
-                                            <SelectItem value={service._id} key={`org-service-${service._id}`}>
-                                                {service.name}
+                                        {filteredMachineMembershipOrgs.map(({ machineIdentity }) => (
+                                            <SelectItem value={machineIdentity._id} key={`org-service-${machineIdentity._id}`}>
+                                                {machineIdentity.name}
                                             </SelectItem>
                                         ))}
                                     </Select>
@@ -175,7 +177,7 @@ export const AddServiceTokenV3Modal = ({
                                 isLoading={isSubmitting}
                                 isDisabled={isSubmitting}
                             >
-                                {popUp?.serviceTokenV3?.data ? "Update" : "Create"}
+                                {popUp?.machineIdentity?.data ? "Update" : "Create"}
                             </Button>
                             <Button colorSchema="secondary" variant="plain">
                                 Cancel
@@ -184,9 +186,9 @@ export const AddServiceTokenV3Modal = ({
                     </form>
                 ) : (
                     <div className="flex flex-col space-y-4">
-                        <div>All the service accounts in your organization are already added.</div>
+                        <div>All the machine identities in your organization are already added.</div>
                         <Link href={`/org/${currentWorkspace?.organization}/members`}>
-                            <Button variant="outline_bg">Add service accounts to organization</Button>
+                            <Button variant="outline_bg">Create a new/another machine identities</Button>
                         </Link>
                     </div>
                 )}

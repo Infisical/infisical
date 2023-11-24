@@ -4,15 +4,14 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
 
 import {
+  OrgMachineIdentityTab,
   OrgMembersTab,
-  OrgRoleTabSection,
-  OrgServiceTokenTab
-} from "./components";
+  OrgRoleTabSection} from "./components";
 
 enum TabSections {
   Member = "members",
   Roles = "roles",
-  ServiceTokens = "service-tokens"
+  MachineIdentities = "machine-identities"
 }
 
 export const MembersPage = withPermission(
@@ -26,14 +25,14 @@ export const MembersPage = withPermission(
           <Tabs defaultValue={TabSections.Member}>
             <TabList>
               <Tab value={TabSections.Member}>People</Tab>
-              <Tab value={TabSections.ServiceTokens}>Machine Identities</Tab>
+              <Tab value={TabSections.MachineIdentities}>Machine Identities</Tab>
               <Tab value={TabSections.Roles}>Roles</Tab>
             </TabList>
             <TabPanel value={TabSections.Member}>
               <OrgMembersTab />
             </TabPanel>
-            <TabPanel value={TabSections.ServiceTokens}>
-              <OrgServiceTokenTab />
+            <TabPanel value={TabSections.MachineIdentities}>
+              <OrgMachineIdentityTab />
             </TabPanel>
             <TabPanel value={TabSections.Roles}>
               <OrgRoleTabSection />

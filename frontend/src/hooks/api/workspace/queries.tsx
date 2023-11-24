@@ -4,8 +4,8 @@ import { apiRequest } from "@app/config/request";
 
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
+import { MachineMembership } from "../machineIdentities/types";
 import { EncryptedSecret } from "../secrets/types";
-import { ServiceMembership } from "../serviceTokens/types";
 import { TWorkspaceUser } from "../users/types";
 import {
   CreateEnvironmentDTO,
@@ -31,8 +31,6 @@ export const workspaceKeys = {
   getAllUserWorkspace: ["workspaces"] as const,
   getWorkspaceAuditLogs: (workspaceId: string) => [{ workspaceId }] as const,
   getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }] as const,
-  getWorkspaceServiceTokenDataV3: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-service-token-data-v3"] as const,
   getWorkspaceServiceMemberships: (workspaceId: string) => [{ workspaceId }, "organization-service-memberships"] as const
 };
 
@@ -358,23 +356,22 @@ export const useUpdateUserWorkspaceRole = () => {
   });
 };
 
-export const useAddServiceToWorkspace = () => {
+export const useAddMachineToWorkspace = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      serviceId,
+      machineId,
       workspaceId,
       role
     }: {
-      serviceId: string;
+      machineId: string;
       workspaceId: string;
       role?: string;
     }) => {
 
       const {
         data: { serviceMembership }
-      } = await apiRequest.post(`/api/v2/workspace/${workspaceId}/service-memberships`, {
-        serviceId,
+      } = await apiRequest.post(`/api/v2/workspace/${workspaceId}/machine-memberships/${machineId}`, {
         role
       });
       
@@ -386,22 +383,20 @@ export const useAddServiceToWorkspace = () => {
   });
 };
 
-// TODO: update
-
-export const useDeleteServiceFromWorkspace = () => {
+export const useDeleteMachineFromWorkspace = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      serviceId,
+      machineId,
       workspaceId,
     }: {
-      serviceId: string;
+      machineId: string;
       workspaceId: string;
     }) => {
       
       const {
         data: { serviceMembership }
-      } = await apiRequest.delete(`/api/v2/workspace/${workspaceId}/service-memberships/${serviceId}`);
+      } = await apiRequest.delete(`/api/v2/workspace/${workspaceId}/machine-memberships/${machineId}`);
       
       return serviceMembership;
     },
@@ -411,18 +406,19 @@ export const useDeleteServiceFromWorkspace = () => {
   });
 };
 
-export const useGetWorkspaceServiceMemberships = (workspaceId: string) => {
+
+export const useGetWorkspaceMachineMemberships = (workspaceId: string) => {
   return useQuery({
     queryKey: workspaceKeys.getWorkspaceServiceMemberships(workspaceId),
     queryFn: async () => {
       
       const {
-        data: { serviceMemberships }
-      } = await apiRequest.get<{ serviceMemberships: ServiceMembership[] }>(
-        `/api/v2/workspace/${workspaceId}/service-memberships`
+        data: { machineMemberships }
+      } = await apiRequest.get<{ machineMemberships: MachineMembership[] }>(
+        `/api/v2/workspace/${workspaceId}/machine-memberships`
       );
 
-      return serviceMemberships;
+      return machineMemberships;
     },
     enabled: true
   });

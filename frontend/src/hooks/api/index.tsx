@@ -7,6 +7,7 @@ export * from "./incidentContacts";
 export * from "./integrationAuth";
 export * from "./integrations";
 export * from "./keys";
+export * from "./machineIdentities";
 export * from "./organization";
 export * from "./roles";
 export * from "./secretApproval";

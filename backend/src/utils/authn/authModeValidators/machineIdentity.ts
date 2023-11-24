@@ -1,36 +1,36 @@
 import jwt from "jsonwebtoken";
 import { Types } from "mongoose";
-import { ServiceTokenDataV3 } from "../../../models";
+import { MachineIdentity } from "../../../models";
 import { getAuthSecret } from "../../../config";
 import { AuthTokenType } from "../../../variables";
 import { UnauthorizedRequestError } from "../../errors";
 
-interface ValidateServiceTokenV3Params {
+interface ValidateMachineIdentityParams {
     authTokenValue: string;
 }
 
-export const validateServiceTokenV3 = async ({
+export const validateMachineIdentity = async ({
     authTokenValue
-}: ValidateServiceTokenV3Params) => {
+}: ValidateMachineIdentityParams) => {
     const decodedToken = <jwt.ServiceRefreshTokenJwtPayload>(
 		jwt.verify(authTokenValue, await getAuthSecret())
 	);
 
 	if (decodedToken.authTokenType !== AuthTokenType.SERVICE_ACCESS_TOKEN) throw UnauthorizedRequestError();
 	
-	const serviceTokenData = await ServiceTokenDataV3.findOne({
+	const machineIdentity = await MachineIdentity.findOne({
 		_id: new Types.ObjectId(decodedToken.serviceTokenDataId),
 		isActive: true
 	});
 	
-	if (!serviceTokenData) {
+	if (!machineIdentity) {
 		throw UnauthorizedRequestError({ 
 			message: "Failed to authenticate"
 		});
-	} else if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
+	} else if (machineIdentity?.expiresAt && new Date(machineIdentity.expiresAt) < new Date()) {
 		// case: service token expired
-		await ServiceTokenDataV3.findByIdAndUpdate(
-			serviceTokenData._id,
+		await MachineIdentity.findByIdAndUpdate(
+			machineIdentity._id,
 			{
 				isActive: false
 			},
@@ -42,15 +42,15 @@ export const validateServiceTokenV3 = async ({
 		throw UnauthorizedRequestError({
 			message: "Failed to authenticate",
 		});
-	} else if (decodedToken.tokenVersion !== serviceTokenData.tokenVersion) {
+	} else if (decodedToken.tokenVersion !== machineIdentity.tokenVersion) {
 		// TODO: raise alarm
 		throw UnauthorizedRequestError({
 			message: "Failed to authenticate",
 		});
 	}
 	
-	await ServiceTokenDataV3.findByIdAndUpdate(
-		serviceTokenData._id,
+	await MachineIdentity.findByIdAndUpdate(
+		machineIdentity._id,
 		{
 			accessTokenLastUsed: new Date(),
 			$inc: { accessTokenUsageCount: 1 }
@@ -60,5 +60,5 @@ export const validateServiceTokenV3 = async ({
 		}
 	);
 
-    return serviceTokenData;
+    return machineIdentity;
 }

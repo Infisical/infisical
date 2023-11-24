@@ -20,10 +20,9 @@ export * from "./user";
 export * from "./userAction";
 export * from "./workspace";
 export * from "./serviceTokenData"; // TODO: deprecate
-export * from "./serviceTokenDataV3";
-export * from "./serviceMembershipOrg";
-export * from "./serviceMembership";
-export * from "./serviceTokenDataV3Key"; /// TODO: remove
+export * from "./machineIdentity";
+export * from "./machineMembershipOrg";
+export * from "./machineMembership";
 export * from "./apiKeyData"; // TODO: deprecate
 export * from "./apiKeyDataV2";
 export * from "./loginSRPDetail";

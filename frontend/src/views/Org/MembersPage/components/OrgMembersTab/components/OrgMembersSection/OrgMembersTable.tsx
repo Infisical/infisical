@@ -118,7 +118,7 @@ export const OrgMembersTable = ({
         }
     }
 
-    const isLoading = isMembersLoading || IsWsMembershipLoading || isRolesLoading;
+    const isLoading = isMembersLoading || isRolesLoading;
 
     const isIamOwner = useMemo(
         () => members?.find(({ user: u }) => userId === u?._id)?.role === "owner",

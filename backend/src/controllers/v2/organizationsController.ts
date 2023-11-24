@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { 
+  MachineMembershipOrg, 
   Membership, 
-  MembershipOrg, 
-  ServiceMembershipOrg,
+  MembershipOrg,
   Workspace
 } from "../../models";
 import { Role } from "../../ee/models";
@@ -389,16 +389,16 @@ export const deleteOrganizationById = async (req: Request, res: Response) => {
  * @param res 
  * @returns 
  */
-export const getOrganizationServiceMemberships = async (req: Request, res: Response) => {
+export const getOrganizationMachineMemberships = async (req: Request, res: Response) => {
   const {
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgServiceMembersV2, req);
   
-  const serviceMemberships = await ServiceMembershipOrg.find({
+  const machineMemberships = await MachineMembershipOrg.find({
     organization: new Types.ObjectId(organizationId)
-  }).populate("service customRole");
-
+  }).populate("machineIdentity customRole");
+  
   return res.status(200).send({
-    serviceMemberships
+    machineMemberships
   });
 }

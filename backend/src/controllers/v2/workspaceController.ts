@@ -2,10 +2,10 @@ import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { 
   Key, 
-  Membership, 
-  ServiceMembership, 
+  MachineIdentity, 
+  MachineMembership,
+  Membership,
   ServiceTokenData,
-  ServiceTokenDataV3,
   Workspace
 } from "../../models";
 import { Role } from "../../ee/models";
@@ -503,16 +503,15 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
 };
 
 /**
- * Add service account with id [serviceId] to workspace
+ * Add machine identity with id [machineId] to workspace
  * with id [workspaceId]
  * @param req 
  * @param res 
  */
-export const addWorkspaceServiceMembership = async (req: Request, res: Response) => {
+export const addMachineToWorkspace = async (req: Request, res: Response) => {
   const {
-    params: { workspaceId },
+    params: { workspaceId, machineId },
     body: {
-      serviceId,
       role
     }
   } = await validateRequest(reqValidator.AddWorkspaceServiceMemberV2, req);
@@ -527,22 +526,22 @@ export const addWorkspaceServiceMembership = async (req: Request, res: Response)
     ProjectPermissionSub.ServiceTokens
   );
   
-  let serviceMembership = await ServiceMembership.findOne({
-    service: new Types.ObjectId(serviceId),
+  let machineMembership = await MachineMembership.findOne({
+    machineIdentity: new Types.ObjectId(machineId),
     workspace: new Types.ObjectId(workspaceId)
   });
 
-  if (serviceMembership) throw BadRequestError({
+  if (machineMembership) throw BadRequestError({
     message: "Service account already exists in workspace"
   });
 
-  const serviceTokenData = await ServiceTokenDataV3.findById(serviceId);
-  if (!serviceTokenData) throw ResourceNotFoundError();
+  const machineIdentity = await MachineIdentity.findById(machineId);
+  if (!machineIdentity) throw ResourceNotFoundError();
   
   const workspace = await Workspace.findById(workspaceId);
   if (!workspace) throw ResourceNotFoundError();
   
-  if (!serviceTokenData.organization.equals(workspace.organization)) throw BadRequestError({
+  if (!machineIdentity.organization.equals(workspace.organization)) throw BadRequestError({
     message: "Failed to add service account to workspace in another organization"
   });
 
@@ -560,27 +559,27 @@ export const addWorkspaceServiceMembership = async (req: Request, res: Response)
     }
   }
   
-  serviceMembership = await new ServiceMembership({
-    service: serviceTokenData._id,
+  machineMembership = await new MachineMembership({
+    machineIdentity: machineIdentity._id,
     workspace: new Types.ObjectId(workspaceId),
     role,
     customRole
   }).save();
 
   return res.status(200).send({
-    serviceMembership
+    machineMembership
   });
 }
 
 /**
- * Add service account with id [serviceId] to workspace
+ * Add service account with id [machineId] to workspace
  * with id [workspaceId]
  * @param req 
  * @param res 
  */
- export const deleteWorkspaceServiceMembership = async (req: Request, res: Response) => {
+ export const deleteMachineFromWorkspace = async (req: Request, res: Response) => {
   const {
-    params: { workspaceId, serviceId }
+    params: { workspaceId, machineId }
   } = await validateRequest(reqValidator.DeleteWorkspaceServiceMemberV2, req);
   
   const { permission } = await getAuthDataProjectPermissions({
@@ -593,29 +592,29 @@ export const addWorkspaceServiceMembership = async (req: Request, res: Response)
     ProjectPermissionSub.ServiceTokens
   );
   
-  const serviceMembership = await ServiceMembership.findOneAndDelete({
-    service: new Types.ObjectId(serviceId),
+  const machineMembership = await MachineMembership.findOneAndDelete({
+    machineIdentity: new Types.ObjectId(machineId),
     workspace: new Types.ObjectId(workspaceId)
   });
   
-  if (!serviceMembership) throw ResourceNotFoundError();
+  if (!machineMembership) throw ResourceNotFoundError();
 
   return res.status(200).send({
-    serviceMembership
+    machineMembership
   });
 }
 
 /**
- * Return list of service memberships for workspace with id [workspaceId]
+ * Return list of machine identity memberships for workspace with id [workspaceId]
  * @param req
  * @param res 
  * @returns 
  */
- export const getWorkspaceServiceMemberships = async (req: Request, res: Response) => {
+ export const getWorkspaceMachineMemberships = async (req: Request, res: Response) => {
   const {
     params: { workspaceId }
   } = await validateRequest(reqValidator.GetWorkspaceServiceMembersV2, req);
-
+  
   const { permission } = await getAuthDataProjectPermissions({
     authData: req.authData,
     workspaceId: new Types.ObjectId(workspaceId)
@@ -626,11 +625,11 @@ export const addWorkspaceServiceMembership = async (req: Request, res: Response)
     ProjectPermissionSub.ServiceTokens
   );
 
-  const serviceMemberships = await ServiceMembership.find({
+  const machineMemberships = await MachineMembership.find({
     workspace: new Types.ObjectId(workspaceId)
-  }).populate("service customRole");
+  }).populate("machineIdentity customRole");
 
   return res.status(200).send({
-    serviceMemberships
+    machineMemberships
   });
 }

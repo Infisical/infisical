@@ -2,17 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { organizationKeys } from "../organization/queries";
 import {
-  CreateServiceTokenDataV3DTO,
-  CreateServiceTokenDataV3Res,
   CreateServiceTokenDTO,
   CreateServiceTokenRes,
-  DeleteServiceTokenDataV3DTO,
   DeleteServiceTokenRes,
-  ServiceToken,
-  ServiceTokenDataV3,
-  UpdateServiceTokenDataV3DTO} from "./types";
+  ServiceToken
+} from "./types";
 
 const serviceTokenKeys = {
   getAllWorkspaceServiceToken: (workspaceID: string) => [{ workspaceID }, "service-tokens"] as const
@@ -62,65 +57,6 @@ export const useDeleteServiceToken = () => {
     },
     onSuccess: ({ serviceTokenData: { workspace } }) => {
       queryClient.invalidateQueries(serviceTokenKeys.getAllWorkspaceServiceToken(workspace));
-    }
-  });
-};
-
-export const useCreateServiceTokenV3 = () => {
-  const queryClient = useQueryClient();
-  return useMutation<CreateServiceTokenDataV3Res, {}, CreateServiceTokenDataV3DTO>({
-    mutationFn: async (body) => {
-      const { data } = await apiRequest.post("/api/v3/service-token/", body);
-      return data;
-    },
-    onSuccess: ({ serviceTokenData }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgServiceMemberships(serviceTokenData.organization));
-    }
-  });
-};
-
-export const useUpdateServiceTokenV3 = () => {
-  const queryClient = useQueryClient();
-  return useMutation<ServiceTokenDataV3, {}, UpdateServiceTokenDataV3DTO>({
-    mutationFn: async ({
-      serviceTokenDataId,
-      name,
-      role,
-      isActive,
-      trustedIps,
-      expiresIn,
-      accessTokenTTL,
-      isRefreshTokenRotationEnabled
-    }) => {
-      const { data: { serviceTokenData } } = await apiRequest.patch(`/api/v3/service-token/${serviceTokenDataId}`, {
-        name,
-        role,
-        isActive,
-        trustedIps,
-        expiresIn,
-        accessTokenTTL,
-        isRefreshTokenRotationEnabled
-      });
-
-      return serviceTokenData;
-    },
-    onSuccess: ({ organization }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgServiceMemberships(organization));
-    }
-  });
-};
-
-export const useDeleteServiceTokenV3 = () => {
-  const queryClient = useQueryClient();
-  return useMutation<ServiceTokenDataV3, {}, DeleteServiceTokenDataV3DTO>({
-    mutationFn: async ({
-      serviceTokenDataId
-    }) => {
-      const { data: { serviceTokenData } } = await apiRequest.delete(`/api/v3/service-token/${serviceTokenDataId}`);
-      return serviceTokenData;
-    },
-    onSuccess: ({ organization }) => {
-      queryClient.invalidateQueries(organizationKeys.getOrgServiceMemberships(organization));
     }
   });
 };

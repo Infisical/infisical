@@ -8,8 +8,8 @@ import {
   validateAPIKey,
   validateAPIKeyV2,
   validateJWT,
-  validateServiceTokenV2,
-  validateServiceTokenV3
+  validateMachineIdentity,
+  validateServiceTokenV2
 } from "../authModeValidators";
 import { getUserAgentType } from "../../posthog";
 
@@ -36,7 +36,7 @@ interface GetAuthDataParams {
  * - SERVICE_TOKEN
  * - API_KEY
  * - JWT
- * - SERVICE_ACCESS_TOKEN (from ST V3)
+ * - SERVICE_ACCESS_TOKEN (from machine identity)
  * - API_KEY_V2
  * @param {Object} params
  * @param {Object.<string, (string|string[]|undefined)>} params.headers - The HTTP request headers, usually from Express's `req.headers`.
@@ -116,7 +116,7 @@ export const getAuthData = async ({
             }
         }
         case AuthMode.SERVICE_ACCESS_TOKEN: {
-            const serviceTokenData = await validateServiceTokenV3({
+            const serviceTokenData = await validateMachineIdentity({
                 authTokenValue
             });
 

@@ -24,17 +24,18 @@ import {
     OrgPermissionSubjects,
     useOrganization} from "@app/context";
 import {
-    useGetOrgServiceMemberships,
+    useGetMachineMembershipOrgs,
     useGetRoles,
-    useUpdateServiceTokenV3} from "@app/hooks/api";
+    useUpdateMachineIdentity
+} from "@app/hooks/api";
 import { ServiceTokenV3TrustedIp } from "@app/hooks/api/serviceTokens/types"
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
     handlePopUpOpen: (
-      popUpName: keyof UsePopUpState<["deleteServiceTokenV3", "serviceTokenV3"]>,
+      popUpName: keyof UsePopUpState<["deleteMachineIdentity", "machineIdentity"]>,
       data?: {
-        serviceTokenDataId?: string;
+        machineId?: string;
         name?: string;
         role?: string;
         customRole?: {
@@ -48,42 +49,42 @@ type Props = {
     ) => void;
   };
 
-export const ServiceTokenV3Table = ({
+export const MachineIdentityTable = ({
     handlePopUpOpen
 }: Props) => {
     const { createNotification } = useNotificationContext();
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?._id || "";
 
-    const { mutateAsync: updateMutateAsync } = useUpdateServiceTokenV3();
-    const { data, isLoading } = useGetOrgServiceMemberships(currentOrg?._id || "");
+    const { mutateAsync: updateMutateAsync } = useUpdateMachineIdentity();
+    const { data, isLoading } = useGetMachineMembershipOrgs(currentOrg?._id || "");
     
     const { data: roles } = useGetRoles({
         orgId
     });
     
     const handleChangeRole = async ({
-        serviceTokenDataId,
+        machineId,
         role
     }: {
-        serviceTokenDataId: string;
+        machineId: string;
         role: string;
     }) => {
         try {
             
             await updateMutateAsync({
-                serviceTokenDataId,
+                machineId,
                 role
             });
             
             createNotification({
-                text: "Successfully updated service account role",
+                text: "Successfully updated machine identity role",
                 type: "success"
             });
         } catch (err) {
             console.error(err);
             createNotification({
-                text: "Failed to update service account role",
+                text: "Failed to update machine identity role",
                 type: "error"
               });
         }
@@ -138,12 +139,12 @@ export const ServiceTokenV3Table = ({
                     </Tr>
                 </THead>
                 <TBody>
-                    {isLoading && <TableSkeleton columns={7} innerKey="service-tokens" />}
+                    {isLoading && <TableSkeleton columns={7} innerKey="org-machine-identities" />}
                     {!isLoading &&
                     data &&
                     data.length > 0 &&
                     data.map(({
-                        service: {
+                        machineIdentity: {
                             _id,
                             name,
                             // isActive,
@@ -195,7 +196,7 @@ export const ServiceTokenV3Table = ({
                                                     dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
                                                     onValueChange={(selectedRole) => 
                                                         handleChangeRole({
-                                                            serviceTokenDataId: _id,
+                                                            machineId: _id,
                                                             role: selectedRole
                                                         })
                                                     }
@@ -235,8 +236,8 @@ export const ServiceTokenV3Table = ({
                                         {(isAllowed) => (
                                             <IconButton
                                                 onClick={async () => {
-                                                    handlePopUpOpen("serviceTokenV3", {
-                                                        serviceTokenDataId: _id,
+                                                    handlePopUpOpen("machineIdentity", {
+                                                        machineId: _id,
                                                         name,
                                                         role,
                                                         customRole,
@@ -262,8 +263,8 @@ export const ServiceTokenV3Table = ({
                                         {(isAllowed) => (
                                             <IconButton
                                                 onClick={() => {
-                                                    handlePopUpOpen("deleteServiceTokenV3", {
-                                                        serviceTokenDataId: _id,
+                                                    handlePopUpOpen("deleteMachineIdentity", {
+                                                        machineId: _id,
                                                         name
                                                     });
                                                 }}
@@ -285,7 +286,7 @@ export const ServiceTokenV3Table = ({
                     {!isLoading && data && data?.length === 0 && (
                         <Tr>
                             <Td colSpan={7}>
-                                <EmptyState title="No system users have been created in this organization" icon={faServer} />
+                                <EmptyState title="No MIs have been created in this organization" icon={faServer} />
                             </Td>
                         </Tr>
                     )}

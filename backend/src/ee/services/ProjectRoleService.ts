@@ -13,9 +13,9 @@ import picomatch from "picomatch";
 import { AuthData } from "../../interfaces/middleware";
 import { ActorType, IRole } from "../models";
 import { 
-  IServiceTokenDataV3, 
-  Membership, 
-  ServiceMembership,
+  IMachineIdentity,
+  MachineMembership, 
+  Membership,
   ServiceTokenData
 } from "../../models";
 import { ADMIN, CUSTOM, MEMBER, VIEWER } from "../../variables";
@@ -290,13 +290,13 @@ export const getAuthDataProjectPermissions = async ({
       break;
     }
     case ActorType.SERVICE_V3: {
-      const serviceMembership = await ServiceMembership.findOne({
-        service: authData.authPayload._id,
+      const serviceMembership = await MachineMembership.findOne({
+        machineIdentity: authData.authPayload._id,
         workspace: workspaceId
       })
       .populate<{
         customRole: IRole & { permissions: RawRuleOf<MongoAbility<ProjectPermissionSet>>[] };
-        service: IServiceTokenDataV3
+        machineIdentity: IMachineIdentity
       }>("customRole service")
       .exec();
       
@@ -306,7 +306,7 @@ export const getAuthDataProjectPermissions = async ({
 
       checkIPAgainstBlocklist({
         ipAddress: authData.ipAddress,
-        trustedIps: serviceMembership.service.trustedIps
+        trustedIps: serviceMembership.machineIdentity.trustedIps
       });
     
       role = serviceMembership.role;

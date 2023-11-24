@@ -13,33 +13,33 @@ import {
   useWorkspace} from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import {
-  useDeleteServiceFromWorkspace
+  useDeleteMachineFromWorkspace
 } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { AddServiceTokenV3Modal } from "./AddServiceTokenV3Modal";
-import { ServiceTokenV3Table } from "./ServiceTokenV3Table";
+import { AddMachineIdentityModal } from "./AddMachineIdentityModal";
+import { MachineIdentityTable } from "./MachineIdentityTable";
 
-export const ServiceTokenV3Section = withProjectPermission(
+export const MachineIdentitySection = withProjectPermission(
   () => {
     const { createNotification } = useNotificationContext();
     const { currentWorkspace } = useWorkspace();
 
     const workspaceId = currentWorkspace?._id ?? "";
 
-    const { mutateAsync: deleteMutateAsync } = useDeleteServiceFromWorkspace();
+    const { mutateAsync: deleteMutateAsync } = useDeleteMachineFromWorkspace();
     
     const { popUp, handlePopUpOpen, handlePopUpClose,  handlePopUpToggle } = usePopUp([
-      "serviceTokenV3",
-      "deleteServiceTokenV3",
+      "machineIdentity",
+      "deleteMachineIdentity",
       "upgradePlan"
     ] as const);
     
-    const onRemoveServiceTokenDataSubmit = async (serviceTokenDataId: string) => {
+    const onRemoveServiceTokenDataSubmit = async (machineId: string) => {
       try {
 
         await deleteMutateAsync({
-          serviceId: serviceTokenDataId,
+          machineId,
           workspaceId
         });
         
@@ -48,7 +48,7 @@ export const ServiceTokenV3Section = withProjectPermission(
             type: "success"
         });
         
-        handlePopUpClose("deleteServiceTokenV3");
+        handlePopUpClose("deleteMachineIdentity");
       } catch (err) {
           console.error(err);
           createNotification({
@@ -62,7 +62,7 @@ export const ServiceTokenV3Section = withProjectPermission(
         <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="flex justify-between mb-8">
             <p className="text-xl font-semibold text-mineshaft-100">
-              Service Accounts
+              Machine Identities (MIs)
             </p>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Create}
@@ -73,31 +73,31 @@ export const ServiceTokenV3Section = withProjectPermission(
                   colorSchema="secondary"
                   type="submit"
                   leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => handlePopUpOpen("serviceTokenV3")}
+                  onClick={() => handlePopUpOpen("machineIdentity")}
                   isDisabled={!isAllowed}
                 >
-                  Add service account
+                  Add machine identity
                 </Button>
               )}
             </ProjectPermissionCan>
           </div>
-          <ServiceTokenV3Table 
+          <MachineIdentityTable 
             handlePopUpOpen={handlePopUpOpen}
           />
-          <AddServiceTokenV3Modal 
+          <AddMachineIdentityModal 
             popUp={popUp}
             handlePopUpToggle={handlePopUpToggle}
           />
           <DeleteActionModal
-            isOpen={popUp.deleteServiceTokenV3.isOpen}
+            isOpen={popUp.deleteMachineIdentity.isOpen}
             title={`Are you sure want to remove ${
-              (popUp?.deleteServiceTokenV3?.data as { name: string })?.name || ""
+              (popUp?.deleteMachineIdentity?.data as { name: string })?.name || ""
             } from the project?`}
-            onChange={(isOpen) => handlePopUpToggle("deleteServiceTokenV3", isOpen)}
+            onChange={(isOpen) => handlePopUpToggle("deleteMachineIdentity", isOpen)}
             deleteKey="confirm"
             onDeleteApproved={() => 
               onRemoveServiceTokenDataSubmit(
-                (popUp?.deleteServiceTokenV3?.data as { serviceTokenDataId: string })?.serviceTokenDataId
+                (popUp?.deleteMachineIdentity?.data as { machineId: string })?.machineId
               )
             }
           />

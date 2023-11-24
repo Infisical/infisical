@@ -7,7 +7,7 @@ export const RefreshTokenV3 = z.object({
   })
 });
 
-export const CreateServiceTokenV3 = z.object({
+export const CreateMachineIdentityV3 = z.object({
   body: z.object({
     name: z.string().trim(),
     organizationId: z.string().trim(),
@@ -25,9 +25,9 @@ export const CreateServiceTokenV3 = z.object({
   })
 });
   
-export const UpdateServiceTokenV3 = z.object({
+export const UpdateMachineIdentityV3 = z.object({
   params: z.object({
-    serviceTokenDataId: z.string()
+    machineId: z.string()
   }),
   body: z.object({
     name: z.string().trim().optional(),
@@ -46,8 +46,8 @@ export const UpdateServiceTokenV3 = z.object({
   }),
 });
 
-export const DeleteServiceTokenV3 = z.object({
+export const DeleteMachineIdentityV3 = z.object({
   params: z.object({
-    serviceTokenDataId: z.string()
+    machineId: z.string()
   }),
 });

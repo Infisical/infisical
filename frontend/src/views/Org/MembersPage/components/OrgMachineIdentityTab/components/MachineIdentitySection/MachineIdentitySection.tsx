@@ -9,35 +9,33 @@ import {
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { withPermission } from "@app/hoc";
-import {
-  useDeleteServiceTokenV3
-} from "@app/hooks/api";
+import { useDeleteMachineIdentity } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { AddServiceTokenV3Modal } from "./AddServiceTokenV3Modal";
-import { ServiceTokenV3Table } from "./ServiceTokenV3Table";
+import { AddMachineIdentityModal } from "./AddMachineIdentityModal";
+import { MachineIdentityTable } from "./MachineIdentityTable";
 
-export const ServiceTokenV3Section = withPermission(
+export const MachineIdentitySection = withPermission(
   () => {
     const { createNotification } = useNotificationContext();
-    const { mutateAsync: deleteMutateAsync } = useDeleteServiceTokenV3();
+    const { mutateAsync: deleteMutateAsync } = useDeleteMachineIdentity();
     const { popUp, handlePopUpOpen, handlePopUpClose,  handlePopUpToggle } = usePopUp([
-      "serviceTokenV3",
-      "deleteServiceTokenV3",
+      "machineIdentity",
+      "deleteMachineIdentity",
       "upgradePlan"
     ] as const);
     
-    const onDeleteServiceTokenDataSubmit = async (serviceTokenDataId: string) => {
+    const onDeleteMachineIdentitySubmit = async (machineId: string) => {
       try {
         await deleteMutateAsync({
-            serviceTokenDataId 
+          machineId 
         });
         createNotification({
             text: "Successfully deleted service token v3",
             type: "success"
         });
         
-        handlePopUpClose("deleteServiceTokenV3");
+        handlePopUpClose("deleteMachineIdentity");
       } catch (err) {
           console.error(err);
           createNotification({
@@ -51,7 +49,7 @@ export const ServiceTokenV3Section = withPermission(
         <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="flex justify-between mb-8">
             <p className="text-xl font-semibold text-mineshaft-100">
-              Machines
+              Machine Identities (MIs)
             </p>
             <OrgPermissionCan
               I={OrgPermissionActions.Create}
@@ -62,32 +60,32 @@ export const ServiceTokenV3Section = withPermission(
                   colorSchema="secondary"
                   type="submit"
                   leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => handlePopUpOpen("serviceTokenV3")}
+                  onClick={() => handlePopUpOpen("machineIdentity")}
                   isDisabled={!isAllowed}
                 >
-                  Create account
+                  Create MI
                 </Button>
               )}
             </OrgPermissionCan>
           </div>
-          <ServiceTokenV3Table 
+          <MachineIdentityTable 
             handlePopUpOpen={handlePopUpOpen}
           />
-          <AddServiceTokenV3Modal 
+          <AddMachineIdentityModal 
             popUp={popUp}
             handlePopUpOpen={handlePopUpOpen}
             handlePopUpToggle={handlePopUpToggle}
           />
           <DeleteActionModal
-            isOpen={popUp.deleteServiceTokenV3.isOpen}
+            isOpen={popUp.deleteMachineIdentity.isOpen}
             title={`Are you sure want to delete ${
-              (popUp?.deleteServiceTokenV3?.data as { name: string })?.name || ""
+              (popUp?.deleteMachineIdentity?.data as { name: string })?.name || ""
             }?`}
-            onChange={(isOpen) => handlePopUpToggle("deleteServiceTokenV3", isOpen)}
+            onChange={(isOpen) => handlePopUpToggle("deleteMachineIdentity", isOpen)}
             deleteKey="confirm"
             onDeleteApproved={() => 
-              onDeleteServiceTokenDataSubmit(
-                (popUp?.deleteServiceTokenV3?.data as { serviceTokenDataId: string })?.serviceTokenDataId
+              onDeleteMachineIdentitySubmit(
+                (popUp?.deleteMachineIdentity?.data as { machineId: string })?.machineId
               )
             }
           />

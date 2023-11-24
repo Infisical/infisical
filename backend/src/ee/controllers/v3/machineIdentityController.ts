@@ -2,20 +2,19 @@ import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import {
-    ServiceTokenDataV3,
-    ServiceTokenDataV3Key, // TODO: remove
+    IMachineIdentityTrustedIp,
+    MachineIdentity,
+    MachineMembership,
+    MachineMembershipOrg,
     Organization,
-    ServiceMembershipOrg,
-    ServiceMembership
 } from "../../../models";
-import { IServiceTokenV3TrustedIp } from "../../../models/serviceTokenDataV3";
 import {
     ActorType,
     EventType,
     Role
 } from "../../models";
 import { validateRequest } from "../../../helpers/validation";
-import * as reqValidator from "../../../validation/serviceTokenDataV3";
+import * as reqValidator from "../../../validation/machineIdentity";
 import { createToken } from "../../../helpers/auth";
 
 
@@ -26,7 +25,7 @@ import { getAuthSecret } from "../../../config";
 import { ADMIN, AuthTokenType, CUSTOM, MEMBER } from "../../../variables";
 
 /**
- * Return access and refresh token as per refresh operation
+ * Return machine identity access and refresh token as per refresh operation
  * @param req 
  * @param res 
  */
@@ -43,14 +42,14 @@ import { ADMIN, AuthTokenType, CUSTOM, MEMBER } from "../../../variables";
     
     if (decodedToken.authTokenType !== AuthTokenType.SERVICE_REFRESH_TOKEN) throw UnauthorizedRequestError();
     
-    let serviceTokenData = await ServiceTokenDataV3.findOne({
+    let machineIdentity = await MachineIdentity.findOne({
         _id: new Types.ObjectId(decodedToken.serviceTokenDataId),
         isActive: true
     });
     
-    if (!serviceTokenData) throw UnauthorizedRequestError();
+    if (!machineIdentity) throw UnauthorizedRequestError();
 
-    if (decodedToken.tokenVersion !== serviceTokenData.tokenVersion) {
+    if (decodedToken.tokenVersion !== machineIdentity.tokenVersion) {
         // raise alarm
         throw UnauthorizedRequestError();
     }
@@ -67,9 +66,9 @@ import { ADMIN, AuthTokenType, CUSTOM, MEMBER } from "../../../variables";
         token_type: "Bearer"
     };
 
-    if (serviceTokenData.isRefreshTokenRotationEnabled) {
-        serviceTokenData = await ServiceTokenDataV3.findByIdAndUpdate(
-            serviceTokenData._id,
+    if (machineIdentity.isRefreshTokenRotationEnabled) {
+        machineIdentity = await MachineIdentity.findByIdAndUpdate(
+            machineIdentity._id,
             {
                 $inc: {
                     tokenVersion: 1
@@ -80,13 +79,13 @@ import { ADMIN, AuthTokenType, CUSTOM, MEMBER } from "../../../variables";
             }
         );
         
-        if (!serviceTokenData) throw BadRequestError();
+        if (!machineIdentity) throw BadRequestError();
         
         response.refresh_token = createToken({
             payload: {
-                serviceTokenDataId: serviceTokenData._id.toString(),
+                serviceTokenDataId: machineIdentity._id.toString(),
                 authTokenType: AuthTokenType.SERVICE_REFRESH_TOKEN,
-                tokenVersion: serviceTokenData.tokenVersion
+                tokenVersion: machineIdentity.tokenVersion
             },
             secret: await getAuthSecret()
         });
@@ -94,18 +93,18 @@ import { ADMIN, AuthTokenType, CUSTOM, MEMBER } from "../../../variables";
 
     response.access_token = createToken({
         payload: {
-            serviceTokenDataId: serviceTokenData._id.toString(),
+            serviceTokenDataId: machineIdentity._id.toString(),
             authTokenType: AuthTokenType.SERVICE_ACCESS_TOKEN,
-            tokenVersion: serviceTokenData.tokenVersion
+            tokenVersion: machineIdentity.tokenVersion
         },
-        expiresIn: serviceTokenData.accessTokenTTL,
+        expiresIn: machineIdentity.accessTokenTTL,
         secret: await getAuthSecret()
     });
 
-    response.expires_in = serviceTokenData.accessTokenTTL;
+    response.expires_in = machineIdentity.accessTokenTTL;
 
-    await ServiceTokenDataV3.findByIdAndUpdate(
-        serviceTokenData._id,
+    await MachineIdentity.findByIdAndUpdate(
+        machineIdentity._id,
         {
             refreshTokenLastUsed: new Date(),
             $inc: { refreshTokenUsageCount: 1 }
@@ -119,12 +118,12 @@ import { ADMIN, AuthTokenType, CUSTOM, MEMBER } from "../../../variables";
 }
 
 /**
- * Create service token data V3
+ * Create machine identity
  * @param req 
  * @param res 
  * @returns 
  */
-export const createServiceTokenData = async (req: Request, res: Response) => {
+export const createMachineIdentity = async (req: Request, res: Response) => {
     const {
         body: { 
             name, 
@@ -135,7 +134,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             accessTokenTTL,
             isRefreshTokenRotationEnabled
         }
-    } = await validateRequest(reqValidator.CreateServiceTokenV3, req);
+    } = await validateRequest(reqValidator.CreateMachineIdentityV3, req);
 
     // const { permission } = await getAuthDataProjectPermissions({
     //     authData: req.authData,
@@ -195,7 +194,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
     }
     
     const isActive = true;
-    const serviceTokenData = await new ServiceTokenDataV3({
+    const machineIdentity = await new MachineIdentity({
         name,
         user,
         organization: new Types.ObjectId(organizationId),
@@ -209,18 +208,18 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         isRefreshTokenRotationEnabled
     }).save();
     
-    await new ServiceMembershipOrg({
-        service: serviceTokenData._id,
-        organization: serviceTokenData.organization,
+    await new MachineMembershipOrg({
+        machineIdentity: machineIdentity._id,
+        organization: machineIdentity.organization,
         role: isCustomRole ? CUSTOM : role,
         customRole
     }).save();
     
     const refreshToken = createToken({
         payload: {
-            serviceTokenDataId: serviceTokenData._id.toString(),
+            serviceTokenDataId: machineIdentity._id.toString(),
             authTokenType: AuthTokenType.SERVICE_REFRESH_TOKEN,
-            tokenVersion: serviceTokenData.tokenVersion
+            tokenVersion: machineIdentity.tokenVersion
         },
         secret: await getAuthSecret()
     });
@@ -228,12 +227,12 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
     await EEAuditLogService.createAuditLog(
         req.authData,
         {
-            type: EventType.CREATE_SERVICE_TOKEN_V3,
+            type: EventType.CREATE_MACHINE_IDENTITY,
             metadata: {
                 name,
                 isActive,
                 role,
-                trustedIps: reformattedTrustedIps as Array<IServiceTokenV3TrustedIp>,
+                trustedIps: reformattedTrustedIps as Array<IMachineIdentityTrustedIp>,
                 expiresAt
             }
         },
@@ -243,7 +242,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
     );
     
     return res.status(200).send({
-        serviceTokenData,
+        machineIdentity,
         refreshToken
     });
 }
@@ -254,22 +253,22 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
  * @param res 
  * @returns 
  */
-export const updateServiceTokenData = async (req: Request, res: Response) => {
+export const updateMachineIdentity = async (req: Request, res: Response) => {
     const {
-        params: { serviceTokenDataId },
+        params: { machineId },
         body: { 
             name, 
             isActive,
-            role, // bring this somewhere else?
+            role,
             trustedIps,
             expiresIn,
             accessTokenTTL,
             isRefreshTokenRotationEnabled
         }
-    } = await validateRequest(reqValidator.UpdateServiceTokenV3, req);
+    } = await validateRequest(reqValidator.UpdateMachineIdentityV3, req);
 
-    let serviceTokenData = await ServiceTokenDataV3.findById(serviceTokenDataId);
-    if (!serviceTokenData) throw ResourceNotFoundError({ 
+    let machineIdentity = await MachineIdentity.findById(machineId);
+    if (!machineIdentity) throw ResourceNotFoundError({ 
         message: "Service token not found" 
     });
     
@@ -293,14 +292,14 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
             customRole = await Role.findOne({
                 slug: role,
                 isOrgRole: true,
-                organization: serviceTokenData.organization
+                organization: machineIdentity.organization
             });
             
             if (!customRole) throw BadRequestError({ message: "Role not found" });
         }
     }
 
-    const plan = await EELicenseService.getPlan(serviceTokenData.organization);
+    const plan = await EELicenseService.getPlan(machineIdentity.organization);
 
     // validate trusted ips
     let reformattedTrustedIps;
@@ -326,12 +325,11 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
         expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
     }
     
-    serviceTokenData = await ServiceTokenDataV3.findByIdAndUpdate(
-        serviceTokenDataId,
+    machineIdentity = await MachineIdentity.findByIdAndUpdate(
+        machineId,
         {
             name,
             isActive,
-            
             trustedIps: reformattedTrustedIps,
             expiresAt,
             accessTokenTTL,
@@ -342,13 +340,13 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
         }
     );
 
-    if (!serviceTokenData) throw BadRequestError({
+    if (!machineIdentity) throw BadRequestError({
         message: "Failed to update service token"
     });
     
-    await ServiceMembershipOrg.findOneAndUpdate(
+    await MachineMembershipOrg.findOneAndUpdate(
         {
-            service: serviceTokenData._id
+            machineIdentity: machineIdentity._id
         },
         {
             role: customRole ? CUSTOM : role,
@@ -369,22 +367,22 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
     await EEAuditLogService.createAuditLog(
         req.authData,
         {
-            type: EventType.UPDATE_SERVICE_TOKEN_V3,
+            type: EventType.UPDATE_MACHINE_IDENTITY,
             metadata: {
-                name: serviceTokenData.name,
+                name: machineIdentity.name,
                 isActive,
                 role,
-                trustedIps: reformattedTrustedIps as Array<IServiceTokenV3TrustedIp>,
+                trustedIps: reformattedTrustedIps as Array<IMachineIdentityTrustedIp>,
                 expiresAt
             }
         },
         {
-            organizationId: serviceTokenData.organization
+            organizationId: machineIdentity.organization
         }
     );
 
     return res.status(200).send({
-        serviceTokenData
+        machineIdentity
     }); 
 }
 
@@ -394,13 +392,13 @@ export const updateServiceTokenData = async (req: Request, res: Response) => {
  * @param res 
  * @returns 
  */
-export const deleteServiceTokenData = async (req: Request, res: Response) => {
+export const deleteMachineIdentity = async (req: Request, res: Response) => {
     const {
-        params: { serviceTokenDataId }
-    } = await validateRequest(reqValidator.DeleteServiceTokenV3, req);
+        params: { machineId }
+    } = await validateRequest(reqValidator.DeleteMachineIdentityV3, req);
     
-    let serviceTokenData = await ServiceTokenDataV3.findById(serviceTokenDataId);
-    if (!serviceTokenData) throw ResourceNotFoundError({ 
+    let machineIdentity = await MachineIdentity.findById(machineId);
+    if (!machineIdentity) throw ResourceNotFoundError({ 
         message: "Service token not found" 
     });
     
@@ -414,46 +412,42 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
     //     ProjectPermissionSub.ServiceTokens
     // );
     
-    serviceTokenData = await ServiceTokenDataV3.findByIdAndDelete(serviceTokenDataId);
+    machineIdentity = await MachineIdentity.findByIdAndDelete(machineId);
     
-    if (!serviceTokenData) throw BadRequestError({
+    if (!machineIdentity) throw BadRequestError({
         message: "Failed to delete service token"
     });
 
-    const serviceMembershipOrg = await ServiceMembershipOrg.findOneAndDelete({
-        service: serviceTokenData._id,
+    const machineMembershipOrg = await MachineMembershipOrg.findOneAndDelete({
+        machineIdentity: machineIdentity._id,
     });
     
-    if (!serviceMembershipOrg) throw BadRequestError({
+    if (!machineMembershipOrg) throw BadRequestError({
         message: "Failed to delete service token"
     });
-
-    await ServiceTokenDataV3Key.findOneAndDelete({
-        serviceTokenData: serviceTokenData._id
-    });
     
-    await ServiceMembership.deleteMany({
-        service: serviceTokenData._id,
+    await MachineMembership.deleteMany({
+        machineIdentity: machineIdentity._id,
     });
     
     await EEAuditLogService.createAuditLog(
         req.authData,
         {
-            type: EventType.DELETE_SERVICE_TOKEN_V3,
+            type: EventType.DELETE_MACHINE_IDENTITY,
             metadata: {
-                name: serviceTokenData.name,
-                isActive: serviceTokenData.isActive,
-                role: serviceMembershipOrg.role,
-                trustedIps: serviceTokenData.trustedIps as Array<IServiceTokenV3TrustedIp>,
-                expiresAt: serviceTokenData.expiresAt
+                name: machineIdentity.name,
+                isActive: machineIdentity.isActive,
+                role: machineMembershipOrg.role,
+                trustedIps: machineIdentity.trustedIps as Array<IMachineIdentityTrustedIp>,
+                expiresAt: machineIdentity.expiresAt
             }
         },
         {
-            organizationId: serviceTokenData.organization
+            organizationId: machineIdentity.organization
         }
     );
 
     return res.status(200).send({
-        serviceTokenData
+        machineIdentity
     }); 
 }

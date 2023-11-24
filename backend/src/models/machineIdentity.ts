@@ -1,13 +1,13 @@
 import { Document, Schema, Types, model } from "mongoose";
 import { IPType } from "../ee/models";
 
-export interface IServiceTokenV3TrustedIp {
+export interface IMachineIdentityTrustedIp {
     ipAddress: string;
     type: IPType;
     prefix: number;
 }
 
-export interface IServiceTokenDataV3 extends Document {
+export interface IMachineIdentity extends Document {
     _id: Types.ObjectId;
     name: string;
     organization: Types.ObjectId;
@@ -21,10 +21,10 @@ export interface IServiceTokenDataV3 extends Document {
     isRefreshTokenRotationEnabled: boolean;
     expiresAt?: Date;
     accessTokenTTL: number;
-    trustedIps: Array<IServiceTokenV3TrustedIp>;
+    trustedIps: Array<IMachineIdentityTrustedIp>;
 }
 
-const serviceTokenDataV3Schema = new Schema(
+const machineIdentitySchema = new Schema(
     {
         name: {
             type: String,
@@ -117,4 +117,4 @@ const serviceTokenDataV3Schema = new Schema(
     }
 );
 
-export const ServiceTokenDataV3 = model<IServiceTokenDataV3>("ServiceTokenDataV3", serviceTokenDataV3Schema);
+export const MachineIdentity = model<IMachineIdentity>("MachineIdentity", machineIdentitySchema);

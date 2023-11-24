@@ -93,29 +93,28 @@ router.patch(
   workspaceController.toggleAutoCapitalization
 );
 
-// TODO: consider endpoint restructuring
 router.post(
-  "/:workspaceId/service-memberships",
+  "/:workspaceId/machine-memberships/:machineId",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
-  workspaceController.addWorkspaceServiceMembership
+  workspaceController.addMachineToWorkspace
 );
 
 router.delete(
-  "/:workspaceId/service-memberships/:serviceId",
+  "/:workspaceId/machine-memberships/:machineId",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
-  workspaceController.deleteWorkspaceServiceMembership
+  workspaceController.deleteMachineFromWorkspace
 );
 
 router.get(
-  "/:workspaceId/service-memberships",
+  "/:workspaceId/machine-memberships",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  workspaceController.getWorkspaceServiceMemberships
+  workspaceController.getWorkspaceMachineMemberships
 );
 
 export default router;

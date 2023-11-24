@@ -8,5 +8,5 @@ export * from "./membershipOrg";
 export * from "./organization";
 export * from "./secrets";
 export * from "./serviceTokenData";
-export * from "./serviceTokenDataV3";
+export * from "./machineIdentity";
 export * from "./apiKeyDataV3";

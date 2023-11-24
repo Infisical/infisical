@@ -188,8 +188,8 @@ interface DeleteServiceTokenEvent {
   };
 }
 
-interface CreateServiceTokenV3Event {
-    type: EventType.CREATE_SERVICE_TOKEN_V3;
+interface CreateMachineIdentityEvent {
+    type: EventType.CREATE_MACHINE_IDENTITY;
     metadata: {
         name: string;
         isActive: boolean;
@@ -198,8 +198,8 @@ interface CreateServiceTokenV3Event {
     }
 }
 
-interface UpdateServiceTokenV3Event {
-    type: EventType.UPDATE_SERVICE_TOKEN_V3;
+interface UpdateMachineIdentityEvent {
+    type: EventType.UPDATE_MACHINE_IDENTITY;
     metadata: {
         name?: string;
         isActive?: boolean;
@@ -208,8 +208,8 @@ interface UpdateServiceTokenV3Event {
     }
 }
 
-interface DeleteServiceTokenV3Event {
-    type: EventType.DELETE_SERVICE_TOKEN_V3;
+interface DeleteMachineIdentityEvent {
+    type: EventType.DELETE_MACHINE_IDENTITY;
     metadata: {
         name: string;
         isActive: boolean;
@@ -414,9 +414,9 @@ export type Event =
   | DeleteTrustedIPEvent
   | CreateServiceTokenEvent
   | DeleteServiceTokenEvent
-  | CreateServiceTokenV3Event
-  | UpdateServiceTokenV3Event
-  | DeleteServiceTokenV3Event
+  | CreateMachineIdentityEvent
+  | UpdateMachineIdentityEvent
+  | DeleteMachineIdentityEvent
   | CreateEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent

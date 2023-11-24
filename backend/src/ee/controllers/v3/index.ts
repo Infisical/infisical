@@ -1,7 +1,7 @@
-import * as serviceTokenDataController from "./serviceTokenDataController";
+import * as machineIdentityController from "./machineIdentityController";
 import * as apiKeyDataController from "./apiKeyDataController";
 
 export {
-    serviceTokenDataController,
+    machineIdentityController,
     apiKeyDataController
 }

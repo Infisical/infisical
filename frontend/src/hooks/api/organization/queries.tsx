@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { ServiceMembershipOrg } from "../serviceTokens/types";
+import { MachineMembershipOrg } from "../machineIdentities/types";
 import {
   BillingDetails,
   Invoice,
@@ -351,17 +351,17 @@ export const useGetOrgLicenses = (organizationId: string) => {
   });
 };
 
-export const useGetOrgServiceMemberships = (organizationId: string) => {
+export const useGetMachineMembershipOrgs = (organizationId: string) => {
   return useQuery({
     queryKey: organizationKeys.getOrgServiceMemberships(organizationId),
     queryFn: async () => {
       const {
-        data: { serviceMemberships }
-      } = await apiRequest.get<{ serviceMemberships: ServiceMembershipOrg[] }>(
-        `/api/v2/organizations/${organizationId}/service-memberships`
+        data: { machineMemberships }
+      } = await apiRequest.get<{ machineMemberships: MachineMembershipOrg[] }>(
+        `/api/v2/organizations/${organizationId}/machine-memberships`
       );
 
-      return serviceMemberships;
+      return machineMemberships;
     },
     enabled: true
   });

@@ -1,19 +1,19 @@
 import { Schema, Types, model } from "mongoose";
 import { ADMIN, CUSTOM, MEMBER } from "../variables";
 
-export interface IServiceMembershipOrg {
+export interface IMachineMembershipOrg {
   _id: Types.ObjectId;
-  service: Types.ObjectId;
+  machineIdentity: Types.ObjectId;
   organization: Types.ObjectId;
   role: "admin" | "member" | "viewer" | "custom";
   customRole: Types.ObjectId;
 }
 
-const serviceMembershipOrgSchema = new Schema<IServiceMembershipOrg>(
+const machineMembershipOrgSchema = new Schema<IMachineMembershipOrg>(
   {
-    service: { // TODO: consider renaming
+    machineIdentity: {
       type: Schema.Types.ObjectId,
-      ref: "ServiceTokenDataV3"
+      ref: "MachineIdentity"
     },
     organization: {
       type: Schema.Types.ObjectId,
@@ -34,4 +34,4 @@ const serviceMembershipOrgSchema = new Schema<IServiceMembershipOrg>(
   }
 );
 
-export const ServiceMembershipOrg = model<IServiceMembershipOrg>("ServiceMembershipOrg", serviceMembershipOrgSchema);
+export const MachineMembershipOrg = model<IMachineMembershipOrg>("MachineMembershipOrg", machineMembershipOrgSchema);

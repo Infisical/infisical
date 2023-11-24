@@ -1,5 +1,5 @@
 import { ActorType, EventType } from "./enums";
-import { IServiceTokenV3TrustedIp } from "../../../models/serviceTokenDataV3";
+import { IMachineIdentityTrustedIp } from "../../../models/machineIdentity";
 
 interface UserActorMetadata {
   userId: string;
@@ -220,36 +220,36 @@ interface DeleteServiceTokenEvent {
   };
 }
 
-interface CreateServiceTokenV3Event {
-  type: EventType.CREATE_SERVICE_TOKEN_V3;
+interface CreateMachineIdentityEvent {
+  type: EventType.CREATE_MACHINE_IDENTITY;
   metadata: {
     name: string;
     isActive: boolean;
     role: string;
-    trustedIps: Array<IServiceTokenV3TrustedIp>;
+    trustedIps: Array<IMachineIdentityTrustedIp>;
     expiresAt?: Date;
   };
 }
 
-interface UpdateServiceTokenV3Event {
-  type: EventType.UPDATE_SERVICE_TOKEN_V3;
+interface UpdateMachineIdentityEvent {
+  type: EventType.UPDATE_MACHINE_IDENTITY;
   metadata: {
     name?: string;
     isActive?: boolean;
     role?: string;
-    trustedIps?: Array<IServiceTokenV3TrustedIp>;
+    trustedIps?: Array<IMachineIdentityTrustedIp>;
     expiresAt?: Date;
   };
 }
 
-interface DeleteServiceTokenV3Event {
-  type: EventType.DELETE_SERVICE_TOKEN_V3;
+interface DeleteMachineIdentityEvent {
+  type: EventType.DELETE_MACHINE_IDENTITY;
   metadata: {
     name: string;
     isActive: boolean;
     role: string;
     expiresAt?: Date;
-    trustedIps: Array<IServiceTokenV3TrustedIp>;
+    trustedIps: Array<IMachineIdentityTrustedIp>;
   };
 }
 
@@ -495,9 +495,9 @@ export type Event =
   | DeleteTrustedIPEvent
   | CreateServiceTokenEvent
   | DeleteServiceTokenEvent
-  | CreateServiceTokenV3Event
-  | UpdateServiceTokenV3Event
-  | DeleteServiceTokenV3Event
+  | CreateMachineIdentityEvent
+  | UpdateMachineIdentityEvent
+  | DeleteMachineIdentityEvent
   | CreateEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent

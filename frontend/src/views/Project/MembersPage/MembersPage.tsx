@@ -5,15 +5,17 @@ import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 
-import { MemberListTab } from "./components/MemberListTab";
-import { ProjectRoleListTab } from "./components/ProjectRoleListTab";
-import { ServiceAccountTab } from "./components/ServiceAccountTab";
-import { ServiceTokenTab } from "./components/ServiceTokenTab";
+import {
+  MachineIdentityTab,
+  MemberListTab,
+  ProjectRoleListTab,
+  ServiceTokenTab
+} from "./components";
 
 enum TabSections {
   Member = "members",
   Roles = "roles",
-  ServiceAccounts = "service-accounts",
+  MachineIdentities = "machine-identities",
   ServiceTokens = "service-tokens"
 }
 
@@ -27,8 +29,8 @@ export const MembersPage = withProjectPermission(
           </p>
           <Tabs defaultValue={TabSections.Member}>
             <TabList>
-              <Tab value={TabSections.Member}>Members</Tab>
-              <Tab value={TabSections.ServiceAccounts}>Service Accounts</Tab>
+              <Tab value={TabSections.Member}>People</Tab>
+              <Tab value={TabSections.MachineIdentities}>Machine Identities</Tab>
               <Tab value={TabSections.ServiceTokens}>Service Tokens</Tab>
               <Tab value={TabSections.Roles}>Roles</Tab>
             </TabList>
@@ -43,8 +45,8 @@ export const MembersPage = withProjectPermission(
                 <MemberListTab />
               </motion.div>
             </TabPanel>
-            <TabPanel value={TabSections.ServiceAccounts}>
-              <ServiceAccountTab />
+            <TabPanel value={TabSections.MachineIdentities}>
+              <MachineIdentityTab />
             </TabPanel>
             <TabPanel value={TabSections.ServiceTokens}>
               <ServiceTokenTab />
