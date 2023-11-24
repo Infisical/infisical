@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
-import { faMagnifyingGlass, faPlus, faTrash, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faPlus, faUsers,faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -243,29 +243,35 @@ export const MemberListTab = () => {
   const isLoading = isMembersLoading || isRolesLoading;
 
   return (
-    <div className="w-full">
-      <div className="mb-4 flex">
-        <div className="mr-4 flex-1">
-          <Input
-            value={searchMemberFilter}
-            onChange={(e) => setSearchMemberFilter(e.target.value)}
-            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-            placeholder="Search members..."
-          />
-        </div>
-        <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Member}>
-          {(isAllowed) => (
-            <Button
-              isDisabled={!isAllowed}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handlePopUpOpen("addMember")}
-            >
-              Add Member
-            </Button>
-          )}
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="flex justify-between mb-8">
+        <p className="text-xl font-semibold text-mineshaft-100">
+            Members
+        </p>
+        <ProjectPermissionCan
+            I={ProjectPermissionActions.Create} 
+            a={ProjectPermissionSub.Member}
+        >
+            {(isAllowed) => (
+                <Button
+                colorSchema="secondary"
+                type="submit"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => handlePopUpOpen("addMember")}
+                isDisabled={!isAllowed}
+                >
+                    Add Member
+                </Button>
+            )}
         </ProjectPermissionCan>
       </div>
-      <div>
+      <Input
+        value={searchMemberFilter}
+        onChange={(e) => setSearchMemberFilter(e.target.value)}
+        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+        placeholder="Search members..."
+      />
+      <div className="mt-4">
         <TableContainer>
           <Table>
             <THead>
@@ -273,7 +279,7 @@ export const MemberListTab = () => {
                 <Th>Name</Th>
                 <Th>Email</Th>
                 <Th>Role</Th>
-                <Th aria-label="actions" />
+                <Th className="w-5" />
               </Tr>
             </THead>
             <TBody>
@@ -339,14 +345,17 @@ export const MemberListTab = () => {
                             >
                               {(isAllowed) => (
                                 <IconButton
-                                  ariaLabel="delete"
+                                  size="lg"
                                   colorSchema="danger"
+                                  variant="plain"
+                                  ariaLabel="update"
+                                  className="ml-4"
                                   isDisabled={userId === u?._id || !isAllowed}
                                   onClick={() =>
                                     handlePopUpOpen("removeMember", { id: membershipId })
                                   }
                                 >
-                                  <FontAwesomeIcon icon={faTrash} />
+                                  <FontAwesomeIcon icon={faXmark} />
                                 </IconButton>
                               )}
                             </ProjectPermissionCan>

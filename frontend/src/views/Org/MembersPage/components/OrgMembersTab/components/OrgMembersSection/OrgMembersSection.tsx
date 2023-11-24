@@ -57,10 +57,8 @@ export const OrgMembersSection = () => {
         }
 
         if (isMoreUsersNotAllowed) {
-            console.log("no more users allowed");
             handlePopUpOpen("upgradePlan");
         } else {
-            console.log("yes more users allowed");
             handlePopUpOpen("addMember");
         }
     }
@@ -120,11 +118,6 @@ export const OrgMembersSection = () => {
                 completeInviteLink={completeInviteLink}
                 setCompleteInviteLink={setCompleteInviteLink} 
             />
-          {/* <AddServiceTokenV3Modal 
-            popUp={popUp}
-            handlePopUpOpen={handlePopUpOpen}
-            handlePopUpToggle={handlePopUpToggle}
-          /> */}
             <DeleteActionModal
                 isOpen={popUp.removeMember.isOpen}
                 title={`Are you sure want to remove member with email ${

@@ -229,7 +229,6 @@ export const OrgMembersTable = ({
                               {(isAllowed) => (
                                 <IconButton
                                     onClick={() => {
-                                        console.log("TODO: delete logic here");
                                         handlePopUpOpen("removeMember", { orgMembershipId, email })
                                     }}
                                     size="lg"
