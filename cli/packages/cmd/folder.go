@@ -20,9 +20,12 @@ var folderCmd = &cobra.Command{
 }
 
 var getCmd = &cobra.Command{
-	Use:                   "get",
-	Short:                 "Get folders in a directory",
-	DisableFlagsInUseLine: true,
+	Use:   "get",
+	Short: "Get folders in a directory",
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		util.RequireLocalWorkspaceFile()
+		util.RequireLogin()
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 
 		environmentName, _ := cmd.Flags().GetString("env")
@@ -54,22 +57,19 @@ var getCmd = &cobra.Command{
 }
 
 var createCmd = &cobra.Command{
-	Use:                   "create",
-	Short:                 "Create a folder",
-	DisableFlagsInUseLine: true,
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:   "create",
+	Short: "Create a folder",
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		util.RequireLogin()
 		util.RequireLocalWorkspaceFile()
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
 			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
-		}
-
-		infisicalToken, err := cmd.Flags().GetString("token")
-		if err != nil {
-			util.HandleError(err, "Unable to parse flag")
 		}
 
 		folderPath, err := cmd.Flags().GetString("path")
@@ -92,11 +92,11 @@ var createCmd = &cobra.Command{
 		}
 
 		params := models.CreateFolderParameters{
-			FolderName:     folderName,
-			WorkspaceId:    workspaceFile.WorkspaceId,
-			Environment:    environmentName,
-			FolderPath:     folderPath,
-			InfisicalToken: infisicalToken}
+			FolderName:  folderName,
+			WorkspaceId: workspaceFile.WorkspaceId,
+			Environment: environmentName,
+			FolderPath:  folderPath,
+		}
 
 		folder, err := util.CreateFolder(params)
 		if err != nil {
@@ -112,8 +112,11 @@ var createCmd = &cobra.Command{
 var deleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a folder",
-	Run: func(cmd *cobra.Command, args []string) {
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		util.RequireLogin()
 		util.RequireLocalWorkspaceFile()
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
@@ -121,11 +124,6 @@ var deleteCmd = &cobra.Command{
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
-		}
-
-		infisicalToken, err := cmd.Flags().GetString("token")
-		if err != nil {
-			util.HandleError(err, "Unable to parse flag")
 		}
 
 		folderPath, err := cmd.Flags().GetString("path")
@@ -148,11 +146,10 @@ var deleteCmd = &cobra.Command{
 		}
 
 		params := models.DeleteFolderParameters{
-			FolderName:     folderName,
-			WorkspaceId:    workspaceFile.WorkspaceId,
-			Environment:    environmentName,
-			FolderPath:     folderPath,
-			InfisicalToken: infisicalToken,
+			FolderName:  folderName,
+			WorkspaceId: workspaceFile.WorkspaceId,
+			Environment: environmentName,
+			FolderPath:  folderPath,
 		}
 
 		folders, err := util.DeleteFolder(params)
@@ -176,13 +173,11 @@ func init() {
 
 	// Add createCmd flags here
 	createCmd.Flags().StringP("path", "p", "/", "Path to the directory where the folder will be created")
-	createCmd.Flags().StringP("token", "t", "", "Create folder using the infisical token")
 	createCmd.Flags().StringP("name", "n", "", "Name of the folder to be created")
 	folderCmd.AddCommand(createCmd)
 
 	// Add deleteCmd flags here
 	deleteCmd.Flags().StringP("path", "p", "/", "Path to the directory where the folder will be deleted")
-	deleteCmd.Flags().StringP("token", "t", "", "Delete folder using the infisical token")
 	deleteCmd.Flags().StringP("name", "n", "", "Name of the folder to be deleted")
 	folderCmd.AddCommand(deleteCmd)
 

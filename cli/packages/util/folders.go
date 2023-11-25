@@ -17,17 +17,11 @@ func GetAllFolders(params models.GetAllFoldersParameters) ([]models.SingleFolder
 		params.InfisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
 	}
 
-	isConnected := CheckIsConnectedToInternet()
 	var foldersToReturn []models.SingleFolder
 	var folderErr error
 	if params.InfisicalToken == "" {
-		if isConnected {
-			log.Debug().Msg("GetAllFolders: Connected to internet, checking logged in creds")
-			RequireLocalWorkspaceFile()
-			RequireLogin()
-		}
 
-		log.Debug().Msg("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
+		log.Debug().Msg("GetAllFolders: Trying to fetch folders using logged in details")
 
 		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
 		if err != nil {
