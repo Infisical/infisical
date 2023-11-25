@@ -119,6 +119,7 @@
         "documentation/platform/audit-logs",
         "documentation/platform/token",
         "documentation/platform/mfa",
+        "documentation/platform/pr-workflows",
         {
           "group": "Secret Rotation",
           "pages": [
