@@ -26,7 +26,7 @@ export const MembersPage = withPermission(
             <TabList>
               <Tab value={TabSections.Member}>People</Tab>
               <Tab value={TabSections.MachineIdentities}>Machine Identities</Tab>
-              <Tab value={TabSections.Roles}>Roles</Tab>
+              <Tab value={TabSections.Roles}>Organization Roles</Tab>
             </TabList>
             <TabPanel value={TabSections.Member}>
               <OrgMembersTab />

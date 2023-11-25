@@ -3,7 +3,7 @@ import { MEMBER } from "../variables";
 
 export const RefreshTokenV3 = z.object({
   body: z.object({
-    refresh_token: z.string().trim()
+    refreshToken: z.string().trim()
   })
 });
 
@@ -31,7 +31,6 @@ export const UpdateMachineIdentityV3 = z.object({
   }),
   body: z.object({
     name: z.string().trim().optional(),
-    isActive: z.boolean().optional(),
     role: z.string().trim().min(1).optional(),
     trustedIps: z
       .object({

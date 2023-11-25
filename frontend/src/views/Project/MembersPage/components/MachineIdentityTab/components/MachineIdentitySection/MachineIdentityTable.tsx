@@ -135,7 +135,7 @@ export const MachineIdentityTable = ({
                                 <Td>
                                     <ProjectPermissionCan
                                         I={ProjectPermissionActions.Edit}
-                                        a={ProjectPermissionSub.ServiceTokens}
+                                        a={ProjectPermissionSub.MachineIdentity}
                                     >
                                         {(isAllowed) => {
                                             return (
@@ -156,7 +156,7 @@ export const MachineIdentityTable = ({
                                                     {(roles || [])
                                                         .map(({ slug, name: roleName }) => (
                                                             <SelectItem value={slug} key={`owner-option-${slug}`}>
-                                                            {roleName}
+                                                                {roleName}
                                                             </SelectItem>
                                                         ))}
                                                 </Select>
@@ -168,7 +168,7 @@ export const MachineIdentityTable = ({
                                 <Td className="flex justify-end">
                                     <ProjectPermissionCan
                                         I={ProjectPermissionActions.Delete}
-                                        a={ProjectPermissionSub.ServiceTokens}
+                                        a={ProjectPermissionSub.MachineIdentity}
                                     >
                                         {(isAllowed) => (
                                             <IconButton

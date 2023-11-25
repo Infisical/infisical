@@ -5,10 +5,10 @@ import {
   faContactCard,
   faMagnifyingGlass,
   faMoneyBill,
+  faServer,
   faSignIn,
   faUserCog,
-  faUsers
-} from "@fortawesome/free-solid-svg-icons";
+  faUsers} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -39,6 +39,12 @@ const SIMPLE_PERMISSION_OPTIONS = [
     subtitle: "Invite, view and remove members from the organization",
     icon: faUsers,
     formName: "member"
+  },
+  {
+    title: "Machine identity management",
+    subtitle: "Create, view, update and remove machine identities from the organization",
+    icon: faServer,
+    formName: "machine-identity"
   },
   {
     title: "Billing & usage",

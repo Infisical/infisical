@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { faPencil,faServer, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
@@ -28,7 +27,7 @@ import {
     useGetRoles,
     useUpdateMachineIdentity
 } from "@app/hooks/api";
-import { ServiceTokenV3TrustedIp } from "@app/hooks/api/serviceTokens/types"
+import { MachineTrustedIp } from "@app/hooks/api/machineIdentities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -42,7 +41,7 @@ type Props = {
             name: string;
             slug: string;
         };
-        trustedIps?: ServiceTokenV3TrustedIp[];
+        trustedIps?: MachineTrustedIp[];
         accessTokenTTL?: number;
         isRefreshTokenRotationEnabled?: boolean;
       }
@@ -115,13 +114,6 @@ export const MachineIdentityTable = ({
     //         });
     //     }
     // }
-
-    const findRoleFromId = useCallback(
-        (roleId: string) => {
-        return (roles || []).find(({ _id: id }) => id === roleId);
-        },
-        [roles]
-    );
       
     return (
         <TableContainer>
@@ -163,7 +155,7 @@ export const MachineIdentityTable = ({
                                 {/* <Td>
                                     <OrgPermissionCan
                                         I={OrgPermissionActions.Edit}
-                                        a={OrgPermissionSubjects.ServiceTokens}
+                                        a={OrgPermissionSubjects.MachineIdentity}
                                     >
                                         {(isAllowed) => (
                                             <Switch
@@ -183,13 +175,13 @@ export const MachineIdentityTable = ({
                                 <Td>
                                     <OrgPermissionCan
                                         I={OrgPermissionActions.Edit}
-                                        a={OrgPermissionSubjects.ServiceTokens}
+                                        a={OrgPermissionSubjects.MachineIdentity}
                                     >
                                         {(isAllowed) => {
                                             return (
                                                 <Select
                                                     value={
-                                                        role === "custom" ? findRoleFromId(customRole)?.slug : role
+                                                        role === "custom" ? customRole.slug : role
                                                     }
                                                     isDisabled={!isAllowed}
                                                     className="w-40 bg-mineshaft-600"
@@ -231,7 +223,7 @@ export const MachineIdentityTable = ({
                                 <Td className="flex justify-end">
                                     <OrgPermissionCan
                                         I={OrgPermissionActions.Edit}
-                                        a={OrgPermissionSubjects.ServiceTokens}
+                                        a={OrgPermissionSubjects.MachineIdentity}
                                     >
                                         {(isAllowed) => (
                                             <IconButton
@@ -258,7 +250,7 @@ export const MachineIdentityTable = ({
                                     </OrgPermissionCan>
                                     <OrgPermissionCan
                                         I={OrgPermissionActions.Delete}
-                                        a={OrgPermissionSubjects.ServiceTokens}
+                                        a={OrgPermissionSubjects.MachineIdentity}
                                     >
                                         {(isAllowed) => (
                                             <IconButton

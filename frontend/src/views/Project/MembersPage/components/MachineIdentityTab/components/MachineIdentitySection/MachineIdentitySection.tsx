@@ -66,7 +66,7 @@ export const MachineIdentitySection = withProjectPermission(
             </p>
             <ProjectPermissionCan
               I={ProjectPermissionActions.Create}
-              a={ProjectPermissionSub.ServiceTokens}
+              a={ProjectPermissionSub.MachineIdentity}
             >
               {(isAllowed) => (
                 <Button
@@ -104,5 +104,5 @@ export const MachineIdentitySection = withProjectPermission(
         </div>
     );
   },
-  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.ServiceTokens }
+  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.MachineIdentity }
 );

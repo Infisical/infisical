@@ -393,6 +393,13 @@ export const getOrganizationMachineMemberships = async (req: Request, res: Respo
   const {
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgServiceMembersV2, req);
+
+  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+    
+  ForbiddenError.from(permission).throwUnlessCan(
+    OrgPermissionActions.Read,
+    OrgPermissionSubjects.MachineIdentity
+  );
   
   const machineMemberships = await MachineMembershipOrg.find({
     organization: new Types.ObjectId(organizationId)

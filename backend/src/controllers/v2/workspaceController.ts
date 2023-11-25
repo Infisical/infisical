@@ -24,10 +24,12 @@ import * as reqValidator from "../../validation";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getAuthDataProjectPermissions
+  getAuthDataProjectPermissions,
+  getRolePermissions,
+  isAtLeastAsPrivilegedWorkspace
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
-import { BadRequestError, ResourceNotFoundError } from "../../utils/errors";
+import { BadRequestError, ForbiddenRequestError, ResourceNotFoundError } from "../../utils/errors";
 import { ADMIN, MEMBER, VIEWER } from "../../variables";
 
 interface V2PushSecret {
@@ -523,7 +525,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
 
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Create,
-    ProjectPermissionSub.ServiceTokens
+    ProjectPermissionSub.MachineIdentity
   );
   
   let machineMembership = await MachineMembership.findOne({
@@ -532,7 +534,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
   });
 
   if (machineMembership) throw BadRequestError({
-    message: "Machine identity already exists in workspace"
+    message: `Machine identity with id ${machineId} already exists in workspace with id ${workspaceId}`
   });
 
   const machineIdentity = await MachineIdentity.findById(machineId);
@@ -543,6 +545,13 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
   
   if (!machineIdentity.organization.equals(workspace.organization)) throw BadRequestError({
     message: "Failed to add machine identity to workspace in another organization"
+  });
+
+  const rolePermission = await getRolePermissions(role, workspaceId);
+  const hasRequiredPrivileges = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
+  
+  if (!hasRequiredPrivileges) throw ForbiddenRequestError({
+      message: "Failed to add a more privileged MI to workspace"
   });
 
   let customRole;
@@ -591,8 +600,8 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
   });
 
   ForbiddenError.from(permission).throwUnlessCan(
-    ProjectPermissionActions.Create,
-    ProjectPermissionSub.ServiceTokens
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.MachineIdentity
   );
   
   let machineMembership = await MachineMembership.findOne({
@@ -601,7 +610,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
   });
 
   if (!machineMembership) throw BadRequestError({
-    message: "Machine identity does not exist in workspace"
+    message: `Machine identity with id ${machineId} does not exist in workspace with id ${workspaceId}`
   });
 
   const machineIdentity = await MachineIdentity.findById(machineId);
@@ -611,7 +620,14 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
   if (!workspace) throw ResourceNotFoundError();
   
   if (!machineIdentity.organization.equals(workspace.organization)) throw BadRequestError({
-    message: "Failed to add machine identity to workspace in another organization"
+    message: "Failed to update machine identity in workspace in another organization"
+  });
+
+  const rolePermission = await getRolePermissions(role, workspaceId);
+  const hasRequiredPrivileges = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
+  
+  if (!hasRequiredPrivileges) throw ForbiddenRequestError({
+      message: "Failed to update MI to a more privileged role"
   });
 
   let customRole;
@@ -665,7 +681,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
 
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Delete,
-    ProjectPermissionSub.ServiceTokens
+    ProjectPermissionSub.MachineIdentity
   );
   
   const machineMembership = await MachineMembership.findOneAndDelete({
@@ -698,7 +714,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
 
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionActions.Read,
-    ProjectPermissionSub.ServiceTokens
+    ProjectPermissionSub.MachineIdentity
   );
 
   const machineMemberships = await MachineMembership.find({

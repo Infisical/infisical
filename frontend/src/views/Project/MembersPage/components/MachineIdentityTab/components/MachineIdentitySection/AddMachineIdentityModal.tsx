@@ -26,8 +26,8 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup.object({
-    machineId: yup.string().required("ST V3 id is required"),
-    role: yup.string().required("ST V3 role is required")
+    machineId: yup.string().required("Machine identity id is required"),
+    role: yup.string().required("Machine identity role is required")
 }).required();
 
 export type FormData = yup.InferType<typeof schema>;
@@ -124,7 +124,7 @@ export const AddMachineIdentityModal = ({
                             defaultValue={filteredMachineMembershipOrgs?.[0]?._id}
                             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                                 <FormControl
-                                    label="Service Account"
+                                    label="Machine Identity"
                                     errorText={error?.message}
                                     isError={Boolean(error)}
                                 >

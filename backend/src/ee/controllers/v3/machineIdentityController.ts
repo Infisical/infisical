@@ -16,13 +16,21 @@ import {
 import { validateRequest } from "../../../helpers/validation";
 import * as reqValidator from "../../../validation/machineIdentity";
 import { createToken } from "../../../helpers/auth";
-
-
-import { BadRequestError, ResourceNotFoundError, UnauthorizedRequestError } from "../../../utils/errors";
+import { 
+    getOrgRolePermissions, 
+    getUserOrgPermissions, 
+    isAtLeastAsPrivilegedOrg 
+} from "../../services/RoleService";
+import { BadRequestError, ForbiddenRequestError, ResourceNotFoundError, UnauthorizedRequestError } from "../../../utils/errors";
 import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
 import { EEAuditLogService, EELicenseService } from "../../services";
 import { getAuthSecret } from "../../../config";
 import { ADMIN, AuthTokenType, CUSTOM, MEMBER } from "../../../variables";
+import {
+    OrgPermissionActions,
+    OrgPermissionSubjects
+} from "../../services/RoleService";
+import { ForbiddenError } from "@casl/ability";
 
 /**
  * Return machine identity access and refresh token as per refresh operation
@@ -32,12 +40,12 @@ import { ADMIN, AuthTokenType, CUSTOM, MEMBER } from "../../../variables";
  export const refreshToken = async (req: Request, res: Response) => {
     const {
         body: {
-            refresh_token
+            refreshToken
         }
     } = await validateRequest(reqValidator.RefreshTokenV3, req);
 
     const decodedToken = <jwt.ServiceRefreshTokenJwtPayload>(
-		jwt.verify(refresh_token, await getAuthSecret())
+		jwt.verify(refreshToken, await getAuthSecret())
 	);
     
     if (decodedToken.authTokenType !== AuthTokenType.SERVICE_REFRESH_TOKEN) throw UnauthorizedRequestError();
@@ -55,15 +63,15 @@ import { ADMIN, AuthTokenType, CUSTOM, MEMBER } from "../../../variables";
     }
     
     const response: {
-        refresh_token?: string;
-        access_token: string;
-        expires_in: number;
-        token_type: string;
+        refreshToken?: string;
+        accessToken: string;
+        expiresIn: number;
+        tokenType: string;
     } = {
-        refresh_token,
-        access_token: "",
-        expires_in: 0,
-        token_type: "Bearer"
+        refreshToken,
+        accessToken: "",
+        expiresIn: 0,
+        tokenType: "Bearer"
     };
 
     if (machineIdentity.isRefreshTokenRotationEnabled) {
@@ -81,7 +89,7 @@ import { ADMIN, AuthTokenType, CUSTOM, MEMBER } from "../../../variables";
         
         if (!machineIdentity) throw BadRequestError();
         
-        response.refresh_token = createToken({
+        response.refreshToken = createToken({
             payload: {
                 serviceTokenDataId: machineIdentity._id.toString(),
                 authTokenType: AuthTokenType.SERVICE_REFRESH_TOKEN,
@@ -91,9 +99,9 @@ import { ADMIN, AuthTokenType, CUSTOM, MEMBER } from "../../../variables";
         });
     }
 
-    response.access_token = createToken({
+    response.accessToken = createToken({
         payload: {
-            serviceTokenDataId: machineIdentity._id.toString(),
+            serviceTokenDataId: machineIdentity._id.toString(), // TODO: fix this
             authTokenType: AuthTokenType.SERVICE_ACCESS_TOKEN,
             tokenVersion: machineIdentity.tokenVersion
         },
@@ -101,7 +109,7 @@ import { ADMIN, AuthTokenType, CUSTOM, MEMBER } from "../../../variables";
         secret: await getAuthSecret()
     });
 
-    response.expires_in = machineIdentity.accessTokenTTL;
+    response.expiresIn = machineIdentity.accessTokenTTL;
 
     await MachineIdentity.findByIdAndUpdate(
         machineIdentity._id,
@@ -135,22 +143,23 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
             isRefreshTokenRotationEnabled
         }
     } = await validateRequest(reqValidator.CreateMachineIdentityV3, req);
-
-    // const { permission } = await getAuthDataProjectPermissions({
-    //     authData: req.authData,
-    //     workspaceId: new Types.ObjectId(workspaceId)
-    //   });
-
-    // ForbiddenError.from(permission).throwUnlessCan(
-    //     ProjectPermissionActions.Create,
-    //     ProjectPermissionSub.ServiceTokens
-    // );
     
-    // const workspace = await Workspace.findById(workspaceId);
-    // if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+    const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+    
+    ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionActions.Create,
+        OrgPermissionSubjects.MachineIdentity
+    );
+
+    const rolePermission = await getOrgRolePermissions(role, organizationId);
+    const hasRequiredPrivileges = isAtLeastAsPrivilegedOrg(permission, rolePermission);
+    
+    if (!hasRequiredPrivileges) throw ForbiddenRequestError({
+        message: "Failed to create a more privileged MI"
+    });
 
     const organization = await Organization.findById(organizationId);
-    if (!organization) throw BadRequestError({ message: "Organization not found" });
+    if (!organization) throw BadRequestError({ message: `Organization with id ${organizationId} not found` });
 
     const isCustomRole = ![ADMIN, MEMBER].includes(role);
     
@@ -217,7 +226,7 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
     
     const refreshToken = createToken({
         payload: {
-            serviceTokenDataId: machineIdentity._id.toString(),
+            serviceTokenDataId: machineIdentity._id.toString(), // TODO: update
             authTokenType: AuthTokenType.SERVICE_REFRESH_TOKEN,
             tokenVersion: machineIdentity.tokenVersion
         },
@@ -248,7 +257,7 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
 }
 
 /**
- * Update service token V3 data with id [serviceTokenDataId]
+ * Update machine identity with id [machineId]
  * @param req 
  * @param res 
  * @returns 
@@ -258,7 +267,6 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
         params: { machineId },
         body: { 
             name, 
-            isActive,
             role,
             trustedIps,
             expiresIn,
@@ -269,21 +277,24 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
 
     let machineIdentity = await MachineIdentity.findById(machineId);
     if (!machineIdentity) throw ResourceNotFoundError({ 
-        message: "Service token not found" 
+        message: `Machine identity with id ${machineId} not found`
     });
-    
-    // const { permission } = await getAuthDataProjectPermissions({
-    //     authData: req.authData,
-    //     workspaceId: serviceTokenData.workspace
-    // });
-    
-    // ForbiddenError.from(permission).throwUnlessCan(
-    //     ProjectPermissionActions.Edit,
-    //     ProjectPermissionSub.ServiceTokens
-    // );
 
-    // const workspace = await Workspace.findById(serviceTokenData.workspace);
-    // if (!workspace) throw BadRequestError({ message: "Workspace not found" });
+    const { permission } = await getUserOrgPermissions(req.user._id, machineIdentity.organization.toString());
+    
+    ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionActions.Edit,
+        OrgPermissionSubjects.MachineIdentity
+    );
+
+    if (role) {
+        const rolePermission = await getOrgRolePermissions(role, machineIdentity.organization.toString());
+        const hasRequiredPrivileges = isAtLeastAsPrivilegedOrg(permission, rolePermission);
+        
+        if (!hasRequiredPrivileges) throw ForbiddenRequestError({
+            message: "Failed to update MI to a more privileged role"
+        });
+    }
 
     let customRole;
     if (role) {
@@ -329,7 +340,6 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
         machineId,
         {
             name,
-            isActive,
             trustedIps: reformattedTrustedIps,
             expiresAt,
             accessTokenTTL,
@@ -341,7 +351,7 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
     );
 
     if (!machineIdentity) throw BadRequestError({
-        message: "Failed to update service token"
+        message: `Failed to update machine identity with id ${machineId}`
     });
     
     await MachineMembershipOrg.findOneAndUpdate(
@@ -370,7 +380,6 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
             type: EventType.UPDATE_MACHINE_IDENTITY,
             metadata: {
                 name: machineIdentity.name,
-                isActive,
                 role,
                 trustedIps: reformattedTrustedIps as Array<IMachineIdentityTrustedIp>,
                 expiresAt
@@ -387,7 +396,7 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
 }
 
 /**
- * Delete service token data with id [serviceTokenDataId]
+ * Delete machine identity with id [machineId]
  * @param req 
  * @param res 
  * @returns 
@@ -399,18 +408,15 @@ export const deleteMachineIdentity = async (req: Request, res: Response) => {
     
     let machineIdentity = await MachineIdentity.findById(machineId);
     if (!machineIdentity) throw ResourceNotFoundError({ 
-        message: "Service token not found" 
+        message: `Machine identity with id ${machineId} not found`
     });
+
+    const { permission } = await getUserOrgPermissions(req.user._id, machineIdentity.organization.toString());
     
-    // const { permission } = await getAuthDataProjectPermissions({
-    //     authData: req.authData,
-    //     workspaceId: serviceTokenData.workspace
-    // });
-    
-    // ForbiddenError.from(permission).throwUnlessCan(
-    //     ProjectPermissionActions.Delete,
-    //     ProjectPermissionSub.ServiceTokens
-    // );
+    ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionActions.Delete,
+        OrgPermissionSubjects.MachineIdentity
+    );
     
     machineIdentity = await MachineIdentity.findByIdAndDelete(machineId);
     

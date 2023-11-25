@@ -31,7 +31,8 @@ export const formSchema = z.object({
       "incident-contact": generalPermissionSchema,
       "secret-scanning": generalPermissionSchema,
       sso: generalPermissionSchema,
-      billing: generalPermissionSchema
+      billing: generalPermissionSchema,
+      "machine-identity": generalPermissionSchema
     })
     .optional()
 });

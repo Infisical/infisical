@@ -11,7 +11,7 @@ import { UnauthorizedRequestError } from "../../utils/errors";
 import { FieldCondition, FieldInstruction, JsInterpreter } from "@ucast/mongo2js";
 import picomatch from "picomatch";
 import { AuthData } from "../../interfaces/middleware";
-import { ActorType, IRole } from "../models";
+import { ActorType, IRole, Role } from "../models";
 import { 
   IMachineIdentity,
   MachineMembership, 
@@ -20,6 +20,7 @@ import {
 } from "../../models";
 import { ADMIN, CUSTOM, MEMBER, VIEWER } from "../../variables";
 import { checkIPAgainstBlocklist } from "../../utils/ip";
+import { BadRequestError } from "../../utils/errors";
 
 const $glob: FieldInstruction<string> = {
   type: "field",
@@ -60,7 +61,8 @@ export enum ProjectPermissionSub {
   Secrets = "secrets",
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
-  SecretRotation = "secret-rotation"
+  SecretRotation = "secret-rotation",
+  MachineIdentity = "machine-identity"
 }
 
 type SubjectFields = {
@@ -85,6 +87,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
+  | [ProjectPermissionActions, ProjectPermissionSub.MachineIdentity]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
@@ -130,6 +133,11 @@ const buildAdminPermission = () => {
   can(ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks);
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
+
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.MachineIdentity);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.MachineIdentity);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.MachineIdentity);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.MachineIdentity);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
@@ -196,6 +204,11 @@ const buildMemberPermission = () => {
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
 
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.MachineIdentity);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.MachineIdentity);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.MachineIdentity);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.MachineIdentity);
+
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.ServiceTokens);
@@ -236,6 +249,7 @@ const buildViewerPermission = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.MachineIdentity);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
@@ -336,4 +350,60 @@ export const getAuthDataProjectPermissions = async ({
     default:
       throw UnauthorizedRequestError();
   }
+}
+
+export const getRolePermissions = async (role: string, workspaceId: string) => {
+  const isCustomRole = ![ADMIN, MEMBER, VIEWER].includes(role);
+  if (isCustomRole) {
+    const workspaceRole = await Role.findOne({
+      slug: role,
+      isOrgRole: false,
+      workspace: new Types.ObjectId(workspaceId)
+    });
+
+    if (!workspaceRole) throw BadRequestError({ message: "Role not found" });
+    
+    return createMongoAbility<ProjectPermissionSet>(workspaceRole.permissions as RawRuleOf<MongoAbility<ProjectPermissionSet>>[], {
+      conditionsMatcher
+    });
+  }
+
+  switch (role) {
+    case ADMIN:
+      return adminProjectPermissions;
+    case MEMBER:
+      return memberProjectPermissions;
+    case VIEWER:
+      return viewerProjectPermission;
+    default:
+      throw BadRequestError({ message: "Role not found" });
+  }
+}
+
+/**
+ * Extracts and formats permissions from a CASL Ability object or a raw permission set. 
+ * @param ability
+ * @returns 
+ */
+ const extractPermissions = (ability: MongoAbility<ProjectPermissionSet> | ProjectPermissionSet) => {
+  return ability.A.map((permission: any) => `${permission.action}_${permission.subject}`);
+}
+
+/**
+ * Compares two sets of permissions to determine if the first set is at least as privileged as the second set.
+ * The function checks if all permissions in the second set are contained within the first set and if the first set has equal or more permissions.
+ * 
+*/
+export const isAtLeastAsPrivilegedWorkspace = (permissions1: MongoAbility<ProjectPermissionSet> | ProjectPermissionSet, permissions2: MongoAbility<ProjectPermissionSet> | ProjectPermissionSet) => {
+
+  const set1 = new Set(extractPermissions(permissions1));
+  const set2 = new Set(extractPermissions(permissions2));
+  
+  for (const perm of set2) {
+    if (!set1.has(perm)) {
+      return false;
+    }
+  }
+
+  return set1.size >= set2.size;
 }

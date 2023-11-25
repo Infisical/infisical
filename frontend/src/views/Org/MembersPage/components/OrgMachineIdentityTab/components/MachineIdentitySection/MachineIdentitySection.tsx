@@ -53,7 +53,7 @@ export const MachineIdentitySection = withPermission(
             </p>
             <OrgPermissionCan
               I={OrgPermissionActions.Create}
-              a={OrgPermissionSubjects.ServiceTokens}
+              a={OrgPermissionSubjects.MachineIdentity}
             >
               {(isAllowed) => (
                 <Button
@@ -92,5 +92,5 @@ export const MachineIdentitySection = withPermission(
         </div>
     );
   },
-  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.ServiceTokens }
+  { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.MachineIdentity }
 );

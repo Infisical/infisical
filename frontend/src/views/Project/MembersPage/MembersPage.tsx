@@ -32,7 +32,7 @@ export const MembersPage = withProjectPermission(
               <Tab value={TabSections.Member}>People</Tab>
               <Tab value={TabSections.MachineIdentities}>Machine Identities</Tab>
               <Tab value={TabSections.ServiceTokens}>Service Tokens</Tab>
-              <Tab value={TabSections.Roles}>Roles</Tab>
+              <Tab value={TabSections.Roles}>Project Roles</Tab>
             </TabList>
             <TabPanel value={TabSections.Member}>
               <motion.div

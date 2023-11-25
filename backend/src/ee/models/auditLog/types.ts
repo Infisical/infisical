@@ -235,7 +235,6 @@ interface UpdateMachineIdentityEvent {
   type: EventType.UPDATE_MACHINE_IDENTITY;
   metadata: {
     name?: string;
-    isActive?: boolean;
     role?: string;
     trustedIps?: Array<IMachineIdentityTrustedIp>;
     expiresAt?: Date;

@@ -32,7 +32,7 @@ import {
     useGetRoles,
     useUpdateMachineIdentity
 } from "@app/hooks/api";
-import { ServiceTokenV3TrustedIp } from "@app/hooks/api/serviceTokens/types";
+import { MachineTrustedIp } from "@app/hooks/api/machineIdentities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 enum TabSections {
@@ -50,7 +50,7 @@ const expirations = [
 ];
 
 const schema = yup.object({
-    name: yup.string().required("ST V3 name is required"),
+    name: yup.string().required("MI name is required"),
     expiresIn: yup.string(),
     accessTokenTTL: yup
         .string()
@@ -63,7 +63,7 @@ const schema = yup.object({
             return !Number.isNaN(num) && num > 0 && String(num) === value;
         })
         .required("Access Token TTL is required"),
-    role: yup.string().required("ST V3 role is required"),
+    role: yup.string(),
     trustedIps: yup
         .array(
         yup.object({
@@ -146,7 +146,7 @@ export const AddMachineIdentityModal = ({
                 name: string;
                 slug: string;
             };
-            trustedIps: ServiceTokenV3TrustedIp[];
+            trustedIps: MachineTrustedIp[];
             accessTokenTTL: number;
             isRefreshTokenRotationEnabled: boolean;
         };
@@ -161,7 +161,7 @@ export const AddMachineIdentityModal = ({
                 trustedIps: machineIdentity.trustedIps.map(({ 
                     ipAddress, 
                     prefix 
-                }: ServiceTokenV3TrustedIp) => {
+                }: MachineTrustedIp) => {
                     return ({
                         ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
                     });
@@ -206,9 +206,9 @@ export const AddMachineIdentityModal = ({
                 await updateMutateAsync({
                     machineId: machineIdentity.machineId,
                     name,
-                    role,
+                    role: role || undefined,
                     trustedIps,
-                    expiresIn: expiresIn === "" ? undefined : Number(expiresIn),
+                    expiresIn: (!expiresIn) ? undefined : Number(expiresIn),
                     accessTokenTTL: Number(accessTokenTTL),
                     isRefreshTokenRotationEnabled
                 });
@@ -218,10 +218,10 @@ export const AddMachineIdentityModal = ({
 
                 const { refreshToken } = await createMutateAsync({
                     name,
-                    role,
+                    role: role || undefined,
                     organizationId: orgId,
                     trustedIps,
-                    expiresIn: expiresIn === "" ? undefined : Number(expiresIn),
+                    expiresIn: (!expiresIn) ? undefined : Number(expiresIn),
                     accessTokenTTL: Number(accessTokenTTL),
                     isRefreshTokenRotationEnabled
                 });

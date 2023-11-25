@@ -16,7 +16,7 @@ export enum OrgPermissionSubjects {
   Sso = "sso",
   Billing = "billing",
   SecretScanning = "secret-scanning",
-  ServiceTokens = "service-tokens"
+  MachineIdentity = "machine-identity"
 }
 
 export type OrgPermissionSet =
@@ -29,6 +29,6 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Sso]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]
-  | [OrgPermissionActions, OrgPermissionSubjects.ServiceTokens];
+  | [OrgPermissionActions, OrgPermissionSubjects.MachineIdentity];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;
