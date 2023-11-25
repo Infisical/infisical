@@ -260,6 +260,82 @@ func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Req
 	return secretsResponse, nil
 }
 
+func CallGetFoldersV1(httpClient *resty.Client, request GetFoldersV1Request) (GetFoldersV1Response, error) {
+	var foldersResponse GetFoldersV1Response
+	httpRequest := httpClient.
+		R().
+		SetResult(&foldersResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetQueryParam("environment", request.Environment).
+		SetQueryParam("workspaceId", request.WorkspaceId).
+		SetQueryParam("directory", request.FoldersPath)
+
+	response, err := httpRequest.Get(fmt.Sprintf("%v/v1/folders", config.INFISICAL_URL))
+
+	if err != nil {
+		return GetFoldersV1Response{}, fmt.Errorf("CallGetFoldersV1: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return GetFoldersV1Response{}, fmt.Errorf("CallGetFoldersV1: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
+	}
+
+	return foldersResponse, nil
+}
+
+func CallCreateFolderV1(httpClient *resty.Client, request CreateFolderV1Request) (CreateFolderV1Response, error) {
+	var folderResponse CreateFolderV1Response
+	httpRequest := httpClient.
+		R().
+		SetResult(&folderResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request)
+
+	response, err := httpRequest.Post(fmt.Sprintf("%v/v1/folders", config.INFISICAL_URL))
+	if err != nil {
+		return CreateFolderV1Response{}, fmt.Errorf("CallCreateFolderV1: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return CreateFolderV1Response{}, fmt.Errorf("CallCreateFolderV1: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
+	}
+
+	return folderResponse, nil
+}
+
+func CallDeleteFolderV1(httpClient *resty.Client, request DeleteFolderV1Request) (DeleteFolderV1Response, error) {
+	var folderResponse DeleteFolderV1Response
+
+	type deleteFolderRequest struct {
+		WorkspaceId string `json:"workspaceId"`
+		Environment string `json:"environment"`
+		Directory   string `json:"folderPath"`
+	}
+
+	body := deleteFolderRequest{
+		WorkspaceId: request.WorkspaceId,
+		Environment: request.Environment,
+		Directory:   request.Directory,
+	}
+
+	httpRequest := httpClient.
+		R().
+		SetResult(&folderResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(body)
+
+	response, err := httpRequest.Delete(fmt.Sprintf("%v/v1/folders/%v", config.INFISICAL_URL, request.FolderName))
+	if err != nil {
+		return DeleteFolderV1Response{}, fmt.Errorf("CallDeleteFolderV1: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return DeleteFolderV1Response{}, fmt.Errorf("CallDeleteFolderV1: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
+	}
+
+	return folderResponse, nil
+}
+
 func CallCreateSecretsV3(httpClient *resty.Client, request CreateSecretV3Request) error {
 	var secretsResponse GetEncryptedSecretsV3Response
 	response, err := httpClient.
