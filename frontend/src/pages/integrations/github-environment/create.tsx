@@ -17,8 +17,8 @@ import {
 } from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
-  useGetIntegrationAuthGitHubRepositories,
   useGetIntegrationAuthById,
+  useGetIntegrationAuthGitHubRepositories,
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 
@@ -27,7 +27,6 @@ export default function GitHubEnvironmentCreateIntegrationPage() {
   const { mutateAsync } = useCreateIntegration();
 
   const [targetRepositoryId, setTargetRepositoryId] = useState("");
-  const [targetRepositoryName, setTargetRepositoryName] = useState("");
   const [targetEnvironmentId, setTargetEnvironmentId] = useState("");
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
@@ -59,24 +58,12 @@ export default function GitHubEnvironmentCreateIntegrationPage() {
     }
   }, [integrationAuthApps]);
 
-  // useEffect(() => {
-  //   if (targetRepositories) {
-  //     if (targetRepositories.length > 0) {
-  //       setTargetRepositoryName(targetRepositories[0].name);
-  //     } else {
-  //       setTargetRepositoryName("none")
-  //     }
-  //   }
-  // }, [targetRepositoryId]);
-
   useEffect(() => {
     if (targetRepositories) {
       if (targetRepositories.length > 0) {
         setTargetRepositoryId(targetRepositories[0].id);
-        setTargetRepositoryName(targetRepositories[0].name);
       } else {
         setTargetRepositoryId("none");
-        setTargetRepositoryName("none")
       }
     }
   }, [targetRepositories]);
@@ -87,9 +74,6 @@ export default function GitHubEnvironmentCreateIntegrationPage() {
 
       if (!integrationAuth?._id) return;
 
-      // const targetApp = integrationAuthApps?.find(
-      //   (integrationAuthApp) => integrationAuthApp.appId === targetAppId
-      // );
       const targetEnvironment = integrationAuthApps?.find(
         (app) => app.appId === targetEnvironmentId
       );
@@ -97,7 +81,6 @@ export default function GitHubEnvironmentCreateIntegrationPage() {
       const targetRepository = targetRepositories?.find(
         (repository) => repository.id === targetRepositoryId
       );
-
 
       if (!targetRepository || !targetEnvironment) return;
       await mutateAsync({

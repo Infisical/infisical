@@ -8,9 +8,9 @@ import {
   BitBucketWorkspace, 
   ChecklyGroup, 
   Environment, 
+  GithubRepository,
   IntegrationAuth, 
   NorthflankSecretGroup,
-  GithubRepository,
   Org,
   Project,
   Service, 
@@ -343,7 +343,7 @@ const fetchIntegrationAuthBitBucketWorkspaces = async (integrationAuthId: string
 };
 
 const fetchIntegrationAuthGitHubRepositories = async (integrationAuthId: string) => {
-  const { data: { repos } } = await apiRequest.get<{ workspaces: GithubRepository[] }>(
+  const { data: { repos } } = await apiRequest.get<{ repos: GithubRepository[] }>(
     `/api/v1/integration-auth/${integrationAuthId}/github-environment/repositories`
   );
   return repos;
