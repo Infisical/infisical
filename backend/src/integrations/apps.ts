@@ -25,6 +25,7 @@ import {
   INTEGRATION_GCP_SECRET_MANAGER_SERVICE_NAME,
   INTEGRATION_GCP_SERVICE_USAGE_URL,
   INTEGRATION_GITHUB,
+  INTEGRATION_GITHUB_ENVIRONMENT,
   INTEGRATION_GITLAB,
   INTEGRATION_GITLAB_API_URL,
   INTEGRATION_HASURA_CLOUD,
@@ -120,6 +121,12 @@ const getApps = async ({
     case INTEGRATION_GITHUB:
       apps = await getAppsGithub({
         accessToken
+      });
+      break;
+    case INTEGRATION_GITHUB_ENVIRONMENT:
+      apps = await getAppsGithubEnvironment({
+        accessToken,
+        workspaceSlug
       });
       break;
     case INTEGRATION_GITLAB:
@@ -502,6 +509,60 @@ const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
     });
 
   return apps;
+};
+
+/**
+ * Return list of repositories for Github integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Github API
+ * @param {String} obj.workspaceSlug - Workspace identifier for fetching BitBucket repositories
+ * @returns {Object[]} apps - names of Github sites
+ * @returns {String} apps.name - name of Github site
+ */
+const getAppsGithubEnvironment = async ({
+  accessToken,
+  workspaceSlug
+}: {
+  accessToken: string,
+  workspaceSlug?: string
+}) => {
+  if (!workspaceSlug) {
+    return [];
+  }
+  const octokit = new Octokit({
+    auth: accessToken
+  });
+
+  const { data } = await octokit.request('GET /user', {
+    headers: {
+      'X-GitHub-Api-Version': '2022-11-28'
+    }
+  })
+  const { login: username } = data;
+  try {
+    const {data} = await octokit.request('GET /repos/{owner}/{repo}/environments', {
+      owner: username,
+      repo: workspaceSlug,
+      headers: {
+        'X-GitHub-Api-Version': '2022-11-28'
+      }
+    })
+    const {environments} = data;
+    let apps: any = [];
+    if(environments) {
+      apps = environments
+        .map((a: any) => {
+          return {
+            appId: String(a.id),
+            name: a.name
+          };
+        });
+    }
+
+    return apps;
+  } catch(e) {
+    return []
+  }
 };
 
 /**
