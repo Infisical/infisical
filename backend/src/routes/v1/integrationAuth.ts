@@ -141,6 +141,14 @@ router.get(
 );
 
 router.get(
+  "/:integrationAuthId/github-environment/repositories",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  integrationAuthController.getIntegrationAuthGithubEnvironmentRepositories
+);
+
+router.get(
   "/:integrationAuthId/northflank/secret-groups",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]

@@ -29,6 +29,7 @@ import {
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 import { getIntegrationAuthAccessHelper } from "../../helpers";
+import { Octokit } from "@octokit/rest";
 
 /***
  * Return integration authorization with id [integrationAuthId]
@@ -1045,6 +1046,78 @@ export const getIntegrationAuthBitBucketWorkspaces = async (req: Request, res: R
 
   return res.status(200).send({
     workspaces
+  });
+};
+
+/**
+ * Return list of repositories for github environment integration
+ * @param req
+ * @param res
+ * @returns
+ */
+export const getIntegrationAuthGithubEnvironmentRepositories = async (req: Request, res: Response) => {
+  interface GitHubApp {
+    id: string;
+    name: string;
+    permissions: {
+      admin: boolean;
+    };
+    owner: {
+      login: string;
+    };
+  }
+
+  const {
+    params: { integrationAuthId }
+  } = await validateRequest(reqValidator.GetIntegrationAuthGitHubEnvironmentRepositoriesV1, req);
+
+  const { integrationAuth, accessToken } = await getIntegrationAuthAccessHelper({
+    integrationAuthId: new Types.ObjectId(integrationAuthId)
+  });
+
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: integrationAuth.workspace
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Integrations
+  );
+
+  const octokit = new Octokit({
+    auth: accessToken
+  });
+
+  const getAllRepos = async () => {
+    let repos: GitHubApp[] = [];
+    let page = 1;
+    const per_page = 100;
+    let hasMore = true;
+
+    while (hasMore) {
+      const response = await octokit.request(
+        "GET /user/repos{?visibility,affiliation,type,sort,direction,per_page,page,since,before}",
+        {
+          per_page,
+          page
+        }
+      );
+
+      if (response.data.length > 0) {
+        repos = repos.concat(response.data);
+        page++;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return repos;
+  };
+
+  const repos = await getAllRepos();
+  return res.status(200).send({
+    repos: repos.filter((repo: GitHubApp) => repo.permissions.admin === true)
   });
 };
 

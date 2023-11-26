@@ -192,6 +192,12 @@ export const GetIntegrationAuthNorthflankSecretGroupsV1 = z.object({
   })
 });
 
+export const GetIntegrationAuthGitHubEnvironmentRepositoriesV1 = z.object({
+  params: z.object({
+    integrationAuthId: z.string().trim()
+  })
+});
+
 export const DeleteIntegrationAuthV1 = z.object({
   params: z.object({
     integrationAuthId: z.string().trim()

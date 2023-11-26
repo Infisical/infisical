@@ -49,6 +49,8 @@ export const getClientIdNetlify = async () =>
   (await client.getSecret("CLIENT_ID_NETLIFY")).secretValue;
 export const getClientIdGitHub = async () =>
   (await client.getSecret("CLIENT_ID_GITHUB")).secretValue;
+export const getClientIdGitHubEnvironment = async () =>
+  (await client.getSecret("CLIENT_ID_GITHUB_ENVIRONMENT")).secretValue;
 export const getClientIdGitLab = async () =>
   (await client.getSecret("CLIENT_ID_GITLAB")).secretValue;
 export const getClientIdBitBucket = async () =>
@@ -65,6 +67,8 @@ export const getClientSecretNetlify = async () =>
   (await client.getSecret("CLIENT_SECRET_NETLIFY")).secretValue;
 export const getClientSecretGitHub = async () =>
   (await client.getSecret("CLIENT_SECRET_GITHUB")).secretValue;
+export const getClientSecretGitHubEnvironment = async () =>
+  (await client.getSecret("CLIENT_SECRET_GITHUB_ENVIRONMENT")).secretValue;
 export const getClientSecretGitLab = async () =>
   (await client.getSecret("CLIENT_SECRET_GITLAB")).secretValue;
 export const getClientSecretBitBucket = async () =>
