@@ -20,14 +20,14 @@ In a similar way, to solve the above-mentioned issues, Infisical provides a feat
 
 First, you would need to create a set of policies for a certain environment. In the example below you can see a generic policy for a production environment. In this case, any user who submits a change to `prod` would first have to get an approval by a predefined user (or multiple users).
 
-![project secrets overview](../../images/platform/pr-workflows/secret-update-policy.png)
+![create secret update policy](../../images/platform/pr-workflows/secret-update-policy.png)
 
 ### Example of updating secrets with PR workflows
 
-When a user submits a change to am enviropnment that is under a particular policy, a corresponsing change request will go to a predefined approver (or multiple approvers). 
+When a user submits a change to an enviropnment that is under a particular policy, a corresponsing change request will go to a predefined approver (or multiple approvers). 
 
-![project secrets overview](../../images/platform/pr-workflows/secret-update-request.png)
+![secret update change requests](../../images/platform/pr-workflows/secret-update-request.png)
 
 An approver is notified by email and/or Slack as soon as the request is initiated. In the Infisical Dashboard, they will be able to `approve` and `merge` (or `deny`) a request for a change in a particular environment. After that, depending on the workflows setup, the change will be automatically propagated to the right applications (e.g., using [Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes)).
 
-![project secrets overview](../../images/platform/pr-workflows/secret-update-pr.png)
+![secrets update pull request](../../images/platform/pr-workflows/secret-update-pr.png)
