@@ -162,6 +162,14 @@ export const IntegrationsSection = ({
                     </div>
                   </div>
                 )}
+                {(integration.integration === "github-environment") && (
+                  <div className="ml-4 flex flex-col">
+                    <FormLabel label="Target Repository" />
+                    <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                      {integration.targetEnvironment}
+                    </div>
+                  </div>
+                )}
                 {((integration.integration === "checkly") || (integration.integration === "github")) && (
                   <>
                     {integration.targetService && (
