@@ -126,7 +126,7 @@ export default function GitHubEnvironmentCreateIntegrationPage() {
     targetRepositories ? (
     <div className="flex h-full w-full items-center justify-center">
       <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">GitHub Integration</CardTitle>
+        <CardTitle className="text-center">GitHub Environment Integration</CardTitle>
         <FormControl label="Project Environment" className="mt-4">
           <Select
             value={selectedSourceEnvironment}
