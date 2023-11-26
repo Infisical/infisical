@@ -3,6 +3,7 @@ import {
   getClientIdBitBucket,
   getClientIdGCPSecretManager,
   getClientIdGitHub,
+  getClientIdGitHubEnvironment,
   getClientIdGitLab,
   getClientIdHeroku,
   getClientIdNetlify,
@@ -18,6 +19,7 @@ export const INTEGRATION_HEROKU = "heroku";
 export const INTEGRATION_VERCEL = "vercel";
 export const INTEGRATION_NETLIFY = "netlify";
 export const INTEGRATION_GITHUB = "github";
+export const INTEGRATION_GITHUB_ENVIRONMENT = "github-environment";
 export const INTEGRATION_GITLAB = "gitlab";
 export const INTEGRATION_RENDER = "render";
 export const INTEGRATION_RAILWAY = "railway";
@@ -47,6 +49,7 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_GITHUB_ENVIRONMENT,
   INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
@@ -90,6 +93,7 @@ export const INTEGRATION_HEROKU_API_URL = "https://api.heroku.com";
 export const GITLAB_URL = "https://gitlab.com";
 export const INTEGRATION_GITLAB_API_URL = `${GITLAB_URL}/api`;
 export const INTEGRATION_GITHUB_API_URL = "https://api.github.com";
+export const INTEGRATION_GITHUB_ENVIRONMENT_API_URL = "https://api.github.com";
 export const INTEGRATION_VERCEL_API_URL = "https://api.vercel.com";
 export const INTEGRATION_NETLIFY_API_URL = "https://api.netlify.com";
 export const INTEGRATION_RENDER_API_URL = "https://api.render.com";
@@ -155,6 +159,15 @@ export const getIntegrationOptions = async () => {
       isAvailable: true,
       type: "oauth",
       clientId: await getClientIdGitHub(),
+      docsLink: ""
+    },
+    {
+      name: "GitHub Environment",
+      slug: "github-environment",
+      image: "GitHub.png",
+      isAvailable: true,
+      type: "oauth",
+      clientId: await getClientIdGitHubEnvironment(),
       docsLink: ""
     },
     {
