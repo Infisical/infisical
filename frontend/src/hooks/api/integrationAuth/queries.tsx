@@ -10,6 +10,7 @@ import {
   Environment, 
   IntegrationAuth, 
   NorthflankSecretGroup,
+  GithubRepository,
   Org,
   Project,
   Service, 
@@ -80,6 +81,8 @@ const integrationAuthKeys = {
   }) => [{ integrationAuthId, appId }, "integrationAuthRailwayServices"] as const,
   getIntegrationAuthBitBucketWorkspaces: (integrationAuthId: string) =>
     [{ integrationAuthId }, "integrationAuthBitbucketWorkspaces"] as const,
+  getIntegrationAuthGitHubRepositories: (integrationAuthId: string) =>
+    [{ integrationAuthId }, "integrationAuthGithubRepositories"] as const,
   getIntegrationAuthNorthflankSecretGroups: ({
     integrationAuthId,
     appId
@@ -339,6 +342,13 @@ const fetchIntegrationAuthBitBucketWorkspaces = async (integrationAuthId: string
   return workspaces;
 };
 
+const fetchIntegrationAuthGitHubRepositories = async (integrationAuthId: string) => {
+  const { data: { repos } } = await apiRequest.get<{ workspaces: GithubRepository[] }>(
+    `/api/v1/integration-auth/${integrationAuthId}/github-environment/repositories`
+  );
+  return repos;
+};
+
 const fetchIntegrationAuthNorthflankSecretGroups = async ({
   integrationAuthId,
   appId
@@ -583,6 +593,14 @@ export const useGetIntegrationAuthBitBucketWorkspaces = (integrationAuthId: stri
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthBitBucketWorkspaces(integrationAuthId),
     queryFn: () => fetchIntegrationAuthBitBucketWorkspaces(integrationAuthId),
+    enabled: true
+  });
+};
+
+export const useGetIntegrationAuthGitHubRepositories = (integrationAuthId: string) => {
+  return useQuery({
+    queryKey: integrationAuthKeys.getIntegrationAuthGitHubRepositories(integrationAuthId),
+    queryFn: () => fetchIntegrationAuthGitHubRepositories(integrationAuthId),
     enabled: true
   });
 };

@@ -57,6 +57,17 @@ export type BitBucketWorkspace = {
   slug: string;
 }
 
+export type GithubRepository = {
+  id: string;
+  name: string;
+  permissions: {
+    admin: boolean;
+  };
+  owner: {
+    login: string;
+  };
+}
+
 export type NorthflankSecretGroup = {
   name: string;
   groupId: string;

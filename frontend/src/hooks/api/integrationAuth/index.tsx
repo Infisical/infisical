@@ -3,6 +3,7 @@ export {
   useDeleteIntegrationAuth,
   useGetIntegrationAuthApps,
   useGetIntegrationAuthBitBucketWorkspaces,
+  useGetIntegrationAuthGitHubRepositories,
   useGetIntegrationAuthById,
   useGetIntegrationAuthChecklyGroups,
   useGetIntegrationAuthNorthflankSecretGroups,
