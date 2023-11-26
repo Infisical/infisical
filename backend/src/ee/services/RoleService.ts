@@ -178,7 +178,7 @@ export const getOrgRolePermissions = async (role: string, orgId: string) => {
  * @param ability
  * @returns 
  */
-const extractPermissions = (ability: MongoAbility<OrgPermissionSet> | OrgPermissionSet) => {
+const extractPermissions = (ability: any) => {
   return ability.A.map((permission: any) => `${permission.action}_${permission.subject}`);
 }
 

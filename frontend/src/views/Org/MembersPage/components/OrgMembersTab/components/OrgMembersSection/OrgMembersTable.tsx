@@ -28,8 +28,8 @@ import {
     OrgPermissionActions,
     OrgPermissionSubjects,
     useOrganization,
-    useUser
-} from "@app/context";
+    useSubscription,
+    useUser} from "@app/context";
 import {
     useAddUserToOrg,
     useFetchServerStatus,
@@ -41,10 +41,11 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
     handlePopUpOpen: (
-      popUpName: keyof UsePopUpState<["removeMember"]>,
+      popUpName: keyof UsePopUpState<["removeMember", "upgradePlan"]>,
       data?: {
         orgMembershipId?: string;
         email?: string;
+        description?: string;
       }
     ) => void;
     setCompleteInviteLink: (link: string) => void;
@@ -55,6 +56,7 @@ export const OrgMembersTable = ({
     setCompleteInviteLink
 }: Props) => {
     const { createNotification } = useNotificationContext();
+    const { subscription } = useSubscription();
     const { currentOrg } = useOrganization();
     const { user } = useUser();
     const userId = user?._id || "";
@@ -63,7 +65,7 @@ export const OrgMembersTable = ({
     const { data: roles, isLoading: isRolesLoading } = useGetRoles({
         orgId
     });
-
+    
     const [searchMemberFilter, setSearchMemberFilter] = useState("");
 
     const { data: serverDetails } = useFetchServerStatus();
@@ -76,10 +78,21 @@ export const OrgMembersTable = ({
         if (!currentOrg?._id) return;
     
         try {
+          // TODO: replace hardcoding default role
+          const isCustomRole = !["admin", "member"].includes(role);
+          
+          if (isCustomRole && subscription && !subscription?.rbac) {
+            handlePopUpOpen("upgradePlan", {
+              description: "You can assign custom roles to members if you upgrade your Infisical plan."
+            });
+            return;
+          }
+        
           await updateUserOrgRole({ 
-              organizationId: currentOrg?._id, 
-              membershipId, role 
-        });
+            organizationId: currentOrg?._id, 
+            membershipId, role 
+          });
+
           createNotification({
             text: "Successfully updated user role",
             type: "success"
@@ -169,7 +182,6 @@ export const OrgMembersTable = ({
                   ({ user: u, inviteEmail, role, customRole, _id: orgMembershipId, status }) => {
                     const name = u ? `${u.firstName} ${u.lastName}` : "-";
                     const email = u?.email || inviteEmail;
-
                     return (
                       <Tr key={`org-membership-${orgMembershipId}`} className="w-full">
                         <Td>{name}</Td>
@@ -183,7 +195,7 @@ export const OrgMembersTable = ({
                               <>
                                 {status === "accepted" && (
                                   <Select
-                                    defaultValue={
+                                    value={
                                       role === "custom" ? findRoleFromId(customRole)?.slug : role
                                     }
                                     isDisabled={userId === u?._id || !isAllowed}

@@ -57,7 +57,9 @@ export const OrgMembersSection = () => {
         }
 
         if (isMoreUsersNotAllowed) {
-            handlePopUpOpen("upgradePlan");
+            handlePopUpOpen("upgradePlan", {
+                description: "You can add more members if you upgrade your Infisical plan."
+            });
         } else {
             handlePopUpOpen("addMember");
         }
@@ -134,7 +136,7 @@ export const OrgMembersSection = () => {
           <UpgradePlanModal
             isOpen={popUp.upgradePlan.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-            text="You can add more members if you upgrade your Infisical plan."
+            text={(popUp.upgradePlan?.data as { description: string })?.description}
         />
         <EmailServiceSetupModal
             isOpen={popUp.setUpEmail?.isOpen}

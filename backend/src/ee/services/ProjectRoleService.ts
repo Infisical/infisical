@@ -385,7 +385,7 @@ export const getRolePermissions = async (role: string, workspaceId: string) => {
  * @param ability
  * @returns 
  */
- const extractPermissions = (ability: MongoAbility<ProjectPermissionSet> | ProjectPermissionSet) => {
+ const extractPermissions = (ability: any) => {
   return ability.A.map((permission: any) => `${permission.action}_${permission.subject}`);
 }
 

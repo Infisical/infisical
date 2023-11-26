@@ -15,7 +15,7 @@ import {
 } from "../../helpers/organization";
 import { addMembershipsOrg } from "../../helpers/membershipOrg";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import { ACCEPTED, ADMIN, CUSTOM } from "../../variables";
+import { ACCEPTED, ADMIN, CUSTOM, MEMBER } from "../../variables";
 import * as reqValidator from "../../validation/organization";
 import { validateRequest } from "../../helpers/validation";
 import {
@@ -23,6 +23,7 @@ import {
   OrgPermissionSubjects,
   getUserOrgPermissions
 } from "../../ee/services/RoleService";
+import { EELicenseService } from "../../ee/services";
 import { ForbiddenError } from "@casl/ability";
 
 /**
@@ -152,10 +153,22 @@ export const updateOrganizationMembership = async (req: Request, res: Response) 
     OrgPermissionSubjects.Member
   );
 
-  const isCustomRole = !["admin", "member"].includes(role);
+  const isCustomRole = ![ADMIN, MEMBER].includes(role);
   if (isCustomRole) {
-    const orgRole = await Role.findOne({ slug: role, isOrgRole: true });
+    const orgRole = await Role.findOne({ 
+      slug: role, 
+      isOrgRole: true,
+      organization: new Types.ObjectId(organizationId)
+    });
+
     if (!orgRole) throw BadRequestError({ message: "Role not found" });
+    
+    const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
+    
+    if (!plan.rbac) return res.status(400).send({
+      message:
+        "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
+    });
 
     const membership = await MembershipOrg.findByIdAndUpdate(membershipId, {
       role: CUSTOM,

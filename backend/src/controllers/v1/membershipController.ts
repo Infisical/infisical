@@ -6,7 +6,7 @@ import { deleteMembership as deleteMember, findMembership } from "../../helpers/
 import { sendMail } from "../../helpers/nodemailer";
 import { ACCEPTED, ADMIN, CUSTOM, MEMBER, VIEWER } from "../../variables";
 import { getSiteURL } from "../../config";
-import { EEAuditLogService } from "../../ee/services";
+import { EEAuditLogService, EELicenseService } from "../../ee/services";
 import { validateRequest } from "../../helpers/validation";
 import * as reqValidator from "../../validation/membership";
 import {
@@ -137,6 +137,13 @@ export const changeMembershipRole = async (req: Request, res: Response) => {
       workspace: membershipToChangeRole.workspace
     });
     if (!wsRole) throw BadRequestError({ message: "Role not found" });
+
+    const plan = await EELicenseService.getPlan(wsRole.organization);
+
+    if (!plan.rbac) return res.status(400).send({
+      message: "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
+    });
+
     const membership = await Membership.findByIdAndUpdate(membershipId, {
       role: CUSTOM,
       customRole: wsRole

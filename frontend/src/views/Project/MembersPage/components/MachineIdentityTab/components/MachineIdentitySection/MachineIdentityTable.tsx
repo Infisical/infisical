@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { faServer, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
@@ -96,13 +95,6 @@ export const MachineIdentityTable = ({
               });
         }
     }
-
-    const findRoleFromId = useCallback(
-        (roleId: string) => {
-            return (roles || []).find(({ _id: id }) => id === roleId);
-        },
-        [roles]
-    );
       
     return (
         <TableContainer>
@@ -141,7 +133,7 @@ export const MachineIdentityTable = ({
                                             return (
                                                 <Select
                                                     value={
-                                                        role === "custom" ? findRoleFromId(customRole)?.slug : role
+                                                        role === "custom" ? customRole.slug : role
                                                     }
                                                     isDisabled={!isAllowed}
                                                     className="w-40 bg-mineshaft-600"

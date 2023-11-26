@@ -38,9 +38,9 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
+  useSubscription,
   useUser,
-  useWorkspace
-} from "@app/context";
+  useWorkspace} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   useAddUserToWs,
@@ -60,6 +60,7 @@ type TAddMemberForm = z.infer<typeof addMemberFormSchema>;
 
 export const MemberListTab = () => {
   const { createNotification } = useNotificationContext();
+  const { subscription } = useSubscription();
   const { t } = useTranslation();
 
   const { currentOrg } = useOrganization();
@@ -170,6 +171,15 @@ export const MemberListTab = () => {
     if (!currentOrg?._id) return;
 
     try {
+      const isCustomRole = !["admin", "member", "viewer"].includes(role);
+          
+      if (isCustomRole && subscription && !subscription?.rbac) {
+        handlePopUpOpen("upgradePlan", {
+          description: "You can assign custom roles to members if you upgrade your Infisical plan."
+        });
+        return;
+      }
+          
       await updateUserWorkspaceRole({ membershipId, role });
       createNotification({
         text: "Successfully updated user role",
@@ -302,7 +312,7 @@ export const MemberListTab = () => {
                             {(isAllowed) => (
                               <>
                                 <Select
-                                  defaultValue={
+                                  value={
                                     role === "custom" ? findRoleFromId(customRole)?.slug : role
                                   }
                                   isDisabled={userId === u?._id || !isAllowed}
@@ -443,7 +453,7 @@ export const MemberListTab = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can add custom environments if you switch to Infisical's Team plan."
+        text={(popUp.upgradePlan?.data as { description: string })?.description}
       />
     </div>
   );

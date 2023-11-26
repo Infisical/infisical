@@ -30,7 +30,7 @@ import {
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 import { BadRequestError, ForbiddenRequestError, ResourceNotFoundError } from "../../utils/errors";
-import { ADMIN, MEMBER, VIEWER } from "../../variables";
+import { ADMIN, CUSTOM, MEMBER, VIEWER } from "../../variables";
 
 interface V2PushSecret {
   type: string; // personal or shared
@@ -571,7 +571,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
   machineMembership = await new MachineMembership({
     machineIdentity: machineIdentity._id,
     workspace: new Types.ObjectId(workspaceId),
-    role,
+    role: customRole ? CUSTOM : role,
     customRole
   }).save();
 
