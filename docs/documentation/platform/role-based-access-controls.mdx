@@ -1,7 +1,9 @@
 ---
 title: "Role-based Access Controls"
-description: "Infisical's Role-based Acccess Controls enable creating permissions for user and machine identities to restrict the actions that can be undertaken."
+description: "Infisical's Role-based Acccess Controls enable creating permissions for user and machine identities to restrict access to resources and the range of actions that can performed."
 ---
+
+### General access controls
 
 Access Control Policies provide a highly granular declarative way to grant or forbid access to certain resources and operations in Infisical. In general, access controls can be split up across projects and organizations.
 
@@ -17,13 +19,13 @@ Overall, organization-level access controls are significantly of administrative 
 
 ### Project-level access controls
 
-By default, every user in a project is either a **viewer**, **developer**, or an **admin**. Each of these roles has a varying access to various features and resources inside projects. As such, **admins** by default have access to all environments, folders, secrets, and actions within the project. At the same time, **developers** are restricted from performing project control actions, updating PR Workflow policies, managing roles/members, and more. Lastly, **viewer** is the most limiting default role on the project level – it forbids developers to perform any action and rather shows them in the read-only mode. 
+By default, every user in a project is either a **viewer**, **developer**, or an **admin**. Each of these roles comes with a varying access to different features and resources inside projects. As such, **admins** by default have access to all environments, folders, secrets, and actions within the project. At the same time, **developers** are restricted from performing project control actions, updating PR Workflow policies, managing roles/members, and more. Lastly, **viewer** is the most limiting default role on the project level – it forbids developers to perform any action and rather shows them in the read-only mode. 
 
 ### Creating custom roles
 
 By creating custom roles, you are able to adjust permissions to the needs of your organization. This can be useful for: 
 - Creating superadmin roles, roles specific to SRE engineers, etc. 
 - Restricting access of users to specific secrets, folders, and environments. 
-- Enbedding these specific roles into [PR Workflow policies] (https://infisical.com/docs/documentation/platform/pr-workflows)
+- Embedding these specific roles into [PR Workflow policies](https://infisical.com/docs/documentation/platform/pr-workflows)
 
 ![project member custom role](../../images/platform/rbac/project-member-custom-role.png)
