@@ -25,7 +25,7 @@ import { BadRequestError, ForbiddenRequestError, ResourceNotFoundError, Unauthor
 import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
 import { EEAuditLogService, EELicenseService } from "../../services";
 import { getAuthSecret } from "../../../config";
-import { ADMIN, AuthTokenType, CUSTOM, MEMBER } from "../../../variables";
+import { ADMIN, AuthTokenType, CUSTOM, MEMBER, NO_ACCESS } from "../../../variables";
 import {
     OrgPermissionActions,
     OrgPermissionSubjects
@@ -143,7 +143,7 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
             isRefreshTokenRotationEnabled
         }
     } = await validateRequest(reqValidator.CreateMachineIdentityV3, req);
-    
+
     const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
     
     ForbiddenError.from(permission).throwUnlessCan(
@@ -161,7 +161,7 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
     const organization = await Organization.findById(organizationId);
     if (!organization) throw BadRequestError({ message: `Organization with id ${organizationId} not found` });
 
-    const isCustomRole = ![ADMIN, MEMBER].includes(role);
+    const isCustomRole = ![ADMIN, MEMBER, NO_ACCESS].includes(role);
     
     let customRole;
     if (isCustomRole) {
@@ -298,7 +298,7 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
 
     let customRole;
     if (role) {
-        const isCustomRole = ![ADMIN, MEMBER].includes(role);
+        const isCustomRole = ![ADMIN, MEMBER, NO_ACCESS].includes(role);
         if (isCustomRole) {
             customRole = await Role.findOne({
                 slug: role,

@@ -15,7 +15,7 @@ import {
 } from "../../helpers/organization";
 import { addMembershipsOrg } from "../../helpers/membershipOrg";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import { ACCEPTED, ADMIN, CUSTOM, MEMBER } from "../../variables";
+import { ACCEPTED, ADMIN, CUSTOM, MEMBER, NO_ACCESS } from "../../variables";
 import * as reqValidator from "../../validation/organization";
 import { validateRequest } from "../../helpers/validation";
 import {
@@ -153,7 +153,7 @@ export const updateOrganizationMembership = async (req: Request, res: Response) 
     OrgPermissionSubjects.Member
   );
 
-  const isCustomRole = ![ADMIN, MEMBER].includes(role);
+  const isCustomRole = ![ADMIN, MEMBER, NO_ACCESS].includes(role);
   if (isCustomRole) {
     const orgRole = await Role.findOne({ 
       slug: role, 

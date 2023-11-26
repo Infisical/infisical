@@ -18,7 +18,7 @@ import {
   Membership,
   ServiceTokenData
 } from "../../models";
-import { ADMIN, CUSTOM, MEMBER, VIEWER } from "../../variables";
+import { ADMIN, CUSTOM, MEMBER, NO_ACCESS, VIEWER } from "../../variables";
 import { checkIPAgainstBlocklist } from "../../utils/ip";
 import { BadRequestError } from "../../utils/errors";
 
@@ -262,6 +262,13 @@ const buildViewerPermission = () => {
 
 export const viewerProjectPermission = buildViewerPermission();
 
+const buildNoAccessProjectPermission = () => {
+  const { build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+  return build({ conditionsMatcher });
+}
+
+export const noAccessProjectPermissions = buildNoAccessProjectPermission();
+
 /**
  * Return permissions for user/service pertaining to workspace with id [workspaceId]
  * 
@@ -275,7 +282,7 @@ export const getAuthDataProjectPermissions = async ({
   authData: AuthData;
   workspaceId: Types.ObjectId;
 }) => {
-  let role: "admin" | "member" | "viewer" | "custom";
+  let role: "admin" | "member" | "viewer" | "no-access" | "custom";
   let customRole;
   
   switch (authData.actor.type) {
@@ -338,6 +345,8 @@ export const getAuthDataProjectPermissions = async ({
       return { permission: memberProjectPermissions };
     case VIEWER:
       return { permission: viewerProjectPermission };
+    case NO_ACCESS:
+      return { permission: noAccessProjectPermissions };
     case CUSTOM: {
       if (!customRole) throw UnauthorizedRequestError();
       return { 
@@ -353,7 +362,7 @@ export const getAuthDataProjectPermissions = async ({
 }
 
 export const getRolePermissions = async (role: string, workspaceId: string) => {
-  const isCustomRole = ![ADMIN, MEMBER, VIEWER].includes(role);
+  const isCustomRole = ![ADMIN, MEMBER, VIEWER, NO_ACCESS].includes(role);
   if (isCustomRole) {
     const workspaceRole = await Role.findOne({
       slug: role,
@@ -375,6 +384,8 @@ export const getRolePermissions = async (role: string, workspaceId: string) => {
       return memberProjectPermissions;
     case VIEWER:
       return viewerProjectPermission;
+    case NO_ACCESS:
+      return noAccessProjectPermissions;
     default:
       throw BadRequestError({ message: "Role not found" });
   }

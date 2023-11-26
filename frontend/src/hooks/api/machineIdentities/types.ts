@@ -28,7 +28,7 @@ export type MachineMembershipOrg = {
     _id: string;
     machineIdentity: MachineIdentity;
     organization: string;
-    role: "admin" | "member" | "viewer" | "custom";
+    role: "admin" | "member" | "viewer" | "no-access" | "custom";
     customRole?: TRole<string>;
     createdAt: string;
     updatedAt: string;
@@ -38,7 +38,7 @@ export type MachineMembership = {
     _id: string;
     machineIdentity: MachineIdentity;
     organization: string;
-    role: "admin" | "member" | "viewer" | "custom";
+    role: "admin" | "member" | "viewer" | "no-access" | "custom";
     customRole?: TRole<string>;
     createdAt: string;
     updatedAt: string;

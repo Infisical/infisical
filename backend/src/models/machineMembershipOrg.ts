@@ -1,11 +1,11 @@
 import { Schema, Types, model } from "mongoose";
-import { ADMIN, CUSTOM, MEMBER } from "../variables";
+import { ADMIN, CUSTOM, MEMBER, NO_ACCESS} from "../variables";
 
 export interface IMachineMembershipOrg {
   _id: Types.ObjectId;
   machineIdentity: Types.ObjectId;
   organization: Types.ObjectId;
-  role: "admin" | "member" | "viewer" | "custom";
+  role: "admin" | "member" | "viewer" | "no-access" | "custom";
   customRole: Types.ObjectId;
 }
 
@@ -21,7 +21,7 @@ const machineMembershipOrgSchema = new Schema<IMachineMembershipOrg>(
     },
     role: {
       type: String,
-      enum: [ADMIN, MEMBER, CUSTOM],
+      enum: [ADMIN, MEMBER, NO_ACCESS, CUSTOM],
       required: true
     },
     customRole: {

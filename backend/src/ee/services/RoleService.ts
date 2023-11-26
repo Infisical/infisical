@@ -3,7 +3,7 @@ import { AbilityBuilder, MongoAbility, RawRuleOf, createMongoAbility } from "@ca
 import { MembershipOrg } from "../../models";
 import { IRole, Role } from "../models";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import { ACCEPTED, ADMIN, CUSTOM, MEMBER } from "../../variables";
+import { ACCEPTED, ADMIN, CUSTOM, MEMBER, NO_ACCESS} from "../../variables";
 import { conditionsMatcher } from "./ProjectRoleService";
 
 export enum OrgPermissionActions {
@@ -116,6 +116,13 @@ const buildMemberPermission = () => {
 
 export const memberPermissions = buildMemberPermission();
 
+const buildNoAccessPermission = () => {
+  const { build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
+  return build({ conditionsMatcher });
+}
+
+export const noAccessPermissions = buildNoAccessPermission();
+
 export const getUserOrgPermissions = async (userId: string, orgId: string) => {
   // TODO(akhilmhdh): speed this up by pulling from cache later
   
@@ -136,6 +143,8 @@ export const getUserOrgPermissions = async (userId: string, orgId: string) => {
   if (membership.role === ADMIN) return { permission: adminPermissions, membership };
 
   if (membership.role === MEMBER) return { permission: memberPermissions, membership };
+  
+  if (membership.role === NO_ACCESS) return { permission: noAccessPermissions, membership }
 
   if (membership.role === CUSTOM) {
     const permission = createMongoAbility<OrgPermissionSet>(membership.customRole.permissions, {
@@ -148,7 +157,7 @@ export const getUserOrgPermissions = async (userId: string, orgId: string) => {
 };
 
 export const getOrgRolePermissions = async (role: string, orgId: string) => {
-  const isCustomRole = ![ADMIN, MEMBER].includes(role);
+  const isCustomRole = ![ADMIN, MEMBER, NO_ACCESS].includes(role);
   if (isCustomRole) {
     const orgRole = await Role.findOne({
       slug: role,
@@ -168,6 +177,8 @@ export const getOrgRolePermissions = async (role: string, orgId: string) => {
       return adminPermissions;
     case MEMBER:
       return memberPermissions;
+    case NO_ACCESS:
+      return noAccessPermissions;
     default:
       throw BadRequestError({ message: "User org role not found" });
   }

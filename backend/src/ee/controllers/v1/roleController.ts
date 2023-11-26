@@ -15,6 +15,7 @@ import {
   adminProjectPermissions,
   getAuthDataProjectPermissions,
   memberProjectPermissions,
+  noAccessProjectPermissions,
   viewerProjectPermission
 } from "../../services/ProjectRoleService";
 import {
@@ -22,7 +23,8 @@ import {
   OrgPermissionSubjects,
   adminPermissions,
   getUserOrgPermissions,
-  memberPermissions
+  memberPermissions,
+  noAccessPermissions
 } from "../../services/RoleService";
 import { BadRequestError } from "../../../utils/errors";
 import { Role } from "../../models";
@@ -194,6 +196,13 @@ export const getRoles = async (req: Request, res: Response) => {
       slug: "admin",
       description: "Complete administration access over the organization",
       permissions: isOrgRole ? adminPermissions.rules : adminProjectPermissions.rules
+    },
+    {
+      _id: "no-access",
+      name: "No Access",
+      slug: "no-access",
+      description: "No access to any resources in the organization",
+      permissions: isOrgRole ? noAccessPermissions.rules : noAccessProjectPermissions.rules
     },
     {
       _id: "member",

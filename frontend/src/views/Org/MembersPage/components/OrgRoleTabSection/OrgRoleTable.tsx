@@ -94,7 +94,7 @@ export const OrgRoleTable = ({
               {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
               {(roles as TRole<undefined>[])?.map((role) => {
                 const { _id: id, name, slug } = role;
-                const isNonMutatable = ["owner", "admin", "member"].includes(slug);
+                const isNonMutatable = ["owner", "admin", "member", "no-access"].includes(slug);
 
                 return (
                   <Tr key={`role-list-${id}`}>

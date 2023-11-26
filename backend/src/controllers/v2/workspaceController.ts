@@ -30,7 +30,7 @@ import {
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
 import { BadRequestError, ForbiddenRequestError, ResourceNotFoundError } from "../../utils/errors";
-import { ADMIN, CUSTOM, MEMBER, VIEWER } from "../../variables";
+import { ADMIN, CUSTOM, MEMBER, NO_ACCESS, VIEWER } from "../../variables";
 
 interface V2PushSecret {
   type: string; // personal or shared
@@ -556,7 +556,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
 
   let customRole;
   if (role) {
-    const isCustomRole = ![ADMIN, MEMBER, VIEWER].includes(role);
+    const isCustomRole = ![ADMIN, MEMBER, VIEWER, NO_ACCESS].includes(role);
     if (isCustomRole) {
       customRole = await Role.findOne({
         slug: role,
@@ -632,7 +632,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
 
   let customRole;
   if (role) {
-    const isCustomRole = ![ADMIN, MEMBER, VIEWER].includes(role);
+    const isCustomRole = ![ADMIN, MEMBER, VIEWER, NO_ACCESS].includes(role);
     if (isCustomRole) {
       customRole = await Role.findOne({
         slug: role,

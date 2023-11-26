@@ -101,7 +101,7 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
               {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
               {(roles as TRole<string>[])?.map((role) => {
                 const { _id: id, name, slug } = role;
-                const isNonMutatable = ["admin", "member", "viewer"].includes(slug);
+                const isNonMutatable = ["admin", "member", "viewer", "no-access"].includes(slug);
 
                 return (
                   <Tr key={`role-list-${id}`}>
