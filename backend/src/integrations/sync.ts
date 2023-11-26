@@ -31,6 +31,7 @@ import {
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_GCP_SECRET_MANAGER_URL,
   INTEGRATION_GITHUB,
+  INTEGRATION_GITHUB_ENVIRONMENT,
   INTEGRATION_GITLAB,
   INTEGRATION_GITLAB_API_URL,
   INTEGRATION_HASHICORP_VAULT,
@@ -161,6 +162,14 @@ const syncSecrets = async ({
       break;
     case INTEGRATION_GITHUB:
       await syncSecretsGitHub({
+        integration,
+        secrets,
+        accessToken,
+        appendices
+      });
+      break;
+    case INTEGRATION_GITHUB_ENVIRONMENT:
+      await syncSecretsGitHubEnvironment({
         integration,
         secrets,
         accessToken,
@@ -1468,6 +1477,118 @@ const syncSecretsGitHub = async ({
         encrypted_value: encryptedSecret,
         key_id: repoPublicKey.key_id
       });
+    });
+  });
+};
+
+/**
+ * Sync/push [secrets] to GitHub repo with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for GitHub integration
+ */
+const syncSecretsGitHubEnvironment = async ({
+  integration,
+  secrets,
+  accessToken,
+  appendices
+}: {
+  integration: IIntegration;
+  secrets: Record<string, { value: string; comment?: string }>;
+  accessToken: string;
+  appendices?: { prefix: string; suffix: string };
+}) => {
+  interface GitHubEnvKey {
+    key_id: string;
+    key: string;
+  }
+  interface GitHubSecret {
+    name: string;
+    created_at: string;
+    updated_at: string;
+  }
+
+  interface GitHubSecretRes {
+    [index: string]: GitHubSecret;
+  }
+
+  const octokit = new Octokit({
+    auth: accessToken
+  });
+  const repository_id = Number(integration.targetEnvironmentId)
+  const environment_name = integration.app
+  const envPublicKey: GitHubEnvKey = (
+    await octokit.request('GET /repositories/{repository_id}/environments/{environment_name}/secrets/public-key', {
+      repository_id,
+      environment_name
+    })
+  ).data
+
+  // Get local copy of encrypted secrets
+  let encryptedSecrets: GitHubSecretRes = (
+    await octokit.request('GET /repositories/{repository_id}/environments/{environment_name}/secrets', {
+    repository_id,
+    environment_name
+  })).data.secrets.reduce(
+    (obj: any, secret: any) => ({
+      ...obj,
+      [secret.name]: secret
+    }),
+    {}
+  )
+
+  encryptedSecrets = Object.keys(encryptedSecrets).reduce(
+    (
+      result: {
+        [key: string]: GitHubSecret;
+      },
+      key
+    ) => {
+      if (
+        (appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) &&
+        (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)
+      ) {
+        result[key] = encryptedSecrets[key];
+      }
+      return result;
+    },
+    {}
+  );
+
+  Object.keys(encryptedSecrets).map(async (key) => {
+    if (!(key in secrets)) {
+      await octokit.request('DELETE /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}', {
+        repository_id,
+        environment_name,
+        secret_name: key,
+        headers: {
+          'X-GitHub-Api-Version': '2022-11-28'
+        }
+      })
+    }
+  });
+
+  Object.keys(secrets).map((key) => {
+    sodium.ready.then(async () => {
+      // convert secret & base64 key to Uint8Array.
+      const binkey = sodium.from_base64(envPublicKey.key, sodium.base64_variants.ORIGINAL);
+      const binsec = sodium.from_string(secrets[key].value);
+
+      // encrypt secret using libsodium
+      const encBytes = sodium.crypto_box_seal(binsec, binkey);
+
+      // convert encrypted Uint8Array to base64
+      const encryptedSecret = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
+
+      await octokit.request('PUT /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}', {
+        repository_id,
+        environment_name,
+        secret_name: key,
+        encrypted_value: encryptedSecret,
+        key_id: envPublicKey.key_id
+      })
     });
   });
 };
