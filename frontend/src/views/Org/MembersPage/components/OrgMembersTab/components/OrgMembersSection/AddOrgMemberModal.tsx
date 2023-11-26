@@ -103,7 +103,7 @@ export const AddOrgMemberModal = ({
             isOpen={popUp?.addMember?.isOpen}
             onOpenChange={(isOpen) => {
                 handlePopUpToggle("addMember", isOpen);
-                setCompleteInviteLink(undefined);
+                setCompleteInviteLink("");
             }}
         >
         <ModalContent

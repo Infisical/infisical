@@ -133,7 +133,7 @@ export const MachineIdentityTable = ({
                                             return (
                                                 <Select
                                                     value={
-                                                        role === "custom" ? customRole.slug : role
+                                                        role === "custom" ? (customRole?.slug as string) : role
                                                     }
                                                     isDisabled={!isAllowed}
                                                     className="w-40 bg-mineshaft-600"
