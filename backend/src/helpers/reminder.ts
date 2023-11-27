@@ -1,9 +1,9 @@
-import { ISecret } from "../models";
 import {
   createSecretReminderCron,
   deleteSecretReminderCron,
   updateSecretReminderCron
 } from "../queues/reminders/sendSecretReminders";
+import { ISecret } from "../models";
 
 type TPartialSecret = Pick<
   ISecret,

@@ -28,7 +28,6 @@ import {
 } from "../../ee/services/SecretApprovalService";
 import { CommitType } from "../../ee/models/secretApprovalRequest";
 import { logger } from "../../utils/logging";
-import { IRole } from "../../ee/models/role";
 import { createReminder, deleteReminder } from "../../helpers/reminder";
 
 const checkSecretsPermission = async ({
