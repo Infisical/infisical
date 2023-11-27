@@ -362,14 +362,7 @@ export const createSecretRaw = async (req: Request, res: Response) => {
 export const updateSecretByNameRaw = async (req: Request, res: Response) => {
   const {
     params: { secretName },
-    body: {
-      secretValue,
-      environment,
-      secretPath,
-      type,
-      workspaceId,
-      skipMultilineEncoding,
-    }
+    body: { secretValue, environment, secretPath, type, workspaceId, skipMultilineEncoding }
   } = await validateRequest(reqValidator.UpdateSecretByNameRawV3, req);
 
   await checkSecretsPermission({
@@ -696,7 +689,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
       secretKeyCiphertext,
       skipMultilineEncoding,
       secretReminderCron,
-      secretReminderNote,
+      secretReminderNote
     },
     params: { secretName }
   } = await validateRequest(reqValidator.UpdateSecretByNameV3, req);
@@ -716,7 +709,6 @@ export const updateSecretByName = async (req: Request, res: Response) => {
   if (membership && type !== "personal") {
     const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
     if (secretApprovalPolicy) {
-
       // ? QUESTION
       // ? Here we could also expand upon the reminders feature, by adding it to the approval process.
       const secretApprovalRequest = await generateSecretApprovalRequest({
@@ -750,7 +742,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     }
   }
 
-  if(type !== "personal") {
+  if (type !== "personal") {
     const existingSecret = await SecretService.getSecret({
       secretName,
       workspaceId: new Types.ObjectId(workspaceId),
@@ -760,22 +752,28 @@ export const updateSecretByName = async (req: Request, res: Response) => {
       authData: req.authData
     });
 
-    if((secretReminderCron && existingSecret.secretReminderCron !== secretReminderCron) || (secretReminderNote && existingSecret.secretReminderNote !== secretReminderNote)) {
+    if (
+      (secretReminderCron && existingSecret.secretReminderCron !== secretReminderCron) ||
+      (secretReminderNote && existingSecret.secretReminderNote !== secretReminderNote)
+    ) {
       await createReminder(existingSecret, {
         _id: existingSecret._id,
         secretReminderCron,
         secretReminderNote,
-        workspace: existingSecret.workspace,
-      })
-    } else if(secretReminderCron === null && secretReminderNote === null && existingSecret.secretReminderCron) {
+        workspace: existingSecret.workspace
+      });
+    } else if (
+      secretReminderCron === null &&
+      secretReminderNote === null &&
+      existingSecret.secretReminderCron
+    ) {
       await deleteReminder({
         _id: existingSecret._id,
-        secretReminderCron: existingSecret.secretReminderCron,
-      })
+        secretReminderCron: existingSecret.secretReminderCron
+      });
     }
   }
-  
-  
+
   const secret = await SecretService.updateSecret({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId),
