@@ -236,9 +236,12 @@ export const AddMachineIdentityModal = ({
 
             reset();
         } catch (err) {
-            console.error(err);
+            const error = err as any;
+            const text = error?.response?.data?.message
+                ?? `Failed to ${popUp?.machineIdentity?.data ? "updated" : "created"} machine identity`;
+            
             createNotification({
-                text: `Failed to ${popUp?.machineIdentity?.data ? "updated" : "created"} machine identity`,
+                text,
                 type: "error"
             });
         }

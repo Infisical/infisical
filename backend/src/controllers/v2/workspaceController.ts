@@ -551,7 +551,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
   const hasRequiredPrivileges = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
   
   if (!hasRequiredPrivileges) throw ForbiddenRequestError({
-      message: "Failed to add a more privileged MI to workspace"
+      message: "Failed to add a more privileged MI to project"
   });
 
   let customRole;

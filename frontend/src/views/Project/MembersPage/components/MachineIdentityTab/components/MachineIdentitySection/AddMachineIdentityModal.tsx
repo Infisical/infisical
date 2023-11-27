@@ -101,8 +101,12 @@ export const AddMachineIdentityModal = ({
             handlePopUpToggle("machineIdentity", false);
         } catch (err) {
             console.error(err);
+            const error = err as any;
+            const text = error?.response?.data?.message
+                ?? "Failed to add machine identity to project";
+            
             createNotification({
-                text: "Failed to add machine identity to project",
+                text,
                 type: "error"
             });
         }

@@ -53,9 +53,10 @@ export default class RequestError extends Error {
         ){
         
         super(message)
-        this._logLevel = logLevel || LogLevel.INFO
+        this._logLevel = logLevel || LogLevel.INFO;
         this._logName = LogLevel[this._logLevel];
-        this.statusCode = statusCode
+        this.statusCode = statusCode;
+        this.message = message;
         this.type = type
         this.context = context || {}
         this.extra = []

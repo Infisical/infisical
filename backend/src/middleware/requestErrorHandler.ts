@@ -39,8 +39,9 @@ export const requestErrorHandler: ErrorRequestHandler = async (
 
   Sentry.captureException(error);
 
-  delete (<any>error).stacktrace // remove stack trace from being sent to client
-  res.status((<RequestError>error).statusCode).json(error); // revise json part here
+  res.status((<RequestError>error).statusCode).send(
+    await error.format(req)
+  );
 
   next();
 };
