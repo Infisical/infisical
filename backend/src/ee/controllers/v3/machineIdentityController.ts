@@ -44,11 +44,11 @@ import { ForbiddenError } from "@casl/ability";
         }
     } = await validateRequest(reqValidator.RefreshTokenV3, req);
 
-    const decodedToken = <jwt.ServiceRefreshTokenJwtPayload>(
+    const decodedToken = <jwt.MachineRefreshTokenJwtPayload>(
 		jwt.verify(refreshToken, await getAuthSecret())
 	);
     
-    if (decodedToken.authTokenType !== AuthTokenType.SERVICE_REFRESH_TOKEN) throw UnauthorizedRequestError();
+    if (decodedToken.authTokenType !== AuthTokenType.MACHINE_REFRESH_TOKEN) throw UnauthorizedRequestError();
     
     let machineIdentity = await MachineIdentity.findOne({
         _id: new Types.ObjectId(decodedToken.serviceTokenDataId),
@@ -92,7 +92,7 @@ import { ForbiddenError } from "@casl/ability";
         response.refreshToken = createToken({
             payload: {
                 serviceTokenDataId: machineIdentity._id.toString(),
-                authTokenType: AuthTokenType.SERVICE_REFRESH_TOKEN,
+                authTokenType: AuthTokenType.MACHINE_REFRESH_TOKEN,
                 tokenVersion: machineIdentity.tokenVersion
             },
             secret: await getAuthSecret()
@@ -101,8 +101,8 @@ import { ForbiddenError } from "@casl/ability";
 
     response.accessToken = createToken({
         payload: {
-            serviceTokenDataId: machineIdentity._id.toString(), // TODO: fix this
-            authTokenType: AuthTokenType.SERVICE_ACCESS_TOKEN,
+            _id: machineIdentity._id.toString(), // TODO: fix this
+            authTokenType: AuthTokenType.MACHINE_ACCESS_TOKEN,
             tokenVersion: machineIdentity.tokenVersion
         },
         expiresIn: machineIdentity.accessTokenTTL,
@@ -226,8 +226,8 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
     
     const refreshToken = createToken({
         payload: {
-            serviceTokenDataId: machineIdentity._id.toString(), // TODO: update
-            authTokenType: AuthTokenType.SERVICE_REFRESH_TOKEN,
+            _id: machineIdentity._id.toString(),
+            authTokenType: AuthTokenType.MACHINE_REFRESH_TOKEN,
             tokenVersion: machineIdentity.tokenVersion
         },
         secret: await getAuthSecret()

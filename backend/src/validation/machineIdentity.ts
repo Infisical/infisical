@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MEMBER } from "../variables";
+import { NO_ACCESS } from "../variables";
 
 export const RefreshTokenV3 = z.object({
   body: z.object({
@@ -11,8 +11,8 @@ export const CreateMachineIdentityV3 = z.object({
   body: z.object({
     name: z.string().trim(),
     organizationId: z.string().trim(),
-    role: z.string().trim().min(1).default(MEMBER),
-    trustedIps: z // TODO: provide default
+    role: z.string().trim().min(1).default(NO_ACCESS),
+    trustedIps: z
       .object({
         ipAddress: z.string().trim(),
       })

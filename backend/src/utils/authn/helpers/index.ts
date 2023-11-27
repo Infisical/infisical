@@ -36,7 +36,7 @@ interface GetAuthDataParams {
  * - SERVICE_TOKEN
  * - API_KEY
  * - JWT
- * - SERVICE_ACCESS_TOKEN (from machine identity)
+ * - MACHINE_ACCESS_TOKEN (from machine identity)
  * - API_KEY_V2
  * @param {Object} params
  * @param {Object.<string, (string|string[]|undefined)>} params.headers - The HTTP request headers, usually from Express's `req.headers`.
@@ -77,8 +77,8 @@ export const extractAuthMode = async ({
             return { authMode: AuthMode.JWT, authTokenValue };
         case AuthTokenType.API_KEY:
             return { authMode: AuthMode.API_KEY_V2, authTokenValue };
-        case AuthTokenType.SERVICE_ACCESS_TOKEN:
-            return { authMode: AuthMode.SERVICE_ACCESS_TOKEN, authTokenValue };
+        case AuthTokenType.MACHINE_ACCESS_TOKEN:
+            return { authMode: AuthMode.MACHINE_ACCESS_TOKEN, authTokenValue };
         default:
             throw UnauthorizedRequestError({
                 message: "Failed to authenticate unknown authentication method"
@@ -115,20 +115,20 @@ export const getAuthData = async ({
                 userAgentType
             }
         }
-        case AuthMode.SERVICE_ACCESS_TOKEN: {
-            const serviceTokenData = await validateMachineIdentity({
+        case AuthMode.MACHINE_ACCESS_TOKEN: {
+            const machineIdentity = await validateMachineIdentity({
                 authTokenValue
             });
 
             return {
                 actor: {
-                    type: ActorType.SERVICE_V3,
+                    type: ActorType.MACHINE,
                     metadata: {
-                        serviceId: serviceTokenData._id.toString(),
-                        name: serviceTokenData.name
+                        machineId: machineIdentity._id.toString(),
+                        name: machineIdentity.name
                     }
                 },
-                authPayload: serviceTokenData,
+                authPayload: machineIdentity,
                 ipAddress,
                 userAgent,
                 userAgentType

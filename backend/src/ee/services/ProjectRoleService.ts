@@ -310,7 +310,7 @@ export const getAuthDataProjectPermissions = async ({
       role = "viewer";
       break;
     }
-    case ActorType.SERVICE_V3: {
+    case ActorType.MACHINE: {
       const machineMembership = await MachineMembership.findOne({
         machineIdentity: authData.authPayload._id,
         workspace: workspaceId

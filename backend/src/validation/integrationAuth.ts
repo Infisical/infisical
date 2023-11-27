@@ -58,9 +58,9 @@ const validateClientForIntegrationAuth = async ({
       throw UnauthorizedRequestError({
         message: "Failed service token authorization for integration authorization"
       });
-    case ActorType.SERVICE_V3:
+    case ActorType.MACHINE:
       throw UnauthorizedRequestError({
-        message: "Failed service token authorization for integration authorization"
+        message: "Failed machine authorization for integration authorization"
       });
   }
 };

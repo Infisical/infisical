@@ -8,7 +8,7 @@ import { AuthData } from "../interfaces/middleware";
 import { z } from "zod";
 import { EventType, UserAgentType } from "../ee/models";
 import { UnauthorizedRequestError } from "../utils/errors";
-import { MEMBER } from "../variables";
+import { NO_ACCESS } from "../variables";
 
 /**
  * Validate authenticated clients for workspace with id [workspaceId] based
@@ -60,9 +60,9 @@ export const validateClientForWorkspace = async ({
         requiredPermissions
       });
       return { membership, workspace };
-    case ActorType.SERVICE_V3:
+    case ActorType.MACHINE:
       throw UnauthorizedRequestError({
-        message: "Failed service token authorization for organization"
+        message: "Failed machine authorization for organization"
       });
   }
 };
@@ -286,7 +286,7 @@ export const AddWorkspaceServiceMemberV2 = z.object({
     machineId: z.string().trim()
   }),
   body: z.object({
-    role: z.string().trim().min(1).default(MEMBER),
+    role: z.string().trim().min(1).default(NO_ACCESS),
   })
 });
 

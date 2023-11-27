@@ -46,9 +46,9 @@ export const validateClientForOrganization = async ({
       throw UnauthorizedRequestError({
         message: "Failed service token authorization for organization"
       });
-    case ActorType.SERVICE_V3:
+    case ActorType.MACHINE:
       throw UnauthorizedRequestError({
-        message: "Failed service token authorization for organization"
+        message: "Failed machine authorization for organization"
       });
   }
 };

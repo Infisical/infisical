@@ -50,7 +50,7 @@ const requireAuth = ({
 			case AuthMode.SERVICE_TOKEN:
 				req.serviceTokenData = authData.authPayload;
 				break;
-			case AuthMode.SERVICE_ACCESS_TOKEN:
+			case AuthMode.MACHINE_ACCESS_TOKEN:
 				req.serviceTokenData = authData.authPayload;
 				break;
 			case AuthMode.API_KEY:

@@ -12,14 +12,14 @@ interface ValidateMachineIdentityParams {
 export const validateMachineIdentity = async ({
     authTokenValue
 }: ValidateMachineIdentityParams) => {
-    const decodedToken = <jwt.ServiceRefreshTokenJwtPayload>(
+    const decodedToken = <jwt.MachineRefreshTokenJwtPayload>(
 		jwt.verify(authTokenValue, await getAuthSecret())
 	);
 
-	if (decodedToken.authTokenType !== AuthTokenType.SERVICE_ACCESS_TOKEN) throw UnauthorizedRequestError();
+	if (decodedToken.authTokenType !== AuthTokenType.MACHINE_ACCESS_TOKEN) throw UnauthorizedRequestError();
 	
 	const machineIdentity = await MachineIdentity.findOne({
-		_id: new Types.ObjectId(decodedToken.serviceTokenDataId),
+		_id: new Types.ObjectId(decodedToken._id),
 		isActive: true
 	});
 	

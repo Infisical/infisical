@@ -17,10 +17,10 @@ import {
   FolderVersion,
   IPType,
   ISecretVersion,
+  MachineActor,
   SecretSnapshot,
   SecretVersion,
   ServiceActor,
-  ServiceActorV3,
   TFolderRootVersionSchema,
   TrustedIP,
   UserActor
@@ -757,12 +757,12 @@ export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Res
     }
   }));
 
-  const serviceV3Actors: ServiceActorV3[] = (
+  const serviceV3Actors: MachineActor[] = (
     await MachineIdentity.find({
       workspace: new Types.ObjectId(workspaceId)
     })
   ).map((machineIdentity) => ({
-    type: ActorType.SERVICE_V3,
+    type: ActorType.MACHINE,
     metadata: {
       serviceId: machineIdentity._id.toString(),
       name: machineIdentity.name

@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import { IMachineIdentity, IServiceTokenData, IUser } from "../../models";
-import { ServiceActor, ServiceActorV3, UserActor, UserAgentType } from "../../ee/models";
+import { MachineActor, ServiceActor, UserActor, UserAgentType } from "../../ee/models";
 
 interface BaseAuthData {
   ipAddress: string;
@@ -15,7 +15,7 @@ export interface UserAuthData extends BaseAuthData {
 }
 
 export interface MachineIdentityAuthData extends BaseAuthData {
-  actor: ServiceActorV3;
+  actor: MachineActor;
   authPayload: IMachineIdentity;
 }
 

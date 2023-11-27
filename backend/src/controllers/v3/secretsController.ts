@@ -99,7 +99,7 @@ const checkSecretsPermission = async ({
       });
       return { authVerifier: () => true };
     }
-    case ActorType.SERVICE_V3: {
+    case ActorType.MACHINE: {
       const { permission } = await getAuthDataProjectPermissions({
         authData,
         workspaceId: new Types.ObjectId(workspaceId)
