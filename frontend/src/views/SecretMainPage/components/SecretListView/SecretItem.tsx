@@ -184,7 +184,7 @@ export const SecretItem = memo(
       <>
         <CreateReminderForm
           isOpen={createReminderFormOpen}
-          onOpenChange={(isOpen, data) => {
+          onOpenChange={(_, data) => {
             setCreateReminderFormOpen.toggle();
 
             if (data) {
