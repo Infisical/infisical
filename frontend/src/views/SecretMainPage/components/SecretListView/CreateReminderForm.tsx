@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { faClock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -8,12 +9,16 @@ import { z } from "zod";
 
 import { Button, FormControl, Input, Modal, ModalContent, TextArea } from "@app/components/v2";
 
+export type TReminderFormSchema = z.infer<typeof ReminderFormSchema>;
+
 const ReminderFormSchema = z.object({
   note: z.string().optional(),
+  days: z
+    .number()
+    .min(1, { message: "Must be at least 1 day" })
+    .max(365, { message: "Must be less than 365 days" }),
   cron: z.string().refine(isValidCron, { message: "Invalid cron expression" })
 });
-
-export type TReminderFormSchema = z.infer<typeof ReminderFormSchema>;
 
 interface ReminderFormProps {
   isOpen: boolean;
@@ -24,15 +29,24 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
   const {
     register,
     watch,
+    setValue,
     handleSubmit,
     formState: { errors, isSubmitting }
-  } = useForm<TReminderFormSchema>({ resolver: zodResolver(ReminderFormSchema) });
+  } = useForm<TReminderFormSchema>({
+    resolver: zodResolver(ReminderFormSchema)
+  });
 
+  const daysWatch = watch("days");
   const cronWatch = watch("cron");
 
   const handleFormSubmit = async (data: TReminderFormSchema) => {
     onOpenChange(false, data);
   };
+
+  useEffect(() => {
+    if (!daysWatch) return;
+    setValue("cron", `0 0 */${daysWatch} * *`);
+  }, [daysWatch]);
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -44,14 +58,6 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
           <div>
             Set up a reminder for when this secret should be rotated. Everyone in the workspace will
             be notified when the reminder is triggered.
-            <div className="mt-1">
-              {/* eslint-disable-next-line react/jsx-no-target-blank */}
-              <a target="_blank" href="https://crontab.guru/every-month">
-                <span className="cursor-pointer text-primary-400 hover:text-primary-500">
-                  Learn more about cron expressions
-                </span>
-              </a>
-            </div>
           </div>
         }
       >
@@ -60,13 +66,17 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
             <div>
               <FormControl
                 className="mb-0"
-                label="How often"
-                isError={Boolean(errors?.cron)}
-                errorText={errors?.cron?.message}
+                label="How many days between"
+                isError={Boolean(errors?.days)}
+                errorText={errors?.days?.message || ""}
               >
-                <Input {...register("cron")} placeholder="0 0 1 * *" />
+                <Input
+                  type="number"
+                  placeholder="every 5 days"
+                  onChange={(el) => setValue("days", parseInt(el.target.value, 10))}
+                />
               </FormControl>
-              {!!cronWatch && isValidCron(cronWatch) && (
+              {!!daysWatch && cronWatch && isValidCron(cronWatch) && (
                 <div className="mt-2 ml-1 text-xs opacity-60">{cronstrue.toString(cronWatch)}</div>
               )}
             </div>
