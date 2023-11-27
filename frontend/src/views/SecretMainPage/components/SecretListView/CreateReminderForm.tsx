@@ -9,8 +9,6 @@ import { z } from "zod";
 
 import { Button, FormControl, Input, Modal, ModalContent, TextArea } from "@app/components/v2";
 
-export type TReminderFormSchema = z.infer<typeof ReminderFormSchema>;
-
 const ReminderFormSchema = z.object({
   note: z.string().optional(),
   days: z
@@ -19,6 +17,7 @@ const ReminderFormSchema = z.object({
     .max(365, { message: "Must be less than 365 days" }),
   cron: z.string().refine(isValidCron, { message: "Invalid cron expression" })
 });
+export type TReminderFormSchema = z.infer<typeof ReminderFormSchema>;
 
 interface ReminderFormProps {
   isOpen: boolean;
@@ -29,6 +28,7 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
   const {
     register,
     watch,
+    reset,
     setValue,
     handleSubmit,
     formState: { errors, isSubmitting }
@@ -44,9 +44,18 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
   };
 
   useEffect(() => {
-    if (!daysWatch) return;
-    setValue("cron", `0 0 */${daysWatch} * *`);
+    if (!daysWatch) {
+      setValue("cron", "");
+    } else {
+      setValue("cron", `0 0 */${daysWatch} * *`);
+    }
   }, [daysWatch]);
+
+  useEffect(() => {
+    if (isOpen) {
+      reset();
+    }
+  }, [isOpen]);
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -71,9 +80,9 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
                 errorText={errors?.days?.message || ""}
               >
                 <Input
+                  onChange={(el) => setValue("days", parseInt(el.target.value, 10))}
                   type="number"
                   placeholder="every 5 days"
-                  onChange={(el) => setValue("days", parseInt(el.target.value, 10))}
                 />
               </FormControl>
               {!!daysWatch && cronWatch && isValidCron(cronWatch) && (
