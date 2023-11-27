@@ -27,7 +27,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup.object({
     machineId: yup.string().required("Machine identity id is required"),
-    role: yup.string().required("Machine identity role is required")
+    role: yup.string()
 }).required();
 
 export type FormData = yup.InferType<typeof schema>;
@@ -85,10 +85,11 @@ export const AddMachineIdentityModal = ({
         role
     }: FormData) => {
         try {
+        
             await addMachineToWorkspaceMutateAsync({
                 workspaceId,
                 machineId,
-                role
+                role: role || undefined
             });
 
             createNotification({

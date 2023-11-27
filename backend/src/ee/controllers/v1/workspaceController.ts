@@ -757,19 +757,19 @@ export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Res
     }
   }));
 
-  const serviceV3Actors: MachineActor[] = (
+  const machineActors: MachineActor[] = (
     await MachineIdentity.find({
       workspace: new Types.ObjectId(workspaceId)
     })
   ).map((machineIdentity) => ({
     type: ActorType.MACHINE,
     metadata: {
-      serviceId: machineIdentity._id.toString(),
+      machineId: machineIdentity._id.toString(),
       name: machineIdentity.name
     }
   }));
 
-  const actors = [...userActors, ...serviceActors, ...serviceV3Actors];
+  const actors = [...userActors, ...serviceActors, ...machineActors];
 
   return res.status(200).send({
     actors

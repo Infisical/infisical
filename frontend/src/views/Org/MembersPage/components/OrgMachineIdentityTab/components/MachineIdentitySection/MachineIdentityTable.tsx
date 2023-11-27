@@ -103,13 +103,13 @@ export const MachineIdentityTable = ({
     //         });
 
     //         createNotification({
-    //             text: `Successfully ${isActive ? "enabled" : "disabled"} service token v3`,
+    //             text: `Successfully ${isActive ? "enabled" : "disabled"} machine identity`,
     //             type: "success"
     //           });
     //     } catch (err) {
     //         console.log(err);
     //         createNotification({
-    //             text: `Failed to ${isActive ? "enable" : "disable"} service token v3`,
+    //             text: `Failed to ${isActive ? "enable" : "disable"} machine identity`,
     //             type: "error"
     //         });
     //     }

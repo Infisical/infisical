@@ -43,7 +43,7 @@ import { ForbiddenError } from "@casl/ability";
             refreshToken
         }
     } = await validateRequest(reqValidator.RefreshTokenV3, req);
-
+    
     const decodedToken = <jwt.MachineRefreshTokenJwtPayload>(
 		jwt.verify(refreshToken, await getAuthSecret())
 	);
@@ -51,7 +51,7 @@ import { ForbiddenError } from "@casl/ability";
     if (decodedToken.authTokenType !== AuthTokenType.MACHINE_REFRESH_TOKEN) throw UnauthorizedRequestError();
     
     let machineIdentity = await MachineIdentity.findOne({
-        _id: new Types.ObjectId(decodedToken.serviceTokenDataId),
+        _id: new Types.ObjectId(decodedToken._id),
         isActive: true
     });
     
@@ -101,7 +101,7 @@ import { ForbiddenError } from "@casl/ability";
 
     response.accessToken = createToken({
         payload: {
-            _id: machineIdentity._id.toString(), // TODO: fix this
+            _id: machineIdentity._id.toString(),
             authTokenType: AuthTokenType.MACHINE_ACCESS_TOKEN,
             tokenVersion: machineIdentity.tokenVersion
         },

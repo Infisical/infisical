@@ -82,7 +82,7 @@ export const updateRole = async (req: Request, res: Response) => {
     body: { name, description, slug, permissions, workspaceId, orgId }
   } = await validateRequest(UpdateRoleSchema, req);
   const isOrgRole = !workspaceId; // if workspaceid is provided then its a workspace rule
-
+  
   if (isOrgRole) {
     const { permission } = await getUserOrgPermissions(req.user.id, orgId);
     if (permission.cannot(OrgPermissionActions.Edit, OrgPermissionSubjects.Role)) {

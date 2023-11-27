@@ -332,6 +332,7 @@ export const getAuthDataProjectPermissions = async ({
     
       role = machineMembership.role;
       customRole = machineMembership.customRole;
+
       break;
     }
     default:

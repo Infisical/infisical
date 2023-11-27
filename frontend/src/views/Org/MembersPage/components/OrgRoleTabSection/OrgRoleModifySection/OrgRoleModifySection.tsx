@@ -84,7 +84,7 @@ const SIMPLE_PERMISSION_OPTIONS = [
 ] as const;
 
 export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
-  const isNonEditable = ["owner", "admin", "member"].includes(role?.slug || "");
+  const isNonEditable = ["owner", "admin", "member", "no-access"].includes(role?.slug || "");
   const isNewRole = !role?.slug;
 
   const { createNotification } = useNotificationContext();

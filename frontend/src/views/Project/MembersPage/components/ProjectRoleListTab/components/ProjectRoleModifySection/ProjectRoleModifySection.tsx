@@ -9,6 +9,7 @@ import {
   faLock,
   faNetworkWired,
   faPuzzlePiece,
+  faServer,
   faShield,
   faTags,
   faUser,
@@ -60,6 +61,12 @@ const SINGLE_PERMISSION_LIST = [
     formName: "member"
   },
   {
+    title: "Machine identity management",
+    subtitle: "Add, view, update and remove machine identities from the project",
+    icon: faServer,
+    formName: "machine-identity"
+  },
+  {
     title: "Webhooks",
     subtitle: "Webhook management control",
     icon: faAnchorLock,
@@ -109,7 +116,7 @@ type Props = {
 };
 
 export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
-  const isNonEditable = ["admin", "member", "viewer"].includes(role?.slug || "");
+  const isNonEditable = ["admin", "member", "viewer", "no-access"].includes(role?.slug || "");
   const isNewRole = !role?.slug;
 
   const { createNotification } = useNotificationContext();
@@ -133,7 +140,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
 
   const handleRoleUpdate = async (el: TFormSchema) => {
     if (!role?._id) return;
-
+    
     try {
       await updateRole({
         orgId,

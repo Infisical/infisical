@@ -4,7 +4,7 @@ import { IUser, Key, Membership, MembershipOrg, User, Workspace } from "../../mo
 import { EventType, Role } from "../../ee/models";
 import { deleteMembership as deleteMember, findMembership } from "../../helpers/membership";
 import { sendMail } from "../../helpers/nodemailer";
-import { ACCEPTED, ADMIN, CUSTOM, MEMBER, VIEWER } from "../../variables";
+import { ACCEPTED, ADMIN, CUSTOM, MEMBER, NO_ACCESS, VIEWER } from "../../variables";
 import { getSiteURL } from "../../config";
 import { EEAuditLogService, EELicenseService } from "../../ee/services";
 import { validateRequest } from "../../helpers/validation";
@@ -129,7 +129,7 @@ export const changeMembershipRole = async (req: Request, res: Response) => {
     ProjectPermissionSub.Member
   );
 
-  const isCustomRole = ![ADMIN, MEMBER, VIEWER].includes(role);
+  const isCustomRole = ![ADMIN, MEMBER, VIEWER, NO_ACCESS].includes(role);
   if (isCustomRole) {
     const wsRole = await Role.findOne({
       slug: role,

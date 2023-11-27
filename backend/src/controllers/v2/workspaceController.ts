@@ -516,7 +516,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
     body: {
       role
     }
-  } = await validateRequest(reqValidator.AddWorkspaceServiceMemberV2, req);
+  } = await validateRequest(reqValidator.AddMachineToWorkspaceV2, req);
   
   const { permission } = await getAuthDataProjectPermissions({
     authData: req.authData,
@@ -574,7 +574,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
     role: customRole ? CUSTOM : role,
     customRole
   }).save();
-
+  
   return res.status(200).send({
     machineMembership
   });
@@ -592,7 +592,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
     body: {
       role
     }
-  } = await validateRequest(reqValidator.AddWorkspaceServiceMemberV2, req);
+  } = await validateRequest(reqValidator.UpdateMachineWorkspaceRoleV2, req);
   
   const { permission } = await getAuthDataProjectPermissions({
     authData: req.authData,
@@ -650,7 +650,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
       workspace: new Types.ObjectId(workspaceId),
     },
     {
-      role,
+      role: customRole ? CUSTOM : role,
       customRole
     },
     {
@@ -672,7 +672,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
  export const deleteMachineFromWorkspace = async (req: Request, res: Response) => {
   const {
     params: { workspaceId, machineId }
-  } = await validateRequest(reqValidator.DeleteWorkspaceServiceMemberV2, req);
+  } = await validateRequest(reqValidator.DeleteMachineFromWorkspaceV2, req);
   
   const { permission } = await getAuthDataProjectPermissions({
     authData: req.authData,
@@ -705,7 +705,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
  export const getWorkspaceMachineMemberships = async (req: Request, res: Response) => {
   const {
     params: { workspaceId }
-  } = await validateRequest(reqValidator.GetWorkspaceServiceMembersV2, req);
+  } = await validateRequest(reqValidator.GetWorkspaceMachineMembersV2, req);
   
   const { permission } = await getAuthDataProjectPermissions({
     authData: req.authData,

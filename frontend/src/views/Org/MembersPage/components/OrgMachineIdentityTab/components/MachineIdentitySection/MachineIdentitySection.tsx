@@ -31,7 +31,7 @@ export const MachineIdentitySection = withPermission(
           machineId 
         });
         createNotification({
-            text: "Successfully deleted service token v3",
+            text: "Successfully deleted machine identity",
             type: "success"
         });
         
@@ -39,7 +39,7 @@ export const MachineIdentitySection = withPermission(
       } catch (err) {
           console.error(err);
           createNotification({
-              text: "Failed to delete service token v3",
+              text: "Failed to delete machine identity",
               type: "error"
           });
       }
