@@ -1,0 +1,71 @@
+// logger follows a singleton pattern
+// easier to use it that's all.
+import pino, { Logger } from "pino";
+import { z } from "zod";
+
+const logLevelToSeverityLookup: Record<string, string> = {
+  "10": "TRACE",
+  "20": "DEBUG",
+  "30": "INFO",
+  "40": "WARNING",
+  "50": "ERROR",
+  "60": "CRITICAL"
+};
+
+// eslint-disable-next-line import/no-mutable-exports
+export let logger: Readonly<Logger>;
+// akhilmhdh: why this instead of putting it in config right
+// reason is to avoid a cyclical condition
+// config needs logger to output error when invalid environment is provided
+// logger needs config  to get aws or other transport cred
+// this would make logger independent package
+const loggerConfig = z.object({
+  AWS_CLOUDWATCH_LOG_GROUP_NAME: z.string().default("infisical-log-stream"),
+  AWS_CLOUDWATCH_LOG_REGION: z.string().default("us-east-1"),
+  AWS_CLOUDWATCH_LOG_ACCESS_KEY_ID: z.string().min(1).optional(),
+  AWS_CLOUDWATCH_LOG_ACCESS_KEY_SECRET: z.string().min(1).optional(),
+  AWS_CLOUDWATCH_LOG_INTERVAL: z.coerce.number().default(1000)
+});
+
+export const initLogger = async () => {
+  const targets: pino.TransportMultiOptions["targets"][number][] = [
+    { level: "info", target: "pino/file", options: {} }
+  ];
+  const cfg = loggerConfig.parse(process.env);
+  if (cfg.AWS_CLOUDWATCH_LOG_ACCESS_KEY_ID && cfg.AWS_CLOUDWATCH_LOG_ACCESS_KEY_SECRET) {
+    targets.push({
+      target: "@serdnam/pino-cloudwatch-transport",
+      level: "info",
+      options: {
+        logGroupName: cfg.AWS_CLOUDWATCH_LOG_GROUP_NAME,
+        logStreamName: cfg.AWS_CLOUDWATCH_LOG_GROUP_NAME,
+        awsRegion: cfg.AWS_CLOUDWATCH_LOG_REGION,
+        awsAccessKeyId: cfg.AWS_CLOUDWATCH_LOG_ACCESS_KEY_ID,
+        awsSecretAccessKey: cfg.AWS_CLOUDWATCH_LOG_ACCESS_KEY_SECRET,
+        interval: cfg.AWS_CLOUDWATCH_LOG_INTERVAL
+      }
+    });
+  }
+
+  const transport = pino.transport({
+    targets
+  });
+
+  logger = pino(
+    {
+      mixin(_context, level) {
+        return { severity: logLevelToSeverityLookup[level] || logLevelToSeverityLookup["30"] };
+      },
+      level: process.env.PINO_LOG_LEVEL || "info",
+      formatters: {
+        bindings: (bindings) => ({
+          pid: bindings.pid,
+          hostname: bindings.hostname
+          // node_version: process.version
+        })
+      }
+    },
+    transport
+  );
+  return logger;
+};

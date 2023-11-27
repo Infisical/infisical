@@ -1,31 +1,27 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "module": "esnext",
+    "module": "commonjs",
     "allowJs": true,
-    "removeComments": true,
     "resolveJsonModule": true,
-    "typeRoots": [
-      "./node_modules/@types"
-    ],
+    "typeRoots": ["./node_modules/@types", "./src/@types"],
     "sourceMap": true,
     "outDir": "dist",
     "strict": true,
-    "lib": [
-      "esnext"
-    ],
-    "baseUrl": ".",
+    "lib": ["esnext"],
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "Node",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@app/*": ["./src/*"],
+      "@lib/*": ["./src/lib/*"],
+      "@server/*": ["./src/server/*"]
+    }
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
 }
