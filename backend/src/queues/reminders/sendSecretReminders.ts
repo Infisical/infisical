@@ -1,7 +1,7 @@
-import { Types } from "mongoose";
-import { sendMail } from "../../helpers";
 import Queue, { Job } from "bull";
 import { IUser, Membership, Organization, Workspace } from "../../models";
+import { Types } from "mongoose";
+import { sendMail } from "../../helpers";
 
 type TSendSecretReminders = {
   workspaceId: string;

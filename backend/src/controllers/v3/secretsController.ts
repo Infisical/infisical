@@ -1138,6 +1138,38 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     }
   }
 
+  if (type !== "personal") {
+    const existingSecret = await SecretService.getSecret({
+      secretName,
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      type,
+      secretPath,
+      authData: req.authData
+    });
+
+    if (
+      (secretReminderCron && existingSecret.secretReminderCron !== secretReminderCron) ||
+      (secretReminderNote && existingSecret.secretReminderNote !== secretReminderNote)
+    ) {
+      await createReminder(existingSecret, {
+        _id: existingSecret._id,
+        secretReminderCron,
+        secretReminderNote,
+        workspace: existingSecret.workspace
+      });
+    } else if (
+      secretReminderCron === null &&
+      secretReminderNote === null &&
+      existingSecret.secretReminderCron
+    ) {
+      await deleteReminder({
+        _id: existingSecret._id,
+        secretReminderCron: existingSecret.secretReminderCron
+      });
+    }
+  }
+
   const secret = await SecretService.updateSecret({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId),
