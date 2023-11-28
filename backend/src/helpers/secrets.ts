@@ -717,7 +717,7 @@ export const updateSecretHelper = async ({
   secretValueIV,
   secretValueTag,
   secretPath,
-  secretReminderCron,
+  secretReminderRepeatDays,
   secretReminderNote,
   tags,
   secretCommentCiphertext,
@@ -784,7 +784,7 @@ export const updateSecretHelper = async ({
         secretCommentTag,
         secretCommentCiphertext,
 
-        secretReminderCron,
+        secretReminderRepeatDays,
         secretReminderNote,
 
         skipMultilineEncoding,

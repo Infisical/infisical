@@ -30,7 +30,7 @@ export interface ISecret {
 
   // ? NOTE: This works great for workspace-level reminders.
   // ? If we want to do it on a user-basis, we should ideally have a seperate model for reminders.
-  secretReminderCron?: string | null;
+  secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
 
   skipMultilineEncoding?: boolean;
@@ -125,8 +125,8 @@ const secretSchema = new Schema<ISecret>(
       required: false
     },
 
-    secretReminderCron: {
-      type: String,
+    secretReminderRepeatDays: {
+      type: Number,
       required: false,
       default: null
     },
