@@ -152,6 +152,8 @@ export const SecretItem = memo(
           }
         );
         setValue("valueOverride", secret?.valueOverride, { shouldDirty: !isUnsavedOverride });
+        setValue("reminderCron", secret?.reminderCron, { shouldDirty: !isUnsavedOverride });
+        setValue("reminderNote", secret?.reminderNote, { shouldDirty: !isUnsavedOverride });
       } else {
         reset();
         setValue("overrideAction", SecretActionType.Modified, { shouldDirty: true });
@@ -372,29 +374,31 @@ export const SecretItem = memo(
                     )}
                   </ProjectPermissionCan>
 
-                  <IconButton
-                    className={twMerge(
-                      "w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6",
-                      hasReminder && "w-5 text-primary"
-                    )}
-                    variant="plain"
-                    size="md"
-                    ariaLabel="add-reminder"
-                  >
-                    <Tooltip content="Reminder">
-                      <FontAwesomeIcon
-                        onClick={() => {
-                          if (!hasReminder) {
-                            setCreateReminderFormOpen.on();
-                          } else {
-                            setValue("reminderCron", null, { shouldDirty: true });
-                            setValue("reminderNote", null, { shouldDirty: true });
-                          }
-                        }}
-                        icon={faClock}
-                      />
-                    </Tooltip>
-                  </IconButton>
+                  {!isOverriden && (
+                    <IconButton
+                      className={twMerge(
+                        "w-0 overflow-hidden p-0 group-hover:mr-2 group-hover:w-5 data-[state=open]:w-6",
+                        hasReminder && "w-5 text-primary"
+                      )}
+                      variant="plain"
+                      size="md"
+                      ariaLabel="add-reminder"
+                    >
+                      <Tooltip content="Reminder">
+                        <FontAwesomeIcon
+                          onClick={() => {
+                            if (!hasReminder) {
+                              setCreateReminderFormOpen.on();
+                            } else {
+                              setValue("reminderCron", null, { shouldDirty: true });
+                              setValue("reminderNote", null, { shouldDirty: true });
+                            }
+                          }}
+                          icon={faClock}
+                        />
+                      </Tooltip>
+                    </IconButton>
+                  )}
 
                   <Popover>
                     <ProjectPermissionCan
