@@ -1116,25 +1116,27 @@ export const updateSecretByName = async (req: Request, res: Response) => {
       authData: req.authData
     });
 
-    if (
-      (secretReminderCron && existingSecret.secretReminderCron !== secretReminderCron) ||
-      (secretReminderNote && existingSecret.secretReminderNote !== secretReminderNote)
-    ) {
-      await createReminder(existingSecret, {
-        _id: existingSecret._id,
-        secretReminderCron,
-        secretReminderNote,
-        workspace: existingSecret.workspace
-      });
-    } else if (
-      secretReminderCron === null &&
-      secretReminderNote === null &&
-      existingSecret.secretReminderCron
-    ) {
-      await deleteReminder({
-        _id: existingSecret._id,
-        secretReminderCron: existingSecret.secretReminderCron
-      });
+    if (secretReminderCron !== undefined) {
+      if (
+        (secretReminderCron && existingSecret.secretReminderCron !== secretReminderCron) ||
+        (secretReminderNote && existingSecret.secretReminderNote !== secretReminderNote)
+      ) {
+        await createReminder(existingSecret, {
+          _id: existingSecret._id,
+          secretReminderCron,
+          secretReminderNote,
+          workspace: existingSecret.workspace
+        });
+      } else if (
+        secretReminderCron === null &&
+        secretReminderNote === null &&
+        existingSecret.secretReminderCron
+      ) {
+        await deleteReminder({
+          _id: existingSecret._id,
+          secretReminderCron: existingSecret.secretReminderCron
+        });
+      }
     }
   }
 

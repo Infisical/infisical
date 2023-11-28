@@ -368,7 +368,7 @@ export const UpdateSecretByNameV3 = z.object({
     .trim()
     .optional()
     .nullable()
-    .refine((val) =>  val === null || (val && isValidCron(val))),
+    .refine((val) =>  val === null || val === undefined || (val && isValidCron(val))),
     secretReminderNote: z.string().trim().nullable().optional(),
 
     tags: z.string().array().optional(),
