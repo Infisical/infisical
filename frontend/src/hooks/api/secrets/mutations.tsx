@@ -139,7 +139,7 @@ export const useUpdateSecretV3 = ({
       latestFileKey,
       tags,
       secretComment,
-      secretReminderCron,
+      secretReminderRepeatDays,
       secretReminderNote,
       newSecretName,
       skipMultilineEncoding
@@ -160,7 +160,7 @@ export const useUpdateSecretV3 = ({
         environment,
         type,
         secretReminderNote,
-        secretReminderCron,
+        secretReminderRepeatDays,
         secretPath,
         secretId,
         ...encryptSecret(randomBytes, newSecretName ?? secretName, secretValue, secretComment),
