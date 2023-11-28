@@ -3,8 +3,6 @@ import { useForm } from "react-hook-form";
 import { faClock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { isValidCron } from "cron-validator";
-import cronstrue from "cronstrue";
 import { z } from "zod";
 
 import { Button, FormControl, Input, Modal, ModalContent, TextArea } from "@app/components/v2";
@@ -14,8 +12,7 @@ const ReminderFormSchema = z.object({
   days: z
     .number()
     .min(1, { message: "Must be at least 1 day" })
-    .max(365, { message: "Must be less than 365 days" }),
-  cron: z.string().refine(isValidCron, { message: "Invalid cron expression" })
+    .max(365, { message: "Must be less than 365 days" })
 });
 export type TReminderFormSchema = z.infer<typeof ReminderFormSchema>;
 
@@ -37,19 +34,10 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
   });
 
   const daysWatch = watch("days");
-  const cronWatch = watch("cron");
 
   const handleFormSubmit = async (data: TReminderFormSchema) => {
     onOpenChange(false, data);
   };
-
-  useEffect(() => {
-    if (!daysWatch) {
-      setValue("cron", "");
-    } else {
-      setValue("cron", `0 0 */${daysWatch} * *`);
-    }
-  }, [daysWatch]);
 
   useEffect(() => {
     if (isOpen) {
@@ -65,8 +53,8 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
         // ? Or should we be call it something more generic?
         subTitle={
           <div>
-            Set up a reminder for when this secret should be rotated. Everyone in the workspace will
-            be notified when the reminder is triggered.
+            Set up a reminder for when this secret should be rotated. Everyone with access to this
+            project will be notified when the reminder is triggered.
           </div>
         }
       >
@@ -85,8 +73,10 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
                   placeholder="every 5 days"
                 />
               </FormControl>
-              {!!daysWatch && cronWatch && isValidCron(cronWatch) && (
-                <div className="mt-2 ml-1 text-xs opacity-60">{cronstrue.toString(cronWatch)}</div>
+              {!!daysWatch && (
+                <div className="mt-2 ml-1 text-xs opacity-60">
+                  Every {daysWatch > 1 ? `${daysWatch} days` : "day"}
+                </div>
               )}
             </div>
 

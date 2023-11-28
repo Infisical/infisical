@@ -113,7 +113,7 @@ export const SecretItem = memo(
 
     const overrideAction = watch("overrideAction");
     const hasComment = Boolean(watch("comment"));
-    const hasReminder = Boolean(watch("reminderCron"));
+    const hasReminder = Boolean(watch("reminderRepeatDays"));
 
     const selectedTags = watch("tags", []);
     const selectedTagsGroupById = selectedTags.reduce<Record<string, boolean>>(
@@ -152,7 +152,9 @@ export const SecretItem = memo(
           }
         );
         setValue("valueOverride", secret?.valueOverride, { shouldDirty: !isUnsavedOverride });
-        setValue("reminderCron", secret?.reminderCron, { shouldDirty: !isUnsavedOverride });
+        setValue("reminderRepeatDays", secret?.reminderRepeatDays, {
+          shouldDirty: !isUnsavedOverride
+        });
         setValue("reminderNote", secret?.reminderNote, { shouldDirty: !isUnsavedOverride });
       } else {
         reset();
@@ -194,7 +196,7 @@ export const SecretItem = memo(
             setCreateReminderFormOpen.toggle();
 
             if (data) {
-              setValue("reminderCron", data.cron, { shouldDirty: true });
+              setValue("reminderRepeatDays", data.days, { shouldDirty: true });
               setValue("reminderNote", data.note, { shouldDirty: true });
             }
           }}
@@ -390,7 +392,7 @@ export const SecretItem = memo(
                             if (!hasReminder) {
                               setCreateReminderFormOpen.on();
                             } else {
-                              setValue("reminderCron", null, { shouldDirty: true });
+                              setValue("reminderRepeatDays", null, { shouldDirty: true });
                               setValue("reminderNote", null, { shouldDirty: true });
                             }
                           }}
