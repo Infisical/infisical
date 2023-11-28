@@ -6,14 +6,16 @@ import { sendMail } from "../../helpers";
 type TSendSecretReminders = {
   workspaceId: string;
   secretId: string;
-  cron: string;
+  repeatDays: number;
   note: string | undefined | null;
 };
 
 type TDeleteSecretReminder = {
   secretId: string;
-  cron: string;
+  repeatDays: number;
 };
+
+const DAY_IN_MS = 86400000;
 
 export const sendSecretReminders = new Queue(
   "send-secret-reminders",
@@ -49,10 +51,13 @@ sendSecretReminders.process(async (job: Job<TSendSecretReminders>) => {
   });
 });
 
-export const createSecretReminderCron = (jobDetails: TSendSecretReminders) => {
+export const createRecurringSecretReminder = (jobDetails: TSendSecretReminders) => {
+  const repeat = jobDetails.repeatDays * DAY_IN_MS;
+
   return sendSecretReminders.add(jobDetails, {
+    delay: repeat,
     repeat: {
-      cron: jobDetails.cron
+      every: repeat
     },
     jobId: `reminder-${jobDetails.secretId}`,
     removeOnComplete: true,
@@ -62,16 +67,17 @@ export const createSecretReminderCron = (jobDetails: TSendSecretReminders) => {
   });
 };
 
-export const deleteSecretReminderCron = (jobDetails: TDeleteSecretReminder) => {
+export const deleteRecurringSecretReminder = (jobDetails: TDeleteSecretReminder) => {
+  const repeat = jobDetails.repeatDays * DAY_IN_MS;
+
   return sendSecretReminders.removeRepeatable({
-    cron: jobDetails.cron,
+    every: repeat,
     jobId: `reminder-${jobDetails.secretId}`
   });
 };
 
-export const updateSecretReminderCron = async (jobDetails: TSendSecretReminders) => {
-  // We need to delete the potentially existing cron job first, or the new one won't be created.
-  await deleteSecretReminderCron(jobDetails);
-
-  await createSecretReminderCron(jobDetails);
+export const updateRecurringSecretReminder = async (jobDetails: TSendSecretReminders) => {
+  // We need to delete the potentially existing reminder job first, or the new one won't be created.
+  await deleteRecurringSecretReminder(jobDetails);
+  await createRecurringSecretReminder(jobDetails);
 };

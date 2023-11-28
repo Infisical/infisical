@@ -1,42 +1,42 @@
 import { ISecret } from "../models";
 import {
-  createSecretReminderCron,
-  deleteSecretReminderCron,
-  updateSecretReminderCron
+  createRecurringSecretReminder,
+  deleteRecurringSecretReminder,
+  updateRecurringSecretReminder
 } from "../queues/reminders/sendSecretReminders";
 
 type TPartialSecret = Pick<
   ISecret,
-  "_id" | "secretReminderCron" | "secretReminderNote" | "workspace"
+  "_id" | "secretReminderRepeatDays" | "secretReminderNote" | "workspace"
 >;
-type TPartialSecretDeleteReminder = Pick<ISecret, "_id" | "secretReminderCron">;
+type TPartialSecretDeleteReminder = Pick<ISecret, "_id" | "secretReminderRepeatDays">;
 
 export const createReminder = async (oldSecret: TPartialSecret, newSecret: TPartialSecret) => {
   if (oldSecret._id !== newSecret._id) {
     throw new Error("Secret id's don't match");
   }
 
-  if (!newSecret.secretReminderCron) {
-    throw new Error("No cron provided");
+  if (!newSecret.secretReminderRepeatDays) {
+    throw new Error("No repeat days provided");
   }
 
   const secretId = oldSecret._id.toString();
   const workspaceId = oldSecret.workspace.toString();
 
-  if (oldSecret.secretReminderCron) {
-    // This will first delete the existing cron job, and then create a new one.
-    await updateSecretReminderCron({
+  if (oldSecret.secretReminderRepeatDays) {
+    // This will first delete the existing recurring job, and then create a new one.
+    await updateRecurringSecretReminder({
       workspaceId,
       secretId,
-      cron: newSecret.secretReminderCron,
+      repeatDays: newSecret.secretReminderRepeatDays,
       note: newSecret.secretReminderNote
     });
   } else {
-    // This will create a new cron job.
-    await createSecretReminderCron({
+    // This will create a new recurring job.
+    await createRecurringSecretReminder({
       workspaceId,
       secretId,
-      cron: newSecret.secretReminderCron,
+      repeatDays: newSecret.secretReminderRepeatDays,
       note: newSecret.secretReminderNote
     });
   }
@@ -47,12 +47,12 @@ export const deleteReminder = async (secret: TPartialSecretDeleteReminder) => {
     throw new Error("No secret id provided");
   }
 
-  if (!secret.secretReminderCron) {
-    throw new Error("No cron provided");
+  if (!secret.secretReminderRepeatDays) {
+    throw new Error("No repeat days provided");
   }
 
-  await deleteSecretReminderCron({
+  await deleteRecurringSecretReminder({
     secretId: secret._id.toString(),
-    cron: secret.secretReminderCron
+    repeatDays: secret.secretReminderRepeatDays
   });
 };
