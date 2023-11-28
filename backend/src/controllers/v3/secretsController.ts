@@ -1039,7 +1039,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
       secretKeyTag,
       secretKeyCiphertext,
       skipMultilineEncoding,
-      secretReminderCron,
+      secretReminderRepeatDays,
       secretReminderNote
     },
     params: { secretName }
@@ -1116,59 +1116,28 @@ export const updateSecretByName = async (req: Request, res: Response) => {
       authData: req.authData
     });
 
-    if (secretReminderCron !== undefined) {
+    if (secretReminderRepeatDays !== undefined) {
       if (
-        (secretReminderCron && existingSecret.secretReminderCron !== secretReminderCron) ||
+        (secretReminderRepeatDays &&
+          existingSecret.secretReminderRepeatDays !== secretReminderRepeatDays) ||
         (secretReminderNote && existingSecret.secretReminderNote !== secretReminderNote)
       ) {
         await createReminder(existingSecret, {
           _id: existingSecret._id,
-          secretReminderCron,
+          secretReminderRepeatDays,
           secretReminderNote,
           workspace: existingSecret.workspace
         });
       } else if (
-        secretReminderCron === null &&
+        secretReminderRepeatDays === null &&
         secretReminderNote === null &&
-        existingSecret.secretReminderCron
+        existingSecret.secretReminderRepeatDays
       ) {
         await deleteReminder({
           _id: existingSecret._id,
-          secretReminderCron: existingSecret.secretReminderCron
+          secretReminderRepeatDays: existingSecret.secretReminderRepeatDays
         });
       }
-    }
-  }
-
-  if (type !== "personal") {
-    const existingSecret = await SecretService.getSecret({
-      secretName,
-      workspaceId: new Types.ObjectId(workspaceId),
-      environment,
-      type,
-      secretPath,
-      authData: req.authData
-    });
-
-    if (
-      (secretReminderCron && existingSecret.secretReminderCron !== secretReminderCron) ||
-      (secretReminderNote && existingSecret.secretReminderNote !== secretReminderNote)
-    ) {
-      await createReminder(existingSecret, {
-        _id: existingSecret._id,
-        secretReminderCron,
-        secretReminderNote,
-        workspace: existingSecret.workspace
-      });
-    } else if (
-      secretReminderCron === null &&
-      secretReminderNote === null &&
-      existingSecret.secretReminderCron
-    ) {
-      await deleteReminder({
-        _id: existingSecret._id,
-        secretReminderCron: existingSecret.secretReminderCron
-      });
     }
   }
 
@@ -1182,7 +1151,7 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     newSecretName,
     secretValueCiphertext,
     secretValueIV,
-    secretReminderCron,
+    secretReminderRepeatDays,
     secretReminderNote,
     secretValueTag,
     secretPath,
