@@ -10,7 +10,6 @@ import { AuthData } from "../interfaces/middleware";
 import { ActorType } from "../ee/models";
 import { z } from "zod";
 import { SECRET_PERSONAL, SECRET_SHARED } from "../variables";
-import { isValidCron } from "cron-validator";
 /**
  * Validate authenticated clients for secrets with id [secretId] based
  * on any known permissions.
@@ -363,12 +362,7 @@ export const UpdateSecretByNameV3 = z.object({
     secretCommentIV: z.string().trim().optional(),
     secretCommentTag: z.string().trim().optional(),
 
-    secretReminderCron: z
-    .string()
-    .trim()
-    .optional()
-    .nullable()
-    .refine((val) =>  val === null || val === undefined || (val && isValidCron(val))),
+    secretReminderRepeatDays: z.number().min(1).max(365).optional().nullable(),
     secretReminderNote: z.string().trim().nullable().optional(),
 
     tags: z.string().array().optional(),
