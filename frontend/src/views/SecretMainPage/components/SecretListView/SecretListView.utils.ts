@@ -20,6 +20,15 @@ export const formSchema = z.object({
   overrideAction: z.string().trim().optional(),
   comment: z.string().trim().optional(),
   skipMultilineEncoding: z.boolean().optional(),
+
+  reminderRepeatDays: z
+    .number()
+    .min(1, { message: "Days must be between 1 and 365" })
+    .max(365, { message: "Days must be between 1 and 365" })
+    .nullable()
+    .optional(),
+  reminderNote: z.string().trim().nullable().optional(),
+
   tags: z
     .object({
       _id: z.string(),
