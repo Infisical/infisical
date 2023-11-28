@@ -1,0 +1,17 @@
+infisical:
+  address: "http://localhost:8080"
+auth:
+  type: "token"
+  config:
+    token-path: "./role-id"
+sinks:
+  - type: "file"
+    config:
+      path: "/Users/maidulislam/Desktop/test/infisical-token"
+  - type: "file"
+    config:
+      path: "access-token"
+  - type: "file"
+    config:
+      path: "maiduls-access-token"
+templates:

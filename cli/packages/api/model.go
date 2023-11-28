@@ -421,3 +421,34 @@ type CreateServiceTokenResponse struct {
 	ServiceToken     string           `json:"serviceToken"`
 	ServiceTokenData ServiceTokenData `json:"serviceTokenData"`
 }
+
+type ServiceTokenV3RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+type ServiceTokenV3RefreshTokenResponse struct {
+	RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"access_token"`
+	ExpiresIn    int    `json:"expires_in"`
+	TokenType    string `json:"token_type"`
+}
+
+type GetRawSecretsV3Request struct {
+	Environment   string `json:"environment"`
+	WorkspaceId   string `json:"workspaceId"`
+	SecretPath    string `json:"secretPath"`
+	IncludeImport bool   `json:"include_imports"`
+}
+
+type GetRawSecretsV3Response struct {
+	Secrets []struct {
+		ID            string `json:"_id"`
+		Version       int    `json:"version"`
+		Workspace     string `json:"workspace"`
+		Type          string `json:"type"`
+		Environment   string `json:"environment"`
+		SecretKey     string `json:"secretKey"`
+		SecretValue   string `json:"secretValue"`
+		SecretComment string `json:"secretComment"`
+	} `json:"secrets"`
+	Imports []any `json:"imports"`
+}

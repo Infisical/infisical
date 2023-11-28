@@ -198,6 +198,12 @@
       ]
     },
     {
+      "group": "Agent",
+      "pages": [
+        "infisical-agent/overview"
+      ]
+    },
+    {
       "group": "Integrations",
       "pages": ["integrations/overview"]
     },
