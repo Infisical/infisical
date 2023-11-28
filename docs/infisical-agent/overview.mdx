@@ -62,11 +62,11 @@ infisical:
 auth:
   type: "token"
   config:
-    token-path: "/path/where/to/file/with/initial/token"
+    token-path: "/path/to/initial/token"
 sinks:
   - type: "file"
     config:
-      path: "/some/path/to/store/token/toke-name"
+      path: "/some/path/to/store/access-token/file-name"
 templates:
   - source-path: my-dot-ev-secret-template
     destination-path: /some/path/.env
