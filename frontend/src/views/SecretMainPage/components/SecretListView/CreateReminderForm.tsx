@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { faClock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { Button, FormControl, Input, Modal, ModalContent, TextArea } from "@app/components/v2";
@@ -59,7 +60,7 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
         }
       >
         <form onSubmit={handleSubmit(handleFormSubmit)}>
-          <div className="space-y-4">
+          <div className="space-y-2">
             <div>
               <FormControl
                 className="mb-0"
@@ -70,14 +71,12 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
                 <Input
                   onChange={(el) => setValue("days", parseInt(el.target.value, 10))}
                   type="number"
-                  placeholder="every 5 days"
+                  placeholder="31"
                 />
               </FormControl>
-              {!!daysWatch && (
-                <div className="mt-2 ml-1 text-xs opacity-60">
-                  Every {daysWatch > 1 ? `${daysWatch} days` : "day"}
-                </div>
-              )}
+              <div className={twMerge("mt-2 ml-1 text-xs", daysWatch ? "opacity-60" : "opacity-0")}>
+                Every {daysWatch > 1 ? `${daysWatch} days` : "day"}
+              </div>
             </div>
 
             <FormControl label="Note" className="mb-0">
