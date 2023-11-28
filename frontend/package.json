@@ -55,7 +55,6 @@
     "axios": "^0.27.2",
     "axios-auth-refresh": "^3.3.6",
     "base64-loader": "^1.0.0",
-    "chrono": "^1.0.5",
     "classnames": "^2.3.1",
     "cookies": "^0.8.0",
     "cva": "npm:class-variance-authority@^0.4.0",

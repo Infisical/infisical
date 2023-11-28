@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { faClock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,18 +25,17 @@ interface ReminderFormProps {
 export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) => {
   const {
     register,
-    watch,
+    control,
     reset,
     setValue,
     handleSubmit,
-    formState: { errors, isSubmitting }
+    formState: { isSubmitting }
   } = useForm<TReminderFormSchema>({
     resolver: zodResolver(ReminderFormSchema)
   });
 
-  const daysWatch = watch("days");
-
   const handleFormSubmit = async (data: TReminderFormSchema) => {
+    console.log(data);
     onOpenChange(false, data);
   };
 
@@ -62,21 +61,34 @@ export const CreateReminderForm = ({ isOpen, onOpenChange }: ReminderFormProps) 
         <form onSubmit={handleSubmit(handleFormSubmit)}>
           <div className="space-y-2">
             <div>
-              <FormControl
-                className="mb-0"
-                label="How many days between"
-                isError={Boolean(errors?.days)}
-                errorText={errors?.days?.message || ""}
-              >
-                <Input
-                  onChange={(el) => setValue("days", parseInt(el.target.value, 10))}
-                  type="number"
-                  placeholder="31"
-                />
-              </FormControl>
-              <div className={twMerge("mt-2 ml-1 text-xs", daysWatch ? "opacity-60" : "opacity-0")}>
-                Every {daysWatch > 1 ? `${daysWatch} days` : "day"}
-              </div>
+              <Controller
+                control={control}
+                name="days"
+                render={({ field, fieldState }) => (
+                  <>
+                    <FormControl
+                      className="mb-0"
+                      label="How many days between"
+                      isError={Boolean(fieldState.error)}
+                      errorText={fieldState.error?.message || ""}
+                    >
+                      <Input
+                        onChange={(el) => setValue("days", parseInt(el.target.value, 10))}
+                        type="number"
+                        placeholder="31"
+                      />
+                    </FormControl>
+                    <div
+                      className={twMerge(
+                        "mt-2 ml-1 text-xs",
+                        field.value ? "opacity-60" : "opacity-0"
+                      )}
+                    >
+                      Every {field.value > 1 ? `${field.value} days` : "day"}
+                    </div>
+                  </>
+                )}
+              />
             </div>
 
             <FormControl label="Note" className="mb-0">
