@@ -51,7 +51,7 @@ var getCmd = &cobra.Command{
 			util.HandleError(err, "Unable to get folders")
 		}
 
-		visualize.PrintAllFoldersDetails(folders)
+		visualize.PrintAllFoldersDetails(folders, foldersPath)
 		Telemetry.CaptureEvent("cli-command:folders get", posthog.NewProperties().Set("folderCount", len(folders)).Set("version", util.CLI_VERSION))
 	},
 }
@@ -98,13 +98,13 @@ var createCmd = &cobra.Command{
 			FolderPath:  folderPath,
 		}
 
-		folder, err := util.CreateFolder(params)
+		_, err = util.CreateFolder(params)
 		if err != nil {
 			util.HandleError(err, "Unable to create folder")
 		}
 
-		folders := []models.SingleFolder{folder}
-		visualize.PrintAllFoldersDetails(folders)
+		util.PrintSuccessMessage(fmt.Sprintf("folder named `%s` created in path %s", folderName, folderPath))
+
 		Telemetry.CaptureEvent("cli-command:folders create", posthog.NewProperties().Set("version", util.CLI_VERSION))
 	},
 }
@@ -152,35 +152,36 @@ var deleteCmd = &cobra.Command{
 			FolderPath:  folderPath,
 		}
 
-		folders, err := util.DeleteFolder(params)
+		_, err = util.DeleteFolder(params)
 		if err != nil {
 			util.HandleError(err, "Unable to delete folder")
 		}
 
-		visualize.PrintAllFoldersDetails(folders)
+		util.PrintSuccessMessage(fmt.Sprintf("folder named `%s` deleted in path %s", folderName, folderPath))
+
 		Telemetry.CaptureEvent("cli-command:folders delete", posthog.NewProperties().Set("version", util.CLI_VERSION))
 	},
 }
 
-func init() {
+// func init() {
 
-	folderCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
+// 	folderCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
 
-	// Add getCmd, createCmd and deleteCmd flags here
-	getCmd.Flags().StringP("path", "p", "/", "Path to the directory whose folders will be fetched")
-	getCmd.Flags().StringP("token", "t", "", "Fetch folders using the infisical token")
-	folderCmd.AddCommand(getCmd)
+// 	// Add getCmd, createCmd and deleteCmd flags here
+// 	getCmd.Flags().StringP("path", "p", "/", "The path from where folders should be fetched from")
+// 	getCmd.Flags().StringP("token", "t", "", "Fetch folders using the infisical token")
+// 	folderCmd.AddCommand(getCmd)
 
-	// Add createCmd flags here
-	createCmd.Flags().StringP("path", "p", "/", "Path to the directory where the folder will be created")
-	createCmd.Flags().StringP("name", "n", "", "Name of the folder to be created")
-	folderCmd.AddCommand(createCmd)
+// 	// Add createCmd flags here
+// 	createCmd.Flags().StringP("path", "p", "/", "Path to where the folder should be created")
+// 	createCmd.Flags().StringP("name", "n", "", "Name of the folder to be created")
+// 	folderCmd.AddCommand(createCmd)
 
-	// Add deleteCmd flags here
-	deleteCmd.Flags().StringP("path", "p", "/", "Path to the directory where the folder will be deleted")
-	deleteCmd.Flags().StringP("name", "n", "", "Name of the folder to be deleted")
-	folderCmd.AddCommand(deleteCmd)
+// 	// Add deleteCmd flags here
+// 	deleteCmd.Flags().StringP("path", "p", "/", "Path to the folder to be deleted")
+// 	deleteCmd.Flags().StringP("name", "n", "", "Name of the folder to be deleted")
+// 	folderCmd.AddCommand(deleteCmd)
 
-	rootCmd.AddCommand(folderCmd)
+// 	rootCmd.AddCommand(folderCmd)
 
-}
+// }

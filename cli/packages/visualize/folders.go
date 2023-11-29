@@ -2,13 +2,13 @@ package visualize
 
 import "github.com/Infisical/infisical-merge/packages/models"
 
-func PrintAllFoldersDetails(folders []models.SingleFolder) {
+func PrintAllFoldersDetails(folders []models.SingleFolder, path string) {
 	rows := [][3]string{}
 	for _, folder := range folders {
-		rows = append(rows, [...]string{folder.ID, folder.Name, ""})
+		rows = append(rows, [...]string{folder.Name, path, folder.ID})
 	}
 
-	headers := [...]string{"FOLDER ID", "FOLDER NAME", "VERSION"}
+	headers := [...]string{"FOLDER NAME", "PATH", "FOLDER ID"}
 
 	Table(headers, rows)
 }

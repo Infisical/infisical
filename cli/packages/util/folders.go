@@ -191,6 +191,7 @@ func DeleteFolder(params models.DeleteFolderParameters) ([]models.SingleFolder, 
 		WorkspaceId: params.WorkspaceId,
 		Environment: params.Environment,
 		FolderName:  params.FolderName,
+		Directory:   params.FolderPath,
 	}
 
 	apiResponse, err := api.CallDeleteFolderV1(httpClient, deleteFolderRequest)

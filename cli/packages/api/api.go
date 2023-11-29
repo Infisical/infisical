@@ -273,11 +273,11 @@ func CallGetFoldersV1(httpClient *resty.Client, request GetFoldersV1Request) (Ge
 	response, err := httpRequest.Get(fmt.Sprintf("%v/v1/folders", config.INFISICAL_URL))
 
 	if err != nil {
-		return GetFoldersV1Response{}, fmt.Errorf("CallGetFoldersV1: Unable to complete api request [err=%s]", err)
+		return GetFoldersV1Response{}, fmt.Errorf("CallGetFoldersV1: Unable to complete api request [err=%v]", err)
 	}
 
 	if response.IsError() {
-		return GetFoldersV1Response{}, fmt.Errorf("CallGetFoldersV1: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
+		return GetFoldersV1Response{}, fmt.Errorf("CallGetFoldersV1: Unsuccessful [response=%s]", response)
 	}
 
 	return foldersResponse, nil
@@ -297,7 +297,7 @@ func CallCreateFolderV1(httpClient *resty.Client, request CreateFolderV1Request)
 	}
 
 	if response.IsError() {
-		return CreateFolderV1Response{}, fmt.Errorf("CallCreateFolderV1: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
+		return CreateFolderV1Response{}, fmt.Errorf("CallCreateFolderV1: Unsuccessful [response=%s]", response.String())
 	}
 
 	return folderResponse, nil
@@ -306,23 +306,11 @@ func CallCreateFolderV1(httpClient *resty.Client, request CreateFolderV1Request)
 func CallDeleteFolderV1(httpClient *resty.Client, request DeleteFolderV1Request) (DeleteFolderV1Response, error) {
 	var folderResponse DeleteFolderV1Response
 
-	type deleteFolderRequest struct {
-		WorkspaceId string `json:"workspaceId"`
-		Environment string `json:"environment"`
-		Directory   string `json:"folderPath"`
-	}
-
-	body := deleteFolderRequest{
-		WorkspaceId: request.WorkspaceId,
-		Environment: request.Environment,
-		Directory:   request.Directory,
-	}
-
 	httpRequest := httpClient.
 		R().
 		SetResult(&folderResponse).
 		SetHeader("User-Agent", USER_AGENT).
-		SetBody(body)
+		SetBody(request)
 
 	response, err := httpRequest.Delete(fmt.Sprintf("%v/v1/folders/%v", config.INFISICAL_URL, request.FolderName))
 	if err != nil {
@@ -330,7 +318,7 @@ func CallDeleteFolderV1(httpClient *resty.Client, request DeleteFolderV1Request)
 	}
 
 	if response.IsError() {
-		return DeleteFolderV1Response{}, fmt.Errorf("CallDeleteFolderV1: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
+		return DeleteFolderV1Response{}, fmt.Errorf("CallDeleteFolderV1: Unsuccessful [response=%s]", response.String())
 	}
 
 	return folderResponse, nil
