@@ -278,6 +278,47 @@ type GetEncryptedSecretsV3Request struct {
 	IncludeImport bool   `json:"include_imports"`
 }
 
+type GetFoldersV1Request struct {
+	Environment string `json:"environment"`
+	WorkspaceId string `json:"workspaceId"`
+	FoldersPath string `json:"foldersPath"`
+}
+
+type GetFoldersV1Response struct {
+	Folders []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"folders"`
+}
+
+type CreateFolderV1Request struct {
+	FolderName  string `json:"folderName"`
+	WorkspaceId string `json:"workspaceId"`
+	Environment string `json:"environment"`
+	Directory   string `json:"directory"`
+}
+
+type CreateFolderV1Response struct {
+	Folder struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"folder"`
+}
+
+type DeleteFolderV1Request struct {
+	FolderName  string `json:"folderName"`
+	WorkspaceId string `json:"workspaceId"`
+	Environment string `json:"environment"`
+	Directory   string `json:"directory"`
+}
+
+type DeleteFolderV1Response struct {
+	Folders []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"folders"`
+}
+
 type EncryptedSecretV3 struct {
 	ID        string `json:"_id"`
 	Version   int    `json:"version"`
