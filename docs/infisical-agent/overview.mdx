@@ -14,7 +14,7 @@ It eliminates the need to modify application logic by enabling clients to decide
 ### Token renewal
 The Infisical agent can help manage the life cycle of access tokens. The token renewal process is split into two main components: a Method, which is the authentication process suitable for your current setup, and Sinks, which are the places where the agent deposits the new access token whenever it receives updates.
 
-When the Infisical Agent is started, it will attempts to obtain a valid access token using the authentication method you have configured. If the agent is unable to fetch a valid token, the agent will keep trying, increasing the time between each attempt. 
+When the Infisical Agent is started, it will attempt to obtain a valid access token using the authentication method you have configured. If the agent is unable to fetch a valid token, the agent will keep trying, increasing the time between each attempt. 
 
 Once a access token is successfully fetched, the agent will make sure the access token stays valid, continuing to renew it before it expires.
 
