@@ -76,7 +76,7 @@ export const MachineIdentitySection = withProjectPermission(
                   onClick={() => handlePopUpOpen("machineIdentity")}
                   isDisabled={!isAllowed}
                 >
-                  Add machine identity
+                  Add MI
                 </Button>
               )}
             </ProjectPermissionCan>

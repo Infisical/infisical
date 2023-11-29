@@ -118,6 +118,7 @@
         "documentation/platform/pit-recovery",
         "documentation/platform/audit-logs",
         "documentation/platform/token",
+        "documentation/platform/machine-identity",
         "documentation/platform/mfa",
         {
           "group": "Secret Rotation",
