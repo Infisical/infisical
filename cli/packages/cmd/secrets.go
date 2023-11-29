@@ -689,12 +689,12 @@ func init() {
 
 	// Add createCmd flags here
 	createCmd.Flags().StringP("path", "p", "/", "Path to where the folder should be created")
-	createCmd.Flags().StringP("name", "n", "", "Name of the folder to be created")
+	createCmd.Flags().StringP("name", "n", "", "Name of the folder to be created in selected `--path`")
 	folderCmd.AddCommand(createCmd)
 
 	// Add deleteCmd flags here
 	deleteCmd.Flags().StringP("path", "p", "/", "Path to the folder to be deleted")
-	deleteCmd.Flags().StringP("name", "n", "", "Name of the folder to be deleted")
+	deleteCmd.Flags().StringP("name", "n", "", "Name of the folder to be deleted within selected `--path`")
 	folderCmd.AddCommand(deleteCmd)
 
 	secretsCmd.AddCommand(folderCmd)
