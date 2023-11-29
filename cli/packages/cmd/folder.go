@@ -162,26 +162,3 @@ var deleteCmd = &cobra.Command{
 		Telemetry.CaptureEvent("cli-command:folders delete", posthog.NewProperties().Set("version", util.CLI_VERSION))
 	},
 }
-
-// func init() {
-
-// 	folderCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
-
-// 	// Add getCmd, createCmd and deleteCmd flags here
-// 	getCmd.Flags().StringP("path", "p", "/", "The path from where folders should be fetched from")
-// 	getCmd.Flags().StringP("token", "t", "", "Fetch folders using the infisical token")
-// 	folderCmd.AddCommand(getCmd)
-
-// 	// Add createCmd flags here
-// 	createCmd.Flags().StringP("path", "p", "/", "Path to where the folder should be created")
-// 	createCmd.Flags().StringP("name", "n", "", "Name of the folder to be created")
-// 	folderCmd.AddCommand(createCmd)
-
-// 	// Add deleteCmd flags here
-// 	deleteCmd.Flags().StringP("path", "p", "/", "Path to the folder to be deleted")
-// 	deleteCmd.Flags().StringP("name", "n", "", "Name of the folder to be deleted")
-// 	folderCmd.AddCommand(deleteCmd)
-
-// 	rootCmd.AddCommand(folderCmd)
-
-// }
