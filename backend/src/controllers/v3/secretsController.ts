@@ -6,13 +6,7 @@ import { BotService } from "../../services";
 import { containsGlobPatterns, repackageSecretToRaw } from "../../helpers/secrets";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { getAllImportedSecrets } from "../../services/SecretImportService";
-import {
-  Folder,
-  IServiceTokenData,
-  Membership,
-  ServiceTokenData,
-  User
-} from "../../models";
+import { Folder, IServiceTokenData, Membership, ServiceTokenData, User } from "../../models";
 import { getFolderByPath } from "../../services/FolderService";
 import { BadRequestError } from "../../utils/errors";
 import { validateRequest } from "../../helpers/validation";
@@ -34,6 +28,7 @@ import {
 } from "../../ee/services/SecretApprovalService";
 import { CommitType } from "../../ee/models/secretApprovalRequest";
 import { logger } from "../../utils/logging";
+import { createReminder, deleteReminder } from "../../helpers/reminder";
 
 const checkSecretsPermission = async ({
   authData,
@@ -197,10 +192,11 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
     query: { include_imports: includeImports }
   } = validatedData;
 
-  logger.info(`getSecretsRaw: fetch raw secrets [environment=${environment}] [workspaceId=${workspaceId}] [secretPath=${secretPath}] [includeImports=${includeImports}]`)
+  logger.info(
+    `getSecretsRaw: fetch raw secrets [environment=${environment}] [workspaceId=${workspaceId}] [secretPath=${secretPath}] [includeImports=${includeImports}]`
+  );
 
   if (req.authData.authPayload instanceof ServiceTokenData) {
-
     // if the service token has single scope, it will get all secrets for that scope by default
     const serviceTokenDetails: IServiceTokenData = req?.serviceTokenData;
     if (
@@ -356,7 +352,9 @@ export const getSecretByNameRaw = async (req: Request, res: Response) => {
     params: { secretName }
   } = await validateRequest(reqValidator.GetSecretByNameRawV3, req);
 
-  logger.info(`getSecretByNameRaw: fetch raw secret by name [environment=${environment}] [workspaceId=${workspaceId}] [secretPath=${secretPath}] [type=${type}] [include_imports=${include_imports}]`)
+  logger.info(
+    `getSecretByNameRaw: fetch raw secret by name [environment=${environment}] [workspaceId=${workspaceId}] [secretPath=${secretPath}] [type=${type}] [include_imports=${include_imports}]`
+  );
 
   await checkSecretsPermission({
     authData: req.authData,
@@ -481,7 +479,9 @@ export const createSecretRaw = async (req: Request, res: Response) => {
     }
   } = await validateRequest(reqValidator.CreateSecretRawV3, req);
 
-  logger.info(`createSecretRaw: create a secret raw by name and value [environment=${environment}] [workspaceId=${workspaceId}] [secretPath=${secretPath}] [type=${type}] [skipMultilineEncoding=${skipMultilineEncoding}]`)
+  logger.info(
+    `createSecretRaw: create a secret raw by name and value [environment=${environment}] [workspaceId=${workspaceId}] [secretPath=${secretPath}] [type=${type}] [skipMultilineEncoding=${skipMultilineEncoding}]`
+  );
 
   await checkSecretsPermission({
     authData: req.authData,
@@ -628,7 +628,9 @@ export const updateSecretByNameRaw = async (req: Request, res: Response) => {
     body: { workspaceId, environment, secretValue, secretPath, type, skipMultilineEncoding }
   } = await validateRequest(reqValidator.UpdateSecretByNameRawV3, req);
 
-  logger.info(`updateSecretByNameRaw: update raw secret by name [environment=${environment}] [workspaceId=${workspaceId}] [secretPath=${secretPath}] [type=${type}] [skipMultilineEncoding=${skipMultilineEncoding}]`)
+  logger.info(
+    `updateSecretByNameRaw: update raw secret by name [environment=${environment}] [workspaceId=${workspaceId}] [secretPath=${secretPath}] [type=${type}] [skipMultilineEncoding=${skipMultilineEncoding}]`
+  );
 
   await checkSecretsPermission({
     authData: req.authData,
@@ -752,7 +754,9 @@ export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
     body: { environment, secretPath, type, workspaceId }
   } = await validateRequest(reqValidator.DeleteSecretByNameRawV3, req);
 
-  logger.info(`deleteSecretByNameRaw: delete a secret by name [environment=${environment}] [workspaceId=${workspaceId}] [secretPath=${secretPath}] [type=${type}]`)
+  logger.info(
+    `deleteSecretByNameRaw: delete a secret by name [environment=${environment}] [workspaceId=${workspaceId}] [secretPath=${secretPath}] [type=${type}]`
+  );
 
   await checkSecretsPermission({
     authData: req.authData,
@@ -807,7 +811,9 @@ export const getSecrets = async (req: Request, res: Response) => {
     query: { secretPath }
   } = validatedData;
 
-  logger.info(`getSecrets: fetch encrypted secrets [environment=${environment}] [workspaceId=${workspaceId}] [includeImports=${includeImports}]`)
+  logger.info(
+    `getSecrets: fetch encrypted secrets [environment=${environment}] [workspaceId=${workspaceId}] [includeImports=${includeImports}]`
+  );
 
   const { authVerifier: permissionCheckFn } = await checkSecretsPermission({
     authData: req.authData,
@@ -863,7 +869,9 @@ export const getSecretByName = async (req: Request, res: Response) => {
     params: { secretName }
   } = await validateRequest(reqValidator.GetSecretByNameV3, req);
 
-  logger.info(`getSecretByName: get a single secret by name [environment=${environment}] [workspaceId=${workspaceId}] [include_imports=${include_imports}] [type=${type}]`)
+  logger.info(
+    `getSecretByName: get a single secret by name [environment=${environment}] [workspaceId=${workspaceId}] [include_imports=${include_imports}] [type=${type}]`
+  );
 
   await checkSecretsPermission({
     authData: req.authData,
@@ -915,7 +923,9 @@ export const createSecret = async (req: Request, res: Response) => {
     params: { secretName }
   } = await validateRequest(reqValidator.CreateSecretV3, req);
 
-  logger.info(`createSecret: create an encrypted secret [environment=${environment}] [workspaceId=${workspaceId}] [skipMultilineEncoding=${skipMultilineEncoding}] [type=${type}]`)
+  logger.info(
+    `createSecret: create an encrypted secret [environment=${environment}] [workspaceId=${workspaceId}] [skipMultilineEncoding=${skipMultilineEncoding}] [type=${type}]`
+  );
 
   await checkSecretsPermission({
     authData: req.authData,
@@ -932,7 +942,11 @@ export const createSecret = async (req: Request, res: Response) => {
     });
 
     if (membership && type !== "personal") {
-      const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+      const secretApprovalPolicy = await getSecretPolicyOfBoard(
+        workspaceId,
+        environment,
+        secretPath
+      );
       if (secretApprovalPolicy) {
         const secretApprovalRequest = await generateSecretApprovalRequest({
           workspaceId,
@@ -1024,12 +1038,16 @@ export const updateSecretByName = async (req: Request, res: Response) => {
       secretKeyIV,
       secretKeyTag,
       secretKeyCiphertext,
-      skipMultilineEncoding
+      skipMultilineEncoding,
+      secretReminderRepeatDays,
+      secretReminderNote
     },
     params: { secretName }
   } = await validateRequest(reqValidator.UpdateSecretByNameV3, req);
 
-  logger.info(`updateSecretByName: update a encrypted secret by name [environment=${environment}] [workspaceId=${workspaceId}] [skipMultilineEncoding=${skipMultilineEncoding}] [type=${type}]`)
+  logger.info(
+    `updateSecretByName: update a encrypted secret by name [environment=${environment}] [workspaceId=${workspaceId}] [skipMultilineEncoding=${skipMultilineEncoding}] [type=${type}]`
+  );
 
   if (newSecretName && (!secretKeyIV || !secretKeyTag || !secretKeyCiphertext)) {
     throw BadRequestError({ message: "Missing encrypted key" });
@@ -1050,7 +1068,11 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     });
 
     if (membership && type !== "personal") {
-      const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+      const secretApprovalPolicy = await getSecretPolicyOfBoard(
+        workspaceId,
+        environment,
+        secretPath
+      );
       if (secretApprovalPolicy) {
         const secretApprovalRequest = await generateSecretApprovalRequest({
           workspaceId,
@@ -1084,6 +1106,41 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     }
   }
 
+  if (type !== "personal") {
+    const existingSecret = await SecretService.getSecret({
+      secretName,
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      type,
+      secretPath,
+      authData: req.authData
+    });
+
+    if (secretReminderRepeatDays !== undefined) {
+      if (
+        (secretReminderRepeatDays &&
+          existingSecret.secretReminderRepeatDays !== secretReminderRepeatDays) ||
+        (secretReminderNote && existingSecret.secretReminderNote !== secretReminderNote)
+      ) {
+        await createReminder(existingSecret, {
+          _id: existingSecret._id,
+          secretReminderRepeatDays,
+          secretReminderNote,
+          workspace: existingSecret.workspace
+        });
+      } else if (
+        secretReminderRepeatDays === null &&
+        secretReminderNote === null &&
+        existingSecret.secretReminderRepeatDays
+      ) {
+        await deleteReminder({
+          _id: existingSecret._id,
+          secretReminderRepeatDays: existingSecret.secretReminderRepeatDays
+        });
+      }
+    }
+  }
+
   const secret = await SecretService.updateSecret({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId),
@@ -1094,6 +1151,8 @@ export const updateSecretByName = async (req: Request, res: Response) => {
     newSecretName,
     secretValueCiphertext,
     secretValueIV,
+    secretReminderRepeatDays,
+    secretReminderNote,
     secretValueTag,
     secretPath,
     tags,
@@ -1130,7 +1189,9 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
     params: { secretName }
   } = await validateRequest(reqValidator.DeleteSecretByNameV3, req);
 
-  logger.info(`deleteSecretByName: delete a encrypted secret by name [environment=${environment}] [workspaceId=${workspaceId}] [type=${type}]`)
+  logger.info(
+    `deleteSecretByName: delete a encrypted secret by name [environment=${environment}] [workspaceId=${workspaceId}] [type=${type}]`
+  );
 
   await checkSecretsPermission({
     authData: req.authData,
@@ -1147,7 +1208,11 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
     });
 
     if (membership && type !== "personal") {
-      const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+      const secretApprovalPolicy = await getSecretPolicyOfBoard(
+        workspaceId,
+        environment,
+        secretPath
+      );
       if (secretApprovalPolicy) {
         const secretApprovalRequest = await generateSecretApprovalRequest({
           workspaceId,
@@ -1197,7 +1262,9 @@ export const createSecretByNameBatch = async (req: Request, res: Response) => {
     body: { secrets, secretPath, environment, workspaceId }
   } = await validateRequest(reqValidator.CreateSecretByNameBatchV3, req);
 
-  logger.info(`createSecretByNameBatch: create a list of secrets by their names [environment=${environment}] [workspaceId=${workspaceId}] [secretsLength=${secrets?.length}]`)
+  logger.info(
+    `createSecretByNameBatch: create a list of secrets by their names [environment=${environment}] [workspaceId=${workspaceId}] [secretsLength=${secrets?.length}]`
+  );
 
   await checkSecretsPermission({
     authData: req.authData,
@@ -1214,7 +1281,11 @@ export const createSecretByNameBatch = async (req: Request, res: Response) => {
     });
 
     if (membership) {
-      const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+      const secretApprovalPolicy = await getSecretPolicyOfBoard(
+        workspaceId,
+        environment,
+        secretPath
+      );
       if (secretApprovalPolicy) {
         const secretApprovalRequest = await generateSecretApprovalRequest({
           workspaceId,
@@ -1258,7 +1329,9 @@ export const updateSecretByNameBatch = async (req: Request, res: Response) => {
     body: { secrets, secretPath, environment, workspaceId }
   } = await validateRequest(reqValidator.UpdateSecretByNameBatchV3, req);
 
-  logger.info(`updateSecretByNameBatch: update a list of secrets by their names [environment=${environment}] [workspaceId=${workspaceId}] [secretsLength=${secrets?.length}]`)
+  logger.info(
+    `updateSecretByNameBatch: update a list of secrets by their names [environment=${environment}] [workspaceId=${workspaceId}] [secretsLength=${secrets?.length}]`
+  );
 
   await checkSecretsPermission({
     authData: req.authData,
@@ -1275,7 +1348,11 @@ export const updateSecretByNameBatch = async (req: Request, res: Response) => {
     });
 
     if (membership) {
-      const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+      const secretApprovalPolicy = await getSecretPolicyOfBoard(
+        workspaceId,
+        environment,
+        secretPath
+      );
       if (secretApprovalPolicy) {
         const secretApprovalRequest = await generateSecretApprovalRequest({
           workspaceId,
@@ -1319,7 +1396,9 @@ export const deleteSecretByNameBatch = async (req: Request, res: Response) => {
     body: { secrets, secretPath, environment, workspaceId }
   } = await validateRequest(reqValidator.DeleteSecretByNameBatchV3, req);
 
-  logger.info(`deleteSecretByNameBatch: delete a list of secrets by their names [environment=${environment}] [workspaceId=${workspaceId}] [secretsLength=${secrets?.length}]`)
+  logger.info(
+    `deleteSecretByNameBatch: delete a list of secrets by their names [environment=${environment}] [workspaceId=${workspaceId}] [secretsLength=${secrets?.length}]`
+  );
 
   await checkSecretsPermission({
     authData: req.authData,
@@ -1336,7 +1415,11 @@ export const deleteSecretByNameBatch = async (req: Request, res: Response) => {
     });
 
     if (membership) {
-      const secretApprovalPolicy = await getSecretPolicyOfBoard(workspaceId, environment, secretPath);
+      const secretApprovalPolicy = await getSecretPolicyOfBoard(
+        workspaceId,
+        environment,
+        secretPath
+      );
       if (secretApprovalPolicy) {
         const secretApprovalRequest = await generateSecretApprovalRequest({
           workspaceId,

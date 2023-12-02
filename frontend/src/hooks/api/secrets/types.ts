@@ -20,6 +20,8 @@ export type EncryptedSecret = {
   secretCommentCiphertext: string;
   secretCommentIV: string;
   secretCommentTag: string;
+  secretReminderRepeatDays?: number | null;
+  secretReminderNote?: string | null;
   tags: WsTag[];
 };
 
@@ -29,6 +31,8 @@ export type DecryptedSecret = {
   key: string;
   value: string;
   comment: string;
+  reminderRepeatDays?: number | null;
+  reminderNote?: string | null;
   tags: WsTag[];
   createdAt: string;
   updatedAt: string;
@@ -112,6 +116,8 @@ export type TUpdateSecretsV3DTO = {
   secretId?: string;
   secretValue: string;
   secretComment?: string;
+  secretReminderRepeatDays?: number | null;
+  secretReminderNote?: string | null;
   tags?: string[];
 };
 

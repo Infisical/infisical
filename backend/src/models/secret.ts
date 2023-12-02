@@ -27,6 +27,12 @@ export interface ISecret {
   secretCommentIV?: string;
   secretCommentTag?: string;
   secretCommentHash?: string;
+
+  // ? NOTE: This works great for workspace-level reminders.
+  // ? If we want to do it on a user-basis, we should ideally have a seperate model for reminders.
+  secretReminderRepeatDays?: number | null;
+  secretReminderNote?: string | null;
+
   skipMultilineEncoding?: boolean;
   algorithm: "aes-256-gcm";
   keyEncoding: "utf8" | "base64";
@@ -118,10 +124,23 @@ const secretSchema = new Schema<ISecret>(
       type: String,
       required: false
     },
+
+    secretReminderRepeatDays: {
+      type: Number,
+      required: false,
+      default: null
+    },
+    secretReminderNote: {
+      type: String,
+      required: false,
+      default: null
+    },
+
     skipMultilineEncoding: {
       type: Boolean,
       required: false
     },
+
     algorithm: {
       // the encryption algorithm used
       type: String,

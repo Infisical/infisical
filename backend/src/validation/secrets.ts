@@ -10,7 +10,6 @@ import { AuthData } from "../interfaces/middleware";
 import { ActorType } from "../ee/models";
 import { z } from "zod";
 import { SECRET_PERSONAL, SECRET_SHARED } from "../variables";
-
 /**
  * Validate authenticated clients for secrets with id [secretId] based
  * on any known permissions.
@@ -260,6 +259,7 @@ export const CreateSecretRawV3 = z.object({
       .string()
       .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
     secretComment: z.string().trim().optional().default(""),
+
     skipMultilineEncoding: z.boolean().optional(),
     type: z.enum([SECRET_SHARED, SECRET_PERSONAL])
   }),
@@ -275,6 +275,7 @@ export const UpdateSecretByNameRawV3 = z.object({
   body: z.object({
     workspaceId: z.string().trim(),
     environment: z.string().trim(),
+
     secretValue: z
       .string()
       .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
@@ -360,6 +361,10 @@ export const UpdateSecretByNameV3 = z.object({
     secretCommentCiphertext: z.string().trim().optional(),
     secretCommentIV: z.string().trim().optional(),
     secretCommentTag: z.string().trim().optional(),
+
+    secretReminderRepeatDays: z.number().min(1).max(365).optional().nullable(),
+    secretReminderNote: z.string().trim().nullable().optional(),
+
     tags: z.string().array().optional(),
     skipMultilineEncoding: z.boolean().optional(),
     // to update secret name

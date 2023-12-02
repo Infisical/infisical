@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/go-resty/resty/v2"
@@ -260,6 +261,70 @@ func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Req
 	return secretsResponse, nil
 }
 
+func CallGetFoldersV1(httpClient *resty.Client, request GetFoldersV1Request) (GetFoldersV1Response, error) {
+	var foldersResponse GetFoldersV1Response
+	httpRequest := httpClient.
+		R().
+		SetResult(&foldersResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetQueryParam("environment", request.Environment).
+		SetQueryParam("workspaceId", request.WorkspaceId).
+		SetQueryParam("directory", request.FoldersPath)
+
+	response, err := httpRequest.Get(fmt.Sprintf("%v/v1/folders", config.INFISICAL_URL))
+
+	if err != nil {
+		return GetFoldersV1Response{}, fmt.Errorf("CallGetFoldersV1: Unable to complete api request [err=%v]", err)
+	}
+
+	if response.IsError() {
+		return GetFoldersV1Response{}, fmt.Errorf("CallGetFoldersV1: Unsuccessful [response=%s]", response)
+	}
+
+	return foldersResponse, nil
+}
+
+func CallCreateFolderV1(httpClient *resty.Client, request CreateFolderV1Request) (CreateFolderV1Response, error) {
+	var folderResponse CreateFolderV1Response
+	httpRequest := httpClient.
+		R().
+		SetResult(&folderResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request)
+
+	response, err := httpRequest.Post(fmt.Sprintf("%v/v1/folders", config.INFISICAL_URL))
+	if err != nil {
+		return CreateFolderV1Response{}, fmt.Errorf("CallCreateFolderV1: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return CreateFolderV1Response{}, fmt.Errorf("CallCreateFolderV1: Unsuccessful [response=%s]", response.String())
+	}
+
+	return folderResponse, nil
+}
+
+func CallDeleteFolderV1(httpClient *resty.Client, request DeleteFolderV1Request) (DeleteFolderV1Response, error) {
+	var folderResponse DeleteFolderV1Response
+
+	httpRequest := httpClient.
+		R().
+		SetResult(&folderResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request)
+
+	response, err := httpRequest.Delete(fmt.Sprintf("%v/v1/folders/%v", config.INFISICAL_URL, request.FolderName))
+	if err != nil {
+		return DeleteFolderV1Response{}, fmt.Errorf("CallDeleteFolderV1: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return DeleteFolderV1Response{}, fmt.Errorf("CallDeleteFolderV1: Unsuccessful [response=%s]", response.String())
+	}
+
+	return folderResponse, nil
+}
+
 func CallCreateSecretsV3(httpClient *resty.Client, request CreateSecretV3Request) error {
 	var secretsResponse GetEncryptedSecretsV3Response
 	response, err := httpClient.
@@ -358,4 +423,51 @@ func CallCreateServiceToken(httpClient *resty.Client, request CreateServiceToken
 	}
 
 	return createServiceTokenResponse, nil
+}
+
+func CallServiceTokenV3Refresh(httpClient *resty.Client, request ServiceTokenV3RefreshTokenRequest) (ServiceTokenV3RefreshTokenResponse, error) {
+	var serviceTokenV3RefreshTokenResponse ServiceTokenV3RefreshTokenResponse
+	response, err := httpClient.
+		R().
+		SetResult(&serviceTokenV3RefreshTokenResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v3/service-token/me/token", config.INFISICAL_URL))
+
+	if err != nil {
+		return ServiceTokenV3RefreshTokenResponse{}, fmt.Errorf("CallServiceTokenV3Refresh: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return ServiceTokenV3RefreshTokenResponse{}, fmt.Errorf("CallServiceTokenV3Refresh: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return serviceTokenV3RefreshTokenResponse, nil
+}
+
+func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Request) (GetRawSecretsV3Response, error) {
+	var getRawSecretsV3Response GetRawSecretsV3Response
+	response, err := httpClient.
+		R().
+		SetResult(&getRawSecretsV3Response).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		SetQueryParam("workspaceId", request.WorkspaceId).
+		SetQueryParam("environment", request.Environment).
+		SetQueryParam("include_imports", "false").
+		Get(fmt.Sprintf("%v/v3/secrets/raw", config.INFISICAL_URL))
+
+	if err != nil {
+		return GetRawSecretsV3Response{}, fmt.Errorf("CallGetRawSecretsV3: Unable to complete api request [err=%w]", err)
+	}
+
+	if response.IsError() && strings.Contains(response.String(), "Failed to find bot key") {
+		return GetRawSecretsV3Response{}, fmt.Errorf("project with id %s is a legacy project type, please navigate to project settings and disable end to end encryption then try again", request.WorkspaceId)
+	}
+
+	if response.IsError() {
+		return GetRawSecretsV3Response{}, fmt.Errorf("CallGetRawSecretsV3: Unsuccessful response [%v %v] [status-code=%v]", response.Request.Method, response.Request.URL, response.StatusCode())
+	}
+
+	return getRawSecretsV3Response, nil
 }

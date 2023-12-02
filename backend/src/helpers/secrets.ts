@@ -574,18 +574,20 @@ export const getSecretsHelper = async ({
     const approximateForNoneCapturedEvents = secrets.length * 10;
 
     if (shouldCapture) {
-      postHogClient.capture({
-        event: "secrets pulled",
-        distinctId: await TelemetryService.getDistinctId({ authData }),
-        properties: {
-          numberOfSecrets: shouldRecordK8Event ? approximateForNoneCapturedEvents : secrets.length,
-          environment,
-          workspaceId,
-          folderId,
-          channel: authData.userAgentType,
-          userAgent: authData.userAgent
-        }
-      });
+      if (workspaceId.toString() != "650e71fbae3e6c8572f436d4") {
+        postHogClient.capture({
+          event: "secrets pulled",
+          distinctId: await TelemetryService.getDistinctId({ authData }),
+          properties: {
+            numberOfSecrets: shouldRecordK8Event ? approximateForNoneCapturedEvents : secrets.length,
+            environment,
+            workspaceId,
+            folderId,
+            channel: authData.userAgentType,
+            userAgent: authData.userAgent
+          }
+        });
+      }
     }
   }
 
@@ -717,6 +719,8 @@ export const updateSecretHelper = async ({
   secretValueIV,
   secretValueTag,
   secretPath,
+  secretReminderRepeatDays,
+  secretReminderNote,
   tags,
   secretCommentCiphertext,
   secretCommentIV,
@@ -781,6 +785,10 @@ export const updateSecretHelper = async ({
         secretCommentIV,
         secretCommentTag,
         secretCommentCiphertext,
+
+        secretReminderRepeatDays,
+        secretReminderNote,
+
         skipMultilineEncoding,
         secretBlindIndex: newSecretNameBlindIndex,
         secretKeyIV,

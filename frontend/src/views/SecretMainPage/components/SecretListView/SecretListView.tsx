@@ -122,6 +122,8 @@ export const SecretListView = ({
     {
       value,
       comment,
+      reminderRepeatDays,
+      reminderNote,
       tags,
       skipMultilineEncoding,
       newKey,
@@ -129,6 +131,8 @@ export const SecretListView = ({
     }: Partial<{
       value: string;
       comment: string;
+      reminderRepeatDays: number | null;
+      reminderNote: string | null;
       tags: string[];
       skipMultilineEncoding: boolean;
       newKey: string;
@@ -159,6 +163,8 @@ export const SecretListView = ({
         latestFileKey: decryptFileKey,
         tags,
         secretComment: comment,
+        secretReminderRepeatDays: reminderRepeatDays,
+        secretReminderNote: reminderNote,
         skipMultilineEncoding,
         newSecretName: newKey
       });
@@ -188,16 +194,33 @@ export const SecretListView = ({
       cb?: () => void
     ) => {
       const { key: oldKey } = orgSecret;
-      const { key, value, overrideAction, idOverride, valueOverride, tags, comment } = modSecret;
+      const {
+        key,
+        value,
+        overrideAction,
+        idOverride,
+        valueOverride,
+        tags,
+        comment,
+        reminderRepeatDays,
+        reminderNote
+      } = modSecret;
       const hasKeyChanged = oldKey !== key;
 
       const tagIds = tags.map(({ _id }) => _id);
       const oldTagIds = orgSecret.tags.map(({ _id }) => _id);
       const isSameTags = JSON.stringify(tagIds) === JSON.stringify(oldTagIds);
       const isSharedSecUnchanged =
-        (["key", "value", "comment", "skipMultilineEncoding"] as const).every(
-          (el) => orgSecret[el] === modSecret[el]
-        ) && isSameTags;
+        (
+          [
+            "key",
+            "value",
+            "comment",
+            "skipMultilineEncoding",
+            "reminderRepeatDays",
+            "reminderNote"
+          ] as const
+        ).every((el) => orgSecret[el] === modSecret[el]) && isSameTags;
 
       try {
         // personal secret change
@@ -222,13 +245,14 @@ export const SecretListView = ({
             value,
             tags: tagIds,
             comment,
+            reminderRepeatDays,
+            reminderNote,
             secretId: orgSecret._id,
             newKey: hasKeyChanged ? key : undefined,
             skipMultilineEncoding: modSecret.skipMultilineEncoding
           });
           if (cb) cb();
         }
-
         queryClient.invalidateQueries(
           secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
         );
@@ -306,7 +330,7 @@ export const SecretListView = ({
             <div className="flex flex-col" key={`${namespace}-${groupedSecrets.length}`}>
               <div
                 className={twMerge(
-                  "bg-bunker-600 capitalize text-md h-0 transition-all",
+                  "text-md h-0 bg-bunker-600 capitalize transition-all",
                   Boolean(namespace) && Boolean(filteredSecrets.length) && "h-11 py-3 pl-4 "
                 )}
                 key={namespace}

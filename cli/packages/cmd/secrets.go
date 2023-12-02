@@ -679,6 +679,28 @@ func init() {
 		util.RequireLocalWorkspaceFile()
 	}
 
+	// *** Folders sub command ***
+	folderCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
+
+	// Add getCmd, createCmd and deleteCmd flags here
+	getCmd.Flags().StringP("path", "p", "/", "The path from where folders should be fetched from")
+	getCmd.Flags().String("token", "", "Fetch folders using the infisical token")
+	folderCmd.AddCommand(getCmd)
+
+	// Add createCmd flags here
+	createCmd.Flags().StringP("path", "p", "/", "Path to where the folder should be created")
+	createCmd.Flags().StringP("name", "n", "", "Name of the folder to be created in selected `--path`")
+	folderCmd.AddCommand(createCmd)
+
+	// Add deleteCmd flags here
+	deleteCmd.Flags().StringP("path", "p", "/", "Path to the folder to be deleted")
+	deleteCmd.Flags().StringP("name", "n", "", "Name of the folder to be deleted within selected `--path`")
+	folderCmd.AddCommand(deleteCmd)
+
+	secretsCmd.AddCommand(folderCmd)
+
+	// ** End of folders sub command
+
 	secretsCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
 	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")

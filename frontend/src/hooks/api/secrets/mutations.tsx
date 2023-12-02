@@ -139,6 +139,8 @@ export const useUpdateSecretV3 = ({
       latestFileKey,
       tags,
       secretComment,
+      secretReminderRepeatDays,
+      secretReminderNote,
       newSecretName,
       skipMultilineEncoding
     }) => {
@@ -157,6 +159,8 @@ export const useUpdateSecretV3 = ({
         workspaceId,
         environment,
         type,
+        secretReminderNote,
+        secretReminderRepeatDays,
         secretPath,
         secretId,
         ...encryptSecret(randomBytes, newSecretName ?? secretName, secretValue, secretComment),
