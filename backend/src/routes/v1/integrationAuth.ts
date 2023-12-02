@@ -141,7 +141,7 @@ router.get(
 );
 
 router.get(
-  "/:integrationAuthId/github-environment/repositories",
+  "/:integrationAuthId/github/repositories",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),

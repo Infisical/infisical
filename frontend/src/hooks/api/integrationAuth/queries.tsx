@@ -344,7 +344,7 @@ const fetchIntegrationAuthBitBucketWorkspaces = async (integrationAuthId: string
 
 const fetchIntegrationAuthGitHubRepositories = async (integrationAuthId: string) => {
   const { data: { repos } } = await apiRequest.get<{ repos: GithubRepository[] }>(
-    `/api/v1/integration-auth/${integrationAuthId}/github-environment/repositories`
+    `/api/v1/integration-auth/${integrationAuthId}/github/repositories`
   );
   return repos;
 };

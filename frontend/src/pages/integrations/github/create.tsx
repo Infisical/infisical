@@ -31,7 +31,8 @@ import {
 } from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
-  useGetIntegrationAuthById
+  useGetIntegrationAuthById,
+  useGetIntegrationAuthGitHubRepositories
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 
@@ -39,6 +40,16 @@ enum TabSections {
   Connection = "connection",
   Options = "options"
 }
+
+const GithubIntegrations = [
+  {
+    slug: "github-repo-secrets",
+    name: "GitHub Repository Secrets"
+  }, {
+    slug: "github-env-secrets",
+    name: "GitHub Environment Secrets"
+  }
+]
 
 export default function GitHubCreateIntegrationPage() {
   const router = useRouter();
@@ -48,14 +59,21 @@ export default function GitHubCreateIntegrationPage() {
 
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
+  const { data: targetRepositories } = useGetIntegrationAuthGitHubRepositories((integrationAuthId as string) ?? "");
+  
+  const [workspaceSlug, setWorkspaceSlug] = useState();
   const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } = useGetIntegrationAuthApps({
-    integrationAuthId: (integrationAuthId as string) ?? ""
+    integrationAuthId: (integrationAuthId as string) ?? "",
+    workspaceSlug
   });
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
   const [targetAppIds, setTargetAppIds] = useState<string[]>([]);
   const [secretSuffix, setSecretSuffix] = useState("");
+  const [githubIntegration, setGithubIntegration] = useState(GithubIntegrations[0].slug);
+  const [targetRepositoryId, setTargetRepositoryId] = useState("");
+  const [targetEnvironmentId, setTargetEnvironmentId] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -66,14 +84,40 @@ export default function GitHubCreateIntegrationPage() {
   }, [workspace]);
 
   useEffect(() => {
-    if (integrationAuthApps) {
-      if (integrationAuthApps.length > 0) {
-        setTargetAppIds([String(integrationAuthApps[0].appId)]);
+    if(githubIntegration === "github-repo-secrets") {
+      if (integrationAuthApps) {
+        if (integrationAuthApps.length > 0) {
+          setTargetAppIds([String(integrationAuthApps[0].appId)]);
+        } else {
+          setTargetAppIds(["none"]);
+        }
+      }
+    } else if (integrationAuthApps) {
+        if (integrationAuthApps.length > 0) {
+          setTargetEnvironmentId(integrationAuthApps[0].appId as string);
+        } else {
+          setTargetEnvironmentId("none");
+        }
+      }
+  }, [integrationAuthApps, githubIntegration]);
+
+  useEffect(() => {
+    if (targetRepositories) {
+      if (targetRepositories.length > 0) {
+        setTargetRepositoryId(targetRepositories[0].id);
       } else {
-        setTargetAppIds(["none"]);
+        setTargetRepositoryId("none");
       }
     }
-  }, [integrationAuthApps]);
+  }, [targetRepositories]);
+
+  useEffect(() => {
+    if(githubIntegration === "github-repo-secrets") {
+      setWorkspaceSlug(null)
+    } else {
+      setWorkspaceSlug(targetRepositories?.find(repo => repo.id === targetRepositoryId)?.name ?? "none")
+    }
+  }, [githubIntegration, targetRepositoryId]);
 
   const handleButtonClick = async () => {
     try {
@@ -85,23 +129,46 @@ export default function GitHubCreateIntegrationPage() {
         (integrationAuthApp) => targetAppIds.includes(String(integrationAuthApp.appId))
       );
 
-      if (!targetApps) return;
-
-      await Promise.all(
-        targetApps.map(async (targetApp) => {
-          await mutateAsync({
-            integrationAuthId: integrationAuth?._id,
-            isActive: true,
-            app: targetApp.name,
-            sourceEnvironment: selectedSourceEnvironment,
-            owner: targetApp.owner,
-            secretPath,
-            metadata: {
-              secretSuffix
-            }
+      if(githubIntegration === "github-repo-secrets") {
+        await Promise.all(
+          targetApps.map(async (targetApp) => {
+            await mutateAsync({
+              integrationAuthId: integrationAuth?._id,
+              isActive: true,
+              app: targetApp.name,
+              sourceEnvironment: selectedSourceEnvironment,
+              owner: targetApp.owner,
+              secretPath,
+              scope: githubIntegration,
+              metadata: {
+                secretSuffix
+              }
+            })
           })
-        })
-      );
+        );
+      } else {
+        const targetEnvironment = integrationAuthApps?.find(
+          (app) => app.appId === targetEnvironmentId
+        );
+  
+        const targetRepository = targetRepositories?.find(
+          (repository) => repository.id === targetRepositoryId
+        );
+
+        if (!targetRepository || !targetEnvironment) return;
+        await mutateAsync({
+          integrationAuthId: integrationAuth?._id,
+          isActive: true,
+          app: targetEnvironment.name,
+          appId: String(targetEnvironment.appId),
+          sourceEnvironment: selectedSourceEnvironment,
+          targetEnvironment: targetRepository.name,
+          targetEnvironmentId: String(targetRepository.id),
+          scope: githubIntegration,
+          secretPath
+        });
+      }
+
 
       setIsLoading(false);
       router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
@@ -114,7 +181,8 @@ export default function GitHubCreateIntegrationPage() {
     workspace &&
     selectedSourceEnvironment &&
     integrationAuthApps &&
-    targetAppIds ? (
+    targetAppIds &&
+    targetRepositories ? (
     <div className="flex flex-col h-full w-full items-center justify-center">
       <Head>
         <title>Set Up GitHub Integration</title>
@@ -184,44 +252,99 @@ export default function GitHubCreateIntegrationPage() {
                   placeholder="Provide a path, default is /"
                 />
               </FormControl>
-              <FormControl label="GitHub Repo">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    {(integrationAuthApps.length > 0) ? <div className="w-full cursor-pointer border border-mineshaft-600 inline-flex items-center justify-between rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
-                        {targetAppIds.length === 1 ? integrationAuthApps?.find(
-                          (integrationAuthApp) => targetAppIds[0] === String(integrationAuthApp.appId)
-                        )?.name : `${targetAppIds.length} repositories selected`}
-                        <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
-                      </div> : <div className="w-full cursor-default border border-mineshaft-600 inline-flex items-center justify-between rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
-                        No repositories found
-                      </div>}
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="z-[100] max-h-80 overflow-y-scroll thin-scrollbar">
-                    {(integrationAuthApps.length > 0) ? (
-                      integrationAuthApps.map((integrationAuthApp) => {
-                        const isSelected = targetAppIds.includes(String(integrationAuthApp.appId));
 
-                        return (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              if (targetAppIds.includes(String(integrationAuthApp.appId))) {
-                                setTargetAppIds(targetAppIds.filter((appId) => appId !== String(integrationAuthApp.appId)));
-                              } else {
-                                setTargetAppIds([...targetAppIds, String(integrationAuthApp.appId)]);
-                              }
-                            }}
-                            key={integrationAuthApp.appId}
-                            icon={isSelected ? <FontAwesomeIcon icon={faCheckCircle} className="text-primary pr-0.5" /> : <div className="pl-[1.01rem]"/>}
-                            iconPos="left"
-                            className="w-[28.4rem] text-sm"
-                          >
-                            {integrationAuthApp.name}
-                          </DropdownMenuItem> 
-                        )})
-                    ) : <div/>}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </FormControl>
+              {
+                githubIntegration === "github-repo-secrets"? (
+                  <FormControl label="GitHub Repo">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        {(integrationAuthApps.length > 0) ? <div className="w-full cursor-pointer border border-mineshaft-600 inline-flex items-center justify-between rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                            {targetAppIds.length === 1 ? integrationAuthApps?.find(
+                              (integrationAuthApp) => targetAppIds[0] === String(integrationAuthApp.appId)
+                            )?.name : `${targetAppIds.length} repositories selected`}
+                            <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
+                          </div> : <div className="w-full cursor-default border border-mineshaft-600 inline-flex items-center justify-between rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                            No repositories found
+                          </div>}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="z-[100] max-h-80 overflow-y-scroll thin-scrollbar">
+                        {(integrationAuthApps.length > 0) ? (
+                          integrationAuthApps.map((integrationAuthApp) => {
+                            const isSelected = targetAppIds.includes(String(integrationAuthApp.appId));
+
+                            return (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (targetAppIds.includes(String(integrationAuthApp.appId))) {
+                                    setTargetAppIds(targetAppIds.filter((appId) => appId !== String(integrationAuthApp.appId)));
+                                  } else {
+                                    setTargetAppIds([...targetAppIds, String(integrationAuthApp.appId)]);
+                                  }
+                                }}
+                                key={integrationAuthApp.appId}
+                                icon={isSelected ? <FontAwesomeIcon icon={faCheckCircle} className="text-primary pr-0.5" /> : <div className="pl-[1.01rem]"/>}
+                                iconPos="left"
+                                className="w-[28.4rem] text-sm"
+                              >
+                                {integrationAuthApp.name}
+                              </DropdownMenuItem> 
+                            )})
+                        ) : <div/>
+                        }
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </FormControl>
+                  ): (
+                    <>
+                      <FormControl label="GitHub Repositories">
+                        <Select
+                          value={targetRepositoryId}
+                          onValueChange={(val) => setTargetRepositoryId(val)}
+                          className="w-full border border-mineshaft-500"
+                          isDisabled={targetRepositories.length === 0}
+                        >
+                          {targetRepositories.length > 0 ? (
+                            targetRepositories.map((targetRepository) => (
+                              <SelectItem
+                                value={targetRepository.id as string}
+                                key={`target-environment-${targetRepository.id as string}`}
+                              >
+                                {targetRepository.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" key="target-environment-none">
+                              No Repositories found
+                            </SelectItem>
+                          )}
+                        </Select>
+                      </FormControl>
+                      <FormControl label="GitHub Environment">
+                        <Select
+                          value={targetEnvironmentId}
+                          onValueChange={(val) => setTargetEnvironmentId(val)}
+                          className="w-full border border-mineshaft-500"
+                        >
+                          {integrationAuthApps.length > 0 ? (
+                            integrationAuthApps.map((integrationAuthApp) => (
+                              <SelectItem
+                                value={integrationAuthApp.appId as string}
+                                key={`target-app-${integrationAuthApp.appId as string}`}
+                              >
+                                {integrationAuthApp.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" key="target-app-none">
+                              No environments found
+                            </SelectItem>
+                          )}
+                        </Select>
+                      </FormControl>
+                    </>
+                  )
+              }
+              
             </motion.div>
           </TabPanel>
           <TabPanel value={TabSections.Options}>
@@ -232,6 +355,23 @@ export default function GitHubCreateIntegrationPage() {
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: 30 }}
             >
+              <FormControl label="Sync Secrets With">
+                <Select
+                  value={githubIntegration}
+                  onValueChange={(val) => setGithubIntegration(val)}
+                  className="w-full border border-mineshaft-500"
+                >
+                  {GithubIntegrations?.map((intg) => (
+                    <SelectItem
+                      value={intg.slug}
+                      key={`azure-key-vault-environment-${intg.slug}`}
+                    >
+                      {intg.name}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+
               <FormControl label="Append Secret Names with..." className="pb-[9.75rem]">
                 <Input
                   value={secretSuffix}

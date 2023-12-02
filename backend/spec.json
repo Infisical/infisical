@@ -2554,7 +2554,7 @@
         }
       }
     },
-    "/api/v1/integration-auth/{integrationAuthId}/github-environment/repositories": {
+    "/api/v1/integration-auth/{integrationAuthId}/github/repositories": {
       "get": {
         "description": "",
         "parameters": [
