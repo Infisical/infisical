@@ -26,7 +26,7 @@ router.post(
 );
 
 //remove above ones after depreciation
-router.post("/mfa/send", authLimiter, authController.sendMfaToken);
+router.post("/mfa/send", authLimiter, requireMfaAuth, authController.sendMfaToken);
 
 router.post("/mfa/verify", authLimiter, requireMfaAuth, authController.verifyMfaToken);
 
