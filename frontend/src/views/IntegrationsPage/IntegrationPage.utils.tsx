@@ -62,9 +62,6 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "github":
         link = `https://github.com/login/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=repo&redirect_uri=${window.location.origin}/integrations/github/oauth2/callback&state=${state}`;
         break;
-      case "github-environment":
-        link = `https://github.com/login/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=repo&redirect_uri=${window.location.origin}/integrations/github-environment/oauth2/callback&state=${state}`;
-        break;
       case "gitlab":
         link = `${window.location.origin}/integrations/gitlab/authorize`;
         break;

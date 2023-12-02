@@ -13,7 +13,6 @@ import {
   INTEGRATION_FLYIO,
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_GITHUB,
-  INTEGRATION_GITHUB_ENVIRONMENT,
   INTEGRATION_GITLAB,
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_HASURA_CLOUD,
@@ -59,7 +58,6 @@ export interface IIntegration {
     | "vercel"
     | "netlify"
     | "github"
-    | "github-environment"
     | "gitlab"
     | "render"
     | "railway"
@@ -169,7 +167,6 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_VERCEL,
         INTEGRATION_NETLIFY,
         INTEGRATION_GITHUB,
-        INTEGRATION_GITHUB_ENVIRONMENT,
         INTEGRATION_GITLAB,
         INTEGRATION_RENDER,
         INTEGRATION_RAILWAY,

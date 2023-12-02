@@ -7,7 +7,6 @@ import {
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_GCP_TOKEN_URL,
   INTEGRATION_GITHUB,
-  INTEGRATION_GITHUB_ENVIRONMENT,
   INTEGRATION_GITHUB_TOKEN_URL,
   INTEGRATION_GITLAB,
   INTEGRATION_GITLAB_TOKEN_URL,
@@ -23,7 +22,6 @@ import {
   getClientIdBitBucket,
   getClientIdGCPSecretManager,
   getClientIdGitHub,
-  getClientIdGitHubEnvironment,
   getClientIdGitLab,
   getClientIdNetlify,
   getClientIdVercel,
@@ -31,7 +29,6 @@ import {
   getClientSecretBitBucket,
   getClientSecretGCPSecretManager,
   getClientSecretGitHub,
-  getClientSecretGitHubEnvironment,
   getClientSecretGitLab,
   getClientSecretHeroku,
   getClientSecretNetlify,
@@ -157,11 +154,6 @@ const exchangeCode = async ({
       break;
     case INTEGRATION_GITHUB:
       obj = await exchangeCodeGithub({
-        code,
-      });
-      break;
-    case INTEGRATION_GITHUB_ENVIRONMENT:
-      obj = await exchangeCodeGithubEnvironment({
         code,
       });
       break;
@@ -374,39 +366,6 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
         client_secret: await getClientSecretGitHub(),
         code: code,
         redirect_uri: `${await getSiteURL()}/integrations/github/oauth2/callback`,
-      },
-      headers: {
-        Accept: "application/json",
-        "Accept-Encoding": "application/json",
-      },
-    })
-  ).data;
-
-  return {
-    accessToken: res.access_token,
-    refreshToken: null,
-    accessExpiresAt: null,
-  };
-};
-
-/**
- * Return [accessToken], [accessExpiresAt], and [refreshToken] for Github Environments
- * code-token exchange
- * @param {Object} obj1
- * @param {Object} obj1.code - code for code-token exchange
- * @returns {Object} obj2
- * @returns {String} obj2.accessToken - access token for Github Environments API
- * @returns {String} obj2.refreshToken - refresh token for Github Environments API
- * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
- */
-const exchangeCodeGithubEnvironment = async ({ code }: { code: string }) => {
-  const res: ExchangeCodeGithubResponse = (
-    await standardRequest.get(INTEGRATION_GITHUB_TOKEN_URL, {
-      params: {
-        client_id: await getClientIdGitHubEnvironment(),
-        client_secret: await getClientSecretGitHubEnvironment(),
-        code: code,
-        redirect_uri: `${await getSiteURL()}/integrations/github-environment/oauth2/callback`,
       },
       headers: {
         Accept: "application/json",

@@ -21,13 +21,11 @@ declare global {
       CLIENT_ID_VERCEL: string;
       CLIENT_ID_NETLIFY: string;
       CLIENT_ID_GITHUB: string;
-      CLIENT_ID_GITHUB_ENVIRONMENT: string;
       CLIENT_ID_GITLAB: string;
       CLIENT_SECRET_HEROKU: string;
       CLIENT_SECRET_VERCEL: string;
       CLIENT_SECRET_NETLIFY: string;
       CLIENT_SECRET_GITHUB: string;
-      CLIENT_SECRET_GITHUB_ENVIRONMENT: string;
       CLIENT_SECRET_GITLAB: string;
       CLIENT_SLUG_VERCEL: string;
 			POSTHOG_HOST: string;

@@ -10,7 +10,6 @@ const integrationSlugNameMapping: Mapping = {
   vercel: "Vercel",
   netlify: "Netlify",
   github: "GitHub",
-  "github-environment": "GitHub Environment",
   gitlab: "GitLab",
   render: "Render",
   "laravel-forge": "Laravel Forge",
