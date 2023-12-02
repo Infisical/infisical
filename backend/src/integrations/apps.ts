@@ -465,7 +465,7 @@ const getAppsGithub = async ({ accessToken, workspaceSlug }: { accessToken: stri
     auth: accessToken
   });
 
-  if(workspaceSlug) {
+  if(workspaceSlug && workspaceSlug !== "none") {
     // get github environments if workflowSlug is set
     const { data } = await octokit.request("GET /user", {
       headers: {

@@ -61,7 +61,7 @@ export default function GitHubCreateIntegrationPage() {
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
   const { data: targetRepositories } = useGetIntegrationAuthGitHubRepositories((integrationAuthId as string) ?? "");
   
-  const [workspaceSlug, setWorkspaceSlug] = useState();
+  const [workspaceSlug, setWorkspaceSlug] = useState("none");
   const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? "",
     workspaceSlug
@@ -113,7 +113,7 @@ export default function GitHubCreateIntegrationPage() {
 
   useEffect(() => {
     if(githubIntegration === "github-repo-secrets") {
-      setWorkspaceSlug(null)
+      setWorkspaceSlug("none")
     } else {
       setWorkspaceSlug(targetRepositories?.find(repo => repo.id === targetRepositoryId)?.name ?? "none")
     }
@@ -129,7 +129,7 @@ export default function GitHubCreateIntegrationPage() {
         (integrationAuthApp) => targetAppIds.includes(String(integrationAuthApp.appId))
       );
 
-      if(githubIntegration === "github-repo-secrets") {
+      if(githubIntegration === "github-repo-secrets" && targetApps) {
         await Promise.all(
           targetApps.map(async (targetApp) => {
             await mutateAsync({
