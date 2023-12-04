@@ -34,7 +34,7 @@ export const MembersPage = withProjectPermission(
                 <div className="flex items-center">
                   <p>App Clients</p>
                   <div className="ml-2 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
-                    Beta
+                    New
                   </div>
                 </div>
               </Tab>

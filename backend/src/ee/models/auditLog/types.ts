@@ -225,6 +225,8 @@ interface DeleteServiceTokenEvent {
   };
 }
 
+// TODO: review all logging for MIs including params etc.
+
 interface CreateMachineIdentityEvent {
   type: EventType.CREATE_MACHINE_IDENTITY;
   metadata: {
@@ -254,6 +256,41 @@ interface DeleteMachineIdentityEvent {
     role: string;
     clientSecretTrustedIps: Array<IMachineIdentityTrustedIp>;
     accessTokenTrustedIps: Array<IMachineIdentityTrustedIp>;
+  };
+}
+
+interface LoginMachineIdentityEvent {
+  type: EventType.LOGIN_MACHINE_IDENTITY ;
+  metadata: {
+    machineId: string;
+    clientId: string;
+    clientSecretId: string;
+  };
+}
+
+interface CreateMachineIdentitySecretEvent {
+  type: EventType.CREATE_MACHINE_IDENTITY_CLIENT_SECRET ;
+  metadata: {
+    machineId: string;
+    clientId: string;
+    clientSecretId: string;
+  };
+}
+
+interface DeleteMachineIdentitySecretEvent {
+  type: EventType.DELETE_MACHINE_IDENTITY_CLIENT_SECRET ;
+  metadata: {
+    machineId: string;
+    clientId: string;
+    clientSecretId: string;
+  };
+}
+
+interface GetMachineIdentitySecretsEvent {
+  type: EventType.GET_MACHINE_IDENTITY_CLIENT_SECRETS ;
+  metadata: {
+    machineId: string;
+    clientId: string;
   };
 }
 
@@ -502,6 +539,10 @@ export type Event =
   | CreateMachineIdentityEvent
   | UpdateMachineIdentityEvent
   | DeleteMachineIdentityEvent
+  | CreateMachineIdentitySecretEvent
+  | DeleteMachineIdentitySecretEvent
+  | LoginMachineIdentityEvent
+  | GetMachineIdentitySecretsEvent
   | CreateEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent

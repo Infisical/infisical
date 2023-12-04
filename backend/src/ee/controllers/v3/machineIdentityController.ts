@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import {
+    IMachineIdentity,
     IMachineIdentityClientSecretData,
     IMachineIdentityTrustedIp,
     MachineIdentity,
@@ -12,6 +13,7 @@ import {
     Organization,
 } from "../../../models";
 import {
+    ActorType,
     EventType,
     Role
 } from "../../models";
@@ -34,6 +36,7 @@ import {
 } from "../../services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 import { checkIPAgainstBlocklist } from "../../../utils/ip";
+import { getUserAgentType } from "../../../utils/posthog";
 
 const packageClientSecretData = (clientSecretData: IMachineIdentityClientSecretData) => ({
     _id: clientSecretData._id,
@@ -60,7 +63,7 @@ export const getMIClientSecrets = async (req: Request, res: Response) => {
 
     const machineMembershipOrg = await MachineMembershipOrg.findOne({
         machineIdentity: new Types.ObjectId(machineId)
-    });
+    }).populate<{ machineIdentity: IMachineIdentity }>("machineIdentity");
     
     if (!machineMembershipOrg) throw ResourceNotFoundError();
 
@@ -85,6 +88,20 @@ export const getMIClientSecrets = async (req: Request, res: Response) => {
         })
         .sort({ createdAt: -1 })
         .limit(5);
+    
+    await EEAuditLogService.createAuditLog(
+        req.authData,
+        {
+            type: EventType.GET_MACHINE_IDENTITY_CLIENT_SECRETS,
+            metadata: {
+                machineId: machineMembershipOrg.machineIdentity._id.toString(),
+                clientId: machineMembershipOrg.machineIdentity.clientId,
+            }
+        },
+        {
+            organizationId: machineMembershipOrg.organization
+        }
+    );
 
     return res.status(200).send({
         clientSecretData: clientSecretData.map((clientSecretDatum) => packageClientSecretData(clientSecretDatum))
@@ -110,7 +127,7 @@ export const createMIClientSecret = async (req: Request, res: Response) => {
     
     const machineMembershipOrg = await MachineMembershipOrg.findOne({
         machineIdentity: new Types.ObjectId(machineId)
-    });
+    }).populate<{ machineIdentity: IMachineIdentity }>("machineIdentity");
     
     if (!machineMembershipOrg) throw ResourceNotFoundError();
 
@@ -147,6 +164,21 @@ export const createMIClientSecret = async (req: Request, res: Response) => {
         accessTokenVersion: 1,
         expiresAt
     }).save();
+
+    await EEAuditLogService.createAuditLog(
+        req.authData,
+        {
+            type: EventType.CREATE_MACHINE_IDENTITY_CLIENT_SECRET,
+            metadata: {
+                machineId: machineMembershipOrg.machineIdentity._id.toString(),
+                clientId: machineMembershipOrg.machineIdentity.clientId,
+                clientSecretId: machineIdentityClientSecretData._id.toString()
+            }
+        },
+        {
+            organizationId: machineMembershipOrg.organization
+        }
+    );
     
     return res.status(200).send({
         clientSecret,
@@ -169,7 +201,7 @@ export const deleteMIClientSecret = async (req: Request, res: Response) => {
 
     const machineMembershipOrg = await MachineMembershipOrg.findOne({
         machineIdentity: new Types.ObjectId(machineId)
-    });
+    }).populate<{ machineIdentity: IMachineIdentity }>("machineIdentity");
     
     if (!machineMembershipOrg) throw ResourceNotFoundError();
 
@@ -193,6 +225,21 @@ export const deleteMIClientSecret = async (req: Request, res: Response) => {
     });
     
     if (!clientSecretData) throw ResourceNotFoundError();
+
+    await EEAuditLogService.createAuditLog(
+        req.authData,
+        {
+            type: EventType.DELETE_MACHINE_IDENTITY_CLIENT_SECRET,
+            metadata: {
+                machineId: machineMembershipOrg.machineIdentity._id.toString(),
+                clientId: machineMembershipOrg.machineIdentity.clientId,
+                clientSecretId: clientSecretId
+            }
+        },
+        {
+            organizationId: machineMembershipOrg.organization
+        }
+    );
 
     return res.status(200).send({
         clientSecretData: packageClientSecretData(clientSecretData)
@@ -305,6 +352,35 @@ export const loginMI = async (req: Request, res: Response) => {
         expiresIn: machineIdentity.accessTokenTTL,
         secret: await getAuthSecret()
     });
+
+    const userAgent = req.headers["user-agent"] ?? "";
+
+    await EEAuditLogService.createAuditLog(
+        {
+            actor: {
+                type: ActorType.MACHINE,
+                metadata: {
+                    machineId: machineIdentity._id.toString(),
+                    name: machineIdentity.name
+                }
+            },
+            authPayload: machineIdentity,
+            ipAddress: req.realIP,
+            userAgent,
+            userAgentType: getUserAgentType(userAgent)
+        },
+        {
+            type: EventType.LOGIN_MACHINE_IDENTITY,
+            metadata: {
+                machineId: machineIdentity._id.toString(),
+                clientId,
+                clientSecretId: validatedClientSecretDatum._id.toString()
+            }
+        },
+        {
+            organizationId: machineIdentity.organization
+        }
+    );
 
     return res.status(200).send({
         accessToken,
