@@ -327,7 +327,7 @@ export const getAuthDataProjectPermissions = async ({
 
       checkIPAgainstBlocklist({
         ipAddress: authData.ipAddress,
-        trustedIps: machineMembership.machineIdentity.trustedIps
+        trustedIps: machineMembership.machineIdentity.accessTokenTrustedIps
       });
     
       role = machineMembership.role;

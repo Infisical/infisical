@@ -7,25 +7,27 @@ export interface IMachineIdentityTrustedIp {
     prefix: number;
 }
 
+// TODO: rename to AppClient
+
 export interface IMachineIdentity extends Document {
     _id: Types.ObjectId;
+    clientId: string;
     name: string;
     organization: Types.ObjectId;
-    user: Types.ObjectId;
     isActive: boolean;
-    refreshTokenLastUsed?: Date;
-    accessTokenLastUsed?: Date;
-    refreshTokenUsageCount: number;
-    accessTokenUsageCount: number;
-    tokenVersion: number;
-    isRefreshTokenRotationEnabled: boolean;
-    expiresAt?: Date;
     accessTokenTTL: number;
-    trustedIps: Array<IMachineIdentityTrustedIp>;
+    accessTokenLastUsed?: Date;
+    accessTokenUsageCount: number;
+    clientSecretTrustedIps: Array<IMachineIdentityTrustedIp>;
+    accessTokenTrustedIps: Array<IMachineIdentityTrustedIp>;
 }
 
 const machineIdentitySchema = new Schema(
     {
+        clientId: {
+            type: String,
+            required: true
+        },
         name: {
             type: String,
             required: true
@@ -35,55 +37,54 @@ const machineIdentitySchema = new Schema(
             ref: "Organization",
             required: true
         },
-        user: {
-            type: Schema.Types.ObjectId,
-            ref: "User",
-            required: true
-        },
         isActive: {
             type: Boolean,
             default: true,
             required: true
-        },
-        refreshTokenLastUsed: {
-            type: Date,
-            required: false
-        },
-        accessTokenLastUsed: {
-            type: Date,
-            required: false
-        },
-        refreshTokenUsageCount: {
-            type: Number,
-            default: 0,
-            required: true
-        },
-        accessTokenUsageCount: {
-            type: Number,
-            default: 0,
-            required: true
-        },
-        tokenVersion: {
-            type: Number,
-            default: 1,
-            required: true
-        },
-        isRefreshTokenRotationEnabled: {
-            type: Boolean,
-            default: false,
-            required: true
-        },
-        expiresAt: { // consider revising field name
-            type: Date,
-            required: false,
-            // expires: 0
         },
         accessTokenTTL: { // seconds
             type: Number,
             default: 7200,
             required: true
         },
-        trustedIps: {
+        accessTokenLastUsed: {
+            type: Date,
+            required: false
+        },
+        accessTokenUsageCount: {
+            type: Number,
+            default: 0,
+            required: true
+        },
+        clientSecretTrustedIps: {
+            type: [
+                {
+                    ipAddress: {
+                        type: String,
+                        required: true
+                    },
+                    type: {
+                        type: String,
+                        enum: [
+                            IPType.IPV4,
+                            IPType.IPV6
+                        ],
+                        required: true
+                    },
+                    prefix: {
+                        type: Number,
+                        required: false
+                    }
+                }
+            ],
+            default: [{
+                ipAddress: "0.0.0.0",
+                type: IPType.IPV4.toString(),
+                prefix: 0
+            }],
+            required: true
+        },
+        accessTokenTrustedIps: {
             type: [
                 {
                     ipAddress: {

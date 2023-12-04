@@ -120,7 +120,7 @@ export const AddMachineIdentityModal = ({
                 reset();
             }}
         >
-            <ModalContent title="Add Machine Identity to Project">
+            <ModalContent title="Add App Client to Project">
                 {filteredMachineMembershipOrgs.length ? (
                     <form onSubmit={handleSubmit(onFormSubmit)}>
                         <Controller
@@ -129,7 +129,7 @@ export const AddMachineIdentityModal = ({
                             defaultValue={filteredMachineMembershipOrgs?.[0]?._id}
                             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                                 <FormControl
-                                    label="Machine Identity"
+                                    label="App Client"
                                     errorText={error?.message}
                                     isError={Boolean(error)}
                                 >

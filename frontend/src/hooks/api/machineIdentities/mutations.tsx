@@ -3,12 +3,16 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { organizationKeys } from "../organization/queries";
+import { machineIdentityKeys } from "./queries";
 import {
+    CreateMachineIdentityClientSecretDTO,
+    CreateMachineIdentityClientSecretRes,
     CreateMachineIdentityDTO,
     CreateMachineIdentityRes,
     DeleteMachineIdentityDTO,
     MachineIdentity,
-    UpdateMachineIdentityDTO} from "./types";
+    UpdateMachineIdentityDTO,
+} from "./types";
 
 export const useCreateMachineIdentity = () => {
     const queryClient = useQueryClient();
@@ -17,8 +21,52 @@ export const useCreateMachineIdentity = () => {
             const { data } = await apiRequest.post("/api/v3/machines/", body);
             return data;
         },
-            onSuccess: ({ machineIdentity }) => {
+        onSuccess: ({ machineIdentity }) => {
             queryClient.invalidateQueries(organizationKeys.getOrgServiceMemberships(machineIdentity.organization));
+        }
+    });
+};
+
+export const useCreateMachineIdentityClientSecret = () => {
+    const queryClient = useQueryClient();
+    return useMutation<CreateMachineIdentityClientSecretRes, {}, CreateMachineIdentityClientSecretDTO>({
+        mutationFn: async ({
+            machineId,
+            description,
+            ttl,
+            usageLimit
+        }) => {
+
+            const { data } = await apiRequest.post(`/api/v3/machines/${machineId}/client-secrets`, {
+                machineId,
+                description,
+                ttl,
+                usageLimit
+            });
+
+            return data;
+        },
+        onSuccess: (_, { machineId }) => {
+            queryClient.invalidateQueries(machineIdentityKeys.getMachineIdentityClientSecrets(machineId));
+        }
+    });
+};
+
+export const useDeleteMachineIdentityClientSecret = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({
+            machineId,
+            clientSecretId
+        }: {
+            machineId:string;
+            clientSecretId: string;
+        }) => {
+            const { data } = await apiRequest.delete(`/api/v3/machines/${machineId}/client-secrets/${clientSecretId}`);
+            return data;
+        },
+        onSuccess: (_, { machineId }) => {
+            queryClient.invalidateQueries(machineIdentityKeys.getMachineIdentityClientSecrets(machineId));
         }
     });
 };
@@ -30,21 +78,17 @@ export const useUpdateMachineIdentity = () => {
             machineId,
             name,
             role,
-            isActive,
-            trustedIps,
-            expiresIn,
-            accessTokenTTL,
-            isRefreshTokenRotationEnabled
+            clientSecretTrustedIps,
+            accessTokenTrustedIps,
+            accessTokenTTL
         }) => {
             
             const { data: { machineIdentity } } = await apiRequest.patch(`/api/v3/machines/${machineId}`, {
                 name,
                 role,
-                isActive,
-                trustedIps,
-                expiresIn,
+                clientSecretTrustedIps,
+                accessTokenTrustedIps,
                 accessTokenTTL,
-                isRefreshTokenRotationEnabled
             });
 
             return machineIdentity;

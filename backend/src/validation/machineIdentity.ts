@@ -1,9 +1,34 @@
 import { z } from "zod";
 import { NO_ACCESS } from "../variables";
 
-export const RefreshTokenV3 = z.object({
+export const GetClientSecretsV3 = z.object({
+  params: z.object({
+    machineId: z.string()
+  })
+});
+
+export const CreateClientSecretV3 = z.object({
+  params: z.object({
+    machineId: z.string()
+  }),
   body: z.object({
-    refreshToken: z.string().trim()
+    description: z.string().trim().default(""),
+    usageLimit: z.number().min(0).default(0),
+    ttl: z.number().min(0).default(0),
+  }),
+});
+
+export const DeleteClientSecretV3 = z.object({
+  params: z.object({
+    machineId: z.string(),
+    clientSecretId: z.string()
+  })
+});
+
+export const LoginMachineIdentityV3 = z.object({
+  body: z.object({
+    clientId: z.string().trim(),
+    clientSecret: z.string().trim()
   })
 });
 
@@ -12,16 +37,21 @@ export const CreateMachineIdentityV3 = z.object({
     name: z.string().trim(),
     organizationId: z.string().trim(),
     role: z.string().trim().min(1).default(NO_ACCESS),
-    trustedIps: z
+    clientSecretTrustedIps: z
       .object({
         ipAddress: z.string().trim(),
       })
       .array()
       .min(1)
       .default([{ ipAddress: "0.0.0.0/0" }]),
-    expiresIn: z.number().optional(),
-    accessTokenTTL: z.number().int().min(1),
-    isRefreshTokenRotationEnabled: z.boolean().default(false)
+    accessTokenTrustedIps: z
+      .object({
+        ipAddress: z.string().trim(),
+      })
+      .array()
+      .min(1)
+      .default([{ ipAddress: "0.0.0.0/0" }]),
+    accessTokenTTL: z.number().int().min(1)
   })
 });
   
@@ -32,16 +62,21 @@ export const UpdateMachineIdentityV3 = z.object({
   body: z.object({
     name: z.string().trim().optional(),
     role: z.string().trim().min(1).optional(),
-    trustedIps: z
+    clientSecretTrustedIps: z
       .object({
         ipAddress: z.string().trim()
       })
       .array()
       .min(1)
       .optional(),
-    expiresIn: z.number().optional(),
-    accessTokenTTL: z.number().int().min(1).optional(),
-    isRefreshTokenRotationEnabled: z.boolean().optional()
+    accessTokenTrustedIps: z
+      .object({
+        ipAddress: z.string().trim(),
+      })
+      .array()
+      .min(1)
+      .optional(),
+    accessTokenTTL: z.number().int().min(1).optional()
   }),
 });
 

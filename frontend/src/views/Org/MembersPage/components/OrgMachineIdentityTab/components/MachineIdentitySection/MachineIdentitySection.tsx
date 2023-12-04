@@ -13,6 +13,7 @@ import { useDeleteMachineIdentity } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddMachineIdentityModal } from "./AddMachineIdentityModal";
+import { CreateClientSecretModal } from "./CreateClientSecretModal";
 import { MachineIdentityTable } from "./MachineIdentityTable";
 
 export const MachineIdentitySection = withPermission(
@@ -22,6 +23,7 @@ export const MachineIdentitySection = withPermission(
     const { popUp, handlePopUpOpen, handlePopUpClose,  handlePopUpToggle } = usePopUp([
       "machineIdentity",
       "deleteMachineIdentity",
+      "clientSecret",
       "upgradePlan"
     ] as const);
     
@@ -49,7 +51,7 @@ export const MachineIdentitySection = withPermission(
         <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="flex justify-between mb-8">
             <p className="text-xl font-semibold text-mineshaft-100">
-              Machine Identities (MIs)
+              App Clients
             </p>
             <OrgPermissionCan
               I={OrgPermissionActions.Create}
@@ -63,7 +65,7 @@ export const MachineIdentitySection = withPermission(
                   onClick={() => handlePopUpOpen("machineIdentity")}
                   isDisabled={!isAllowed}
                 >
-                  Create MI
+                  Create client
                 </Button>
               )}
             </OrgPermissionCan>
@@ -74,6 +76,10 @@ export const MachineIdentitySection = withPermission(
           <AddMachineIdentityModal 
             popUp={popUp}
             handlePopUpOpen={handlePopUpOpen}
+            handlePopUpToggle={handlePopUpToggle}
+          />
+          <CreateClientSecretModal 
+            popUp={popUp}
             handlePopUpToggle={handlePopUpToggle}
           />
           <DeleteActionModal

@@ -39,6 +39,6 @@ export const getAuthDataPayloadUserObj = (authData: AuthData) => {
     }
 
     if (authData.authPayload instanceof MachineIdentity) {
-        return { user: authData.authPayload.user };
+        return {};
     }
 }

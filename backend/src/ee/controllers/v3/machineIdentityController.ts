@@ -1,15 +1,17 @@
-import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
+import crypto from "crypto";
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import {
+    IMachineIdentityClientSecretData,
     IMachineIdentityTrustedIp,
     MachineIdentity,
+    MachineIdentityClientSecretData,
     MachineMembership,
     MachineMembershipOrg,
     Organization,
 } from "../../../models";
 import {
-    ActorType,
     EventType,
     Role
 } from "../../models";
@@ -24,105 +26,291 @@ import {
 import { BadRequestError, ForbiddenRequestError, ResourceNotFoundError, UnauthorizedRequestError } from "../../../utils/errors";
 import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
 import { EEAuditLogService, EELicenseService } from "../../services";
-import { getAuthSecret } from "../../../config";
+import { getAuthSecret, getSaltRounds } from "../../../config";
 import { ADMIN, AuthTokenType, CUSTOM, MEMBER, NO_ACCESS } from "../../../variables";
 import {
     OrgPermissionActions,
     OrgPermissionSubjects
 } from "../../services/RoleService";
 import { ForbiddenError } from "@casl/ability";
+import { checkIPAgainstBlocklist } from "../../../utils/ip";
+
+const packageClientSecretData = (clientSecretData: IMachineIdentityClientSecretData) => ({
+    _id: clientSecretData._id,
+    machineIdentity: clientSecretData.machineIdentity,
+    isActive: clientSecretData.isActive,
+    description: clientSecretData.description,
+    clientSecretPrefix: clientSecretData.clientSecretPrefix,
+    clientSecretUsageCount: clientSecretData.clientSecretUsageCount,
+    clientSecretUsageLimit: clientSecretData.clientSecretUsageLimit,
+    expiresAt: clientSecretData.expiresAt
+});
 
 /**
- * Return machine identity access and refresh token as per refresh operation
+ * Return client secrets for machine with id [machineId]
  * @param req 
  * @param res 
  */
- export const refreshToken = async (req: Request, res: Response) => {
+export const getMIClientSecrets = async (req: Request, res: Response) => {
+    const {
+        params: {
+            machineId
+        }
+    } = await validateRequest(reqValidator.GetClientSecretsV3, req);
+
+    const machineMembershipOrg = await MachineMembershipOrg.findOne({
+        machineIdentity: new Types.ObjectId(machineId)
+    });
+    
+    if (!machineMembershipOrg) throw ResourceNotFoundError();
+
+    const { permission } = await getUserOrgPermissions(req.user._id, machineMembershipOrg.organization.toString());
+    
+    ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionActions.Read,
+        OrgPermissionSubjects.MachineIdentity
+    );
+
+    const rolePermission = await getOrgRolePermissions(machineMembershipOrg.role, machineMembershipOrg.organization.toString());
+    const hasRequiredPrivileges = isAtLeastAsPrivilegedOrg(permission, rolePermission);
+    
+    if (!hasRequiredPrivileges) throw ForbiddenRequestError({
+        message: "Failed to get client secrets for more privileged MI"
+    });
+
+    const clientSecretData = await MachineIdentityClientSecretData
+        .find({
+            machineIdentity: machineMembershipOrg.machineIdentity,
+            isActive: true
+        })
+        .sort({ createdAt: -1 })
+        .limit(5);
+
+    return res.status(200).send({
+        clientSecretData: clientSecretData.map((clientSecretDatum) => packageClientSecretData(clientSecretDatum))
+    });
+}
+
+/**
+ * Create a new client secret for machine with id [machineId]
+ * @param req 
+ * @param res 
+ */
+export const createMIClientSecret = async (req: Request, res: Response) => {
+    const {
+        params: {
+            machineId
+        },
+        body: {
+            description,
+            ttl,
+            usageLimit
+        }
+    } = await validateRequest(reqValidator.CreateClientSecretV3, req);
+    
+    const machineMembershipOrg = await MachineMembershipOrg.findOne({
+        machineIdentity: new Types.ObjectId(machineId)
+    });
+    
+    if (!machineMembershipOrg) throw ResourceNotFoundError();
+
+    const { permission } = await getUserOrgPermissions(req.user._id, machineMembershipOrg.organization.toString());
+    
+    ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionActions.Create,
+        OrgPermissionSubjects.MachineIdentity
+    );
+
+    const rolePermission = await getOrgRolePermissions(machineMembershipOrg.role, machineMembershipOrg.organization.toString());
+    const hasRequiredPrivileges = isAtLeastAsPrivilegedOrg(permission, rolePermission);
+    
+    if (!hasRequiredPrivileges) throw ForbiddenRequestError({
+        message: "Failed to create client secret for more privileged MI"
+    });
+    
+    let expiresAt;
+    if (ttl > 0) {
+        expiresAt = new Date(new Date().getTime() + ttl * 1000);
+    }
+
+    const clientSecret = crypto.randomBytes(32).toString("hex");
+    const clientSecretHash = await bcrypt.hash(clientSecret, await getSaltRounds());
+    
+    const machineIdentityClientSecretData = await new MachineIdentityClientSecretData({
+        machineIdentity: machineMembershipOrg.machineIdentity,
+        isActive: true,
+        description,
+        clientSecretPrefix: clientSecret.slice(0, 4),
+        clientSecretHash,
+        clientSecretUsageCount: 0,
+        clientSecretUsageLimit: usageLimit,
+        accessTokenVersion: 1,
+        expiresAt
+    }).save();
+    
+    return res.status(200).send({
+        clientSecret,
+        clientSecretData: packageClientSecretData(machineIdentityClientSecretData)
+    });
+}
+
+/**
+ * Delete client secret with id [clientSecretId]
+ * @param req 
+ * @param res 
+ */
+export const deleteMIClientSecret = async (req: Request, res: Response) => {
+    const {
+        params: {
+            machineId,
+            clientSecretId
+        }
+    } = await validateRequest(reqValidator.DeleteClientSecretV3, req);
+
+    const machineMembershipOrg = await MachineMembershipOrg.findOne({
+        machineIdentity: new Types.ObjectId(machineId)
+    });
+    
+    if (!machineMembershipOrg) throw ResourceNotFoundError();
+
+    const { permission } = await getUserOrgPermissions(req.user._id, machineMembershipOrg.organization.toString());
+    
+    ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionActions.Delete,
+        OrgPermissionSubjects.MachineIdentity
+    );
+
+    const rolePermission = await getOrgRolePermissions(machineMembershipOrg.role, machineMembershipOrg.organization.toString());
+    const hasRequiredPrivileges = isAtLeastAsPrivilegedOrg(permission, rolePermission);
+    
+    if (!hasRequiredPrivileges) throw ForbiddenRequestError({
+        message: "Failed to delete client secrets for more privileged MI"
+    });
+    
+    const clientSecretData = await MachineIdentityClientSecretData.findOneAndDelete({
+        _id: clientSecretId,
+        machineIdentity: machineId
+    });
+    
+    if (!clientSecretData) throw ResourceNotFoundError();
+
+    return res.status(200).send({
+        clientSecretData: packageClientSecretData(clientSecretData)
+    })
+}
+
+/**
+ * Return access token for machine identity with client id [clientId]
+ * and client secret [clientSecret]
+ * @param req 
+ * @param res 
+ */
+export const loginMI = async (req: Request, res: Response) => {
     const {
         body: {
-            refreshToken
+            clientId,
+            clientSecret
         }
-    } = await validateRequest(reqValidator.RefreshTokenV3, req);
+    } = await validateRequest(reqValidator.LoginMachineIdentityV3, req);
     
-    const decodedToken = <jwt.MachineRefreshTokenJwtPayload>(
-		jwt.verify(refreshToken, await getAuthSecret())
-	);
-    
-    if (decodedToken.authTokenType !== AuthTokenType.MACHINE_REFRESH_TOKEN) throw UnauthorizedRequestError();
-    
-    let machineIdentity = await MachineIdentity.findOne({
-        _id: new Types.ObjectId(decodedToken._id),
+    const machineIdentity = await MachineIdentity.findOne({
+        clientId,
         isActive: true
     });
     
     if (!machineIdentity) throw UnauthorizedRequestError();
+    
+    checkIPAgainstBlocklist({
+        ipAddress: req.realIP,
+        trustedIps: machineIdentity.clientSecretTrustedIps
+    });
 
-    if (decodedToken.tokenVersion !== machineIdentity.tokenVersion) {
-        // raise alarm
-        throw UnauthorizedRequestError();
+    const clientSecretData = await MachineIdentityClientSecretData.find({
+        machineIdentity: machineIdentity._id,
+        isActive: true
+    });
+    
+    let validatedClientSecretDatum: IMachineIdentityClientSecretData | undefined;
+    
+    for (const clientSecretDatum of clientSecretData) {
+        const isSecretValid = await bcrypt.compare(
+            clientSecret, 
+            clientSecretDatum.clientSecretHash
+        );
+
+        if (isSecretValid) {
+            validatedClientSecretDatum = clientSecretDatum;
+            break;
+        }
     }
     
-    const response: {
-        refreshToken?: string;
-        accessToken: string;
-        expiresIn: number;
-        tokenType: string;
-    } = {
-        refreshToken,
-        accessToken: "",
-        expiresIn: 0,
-        tokenType: "Bearer"
-    };
-
-    if (machineIdentity.isRefreshTokenRotationEnabled) {
-        machineIdentity = await MachineIdentity.findByIdAndUpdate(
-            machineIdentity._id,
+    if (!validatedClientSecretDatum) throw UnauthorizedRequestError();
+    
+    const {
+        expiresAt,
+        clientSecretUsageCount,
+        clientSecretUsageLimit
+    } = validatedClientSecretDatum;
+    
+    if (expiresAt && new Date(expiresAt) < new Date()) {
+        // client secret expired
+        await MachineIdentityClientSecretData.findByIdAndUpdate(
+            validatedClientSecretDatum._id,
             {
-                $inc: {
-                    tokenVersion: 1
-                }
+                isActive: false
             },
             {
                 new: true
             }
         );
-        
-        if (!machineIdentity) throw BadRequestError();
-        
-        response.refreshToken = createToken({
-            payload: {
-                serviceTokenDataId: machineIdentity._id.toString(),
-                authTokenType: AuthTokenType.MACHINE_REFRESH_TOKEN,
-                tokenVersion: machineIdentity.tokenVersion
+
+        throw UnauthorizedRequestError();
+    }
+    
+    if (clientSecretUsageLimit > 0 && clientSecretUsageCount === clientSecretUsageLimit) {
+        // number of times client secret can be used for 
+        // a login operation reached
+        await MachineIdentityClientSecretData.findByIdAndUpdate(
+            validatedClientSecretDatum._id,
+            {
+                isActive: false
             },
-            secret: await getAuthSecret()
-        });
+            {
+                new: true
+            }
+        );
+
+        throw UnauthorizedRequestError();
     }
 
-    response.accessToken = createToken({
-        payload: {
-            _id: machineIdentity._id.toString(),
-            authTokenType: AuthTokenType.MACHINE_ACCESS_TOKEN,
-            tokenVersion: machineIdentity.tokenVersion
-        },
-        expiresIn: machineIdentity.accessTokenTTL,
-        secret: await getAuthSecret()
-    });
-
-    response.expiresIn = machineIdentity.accessTokenTTL;
-
-    await MachineIdentity.findByIdAndUpdate(
-        machineIdentity._id,
+    // increment usage count by 1
+    await MachineIdentityClientSecretData.findByIdAndUpdate(
+        validatedClientSecretDatum._id,
         {
-            refreshTokenLastUsed: new Date(),
-            $inc: { refreshTokenUsageCount: 1 }
+            $inc: { clientSecretUsageCount: 1 }
         },
         {
             new: true
         }
     );
-    
-    return res.status(200).send(response);
+
+    // token version
+    const accessToken = createToken({
+        payload: {
+            machineId: machineIdentity._id.toString(), // consider changing to clientId and making it more extensible
+            clientSecretDataId: validatedClientSecretDatum._id.toString(),
+            authTokenType: AuthTokenType.MACHINE_ACCESS_TOKEN,
+            tokenVersion: validatedClientSecretDatum.accessTokenVersion
+        },
+        expiresIn: machineIdentity.accessTokenTTL,
+        secret: await getAuthSecret()
+    });
+
+    return res.status(200).send({
+        accessToken,
+        expiresIn: machineIdentity.accessTokenTTL,
+        tokenType: "Bearer"
+    });
 }
 
 /**
@@ -137,10 +325,9 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
             name, 
             organizationId, 
             role,
-            trustedIps,
-            expiresIn, 
+            clientSecretTrustedIps,
+            accessTokenTrustedIps,
             accessTokenTTL,
-            isRefreshTokenRotationEnabled
         }
     } = await validateRequest(reqValidator.CreateMachineIdentityV3, req);
 
@@ -177,44 +364,44 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
     const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
     
     // validate trusted ips
-    const reformattedTrustedIps = trustedIps.map((trustedIp) => {
-        if (!plan.ipAllowlisting && trustedIp.ipAddress !== "0.0.0.0/0") return res.status(400).send({
+    const reformattedClientSecretTrustedIps = clientSecretTrustedIps.map((clientSecretTrustedIp) => {
+        if (!plan.ipAllowlisting && clientSecretTrustedIp.ipAddress !== "0.0.0.0/0") return res.status(400).send({
             message: "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
         });
 
-        const isValidIPOrCidr = isValidIpOrCidr(trustedIp.ipAddress);
+        const isValidIPOrCidr = isValidIpOrCidr(clientSecretTrustedIp.ipAddress);
         
         if (!isValidIPOrCidr) return res.status(400).send({
             message: "The IP is not a valid IPv4, IPv6, or CIDR block"
         });
         
-        return extractIPDetails(trustedIp.ipAddress);
+        return extractIPDetails(clientSecretTrustedIp.ipAddress);
     });
-    
-    let expiresAt;
-    if (expiresIn) {
-        expiresAt = new Date();
-        expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
-    }
-    
-    let user;
-    if (req.authData.actor.type === ActorType.USER) {
-        user = req.authData.authPayload._id;
-    }
+
+    const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
+        if (!plan.ipAllowlisting && accessTokenTrustedIp.ipAddress !== "0.0.0.0/0") return res.status(400).send({
+            message: "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
+        });
+
+        const isValidIPOrCidr = isValidIpOrCidr(accessTokenTrustedIp.ipAddress);
+        
+        if (!isValidIPOrCidr) return res.status(400).send({
+            message: "The IP is not a valid IPv4, IPv6, or CIDR block"
+        });
+        
+        return extractIPDetails(accessTokenTrustedIp.ipAddress);
+    });
     
     const isActive = true;
     const machineIdentity = await new MachineIdentity({
+        clientId: crypto.randomUUID(),
         name,
-        user,
         organization: new Types.ObjectId(organizationId),
-        refreshTokenUsageCount: 0,
-        accessTokenUsageCount: 0,
-        tokenVersion: 1,
-        trustedIps: reformattedTrustedIps,
         isActive,
-        expiresAt,
         accessTokenTTL,
-        isRefreshTokenRotationEnabled
+        accessTokenUsageCount: 0,
+        clientSecretTrustedIps: reformattedClientSecretTrustedIps,
+        accessTokenTrustedIps: reformattedAccessTokenTrustedIps,
     }).save();
     
     await new MachineMembershipOrg({
@@ -224,15 +411,6 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
         customRole
     }).save();
     
-    const refreshToken = createToken({
-        payload: {
-            _id: machineIdentity._id.toString(),
-            authTokenType: AuthTokenType.MACHINE_REFRESH_TOKEN,
-            tokenVersion: machineIdentity.tokenVersion
-        },
-        secret: await getAuthSecret()
-    });
-    
     await EEAuditLogService.createAuditLog(
         req.authData,
         {
@@ -241,8 +419,8 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
                 name,
                 isActive,
                 role,
-                trustedIps: reformattedTrustedIps as Array<IMachineIdentityTrustedIp>,
-                expiresAt
+                clientSecretTrustedIps: reformattedClientSecretTrustedIps as Array<IMachineIdentityTrustedIp>,
+                accessTokenTrustedIps: reformattedAccessTokenTrustedIps as Array<IMachineIdentityTrustedIp>
             }
         },
         {
@@ -251,8 +429,7 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
     );
     
     return res.status(200).send({
-        machineIdentity,
-        refreshToken
+        machineIdentity
     });
 }
 
@@ -268,10 +445,9 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
         body: { 
             name, 
             role,
-            trustedIps,
-            expiresIn,
-            accessTokenTTL,
-            isRefreshTokenRotationEnabled
+            clientSecretTrustedIps,
+            accessTokenTrustedIps,
+            accessTokenTTL
         }
     } = await validateRequest(reqValidator.UpdateMachineIdentityV3, req);
 
@@ -312,38 +488,49 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
 
     const plan = await EELicenseService.getPlan(machineIdentity.organization);
 
-    // validate trusted ips
-    let reformattedTrustedIps;
-    if (trustedIps) {
-        reformattedTrustedIps = trustedIps.map((trustedIp) => {
-            if (!plan.ipAllowlisting && trustedIp.ipAddress !== "0.0.0.0/0") return res.status(400).send({
+    // validate client secret trusted ips
+    let reformattedClientSecretTrustedIps;
+    if (clientSecretTrustedIps) {
+        reformattedClientSecretTrustedIps = clientSecretTrustedIps.map((clientSecretTrustedIp) => {
+            if (!plan.ipAllowlisting && clientSecretTrustedIp.ipAddress !== "0.0.0.0/0") return res.status(400).send({
                 message: "Failed to update IP access range to service token due to plan restriction. Upgrade plan to update IP access range."
             });
 
-            const isValidIPOrCidr = isValidIpOrCidr(trustedIp.ipAddress);
+            const isValidIPOrCidr = isValidIpOrCidr(clientSecretTrustedIp.ipAddress);
             
             if (!isValidIPOrCidr) return res.status(400).send({
                 message: "The IP is not a valid IPv4, IPv6, or CIDR block"
             });
             
-            return extractIPDetails(trustedIp.ipAddress);
+            return extractIPDetails(clientSecretTrustedIp.ipAddress);
         });
     }
 
-    let expiresAt;
-    if (expiresIn) {
-        expiresAt = new Date();
-        expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
+    // validate access token trusted ips
+    let reformattedAccessTokenTrustedIps;
+    if (accessTokenTrustedIps) {
+        reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
+            if (!plan.ipAllowlisting && accessTokenTrustedIp.ipAddress !== "0.0.0.0/0") return res.status(400).send({
+                message: "Failed to update IP access range to service token due to plan restriction. Upgrade plan to update IP access range."
+            });
+
+            const isValidIPOrCidr = isValidIpOrCidr(accessTokenTrustedIp.ipAddress);
+            
+            if (!isValidIPOrCidr) return res.status(400).send({
+                message: "The IP is not a valid IPv4, IPv6, or CIDR block"
+            });
+            
+            return extractIPDetails(accessTokenTrustedIp.ipAddress);
+        });
     }
     
     machineIdentity = await MachineIdentity.findByIdAndUpdate(
         machineId,
         {
             name,
-            trustedIps: reformattedTrustedIps,
-            expiresAt,
-            accessTokenTTL,
-            isRefreshTokenRotationEnabled
+            clientSecretTrustedIps: reformattedClientSecretTrustedIps,
+            accessTokenTrustedIps: reformattedAccessTokenTrustedIps,
+            accessTokenTTL
         },
         {
             new: true
@@ -381,8 +568,8 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
             metadata: {
                 name: machineIdentity.name,
                 role,
-                trustedIps: reformattedTrustedIps as Array<IMachineIdentityTrustedIp>,
-                expiresAt
+                clientSecretTrustedIps: reformattedClientSecretTrustedIps as Array<IMachineIdentityTrustedIp>,
+                accessTokenTrustedIps: reformattedAccessTokenTrustedIps as Array<IMachineIdentityTrustedIp>
             }
         },
         {
@@ -436,6 +623,10 @@ export const deleteMachineIdentity = async (req: Request, res: Response) => {
         machineIdentity: machineIdentity._id,
     });
     
+    await MachineIdentityClientSecretData.deleteMany({
+        machineIdentity: machineIdentity._id
+    });
+    
     await EEAuditLogService.createAuditLog(
         req.authData,
         {
@@ -444,8 +635,8 @@ export const deleteMachineIdentity = async (req: Request, res: Response) => {
                 name: machineIdentity.name,
                 isActive: machineIdentity.isActive,
                 role: machineMembershipOrg.role,
-                trustedIps: machineIdentity.trustedIps as Array<IMachineIdentityTrustedIp>,
-                expiresAt: machineIdentity.expiresAt
+                clientSecretTrustedIps: machineIdentity.clientSecretTrustedIps as Array<IMachineIdentityTrustedIp>,
+                accessTokenTrustedIps: machineIdentity.accessTokenTrustedIps as Array<IMachineIdentityTrustedIp>,
             }
         },
         {

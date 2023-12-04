@@ -1,6 +1,5 @@
-import { faPencil,faServer, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faKey,faPencil,faServer, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { format } from "date-fns";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -16,8 +15,8 @@ import {
     Td,
     Th,
     THead,
-    Tr
-} from "@app/components/v2";
+    Tooltip,
+    Tr} from "@app/components/v2";
 import { 
     OrgPermissionActions,
     OrgPermissionSubjects,
@@ -25,14 +24,14 @@ import {
 import {
     useGetMachineMembershipOrgs,
     useGetRoles,
-    useUpdateMachineIdentity
+    useUpdateMachineIdentity,
 } from "@app/hooks/api";
 import { MachineTrustedIp } from "@app/hooks/api/machineIdentities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
     handlePopUpOpen: (
-      popUpName: keyof UsePopUpState<["deleteMachineIdentity", "machineIdentity"]>,
+      popUpName: keyof UsePopUpState<["deleteMachineIdentity", "machineIdentity", "clientSecret"]>,
       data?: {
         machineId?: string;
         name?: string;
@@ -41,9 +40,9 @@ type Props = {
             name: string;
             slug: string;
         };
-        trustedIps?: MachineTrustedIp[];
+        clientSecretTrustedIps?: MachineTrustedIp[];
+        accessTokenTrustedIps?: MachineTrustedIp[];
         accessTokenTTL?: number;
-        isRefreshTokenRotationEnabled?: boolean;
       }
     ) => void;
   };
@@ -121,12 +120,13 @@ export const MachineIdentityTable = ({
                 <THead>
                     <Tr>
                         <Th>Name</Th>
+                        <Th>Client ID</Th>
                         {/* <Th>Status</Th> */}
                         <Th>Role</Th>
                         {/* <Th>Trusted IPs</Th> */}
                         {/* <Th>Access Token TTL</Th> */}
                         {/* <Th>Created At</Th> */}
-                        <Th>Valid Until</Th>
+                        {/* <Th>Valid Until</Th> */}
                         <Th className="w-5" />
                     </Tr>
                 </THead>
@@ -139,12 +139,13 @@ export const MachineIdentityTable = ({
                         machineIdentity: {
                             _id,
                             name,
+                            clientId,
                             // isActive,
-                            trustedIps,
+                            clientSecretTrustedIps,
+                            accessTokenTrustedIps,
                             // createdAt,
-                            expiresAt,
+                            // expiresAt,
                             accessTokenTTL,
-                            isRefreshTokenRotationEnabled
                         },
                         role,
                         customRole
@@ -152,6 +153,7 @@ export const MachineIdentityTable = ({
                         return (
                             <Tr className="h-10" key={`st-v3-${_id}`}>
                                 <Td>{name}</Td>
+                                <Td>{clientId}</Td>
                                 {/* <Td>
                                     <OrgPermissionCan
                                         I={OrgPermissionActions.Edit}
@@ -219,8 +221,26 @@ export const MachineIdentityTable = ({
                                 </Td>  */}
                                 {/* <Td>{accessTokenTTL}</Td> */}
                                 {/* <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td> */}
-                                <Td>{expiresAt ? format(new Date(expiresAt), "yyyy-MM-dd") : "-"}</Td>
+                                {/* <Td>{expiresAt ? format(new Date(expiresAt), "yyyy-MM-dd") : "-"}</Td> */}
+                                
                                 <Td className="flex justify-end">
+                                    <Tooltip content="Manage client secrets">
+                                        <IconButton
+                                            onClick={async () => {
+                                                handlePopUpOpen("clientSecret", {
+                                                    machineId: _id,
+                                                    name
+                                                });
+                                            }}
+                                            size="lg"
+                                            colorSchema="primary"
+                                            variant="plain"
+                                            ariaLabel="update"
+                                            // isDisabled={!isAllowed}
+                                        >
+                                            <FontAwesomeIcon icon={faKey} />
+                                        </IconButton>
+                                    </Tooltip>
                                     <OrgPermissionCan
                                         I={OrgPermissionActions.Edit}
                                         a={OrgPermissionSubjects.MachineIdentity}
@@ -233,15 +253,16 @@ export const MachineIdentityTable = ({
                                                         name,
                                                         role,
                                                         customRole,
-                                                        trustedIps,
+                                                        clientSecretTrustedIps,
+                                                        accessTokenTrustedIps,
                                                         accessTokenTTL,
-                                                        isRefreshTokenRotationEnabled
                                                     });
                                                 }}
                                                 size="lg"
                                                 colorSchema="primary"
                                                 variant="plain"
                                                 ariaLabel="update"
+                                                className="ml-4"
                                                 isDisabled={!isAllowed}
                                             >
                                                 <FontAwesomeIcon icon={faPencil} />
@@ -278,7 +299,7 @@ export const MachineIdentityTable = ({
                     {!isLoading && data && data?.length === 0 && (
                         <Tr>
                             <Td colSpan={7}>
-                                <EmptyState title="No MIs have been created in this organization" icon={faServer} />
+                                <EmptyState title="No app clients have been created in this organization" icon={faServer} />
                             </Td>
                         </Tr>
                     )}

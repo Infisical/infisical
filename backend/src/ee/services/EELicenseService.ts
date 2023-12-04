@@ -69,7 +69,7 @@ class EELicenseService {
         rbac: false,
         customRateLimits: false,
         customAlerts: false,
-        auditLogs: false,
+        auditLogs: true,
         auditLogsRetentionDays: 0,
         samlSSO: false,
         status: null,

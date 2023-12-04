@@ -231,8 +231,8 @@ interface CreateMachineIdentityEvent {
     name: string;
     isActive: boolean;
     role: string;
-    trustedIps: Array<IMachineIdentityTrustedIp>;
-    expiresAt?: Date;
+    clientSecretTrustedIps: Array<IMachineIdentityTrustedIp>;
+    accessTokenTrustedIps: Array<IMachineIdentityTrustedIp>;
   };
 }
 
@@ -241,8 +241,8 @@ interface UpdateMachineIdentityEvent {
   metadata: {
     name?: string;
     role?: string;
-    trustedIps?: Array<IMachineIdentityTrustedIp>;
-    expiresAt?: Date;
+    clientSecretTrustedIps?: Array<IMachineIdentityTrustedIp>;
+    accessTokenTrustedIps?: Array<IMachineIdentityTrustedIp>;
   };
 }
 
@@ -252,8 +252,8 @@ interface DeleteMachineIdentityEvent {
     name: string;
     isActive: boolean;
     role: string;
-    expiresAt?: Date;
-    trustedIps: Array<IMachineIdentityTrustedIp>;
+    clientSecretTrustedIps: Array<IMachineIdentityTrustedIp>;
+    accessTokenTrustedIps: Array<IMachineIdentityTrustedIp>;
   };
 }
 

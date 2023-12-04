@@ -25,7 +25,7 @@ declare module "jsonwebtoken" {
     userId: string;
     refreshVersion?: number;
   }
-  export interface MachineRefreshTokenJwtPayload extends jwt.JwtPayload {
+  export interface MachineAccessTokenJwtPayload extends jwt.JwtPayload {
     _id: string;
     authTokenType: string;
     tokenVersion: number;

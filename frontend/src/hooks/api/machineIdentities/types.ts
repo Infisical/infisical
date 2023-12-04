@@ -9,20 +9,29 @@ export type MachineTrustedIp = {
 
 export type MachineIdentity = {
     _id: string;
+    clientId: string;
     name: string;
     organization: string;
     isActive: boolean;
-    refreshTokenLastUsed?: string;
-    accessTokenLastUsed?: string;
-    refreshTokenUsageCount: number;
-    accessTokenUsageCount: number;
-    trustedIps: MachineTrustedIp[];
-    expiresAt?: string;
     accessTokenTTL: number;
-    isRefreshTokenRotationEnabled: boolean;
+    accessTokenLastUsed?: string;
+    accessTokenUsageCount: number;
+    clientSecretTrustedIps: MachineTrustedIp[];
+    accessTokenTrustedIps: MachineTrustedIp[];
     createdAt: string;
     updatedAt: string;
 };
+
+export type MachineIdentityClientSecret = {
+    _id: string;
+    machineIdentity: string;
+    isActive: boolean;
+    description: string;
+    clientSecretPrefix: string;
+    clientSecretUsageCount: number;
+    clientSecretUsageLimit: number;
+    expiresAt: string;
+}
 
 export type MachineMembershipOrg = {
     _id: string;
@@ -48,30 +57,47 @@ export type CreateMachineIdentityDTO = {
     name: string;
     organizationId: string;
     role?: string;
-    trustedIps: {
+    clientSecretTrustedIps: {
       ipAddress: string;
     }[];
-    expiresIn?: number;
+    accessTokenTrustedIps: {
+      ipAddress: string;
+    }[];
     accessTokenTTL: number;
-    isRefreshTokenRotationEnabled: boolean;
+}
+
+export type CreateMachineIdentityClientSecretDTO = {
+    machineId: string;
+    description?: string;
+    ttl?: number;
+    usageLimit?: number;
+}
+
+export type CreateMachineIdentityClientSecretRes = {
+    clientSecret: string;
+    machineIdentity: string;
+    isActive: boolean;
+    description: string;
+    clientSecretUsageCount: number;
+    clientSecretUsageLimit: number;
+    expiresAt?: Date;
 }
 
 export type CreateMachineIdentityRes = {
-    refreshToken: string;
     machineIdentity: MachineIdentity;
 }
 
 export type UpdateMachineIdentityDTO = {
     machineId: string;
-    isActive?: boolean;
     name?: string;
     role?: string;
-    trustedIps?: {
+    clientSecretTrustedIps?: {
         ipAddress: string;
     }[];
-    expiresIn?: number;
+    accessTokenTrustedIps?: {
+        ipAddress: string;
+    }[];
     accessTokenTTL?: number;
-    isRefreshTokenRotationEnabled?: boolean;
 }
 
 export type DeleteMachineIdentityDTO = {

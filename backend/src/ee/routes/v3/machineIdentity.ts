@@ -4,9 +4,34 @@ import { requireAuth } from "../../../middleware";
 import { AuthMode } from "../../../variables";
 import { machineIdentityController } from "../../controllers/v3";
 
+router.get(
+  "/:machineId/client-secrets",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  machineIdentityController.getMIClientSecrets
+);
+
 router.post(
-  "/me/token",
-  machineIdentityController.refreshToken
+  "/:machineId/client-secrets",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  machineIdentityController.createMIClientSecret
+);
+
+router.delete(
+  "/:machineId/client-secrets/:clientSecretId",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  machineIdentityController.deleteMIClientSecret
+);
+
+// consider moving to /auth/app/login
+router.post(
+  "/login",
+  machineIdentityController.loginMI
 );
 
 router.post(
