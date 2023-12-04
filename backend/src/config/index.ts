@@ -104,6 +104,16 @@ export const getAwsCloudWatchLog = async () => {
   return { logGroupName, region, accessKeySecret, accessKeyId, interval };
 };
 
+export const getElasticSearchLog = async () => {
+  const node = (await client.getSecret("ELASTIC_SEARCH_LOG_NODE")).secretValue;
+  const apiKey = (await client.getSecret("ELASTIC_SEARCH_LOG_API_KEY")).secretValue;
+  const cloudId = (await client.getSecret("ELASTIC_SEARCH_LOG_CLOUD_ID")).secretValue;
+  const logIndex = (await client.getSecret("ELASTIC_SEARCH_LOG_INDEX")).secretValue;
+
+  if (!logIndex) return;
+  return { node, apiKey, cloudId, logIndex };
+};
+
 export const getPostHogHost = async () =>
   (await client.getSecret("POSTHOG_HOST")).secretValue || "https://app.posthog.com";
 export const getPostHogProjectApiKey = async () =>

@@ -1,5 +1,5 @@
 import pino, { Logger } from "pino";
-import { getAwsCloudWatchLog, getNodeEnv } from "../../config";
+import { getAwsCloudWatchLog, getElasticSearchLog, getNodeEnv } from "../../config";
 
 export let logger: Logger;
 
@@ -42,6 +42,23 @@ export const initLogger = async () => {
         interval: awsCloudWatchLogCfg.interval
       }
     });
+  }
+
+  const elasticLogCfg = await getElasticSearchLog();
+  if (elasticLogCfg) {
+    targets.push({
+      target: "@shraeyas/elastic-writeable-stream",
+      level: "info",
+      options: {
+        cloud: {
+          id: elasticLogCfg.cloudId
+        },
+        index: elasticLogCfg.logIndex,
+        auth: {
+          apiKey: elasticLogCfg.apiKey
+        }
+      }
+    })
   }
 
   const transport = pino.transport({
