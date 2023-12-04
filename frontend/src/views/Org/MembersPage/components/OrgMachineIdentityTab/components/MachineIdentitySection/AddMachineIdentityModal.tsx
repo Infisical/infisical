@@ -263,7 +263,7 @@ export const AddMachineIdentityModal = ({
                 reset();
             }}
         >
-            <ModalContent title={`${popUp?.machineIdentity?.data ? "Update" : "Create"} App Client`}>
+            <ModalContent title={`${popUp?.machineIdentity?.data ? "Update" : "Create"} Machine Identity`}>
                 <form onSubmit={handleSubmit(onFormSubmit)}>
                     <Tabs defaultValue={TabSections.General}>
                         <TabList>

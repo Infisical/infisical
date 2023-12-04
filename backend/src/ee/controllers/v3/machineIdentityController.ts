@@ -531,6 +531,8 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
     if (!machineIdentity) throw ResourceNotFoundError({ 
         message: `Machine identity with id ${machineId} not found`
     });
+    
+    // TODO: validate existing role (if it is currently admin then cant demote it)
 
     const { permission } = await getUserOrgPermissions(req.user._id, machineIdentity.organization.toString());
     

@@ -151,29 +151,9 @@ export const MachineIdentityTable = ({
                         customRole
                     }) => {
                         return (
-                            <Tr className="h-10" key={`st-v3-${_id}`}>
+                            <Tr className="h-10" key={`machine-identity-${_id}`}>
                                 <Td>{name}</Td>
                                 <Td>{clientId}</Td>
-                                {/* <Td>
-                                    <OrgPermissionCan
-                                        I={OrgPermissionActions.Edit}
-                                        a={OrgPermissionSubjects.MachineIdentity}
-                                    >
-                                        {(isAllowed) => (
-                                            <Switch
-                                                id={`enable-service-token-${_id}`}
-                                                onCheckedChange={(value) => handleToggleStatus({
-                                                    serviceTokenDataId: _id,
-                                                    isActive: value
-                                                })}
-                                                isChecked={isActive}
-                                                isDisabled={!isAllowed}
-                                            >
-                                                <p className="w-12 mr-4">{isActive ? "Active" : "Inactive"}</p>
-                                            </Switch>
-                                        )}
-                                    </OrgPermissionCan>
-                                </Td> */}
                                 <Td>
                                     <OrgPermissionCan
                                         I={OrgPermissionActions.Edit}
@@ -206,24 +186,8 @@ export const MachineIdentityTable = ({
                                         }}
                                     </OrgPermissionCan>
                                 </Td> 
-                                {/* <Td>
-                                    {trustedIps.map(({
-                                        _id: trustedIpId,
-                                        ipAddress,
-                                        prefix
-                                    }) => {
-                                        return (
-                                            <p key={`service-token-${_id}-}-trusted-ip-${trustedIpId}`}>
-                                                {`${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`}
-                                            </p>
-                                        );
-                                    })}
-                                </Td>  */}
-                                {/* <Td>{accessTokenTTL}</Td> */}
-                                {/* <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td> */}
-                                {/* <Td>{expiresAt ? format(new Date(expiresAt), "yyyy-MM-dd") : "-"}</Td> */}
-                                
-                                <Td className="flex justify-end">
+                                <Td>
+                                    <div className="flex justify-end items-center">
                                     <Tooltip content="Manage client secrets">
                                         <IconButton
                                             onClick={async () => {
@@ -292,6 +256,7 @@ export const MachineIdentityTable = ({
                                             </IconButton>
                                         )}
                                     </OrgPermissionCan>
+                                    </div>
                                 </Td>
                             </Tr>
                         );
@@ -299,7 +264,7 @@ export const MachineIdentityTable = ({
                     {!isLoading && data && data?.length === 0 && (
                         <Tr>
                             <Td colSpan={7}>
-                                <EmptyState title="No app clients have been created in this organization" icon={faServer} />
+                                <EmptyState title="No machine identities have been created in this organization" icon={faServer} />
                             </Td>
                         </Tr>
                     )}

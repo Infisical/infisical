@@ -188,7 +188,7 @@ export const MachineIdentityTable = ({
                     {!isLoading && data && data?.length === 0 && (
                         <Tr>
                             <Td colSpan={7}>
-                                <EmptyState title="No app clients have been added to this project" icon={faServer} />
+                                <EmptyState title="No machine identities have been added to this project" icon={faServer} />
                             </Td>
                         </Tr>
                     )}

@@ -19,11 +19,11 @@ fetch secrets back from the `/` path of the `development` environment in some pr
 
 Here's a few pointers to get you acquainted with MIs:
 
-- When you create a MI, you get issued a refresh token that can be exchanged for an access token to authenticate with the Infisical API.
+- Each MI has a **Client ID** for which you can generate one or more **Client Secret(s)**. Together, a **Client ID** and **Client Secret** can be exchanged for an access token to authenticate with the Infisical API.
 - MIs support IP allowlisting; this means you can restrict the usage of a MI access token to a specific IP or CIDR range.
 - MIs rely on the role-based permission system to provision access to resources like secrets.
-- MIs support expiration, so, if specified, the refresh token of the MI will automatically be defunct after a period of time.
-- MIs tracks most recent usage of their refresh and access tokens; they also keeps track of each token's usage count.
+- MIs support expiration, so, if specified, the client secret of the MI will automatically be defunct after a period of time.
+- MIs tracks most recent usage of their client secrets and access tokens; they also keep track of each token's usage count.
 - MIs are editable.
 
 ## Using machine identities
@@ -32,7 +32,7 @@ In the following steps, we explore how to create and use MIs for your applicatio
 
 <Steps>
   <Step title="Creating a MI">
-    To create a machine identity, head to your Organization Settings > Access Control > Machine Identities and press **Create MI**.
+    To create a machine identity, head to your Organization Settings > Access Control > Machine Identities and press **Create identity**.
 
     ![machine identities organization](../../images/platform/machine-identity/machine-identity-org.png)
     
@@ -42,23 +42,36 @@ In the following steps, we explore how to create and use MIs for your applicatio
 
     - Name (required): A friendly name for the MI
     - Role (required): A role from the **Organization Roles** tab to permit the MI to access certain resources.
-    - Refresh Token Expires In: The number of days from now to deactivate the MI refresh token
-    - Trusted IPs: The IPs or CIDR ranges that the refresh and access tokens can be used from. By default, each token is given the `0.0.0.0/0` entry representing all possible IPv4 addresses.
     - Access Token TTL: The time-to-live for each acccess token in seconds.
-    - Refresh Token Rotation: Whether or not to return a new refresh token when exchanging an existing refresh token; if enabled, the existing refresh token is invalidated upon the refresh operation.
+    - Client Secret Trusted IPs: The IPs or CIDR ranges that the **Client Secret** can be used from together with the **Client ID** to get back an access token. By default, **Client Secrets** are given the `0.0.0.0/0` entry representing all possible IPv4 addresses.
+    - Access Token Trusted IPs: The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the `0.0.0.0/0` entry representing all possible IPv4 addresses.
 
     <Warning>
-    Restricting token usage to specific trusted IPs is a paid feature.
+    Restricting **Client Secret** and access token usage to specific trusted IPs is a paid feature.
 
     If you’re using Infisical Cloud, then it is available under the Pro Tier. If you’re self-hosting Infisical, then you should contact team@infisical.com to purchase an enterprise license to use it.
     </Warning>
 
-    Once you've created the MI, you'll be issued a refresh token for it; copy the token and keep it handy.
+  </Step>
+  <Step title="Creating a Client Secret">
+    In order to use the MI, you'll need the non-sensitive **Client ID**
+    of the MI and a **Client Secret** for it; you can think of these credentials akin to a username
+    and password used to authenticate with the Infisical API. With that, press on the key icon on the MI to generate a **Client Secret**
+    for it.
+    
+    ![machine identities client secret create](../../images/platform/machine-identity/machine-identity-org-client-secret.png)
+    ![machine identities client secret create](../../images/platform/machine-identity/machine-identity-org-client-secret-create-1.png)
+    ![machine identities client secret create](../../images/platform/machine-identity/machine-identity-org-client-secret-create-2.png)
+    
+    Feel free to input any (optional) details for the **Client Secret** configuration:
+    
+    - Description: A description for the **Client Secret**.
+    - TTL: The time-to-live for the **Client Secret**. By default, the TTL will be set to 0 which implies that the **Client Secret** will never expire.
   </Step>
   <Step title="Adding a MI to a project">
-    If you intend the MI access project-level resources such as secrets within a specific project, you should add it to that project.
+    To enable the MI to access project-level resources such as secrets within a specific project, you should add it to that project.
 
-    To do this, head over to the project you want to add the MI to and go to Project Settings > Access Control > Machine Identities and press **Add MI**.
+    To do this, head over to the project you want to add the MI to and go to Project Settings > Access Control > Machine Identities and press **Add identity**.
 
     Next, select the MI you want to add to the project and the role you want to assign it.
 
@@ -67,22 +80,23 @@ In the following steps, we explore how to create and use MIs for your applicatio
     ![machine identities project create](../../images/platform/machine-identity/machine-identity-project-create.png)
   </Step>
   <Step title="Accessing the Infisical API with the MI">
-    To access the Infisical API as the MI, you should first exchange the MI refresh token from **Step 1** for an access token
-    by making a request to the `/api/v3/machines/me/token` endpoint.
+    To access the Infisical API as the MI, you should first perform a login operation
+    that is to exchange the **Client ID** and **Client Secret** of the MI for an access token
+    by making a request to the `/api/v3/machines/login` endpoint.
     
     #### Sample request
 
     ```
-    curl --location --request POST 'http://localhost:8080/api/v3/machines/me/token' \
+    curl --location --request POST 'https://app.infisical.com/api/v3/machines/login' \
       --header 'Content-Type: application/x-www-form-urlencoded' \
-      --data-urlencode 'refreshToken=<token>'
+      --data-urlencode 'clientSecret=...' \
+      --data-urlencode 'clientId=...'
     ```
     
     #### Sample response
     
     ```
     {
-      "refreshToken": "...",
       "accessToken": "...",
       "expiresIn": 7200,
       "tokenType": "Bearer"
@@ -92,11 +106,11 @@ In the following steps, we explore how to create and use MIs for your applicatio
     Next, you can use the access token to authenticate with the [Infisical API](/api-reference/overview/introduction)
     
     <Note>
-      Each MI access token has a time-to-live (TLL) which you can infer from the response of the refresh token exchange;
+      Each MI access token has a time-to-live (TLL) which you can infer from the response of the login operation;
       the default TTL is `7200` seconds which can be adjusted in the **Advanced** settings of the MI.
 
       If a MI access token expires, it can no longer authenticate with the Infisical API. In this case,
-      a new access token should be obtained from the refresh token exchange.
+      a new access token should be obtained from the aforementioned login operation.
     </Note>
   </Step>
 </Steps>
@@ -113,10 +127,10 @@ In the following steps, we explore how to create and use MIs for your applicatio
 <Accordion title="Why is the Infisical API rejecting my machine identity credentials?">
   There are a few reasons for why this might happen:
   
-  - The refresh/access token has expired.
+  - The client secret or access token has expired.
   - The MI is insufficently permissioned to interact with the resources you wish to access.
   - You are attempting to access a `/raw` secrets endpoint that requires your project to disable E2EE.
-  - The refresh/access token is being used from an untrusted IP.
+  - The client secret/access token is being used from an untrusted IP.
 </Accordion>
 <Accordion title="Can you provide examples for using glob patterns?">
   1. `/**`: This pattern matches all folders at any depth in the directory structure. For example, it would match folders like `/folder1/`, `/folder1/subfolder/`, and so on.

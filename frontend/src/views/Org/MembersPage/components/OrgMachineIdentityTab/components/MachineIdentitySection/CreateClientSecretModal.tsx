@@ -270,7 +270,7 @@ export const CreateClientSecretModal = ({
                             {!isLoading && data && data?.length === 0 && (
                                 <Tr>
                                     <Td colSpan={4}>
-                                        <EmptyState title="No client secrets have been created for this app client yet" icon={faKey} />
+                                        <EmptyState title="No client secrets have been created for this machine identity yet" icon={faKey} />
                                     </Td>
                                 </Tr>
                             )}
