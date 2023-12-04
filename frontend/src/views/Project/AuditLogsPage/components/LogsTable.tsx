@@ -31,6 +31,7 @@ const AUDIT_LOG_LIMIT = 15;
 
 export const LogsTable = ({ eventType, userAgentType, actor, startDate, endDate }: Props) => {
   const { currentWorkspace } = useWorkspace();
+
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetAuditLogs(
     currentWorkspace?._id ?? "",
     {

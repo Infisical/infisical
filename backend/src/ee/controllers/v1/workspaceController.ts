@@ -3,6 +3,7 @@ import { PipelineStage, Types } from "mongoose";
 import {
   Folder,
   MachineIdentity,
+  MachineMembership,
   Membership,
   Secret,
   ServiceTokenData,
@@ -669,6 +670,21 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
     ProjectPermissionSub.AuditLogs
   );
 
+  let actorMetadataQuery = "";
+  if (actor) {
+    switch (actor?.split("-", 2)[0]) {
+      case ActorType.USER:
+        actorMetadataQuery = "actor.metadata.userId";
+        break;
+      case ActorType.SERVICE:
+        actorMetadataQuery = "actor.metadata.serviceId";
+        break;
+      case ActorType.MACHINE:
+        actorMetadataQuery = "actor.metadata.machineId";
+        break;
+    }
+  }
+
   const query = {
     workspace: new Types.ObjectId(workspaceId),
     ...(eventType
@@ -684,13 +700,9 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
     ...(actor
       ? {
           "actor.type": actor.substring(0, actor.lastIndexOf("-")),
-          ...(actor.split("-", 2)[0] === ActorType.USER
-            ? {
-                "actor.metadata.userId": actor.substring(actor.lastIndexOf("-") + 1)
-              }
-            : {
-                "actor.metadata.serviceId": actor.substring(actor.lastIndexOf("-") + 1)
-              })
+          ...({
+            [actorMetadataQuery]: actor.substring(actor.lastIndexOf("-") + 1)
+          })
         }
       : {}),
     ...(startDate || endDate
@@ -702,7 +714,9 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
         }
       : {})
   };
+  
   const auditLogs = await AuditLog.find(query).sort({ createdAt: -1 }).skip(offset).limit(limit);
+  
   return res.status(200).send({
     auditLogs
   });
@@ -731,6 +745,7 @@ export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Res
   const userIds = await Membership.distinct("user", {
     workspace: new Types.ObjectId(workspaceId)
   });
+  
   const userActors: UserActor[] = (
     await User.find({
       _id: {
@@ -757,9 +772,15 @@ export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Res
     }
   }));
 
+  const machineIds = await MachineMembership.distinct("machineIdentity", {
+    workspace: new Types.ObjectId(workspaceId)
+  });
+  
   const machineActors: MachineActor[] = (
     await MachineIdentity.find({
-      workspace: new Types.ObjectId(workspaceId)
+      _id: {
+        $in: machineIds
+      }
     })
   ).map((machineIdentity) => ({
     type: ActorType.MACHINE,

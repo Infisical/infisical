@@ -53,8 +53,8 @@ export const LogsFilter = ({ control, reset }: Props) => {
       case ActorType.MACHINE:
         return (
           <SelectItem
-            value={`${actor.type}-${actor.metadata.serviceId}`}
-            key={`machine-filter-${actor.metadata.serviceId}`}
+            value={`${actor.type}-${actor.metadata.machineId}`}
+            key={`machine-filter-${actor.metadata.machineId}`}
           >
             {actor.metadata.name}
           </SelectItem>

@@ -10,6 +10,11 @@ interface ServiceActorMetadata {
   name: string;
 }
 
+interface MachineActorMetadata {
+  machineId: string;
+  name: string;
+}
+
 interface UserActor {
   type: ActorType.USER;
   metadata: UserActorMetadata;
@@ -22,7 +27,7 @@ export interface ServiceActor {
 
 export interface MachineActor {
   type: ActorType.MACHINE;
-  metadata: ServiceActorMetadata;
+  metadata: MachineActorMetadata;
 }
 
 export type Actor = UserActor | ServiceActor | MachineActor;
