@@ -110,7 +110,7 @@ export const getElasticSearchLog = async () => {
   const cloudId = (await client.getSecret("ELASTIC_SEARCH_LOG_CLOUD_ID")).secretValue;
   const logIndex = (await client.getSecret("ELASTIC_SEARCH_LOG_INDEX")).secretValue;
 
-  if (!logIndex) return;
+  if (!logIndex || !(node || cloudId)) return;
   return { node, apiKey, cloudId, logIndex };
 };
 
