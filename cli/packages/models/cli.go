@@ -34,6 +34,11 @@ type SingleEnvironmentVariable struct {
 	Comment string `json:"comment"`
 }
 
+type SingleFolder struct {
+	ID   string `json:"_id"`
+	Name string `json:"name"`
+}
+
 type Workspace struct {
 	ID           string `json:"_id"`
 	Name         string `json:"name"`
@@ -62,4 +67,27 @@ type GetAllSecretsParameters struct {
 	WorkspaceId              string
 	SecretsPath              string
 	IncludeImport            bool
+}
+
+type GetAllFoldersParameters struct {
+	WorkspaceId    string
+	Environment    string
+	FoldersPath    string
+	InfisicalToken string
+}
+
+type CreateFolderParameters struct {
+	FolderName     string
+	WorkspaceId    string
+	Environment    string
+	FolderPath     string
+	InfisicalToken string
+}
+
+type DeleteFolderParameters struct {
+	FolderName     string
+	WorkspaceId    string
+	Environment    string
+	FolderPath     string
+	InfisicalToken string
 }

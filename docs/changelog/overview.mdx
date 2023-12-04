@@ -4,16 +4,34 @@ title: "Changelog"
 
 The changelog below reflects new product developments and updates on a monthly basis.
 
-## September
+## November 2023
 
+- Replaced internal [Winston](https://github.com/winstonjs/winston) with [Pino](https://github.com/pinojs/pino) logging library with external logging to AWS CloudWatch
+- Added admin panel to self-hosting experience.
+- Released [secret rotation](https://infisical.com/docs/documentation/platform/secret-rotation/overview) feature with preliminary support for rotating [SendGrid](https://infisical.com/docs/documentation/platform/secret-rotation/sendgrid), [PostgreSQL/CockroachDB](https://infisical.com/docs/documentation/platform/secret-rotation/postgres), and [MySQL/MariaDB](https://infisical.com/docs/documentation/platform/secret-rotation/mysql) credentials.
+- Released secret reminders feature.
+
+## October 2023
+
+- Added support for [GitLab SSO](https://infisical.com/docs/documentation/platform/sso/gitlab).
+- Became SOC 2 (Type II) certified.
+- Reduced required JWT configuration from 5-6 secrets to 1 secret for self-hosting Infisical.
+- Compacted Infisical into 1 Docker image.
+- Added native [Hasura Cloud integration](https://infisical.com/docs/integrations/cloud/hasura-cloud).
+- Updated resource deletion logic for user, organization, and project deletion.
+
+## September 2023
+
+- Released [secret approvals](https://infisical.com/docs/documentation/platform/pr-workflows) feature.
 - Released an update to access controls; every user role now clearly defines and enforces a certain set of conditions across Infisical.
 - Updated UI/UX for integrations. 
 - Added a native integration with [Qovery](https://infisical.com/docs/integrations/cloud/qovery).
+- Added service token generation capability for the CLI.
 
 ## August 2023
 
 - Release Audit Logs V2.
-- Add support for GitHub SSO.
+- Add support for [GitHub SSO](https://infisical.com/docs/documentation/platform/sso/github).
 - Enable users to opt in for multiple authentication methods.
 - Improved password requirements including check against [Have I Been Pwnd Password API](https://haveibeenpwned.com/Passwords).
 - Added native [GCP Secret Manager integration](https://infisical.com/docs/integrations/cloud/gcp-secret-manager)
@@ -31,8 +49,8 @@ The changelog below reflects new product developments and updates on a monthly b
 - Added native [Terraform Cloud integration](https://infisical.com/docs/integrations/cloud/terraform-cloud).
 - Added native [Northflank integration](https://infisical.com/docs/integrations/cloud/northflank).
 - Added native [Windmill integration](https://infisical.com/docs/integrations/cloud/windmill).
-- Added support for Google SSO.
-- Added support for [Okta](https://infisical.com/docs/documentation/platform/sso/okta), [Azure AD](https://infisical.com/docs/documentation/platform/sso/azure), and JumpCloud [SAML](https://infisical.com/docs/documentation/platform/saml) authentication.
+- Added support for [Google SSO](https://infisical.com/docs/documentation/platform/sso/google)
+- Added support for [Okta](https://infisical.com/docs/documentation/platform/sso/okta), [Azure AD](https://infisical.com/docs/documentation/platform/sso/azure), and [JumpCloud](https://infisical.com/docs/documentation/platform/sso/jumpcloud) [SAML](https://infisical.com/docs/documentation/platform/saml) authentication.
 - Released [folders / path-based secret storage](https://infisical.com/docs/documentation/platform/folder).
 - Released [webhooks](https://infisical.com/docs/documentation/platform/webhooks).
 

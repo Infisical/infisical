@@ -278,6 +278,47 @@ type GetEncryptedSecretsV3Request struct {
 	IncludeImport bool   `json:"include_imports"`
 }
 
+type GetFoldersV1Request struct {
+	Environment string `json:"environment"`
+	WorkspaceId string `json:"workspaceId"`
+	FoldersPath string `json:"foldersPath"`
+}
+
+type GetFoldersV1Response struct {
+	Folders []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"folders"`
+}
+
+type CreateFolderV1Request struct {
+	FolderName  string `json:"folderName"`
+	WorkspaceId string `json:"workspaceId"`
+	Environment string `json:"environment"`
+	Directory   string `json:"directory"`
+}
+
+type CreateFolderV1Response struct {
+	Folder struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"folder"`
+}
+
+type DeleteFolderV1Request struct {
+	FolderName  string `json:"folderName"`
+	WorkspaceId string `json:"workspaceId"`
+	Environment string `json:"environment"`
+	Directory   string `json:"directory"`
+}
+
+type DeleteFolderV1Response struct {
+	Folders []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"folders"`
+}
+
 type EncryptedSecretV3 struct {
 	ID        string `json:"_id"`
 	Version   int    `json:"version"`
@@ -420,4 +461,35 @@ type ServiceTokenData struct {
 type CreateServiceTokenResponse struct {
 	ServiceToken     string           `json:"serviceToken"`
 	ServiceTokenData ServiceTokenData `json:"serviceTokenData"`
+}
+
+type ServiceTokenV3RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+type ServiceTokenV3RefreshTokenResponse struct {
+	RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"access_token"`
+	ExpiresIn    int    `json:"expires_in"`
+	TokenType    string `json:"token_type"`
+}
+
+type GetRawSecretsV3Request struct {
+	Environment   string `json:"environment"`
+	WorkspaceId   string `json:"workspaceId"`
+	SecretPath    string `json:"secretPath"`
+	IncludeImport bool   `json:"include_imports"`
+}
+
+type GetRawSecretsV3Response struct {
+	Secrets []struct {
+		ID            string `json:"_id"`
+		Version       int    `json:"version"`
+		Workspace     string `json:"workspace"`
+		Type          string `json:"type"`
+		Environment   string `json:"environment"`
+		SecretKey     string `json:"secretKey"`
+		SecretValue   string `json:"secretValue"`
+		SecretComment string `json:"secretComment"`
+	} `json:"secrets"`
+	Imports []any `json:"imports"`
 }

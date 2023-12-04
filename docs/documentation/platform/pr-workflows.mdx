@@ -1,0 +1,33 @@
+---
+title: "PR Workflows"
+description: "Infisical PR Workflows allows you to create a set of policies to control secret operations."
+---
+
+## Problem at hand
+
+Updating secrets in high-stakes environments (e.g., production) can have a number of problematic issues: 
+- Most developers should not have access to secrets in production environments. Yet, they are the ones who often need to add new secrets or change the existing ones. Many organizations have in-house policies with regards to what person should be contacted in the case of needing to make changes to secrets. This slows down software development lifecycle and distracts engineers from working on things that matter the most.   
+- As a general rule, before making changes in production environments, those changes have to be looked over by at least another person. An extra pair of eyes can help reduce the risk of human error and make sure that the change will not affect the application in an unintended way. 
+- After making updates to secrets, the corresponding applications need to be redeployed with the right set of secrets and configurations. This process is often not automated and hence prone to human error. 
+
+## Solution
+
+As a wide-spread software engineering practice, developers have to submit their code as a PR that needs to be approved before the code is merged into the main branch. 
+
+In a similar way, to solve the above-mentioned issues, Infisical provides a feature called `PR Workflows` for secret management. This is a set of policies and workflows that help advance access controls, compliance procedures, and stability of a particular environment. In other words, **PR Workflows** help you secure, stabilize, and streamline the change of secrets in high-stakes environments. 
+
+### Setting a policy
+
+First, you would need to create a set of policies for a certain environment. In the example below you can see a generic policy for a production environment. In this case, any user who submits a change to `prod` would first have to get an approval by a predefined user (or multiple users).
+
+![create secret update policy](../../images/platform/pr-workflows/secret-update-policy.png)
+
+### Example of updating secrets with PR workflows
+
+When a user submits a change to an enviropnment that is under a particular policy, a corresponsing change request will go to a predefined approver (or multiple approvers). 
+
+![secret update change requests](../../images/platform/pr-workflows/secret-update-request.png)
+
+An approver is notified by email and/or Slack as soon as the request is initiated. In the Infisical Dashboard, they will be able to `approve` and `merge` (or `deny`) a request for a change in a particular environment. After that, depending on the workflows setup, the change will be automatically propagated to the right applications (e.g., using [Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes)).
+
+![secrets update pull request](../../images/platform/pr-workflows/secret-update-pr.png)
