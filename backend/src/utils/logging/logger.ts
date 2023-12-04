@@ -53,6 +53,7 @@ export const initLogger = async () => {
         cloud: {
           id: elasticLogCfg.cloudId
         },
+        node: elasticLogCfg.node,
         index: elasticLogCfg.logIndex,
         auth: {
           apiKey: elasticLogCfg.apiKey
