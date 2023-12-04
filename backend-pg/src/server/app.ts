@@ -1,6 +1,5 @@
 import dotenv from "dotenv";
 import fasitfy from "fastify";
-import { z } from "zod";
 import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
 import type { FastifyCorsOptions } from "@fastify/cors";
@@ -9,20 +8,24 @@ import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
 
-import { initEnvConfig } from "@lib/config/env";
+import { initDbConnection } from "@app/db";
+import { smtpServiceFactory } from "@app/services/smtp/smtp-service";
+
+import { formatSmtpConfig, initEnvConfig } from "@lib/config/env";
 import { initLogger } from "@lib/logger";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
 import { fastifyIp } from "./plugins/ip";
 import { fastifySwagger } from "./plugins/swagger";
+import { registerRoutes } from "./routes";
 
 dotenv.config();
 
 // Run the server!
 const main = async () => {
   const logger = await initLogger();
-  initEnvConfig(logger);
+  const envCfg = initEnvConfig(logger);
 
   const server = fasitfy({
     logger,
@@ -32,42 +35,31 @@ const main = async () => {
   server.setValidatorCompiler(validatorCompiler);
   server.setSerializerCompiler(serializerCompiler);
 
+  const db = initDbConnection(envCfg.DB_CONNECTION_URI);
+  const smtp = smtpServiceFactory(formatSmtpConfig());
+
   try {
-    // TODO(akhilmhdh:pg): change this to environment variable with default
     await server.register<FastifyCookieOptions>(cookie, {
-      secret: "infisical-cookie-secret"
+      secret: envCfg.COOKIE_SECRET_SIGN_KEY
     });
 
     await server.register<FastifyCorsOptions>(cors, {
       credentials: true,
-      origin: "http://localhost:3000"
+      origin: true
     });
     // pull ip based on various proxy headers
     await server.register(fastifyIp);
 
-    // Rate limiters and security headers
-    await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg);
-    await server.register(helmet);
-
     await server.register(fastifySwagger);
 
-    // Declare a route
-    server.route({
-      method: "GET",
-      url: "/",
-      schema: {
-        response: {
-          200: z.object({ hello: z.string() })
-        }
-      },
-      handler: () => ({
-        hello: "world"
-      })
-    });
+    // Rate limiters and security headers
+    await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg);
+    await server.register(helmet, { contentSecurityPolicy: false });
 
+    await server.register(registerRoutes, { prefix: "/api", smtp, db });
     await server.ready();
     server.swagger();
-    await server.listen({ port: 8000 });
+    await server.listen({ port: envCfg.PORT, host: envCfg.HOST });
   } catch (err) {
     server.log.error(err);
     process.exit(1);

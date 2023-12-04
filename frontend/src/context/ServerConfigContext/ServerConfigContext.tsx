@@ -72,9 +72,9 @@ export const ServerConfigProvider = ({ children }: Props): JSX.Element => {
 
 export const useServerConfig = () => {
   const ctx = useContext(ServerConfigContext);
-  if (!ctx) {
-    throw new Error("useServerConfig has to be used within <UserContext.Provider>");
-  }
+  // if (!ctx) {
+  //   throw new Error("useServerConfig has to be used within <UserContext.Provider>");
+  // }
 
-  return ctx;
+  return ctx || { config: { allowSignUp: true } };
 };

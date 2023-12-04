@@ -82,14 +82,13 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
     publicPaths.includes(`/${appProps.router.pathname.split("/")[1]}`) ||
     !Component.requireAuth
   ) {
+    // TODO(akhilmhdh): bring back server config later
     return (
       <QueryClientProvider client={queryClient}>
         <NotificationProvider>
-          <ServerConfigProvider>
-            <AuthProvider>
-              <Component {...pageProps} />
-            </AuthProvider>
-          </ServerConfigProvider>
+          <AuthProvider>
+            <Component {...pageProps} />
+          </AuthProvider>
         </NotificationProvider>
       </QueryClientProvider>
     );

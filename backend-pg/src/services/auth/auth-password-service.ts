@@ -1,0 +1,257 @@
+import jwt from "jsonwebtoken";
+
+import { getConfig } from "@app/lib/config/env";
+import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
+
+import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { TTokenServiceFactory } from "../token/token-service";
+import { TokenType } from "../token/token-types";
+import { TAuthDalFactory } from "./auth-dal";
+import {
+  TChangePasswordDTO,
+  TCreateBackupPrivateKeyDTO,
+  TResetPasswordViaBackupKeyDTO
+} from "./auth-password-type";
+import { AuthTokenType } from "./auth-signup-type";
+
+type TAuthPasswordServiceFactoryDep = {
+  authDal: TAuthDalFactory;
+  tokenService: TTokenServiceFactory;
+  smtpService: TSmtpService;
+};
+
+export type TAuthPasswordFactory = ReturnType<typeof authPaswordServiceFactory>;
+export const authPaswordServiceFactory = ({
+  authDal,
+  tokenService,
+  smtpService
+}: TAuthPasswordServiceFactoryDep) => {
+  /*
+   * Pre setup for pass change with srp protocol
+   * Gets srp server user salt and server public key
+   */
+  const generateServerPubKey = async (userId: string, clientPublicKey: string) => {
+    const user = await authDal.getUserEncKeyByUserId(userId);
+    if (!user) throw new Error("Failed to find user");
+
+    const serverSrpKey = await generateSrpServerKey(user.salt, user.verifier);
+    const userEncKeys = await authDal.updateUserEncryptionByUserId(user.id, {
+      clientPublicKey,
+      serverPrivateKey: serverSrpKey.privateKey
+    });
+    if (!userEncKeys) throw new Error("Failed  to update encryption key");
+    return { salt: userEncKeys.salt, serverPublicKey: serverSrpKey.pubKey };
+  };
+
+  /*
+   * Change password to new pass
+   * */
+  const changePassword = async ({
+    userId,
+    clientProof,
+    protectedKey,
+    protectedKeyIV,
+    protectedKeyTag,
+    encryptedPrivateKey,
+    encryptedPrivateKeyIV,
+    encryptedPrivateKeyTag,
+    salt,
+    verifier,
+    tokenVersionId
+  }: TChangePasswordDTO) => {
+    const userEnc = await authDal.getUserEncKeyByUserId(userId);
+    if (!userEnc) throw new Error("Failed to find user");
+
+    await authDal.updateUserEncryptionByUserId(userEnc.userId, {
+      serverPrivateKey: null,
+      clientPublicKey: null
+    });
+    if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey)
+      throw new Error("Failed to authenticate. Try again?");
+    const isValidClientProof = await srpCheckClientProof(
+      userEnc.salt,
+      userEnc.verifier,
+      userEnc.serverPrivateKey,
+      userEnc.clientPublicKey,
+      clientProof
+    );
+    if (!isValidClientProof) throw new Error("Failed to authenticate. Try again?");
+
+    await authDal.updateUserEncryptionByUserId(userId, {
+      encryptionVersion: 2,
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
+      encryptedPrivateKey,
+      iv: encryptedPrivateKeyIV,
+      tag: encryptedPrivateKeyTag,
+      salt,
+      verifier,
+      serverPrivateKey: null,
+      clientPublicKey: null
+    });
+
+    if (tokenVersionId) {
+      await tokenService.clearTokenSessionById(userEnc.userId, tokenVersionId);
+    }
+  };
+
+  /*
+   * Email password reset flow via email. Step 1 send email
+   */
+  const sendPasswordResetEmail = async (email: string) => {
+    const user = await authDal.getUserByEmail(email);
+    // ignore as user is not found to avoid an outside entity to identify infisical registered accounts
+    if (!user || (user && !user.isAccepted)) return;
+
+    const cfg = getConfig();
+    const token = await tokenService.createTokenForUser({
+      type: TokenType.TOKEN_EMAIL_PASSWORD_RESET,
+      userId: user.id
+    });
+
+    await smtpService.sendMail({
+      template: SmtpTemplates.ResetPassword,
+      recipients: [email],
+      subjectLine: "Infisical password reset",
+      substitutions: {
+        email,
+        token,
+        callback_url: cfg.SITE_URL ? `${cfg.SITE_URL}/password-reset` : ""
+      }
+    });
+  };
+
+  /*
+   * Step 2 of reset password. Verify the token and inject a temp token to reset password
+   * */
+  const verifyPasswordResetEmail = async (email: string, code: string) => {
+    const cfg = getConfig();
+    const user = await authDal.getUserByEmail(email);
+    // ignore as user is not found to avoid an outside entity to identify infisical registered accounts
+    if (!user || (user && !user.isAccepted)) {
+      throw new Error("Failed email verification for pass reset");
+    }
+
+    await tokenService.validateTokenForUser({
+      type: TokenType.TOKEN_EMAIL_PASSWORD_RESET,
+      userId: user.id,
+      code
+    });
+
+    const token = jwt.sign(
+      {
+        authTokenType: AuthTokenType.SIGNUP_TOKEN,
+        userId: user.id
+      },
+      cfg.JWT_AUTH_SECRET,
+      { expiresIn: cfg.JWT_SIGNUP_LIFETIME }
+    );
+
+    return { token, user };
+  };
+  /*
+   * Reset password of a user via backup key
+   * */
+  const resetPasswordByBackupKey = async (
+    userId: string,
+    {
+      encryptedPrivateKey,
+      protectedKeyTag,
+      protectedKey,
+      protectedKeyIV,
+      salt,
+      verifier,
+      encryptedPrivateKeyIV,
+      encryptedPrivateKeyTag
+    }: TResetPasswordViaBackupKeyDTO
+  ) => {
+    await authDal.updateUserEncryptionByUserId(userId, {
+      encryptionVersion: 2,
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
+      encryptedPrivateKey,
+      iv: encryptedPrivateKeyIV,
+      tag: encryptedPrivateKeyTag,
+      salt,
+      verifier
+    });
+  };
+
+  /*
+   * backup key creation to give user's their access back when lost their password
+   * this also needs to do the generateServerPubKey function to be executed first
+   * then only client proof can be verified
+   * */
+  const createBackupPrivateKey = async ({
+    clientProof,
+    encryptedPrivateKey,
+    salt,
+    verifier,
+    iv,
+    tag,
+    userId
+  }: TCreateBackupPrivateKeyDTO) => {
+    const user = await authDal.getUserEncKeyByUserId(userId);
+    if (!user || (user && !user.isAccepted)) {
+      throw new Error("Failed to find  user");
+    }
+
+    if (!user.clientPublicKey || !user.serverPrivateKey)
+      throw new Error("failed to create backup key");
+    const isValidClientProff = await srpCheckClientProof(
+      user.salt,
+      user.verifier,
+      user.serverPrivateKey,
+      user.clientPublicKey,
+      clientProof
+    );
+    if (!isValidClientProff) throw new Error("failed to create backup key");
+    const backup = await authDal.transaction(async (tx) => {
+      const backupKey = await authDal.upsertBackupKey(user.id, {
+        encryptedPrivateKey,
+        iv,
+        tag,
+        salt,
+        verifier
+      });
+
+      await authDal.updateUserEncryptionByUserId(
+        user.id,
+        {
+          serverPrivateKey: null,
+          clientPublicKey: null
+        },
+        tx
+      );
+      return backupKey;
+    });
+
+    return backup;
+  };
+
+  /*
+   * Return user back up
+   * */
+  const getBackupPrivateKeyOfUser = async (userId: string) => {
+    const user = await authDal.getUserEncKeyByUserId(userId);
+    if (!user || (user && !user.isAccepted)) {
+      throw new Error("Failed to find  user");
+    }
+    const backupKey = await authDal.getBackupPrivateKeyByUserId(userId);
+    if (!backupKey) throw new Error("Failed to find user backup key");
+
+    return backupKey;
+  };
+
+  return {
+    generateServerPubKey,
+    changePassword,
+    resetPasswordByBackupKey,
+    sendPasswordResetEmail,
+    verifyPasswordResetEmail,
+    createBackupPrivateKey,
+    getBackupPrivateKeyOfUser
+  };
+};

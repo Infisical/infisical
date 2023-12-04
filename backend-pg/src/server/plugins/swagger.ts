@@ -4,6 +4,7 @@ import swaggerUI from "@fastify/swagger-ui";
 
 import { jsonSchemaTransform } from "./fastify-zod";
 
+// TODO(akhilmhdh-pg): change the localhost port later
 export const fastifySwagger = fp(async (fastify) => {
   await fastify.register(swagger, {
     transform: jsonSchemaTransform,
@@ -15,12 +16,12 @@ export const fastifySwagger = fp(async (fastify) => {
       },
       servers: [
         {
-          url: "https://app.infisical.com",
-          description: "Production server"
+          url: "http://localhost:4000",
+          description: "Local server"
         },
         {
-          url: "http://localhost:8000",
-          description: "Local server"
+          url: "https://app.infisical.com",
+          description: "Production server"
         }
       ],
       components: {

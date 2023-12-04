@@ -1,0 +1,115 @@
+import { z } from "zod";
+
+import { BackupPrivateKeySchema } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
+
+export const registerPasswordRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "POST",
+    url: "/srp1",
+    schema: {
+      body: z.object({
+        clientPublicKey: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          serverPublicKey: z.string(),
+          salt: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { salt, serverPublicKey } = await server.services.password.generateServerPubKey(
+        req.auth.userId,
+        req.body.clientPublicKey
+      );
+      return { salt, serverPublicKey };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/change-password",
+    schema: {
+      body: z.object({
+        clientProof: z.string().trim(),
+        protectedKey: z.string().trim(),
+        protectedKeyIV: z.string().trim(),
+        protectedKeyTag: z.string().trim(),
+        encryptedPrivateKey: z.string().trim(),
+        encryptedPrivateKeyIV: z.string().trim(),
+        encryptedPrivateKeyTag: z.string().trim(),
+        salt: z.string().trim(),
+        verifier: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    handler: async (req, res) => {
+      const appCfg = getConfig();
+      await server.services.password.changePassword({ ...req.body, userId: req.auth.userId });
+
+      res.cookie("jid", appCfg.COOKIE_SECRET_SIGN_KEY, {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: appCfg.HTTPS_ENABLED
+      });
+      return { message: "Successfully changed password" };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/backup-private-key",
+    schema: {
+      body: z.object({
+        clientProof: z.string().trim(),
+        encryptedPrivateKey: z.string().trim(),
+        iv: z.string().trim(),
+        tag: z.string().trim(),
+        salt: z.string().trim(),
+        verifier: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          backupPrivateKey: BackupPrivateKeySchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const backupPrivateKey = await server.services.password.createBackupPrivateKey({
+        ...req.body,
+        userId: req.auth.userId
+      });
+      if (!backupPrivateKey) throw new Error("Failed to create backup key");
+
+      return { message: "Successfully updated backup private key", backupPrivateKey };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/backup-private-key",
+    schema: {
+      response: {
+        200: z.object({
+          message: z.string(),
+          backupPrivateKey: BackupPrivateKeySchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const backupPrivateKey = await server.services.password.getBackupPrivateKeyOfUser(
+        req.auth.userId
+      );
+      if (!backupPrivateKey) throw new Error("Failed to find backup key");
+
+      return { message: "Successfully updated backup private key", backupPrivateKey };
+    }
+  });
+};
