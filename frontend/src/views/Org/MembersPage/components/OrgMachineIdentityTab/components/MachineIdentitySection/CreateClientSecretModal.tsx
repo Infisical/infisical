@@ -97,16 +97,15 @@ export const CreateClientSecretModal = ({
     }: FormData) => {
         try {
             
-            if (popUpData) {
+            if (!popUpData?.machineId) return;
+            
+            const { clientSecret } = await createClientSecretMutateAsync({
+                machineId: popUpData.machineId,
+                description,
+                ttl: Number(ttl)
+            });
 
-                const { clientSecret } = await createClientSecretMutateAsync({
-                    machineId: popUpData.machineId,
-                    description,
-                    ttl: Number(ttl)
-                });
-
-                setToken(clientSecret);
-            }
+            setToken(clientSecret);
 
             createNotification({
                 text: "Successfully created client secret",
