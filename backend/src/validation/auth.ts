@@ -84,15 +84,8 @@ export const ResetPasswordV1 = z.object({
   })
 });
 
-export const SendMfaTokenV2 = z.object({
-  body: z.object({
-    email: z.string().email().trim()
-  })
-});
-
 export const VerifyMfaTokenV2 = z.object({
   body: z.object({
-    email: z.string().email().trim(),
     mfaToken: z.string().trim()
   })
 });
