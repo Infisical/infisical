@@ -118,4 +118,6 @@ const machineIdentitySchema = new Schema(
     }
 );
 
+machineIdentitySchema.index({ clientId: 1, isActive: 1 })
+
 export const MachineIdentity = model<IMachineIdentity>("MachineIdentity", machineIdentitySchema);
