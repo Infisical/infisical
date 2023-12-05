@@ -333,7 +333,9 @@ export const loginMI = async (req: Request, res: Response) => {
                 }
             );
     
-            throw UnauthorizedRequestError();
+            throw UnauthorizedRequestError({
+                message: "Failed to authenticate MI credentials due to expired client secret"
+            });
         }
     }
     
@@ -350,7 +352,9 @@ export const loginMI = async (req: Request, res: Response) => {
             }
         );
 
-        throw UnauthorizedRequestError();
+        throw UnauthorizedRequestError({
+            message: "Failed to authenticate MI credentials due to client secret number of uses limit reached"
+        });
     }
 
     // increment usage count by 1
