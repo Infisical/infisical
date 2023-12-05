@@ -81,8 +81,11 @@ export const MachineIdentityTable = ({
             });
         } catch (err) {
             console.error(err);
+            const error = err as any;
+            const text = error?.response?.data?.message ?? "Failed to update machine identity role"
+            
             createNotification({
-                text: "Failed to update machine identity role",
+                text,
                 type: "error"
               });
         }

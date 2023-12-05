@@ -1,6 +1,6 @@
 import { Document, Schema, Types, model } from "mongoose";
 
-export interface IMachineIdentityClientSecretData extends Document {
+export interface IMachineIdentityClientSecret extends Document {
     _id: Types.ObjectId;
     machineIdentity: Types.ObjectId;
     isActive: boolean;
@@ -16,7 +16,7 @@ export interface IMachineIdentityClientSecretData extends Document {
     createdAt: Date;
 }
 
-const machineIdentityClientSecretDataSchema = new Schema(
+const machineIdentityClientSecretSchema = new Schema(
     {
         machineIdentity: {
             type: Schema.Types.ObjectId,
@@ -74,8 +74,8 @@ const machineIdentityClientSecretDataSchema = new Schema(
     }
 );
 
-machineIdentityClientSecretDataSchema.index(
+machineIdentityClientSecretSchema.index(
     { machineIdentity: 1, isActive: 1 }
 )
 
-export const MachineIdentityClientSecretData = model<IMachineIdentityClientSecretData>("MachineIdentityClientSecretData", machineIdentityClientSecretDataSchema);
+export const MachineIdentityClientSecret = model<IMachineIdentityClientSecret>("MachineIdentityClientSecret", machineIdentityClientSecretSchema);

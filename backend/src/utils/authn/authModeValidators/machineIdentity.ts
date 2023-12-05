@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { Types } from "mongoose";
-import { MachineIdentity, MachineIdentityClientSecretData } from "../../../models";
+import { MachineIdentity, MachineIdentityClientSecret } from "../../../models";
 import { getAuthSecret } from "../../../config";
 import { AuthTokenType } from "../../../variables";
 import { UnauthorizedRequestError } from "../../errors";
@@ -18,14 +18,14 @@ export const validateMachineIdentity = async ({
 
 	if (decodedToken.authTokenType !== AuthTokenType.MACHINE_ACCESS_TOKEN) throw UnauthorizedRequestError();
 	
-	const machineIdentityClientSecretData = await MachineIdentityClientSecretData.findOne({
+	const machineIdentityClientSecret = await MachineIdentityClientSecret.findOne({
 		_id: new Types.ObjectId(decodedToken.clientSecretDataId),
 		isActive: true
 	});
 	
-	if (!machineIdentityClientSecretData) throw UnauthorizedRequestError();
+	if (!machineIdentityClientSecret) throw UnauthorizedRequestError();
 	
-	if (decodedToken.tokenVersion !== machineIdentityClientSecretData.accessTokenVersion) {
+	if (decodedToken.tokenVersion !== machineIdentityClientSecret.accessTokenVersion) {
 		// TODO: raise alarm
 		throw UnauthorizedRequestError({
 			message: "Failed to authenticate",
@@ -33,7 +33,7 @@ export const validateMachineIdentity = async ({
 	}
 	
 	const machineIdentity = await MachineIdentity.findByIdAndUpdate(
-		machineIdentityClientSecretData.machineIdentity,
+		machineIdentityClientSecret.machineIdentity,
 		{
 			accessTokenLastUsed: new Date(),
 			$inc: { accessTokenUsageCount: 1 }

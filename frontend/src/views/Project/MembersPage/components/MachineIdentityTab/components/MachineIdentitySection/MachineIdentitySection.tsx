@@ -35,7 +35,7 @@ export const MachineIdentitySection = withProjectPermission(
       "upgradePlan"
     ] as const);
     
-    const onRemoveServiceTokenDataSubmit = async (machineId: string) => {
+    const onRemoveMachineIdentitySubmit = async (machineId: string) => {
       try {
 
         await deleteMutateAsync({
@@ -44,17 +44,20 @@ export const MachineIdentitySection = withProjectPermission(
         });
         
         createNotification({
-            text: "Successfully removed service account from project",
+            text: "Successfully removed machine identity from project",
             type: "success"
         });
         
         handlePopUpClose("deleteMachineIdentity");
       } catch (err) {
-          console.error(err);
-          createNotification({
-              text: "Failed to delete service account from project",
-              type: "error"
-          });
+        console.error(err);
+        const error = err as any;
+        const text = error?.response?.data?.message ?? "Failed to remove machine identity from project"
+        
+        createNotification({
+            text,
+            type: "error"
+        });
       }
     }
 
@@ -96,7 +99,7 @@ export const MachineIdentitySection = withProjectPermission(
             onChange={(isOpen) => handlePopUpToggle("deleteMachineIdentity", isOpen)}
             deleteKey="confirm"
             onDeleteApproved={() => 
-              onRemoveServiceTokenDataSubmit(
+              onRemoveMachineIdentitySubmit(
                 (popUp?.deleteMachineIdentity?.data as { machineId: string })?.machineId
               )
             }

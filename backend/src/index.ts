@@ -206,7 +206,7 @@ const main = async () => {
   app.use("/api/v1/sso", eeSSORouter);
   app.use("/api/v1/cloud-products", eeCloudProductsRouter);
   app.use("/api/v3/api-key", v3apiKeyDataRouter);
-  app.use("/api/v3/machines", v3MachineIdentityRouter);
+  app.use("/api/v3/machines", v3MachineIdentityRouter); // TODO: consider moving to v1
   app.use("/api/v1/secret-rotation-providers", v1SecretRotationProviderRouter);
   app.use("/api/v1/secret-rotations", v1SecretRotation);
 

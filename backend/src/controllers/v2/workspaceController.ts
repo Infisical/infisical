@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { 
+  IMachineIdentity, 
   Key, 
   MachineIdentity, 
   MachineMembership,
@@ -8,7 +9,7 @@ import {
   ServiceTokenData,
   Workspace
 } from "../../models";
-import { Role } from "../../ee/models";
+import { IRole, Role } from "../../ee/models";
 import {
   pullSecrets as pull,
   v2PushSecrets as push,
@@ -534,24 +535,26 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
   });
 
   if (machineMembership) throw BadRequestError({
-    message: `Machine identity with id ${machineId} already exists in workspace with id ${workspaceId}`
+    message: `Machine identity with id ${machineId} already exists in project with id ${workspaceId}`
   });
 
   const machineIdentity = await MachineIdentity.findById(machineId);
-  if (!machineIdentity) throw ResourceNotFoundError();
+  if (!machineIdentity) throw ResourceNotFoundError({
+    message: `Failed to find machine identity with id ${machineId}`
+  });
   
   const workspace = await Workspace.findById(workspaceId);
   if (!workspace) throw ResourceNotFoundError();
   
   if (!machineIdentity.organization.equals(workspace.organization)) throw BadRequestError({
-    message: "Failed to add machine identity to workspace in another organization"
+    message: "Failed to add machine identity to project in another organization"
   });
 
   const rolePermission = await getRolePermissions(role, workspaceId);
-  const hasRequiredPrivileges = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
+  const isAsPrivilegedAsIntendedRole = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
   
-  if (!hasRequiredPrivileges) throw ForbiddenRequestError({
-      message: "Failed to add a more privileged MI to project"
+  if (!isAsPrivilegedAsIntendedRole) throw ForbiddenRequestError({
+      message: "Failed to add MI to project with more privileged role"
   });
 
   let customRole;
@@ -604,29 +607,33 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
     ProjectPermissionSub.MachineIdentity
   );
   
-  let machineMembership = await MachineMembership.findOne({
-    machineIdentity: new Types.ObjectId(machineId),
-    workspace: new Types.ObjectId(workspaceId)
-  });
+  let machineMembership = await MachineMembership
+    .findOne({
+      machineIdentity: new Types.ObjectId(machineId),
+      workspace: new Types.ObjectId(workspaceId)
+    })
+    .populate<{
+      machineIdentity: IMachineIdentity,
+      customRole: IRole
+    }>("machineIdentity customRole");
 
   if (!machineMembership) throw BadRequestError({
-    message: `Machine identity with id ${machineId} does not exist in workspace with id ${workspaceId}`
+    message: `Machine identity with id ${machineId} does not exist in project with id ${workspaceId}`
   });
-
-  const machineIdentity = await MachineIdentity.findById(machineId);
-  if (!machineIdentity) throw ResourceNotFoundError();
   
-  const workspace = await Workspace.findById(workspaceId);
-  if (!workspace) throw ResourceNotFoundError();
-  
-  if (!machineIdentity.organization.equals(workspace.organization)) throw BadRequestError({
-    message: "Failed to update machine identity in workspace in another organization"
+  const machineIdentityRolePermission = await getRolePermissions(
+    machineMembership?.customRole?.slug ?? machineMembership.role, 
+    machineMembership.workspace.toString()
+  );
+  const isAsPrivilegedAsMachine = isAtLeastAsPrivilegedWorkspace(permission, machineIdentityRolePermission);
+  if (!isAsPrivilegedAsMachine) throw ForbiddenRequestError({
+      message: "Failed to update role of more privileged MI"
   });
 
   const rolePermission = await getRolePermissions(role, workspaceId);
-  const hasRequiredPrivileges = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
+  const isAsPrivilegedAsIntendedRole = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
   
-  if (!hasRequiredPrivileges) throw ForbiddenRequestError({
+  if (!isAsPrivilegedAsIntendedRole) throw ForbiddenRequestError({
       message: "Failed to update MI to a more privileged role"
   });
 
@@ -646,7 +653,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
   
   machineMembership = await MachineMembership.findOneAndUpdate(
     {
-      machineIdentity: machineIdentity._id,
+      machineIdentity: machineMembership.machineIdentity,
       workspace: new Types.ObjectId(workspaceId),
     },
     {
@@ -684,12 +691,30 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
     ProjectPermissionSub.MachineIdentity
   );
   
-  const machineMembership = await MachineMembership.findOneAndDelete({
-    machineIdentity: new Types.ObjectId(machineId),
-    workspace: new Types.ObjectId(workspaceId)
+  const machineMembership = await MachineMembership
+    .findOne({
+      machineIdentity: new Types.ObjectId(machineId),
+      workspace: new Types.ObjectId(workspaceId)
+    })
+    .populate<{
+      machineIdentity: IMachineIdentity,
+      customRole: IRole
+    }>("machineIdentity customRole");
+  
+  if (!machineMembership) throw ResourceNotFoundError({
+    message: `Machine with id ${machineId} does not exist in project with id ${workspaceId}`
   });
   
-  if (!machineMembership) throw ResourceNotFoundError();
+  const machineIdentityRolePermission = await getRolePermissions(
+    machineMembership?.customRole?.slug ?? machineMembership.role, 
+    machineMembership.workspace.toString()
+  );
+  const isAsPrivilegedAsMachine = isAtLeastAsPrivilegedWorkspace(permission, machineIdentityRolePermission);
+  if (!isAsPrivilegedAsMachine) throw ForbiddenRequestError({
+      message: "Failed to remove more privileged MI from project"
+  });
+  
+  await MachineMembership.findByIdAndDelete(machineMembership._id);
 
   return res.status(200).send({
     machineMembership

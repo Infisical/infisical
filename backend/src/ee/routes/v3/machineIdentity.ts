@@ -28,7 +28,7 @@ router.delete(
   machineIdentityController.deleteMIClientSecret
 );
 
-// consider moving to /auth/app/login
+// consider moving to /auth/machine/login
 router.post(
   "/login",
   machineIdentityController.loginMI
