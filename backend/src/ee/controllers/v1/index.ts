@@ -1,3 +1,4 @@
+import * as machineIdentitiesController from "./machineIdentitiesController";
 import * as secretController from "./secretController";
 import * as secretSnapshotController from "./secretSnapshotController";
 import * as organizationsController from "./organizationsController";
@@ -13,6 +14,7 @@ import * as secretRotationProviderController from "./secretRotationProviderContr
 import * as secretRotationController from "./secretRotationController";
 
 export {
+  machineIdentitiesController,
   secretController,
   secretSnapshotController,
   organizationsController,

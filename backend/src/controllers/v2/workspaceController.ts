@@ -26,7 +26,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   getAuthDataProjectPermissions,
-  getRolePermissions,
+  getWorkspaceRolePermissions,
   isAtLeastAsPrivilegedWorkspace
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
@@ -550,7 +550,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
     message: "Failed to add machine identity to project in another organization"
   });
 
-  const rolePermission = await getRolePermissions(role, workspaceId);
+  const rolePermission = await getWorkspaceRolePermissions(role, workspaceId);
   const isAsPrivilegedAsIntendedRole = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
   
   if (!isAsPrivilegedAsIntendedRole) throw ForbiddenRequestError({
@@ -621,7 +621,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
     message: `Machine identity with id ${machineId} does not exist in project with id ${workspaceId}`
   });
   
-  const machineIdentityRolePermission = await getRolePermissions(
+  const machineIdentityRolePermission = await getWorkspaceRolePermissions(
     machineMembership?.customRole?.slug ?? machineMembership.role, 
     machineMembership.workspace.toString()
   );
@@ -630,7 +630,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
       message: "Failed to update role of more privileged MI"
   });
 
-  const rolePermission = await getRolePermissions(role, workspaceId);
+  const rolePermission = await getWorkspaceRolePermissions(role, workspaceId);
   const isAsPrivilegedAsIntendedRole = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
   
   if (!isAsPrivilegedAsIntendedRole) throw ForbiddenRequestError({
@@ -705,7 +705,7 @@ export const addMachineToWorkspace = async (req: Request, res: Response) => {
     message: `Machine with id ${machineId} does not exist in project with id ${workspaceId}`
   });
   
-  const machineIdentityRolePermission = await getRolePermissions(
+  const machineIdentityRolePermission = await getWorkspaceRolePermissions(
     machineMembership?.customRole?.slug ?? machineMembership.role, 
     machineMembership.workspace.toString()
   );

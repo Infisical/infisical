@@ -18,7 +18,7 @@ export const useCreateMachineIdentity = () => {
     const queryClient = useQueryClient();
     return useMutation<CreateMachineIdentityRes, {}, CreateMachineIdentityDTO>({
         mutationFn: async (body) => {
-            const { data } = await apiRequest.post("/api/v3/machines/", body);
+            const { data } = await apiRequest.post("/api/v1/machine-identities/", body);
             return data;
         },
         onSuccess: ({ machineIdentity }) => {
@@ -37,7 +37,7 @@ export const useCreateMachineIdentityClientSecret = () => {
             usageLimit
         }) => {
 
-            const { data } = await apiRequest.post(`/api/v3/machines/${machineId}/client-secrets`, {
+            const { data } = await apiRequest.post(`/api/v1/machine-identities/${machineId}/client-secrets`, {
                 machineId,
                 description,
                 ttl,
@@ -62,7 +62,7 @@ export const useDeleteMachineIdentityClientSecret = () => {
             machineId:string;
             clientSecretId: string;
         }) => {
-            const { data } = await apiRequest.delete(`/api/v3/machines/${machineId}/client-secrets/${clientSecretId}`);
+            const { data } = await apiRequest.delete(`/api/v1/machine-identities/${machineId}/client-secrets/${clientSecretId}`);
             return data;
         },
         onSuccess: (_, { machineId }) => {
@@ -83,7 +83,7 @@ export const useUpdateMachineIdentity = () => {
             accessTokenTTL
         }) => {
             
-            const { data: { machineIdentity } } = await apiRequest.patch(`/api/v3/machines/${machineId}`, {
+            const { data: { machineIdentity } } = await apiRequest.patch(`/api/v1/machine-identities/${machineId}`, {
                 name,
                 role,
                 clientSecretTrustedIps,
@@ -105,7 +105,7 @@ export const useDeleteMachineIdentity = () => {
         mutationFn: async ({
             machineId
         }) => {
-            const { data: { machineIdentity } } = await apiRequest.delete(`/api/v3/machines/${machineId}`);
+            const { data: { machineIdentity } } = await apiRequest.delete(`/api/v1/machine-identities/${machineId}`);
             return machineIdentity;
         },
         onSuccess: ({ organization }) => {

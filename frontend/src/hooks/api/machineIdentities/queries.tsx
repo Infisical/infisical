@@ -14,8 +14,10 @@ export const useGetMachineIdentityClientSecrets = (machineId: string) => {
     return useQuery({
         queryKey: machineIdentityKeys.getMachineIdentityClientSecrets(machineId),
         queryFn: async () => {
+            if (machineId === "") return [];
+
             const { data: { clientSecretData } } = await apiRequest.get<{ clientSecretData: MachineIdentityClientSecret[] }>(
-                `/api/v3/machines/${machineId}/client-secrets`
+                `/api/v1/machine-identities/${machineId}/client-secrets`
             );
         
             return clientSecretData;

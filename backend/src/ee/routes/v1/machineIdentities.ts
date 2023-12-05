@@ -2,14 +2,14 @@ import express from "express";
 const router = express.Router();
 import { requireAuth } from "../../../middleware";
 import { AuthMode } from "../../../variables";
-import { machineIdentityController } from "../../controllers/v3";
+import { machineIdentitiesController } from "../../controllers/v1";
 
 router.get(
   "/:machineId/client-secrets",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  machineIdentityController.getMIClientSecrets
+  machineIdentitiesController.getMIClientSecrets
 );
 
 router.post(
@@ -17,7 +17,7 @@ router.post(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  machineIdentityController.createMIClientSecret
+  machineIdentitiesController.createMIClientSecret
 );
 
 router.delete(
@@ -25,13 +25,12 @@ router.delete(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  machineIdentityController.deleteMIClientSecret
+  machineIdentitiesController.deleteMIClientSecret
 );
 
-// consider moving to /auth/machine/login
 router.post(
   "/login",
-  machineIdentityController.loginMI
+  machineIdentitiesController.loginMI
 );
 
 router.post(
@@ -39,7 +38,7 @@ router.post(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.MACHINE_ACCESS_TOKEN]
   }),
-  machineIdentityController.createMachineIdentity
+  machineIdentitiesController.createMachineIdentity
 );
 
 router.patch(
@@ -47,7 +46,7 @@ router.patch(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  machineIdentityController.updateMachineIdentity
+  machineIdentitiesController.updateMachineIdentity
 );
 
 router.delete(
@@ -55,7 +54,7 @@ router.delete(
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  machineIdentityController.deleteMachineIdentity
+  machineIdentitiesController.deleteMachineIdentity
 );
 
 export default router;

@@ -25,6 +25,7 @@ import {
   secretSnapshot as eeSecretSnapshotRouter,
   users as eeUsersRouter,
   workspace as eeWorkspaceRouter,
+  machineIdentities as v1MachineIdentitiesRouter,
   roles as v1RoleRouter,
   secretApprovalPolicy as v1SecretApprovalPolicyRouter,
   secretApprovalRequest as v1SecretApprovalRequestRouter,
@@ -33,7 +34,6 @@ import {
   secretScanning as v1SecretScanningRouter
 } from "./ee/routes/v1";
 import { apiKeyData as v3apiKeyDataRouter } from "./ee/routes/v3";
-import { machineIdentity as v3MachineIdentityRouter } from "./ee/routes/v3";
 import {
   admin as v1AdminRouter,
   auth as v1AuthRouter,
@@ -198,6 +198,7 @@ const main = async () => {
   }
 
   // (EE) routes
+  app.use("/api/v1/machine-identities", v1MachineIdentitiesRouter);
   app.use("/api/v1/secret", eeSecretRouter);
   app.use("/api/v1/secret-snapshot", eeSecretSnapshotRouter);
   app.use("/api/v1/users", eeUsersRouter);
@@ -206,7 +207,6 @@ const main = async () => {
   app.use("/api/v1/sso", eeSSORouter);
   app.use("/api/v1/cloud-products", eeCloudProductsRouter);
   app.use("/api/v3/api-key", v3apiKeyDataRouter);
-  app.use("/api/v3/machines", v3MachineIdentityRouter); // TODO: consider moving to v1
   app.use("/api/v1/secret-rotation-providers", v1SecretRotationProviderRouter);
   app.use("/api/v1/secret-rotations", v1SecretRotation);
 
@@ -247,7 +247,7 @@ const main = async () => {
   app.use("/api/v2/workspace", v2TagsRouter);
   app.use("/api/v2/workspace", v2WorkspaceRouter);
   app.use("/api/v2/secret", v2SecretRouter); // deprecate
-  app.use("/api/v2/secrets", v2SecretsRouter); // note: in the process of moving to v3/secrets
+  app.use("/api/v2/secrets", v2SecretsRouter);
   app.use("/api/v2/service-token", v2ServiceTokenDataRouter);
 
   // v3 routes (experimental)

@@ -362,7 +362,7 @@ export const getAuthDataProjectPermissions = async ({
   }
 }
 
-export const getRolePermissions = async (role: string, workspaceId: string) => {
+export const getWorkspaceRolePermissions = async (role: string, workspaceId: string) => {
   const isCustomRole = ![ADMIN, MEMBER, VIEWER, NO_ACCESS].includes(role);
   if (isCustomRole) {
     const workspaceRole = await Role.findOne({

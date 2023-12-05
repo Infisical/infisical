@@ -82,12 +82,12 @@ In the following steps, we explore how to create and use MIs for your applicatio
   <Step title="Accessing the Infisical API with the MI">
     To access the Infisical API as the MI, you should first perform a login operation
     that is to exchange the **Client ID** and **Client Secret** of the MI for an access token
-    by making a request to the `/api/v3/machines/login` endpoint.
+    by making a request to the `/api/v1/machine-identities/login` endpoint.
     
     #### Sample request
 
     ```
-    curl --location --request POST 'https://app.infisical.com/api/v3/machines/login' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/machine-identities/login' \
       --header 'Content-Type: application/x-www-form-urlencoded' \
       --data-urlencode 'clientSecret=...' \
       --data-urlencode 'clientId=...'

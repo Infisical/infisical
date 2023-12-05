@@ -244,7 +244,7 @@ export const CreateClientSecretModal = ({
                                     <div className="flex">
                                         <Input 
                                             {...field} 
-                                            placeholder="7200"
+                                            placeholder="0"
                                             type="number"
                                             min="0"
                                             step="1"

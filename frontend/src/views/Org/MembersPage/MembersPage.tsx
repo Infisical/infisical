@@ -20,7 +20,7 @@ export const MembersPage = withPermission(
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
         <div className="mb-6 w-full py-6 px-6 max-w-7xl mx-auto">
           <p className="mr-4 mb-4 text-3xl font-semibold text-white">
-            Access Control
+            Organization Access Control
           </p>
           <Tabs defaultValue={TabSections.Member}>
             <TabList>
