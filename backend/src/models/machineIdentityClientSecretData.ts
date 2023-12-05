@@ -71,4 +71,8 @@ const machineIdentityClientSecretDataSchema = new Schema(
     }
 );
 
+machineIdentityClientSecretDataSchema.index(
+    { machineIdentity: 1, isActive: 1 }
+)
+
 export const MachineIdentityClientSecretData = model<IMachineIdentityClientSecretData>("MachineIdentityClientSecretData", machineIdentityClientSecretDataSchema);
