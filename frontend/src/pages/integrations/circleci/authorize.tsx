@@ -38,7 +38,7 @@ export default function CircleCICreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/circleci/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/circleci/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

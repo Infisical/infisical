@@ -49,7 +49,7 @@ type Props = {
   onDeleteSecret: () => void;
   onSaveSecret: (
     orgSec: DecryptedSecret,
-    modSec: Omit<DecryptedSecret, "tags"> & { tags: { _id: string }[] },
+    modSec: Omit<DecryptedSecret, "tags"> & { tags: { id: string }[] },
     cb?: () => void
   ) => Promise<void>;
   tags: WsTag[];
@@ -98,7 +98,7 @@ export const SecretDetailSidebar = ({
   });
   const selectedTags = watch("tags", []);
   const selectedTagsGroupById = selectedTags.reduce<Record<string, boolean>>(
-    (prev, curr) => ({ ...prev, [curr._id]: true }),
+    (prev, curr) => ({ ...prev, [curr.id]: true }),
     {}
   );
 
@@ -109,7 +109,7 @@ export const SecretDetailSidebar = ({
   const { data: secretVersion } = useGetSecretVersion({
     limit: 10,
     offset: 0,
-    secretId: secret?._id,
+    secretId: secret?.id,
     decryptFileKey
   });
 
@@ -133,8 +133,8 @@ export const SecretDetailSidebar = ({
   };
 
   const handleTagSelect = (tag: WsTag) => {
-    if (selectedTagsGroupById?.[tag._id]) {
-      const tagPos = selectedTags.findIndex(({ _id }) => _id === tag._id);
+    if (selectedTagsGroupById?.[tag.id]) {
+      const tagPos = selectedTags.findIndex(({ id }) => id === tag.id);
       if (tagPos !== -1) {
         remove(tagPos);
       }
@@ -227,7 +227,7 @@ export const SecretDetailSidebar = ({
             )}
             <FormControl label="Tags" className="">
               <div className="overflow-hidden grid gap-2 grid-flow-col auto-cols-min pt-2">
-                {fields.map(({ tagColor, id: formId, name, _id }) => (
+                {fields.map(({ tagColor, id: formId, name, id }) => (
                   <Tag
                     className="flex items-center space-x-2 w-min"
                     key={formId}
@@ -236,7 +236,7 @@ export const SecretDetailSidebar = ({
                         createNotification({ type: "error", text: "Access denied" });
                         return;
                       }
-                      const tag = tags?.find(({ _id: id }) => id === _id);
+                      const tag = tags?.find(({ id: id }) => id === id);
                       if (tag) handleTagSelect(tag);
                     }}
                   >
@@ -269,7 +269,7 @@ export const SecretDetailSidebar = ({
                   <DropdownMenuContent align="end" className="z-[100]">
                     <DropdownMenuLabel>Apply tags to this secrets</DropdownMenuLabel>
                     {tags.map((tag) => {
-                      const { _id: tagId, name, tagColor } = tag;
+                      const { id: tagId, name, tagColor } = tag;
 
                       const isSelected = selectedTagsGroupById?.[tagId];
                       return (

@@ -1,5 +1,5 @@
 export type UserWsKeyPair = {
-  _id: string;
+  id: string;
   encryptedKey: string;
   nonce: string;
   sender: Sender;
@@ -11,7 +11,7 @@ export type UserWsKeyPair = {
 };
 
 export type Sender = {
-  _id: string;
+  id: string;
   email: string;
   createdAt: string;
   updatedAt: string;

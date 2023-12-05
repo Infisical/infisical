@@ -52,7 +52,7 @@ export default function AWSParameterStoreAuthorizeIntegrationPage() {
       setIsLoading(false);
 
       router.push(
-        `/integrations/aws-parameter-store/create?integrationAuthId=${integrationAuth._id}`
+        `/integrations/aws-parameter-store/create?integrationAuthId=${integrationAuth.id}`
       );
     } catch (err) {
       console.error(err);

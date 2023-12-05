@@ -37,7 +37,7 @@ const AddTagsMenu = ({ allTags, currentTags, modifyTags, id }: { allTags: Tag[];
       >
         <Menu.Items className="absolute z-[90] text-sm drop-shadow-xl right-0 mt-0.5 w-[12rem] origin-top-right rounded-md bg-mineshaft-600 border border-mineshaft-500 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-1 space-y-1">
           {allTags?.map((tag) => { return (
-            <Menu.Item key={tag._id}>
+            <Menu.Item key={tag.id}>
               <button
                 type="button"
                 className={`${currentTags?.map(currentTag => currentTag.name).includes(tag.name) ? "opacity-30 cursor-default" : "hover:bg-mineshaft-700"} w-full text-left bg-mineshaft-800 px-2 py-0.5 text-bunker-200 rounded-sm flex items-center`}

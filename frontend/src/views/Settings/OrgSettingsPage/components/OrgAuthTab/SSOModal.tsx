@@ -57,7 +57,7 @@ export const SSOModal = ({
     const { createNotification } = useNotificationContext();
     const { mutateAsync: createMutateAsync, isLoading: createIsLoading } = useCreateSSOConfig();
     const { mutateAsync: updateMutateAsync, isLoading: updateIsLoading } = useUpdateSSOConfig();
-    const { data } = useGetSSOConfig(currentOrg?._id ?? "");
+    const { data } = useGetSSOConfig(currentOrg?.id ?? "");
     
     const {
         control,
@@ -93,7 +93,7 @@ export const SSOModal = ({
             
             if (!data) {
                 await createMutateAsync({
-                    organizationId: currentOrg._id,
+                    organizationId: currentOrg.id,
                     authProvider,
                     isActive: false,
                     entryPoint,
@@ -102,7 +102,7 @@ export const SSOModal = ({
                 });
             } else {
                 await updateMutateAsync({
-                    organizationId: currentOrg._id,
+                    organizationId: currentOrg.id,
                     authProvider,
                     isActive: false,
                     entryPoint,
@@ -209,7 +209,7 @@ export const SSOModal = ({
                         <>
                             <div className="mb-4">
                                 <h3 className="text-mineshaft-400 text-sm">{renderLabels(authProvider).acsUrl}</h3>
-                                <p className="text-gray-400 text-md break-all">{`${window.origin}/api/v1/sso/saml2/${data._id}`}</p>
+                                <p className="text-gray-400 text-md break-all">{`${window.origin}/api/v1/sso/saml2/${data.id}`}</p>
                             </div>
                             <div className="mb-4">
                                 <h3 className="text-mineshaft-400 text-sm">{renderLabels(authProvider).entityId}</h3>

@@ -25,7 +25,7 @@ export default function GitHubOAuth2CallbackPage() {
           integration: "github"
         });
 
-        router.push(`/integrations/github/create?integrationAuthId=${integrationAuth._id}`);
+        router.push(`/integrations/github/create?integrationAuthId=${integrationAuth.id}`);
       } catch (err) {
         console.error(err);
       }

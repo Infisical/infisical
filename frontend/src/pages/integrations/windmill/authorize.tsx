@@ -34,7 +34,7 @@ export default function WindmillCreateIntegrationPage() {
   
       setIsLoading(false);
   
-      router.push(`/integrations/windmill/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/windmill/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

@@ -59,7 +59,7 @@ export default function NavHeader({
       <div className="mr-2 flex h-5 w-5 items-center justify-center rounded-md bg-primary text-sm text-black">
         {currentOrg?.name?.charAt(0)}
       </div>
-      <Link passHref legacyBehavior href={`/org/${currentOrg?._id}/overview`}>
+      <Link passHref legacyBehavior href={`/org/${currentOrg?.id}/overview`}>
         <a className="pl-0.5 text-sm font-semibold text-primary/80 hover:text-primary">
           {currentOrg?.name}
         </a>

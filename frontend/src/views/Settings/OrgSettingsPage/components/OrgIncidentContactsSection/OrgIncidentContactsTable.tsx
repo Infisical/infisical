@@ -25,7 +25,7 @@ import { useDeleteIncidentContact, useGetOrgIncidentContact } from "@app/hooks/a
 export const OrgIncidentContactsTable = () => {
   const { createNotification } = useNotificationContext();
   const { currentOrg } = useOrganization();
-  const { data: contacts, isLoading } = useGetOrgIncidentContact(currentOrg?._id ?? "");
+  const { data: contacts, isLoading } = useGetOrgIncidentContact(currentOrg?.id ?? "");
   const [searchContact, setSearchContact] = useState("");
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeContact",
@@ -37,9 +37,9 @@ export const OrgIncidentContactsTable = () => {
     try {
       const incidentContactEmail = (popUp?.removeContact?.data as { email: string })?.email;
 
-      if (!currentOrg?._id) return;
+      if (!currentOrg?.id) return;
       await mutateAsync({
-        orgId: currentOrg._id,
+        orgId: currentOrg.id,
         email: incidentContactEmail
       });
 

@@ -40,7 +40,7 @@ export default function CloudflareWorkersIntegrationPage() {
             setAccountId("");
             setIsLoading(false);
 
-            router.push(`/integrations/cloudflare-workers/create?integrationAuthId=${integrationAuth._id}`);
+            router.push(`/integrations/cloudflare-workers/create?integrationAuthId=${integrationAuth.id}`);
         } catch (err) {
             console.error(err);
         }

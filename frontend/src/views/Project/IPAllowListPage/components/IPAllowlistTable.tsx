@@ -42,7 +42,7 @@ type Props = {
 export const IPAllowlistTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Props) => {
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
-  const { data, isLoading } = useGetTrustedIps(currentWorkspace?._id ?? "");
+  const { data, isLoading } = useGetTrustedIps(currentWorkspace?.id ?? "");
 
   const formatType = (type: string, prefix?: number) => {
     return `${type.slice(0, 2).toUpperCase() + type.slice(2)} ${
@@ -69,9 +69,9 @@ export const IPAllowlistTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: 
               data?.length > 0 &&
               data
                 .sort((a, b) => a.ipAddress.localeCompare(b.ipAddress))
-                .map(({ _id, ipAddress, comment, type, prefix, isActive }) => {
+                .map(({ id, ipAddress, comment, type, prefix, isActive }) => {
                   return (
-                    <Tr key={`ip-access-range-${_id}`} className="h-10">
+                    <Tr key={`ip-access-range-${id}`} className="h-10">
                       <Td>{`${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`}</Td>
                       <Td>{formatType(type, prefix)}</Td>
                       <Td>{comment}</Td>
@@ -95,7 +95,7 @@ export const IPAllowlistTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: 
                               onClick={() => {
                                 if (subscription?.ipAllowlisting) {
                                   handlePopUpOpen("trustedIp", {
-                                    trustedIpId: _id,
+                                    trustedIpId: id,
                                     ipAddress,
                                     comment,
                                     prefix,
@@ -123,7 +123,7 @@ export const IPAllowlistTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: 
                               onClick={() => {
                                 if (subscription?.ipAllowlisting) {
                                   handlePopUpOpen("deleteTrustedIp", {
-                                    trustedIpId: _id
+                                    trustedIpId: id
                                   });
                                 } else {
                                   handlePopUpOpen("upgradePlan");

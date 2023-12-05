@@ -57,12 +57,12 @@ export default function SupabaseCreateIntegrationPage() {
 
   const handleButtonClick = async () => {
     try {
-      if (!integrationAuth?._id) return;
+      if (!integrationAuth?.id) return;
 
       setIsLoading(true);
 
       await mutateAsync({
-        integrationAuthId: integrationAuth?._id,
+        integrationAuthId: integrationAuth?.id,
         isActive: true,
         app: targetApp,
         appId: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp)?.appId,

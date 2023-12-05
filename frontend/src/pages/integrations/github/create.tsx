@@ -79,7 +79,7 @@ export default function GitHubCreateIntegrationPage() {
     try {
       setIsLoading(true);
 
-      if (!integrationAuth?._id) return;
+      if (!integrationAuth?.id) return;
 
       const targetApps = integrationAuthApps?.filter(
         (integrationAuthApp) => targetAppIds.includes(String(integrationAuthApp.appId))
@@ -90,7 +90,7 @@ export default function GitHubCreateIntegrationPage() {
       await Promise.all(
         targetApps.map(async (targetApp) => {
           await mutateAsync({
-            integrationAuthId: integrationAuth?._id,
+            integrationAuthId: integrationAuth?.id,
             isActive: true,
             app: targetApp.name,
             sourceEnvironment: selectedSourceEnvironment,

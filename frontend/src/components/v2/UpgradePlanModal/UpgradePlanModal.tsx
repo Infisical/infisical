@@ -16,7 +16,7 @@ export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Ele
   const { mutateAsync, isLoading } = useGetOrgTrialUrl();
   const link =
     subscription && subscription.slug !== null
-      ? `/org/${currentOrg?._id}/billing`
+      ? `/org/${currentOrg?.id}/billing`
       : "https://infisical.com/scheduledemo";
 
   const handleUpgradeBtnClick = async () => {
@@ -27,7 +27,7 @@ export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Ele
         // direct user to start pro trial
 
         const url = await mutateAsync({
-          orgId: currentOrg._id,
+          orgId: currentOrg.id,
           success_url: window.location.href
         });
 

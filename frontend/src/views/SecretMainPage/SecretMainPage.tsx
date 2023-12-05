@@ -63,7 +63,7 @@ export const SecretMainPage = () => {
 
   // env slug
   const environment = router.query.env as string;
-  const workspaceId = currentWorkspace?._id || "";
+  const workspaceId = currentWorkspace?.id || "";
   const secretPath = (router.query.secretPath as string) || "/";
   const canReadSecret = permission.can(
     ProjectPermissionActions.Read,

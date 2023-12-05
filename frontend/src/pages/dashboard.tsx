@@ -18,7 +18,7 @@ export default function DashboardRedirect() {
         if (localStorage.getItem("orgData.id")) {
           router.push(`/org/${localStorage.getItem("orgData.id")}/overview`);
         } else if (userOrgs) {
-            userOrg = userOrgs[0]._id;
+            userOrg = userOrgs[0].id;
             router.push(`/org/${userOrg}/overview`);
           }
       } catch (error) {

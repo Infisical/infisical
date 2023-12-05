@@ -1,5 +1,5 @@
 export type APIKeyDataV2 = {
-    _id: string;
+    id: string;
     name: string;
     user: string;
     lastUsed?: string;

@@ -63,7 +63,7 @@ export const decryptSecrets = (
     });
 
     const decryptedSecret: DecryptedSecret = {
-      _id: encSecret._id,
+      id: encSecret.id,
       env: encSecret.environment,
       key: secretKey,
       value: secretValue,
@@ -79,7 +79,7 @@ export const decryptSecrets = (
 
     if (encSecret.type === "personal") {
       personalSecrets[decryptedSecret.key] = {
-        id: encSecret._id,
+        id: encSecret.id,
         value: secretValue
       };
     } else {
@@ -225,7 +225,7 @@ export const useGetSecretVersion = (dto: GetSecretVersionsDTO) =>
         return data
           .map((el) => ({
             createdAt: el.createdAt,
-            id: el._id,
+            id: el.id,
             value: decryptSymmetric({
               ciphertext: el.secretValueCiphertext,
               iv: el.secretValueIV,

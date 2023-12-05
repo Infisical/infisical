@@ -46,7 +46,7 @@ export default function GitLabAuthorizeIntegrationPage() {
     localStorage.setItem("latestCSRFToken", csrfToken);
     
     const state = `${csrfToken}|${(gitLabURL as string).trim() === "" ? "" : (gitLabURL as string).trim()}`;
-    const link = `${baseURL}/oauth/authorize?client_id=${integrationOption.clientId}&redirect_uri=${window.location.origin}/integrations/gitlab/oauth2/callback&response_type=code&state=${state}`;
+    const link = `${baseURL}/oauth/authorize?clientid=${integrationOption.clientId}&redirect_uri=${window.location.origin}/integrations/gitlab/oauth2/callback&response_type=code&state=${state}`;
     
     window.location.assign(link);
   }

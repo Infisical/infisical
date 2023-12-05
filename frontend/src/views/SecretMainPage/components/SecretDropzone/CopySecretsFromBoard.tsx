@@ -240,14 +240,14 @@ export const CopySecretsFromBoard = ({
 
               {secrets
                 ?.filter(({ key }) => key.toLowerCase().includes(searchFilter.toLowerCase()))
-                ?.map(({ _id, key, value: secVal }) => (
+                ?.map(({ id, key, value: secVal }) => (
                   <Controller
-                    key={`pull-secret--${_id}`}
+                    key={`pull-secret--${id}`}
                     control={control}
                     name={`secrets.${key}`}
                     render={({ field: { value, onChange } }) => (
                       <Checkbox
-                        id={`pull-secret-${_id}`}
+                        id={`pull-secret-${id}`}
                         isChecked={Boolean(value)}
                         onCheckedChange={(isChecked) => onChange(isChecked ? secVal : "")}
                       >

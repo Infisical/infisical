@@ -22,7 +22,7 @@ import { ManagePlansModal } from "./ManagePlansModal";
 export const PreviewSection = () => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
-  const { data, isLoading } = useGetOrgPlanBillingInfo(currentOrg?._id ?? "");
+  const { data, isLoading } = useGetOrgPlanBillingInfo(currentOrg?.id ?? "");
   const getOrgTrialUrl = useGetOrgTrialUrl();
   const createCustomerPortalSession = useCreateCustomerPortalSession();
 
@@ -58,7 +58,7 @@ export const PreviewSection = () => {
       if (!subscription.has_used_trial) {
         // direct user to start pro trial
         const url = await getOrgTrialUrl.mutateAsync({
-          orgId: currentOrg._id,
+          orgId: currentOrg.id,
           success_url: window.location.href
         });
 
@@ -124,8 +124,8 @@ export const PreviewSection = () => {
                 <button
                   type="button"
                   onClick={async () => {
-                    if (!currentOrg?._id) return;
-                    const { url } = await createCustomerPortalSession.mutateAsync(currentOrg._id);
+                    if (!currentOrg?.id) return;
+                    const { url } = await createCustomerPortalSession.mutateAsync(currentOrg.id);
                     window.location.href = url;
                   }}
                   disabled={!isAllowed}

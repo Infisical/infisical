@@ -142,7 +142,7 @@ export const useGetImportedSecrets = ({
             });
 
             return {
-              _id: encSecret._id,
+              id: encSecret.id,
               env: encSecret.environment,
               key: secretKey,
               value: secretValue,

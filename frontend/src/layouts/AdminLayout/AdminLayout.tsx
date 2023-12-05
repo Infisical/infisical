@@ -101,7 +101,7 @@ export const AdminLayout = ({ children }: LayoutProps) => {
               <div>
                 {!router.asPath.includes("personal") && (
                   <div className="flex h-12 cursor-default justify-between items-center px-3 pt-6">
-                    <Link href={`/org/${currentOrg?._id}/overview`}>
+                    <Link href={`/org/${currentOrg?.id}/overview`}>
                       <div className="my-6 flex cursor-default items-center justify-center pr-2 text-sm text-mineshaft-300 hover:text-mineshaft-100">
                         <FontAwesomeIcon icon={faArrowLeft} className="pr-3" />
                         Back to organization
@@ -264,7 +264,7 @@ export const AdminLayout = ({ children }: LayoutProps) => {
 
                         // direct user to start pro trial
                         const url = await mutateAsync({
-                          orgId: currentOrg._id,
+                          orgId: currentOrg.id,
                           success_url: window.location.href
                         });
 

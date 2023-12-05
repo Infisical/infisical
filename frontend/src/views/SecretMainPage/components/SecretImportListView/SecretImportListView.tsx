@@ -132,12 +132,12 @@ export const SecretImportListView = ({
     const { environment: importEnv, secretPath: impSecPath } = popUp.deleteSecretImport
       ?.data as TDeleteSecretImport;
     try {
-      if (secretImports?._id) {
+      if (secretImports?.id) {
         await deleteSecretImport({
           workspaceId,
           environment,
           directory: secretPath,
-          id: secretImports?._id,
+          id: secretImports?.id,
           secretImportEnv: importEnv,
           secretImportPath: impSecPath
         });
@@ -166,7 +166,7 @@ export const SecretImportListView = ({
         workspaceId,
         environment,
         directory: secretPath,
-        id: secretImports?._id || "",
+        id: secretImports?.id || "",
         secretImports: newImportOrder
       });
     }

@@ -33,7 +33,7 @@ export default function TravisCICreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/travisci/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/travisci/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

@@ -2,20 +2,24 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
-import { AuthTokenType } from "@app/services/auth/auth-signup-type";
+import { AuthTokenType } from "@app/services/auth/auth-type";
 
 export const registerMfaRouter = async (server: FastifyZodProvider) => {
   const cfg = getConfig();
 
+  server.decorateRequest("mfa", null);
   server.addHook("preParsing", async (req, res) => {
     const authorizationHeader = req.headers.authorization;
 
     if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
       res.status(401).send({ error: "Missing bearer token" });
-      return;
+      return res;
     }
     const token = authorizationHeader.split(" ")[1];
-    if (!token) res.status(401).send({ error: "Missing bearer token" });
+    if (!token) {
+      res.status(401).send({ error: "Missing bearer token" });
+      return res;
+    }
 
     const decodedToken = jwt.verify(token, cfg.JWT_AUTH_SECRET) as JwtPayload;
     if (decodedToken.authTokenType !== AuthTokenType.MFA_TOKEN)
@@ -23,8 +27,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
 
     const user = await server.store.user.getUserById(decodedToken.userId);
     if (!user) throw new Error("User not found");
-    req.mfa.userId = user.id;
-    req.mfa.user = user;
+    req.mfa = { userId: user.id, user };
   });
 
   server.route({
@@ -52,7 +55,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          encryptionVersion: z.number().default(1).optional(),
+          encryptionVersion: z.number().default(1).nullable().optional(),
           protectedKey: z.string(),
           protectedKeyIV: z.string(),
           protectedKeyTag: z.string(),

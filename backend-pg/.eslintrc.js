@@ -18,6 +18,7 @@ module.exports = {
     "import/first": "error",
     "import/newline-after-import": "error",
     "import/no-duplicates": "error",
+    "consistent-return": "off",
     "simple-import-sort/imports": [
       "warn",
       {

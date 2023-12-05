@@ -43,7 +43,7 @@ export default function LaravelForgeCreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/laravel-forge/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/laravel-forge/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

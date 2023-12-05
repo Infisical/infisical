@@ -13,7 +13,7 @@ const ProjectPermissionContext = createContext<null | TProjectPermission>(null);
 
 export const ProjectPermissionProvider = ({ children }: Props): JSX.Element => {
   const { currentWorkspace, isLoading: isWsLoading } = useWorkspace();
-  const workspaceId = currentWorkspace?._id || "";
+  const workspaceId = currentWorkspace?.id || "";
   const { data: permission, isLoading } = useGetUserProjectPermissions({ workspaceId });
 
   if ((isLoading && currentWorkspace) || isWsLoading) {

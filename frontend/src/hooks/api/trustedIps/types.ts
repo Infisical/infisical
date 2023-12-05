@@ -1,5 +1,5 @@
 export type TrustedIp = {
-    _id: string;
+    id: string;
     workspace: string;
     ipAddress: string;
     type: "ipv4" | "ipv6";

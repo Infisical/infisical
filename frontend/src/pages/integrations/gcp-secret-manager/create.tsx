@@ -133,10 +133,10 @@ export default function GCPSecretManagerCreateIntegrationPage() {
     try {
       setIsLoading(true);
 
-      if (!integrationAuth?._id) return;
+      if (!integrationAuth?.id) return;
       
       await mutateAsync({
-        integrationAuthId: integrationAuth?._id,
+        integrationAuthId: integrationAuth?.id,
         isActive: true,
         app: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId)?.name,
         appId: targetAppId,

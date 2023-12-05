@@ -78,7 +78,7 @@ export default function VercelCreateIntegrationPage() {
 
   const handleButtonClick = async () => {
     try {
-      if (!integrationAuth?._id) return;
+      if (!integrationAuth?.id) return;
 
       setIsLoading(true);
 
@@ -91,7 +91,7 @@ export default function VercelCreateIntegrationPage() {
       const path = targetEnvironment === "preview" && targetBranch !== "" ? targetBranch : undefined;
 
       await mutateAsync({
-        integrationAuthId: integrationAuth?._id,
+        integrationAuthId: integrationAuth?.id,
         isActive: true,
         app: targetApp.name,
         appId: targetApp.appId,

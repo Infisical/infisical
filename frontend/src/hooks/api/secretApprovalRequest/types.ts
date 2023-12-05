@@ -16,7 +16,7 @@ export enum CommitType {
 }
 
 export type TSecretApprovalSecChangeData = {
-  _id: string;
+  id: string;
   secretKeyCiphertext: string;
   secretKeyIV: string;
   secretKeyTag: string;
@@ -34,7 +34,7 @@ export type TSecretApprovalSecChangeData = {
 };
 
 export type TSecretApprovalSecChange = {
-  _id: string;
+  id: string;
   version: number;
   secretKey: string;
   secretValue: string;
@@ -46,7 +46,7 @@ export type TSecretApprovalRequest<
   T extends unknown = TSecretApprovalSecChangeData,
   J extends unknown = EncryptedSecret
 > = {
-  _id: string;
+  id: string;
   slug: string;
   createdAt: string;
   committer: string;

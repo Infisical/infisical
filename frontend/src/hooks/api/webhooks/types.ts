@@ -1,5 +1,5 @@
 export type TWebhook = {
-  _id: string;
+  id: string;
   workspace: string;
   environment: string;
   secretPath: string;

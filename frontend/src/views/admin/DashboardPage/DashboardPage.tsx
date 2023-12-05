@@ -22,8 +22,8 @@ export const AdminDashboardPage = () => {
   useEffect(() => {
     if (isNotAllowed && !isUserLoading) {
       if (orgs?.length) {
-        localStorage.setItem("orgData.id", orgs?.[0]?._id);
-        router.push(`/org/${orgs?.[0]?._id}/overview`);
+        localStorage.setItem("orgData.id", orgs?.[0]?.id);
+        router.push(`/org/${orgs?.[0]?.id}/overview`);
       }
     }
   }, [isNotAllowed, isUserLoading]);

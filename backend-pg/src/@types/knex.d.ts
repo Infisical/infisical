@@ -2,42 +2,58 @@ import { Knex } from "knex";
 
 import {
   TableName,
+  TAuthTokens,
+  TAuthTokenSessions,
+  TAuthTokenSessionsInsert,
+  TAuthTokenSessionsUpdate,
+  TAuthTokensUpdate,
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
-  TToken,
-  TTokenInsert,
-  TTokenUpdate,
-  TUser,
-  TUserEncryptionKey,
-  TUserEncryptionKeyInsert,
-  TUserEncryptionKeyUpdate,
-  TUserInsert,
-  TUserUpdate
+  TBackupPrivateKeyUpdate,
+  TOrganizationMemberships,
+  TOrganizations,
+  TOrganizationsInsert,
+  TOrganizationsUpdate,
+  TUserEncryptionKeys,
+  TUserEncryptionKeysInsert,
+  TUserEncryptionKeysUpdate,
+  TUsers,
+  TUsersInsert,
+  TUsersUpdate
 } from "@app/db/schemas";
-import {
-  TTokenSession,
-  TTokenSessionInsert,
-  TTokenSessionUpdate
-} from "@app/db/schemas/token-session";
 
 declare module "knex/types/tables" {
   interface Tables extends { [key in TableName]: Knex.CompositeTableType<any> } {
-    [TableName.Users]: Knex.CompositeTableType<TUser, TUserInsert, TUserUpdate>;
+    [TableName.Users]: Knex.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
     [TableName.UserEncryptionKey]: Knex.CompositeTableType<
-      TUserEncryptionKey,
-      TUserEncryptionKeyInsert,
-      TUserEncryptionKeyUpdate
+      TUserEncryptionKeys,
+      TUserEncryptionKeysInsert,
+      TUserEncryptionKeysUpdate
     >;
-    [TableName.AuthTokens]: Knex.CompositeTableType<TToken, TTokenInsert, TTokenUpdate>;
+    [TableName.AuthTokens]: Knex.CompositeTableType<
+      TAuthTokens,
+      TAuthTokensInsert,
+      TAuthTokensUpdate
+    >;
     [TableName.AuthTokenSession]: Knex.CompositeTableType<
-      TTokenSession,
-      TTokenSessionInsert,
-      TTokenSessionUpdate
+      TAuthTokenSessions,
+      TAuthTokenSessionsInsert,
+      TAuthTokenSessionsUpdate
     >;
     [TableName.BackupPrivateKey]: Knex.CompositeTableType<
       TBackupPrivateKey,
       TBackupPrivateKeyInsert,
-      TTokenSessionUpdate
+      TBackupPrivateKeyUpdate
+    >;
+    [TableName.Organization]: Knex.CompositeTableType<
+      TOrganizations,
+      TOrganizationsInsert,
+      TOrganizationsUpdate
+    >;
+    [TableName.OrgMembership]: Knex.CompositeTableType<
+      TOrganizationMemberships,
+      TOrganizationsInsert,
+      TOrganizationsUpdate
     >;
   }
 }

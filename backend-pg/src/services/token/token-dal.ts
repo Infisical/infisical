@@ -1,6 +1,5 @@
 import { TDbClient } from "@app/db";
-import { TableName, TToken } from "@app/db/schemas";
-import { TTokenSession } from "@app/db/schemas/token-session";
+import { TableName, TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 
 import {
   TDeleteTokenForUserDalDTO,
@@ -19,7 +18,7 @@ export const tokenDalFactory = (db: TDbClient) => {
     userId,
     type,
     triesLeft
-  }: TUpsertTokenForUserDalDTO): Promise<TToken | undefined> => {
+  }: TUpsertTokenForUserDalDTO): Promise<TAuthTokens | undefined> => {
     const token = await db.transaction(async (tx) => {
       await tx(TableName.AuthTokens).where({ userId, type }).delete().returning("*");
       const [newToken] = await tx(TableName.AuthTokens)
@@ -33,13 +32,23 @@ export const tokenDalFactory = (db: TDbClient) => {
   const getTokenForUser = async ({
     userId,
     type
-  }: TGetTokenForUserDalDTO): Promise<TToken | undefined> =>
+  }: TGetTokenForUserDalDTO): Promise<TAuthTokens | undefined> =>
     db(TableName.AuthTokens).where({ userId, type }).first();
+
+  const getTokenSession = async (
+    userId: string,
+    ip: string,
+    userAgent: string
+  ): Promise<TAuthTokenSessions | undefined> =>
+    db(TableName.AuthTokenSession).where({ userId, ip, userAgent }).first();
+
+  const getTokenSessionById = async (id: string, userId: string) =>
+    db(TableName.AuthTokenSession).where({ id, userId }).first();
 
   const deleteTokenForUser = async ({
     userId,
     type
-  }: TDeleteTokenForUserDalDTO): Promise<TToken[] | undefined> =>
+  }: TDeleteTokenForUserDalDTO): Promise<TAuthTokens[] | undefined> =>
     db(TableName.AuthTokens).where({ userId, type }).delete().returning("*");
 
   const decrementTriesField = async ({
@@ -49,18 +58,11 @@ export const tokenDalFactory = (db: TDbClient) => {
     await db(TableName.AuthTokens).where({ userId, type }).decrement("triesLeft", 1);
   };
 
-  const getTokenSession = async (
-    userId: string,
-    ip: string,
-    userAgent: string
-  ): Promise<TTokenSession | undefined> =>
-    db(TableName.AuthTokenSession).where({ userId, ip, userAgent }).first();
-
   const insertTokenSession = async (
     userId: string,
     ip: string,
     userAgent: string
-  ): Promise<TTokenSession | undefined> => {
+  ): Promise<TAuthTokenSessions | undefined> => {
     const [session] = await db(TableName.AuthTokenSession)
       .insert({
         userId,
@@ -77,7 +79,7 @@ export const tokenDalFactory = (db: TDbClient) => {
   const incrementVersion = async (
     userId: string,
     sessionId: string
-  ): Promise<TTokenSession | undefined> => {
+  ): Promise<TAuthTokenSessions | undefined> => {
     const [session] = await db(TableName.AuthTokenSession)
       .where({ userId, id: sessionId })
       .increment("accessVersion", 1)
@@ -87,8 +89,9 @@ export const tokenDalFactory = (db: TDbClient) => {
   };
 
   return {
-    upsertTokenForUser,
     getTokenForUser,
+    getTokenSessionById,
+    upsertTokenForUser,
     deleteTokenForUser,
     decrementTriesField,
     getTokenSession,

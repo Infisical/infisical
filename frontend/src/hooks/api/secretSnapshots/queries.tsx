@@ -102,7 +102,7 @@ export const useGetSnapshotSecrets = ({ decryptFileKey, env, snapshotId }: TSnap
           const secretComment = "";
 
           const decryptedSecret = {
-            _id: encSecret.secret,
+            id: encSecret.secret,
             env: encSecret.environment,
             key: secretKey,
             value: secretValue,

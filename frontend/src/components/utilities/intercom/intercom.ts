@@ -9,7 +9,7 @@
 /* eslint-disable func-names */
 // @ts-nocheck
 
-import { INTERCOM_ID as APP_ID } from "@app/components/utilities/config";
+import { INTERCOMid as APPid } from "@app/components/utilities/config";
 
 // Loads Intercom with the snippet
 // This must be run before boot, it initializes window.Intercom
@@ -37,7 +37,7 @@ export const load = () => {
         var s=d.createElement("script");
         s.type="text/javascript";
         s.async=true;
-        s.src="https://widget.intercom.io/widget/" + APP_ID;
+        s.src="https://widget.intercom.io/widget/" + APPid;
         var x=d.getElementsByTagName("script")[0];
         x.parentNode.insertBefore(s, x);
       };
@@ -56,7 +56,7 @@ export const load = () => {
 export const boot = (options = {}) => {
   window &&
     window.Intercom &&
-    window.Intercom("boot", { app_id: APP_ID, ...options });
+    window.Intercom("boot", { appid: APPid, ...options });
 };
 
 export const update = () => {

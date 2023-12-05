@@ -21,10 +21,10 @@ export const OrgDeleteSection = () => {
 
   const handleDeleteOrgSubmit = async () => {
     try {
-      if (!currentOrg?._id) return;
+      if (!currentOrg?.id) return;
 
       await mutateAsync({
-        organizationId: currentOrg?._id
+        organizationId: currentOrg?.id
       });
 
       createNotification({

@@ -48,7 +48,7 @@ export default function HashiCorpVaultCreateIntegrationPage() {
 
   const handleButtonClick = async () => {
     try {
-      if (!integrationAuth?._id) return;
+      if (!integrationAuth?.id) return;
 
       if (!isValidVaultPath(vaultEnginePath)) {
         setVaultEnginePathErrorText("Vault KV Secrets Engine Path must be valid like kv");
@@ -67,7 +67,7 @@ export default function HashiCorpVaultCreateIntegrationPage() {
       setIsLoading(true);
 
       await mutateAsync({
-        integrationAuthId: integrationAuth?._id,
+        integrationAuthId: integrationAuth?.id,
         isActive: true,
         app: vaultEnginePath,
         sourceEnvironment: selectedSourceEnvironment,

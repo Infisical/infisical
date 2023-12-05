@@ -112,7 +112,7 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
   });
   const { createNotification } = useNotificationContext();
   const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?._id || "";
+  const workspaceId = currentWorkspace?.id || "";
 
   const { mutateAsync: createWsTag } = useCreateWsTag();
 

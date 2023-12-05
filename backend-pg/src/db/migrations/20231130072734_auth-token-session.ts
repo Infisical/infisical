@@ -7,7 +7,7 @@ export async function up(knex: Knex): Promise<void> {
   const isTablePresent = await knex.schema.hasTable(TableName.AuthTokenSession);
   if (!isTablePresent) {
     await knex.schema.createTable(TableName.AuthTokenSession, (t) => {
-      t.increments();
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("ip").notNullable();
       t.string("userAgent");
       t.integer("refreshVersion").notNullable().defaultTo(1);

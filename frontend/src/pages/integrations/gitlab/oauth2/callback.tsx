@@ -29,7 +29,7 @@ export default function GitLabOAuth2CallbackPage() {
           })
         });
 
-        router.push(`/integrations/gitlab/create?integrationAuthId=${integrationAuth._id}`);
+        router.push(`/integrations/gitlab/create?integrationAuthId=${integrationAuth.id}`);
       } catch (err) {
         console.error(err);
       }

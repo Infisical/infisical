@@ -33,7 +33,7 @@ export default function SupabaseCreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/supabase/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/supabase/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

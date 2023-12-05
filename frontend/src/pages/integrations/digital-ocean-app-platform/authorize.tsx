@@ -33,7 +33,7 @@ export default function DigitalOceanAppPlatformCreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/digital-ocean-app-platform/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/digital-ocean-app-platform/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

@@ -24,7 +24,7 @@ export default function HerokuOAuth2CallbackPage() {
           integration: "heroku"
         });
 
-        router.push(`/integrations/heroku/create?integrationAuthId=${integrationAuth._id}`);
+        router.push(`/integrations/heroku/create?integrationAuthId=${integrationAuth.id}`);
       } catch (err) {
         console.error(err);
       }

@@ -15,7 +15,7 @@ enum TabSection {
 
 export const SecretApprovalPage = () => {
   const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?._id || "";
+  const workspaceId = currentWorkspace?.id || "";
 
   return (
     <div className="container mx-auto bg-bunker-800 text-white w-full h-full max-w-7xl px-6">

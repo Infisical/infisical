@@ -11,6 +11,7 @@
     "lint:fix": "eslint --fix 'src/**/*.ts'",
     "lint": "eslint 'src/**/*.ts'",
     "generate:component": "tsx ./scripts/create-backend-file.ts",
+    "generate:schema": "tsx ./scripts/generate-schema-types.ts",
     "migration:new": "tsx ./scripts/create-migration.ts",
     "migration:up": "knex --knexfile ./src/db/knexfile.ts --client pg migrate:up",
     "migration:down": "knex --knexfile ./src/db/knexfile.ts --client pg migrate:down",

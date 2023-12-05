@@ -70,7 +70,7 @@ export const SecretRotationPage = withProjectPermission(
       "deleteRotation",
       "upgradePlan"
     ] as const);
-    const workspaceId = currentWorkspace?._id || "";
+    const workspaceId = currentWorkspace?.id || "";
     const canCreateRotation = permission.can(
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretRotation
@@ -145,11 +145,11 @@ export const SecretRotationPage = withProjectPermission(
     const handleUserAcceptBotCondition = async () => {
       const provider = popUp.activeBot?.data as TSecretRotationProvider;
       try {
-        if (bot?._id) {
+        if (bot?.id) {
           const botKey = generateBotKey(bot.publicKey, userWsKey!);
           await updateBotActiveStatus({
             isActive: true,
-            botId: bot._id,
+            botId: bot.id,
             workspaceId,
             botKey
           });
@@ -232,16 +232,16 @@ export const SecretRotationPage = withProjectPermission(
                       secretPath,
                       outputs,
                       provider,
-                      _id,
+                      id,
                       lastRotatedAt,
                       status,
                       statusMessage
                     }) => {
-                      const isDeleting = deleteSecretRotationVars?.id === _id && isDeletingRotation;
+                      const isDeleting = deleteSecretRotationVars?.id === id && isDeletingRotation;
                       const isRestarting =
-                        restartSecretRotationVar?.id === _id && isRestartingRotation;
+                        restartSecretRotationVar?.id === id && isRestartingRotation;
                       return (
-                        <Tr key={_id}>
+                        <Tr key={id}>
                           <Td>
                             {outputs
                               .map(({ key }) => key)
@@ -291,7 +291,7 @@ export const SecretRotationPage = withProjectPermission(
                                     colorSchema="danger"
                                     ariaLabel="delete-rotation"
                                     isDisabled={isDeleting || !isAllowed}
-                                    onClick={() => handleRestartRotation(_id)}
+                                    onClick={() => handleRestartRotation(id)}
                                   >
                                     {isRestarting ? (
                                       <Spinner size="xs" />
@@ -313,7 +313,7 @@ export const SecretRotationPage = withProjectPermission(
                                     colorSchema="danger"
                                     ariaLabel="delete-rotation"
                                     isDisabled={isDeleting || !isAllowed}
-                                    onClick={() => handlePopUpOpen("deleteRotation", { id: _id })}
+                                    onClick={() => handlePopUpOpen("deleteRotation", { id: id })}
                                   >
                                     {isDeleting ? (
                                       <Spinner size="xs" />

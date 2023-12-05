@@ -25,7 +25,7 @@ export default function VercelOAuth2CallbackPage() {
           integration: "vercel"
         });
 
-        router.push(`/integrations/vercel/create?integrationAuthId=${integrationAuth._id}`);
+        router.push(`/integrations/vercel/create?integrationAuthId=${integrationAuth.id}`);
       } catch (err) {
         console.error(err);
       }

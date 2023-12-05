@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { UserSchema } from "@app/db/schemas";
+import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 
 export const registerSignupRouter = async (server: FastifyZodProvider) => {
@@ -35,7 +35,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           message: z.string(),
           token: z.string(),
-          user: UserSchema
+          user: UsersSchema
         })
       }
     },
@@ -72,7 +72,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          user: UserSchema,
+          user: UsersSchema,
           token: z.string()
         })
       }

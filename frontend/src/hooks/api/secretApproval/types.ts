@@ -1,5 +1,5 @@
 export type TSecretApprovalPolicy = {
-  _id: string;
+  id: string;
   workspace: string;
   name: string;
   environment: string;

@@ -59,7 +59,7 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
   const { mutateAsync: deleteSecretApprovalPolicy } = useDeleteSecretApprovalPolicy();
 
   const handleDeletePolicy = async () => {
-    const { _id: id } = popUp.deletePolicy.data as TSecretApprovalPolicy;
+    const { id: id } = popUp.deletePolicy.data as TSecretApprovalPolicy;
     try {
       await deleteSecretApprovalPolicy({
         workspaceId,
@@ -138,7 +138,7 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
               <SecretApprovalPolicyRow
                 workspaceId={workspaceId}
                 policy={policy}
-                key={policy._id}
+                key={policy.id}
                 members={members}
                 onEdit={() => handlePopUpOpen("secretPolicyForm", policy)}
                 onDelete={() => handlePopUpOpen("deletePolicy", policy)}

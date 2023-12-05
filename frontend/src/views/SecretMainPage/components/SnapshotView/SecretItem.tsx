@@ -151,10 +151,10 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                   <Td className="border-r border-mineshaft-600">Tags</Td>
                   {isModified && (
                     <Td className="border-r border-mineshaft-600">
-                      {preSecret?.tags?.map(({ name, _id: tagId, tagColor }) => (
+                      {preSecret?.tags?.map(({ name, id: tagId, tagColor }) => (
                         <Tag
                           className="flex items-center space-x-2 w-min"
-                          key={`${preSecret._id}-${tagId}`}
+                          key={`${preSecret.id}-${tagId}`}
                         >
                           <div
                             className="w-3 h-3 rounded-full"
@@ -166,10 +166,10 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                     </Td>
                   )}
                   <Td>
-                    {postSecret?.tags?.map(({ name, _id: tagId, tagColor }) => (
+                    {postSecret?.tags?.map(({ name, id: tagId, tagColor }) => (
                       <Tag
                         className="flex items-center space-x-2 w-min"
-                        key={`${postSecret._id}-${tagId}`}
+                        key={`${postSecret.id}-${tagId}`}
                       >
                         <div
                           className="w-3 h-3 rounded-full"

@@ -80,7 +80,7 @@ export default function ChecklyCreateIntegrationPage() {
 
   const handleButtonClick = async () => {
     try {
-      if (!integrationAuth?._id) return;
+      if (!integrationAuth?.id) return;
 
       setIsLoading(true);
 
@@ -94,7 +94,7 @@ export default function ChecklyCreateIntegrationPage() {
       if (!targetApp) return;
       
       await mutateAsync({
-        integrationAuthId: integrationAuth?._id,
+        integrationAuthId: integrationAuth?.id,
         isActive: true,
         app: targetApp?.name,
         appId: targetApp?.appId,

@@ -71,7 +71,7 @@ export type TProviderTemplate = {
 };
 
 export type TSecretRotation<T extends unknown = EncryptedSecret> = {
-  _id: string;
+  id: string;
   interval: number;
   provider: string;
   customProvider: string;

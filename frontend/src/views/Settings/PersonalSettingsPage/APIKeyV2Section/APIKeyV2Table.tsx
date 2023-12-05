@@ -50,13 +50,13 @@ export const APIKeyV2Table = ({
                     data && 
                     data.length > 0 && 
                     data.map(({
-                        _id,
+                        id,
                         name,
                         lastUsed,
                         createdAt
                     }) => {
                         return (
-                            <Tr className="h-10" key={`api-key-v2-${_id}`}>
+                            <Tr className="h-10" key={`api-key-v2-${id}`}>
                                 <Td>{name}</Td>
                                 <Td>{lastUsed ? format(new Date(lastUsed), "yyyy-MM-dd") : "-"}</Td>
                                 <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
@@ -64,7 +64,7 @@ export const APIKeyV2Table = ({
                                     <IconButton
                                         onClick={async () => {
                                             handlePopUpOpen("apiKeyV2", {
-                                                apiKeyDataId: _id,
+                                                apiKeyDataId: id,
                                                 name
                                             });
                                         }}
@@ -78,7 +78,7 @@ export const APIKeyV2Table = ({
                                     <IconButton
                                         onClick={() => {
                                             handlePopUpOpen("deleteAPIKeyV2", {
-                                                apiKeyDataId: _id
+                                                apiKeyDataId: id
                                             });
                                         }}
                                         size="lg"

@@ -62,7 +62,7 @@ export default function TerraformCloudCreateIntegrationPage() {
 
   const handleButtonClick = async () => {
     try {
-      if (!integrationAuth?._id) return;
+      if (!integrationAuth?.id) return;
 
       setVariableTypeErrorText("");
       if (variableType.length === 0 ) {
@@ -73,7 +73,7 @@ export default function TerraformCloudCreateIntegrationPage() {
       setIsLoading(true);
 
       await mutateAsync({
-        integrationAuthId: integrationAuth?._id,
+        integrationAuthId: integrationAuth?.id,
         isActive: true,
         app: targetApp,
         appId: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp)?.appId,

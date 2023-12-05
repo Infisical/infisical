@@ -23,7 +23,7 @@ type Props = {
 export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const environments = currentWorkspace?.environments || [];
-  const workspaceId = currentWorkspace?._id || "";
+  const workspaceId = currentWorkspace?.id || "";
   const {
     control,
     handleSubmit,
@@ -117,11 +117,11 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
                 {!isSecretsLoading &&
                   secrets
                     ?.filter(
-                      ({ _id }) =>
-                        value === _id || !Object.values(selectedSecrets || {}).includes(_id)
+                      ({ id }) =>
+                        value === id || !Object.values(selectedSecrets || {}).includes(id)
                     )
-                    ?.map(({ key, _id }) => (
-                      <SelectItem value={_id} key={_id}>
+                    ?.map(({ key, id }) => (
+                      <SelectItem value={id} key={id}>
                         {key}
                       </SelectItem>
                     ))}

@@ -38,7 +38,7 @@ export default function ChecklyCreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/checkly/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/checkly/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

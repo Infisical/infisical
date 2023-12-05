@@ -1,5 +1,5 @@
 export type IncidentContact = {
-  _id: string;
+  id: string;
   email: string;
   organization: string;
   __v: number;

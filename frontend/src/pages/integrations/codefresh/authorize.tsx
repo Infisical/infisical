@@ -33,7 +33,7 @@ export default function CodefreshCreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/codefresh/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/codefresh/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

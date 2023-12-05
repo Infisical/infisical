@@ -50,7 +50,7 @@ export default function AWSSecretManagerCreateIntegrationPage() {
       setIsLoading(false);
 
       router.push(
-        `/integrations/aws-secret-manager/create?integrationAuthId=${integrationAuth._id}`
+        `/integrations/aws-secret-manager/create?integrationAuthId=${integrationAuth.id}`
       );
     } catch (err) {
       console.error(err);

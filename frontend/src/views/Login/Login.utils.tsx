@@ -13,7 +13,7 @@ export const navigateUserToOrg = async (router: NextRouter, organizationId?: str
 
     if (userOrgs.length > 0) {
         // user is part of at least 1 org
-        const userOrg = userOrgs[0] && userOrgs[0]._id;
+        const userOrg = userOrgs[0] && userOrgs[0].id;
         localStorage.setItem("orgData.id", userOrg);
         router.push(`/org/${userOrg}/overview`);
     } else {

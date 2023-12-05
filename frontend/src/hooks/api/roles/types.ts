@@ -4,7 +4,7 @@ export type TGetRolesDTO = {
 };
 
 export type TRole<T extends string | undefined> = {
-  _id: string;
+  id: string;
   organization: string;
   workspace: T;
   name: string;

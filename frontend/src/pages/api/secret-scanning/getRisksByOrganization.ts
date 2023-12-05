@@ -1,7 +1,7 @@
 import SecurityClient from "@app/components/utilities/SecurityClient";
 
 export type IGitRisks = {
-  _id: string;
+  id: string;
   description: string;
   startLine: string;
   endLine: string;

@@ -33,7 +33,7 @@ export default function RailwayAuthorizeIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/railway/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/railway/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

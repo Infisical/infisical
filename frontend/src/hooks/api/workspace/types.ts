@@ -1,6 +1,6 @@
 export type Workspace = {
   __v: number;
-  _id: string;
+  id: string;
   name: string;
   organization: string;
   autoCapitalization: boolean;
@@ -14,13 +14,13 @@ export type WorkspaceEnv = {
   isWriteDenied: boolean;
 };
 
-export type WorkspaceTag = { _id: string; name: string; slug: string };
+export type WorkspaceTag = { id: string; name: string; slug: string };
 
 export type NameWorkspaceSecretsDTO = {
   workspaceId: string;
   secretsToUpdate: {
     secretName: string;
-    _id: string;
+    id: string;
   }[];
 }
 

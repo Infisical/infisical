@@ -1,5 +1,5 @@
 export type Organization = {
-  _id: string;
+  id: string;
   name: string;
   createAt: string;
   updatedAt: string;
@@ -25,7 +25,7 @@ export type PlanBillingInfo = {
 }
 
 export type Invoice = {
-  _id: string;
+  id: string;
   created: number;
   invoice_pdf: string;
   number: string;
@@ -34,7 +34,7 @@ export type Invoice = {
 }
 
 export type PmtMethod = {
-  _id: string;
+  id: string;
   brand: string;
   exp_month: number;  
   exp_year: number;
@@ -43,14 +43,14 @@ export type PmtMethod = {
 }
 
 export type TaxID = {
-  _id: string;
+  id: string;
   country: string;
   type: string;
   value: string;
 }
 
 export type License = {
-  _id: string;
+  id: string;
   customerId: string;
   prefix: string;
   licenseKey: string;

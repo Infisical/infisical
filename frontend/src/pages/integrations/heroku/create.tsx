@@ -59,10 +59,10 @@ export default function HerokuCreateIntegrationPage() {
     try {
       setIsLoading(true);
 
-      if (!integrationAuth?._id) return;
+      if (!integrationAuth?.id) return;
 
       await mutateAsync({
-        integrationAuthId: integrationAuth?._id,
+        integrationAuthId: integrationAuth?.id,
         isActive: true,
         app: targetApp,
         sourceEnvironment: selectedSourceEnvironment,

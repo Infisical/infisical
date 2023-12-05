@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { BackupPrivateKeySchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerPasswordRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -18,6 +20,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { salt, serverPublicKey } = await server.services.password.generateServerPubKey(
         req.auth.userId,
@@ -48,6 +51,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req, res) => {
       const appCfg = getConfig();
       await server.services.password.changePassword({ ...req.body, userId: req.auth.userId });
@@ -65,6 +69,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/backup-private-key",
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({
         clientProof: z.string().trim(),
@@ -95,6 +100,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/backup-private-key",
+    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       response: {
         200: z.object({

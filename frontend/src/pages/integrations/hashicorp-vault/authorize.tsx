@@ -77,7 +77,7 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/hashicorp-vault/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/hashicorp-vault/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

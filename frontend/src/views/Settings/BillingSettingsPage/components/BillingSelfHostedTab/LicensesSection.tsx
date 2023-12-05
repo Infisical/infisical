@@ -18,7 +18,7 @@ import {
 
 export const LicensesSection = () => {
     const { currentOrg } = useOrganization();
-    const { data, isLoading } = useGetOrgLicenses(currentOrg?._id ?? "");
+    const { data, isLoading } = useGetOrgLicenses(currentOrg?.id ?? "");
     
     return (
         <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -35,7 +35,7 @@ export const LicensesSection = () => {
                     </THead>
                     <TBody>
                         {!isLoading && data && data?.length > 0 && data.map(({
-                            _id,
+                            id,
                             licenseKey,
                             isActivated,
                             createdAt,
@@ -44,7 +44,7 @@ export const LicensesSection = () => {
                             const formattedCreatedAt = new Date(createdAt).toISOString().split("T")[0];
                             const formattedExpiresAt = new Date(expiresAt).toISOString().split("T")[0];
                             return (
-                                <Tr key={`license-${_id}`} className="h-10">
+                                <Tr key={`license-${id}`} className="h-10">
                                     <Td>{licenseKey}</Td>
                                     <Td>{isActivated ? "Active" : "Inactive"}</Td>
                                     <Td>{formattedCreatedAt}</Td>

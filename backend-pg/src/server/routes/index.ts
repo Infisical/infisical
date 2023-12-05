@@ -11,6 +11,7 @@ import { tokenServiceFactory } from "@app/services/token/token-service";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
+import { injectIdentity } from "../plugins/auth/inject-identity";
 
 export const registerRoutes = async (
   server: FastifyZodProvider,
@@ -36,6 +37,8 @@ export const registerRoutes = async (
   server.decorate("store", {
     user: authDal
   } as FastifyZodProvider["store"]);
+
+  await server.register(injectIdentity);
 
   // register routes for v1
   await server.register(registerV1Routes, { prefix: "/v1" });

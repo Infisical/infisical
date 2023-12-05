@@ -33,7 +33,7 @@ export default function NorthflankCreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/northflank/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/northflank/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

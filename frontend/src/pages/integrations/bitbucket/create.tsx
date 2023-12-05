@@ -72,7 +72,7 @@ export default function BitBucketCreateIntegrationPage() {
     try {
       setIsLoading(true);
 
-      if (!integrationAuth?._id) return;
+      if (!integrationAuth?.id) return;
 
       const targetApp = integrationAuthApps?.find(
         (integrationAuthApp) => integrationAuthApp.appId === targetAppId
@@ -84,7 +84,7 @@ export default function BitBucketCreateIntegrationPage() {
       if (!targetApp || !targetApp.appId || !targetEnvironment) return;
 
       await mutateAsync({
-        integrationAuthId: integrationAuth?._id,
+        integrationAuthId: integrationAuth?.id,
         isActive: true,
         app: targetApp.name,
         appId: targetApp.appId,

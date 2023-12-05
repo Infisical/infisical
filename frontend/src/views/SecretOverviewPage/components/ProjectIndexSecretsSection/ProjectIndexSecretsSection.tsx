@@ -19,16 +19,16 @@ type Props = {
 export const ProjectIndexSecretsSection = ({ decryptFileKey }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const { data: isBlindIndexed, isLoading: isBlindIndexedLoading } = useGetWorkspaceIndexStatus(
-    currentWorkspace?._id ?? ""
+    currentWorkspace?.id ?? ""
   );
   const [isIndexing, setIsIndexing] = useToggle();
   const nameWorkspaceSecrets = useNameWorkspaceSecrets();
 
   const onEnableBlindIndices = async () => {
-    if (!currentWorkspace?._id) return;
+    if (!currentWorkspace?.id) return;
     setIsIndexing.on();
     try {
-      const encryptedSecrets = await fetchWorkspaceSecrets(currentWorkspace._id);
+      const encryptedSecrets = await fetchWorkspaceSecrets(currentWorkspace.id);
 
       const key = decryptAssymmetric({
         ciphertext: decryptFileKey.encryptedKey,
@@ -47,11 +47,11 @@ export const ProjectIndexSecretsSection = ({ decryptFileKey }: Props) => {
 
         return {
           secretName,
-          _id: encryptedSecret._id
+          id: encryptedSecret.id
         };
       });
       await nameWorkspaceSecrets.mutateAsync({
-        workspaceId: currentWorkspace._id,
+        workspaceId: currentWorkspace.id,
         secretsToUpdate
       });
     } catch (err) {

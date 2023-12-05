@@ -2,7 +2,7 @@ import { UserWsKeyPair } from "../keys/types";
 import { EncryptedSecret } from "../secrets/types";
 
 export type TSecretImports = {
-  _id: string;
+  id: string;
   workspaceId: string;
   environment: string;
   folderId: string;

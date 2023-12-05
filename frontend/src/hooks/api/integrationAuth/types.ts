@@ -1,5 +1,5 @@
 export type IntegrationAuth = {
-  _id: string;
+  id: string;
   integration: string;
   workspace: string;
   __v: number;

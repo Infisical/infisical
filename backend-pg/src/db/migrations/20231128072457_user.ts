@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
   const isTablePresent = await knex.schema.hasTable(TableName.Users);
   if (!isTablePresent) {
     await knex.schema.createTable(TableName.Users, (t) => {
-      t.uuid("id").primary().defaultTo(knex.fn.uuid());
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("email").notNullable();
       t.specificType("authMethods", "text[]");
       t.boolean("superAdmin").defaultTo(false);

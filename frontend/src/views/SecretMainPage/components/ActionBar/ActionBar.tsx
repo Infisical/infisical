@@ -163,7 +163,7 @@ export const ActionBar = ({
   };
 
   const handleSecretBulkDelete = async () => {
-    const bulkDeletedSecrets = secrets.filter(({ _id }) => Boolean(selectedSecrets?.[_id]));
+    const bulkDeletedSecrets = secrets.filter(({ id }) => Boolean(selectedSecrets?.[id]));
     try {
       await deleteBatchSecretV3({
         secretPath,
@@ -233,14 +233,14 @@ export const ActionBar = ({
                 </DropdownSubMenuTrigger>
                 <DropdownSubMenuContent className="rounded-l-none">
                   <DropdownMenuLabel>Apply tags to filter secrets</DropdownMenuLabel>
-                  {tags.map(({ _id, name, tagColor }) => (
+                  {tags.map(({ id, name, tagColor }) => (
                     <DropdownMenuItem
                       onClick={(evt) => {
                         evt.preventDefault();
-                        onToggleTagFilter(_id);
+                        onToggleTagFilter(id);
                       }}
-                      key={_id}
-                      icon={filter?.tags[_id] && <FontAwesomeIcon icon={faCheckCircle} />}
+                      key={id}
+                      icon={filter?.tags[id] && <FontAwesomeIcon icon={faCheckCircle} />}
                       iconPos="right"
                     >
                       <div className="flex items-center">

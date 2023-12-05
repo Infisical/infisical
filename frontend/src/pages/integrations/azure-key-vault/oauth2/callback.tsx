@@ -26,7 +26,7 @@ export default function AzureKeyVaultOAuth2CallbackPage() {
         });
 
         router.push(
-          `/integrations/azure-key-vault/create?integrationAuthId=${integrationAuth._id}`
+          `/integrations/azure-key-vault/create?integrationAuthId=${integrationAuth.id}`
         );
       } catch (err) {
         console.error(err);

@@ -78,7 +78,7 @@ export const decryptSecretApprovalSecret = (
     key
   });
   return {
-    _id: encSecret._id,
+    id: encSecret.id,
     version: encSecret.version,
     secretKey,
     secretValue,

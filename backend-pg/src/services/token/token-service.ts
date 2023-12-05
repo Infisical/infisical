@@ -1,9 +1,7 @@
 import crypto from "node:crypto";
 import bcrypt from "bcrypt";
-import jwt, { SignOptions } from "jsonwebtoken";
 
-import { TToken } from "@app/db/schemas";
-import { TTokenSession } from "@app/db/schemas/token-session";
+import { TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 
 import { TTokenDalFactory } from "./token-dal";
@@ -14,11 +12,11 @@ import {
   TValidateTokenForUserDTO
 } from "./token-types";
 
-type TTokenServiceFactoryDep = {
+type TAuthTokenServiceFactoryDep = {
   tokenDal: TTokenDalFactory;
   // adjust the expiry from env through here
 };
-export type TTokenServiceFactory = ReturnType<typeof tokenServiceFactory>;
+export type TAuthTokenServiceFactory = ReturnType<typeof tokenServiceFactory>;
 
 export const getTokenConfig = (tokenType: TokenType) => {
   // generate random token based on specified token use-case
@@ -57,7 +55,7 @@ export const getTokenConfig = (tokenType: TokenType) => {
   }
 };
 
-export const tokenServiceFactory = ({ tokenDal }: TTokenServiceFactoryDep) => {
+export const tokenServiceFactory = ({ tokenDal }: TAuthTokenServiceFactoryDep) => {
   const createTokenForUser = async ({ type, userId }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
@@ -76,7 +74,7 @@ export const tokenServiceFactory = ({ tokenDal }: TTokenServiceFactoryDep) => {
     type,
     userId,
     code
-  }: TValidateTokenForUserDTO): Promise<TToken | undefined> => {
+  }: TValidateTokenForUserDTO): Promise<TAuthTokens | undefined> => {
     const token = await tokenDal.getTokenForUser({ type, userId });
     // validate token
     if (!token) throw new Error("Failed to find token");
@@ -105,7 +103,7 @@ export const tokenServiceFactory = ({ tokenDal }: TTokenServiceFactoryDep) => {
     userId,
     ip,
     userAgent
-  }: TIssueAuthTokenDTO): Promise<TTokenSession | undefined> => {
+  }: TIssueAuthTokenDTO): Promise<TAuthTokenSessions | undefined> => {
     let session = await tokenDal.getTokenSession(userId, ip, userAgent);
     if (!session) {
       session = await tokenDal.insertTokenSession(userId, ip, userAgent);
@@ -113,22 +111,19 @@ export const tokenServiceFactory = ({ tokenDal }: TTokenServiceFactoryDep) => {
     return session;
   };
 
+  const getUserTokenSessionById = async (id: string, userId: string) =>
+    tokenDal.getTokenSessionById(id, userId);
+
   const clearTokenSessionById = async (
     userId: string,
     sessionId: string
-  ): Promise<TTokenSession | undefined> => tokenDal.incrementVersion(userId, sessionId);
-
-  const createJwtToken = (
-    payload: string | Buffer | object,
-    secret: string,
-    options?: SignOptions
-  ) => jwt.sign(payload, secret, options);
+  ): Promise<TAuthTokenSessions | undefined> => tokenDal.incrementVersion(userId, sessionId);
 
   return {
     createTokenForUser,
     validateTokenForUser,
-    createJwtToken,
     getUserTokenSession,
-    clearTokenSessionById
+    clearTokenSessionById,
+    getUserTokenSessionById
   };
 };

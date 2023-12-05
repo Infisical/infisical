@@ -21,10 +21,7 @@ import { IntegrationAuth } from "@app/hooks/api/types";
 import { CloudIntegrationSection } from "./components/CloudIntegrationSection";
 import { FrameworkIntegrationSection } from "./components/FrameworkIntegrationSection";
 import { IntegrationsSection } from "./components/IntegrationsSection";
-import {
-  generateBotKey,
-  redirectForProviderAuth
-} from "./IntegrationPage.utils";
+import { generateBotKey, redirectForProviderAuth } from "./IntegrationPage.utils";
 
 type Props = {
   frameworkIntegrations: Array<{ name: string; slug: string; image: string; docsLink: string }>;
@@ -36,7 +33,7 @@ export const IntegrationsPage = withProjectPermission(
     const { createNotification } = useNotificationContext();
 
     const { currentWorkspace } = useWorkspace();
-    const workspaceId = currentWorkspace?._id || "";
+    const workspaceId = currentWorkspace?.id || "";
     const environments = currentWorkspace?.environments || [];
 
     const { data: latestWsKey } = useGetUserWsKey(workspaceId);
@@ -76,7 +73,7 @@ export const IntegrationsPage = withProjectPermission(
     const { mutateAsync: updateBotActiveStatus, mutate: updateBotActiveStatusSync } =
       useUpdateBotActiveStatus();
     const { mutateAsync: deleteIntegration } = useDeleteIntegration();
-    const { 
+    const {
       mutateAsync: deleteIntegrationAuths,
       isSuccess: isDeleteIntegrationAuthSuccess,
       reset: resetDeleteIntegrationAuths
@@ -95,10 +92,10 @@ export const IntegrationsPage = withProjectPermission(
         isIntegrationsAuthorizedEmpty &&
         isIntegrationsEmpty
       ) {
-        if (bot?._id)
+        if (bot?.id)
           updateBotActiveStatusSync({
             isActive: false,
-            botId: bot._id,
+            botId: bot.id,
             workspaceId
           });
         resetDeleteIntegrationAuths();
@@ -114,7 +111,7 @@ export const IntegrationsPage = withProjectPermission(
     const handleProviderIntegration = async (provider: string) => {
       const selectedCloudIntegration = cloudIntegrations?.find(({ slug }) => provider === slug);
       if (!selectedCloudIntegration) return;
-      
+
       try {
         if (bot && !bot.isActive) {
           const botKey = generateBotKey(bot.publicKey, latestWsKey!);
@@ -122,7 +119,7 @@ export const IntegrationsPage = withProjectPermission(
             workspaceId,
             botKey,
             isActive: true,
-            botId: bot._id
+            botId: bot.id
           });
         }
 
@@ -194,7 +191,7 @@ export const IntegrationsPage = withProjectPermission(
           isLoading={isIntegrationLoading}
           integrations={integrations}
           environments={environments}
-          onIntegrationDelete={({ _id: id }, cb) => handleIntegrationDelete(id, cb)}
+          onIntegrationDelete={({ id }, cb) => handleIntegrationDelete(id, cb)}
           isBotActive={bot?.isActive}
           workspaceId={workspaceId}
         />

@@ -36,7 +36,7 @@ export default function RenderCreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/render/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/render/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

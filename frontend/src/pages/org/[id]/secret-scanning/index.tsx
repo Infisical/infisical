@@ -22,11 +22,11 @@ const SecretScanning = withPermission(
       const linkInstallation = async () => {
         if (
           typeof queryParams.state === "string" &&
-          typeof queryParams.installation_id === "string"
+          typeof queryParams.installationid === "string"
         ) {
           try {
             const isLinked = await linkGitAppInstallationWithOrganization(
-              queryParams.installation_id as string,
+              queryParams.installationid as string,
               queryParams.state as string
             );
             if (isLinked) {
@@ -47,7 +47,7 @@ const SecretScanning = withPermission(
 
       fetchInstallationStatus();
       linkInstallation();
-    }, [queryParams.state, queryParams.installation_id]);
+    }, [queryParams.state, queryParams.installationid]);
 
     const generateNewIntegrationSession = async () => {
       const session = await createNewIntegrationSession(String(localStorage.getItem("orgData.id")));

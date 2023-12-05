@@ -42,7 +42,7 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
         link = `${window.location.origin}/integrations/gcp-secret-manager/authorize`;
         break;
       case "azure-key-vault":
-        link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
+        link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?clientid=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
         break;
       case "aws-parameter-store":
         link = `${window.location.origin}/integrations/aws-parameter-store/authorize`;
@@ -51,16 +51,16 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
         link = `${window.location.origin}/integrations/aws-secret-manager/authorize`;
         break;
       case "heroku":
-        link = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`;
+        link = `https://id.heroku.com/oauth/authorize?clientid=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`;
         break;
       case "vercel":
         link = `https://vercel.com/integrations/${integrationOption.clientSlug}/new?state=${state}`;
         break;
       case "netlify":
-        link = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}/integrations/netlify/oauth2/callback`;
+        link = `https://app.netlify.com/authorize?clientid=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}/integrations/netlify/oauth2/callback`;
         break;
       case "github":
-        link = `https://github.com/login/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=repo&redirect_uri=${window.location.origin}/integrations/github/oauth2/callback&state=${state}`;
+        link = `https://github.com/login/oauth/authorize?clientid=${integrationOption.clientId}&response_type=code&scope=repo&redirect_uri=${window.location.origin}/integrations/github/oauth2/callback&state=${state}`;
         break;
       case "gitlab":
         link = `${window.location.origin}/integrations/gitlab/authorize`;
@@ -105,7 +105,7 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
         link = `${window.location.origin}/integrations/cloudflare-workers/authorize`;
         break;
       case "bitbucket":
-        link = `https://bitbucket.org/site/oauth2/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/bitbucket/oauth2/callback&state=${state}`;
+        link = `https://bitbucket.org/site/oauth2/authorize?clientid=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/bitbucket/oauth2/callback&state=${state}`;
         break;
       case "codefresh":
         link = `${window.location.origin}/integrations/codefresh/authorize`;

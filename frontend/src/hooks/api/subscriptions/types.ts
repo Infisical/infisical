@@ -1,5 +1,5 @@
 export type SubscriptionPlan = {
-  _id: string;
+  id: string;
   membersUsed: number;
   memberLimit: number;
   auditLogs: boolean;

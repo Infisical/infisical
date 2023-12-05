@@ -80,11 +80,11 @@ export const IPAllowlistModal = ({
         comment
     }: FormData) => {
         try {
-            if (!currentWorkspace?._id) return;
+            if (!currentWorkspace?.id) return;
             
             if (popUp?.trustedIp?.data) {
                 await updateTrustedIp.mutateAsync({
-                    workspaceId: currentWorkspace._id,
+                    workspaceId: currentWorkspace.id,
                     trustedIpId: (popUp?.trustedIp?.data as { trustedIpId: string })?.trustedIpId,
                     ipAddress,
                     comment,
@@ -92,7 +92,7 @@ export const IPAllowlistModal = ({
                 });
             } else {
                 await addTrustedIp.mutateAsync({
-                    workspaceId: currentWorkspace._id,
+                    workspaceId: currentWorkspace.id,
                     ipAddress,
                     comment,
                     isActive: true

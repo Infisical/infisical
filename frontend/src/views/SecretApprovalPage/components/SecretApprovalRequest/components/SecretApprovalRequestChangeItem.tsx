@@ -54,7 +54,7 @@ export const SecretApprovalRequestChangeItem = ({
   // meaning request has changed
   const isStale = (secretVersion?.version || 1) < presentSecretVersionNumber;
   const itemConflict =
-    hasMerged && conflicts.find((el) => el.op === op && el.secretId === newVersion?._id);
+    hasMerged && conflicts.find((el) => el.op === op && el.secretId === newVersion?.id);
   const hasConflict = Boolean(itemConflict);
 
   return (
@@ -97,10 +97,10 @@ export const SecretApprovalRequestChangeItem = ({
                 </Td>
                 <Td>{secretVersion?.comment}</Td>
                 <Td>
-                  {secretVersion?.tags?.map(({ name, _id: tagId, tagColor }) => (
+                  {secretVersion?.tags?.map(({ name, id: tagId, tagColor }) => (
                     <Tag
                       className="flex items-center space-x-2 w-min"
-                      key={`${secretVersion._id}-${tagId}`}
+                      key={`${secretVersion.id}-${tagId}`}
                     >
                       <div
                         className="w-3 h-3 rounded-full"
@@ -119,10 +119,10 @@ export const SecretApprovalRequestChangeItem = ({
                 </Td>
                 <Td>{newVersion?.secretComment}</Td>
                 <Td>
-                  {newVersion?.tags?.map(({ name, _id: tagId, tagColor }) => (
+                  {newVersion?.tags?.map(({ name, id: tagId, tagColor }) => (
                     <Tag
                       className="flex items-center space-x-2 w-min"
-                      key={`${newVersion._id}-${tagId}`}
+                      key={`${newVersion.id}-${tagId}`}
                     >
                       <div
                         className="w-3 h-3 rounded-full"
@@ -151,11 +151,11 @@ export const SecretApprovalRequestChangeItem = ({
                 </Td>
                 <Td>
                   {(op === CommitType.CREATE ? newVersion?.tags : secretVersion?.tags)?.map(
-                    ({ name, _id: tagId, tagColor }) => (
+                    ({ name, id: tagId, tagColor }) => (
                       <Tag
                         className="flex items-center space-x-2 w-min"
                         key={`${
-                          op === CommitType.CREATE ? newVersion?._id : secretVersion?._id
+                          op === CommitType.CREATE ? newVersion?.id : secretVersion?.id
                         }-${tagId}`}
                       >
                         <div

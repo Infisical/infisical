@@ -37,10 +37,10 @@ export const AddOrgIncidentContactModal = ({
 
   const onFormSubmit = async ({ email }: TAddContactForm) => {
     try {
-      if (!currentOrg?._id) return;
+      if (!currentOrg?.id) return;
 
       await mutateAsync({
-        orgId: currentOrg._id,
+        orgId: currentOrg.id,
         email
       });
 

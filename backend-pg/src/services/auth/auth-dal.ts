@@ -1,16 +1,17 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TBackupPrivateKey, TUser, TUserEncryptionKey } from "@app/db/schemas";
+import { TableName, TBackupPrivateKey, TUserEncryptionKeys, TUsers } from "@app/db/schemas";
+import { withTransaction } from "@app/lib/knex";
 
 export type TAuthDalFactory = ReturnType<typeof authDalFactory>;
 
 export const authDalFactory = (db: TDbClient) => {
   // getters
-  const getUserByEmail = async (email: string): Promise<TUser | undefined> =>
+  const getUserByEmail = async (email: string): Promise<TUsers | undefined> =>
     db(TableName.Users).where({ email }).select("*").first();
 
-  const getUserById = async (userId: string): Promise<TUser | undefined> =>
+  const getUserById = async (userId: string): Promise<TUsers | undefined> =>
     db(TableName.Users).where({ id: userId }).select("*").first();
 
   const getUserEncKeyByEmail = async (email: string) =>
@@ -39,8 +40,8 @@ export const authDalFactory = (db: TDbClient) => {
   // all inserts and updates
   const createUser = async (
     email: string,
-    data: Partial<TUser> = {}
-  ): Promise<TUser | undefined> => {
+    data: Partial<TUsers> = {}
+  ): Promise<TUsers | undefined> => {
     const [user] = await db(TableName.Users)
       .insert({ email, ...data })
       .returning("*");
@@ -49,8 +50,8 @@ export const authDalFactory = (db: TDbClient) => {
 
   const updateUser = async (
     email: string,
-    data: Partial<TUser> = {}
-  ): Promise<TUser | undefined> => {
+    data: Partial<TUsers> = {}
+  ): Promise<TUsers | undefined> => {
     const [user] = await db(TableName.Users)
       .where({ email })
       .update({ ...data })
@@ -60,9 +61,9 @@ export const authDalFactory = (db: TDbClient) => {
 
   const updateUserById = async (
     id: string,
-    data: Partial<TUser> = {},
+    data: Partial<TUsers> = {},
     tx?: Knex
-  ): Promise<TUser | undefined> => {
+  ): Promise<TUsers | undefined> => {
     const [user] = await (tx ? tx(TableName.Users) : db(TableName.Users))
       .where({ id })
       .update({ ...data })
@@ -72,9 +73,9 @@ export const authDalFactory = (db: TDbClient) => {
 
   const updateUserEncryptionByUserId = async (
     userId: string,
-    data: Partial<TUserEncryptionKey> = {},
+    data: Partial<TUserEncryptionKeys> = {},
     tx?: Knex
-  ): Promise<TUserEncryptionKey | undefined> => {
+  ): Promise<TUserEncryptionKeys | undefined> => {
     const [userEnc] = await (tx ? tx(TableName.UserEncryptionKey) : db(TableName.UserEncryptionKey))
       .where({ userId })
       .update({ ...data })
@@ -85,12 +86,12 @@ export const authDalFactory = (db: TDbClient) => {
   // all upserts
   const upsertUserEncryptionKey = async (
     userId: string,
-    data: Partial<TUserEncryptionKey>,
+    data: Partial<TUserEncryptionKeys>,
     tx?: Knex
   ) => {
     const [userEnc] = await (tx ? tx(TableName.UserEncryptionKey) : db(TableName.UserEncryptionKey))
       // if user insert make sure to pass all required data
-      .insert({ userId, ...data } as TUserEncryptionKey)
+      .insert({ userId, ...data } as TUserEncryptionKeys)
       .onConflict("userId")
       .merge()
       .returning("*");
@@ -110,12 +111,7 @@ export const authDalFactory = (db: TDbClient) => {
     return backupKey;
   };
 
-  return {
-    transaction: async <T>(cb: (tx: Knex) => T) =>
-      db.transaction(async (trx) => {
-        const res = await cb(trx);
-        return res;
-      }),
+  return withTransaction(db, {
     getUserByEmail,
     getUserById,
     getUserEncKeyByEmail,
@@ -127,5 +123,5 @@ export const authDalFactory = (db: TDbClient) => {
     updateUserEncryptionByUserId,
     upsertUserEncryptionKey,
     upsertBackupKey
-  };
+  });
 };

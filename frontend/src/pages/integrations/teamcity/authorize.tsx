@@ -48,7 +48,7 @@ export default function TeamCityCreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/teamcity/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/teamcity/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

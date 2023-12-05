@@ -17,7 +17,7 @@ const OrgPermissionContext = createContext<null | {
 
 export const OrgPermissionProvider = ({ children }: Props): JSX.Element => {
   const { currentOrg } = useOrganization();
-  const orgId = currentOrg?._id || "";
+  const orgId = currentOrg?.id || "";
   const { data: permission, isLoading } = useGetUserOrgPermissions({ orgId });
 
   if (isLoading) {

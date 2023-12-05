@@ -95,12 +95,12 @@ export default function AWSParameterStoreCreateIntegrationPage() {
         }
       }
 
-      if (!integrationAuth?._id) return;
+      if (!integrationAuth?.id) return;
 
       setIsLoading(true);
 
       await mutateAsync({
-        integrationAuthId: integrationAuth?._id,
+        integrationAuthId: integrationAuth?.id,
         isActive: true,
         sourceEnvironment: selectedSourceEnvironment,
         path,

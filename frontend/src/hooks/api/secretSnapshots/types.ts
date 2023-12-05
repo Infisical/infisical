@@ -2,7 +2,7 @@ import { UserWsKeyPair } from "../keys/types";
 import { EncryptedSecretVersion } from "../secrets/types";
 
 export type TSecretSnapshot = {
-  _id: string;
+  id: string;
   workspace: string;
   version: number;
   secretVersions: string[];

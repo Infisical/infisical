@@ -58,11 +58,11 @@ export default function HasuraCloudCreateIntegrationPage() {
 
   const onFormSubmit = async ({ secretPath, sourceEnvironment, appId }: FormData) => {
     try {
-      if (!integrationAuth?._id) return;
+      if (!integrationAuth?.id) return;
 
       const app = integrationAuthApps?.find((data) => data.appId === appId);
       await mutateAsync({
-        integrationAuthId: integrationAuth?._id,
+        integrationAuthId: integrationAuth?.id,
         isActive: true,
         sourceEnvironment,
         secretPath,

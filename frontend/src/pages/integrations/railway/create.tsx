@@ -90,7 +90,7 @@ export default function RailwayCreateIntegrationPage() {
     try {
       setIsLoading(true);
 
-      if (!integrationAuth?._id) return;
+      if (!integrationAuth?.id) return;
 
       const targetApp = integrationAuthApps?.find(
         (integrationAuthApp) => integrationAuthApp.appId === targetAppId
@@ -106,7 +106,7 @@ export default function RailwayCreateIntegrationPage() {
       );
 
       await mutateAsync({
-        integrationAuthId: integrationAuth?._id,
+        integrationAuthId: integrationAuth?.id,
         isActive: true,
         app: targetApp.name,
         appId: targetApp.appId,

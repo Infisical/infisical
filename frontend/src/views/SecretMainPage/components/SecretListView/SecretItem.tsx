@@ -56,7 +56,7 @@ type Props = {
   secret: DecryptedSecret;
   onSaveSecret: (
     orgSec: DecryptedSecret,
-    modSec: Omit<DecryptedSecret, "tags"> & { tags: { _id: string }[] },
+    modSec: Omit<DecryptedSecret, "tags"> & { tags: { id: string }[] },
     cb?: () => void
   ) => Promise<void>;
   onDeleteSecret: (sec: DecryptedSecret) => void;
@@ -117,7 +117,7 @@ export const SecretItem = memo(
 
     const selectedTags = watch("tags", []);
     const selectedTagsGroupById = selectedTags.reduce<Record<string, boolean>>(
-      (prev, curr) => ({ ...prev, [curr._id]: true }),
+      (prev, curr) => ({ ...prev, [curr.id]: true }),
       {}
     );
     const { fields, append, remove } = useFieldArray({
@@ -168,8 +168,8 @@ export const SecretItem = memo(
     };
 
     const handleTagSelect = (tag: WsTag) => {
-      if (selectedTagsGroupById?.[tag._id]) {
-        const tagPos = selectedTags.findIndex(({ _id }) => _id === tag._id);
+      if (selectedTagsGroupById?.[tag.id]) {
+        const tagPos = selectedTags.findIndex(({ id }) => id === tag.id);
         if (tagPos !== -1) {
           remove(tagPos);
         }
@@ -217,9 +217,9 @@ export const SecretItem = memo(
                 )}
               >
                 <Checkbox
-                  id={`checkbox-${secret._id}`}
+                  id={`checkbox-${secret.id}`}
                   isChecked={isSelected}
-                  onCheckedChange={() => onToggleSecretSelect(secret._id)}
+                  onCheckedChange={() => onToggleSecretSelect(secret.id)}
                   className={twMerge("ml-3 hidden group-hover:flex", isSelected && "flex")}
                 />
                 <FontAwesomeIcon
@@ -319,7 +319,7 @@ export const SecretItem = memo(
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Apply tags to this secrets</DropdownMenuLabel>
                       {tags.map((tag) => {
-                        const { _id: tagId, name, tagColor } = tag;
+                        const { id: tagId, name, tagColor } = tag;
 
                         const isTagSelected = selectedTagsGroupById?.[tagId];
                         return (

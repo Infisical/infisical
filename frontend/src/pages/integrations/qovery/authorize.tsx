@@ -38,7 +38,7 @@ export default function QoveryCreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/qovery/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/qovery/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

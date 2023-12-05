@@ -17,7 +17,7 @@ import { useGetOrgPlanTable } from "@app/hooks/api";
 
 export const CurrentPlanSection = () => {
   const { currentOrg } = useOrganization();
-  const { data, isLoading } = useGetOrgPlanTable(currentOrg?._id ?? "");
+  const { data, isLoading } = useGetOrgPlanTable(currentOrg?.id ?? "");
 
   const displayCell = (value: null | number | string | boolean) => {
     if (value === null) return "-";

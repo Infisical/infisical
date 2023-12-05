@@ -103,7 +103,7 @@ export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
   const [newToken, setToken] = useState("");
   const [isTokenCopied, setIsTokenCopied] = useToggle(false);
 
-  const { data: latestFileKey } = useGetUserWsKey(currentWorkspace?._id ?? "");
+  const { data: latestFileKey } = useGetUserWsKey(currentWorkspace?.id ?? "");
   const createServiceToken = useCreateServiceToken();
   const hasServiceToken = Boolean(newToken);
 
@@ -123,7 +123,7 @@ export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const onFormSubmit = async ({ name, scopes, expiresIn, permissions }: FormData) => {
     try {
-      if (!currentWorkspace?._id) return;
+      if (!currentWorkspace?.id) return;
       if (!latestFileKey) return;
 
       const key = decryptAssymmetric({
@@ -147,7 +147,7 @@ export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
         scopes,
         expiresIn: Number(expiresIn),
         name,
-        workspaceId: currentWorkspace._id,
+        workspaceId: currentWorkspace.id,
         randomBytes,
         permissions: Object.entries(permissions)
           .filter(([, permissionsValue]) => permissionsValue)

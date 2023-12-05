@@ -93,12 +93,12 @@ export const SnapshotView = ({
 
   const secretDiffView = useMemo(() => {
     const secretGroupById = secrets.reduce<Record<string, DecryptedSecret>>(
-      (prev, curr) => ({ ...prev, [curr._id]: curr }),
+      (prev, curr) => ({ ...prev, [curr.id]: curr }),
       {}
     );
     const diffView: Array<TDiffView<DecryptedSecret>> = [];
     rollingSecrets.forEach((rollSecret) => {
-      const { _id: id } = rollSecret;
+      const { id: id } = rollSecret;
       const doesExist = Boolean(secretGroupById?.[id]);
       if (doesExist) {
         diffView.push({

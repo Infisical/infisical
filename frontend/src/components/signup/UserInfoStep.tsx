@@ -191,14 +191,14 @@ export default function UserInfoStep({
 
               const userOrgs = await fetchOrganizations();
 
-              const orgId = userOrgs[0]?._id;
+              const orgId = userOrgs[0]?.id;
               const project = await ProjectService.initProject({
                 organizationId: orgId,
                 projectName: "Example Project"
               });
 
               localStorage.setItem("orgData.id", orgId);
-              localStorage.setItem("projectData.id", project._id);
+              localStorage.setItem("projectData.id", project.id);
 
               incrementStep();
             } catch (error) {

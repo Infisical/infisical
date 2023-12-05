@@ -41,7 +41,7 @@ const AddTagPopoverContent = ({
       <div className="flex flex-col space-y-1.5">
         {wsTags?.map((wsTag: WsTag) => (
           <div
-            key={`tag-${wsTag._id}`}
+            key={`tag-${wsTag.id}`}
             className="mt-4 h-[32px] relative flex items-center  justify-start hover:border-mineshaft-600 hover:border   hover:bg-mineshaft-700  p-2 rounded-md  hover:text-bunker-200 bg-none"
             onClick={() => handleSelectTag(wsTag)}
             onMouseEnter={() => handleTagOnMouseEnter(wsTag)}

@@ -47,7 +47,7 @@ export default function SignUp() {
     const tryAuth = async () => {
       try {
         const userOrgs = await fetchOrganizations();
-        router.push(`/org/${userOrgs[0]._id}/overview`);
+        router.push(`/org/${userOrgs[0].id}/overview`);
       } catch (error) {
         console.log("Error - Not logged in yet");
       }
@@ -90,7 +90,7 @@ export default function SignUp() {
 
       if (!serverDetails?.emailConfigured && step === 5) {
         const userOrgs = await fetchOrganizations();
-        router.push(`/org/${userOrgs[0]._id}/overview`);
+        router.push(`/org/${userOrgs[0].id}/overview`);
       }
     })();
   }, [step]);

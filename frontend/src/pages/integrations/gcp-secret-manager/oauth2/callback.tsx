@@ -25,7 +25,7 @@ export default function GCPSecretManagerOAuth2CallbackPage() {
           integration: "gcp-secret-manager"
         });
         
-        router.push(`/integrations/gcp-secret-manager/create?integrationAuthId=${integrationAuth._id}`);
+        router.push(`/integrations/gcp-secret-manager/create?integrationAuthId=${integrationAuth.id}`);
       } catch (err) {
         console.error(err);
       }

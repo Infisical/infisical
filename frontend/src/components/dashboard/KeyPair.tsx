@@ -147,9 +147,9 @@ const KeyPair = ({
       <div className="w-2/12 h-10 flex items-center overflow-visible overflow-r-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
         <div className="flex items-center max-h-16">
           {keyPair.tags?.map((tag, index) => (
-            index < 2 && <div key={keyPair.pos} className={`ml-2 px-1.5 ${tagData.filter(tagDp => tagDp._id === tag._id)[0]?.color} rounded-sm text-sm ${tagData.filter(tagDp => tagDp._id === tag._id)[0]?.colorText} flex items-center`}>
+            index < 2 && <div key={keyPair.pos} className={`ml-2 px-1.5 ${tagData.filter(tagDp => tagDp.id === tag.id)[0]?.color} rounded-sm text-sm ${tagData.filter(tagDp => tagDp.id === tag.id)[0]?.colorText} flex items-center`}>
               <span className='mb-0.5 cursor-default'>{tag.name}</span>
-              <FontAwesomeIcon icon={faXmark} className="ml-1 cursor-pointer p-1" onClick={() => modifyTags(keyPair.tags.filter(ttag => ttag._id !== tag._id), keyPair.id)}/>
+              <FontAwesomeIcon icon={faXmark} className="ml-1 cursor-pointer p-1" onClick={() => modifyTags(keyPair.tags.filter(ttag => ttag.id !== tag.id), keyPair.id)}/>
             </div>
           ))}
           

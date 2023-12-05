@@ -33,7 +33,7 @@ export default function Cloud66CreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/cloud-66/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/cloud-66/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

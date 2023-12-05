@@ -25,7 +25,7 @@ export const OrgSSOSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const { createNotification } = useNotificationContext();
-  const { data, isLoading } = useGetSSOConfig(currentOrg?._id ?? "");
+  const { data, isLoading } = useGetSSOConfig(currentOrg?.id ?? "");
   const { mutateAsync } = useUpdateSSOConfig();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "upgradePlan",
@@ -36,10 +36,10 @@ export const OrgSSOSection = (): JSX.Element => {
 
   const handleSamlSSOToggle = async (value: boolean) => {
     try {
-      if (!currentOrg?._id) return;
+      if (!currentOrg?.id) return;
 
       await mutateAsync({
-        organizationId: currentOrg?._id,
+        organizationId: currentOrg?.id,
         isActive: value
       });
 
@@ -63,7 +63,7 @@ export const OrgSSOSection = (): JSX.Element => {
           // case: SAML SSO is not configured
           // -> initialize empty SAML SSO configuration
           await createMutateAsync({
-            organizationId: currentOrg._id,
+            organizationId: currentOrg.id,
             authProvider: "okta-saml",
             isActive: false,
             entryPoint: "",
@@ -118,7 +118,7 @@ export const OrgSSOSection = (): JSX.Element => {
       )}
       <div className="mb-4">
         <h3 className="text-mineshaft-400 text-sm">SSO identifier</h3>
-        <p className="text-gray-400 text-md">{data && data._id !== "" ? data._id : "-"}</p>
+        <p className="text-gray-400 text-md">{data && data.id !== "" ? data.id : "-"}</p>
       </div>
       <div className="mb-4">
         <h3 className="text-mineshaft-400 text-sm">Type</h3>

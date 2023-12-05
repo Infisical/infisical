@@ -10,7 +10,7 @@ export type TCloudIntegration = {
 };
 
 export type TIntegration = {
-  _id: string;
+  id: string;
   workspace: string;
   environment: string;
   isActive: boolean;

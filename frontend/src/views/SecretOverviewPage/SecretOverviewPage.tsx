@@ -74,14 +74,14 @@ export const SecretOverviewPage = () => {
 
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
   const { currentOrg } = useOrganization();
-  const workspaceId = currentWorkspace?._id as string;
+  const workspaceId = currentWorkspace?.id as string;
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (router.query?.secretPath as string) || "/";
 
   useEffect(() => {
     if (!isWorkspaceLoading && !workspaceId && router.isReady) {
-      router.push(`/org/${currentOrg?._id}/overview`);
+      router.push(`/org/${currentOrg?.id}/overview`);
     }
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 

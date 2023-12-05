@@ -4,7 +4,7 @@ import { getConfig } from "@app/lib/config/env";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { TTokenServiceFactory } from "../token/token-service";
+import { TAuthTokenServiceFactory } from "../token/token-service";
 import { TokenType } from "../token/token-types";
 import { TAuthDalFactory } from "./auth-dal";
 import {
@@ -12,11 +12,11 @@ import {
   TCreateBackupPrivateKeyDTO,
   TResetPasswordViaBackupKeyDTO
 } from "./auth-password-type";
-import { AuthTokenType } from "./auth-signup-type";
+import { AuthTokenType } from "./auth-type";
 
 type TAuthPasswordServiceFactoryDep = {
   authDal: TAuthDalFactory;
-  tokenService: TTokenServiceFactory;
+  tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
 };
 

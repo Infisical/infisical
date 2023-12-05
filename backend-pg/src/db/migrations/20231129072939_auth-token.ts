@@ -6,6 +6,7 @@ export async function up(knex: Knex): Promise<void> {
   const isTablePresent = await knex.schema.hasTable(TableName.AuthTokens);
   if (!isTablePresent) {
     await knex.schema.createTable(TableName.AuthTokens, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("type").notNullable();
       t.string("phoneNumber");
       t.string("tokenHash").notNullable();

@@ -267,15 +267,15 @@ export const Navbar = () => {
                   </div>
                   <div className="mt-3 mb-2 flex flex-col items-start px-1">
                     {orgs
-                      ?.filter((org: { _id: string }) => org._id !== currentOrg?._id)
-                      .map((org: { _id: string; name: string }) => (
+                      ?.filter((org: { id: string }) => org.id !== currentOrg?.id)
+                      .map((org: { id: string; name: string }) => (
                         <div
                           onKeyDown={() => null}
                           role="button"
                           tabIndex={0}
                           key={guidGenerator()}
                           onClick={() => {
-                            localStorage.setItem("orgData.id", org._id);
+                            localStorage.setItem("orgData.id", org.id);
                             router.reload();
                           }}
                           className="flex w-full cursor-pointer flex-row items-center justify-start rounded-md p-1.5 hover:bg-white/5"
@@ -326,7 +326,7 @@ export const Navbar = () => {
       
               // direct user to start pro trial
               const url = await mutateAsync({
-                orgId: currentOrg._id,
+                orgId: currentOrg.id,
                 success_url: window.location.href
               });
               

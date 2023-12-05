@@ -6,7 +6,7 @@ export async function up(knex: Knex): Promise<void> {
   const doesTableExist = await knex.schema.hasTable(TableName.BackupPrivateKey);
   if (!doesTableExist) {
     await knex.schema.createTable(TableName.BackupPrivateKey, (t) => {
-      t.increments();
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("encryptedPrivateKey").notNullable();
       t.string("iv").notNullable();
       t.string("tag").notNullable();

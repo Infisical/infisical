@@ -34,7 +34,7 @@ type Props = {
 export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const { data, isLoading } = useGetUserWsServiceTokens({
-    workspaceID: currentWorkspace?._id || ""
+    workspaceID: currentWorkspace?.id || ""
   });
 
   return (
@@ -53,13 +53,13 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
           {!isLoading &&
             data &&
             data.map((row) => (
-              <Tr key={row._id}>
+              <Tr key={row.id}>
                 <Td>{row.name}</Td>
                 <Td>
                   <div className="mb-2 flex flex-col flex-wrap space-y-1">
                     {row?.scopes.map(({ secretPath, environment }) => (
                       <div
-                        key={`${row._id}-${environment}-${secretPath}`}
+                        key={`${row.id}-${environment}-${secretPath}`}
                         className="inline-flex items-center space-x-1 rounded-md border border-mineshaft-600 p-1 px-2"
                       >
                         <div className="mr-2 border-r border-mineshaft-600 pr-2">{environment}</div>
@@ -80,7 +80,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                         onClick={() =>
                           handlePopUpOpen("deleteAPITokenConfirmation", {
                             name: row.name,
-                            id: row._id
+                            id: row.id
                           })
                         }
                         colorSchema="danger"

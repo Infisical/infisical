@@ -43,7 +43,7 @@ export default function TerraformCloudCreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/terraform-cloud/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/terraform-cloud/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

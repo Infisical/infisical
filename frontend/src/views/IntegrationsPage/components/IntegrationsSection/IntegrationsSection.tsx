@@ -81,7 +81,7 @@ export const IntegrationsSection = ({
           {integrations?.map((integration) => (
             <div
               className="max-w-8xl flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 pb-2"
-              key={`integration-${integration?._id.toString()}`}
+              key={`integration-${integration?.id.toString()}`}
             >
               <div className="flex">
                 <div>

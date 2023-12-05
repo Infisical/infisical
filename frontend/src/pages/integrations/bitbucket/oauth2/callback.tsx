@@ -24,7 +24,7 @@ export default function BitBucketOAuth2CallbackPage() {
           integration: "bitbucket"
         });
 
-        router.push(`/integrations/bitbucket/create?integrationAuthId=${integrationAuth._id}`);
+        router.push(`/integrations/bitbucket/create?integrationAuthId=${integrationAuth.id}`);
       } catch (err) {
         console.error(err);
       }

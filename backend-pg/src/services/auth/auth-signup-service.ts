@@ -1,16 +1,18 @@
-import { AuthMethod } from "@app/db/schemas";
+import jwt from "jsonwebtoken";
+
 import { getConfig } from "@app/lib/config/env";
 import { isDisposableEmail } from "@app/lib/validator";
 
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { TTokenServiceFactory } from "../token/token-service";
+import { TAuthTokenServiceFactory } from "../token/token-service";
 import { TokenType } from "../token/token-types";
 import { TAuthDalFactory } from "./auth-dal";
-import { AuthTokenType, TCompleteAccountSignupDTO } from "./auth-signup-type";
+import { TCompleteAccountSignupDTO } from "./auth-signup-type";
+import { AuthMethod, AuthTokenType } from "./auth-type";
 
 type TAuthSignupDep = {
   authDal: TAuthDalFactory;
-  tokenService: TTokenServiceFactory;
+  tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
 };
 
@@ -66,7 +68,7 @@ export const authSignupServiceFactory = ({
     });
 
     // generate jwt token this is a temporary token
-    const jwtToken = tokenService.createJwtToken(
+    const jwtToken = jwt.sign(
       {
         authTokenType: AuthTokenType.SIGNUP_TOKEN,
         userId: user.id.toString()
@@ -136,7 +138,7 @@ export const authSignupServiceFactory = ({
     if (!tokenSession) throw new Error("Failed to create token");
     const appCfg = getConfig();
 
-    const accessToken = tokenService.createJwtToken(
+    const accessToken = jwt.sign(
       {
         authTokenType: AuthTokenType.ACCESS_TOKEN,
         userId: updateduser.info.id,
@@ -147,7 +149,7 @@ export const authSignupServiceFactory = ({
       { expiresIn: appCfg.JWT_SIGNUP_LIFETIME }
     );
 
-    const refreshToken = tokenService.createJwtToken(
+    const refreshToken = jwt.sign(
       {
         authTokenType: AuthTokenType.REFRESH_TOKEN,
         userId: updateduser.info.id,

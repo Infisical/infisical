@@ -6,10 +6,10 @@ export async function up(knex: Knex): Promise<void> {
   const isTablePresent = await knex.schema.hasTable(TableName.UserEncryptionKey);
   if (!isTablePresent) {
     await knex.schema.createTable(TableName.UserEncryptionKey, (t) => {
-      t.increments().primary();
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.text("clientPublicKey");
       t.text("serverPrivateKey");
-      t.text("encryptionVersion").defaultTo(1);
+      t.integer("encryptionVersion").defaultTo(1);
       t.text("protectedKey").notNullable();
       t.text("protectedKeyIV").notNullable();
       t.text("protectedKeyTag").notNullable();

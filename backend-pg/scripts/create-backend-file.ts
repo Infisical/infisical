@@ -10,7 +10,6 @@ console.log(`
 Component List
 --------------
 1. Service component
-2. Schema file
 `);
 const componentType = parseInt(prompt("Select a component: "), 10);
 
@@ -55,27 +54,4 @@ export const ${serviceName} = ({ ${componentName}Dal }: ${serviceTypeName}Dep) =
 `
   );
   writeFileSync(path.join(dir, `${componentName}-types.ts`), "");
-} else if (componentType === 2) {
-  const componentName = prompt("Type component name in lowercase with space seperated: ");
-  const dashcase = componentName.split(" ").join("-");
-  const pascalCase = componentName
-    .split(" ")
-    .reduce(
-      (prev, curr) => prev + `${curr.at(0)?.toUpperCase()}${curr.slice(1).toLowerCase()}`,
-      ""
-    );
-  writeFileSync(
-    path.join(__dirname, "../src/db/schemas", `${dashcase}.ts`),
-    `
-import { z } from "zod";
-
-import { TImmutableDBKeys } from "./models";
-
-export const ${pascalCase}Schema = z.object({});
-
-export type T${pascalCase} = z.infer<typeof ${pascalCase}Schema>;
-export type T${pascalCase}Insert = Omit<T${pascalCase}, TImmutableDBKeys>;
-export type T${pascalCase}Update = Partial<Omit<T${pascalCase}, TImmutableDBKeys>>;
-`
-  );
 }

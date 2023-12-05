@@ -30,10 +30,10 @@ export const IPAllowlistSection = () => {
 
   const onDeleteTrustedIpSubmit = async (trustedIpId: string) => {
     try {
-      if (!currentWorkspace?._id) return;
+      if (!currentWorkspace?.id) return;
 
       await mutateAsync({
-        workspaceId: currentWorkspace._id,
+        workspaceId: currentWorkspace.id,
         trustedIpId
       });
 

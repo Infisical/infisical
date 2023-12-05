@@ -1,12 +1,11 @@
 import jwt from "jsonwebtoken";
 
-import { AuthMethod, TUser } from "@app/db/schemas";
-import { UserDeviceSchema } from "@app/db/schemas/user";
+import { TUsers, UserDeviceSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { TTokenServiceFactory } from "../token/token-service";
+import { TAuthTokenServiceFactory } from "../token/token-service";
 import { TokenType } from "../token/token-types";
 import { TAuthDalFactory } from "./auth-dal";
 import {
@@ -14,7 +13,7 @@ import {
   TLoginGenServerPublicKeyDTO,
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
-import { AuthTokenType } from "./auth-signup-type";
+import { AuthMethod, AuthTokenType } from "./auth-type";
 
 const isValidProviderAuthToken = (email: string, jwtSecret: string, providerAuthToken?: string) => {
   if (!providerAuthToken) return false;
@@ -27,7 +26,7 @@ const isValidProviderAuthToken = (email: string, jwtSecret: string, providerAuth
 
 type TAuthLoginServiceFactoryDep = {
   authDal: TAuthDalFactory;
-  tokenService: TTokenServiceFactory;
+  tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
 };
 
@@ -42,7 +41,7 @@ export const authLoginServiceFactory = ({
    * Not exported. This is to update user device list
    * If new device is found. Will be saved and a mail will be send
    */
-  const updateUserDeviceSession = async (user: TUser, ip: string, userAgent: string) => {
+  const updateUserDeviceSession = async (user: TUsers, ip: string, userAgent: string) => {
     const devices = await UserDeviceSchema.parseAsync(JSON.parse(user.devices || "[]"));
     const isDeviceSeen = devices.some(
       (device) => device.ip === ip && device.userAgent === userAgent
@@ -69,7 +68,7 @@ export const authLoginServiceFactory = ({
    * Private
    * Send mfa code via email
    * */
-  const sendUserMfaCode = async (user: TUser) => {
+  const sendUserMfaCode = async (user: TUsers) => {
     const code = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_MFA,
       userId: user.id
@@ -89,7 +88,7 @@ export const authLoginServiceFactory = ({
    * Check user device and send mail if new device
    * generate the auth and refresh token. fn shared by mfa verification and login verification with mfa disabled
    */
-  const generateUserTokens = async (user: TUser, ip: string, userAgent: string) => {
+  const generateUserTokens = async (user: TUsers, ip: string, userAgent: string) => {
     const cfg = getConfig();
     await updateUserDeviceSession(user, ip, userAgent);
     const tokenSession = await tokenService.getUserTokenSession({

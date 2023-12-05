@@ -146,10 +146,10 @@ export default function GitLabCreateIntegrationPage() {
   }: FormData) => {
     try {
       setIsLoading(true);
-      if (!integrationAuth?._id) return;
+      if (!integrationAuth?.id) return;
       
       await mutateAsync({
-        integrationAuthId: integrationAuth?._id,
+        integrationAuthId: integrationAuth?.id,
         isActive: true,
         app: integrationAuthApps?.find((integrationAuthApp) => String(integrationAuthApp.appId) === targetAppId)?.name,
         appId: String(targetAppId),

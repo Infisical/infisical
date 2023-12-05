@@ -41,7 +41,7 @@ type EnvironmentProps = {
 const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoading }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const { subscription } = useSubscription();
-  const { data: wsKey } = useGetUserWsKey(currentWorkspace?._id ?? "");
+  const { data: wsKey } = useGetUserWsKey(currentWorkspace?.id ?? "");
 
   const { mutateAsync: deleteUserFromWorkspaceMutateAsync } = useDeleteUserFromWorkspace();
   const { mutateAsync: uploadWsKeyMutateAsync } = useUploadWsKey();

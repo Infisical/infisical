@@ -51,7 +51,7 @@ export default function FlyioAuthorizeIntegrationPage() {
       });
       
       setIsLoading(false);
-      router.push(`/integrations/flyio/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/flyio/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       setIsLoading(false);
       console.error(err);
