@@ -21,16 +21,16 @@ import {
 import { validateRequest } from "../../../helpers/validation";
 import * as reqValidator from "../../../validation/machineIdentity";
 import { createToken } from "../../../helpers/auth";
-import { 
-    getAuthDataOrgPermissions, 
+import {
+    getAuthDataOrgPermissions,
     getOrgRolePermissions,
-    isAtLeastAsPrivilegedOrg 
+    isAtLeastAsPrivilegedOrg
 } from "../../services/RoleService";
-import { 
-    BadRequestError, 
-    ForbiddenRequestError, 
-    ResourceNotFoundError, 
-    UnauthorizedRequestError 
+import {
+    BadRequestError,
+    ForbiddenRequestError,
+    ResourceNotFoundError,
+    UnauthorizedRequestError
 } from "../../../utils/errors";
 import { extractIPDetails, isValidIpOrCidr } from "../../../utils/ip";
 import { EEAuditLogService, EELicenseService } from "../../services";
@@ -69,11 +69,11 @@ export const getMIClientSecrets = async (req: Request, res: Response) => {
 
     const machineMembershipOrg = await MachineMembershipOrg.findOne({
         machineIdentity: new Types.ObjectId(machineId)
-    }).populate<{ 
+    }).populate<{
         machineIdentity: IMachineIdentity,
-        customRole: IRole 
+        customRole: IRole
     }>("machineIdentity customRole");
-    
+
     if (!machineMembershipOrg) throw ResourceNotFoundError();
 
     const { permission } = await getAuthDataOrgPermissions({
@@ -86,11 +86,11 @@ export const getMIClientSecrets = async (req: Request, res: Response) => {
     );
 
     const rolePermission = await getOrgRolePermissions(
-        machineMembershipOrg?.customRole?.slug ?? machineMembershipOrg.role, 
+        machineMembershipOrg?.customRole?.slug ?? machineMembershipOrg.role,
         machineMembershipOrg.organization.toString()
     );
     const hasRequiredPrivileges = isAtLeastAsPrivilegedOrg(permission, rolePermission);
-    
+
     if (!hasRequiredPrivileges) throw ForbiddenRequestError({
         message: "Failed to get client secrets for more privileged MI"
     });
@@ -102,7 +102,7 @@ export const getMIClientSecrets = async (req: Request, res: Response) => {
         })
         .sort({ createdAt: -1 })
         .limit(5);
-    
+
     await EEAuditLogService.createAuditLog(
         req.authData,
         {
@@ -138,39 +138,39 @@ export const createMIClientSecret = async (req: Request, res: Response) => {
             numUsesLimit
         }
     } = await validateRequest(reqValidator.CreateClientSecretV3, req);
-    
+
     const machineMembershipOrg = await MachineMembershipOrg.findOne({
         machineIdentity: new Types.ObjectId(machineId)
-    }).populate<{ 
+    }).populate<{
         machineIdentity: IMachineIdentity,
         customRole: IRole
     }>("machineIdentity customRole");
-    
+
     if (!machineMembershipOrg) throw ResourceNotFoundError();
 
     const { permission } = await getAuthDataOrgPermissions({
         authData: req.authData,
         organizationId: machineMembershipOrg.organization
     });
-    
+
     ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionActions.Create,
         OrgPermissionSubjects.MachineIdentity
     );
 
     const rolePermission = await getOrgRolePermissions(
-        machineMembershipOrg?.customRole?.slug ?? machineMembershipOrg.role, 
+        machineMembershipOrg?.customRole?.slug ?? machineMembershipOrg.role,
         machineMembershipOrg.organization.toString()
     );
     const hasRequiredPrivileges = isAtLeastAsPrivilegedOrg(permission, rolePermission);
-    
+
     if (!hasRequiredPrivileges) throw ForbiddenRequestError({
         message: "Failed to create client secret for more privileged MI"
     });
 
     const clientSecret = crypto.randomBytes(32).toString("hex");
     const clientSecretHash = await bcrypt.hash(clientSecret, await getSaltRounds());
-    
+
     const machineIdentityClientSecret = await new MachineIdentityClientSecret({
         machineIdentity: machineMembershipOrg.machineIdentity,
         isActive: true,
@@ -197,7 +197,7 @@ export const createMIClientSecret = async (req: Request, res: Response) => {
             organizationId: machineMembershipOrg.organization
         }
     );
-    
+
     return res.status(200).send({
         clientSecret,
         clientSecretData: packageClientSecretData(machineIdentityClientSecret)
@@ -221,11 +221,11 @@ export const deleteMIClientSecret = async (req: Request, res: Response) => {
         .findOne({
             machineIdentity: new Types.ObjectId(machineId)
         })
-        .populate<{ 
+        .populate<{
             machineIdentity: IMachineIdentity,
             customRole: IRole
         }>("machineIdentity customRole");
-    
+
     if (!machineMembershipOrg) throw ResourceNotFoundError({
         message: `Failed to find machine identity with id ${machineId}`
     });
@@ -234,27 +234,27 @@ export const deleteMIClientSecret = async (req: Request, res: Response) => {
         authData: req.authData,
         organizationId: machineMembershipOrg.organization
     });
-    
+
     ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionActions.Delete,
         OrgPermissionSubjects.MachineIdentity
     );
 
     const rolePermission = await getOrgRolePermissions(
-        machineMembershipOrg?.customRole?.slug ?? machineMembershipOrg.role, 
+        machineMembershipOrg?.customRole?.slug ?? machineMembershipOrg.role,
         machineMembershipOrg.organization.toString()
     );
     const hasRequiredPrivileges = isAtLeastAsPrivilegedOrg(permission, rolePermission);
-    
+
     if (!hasRequiredPrivileges) throw ForbiddenRequestError({
         message: "Failed to delete client secrets for more privileged MI"
     });
-    
+
     const machineIdentityClientSecret = await MachineIdentityClientSecret.findOneAndDelete({
         _id: clientSecretId,
         machineIdentity: machineId
     });
-    
+
     if (!machineIdentityClientSecret) throw ResourceNotFoundError();
 
     await EEAuditLogService.createAuditLog(
@@ -290,14 +290,14 @@ export const loginMI = async (req: Request, res: Response) => {
             clientSecret
         }
     } = await validateRequest(reqValidator.LoginMachineIdentityV3, req);
-    
+
     const machineIdentity = await MachineIdentity.findOne({
         clientId,
         isActive: true
     });
-    
+
     if (!machineIdentity) throw UnauthorizedRequestError();
-    
+
     checkIPAgainstBlocklist({
         ipAddress: req.realIP,
         trustedIps: machineIdentity.clientSecretTrustedIps
@@ -307,12 +307,12 @@ export const loginMI = async (req: Request, res: Response) => {
         machineIdentity: machineIdentity._id,
         isActive: true
     });
-    
+
     let validatedClientSecretDatum: IMachineIdentityClientSecret | undefined;
-    
+
     for (const clientSecretDatum of clientSecretData) {
         const isSecretValid = await bcrypt.compare(
-            clientSecret, 
+            clientSecret,
             clientSecretDatum.clientSecretHash
         );
 
@@ -321,9 +321,9 @@ export const loginMI = async (req: Request, res: Response) => {
             break;
         }
     }
-    
+
     if (!validatedClientSecretDatum) throw UnauthorizedRequestError();
-    
+
     const {
         clientSecretTTL,
         clientSecretNumUses,
@@ -331,22 +331,25 @@ export const loginMI = async (req: Request, res: Response) => {
     } = validatedClientSecretDatum;
 
     if (clientSecretTTL > 0) {
-        const expiresAt = new Date(new Date().getTime() + clientSecretTTL * 1000);
-        
-        if (expiresAt < new Date()) {
+        const clientSecretCreated = new Date(validatedClientSecretDatum.createdAt)
+        const ttlInMilliseconds = clientSecretTTL * 1000;
+        const currentDate = new Date();
+        const expirationTime = new Date(clientSecretCreated.getTime() + ttlInMilliseconds);
+
+        if (currentDate > expirationTime) {
             await MachineIdentityClientSecret.findByIdAndUpdate(
                 validatedClientSecretDatum._id,
                 {
                     isActive: false
                 }
             );
-    
+
             throw UnauthorizedRequestError({
                 message: "Failed to authenticate MI credentials due to expired client secret"
             });
         }
     }
-    
+
     if (clientSecretNumUses > 0 && clientSecretNumUses === clientSecretNumUsesLimit) {
         // number of times client secret can be used for 
         // a login operation reached
@@ -432,9 +435,9 @@ export const loginMI = async (req: Request, res: Response) => {
  */
 export const createMachineIdentity = async (req: Request, res: Response) => {
     const {
-        body: { 
-            name, 
-            organizationId, 
+        body: {
+            name,
+            organizationId,
             role,
             clientSecretTrustedIps,
             accessTokenTrustedIps,
@@ -446,7 +449,7 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
         authData: req.authData,
         organizationId: new Types.ObjectId(organizationId)
     });
-    
+
     ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionActions.Create,
         OrgPermissionSubjects.MachineIdentity
@@ -454,7 +457,7 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
 
     const rolePermission = await getOrgRolePermissions(role, organizationId);
     const hasRequiredPrivileges = isAtLeastAsPrivilegedOrg(permission, rolePermission);
-    
+
     if (!hasRequiredPrivileges) throw ForbiddenRequestError({
         message: "Failed to create a more privileged MI"
     });
@@ -463,7 +466,7 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
     if (!organization) throw BadRequestError({ message: `Organization with id ${organizationId} not found` });
 
     const isCustomRole = ![ADMIN, MEMBER, NO_ACCESS].includes(role);
-    
+
     let customRole;
     if (isCustomRole) {
         customRole = await Role.findOne({
@@ -471,12 +474,12 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
             isOrgRole: true,
             organization: new Types.ObjectId(organizationId)
         });
-        
+
         if (!customRole) throw BadRequestError({ message: "Role not found" });
     }
 
     const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
-    
+
     // validate trusted ips
     const reformattedClientSecretTrustedIps = clientSecretTrustedIps.map((clientSecretTrustedIp) => {
         if (!plan.ipAllowlisting && clientSecretTrustedIp.ipAddress !== "0.0.0.0/0") return res.status(400).send({
@@ -484,11 +487,11 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
         });
 
         const isValidIPOrCidr = isValidIpOrCidr(clientSecretTrustedIp.ipAddress);
-        
+
         if (!isValidIPOrCidr) return res.status(400).send({
             message: "The IP is not a valid IPv4, IPv6, or CIDR block"
         });
-        
+
         return extractIPDetails(clientSecretTrustedIp.ipAddress);
     });
 
@@ -498,14 +501,14 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
         });
 
         const isValidIPOrCidr = isValidIpOrCidr(accessTokenTrustedIp.ipAddress);
-        
+
         if (!isValidIPOrCidr) return res.status(400).send({
             message: "The IP is not a valid IPv4, IPv6, or CIDR block"
         });
-        
+
         return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
-    
+
     const isActive = true;
     const machineIdentity = await new MachineIdentity({
         clientId: crypto.randomUUID(),
@@ -517,14 +520,14 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
         clientSecretTrustedIps: reformattedClientSecretTrustedIps,
         accessTokenTrustedIps: reformattedAccessTokenTrustedIps,
     }).save();
-    
+
     await new MachineMembershipOrg({
         machineIdentity: machineIdentity._id,
         organization: machineIdentity.organization,
         role: isCustomRole ? CUSTOM : role,
         customRole
     }).save();
-    
+
     await EEAuditLogService.createAuditLog(
         req.authData,
         {
@@ -541,7 +544,7 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
             organizationId: new Types.ObjectId(organizationId)
         }
     );
-    
+
     return res.status(200).send({
         machineIdentity
     });
@@ -556,8 +559,8 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
 export const updateMachineIdentity = async (req: Request, res: Response) => {
     const {
         params: { machineId },
-        body: { 
-            name, 
+        body: {
+            name,
             role,
             clientSecretTrustedIps,
             accessTokenTrustedIps,
@@ -569,11 +572,11 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
         .findOne({
             machineIdentity: new Types.ObjectId(machineId)
         })
-        .populate<{ 
-            machineIdentity: IMachineIdentity, 
-            customRole: IRole 
+        .populate<{
+            machineIdentity: IMachineIdentity,
+            customRole: IRole
         }>("machineIdentity customRole");
-    
+
     if (!machineMembershipOrg) throw ResourceNotFoundError({
         message: `Failed to find machine identity with id ${machineId}`
     });
@@ -588,18 +591,18 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
     );
 
     const machineIdentityRolePermission = await getOrgRolePermissions(
-        machineMembershipOrg?.customRole?.slug ?? machineMembershipOrg.role, 
+        machineMembershipOrg?.customRole?.slug ?? machineMembershipOrg.role,
         machineMembershipOrg.organization.toString()
     );
     const hasRequiredPrivileges = isAtLeastAsPrivilegedOrg(permission, machineIdentityRolePermission);
     if (!hasRequiredPrivileges) throw ForbiddenRequestError({
         message: "Failed to update more privileged MI"
     });
-    
+
     if (role) {
         const rolePermission = await getOrgRolePermissions(role, machineMembershipOrg.organization.toString());
         const hasRequiredPrivileges = isAtLeastAsPrivilegedOrg(permission, rolePermission);
-        
+
         if (!hasRequiredPrivileges) throw ForbiddenRequestError({
             message: "Failed to update MI to a more privileged role"
         });
@@ -614,7 +617,7 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
                 isOrgRole: true,
                 organization: machineMembershipOrg.organization
             });
-            
+
             if (!customRole) throw BadRequestError({ message: "Role not found" });
         }
     }
@@ -630,11 +633,11 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
             });
 
             const isValidIPOrCidr = isValidIpOrCidr(clientSecretTrustedIp.ipAddress);
-            
+
             if (!isValidIPOrCidr) return res.status(400).send({
                 message: "The IP is not a valid IPv4, IPv6, or CIDR block"
             });
-            
+
             return extractIPDetails(clientSecretTrustedIp.ipAddress);
         });
     }
@@ -648,15 +651,15 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
             });
 
             const isValidIPOrCidr = isValidIpOrCidr(accessTokenTrustedIp.ipAddress);
-            
+
             if (!isValidIPOrCidr) return res.status(400).send({
                 message: "The IP is not a valid IPv4, IPv6, or CIDR block"
             });
-            
+
             return extractIPDetails(accessTokenTrustedIp.ipAddress);
         });
     }
-    
+
     const machineIdentity = await MachineIdentity.findByIdAndUpdate(
         machineId,
         {
@@ -673,7 +676,7 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
     if (!machineIdentity) throw BadRequestError({
         message: `Failed to update machine identity with id ${machineId}`
     });
-    
+
     await MachineMembershipOrg.findOneAndUpdate(
         {
             machineIdentity: machineIdentity._id
@@ -681,7 +684,7 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
         {
             role: customRole ? CUSTOM : role,
             ...(customRole ? {
-                customRole 
+                customRole
             } : {}),
             ...(role && !customRole ? { // non-custom role
                 $unset: {
@@ -712,7 +715,7 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
 
     return res.status(200).send({
         machineIdentity
-    }); 
+    });
 }
 
 /**
@@ -725,20 +728,20 @@ export const deleteMachineIdentity = async (req: Request, res: Response) => {
     const {
         params: { machineId }
     } = await validateRequest(reqValidator.DeleteMachineIdentityV3, req);
-    
+
     const machineMembershipOrg = await MachineMembershipOrg
         .findOne({
             machineIdentity: new Types.ObjectId(machineId)
         })
-        .populate<{ 
-            machineIdentity: IMachineIdentity, 
-            customRole: IRole 
+        .populate<{
+            machineIdentity: IMachineIdentity,
+            customRole: IRole
         }>("machineIdentity customRole");
-    
+
     if (!machineMembershipOrg) throw ResourceNotFoundError({
         message: `Failed to find machine identity with id ${machineId}`
     });
-    
+
     const { permission } = await getAuthDataOrgPermissions({
         authData: req.authData,
         organizationId: machineMembershipOrg.organization
@@ -749,33 +752,33 @@ export const deleteMachineIdentity = async (req: Request, res: Response) => {
     );
 
     const machineIdentityRolePermission = await getOrgRolePermissions(
-        machineMembershipOrg?.customRole?.slug ?? machineMembershipOrg.role, 
+        machineMembershipOrg?.customRole?.slug ?? machineMembershipOrg.role,
         machineMembershipOrg.organization.toString()
     );
     const hasRequiredPrivileges = isAtLeastAsPrivilegedOrg(permission, machineIdentityRolePermission);
     if (!hasRequiredPrivileges) throw ForbiddenRequestError({
         message: "Failed to delete more privileged MI"
     });
-    
+
     const machineIdentity = await MachineIdentity.findByIdAndDelete(machineMembershipOrg.machineIdentity);
     if (!machineIdentity) throw ResourceNotFoundError({
         message: `Machine identity with id ${machineId} not found`
     });
 
     await MachineMembershipOrg.findByIdAndDelete(machineMembershipOrg._id);
-    
+
     if (!machineMembershipOrg) throw BadRequestError({
         message: `Failed to delete machine identity with id ${machineId}`
     });
-    
+
     await MachineMembership.deleteMany({
         machineIdentity: machineMembershipOrg.machineIdentity
     });
-    
+
     await MachineIdentityClientSecret.deleteMany({
         machineIdentity: machineMembershipOrg.machineIdentity
     });
-    
+
     await EEAuditLogService.createAuditLog(
         req.authData,
         {
@@ -795,5 +798,5 @@ export const deleteMachineIdentity = async (req: Request, res: Response) => {
 
     return res.status(200).send({
         machineIdentity
-    }); 
+    });
 }
