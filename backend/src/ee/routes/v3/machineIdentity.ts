@@ -37,7 +37,7 @@ router.post(
 router.post(
   "/",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.MACHINE_ACCESS_TOKEN]
   }),
   machineIdentityController.createMachineIdentity
 );

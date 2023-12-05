@@ -51,7 +51,7 @@ export const CreateMachineIdentityV3 = z.object({
       .array()
       .min(1)
       .default([{ ipAddress: "0.0.0.0/0" }]),
-    accessTokenTTL: z.number().int().min(1)
+    accessTokenTTL: z.number().int().min(1).default(7200)
   })
 });
   
