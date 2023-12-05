@@ -18,7 +18,8 @@ const machineMembershipSchema = new Schema<IMachineMembership>(
     workspace: {
       type: Schema.Types.ObjectId,
       ref: "Workspace",
-      required: true
+      required: true,
+      index: true,
     },
     role: {
       type: String,
