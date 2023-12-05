@@ -6,7 +6,7 @@ export interface IMembershipOrg extends Document {
   user: Types.ObjectId;
   inviteEmail: string;
   organization: Types.ObjectId;
-  role: "owner" | "admin" | "member" | "no-access" | "custom";
+  role: "admin" | "member" | "no-access" | "custom";
   customRole: Types.ObjectId;
   status: "invited" | "accepted";
 }

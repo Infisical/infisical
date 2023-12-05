@@ -1,4 +1,4 @@
-export enum ActorType {
+export enum ActorType { // would extend to AWS, Azure, ...
   USER = "user",
   SERVICE = "service",
   MACHINE = "machine"

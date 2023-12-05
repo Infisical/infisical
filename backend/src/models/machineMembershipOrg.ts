@@ -5,7 +5,7 @@ export interface IMachineMembershipOrg {
   _id: Types.ObjectId;
   machineIdentity: Types.ObjectId;
   organization: Types.ObjectId;
-  role: "admin" | "member" | "viewer" | "no-access" | "custom";
+  role: "admin" | "member" | "no-access" | "custom";
   customRole: Types.ObjectId;
 }
 

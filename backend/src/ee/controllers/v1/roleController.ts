@@ -22,6 +22,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   adminPermissions,
+  getAuthDataOrgPermissions,
   getUserOrgPermissions,
   memberPermissions,
   noAccessPermissions
@@ -38,7 +39,11 @@ export const createRole = async (req: Request, res: Response) => {
 
   const isOrgRole = !workspaceId; // if workspaceid is provided then its a workspace rule
   if (isOrgRole) {
-    const { permission } = await getUserOrgPermissions(req.user.id, orgId);
+    const { permission } = await getAuthDataOrgPermissions({
+      authData: req.authData,
+      organizationId: new Types.ObjectId(orgId)
+    });
+    
     if (permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Role)) {
       throw BadRequestError({ message: "user doesn't have the permission." });
     }
@@ -84,7 +89,10 @@ export const updateRole = async (req: Request, res: Response) => {
   const isOrgRole = !workspaceId; // if workspaceid is provided then its a workspace rule
   
   if (isOrgRole) {
-    const { permission } = await getUserOrgPermissions(req.user.id, orgId);
+    const { permission } = await getAuthDataOrgPermissions({
+      authData: req.authData,
+      organizationId: new Types.ObjectId(orgId)
+    });
     if (permission.cannot(OrgPermissionActions.Edit, OrgPermissionSubjects.Role)) {
       throw BadRequestError({ message: "User doesn't have the org permission." });
     }
@@ -140,7 +148,10 @@ export const deleteRole = async (req: Request, res: Response) => {
 
   const isOrgRole = !role.workspace;
   if (isOrgRole) {
-    const { permission } = await getUserOrgPermissions(req.user.id, role.organization.toString());
+    const { permission } = await getAuthDataOrgPermissions({
+      authData: req.authData,
+      organizationId: role.organization
+    });
     if (permission.cannot(OrgPermissionActions.Delete, OrgPermissionSubjects.Role)) {
       throw BadRequestError({ message: "User doesn't have the org permission." });
     }
@@ -172,7 +183,10 @@ export const getRoles = async (req: Request, res: Response) => {
 
   const isOrgRole = !workspaceId;
   if (isOrgRole) {
-    const { permission } = await getUserOrgPermissions(req.user.id, orgId);
+    const { permission } = await getAuthDataOrgPermissions({
+      authData: req.authData,
+      organizationId: new Types.ObjectId(orgId)
+    });
     if (permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Role)) {
       throw BadRequestError({ message: "User doesn't have the org permission." });
     }
@@ -238,7 +252,7 @@ export const getUserPermissions = async (req: Request, res: Response) => {
   const {
     params: { orgId }
   } = await validateRequest(GetUserPermission, req);
-
+  
   const { permission, membership } = await getUserOrgPermissions(req.user._id, orgId);
 
   res.status(200).json({

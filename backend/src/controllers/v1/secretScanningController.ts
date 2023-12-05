@@ -21,7 +21,7 @@ import * as reqValidator from "../../validation/secretScanning";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
-  getUserOrgPermissions
+  getAuthDataOrgPermissions
 } from "../../ee/services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 
@@ -37,8 +37,11 @@ export const createInstallationSession = async (req: Request, res: Response) => 
       message: "Failed to find organization"
     });
   }
-
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Create,
     OrgPermissionSubjects.SecretScanning
@@ -70,11 +73,12 @@ export const linkInstallationToOrganization = async (req: Request, res: Response
   if (!installationSession) {
     throw UnauthorizedRequestError();
   }
+  
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: installationSession.organization
+  });
 
-  const { permission } = await getUserOrgPermissions(
-    req.user._id,
-    installationSession.organization.toString()
-  );
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Edit,
     OrgPermissionSubjects.SecretScanning
@@ -142,7 +146,10 @@ export const getRisksForOrganization = async (req: Request, res: Response) => {
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgRisksv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.SecretScanning
@@ -162,7 +169,10 @@ export const updateRisksStatus = async (req: Request, res: Response) => {
     body: { status }
   } = await validateRequest(reqValidator.UpdateRiskStatusv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Edit,
     OrgPermissionSubjects.SecretScanning

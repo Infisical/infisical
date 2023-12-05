@@ -13,7 +13,7 @@ import { validateRequest } from "../../../helpers/validation";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
-  getUserOrgPermissions
+  getAuthDataOrgPermissions
 } from "../../services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 
@@ -47,7 +47,10 @@ export const getSSOConfig = async (req: Request, res: Response) => {
     query: { organizationId }
   } = await validateRequest(reqValidator.GetSsoConfigv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Sso
@@ -71,7 +74,10 @@ export const updateSSOConfig = async (req: Request, res: Response) => {
     body: { organizationId, authProvider, isActive, entryPoint, issuer, cert }
   } = await validateRequest(reqValidator.UpdateSsoConfigv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Edit,
     OrgPermissionSubjects.Sso
@@ -206,7 +212,10 @@ export const createSSOConfig = async (req: Request, res: Response) => {
     body: { organizationId, authProvider, isActive, entryPoint, issuer, cert }
   } = await validateRequest(reqValidator.CreateSsoConfigv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Create,
     OrgPermissionSubjects.Sso

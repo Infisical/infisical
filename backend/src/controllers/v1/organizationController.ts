@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { Types } from "mongoose";
 import {
   IncidentContactOrg,
   Membership,
@@ -14,7 +15,7 @@ import { ACCEPTED } from "../../variables";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
-  getUserOrgPermissions
+  getAuthDataOrgPermissions
 } from "../../ee/services/RoleService";
 import { OrganizationNotFoundError } from "../../utils/errors";
 import { ForbiddenError } from "@casl/ability";
@@ -44,7 +45,10 @@ export const getOrganization = async (req: Request, res: Response) => {
   } = await validateRequest(reqValidator.GetOrgv1, req);
 
   // ensure user has membership
-  await getUserOrgPermissions(req.user._id, organizationId);
+  await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  })
 
   const organization = await Organization.findById(organizationId);
   if (!organization) {
@@ -68,8 +72,12 @@ export const getOrganizationMembers = async (req: Request, res: Response) => {
   const {
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgMembersv1, req);
-
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Member
@@ -95,7 +103,10 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgWorkspacesv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  })
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Workspace
@@ -137,7 +148,10 @@ export const changeOrganizationName = async (req: Request, res: Response) => {
     body: { name }
   } = await validateRequest(reqValidator.ChangeOrgNamev1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Edit,
     OrgPermissionSubjects.Settings
@@ -172,7 +186,10 @@ export const getOrganizationIncidentContacts = async (req: Request, res: Respons
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgIncidentContactv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.IncidentAccount
@@ -199,7 +216,10 @@ export const addOrganizationIncidentContact = async (req: Request, res: Response
     body: { email }
   } = await validateRequest(reqValidator.CreateOrgIncideContact, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Create,
     OrgPermissionSubjects.IncidentAccount
@@ -228,7 +248,10 @@ export const deleteOrganizationIncidentContact = async (req: Request, res: Respo
     body: { email }
   } = await validateRequest(reqValidator.DelOrgIncideContact, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Delete,
     OrgPermissionSubjects.IncidentAccount
@@ -257,7 +280,10 @@ export const createOrganizationPortalSession = async (req: Request, res: Respons
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgPlanBillingInfov1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Edit,
     OrgPermissionSubjects.Billing
@@ -321,7 +347,10 @@ export const getOrganizationMembersAndTheirWorkspaces = async (req: Request, res
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgMembersv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Member

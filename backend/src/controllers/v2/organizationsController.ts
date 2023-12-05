@@ -14,14 +14,14 @@ import {
   updateSubscriptionOrgQuantity
 } from "../../helpers/organization";
 import { addMembershipsOrg } from "../../helpers/membershipOrg";
-import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
+import { BadRequestError, ResourceNotFoundError, UnauthorizedRequestError } from "../../utils/errors";
 import { ACCEPTED, ADMIN, CUSTOM, MEMBER, NO_ACCESS } from "../../variables";
 import * as reqValidator from "../../validation/organization";
 import { validateRequest } from "../../helpers/validation";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
-  getUserOrgPermissions
+  getAuthDataOrgPermissions
 } from "../../ee/services/RoleService";
 import { EELicenseService } from "../../ee/services";
 import { ForbiddenError } from "@casl/ability";
@@ -69,7 +69,10 @@ export const getOrganizationMemberships = async (req: Request, res: Response) =>
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgMembersv2, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Member
@@ -147,7 +150,11 @@ export const updateOrganizationMembership = async (req: Request, res: Response) 
     params: { organizationId, membershipId },
     body: { role }
   } = await validateRequest(reqValidator.UpdateOrgMemberv2, req);
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Edit,
     OrgPermissionSubjects.Member
@@ -245,7 +252,18 @@ export const deleteOrganizationMembership = async (req: Request, res: Response) 
   const {
     params: { organizationId, membershipId }
   } = await validateRequest(reqValidator.DeleteOrgMemberv2, req);
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  
+  const membershipOrg = await MembershipOrg.findOne({
+    _id: new Types.ObjectId(membershipId),
+    organization: new Types.ObjectId(organizationId)
+  });
+  
+  if (!membershipOrg) throw ResourceNotFoundError();
+  
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: membershipOrg.organization
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Delete,
     OrgPermissionSubjects.Member
@@ -309,7 +327,11 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgWorkspacesv2, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Workspace
@@ -407,8 +429,10 @@ export const getOrganizationMachineMemberships = async (req: Request, res: Respo
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgServiceMembersV2, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
-    
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.MachineIdentity

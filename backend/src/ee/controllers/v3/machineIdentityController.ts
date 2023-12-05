@@ -22,8 +22,8 @@ import { validateRequest } from "../../../helpers/validation";
 import * as reqValidator from "../../../validation/machineIdentity";
 import { createToken } from "../../../helpers/auth";
 import { 
-    getOrgRolePermissions, 
-    getUserOrgPermissions, 
+    getAuthDataOrgPermissions, 
+    getOrgRolePermissions,
     isAtLeastAsPrivilegedOrg 
 } from "../../services/RoleService";
 import { 
@@ -76,8 +76,10 @@ export const getMIClientSecrets = async (req: Request, res: Response) => {
     
     if (!machineMembershipOrg) throw ResourceNotFoundError();
 
-    const { permission } = await getUserOrgPermissions(req.user._id, machineMembershipOrg.organization.toString());
-    
+    const { permission } = await getAuthDataOrgPermissions({
+        authData: req.authData,
+        organizationId: machineMembershipOrg.organization
+    });
     ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionActions.Read,
         OrgPermissionSubjects.MachineIdentity
@@ -146,7 +148,10 @@ export const createMIClientSecret = async (req: Request, res: Response) => {
     
     if (!machineMembershipOrg) throw ResourceNotFoundError();
 
-    const { permission } = await getUserOrgPermissions(req.user._id, machineMembershipOrg.organization.toString());
+    const { permission } = await getAuthDataOrgPermissions({
+        authData: req.authData,
+        organizationId: machineMembershipOrg.organization
+    });
     
     ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionActions.Create,
@@ -225,7 +230,10 @@ export const deleteMIClientSecret = async (req: Request, res: Response) => {
         message: `Failed to find machine identity with id ${machineId}`
     });
 
-    const { permission } = await getUserOrgPermissions(req.user._id, machineMembershipOrg.organization.toString());
+    const { permission } = await getAuthDataOrgPermissions({
+        authData: req.authData,
+        organizationId: machineMembershipOrg.organization
+    });
     
     ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionActions.Delete,
@@ -434,7 +442,10 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
         }
     } = await validateRequest(reqValidator.CreateMachineIdentityV3, req);
 
-    const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+    const { permission } = await getAuthDataOrgPermissions({
+        authData: req.authData,
+        organizationId: new Types.ObjectId(organizationId)
+    });
     
     ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionActions.Create,
@@ -567,7 +578,10 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
         message: `Failed to find machine identity with id ${machineId}`
     });
 
-    const { permission } = await getUserOrgPermissions(req.user._id, machineMembershipOrg.organization.toString());
+    const { permission } = await getAuthDataOrgPermissions({
+        authData: req.authData,
+        organizationId: machineMembershipOrg.organization
+    });
     ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionActions.Edit,
         OrgPermissionSubjects.MachineIdentity
@@ -725,7 +739,10 @@ export const deleteMachineIdentity = async (req: Request, res: Response) => {
         message: `Failed to find machine identity with id ${machineId}`
     });
     
-    const { permission } = await getUserOrgPermissions(req.user._id, machineMembershipOrg.organization.toString());
+    const { permission } = await getAuthDataOrgPermissions({
+        authData: req.authData,
+        organizationId: machineMembershipOrg.organization
+    });
     ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionActions.Delete,
         OrgPermissionSubjects.MachineIdentity

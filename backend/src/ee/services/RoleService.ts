@@ -1,10 +1,16 @@
 import { Types } from "mongoose";
 import { AbilityBuilder, MongoAbility, RawRuleOf, createMongoAbility } from "@casl/ability";
-import { MembershipOrg } from "../../models";
-import { IRole, Role } from "../models";
+import { 
+  IMachineIdentity,
+  MachineMembershipOrg,
+  MembershipOrg
+} from "../../models";
+import { ActorType, IRole, Role } from "../models";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
+import { checkIPAgainstBlocklist } from "../../utils/ip";
 import { ACCEPTED, ADMIN, CUSTOM, MEMBER, NO_ACCESS} from "../../variables";
 import { conditionsMatcher } from "./ProjectRoleService";
+import { AuthData } from "../../interfaces/middleware";
 
 export enum OrgPermissionActions {
   Read = "read",
@@ -155,6 +161,94 @@ export const getUserOrgPermissions = async (userId: string, orgId: string) => {
 
   throw BadRequestError({ message: "User role not found" });
 };
+
+/**
+ * Return permissions for user/service pertaining to organization with id [organizationId]
+ * 
+ * Note: should not rely on this function for ST V2 authorization logic
+ * b/c ST V2 does not support role-based access control but also not organization-level resources
+ */
+ export const getAuthDataOrgPermissions = async ({
+  authData,
+  organizationId
+}: {
+  authData: AuthData;
+  organizationId: Types.ObjectId;
+}) => {
+  let role: "admin" | "member" | "no-access" | "custom";
+  let customRole;
+  
+  switch (authData.actor.type) {
+    case ActorType.USER: {
+      const membershipOrg = await MembershipOrg.findOne({
+        user: authData.authPayload._id,
+        organization: organizationId,
+        status: ACCEPTED
+      })
+      .populate<{ customRole: IRole & { permissions: RawRuleOf<MongoAbility<OrgPermissionSet>>[] } }>(
+        "customRole"
+      )
+      .exec();
+      
+      if (!membershipOrg || (membershipOrg.role === "custom" && !membershipOrg.customRole)) {
+        throw UnauthorizedRequestError({ message: "User doesn't belong to organization" });
+      }
+      
+      role = membershipOrg.role;
+      customRole = membershipOrg.customRole;
+      break;
+    }
+    case ActorType.SERVICE: {
+      throw UnauthorizedRequestError({
+        message: "Failed to access organization-level resources with service token"
+      });
+    }
+    case ActorType.MACHINE: {
+      const machineMembershipOrg = await MachineMembershipOrg.findOne({
+        machineIdentity: authData.authPayload._id,
+        organization: organizationId
+      })
+      .populate<{
+        customRole: IRole & { permissions: RawRuleOf<MongoAbility<OrgPermissionSet>>[] };
+        machineIdentity: IMachineIdentity
+      }>("customRole machineIdentity")
+      .exec();
+      
+      if (!machineMembershipOrg || (machineMembershipOrg.role === "custom" && !machineMembershipOrg.customRole)) {
+        throw UnauthorizedRequestError();
+      }
+
+      checkIPAgainstBlocklist({
+        ipAddress: authData.ipAddress,
+        trustedIps: machineMembershipOrg.machineIdentity.accessTokenTrustedIps
+      });
+      
+      role = machineMembershipOrg.role;
+      customRole = machineMembershipOrg.customRole;
+      break;
+    }
+    default:
+      throw UnauthorizedRequestError();
+  }
+
+  switch (role) {
+    case ADMIN:
+      return { permission: adminPermissions };
+    case MEMBER:
+      return { permission: memberPermissions };
+    case NO_ACCESS:
+      return { permission: noAccessPermissions };
+    case CUSTOM: {
+      if (!customRole) throw UnauthorizedRequestError();
+      return {
+        permission: createMongoAbility<OrgPermissionSet>(
+          customRole.permissions, 
+          { conditionsMatcher }
+        )
+      };
+    }
+  }
+}
 
 export const getOrgRolePermissions = async (role: string, orgId: string) => {
   const isCustomRole = ![ADMIN, MEMBER, NO_ACCESS].includes(role);
