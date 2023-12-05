@@ -28,9 +28,11 @@ export type MachineIdentityClientSecret = {
     isActive: boolean;
     description: string;
     clientSecretPrefix: string;
-    clientSecretUsageCount: number;
-    clientSecretUsageLimit: number;
-    expiresAt: string;
+    clientSecretNumUses: number;
+    clientSecretNumUsesLimit: number;
+    clientSecretTTL: number;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export type MachineMembershipOrg = {
@@ -78,8 +80,8 @@ export type CreateMachineIdentityClientSecretRes = {
     machineIdentity: string;
     isActive: boolean;
     description: string;
-    clientSecretUsageCount: number;
-    clientSecretUsageLimit: number;
+    clientSecretNumUses: number;
+    clientSecretNumUsesLimit: number;
     expiresAt?: Date;
 }
 

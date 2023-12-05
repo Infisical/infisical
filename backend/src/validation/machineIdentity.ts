@@ -13,7 +13,7 @@ export const CreateClientSecretV3 = z.object({
   }),
   body: z.object({
     description: z.string().trim().default(""),
-    usageLimit: z.number().min(0).default(0),
+    numUsesLimit: z.number().min(0).default(0),
     ttl: z.number().min(0).default(0),
   }),
 });

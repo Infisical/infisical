@@ -10,13 +10,13 @@ import * as yup from "yup";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
     Button,
+    DeleteActionModal,
     EmptyState,
     FormControl,
     IconButton,
     Input,
     Modal,
-    ModalContent
-,
+    ModalContent,
     Table,
     TableContainer,
     TableSkeleton,
@@ -41,12 +41,20 @@ const schema = yup.object({
 export type FormData = yup.InferType<typeof schema>;
 
 type Props = {
-  popUp: UsePopUpState<["clientSecret"]>;
-  handlePopUpToggle: (popUpName: keyof UsePopUpState<["clientSecret"]>, state?: boolean) => void;
+    popUp: UsePopUpState<["clientSecret", "deleteClientSecret"]>;
+    handlePopUpOpen: (
+        popUpName: keyof UsePopUpState<["deleteClientSecret"]>,
+        data?: {
+            clientSecretPrefix: string;
+            clientSecretId: string;
+        }
+    ) => void;
+    handlePopUpToggle: (popUpName: keyof UsePopUpState<["clientSecret", "deleteClientSecret"]>, state?: boolean) => void;
 };
 
 export const CreateClientSecretModal = ({
     popUp,
+    handlePopUpOpen,
     handlePopUpToggle
 }: Props) => {
     const { t } = useTranslation();
@@ -117,6 +125,43 @@ export const CreateClientSecretModal = ({
                 text: "Failed to create client secret",
                 type: "error"
             });
+        }
+    }
+    
+    const onDeleteClientSecretSubmit = async ({
+        clientSecretId,
+        clientSecretPrefix
+    }: {
+        clientSecretId: string;
+        clientSecretPrefix: string;
+    }) => {
+        try {
+            
+            if (!popUpData?.machineId) return;
+
+            await deleteClientSecretMutateAsync({
+                machineId: popUpData.machineId,
+                clientSecretId
+            });
+
+            if (token.startsWith(clientSecretPrefix)) {
+                reset();
+                setToken("");
+            }
+            
+            handlePopUpToggle("deleteClientSecret", false);
+        
+            createNotification({
+                text: "Successfully deleted client secret",
+                type: "success"
+            });
+        } catch (err) {
+            console.error(err);
+            createNotification({
+                text: "Failed to delete client secret",
+                type: "error"
+            });
+            
         }
     }
 
@@ -238,20 +283,24 @@ export const CreateClientSecretModal = ({
                             data.map(({
                                 _id,
                                 description,
-                                machineIdentity,
-                                expiresAt,
+                                clientSecretTTL,
                                 clientSecretPrefix
                             }) => {
+                                let expiresAt;
+                                if (clientSecretTTL > 0) {
+                                    expiresAt = new Date(new Date().getTime() + clientSecretTTL * 1000);
+                                }
+                                
                                 return (
                                     <Tr className="h-10" key={`mi-client-secret-${_id}`}>
                                         <Td>{description === "" ? "-" : description}</Td>
-                                        <Td>{expiresAt ? format(new Date(expiresAt), "yyyy-MM-dd") : "-"}</Td>
+                                        <Td>{expiresAt ? format(expiresAt, "yyyy-MM-dd") : "-"}</Td>
                                         <Td>{`${clientSecretPrefix}************`}</Td>
                                         <Td className="flex">
                                             <IconButton
-                                                onClick={async () => {
-                                                    await deleteClientSecretMutateAsync({
-                                                        machineId: machineIdentity,
+                                                onClick={() => {
+                                                    handlePopUpOpen("deleteClientSecret", {
+                                                        clientSecretPrefix,
                                                         clientSecretId: _id
                                                     });
                                                 }}
@@ -277,6 +326,25 @@ export const CreateClientSecretModal = ({
                         </TBody>
                     </Table>
                 </TableContainer>
+                <DeleteActionModal
+                    isOpen={popUp.deleteClientSecret.isOpen}
+                    title={`Are you sure want to delete the client secret ${
+                        (popUp?.deleteClientSecret?.data as { clientSecretPrefix: string })?.clientSecretPrefix || ""
+                    }************?`}
+                    onChange={(isOpen) => handlePopUpToggle("deleteClientSecret", isOpen)}
+                    deleteKey="confirm"
+                    onDeleteApproved={() => {
+                        const deleteClientSecretData = (popUp?.deleteClientSecret?.data as {
+                            clientSecretId: string;
+                            clientSecretPrefix: string;
+                        });
+                        
+                        return onDeleteClientSecretSubmit({
+                            clientSecretId: deleteClientSecretData.clientSecretId,
+                            clientSecretPrefix: deleteClientSecretData.clientSecretPrefix
+                        });
+                    }}
+                />
             </ModalContent>
         </Modal>
     );

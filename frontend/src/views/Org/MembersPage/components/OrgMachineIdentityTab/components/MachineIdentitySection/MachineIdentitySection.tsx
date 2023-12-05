@@ -24,6 +24,7 @@ export const MachineIdentitySection = withPermission(
       "machineIdentity",
       "deleteMachineIdentity",
       "clientSecret",
+      "deleteClientSecret",
       "upgradePlan"
     ] as const);
     
@@ -80,6 +81,7 @@ export const MachineIdentitySection = withPermission(
           />
           <CreateClientSecretModal 
             popUp={popUp}
+            handlePopUpOpen={handlePopUpOpen}
             handlePopUpToggle={handlePopUpToggle}
           />
           <DeleteActionModal

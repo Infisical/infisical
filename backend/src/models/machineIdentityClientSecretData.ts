@@ -8,10 +8,12 @@ export interface IMachineIdentityClientSecretData extends Document {
     clientSecretPrefix: string;
     clientSecretHash: string;
     clientSecretLastUsed?: Date;
-    clientSecretUsageCount: number;
-    clientSecretUsageLimit: number;
+    clientSecretNumUses: number;
+    clientSecretNumUsesLimit: number;
+    clientSecretTTL: number;
     accessTokenVersion: number;
-    expiresAt?: Date;
+    updatedAt: Date;
+    createdAt: Date;
 }
 
 const machineIdentityClientSecretDataSchema = new Schema(
@@ -42,18 +44,23 @@ const machineIdentityClientSecretDataSchema = new Schema(
             type: Date,
             required: false
         },
-        clientSecretUsageCount: {
+        clientSecretNumUses: {
             // number of times client secret has been used
             // in login operation
             type: Number,
             default: 0,
             required: true
         },
-        clientSecretUsageLimit: {
+        clientSecretNumUsesLimit: {
             // number of times client secret can be used for
             // a login operation
             type: Number,
             default: 0, // default: used as many times as needed
+            required: true
+        },
+        clientSecretTTL: {
+            type: Number,
+            default: 0, // default: does not expire
             required: true
         },
         accessTokenVersion: {
@@ -61,10 +68,6 @@ const machineIdentityClientSecretDataSchema = new Schema(
             default: 1,
             required: true
         },
-        expiresAt: {
-            type: Date,
-            required: false
-        }
     },
     {
         timestamps: true

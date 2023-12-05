@@ -44,9 +44,9 @@ const packageClientSecretData = (clientSecretData: IMachineIdentityClientSecretD
     isActive: clientSecretData.isActive,
     description: clientSecretData.description,
     clientSecretPrefix: clientSecretData.clientSecretPrefix,
-    clientSecretUsageCount: clientSecretData.clientSecretUsageCount,
-    clientSecretUsageLimit: clientSecretData.clientSecretUsageLimit,
-    expiresAt: clientSecretData.expiresAt
+    clientSecretNumUses: clientSecretData.clientSecretNumUses,
+    clientSecretNumUsesLimit: clientSecretData.clientSecretNumUsesLimit,
+    clientSecretTTL: clientSecretData.clientSecretTTL
 });
 
 /**
@@ -121,7 +121,7 @@ export const createMIClientSecret = async (req: Request, res: Response) => {
         body: {
             description,
             ttl,
-            usageLimit
+            numUsesLimit
         }
     } = await validateRequest(reqValidator.CreateClientSecretV3, req);
     
@@ -144,11 +144,6 @@ export const createMIClientSecret = async (req: Request, res: Response) => {
     if (!hasRequiredPrivileges) throw ForbiddenRequestError({
         message: "Failed to create client secret for more privileged MI"
     });
-    
-    let expiresAt;
-    if (ttl > 0) {
-        expiresAt = new Date(new Date().getTime() + ttl * 1000);
-    }
 
     const clientSecret = crypto.randomBytes(32).toString("hex");
     const clientSecretHash = await bcrypt.hash(clientSecret, await getSaltRounds());
@@ -159,10 +154,10 @@ export const createMIClientSecret = async (req: Request, res: Response) => {
         description,
         clientSecretPrefix: clientSecret.slice(0, 4),
         clientSecretHash,
-        clientSecretUsageCount: 0,
-        clientSecretUsageLimit: usageLimit,
+        clientSecretNumUses: 0,
+        clientSecretNumUsesLimit: numUsesLimit,
+        clientSecretTTL: ttl,
         accessTokenVersion: 1,
-        expiresAt
     }).save();
 
     await EEAuditLogService.createAuditLog(
@@ -294,27 +289,30 @@ export const loginMI = async (req: Request, res: Response) => {
     if (!validatedClientSecretDatum) throw UnauthorizedRequestError();
     
     const {
-        expiresAt,
-        clientSecretUsageCount,
-        clientSecretUsageLimit
+        clientSecretTTL,
+        clientSecretNumUses,
+        clientSecretNumUsesLimit,
     } = validatedClientSecretDatum;
-    
-    if (expiresAt && new Date(expiresAt) < new Date()) {
-        // client secret expired
-        await MachineIdentityClientSecretData.findByIdAndUpdate(
-            validatedClientSecretDatum._id,
-            {
-                isActive: false
-            },
-            {
-                new: true
-            }
-        );
 
-        throw UnauthorizedRequestError();
+    if (clientSecretTTL > 0) {
+        const expiresAt = new Date(new Date().getTime() + clientSecretTTL * 1000);
+        
+        if (expiresAt < new Date()) {
+            await MachineIdentityClientSecretData.findByIdAndUpdate(
+                validatedClientSecretDatum._id,
+                {
+                    isActive: false
+                },
+                {
+                    new: true
+                }
+            );
+    
+            throw UnauthorizedRequestError();
+        }
     }
     
-    if (clientSecretUsageLimit > 0 && clientSecretUsageCount === clientSecretUsageLimit) {
+    if (clientSecretNumUses > 0 && clientSecretNumUses === clientSecretNumUsesLimit) {
         // number of times client secret can be used for 
         // a login operation reached
         await MachineIdentityClientSecretData.findByIdAndUpdate(
@@ -334,7 +332,7 @@ export const loginMI = async (req: Request, res: Response) => {
     await MachineIdentityClientSecretData.findByIdAndUpdate(
         validatedClientSecretDatum._id,
         {
-            $inc: { clientSecretUsageCount: 1 }
+            $inc: { clientSecretNumUses: 1 }
         },
         {
             new: true
