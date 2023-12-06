@@ -62,7 +62,7 @@ export const useDeleteMachineIdentityClientSecret = () => {
             machineId:string;
             clientSecretId: string;
         }) => {
-            const { data } = await apiRequest.delete(`/api/v1/machine-identities/${machineId}/client-secrets/${clientSecretId}`);
+            const { data } = await apiRequest.post(`/api/v1/machine-identities/${machineId}/client-secrets/${clientSecretId}/revoke`);
             return data;
         },
         onSuccess: (_, { machineId }) => {

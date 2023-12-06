@@ -20,12 +20,12 @@ router.post(
   machineIdentitiesController.createMIClientSecret
 );
 
-router.delete(
-  "/:machineId/client-secrets/:clientSecretId",
+router.post(
+  "/:machineId/client-secrets/:clientSecretId/revoke",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  machineIdentitiesController.deleteMIClientSecret
+  machineIdentitiesController.revokeMIClientSecret
 );
 
 router.post(

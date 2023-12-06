@@ -101,7 +101,8 @@ export const getMIClientSecrets = async (req: Request, res: Response) => {
 
     const clientSecretData = await MachineIdentityClientSecret
         .find({
-            machineIdentity: machineMembershipOrg.machineIdentity
+            machineIdentity: machineMembershipOrg.machineIdentity,
+            isClientSecretRevoked: false
         })
         .sort({ createdAt: -1 })
         .limit(5);
@@ -209,7 +210,7 @@ export const createMIClientSecret = async (req: Request, res: Response) => {
  * @param req 
  * @param res 
  */
-export const deleteMIClientSecret = async (req: Request, res: Response) => {
+export const revokeMIClientSecret = async (req: Request, res: Response) => {
     const {
         params: {
             machineId,
@@ -385,7 +386,7 @@ export const loginMI = async (req: Request, res: Response) => {
             new: true
         }
     );
-    
+
     const identityAccessToken = await new IdentityAccessToken({
         machineIdentity: machineIdentity._id,
         machineIdentityClientSecret: validatedClientSecretDatum._id,
@@ -456,31 +457,31 @@ export const renewAccessToken = async (req: Request, res: Response) => {
             accessToken
         }
     } = await validateRequest(reqValidator.RenewAccessTokenV1, req);
-    
-    const decodedToken = <jwt.MachineAccessTokenJwtPayload>(
-		jwt.verify(accessToken, await getAuthSecret())
-	);
 
-	if (decodedToken.authTokenType !== AuthTokenType.MACHINE_ACCESS_TOKEN) throw UnauthorizedRequestError();
-	
-	const machineIdentityAccessToken = await IdentityAccessToken.findOne({
+    const decodedToken = <jwt.MachineAccessTokenJwtPayload>(
+        jwt.verify(accessToken, await getAuthSecret())
+    );
+
+    if (decodedToken.authTokenType !== AuthTokenType.MACHINE_ACCESS_TOKEN) throw UnauthorizedRequestError();
+
+    const machineIdentityAccessToken = await IdentityAccessToken.findOne({
         _id: decodedToken.identityAccessTokenId,
         isAccessTokenRevoked: false
     });
-	
-	if (!machineIdentityAccessToken) throw UnauthorizedRequestError();
+
+    if (!machineIdentityAccessToken) throw UnauthorizedRequestError();
 
     const {
-		accessTokenTTL,
-		accessTokenLastRenewedAt,
-		accessTokenMaxTTL,
-		createdAt: accessTokenCreatedAt
-	} = machineIdentityAccessToken;
+        accessTokenTTL,
+        accessTokenLastRenewedAt,
+        accessTokenMaxTTL,
+        createdAt: accessTokenCreatedAt
+    } = machineIdentityAccessToken;
 
     if (accessTokenTTL === accessTokenMaxTTL) throw UnauthorizedRequestError({
         message: "Failed to renew non-renewable access token"
     });
-    
+
     // ttl check
     if (accessTokenTTL > 0) {
         const currentDate = new Date();
@@ -489,7 +490,7 @@ export const renewAccessToken = async (req: Request, res: Response) => {
             const accessTokenRenewed = new Date(accessTokenLastRenewedAt);
             const ttlInMilliseconds = accessTokenTTL * 1000;
             const expirationDate = new Date(accessTokenRenewed.getTime() + ttlInMilliseconds);
-            
+
             if (currentDate > expirationDate) throw UnauthorizedRequestError({
                 message: "Failed to renew MI access token due to TTL expiration"
             });
@@ -498,13 +499,13 @@ export const renewAccessToken = async (req: Request, res: Response) => {
             const accessTokenCreated = new Date(accessTokenCreatedAt);
             const ttlInMilliseconds = accessTokenTTL * 1000;
             const expirationDate = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
-            
+
             if (currentDate > expirationDate) throw UnauthorizedRequestError({
                 message: "Failed to renew MI access token due to TTL expiration"
             });
         }
-	}
-    
+    }
+
     // max ttl checks
     if (accessTokenMaxTTL > 0) {
         const accessTokenCreated = new Date(accessTokenCreatedAt);
@@ -513,15 +514,15 @@ export const renewAccessToken = async (req: Request, res: Response) => {
         const expirationDate = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
 
         if (currentDate > expirationDate) throw UnauthorizedRequestError({
-			message: "Failed to renew MI access token due to Max TTL expiration"
-		});
-    
+            message: "Failed to renew MI access token due to Max TTL expiration"
+        });
+
         const extendToDate = new Date(currentDate.getTime() + accessTokenTTL);
         if (extendToDate > expirationDate) throw UnauthorizedRequestError({
             message: "Failed to renew MI access token past its Max TTL expiration"
         });
     }
-    
+
     await IdentityAccessToken.findByIdAndUpdate(
         machineIdentityAccessToken._id,
         {
@@ -894,7 +895,7 @@ export const deleteMachineIdentity = async (req: Request, res: Response) => {
     await MachineIdentityClientSecret.deleteMany({
         machineIdentity: machineMembershipOrg.machineIdentity
     });
-    
+
     await IdentityAccessToken.deleteMany({
         machineIdentityClientSecret: {
             $in: machineIdentityClientSecretIds
