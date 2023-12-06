@@ -45,18 +45,18 @@ export const validateMachineIdentity = async ({
 			// access token has been renewed
 			const accessTokenRenewed = new Date(accessTokenLastRenewedAt);
 			const ttlInMilliseconds = accessTokenTTL * 1000;
-			const expirationTime = new Date(accessTokenRenewed.getTime() + ttlInMilliseconds);
+			const expirationDate = new Date(accessTokenRenewed.getTime() + ttlInMilliseconds);
 			
-			if (currentDate > expirationTime) throw UnauthorizedRequestError({
+			if (currentDate > expirationDate) throw UnauthorizedRequestError({
 				message: "Failed to authenticate MI access token due to TTL expiration"
 			});
 		} else {
 			// access token has never been renewed
 			const accessTokenCreated = new Date(accessTokenCreatedAt);
 			const ttlInMilliseconds = accessTokenTTL * 1000;
-			const expirationTime = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
+			const expirationDate = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
 			
-			if (currentDate > expirationTime) throw UnauthorizedRequestError({
+			if (currentDate > expirationDate) throw UnauthorizedRequestError({
 				message: "Failed to authenticate MI access token due to TTL expiration"
 			});
 		}
@@ -67,9 +67,9 @@ export const validateMachineIdentity = async ({
         const accessTokenCreated = new Date(accessTokenCreatedAt);
         const ttlInMilliseconds = accessTokenMaxTTL * 1000;
         const currentDate = new Date();
-        const expirationTime = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
+        const expirationDate = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
 
-        if (currentDate > expirationTime) throw UnauthorizedRequestError({
+        if (currentDate > expirationDate) throw UnauthorizedRequestError({
 			message: "Failed to authenticate MI access token due to Max TTL expiration"
 		});
     }
