@@ -3,17 +3,16 @@ import { Document, Schema, Types, model } from "mongoose";
 export interface IMachineIdentityClientSecret extends Document {
     _id: Types.ObjectId;
     machineIdentity: Types.ObjectId;
-    isActive: boolean;
     description: string;
     clientSecretPrefix: string;
     clientSecretHash: string;
-    clientSecretLastUsed?: Date;
+    clientSecretLastUsedAt?: Date;
     clientSecretNumUses: number;
     clientSecretNumUsesLimit: number;
     clientSecretTTL: number;
-    accessTokenVersion: number;
     updatedAt: Date;
     createdAt: Date;
+    isClientSecretRevoked: boolean;
 }
 
 const machineIdentityClientSecretSchema = new Schema(
@@ -21,11 +20,6 @@ const machineIdentityClientSecretSchema = new Schema(
         machineIdentity: {
             type: Schema.Types.ObjectId,
             ref: "MachineIdentity",
-            required: true
-        },
-        isActive: {
-            type: Boolean,
-            default: true,
             required: true
         },
         description: {
@@ -40,7 +34,7 @@ const machineIdentityClientSecretSchema = new Schema(
             type: String,
             required: true
         },
-        clientSecretLastUsed: {
+        clientSecretLastUsedAt: {
             type: Date,
             required: false
         },
@@ -63,11 +57,11 @@ const machineIdentityClientSecretSchema = new Schema(
             default: 0, // default: does not expire
             required: true
         },
-        accessTokenVersion: {
-            type: Number,
-            default: 1,
+        isClientSecretRevoked: {
+            type: Boolean,
+            default: false,
             required: true
-        },
+        }
     },
     {
         timestamps: true
@@ -75,7 +69,7 @@ const machineIdentityClientSecretSchema = new Schema(
 );
 
 machineIdentityClientSecretSchema.index(
-    { machineIdentity: 1, isActive: 1 }
+    { machineIdentity: 1, isClientSecretRevoked: 1 }
 )
 
 export const MachineIdentityClientSecret = model<IMachineIdentityClientSecret>("MachineIdentityClientSecret", machineIdentityClientSecretSchema);

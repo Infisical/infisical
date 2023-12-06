@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken";
-import { Types } from "mongoose";
-import { MachineIdentity, MachineIdentityClientSecret } from "../../../models";
+import { 
+	IMachineIdentity, 
+	IdentityAccessToken, 
+} from "../../../models";
 import { getAuthSecret } from "../../../config";
 import { AuthTokenType } from "../../../variables";
 import { UnauthorizedRequestError } from "../../errors";
@@ -18,34 +20,80 @@ export const validateMachineIdentity = async ({
 
 	if (decodedToken.authTokenType !== AuthTokenType.MACHINE_ACCESS_TOKEN) throw UnauthorizedRequestError();
 	
-	const machineIdentityClientSecret = await MachineIdentityClientSecret.findOne({
-		_id: new Types.ObjectId(decodedToken.clientSecretDataId),
-		isActive: true
-	});
+	const machineIdentityAccessToken = await IdentityAccessToken
+		.findOne({
+			_id: decodedToken.identityAccessTokenId,
+			isAccessTokenRevoked: false
+		})
+		.populate<{ machineIdentity: IMachineIdentity }>("machineIdentity");
 	
-	if (!machineIdentityClientSecret) throw UnauthorizedRequestError();
+	if (!machineIdentityAccessToken || !machineIdentityAccessToken?.machineIdentity) throw UnauthorizedRequestError();
 	
-	if (decodedToken.tokenVersion !== machineIdentityClientSecret.accessTokenVersion) {
-		// TODO: raise alarm
+	const {
+		accessTokenNumUsesLimit,
+		accessTokenNumUses,
+		accessTokenTTL,
+		accessTokenLastRenewedAt,
+		accessTokenMaxTTL,
+		createdAt: accessTokenCreatedAt
+	} = machineIdentityAccessToken;
+	
+	// ttl check
+	if (accessTokenTTL > 0) {
+		const currentDate = new Date();
+		if (accessTokenLastRenewedAt) {
+			// access token has been renewed
+			const accessTokenRenewed = new Date(accessTokenLastRenewedAt);
+			const ttlInMilliseconds = accessTokenTTL * 1000;
+			const expirationTime = new Date(accessTokenRenewed.getTime() + ttlInMilliseconds);
+			
+			if (currentDate > expirationTime) throw UnauthorizedRequestError({
+				message: "Failed to authenticate MI access token due to TTL expiration"
+			});
+		} else {
+			// access token has never been renewed
+			const accessTokenCreated = new Date(accessTokenCreatedAt);
+			const ttlInMilliseconds = accessTokenTTL * 1000;
+			const expirationTime = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
+			
+			if (currentDate > expirationTime) throw UnauthorizedRequestError({
+				message: "Failed to authenticate MI access token due to TTL expiration"
+			});
+		}
+	}
+	
+	// max ttl check
+    if (accessTokenMaxTTL > 0) {
+        const accessTokenCreated = new Date(accessTokenCreatedAt);
+        const ttlInMilliseconds = accessTokenMaxTTL * 1000;
+        const currentDate = new Date();
+        const expirationTime = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
+
+        if (currentDate > expirationTime) throw UnauthorizedRequestError({
+			message: "Failed to authenticate MI access token due to Max TTL expiration"
+		});
+    }
+
+	// num uses check
+	if (
+		accessTokenNumUsesLimit > 0
+		&& accessTokenNumUses === accessTokenNumUsesLimit
+	) {
 		throw UnauthorizedRequestError({
-			message: "Failed to authenticate",
+			message: "Failed to authenticate MI access token due to access token number of uses limit reached"
 		});
 	}
 	
-	const machineIdentity = await MachineIdentity.findByIdAndUpdate(
-		machineIdentityClientSecret.machineIdentity,
+	await IdentityAccessToken.findByIdAndUpdate(
+		machineIdentityAccessToken._id,
 		{
-			accessTokenLastUsed: new Date(),
-			$inc: { accessTokenUsageCount: 1 }
+			accessTokenLastUsedAt: new Date(),
+			$inc: { accessTokenNumUses: 1 }
 		},
 		{
 			new: true
 		}
 	);
-	
-	if (!machineIdentity) throw UnauthorizedRequestError({
-		message: "Failed to authenticate"
-	});
 
-    return machineIdentity;
+    return machineIdentityAccessToken.machineIdentity;
 }

@@ -35,7 +35,8 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup.object({
     description: yup.string(),
-    ttl: yup.string() // TODO: optional
+    ttl: yup.string(),
+    numUsesLimit: yup.string()
 });
 
 export type FormData = yup.InferType<typeof schema>;
@@ -81,7 +82,8 @@ export const CreateClientSecretModal = ({
         resolver: yupResolver(schema),
         defaultValues: {
             description: "",
-            ttl: ""
+            ttl: "",
+            numUsesLimit: ""
         }
     });
     
@@ -101,7 +103,8 @@ export const CreateClientSecretModal = ({
     
     const onFormSubmit = async ({
         description,
-        ttl
+        ttl,
+        numUsesLimit
     }: FormData) => {
         try {
             
@@ -110,7 +113,8 @@ export const CreateClientSecretModal = ({
             const { clientSecret } = await createClientSecretMutateAsync({
                 machineId: popUpData.machineId,
                 description,
-                ttl: Number(ttl)
+                ttl: Number(ttl),
+                numUsesLimit: Number(numUsesLimit)
             });
 
             setToken(clientSecret);
@@ -211,7 +215,7 @@ export const CreateClientSecretModal = ({
                 ) : (
                     <form 
                         onSubmit={handleSubmit(onFormSubmit)}
-                        className="flex mb-8"
+                        className="mb-8"
                     >
                         <Controller
                             control={control}
@@ -230,38 +234,63 @@ export const CreateClientSecretModal = ({
                                 </FormControl>
                             )}
                         />
-                        <Controller
-                            control={control}
-                            defaultValue=""
-                            name="ttl"
-                            render={({ field, fieldState: { error } }) => (
-                                <FormControl
-                                    label="TTL (optional)"
-                                    isError={Boolean(error)}
-                                    errorText={error?.message}
-                                    className="ml-4"
-                                >
-                                    <div className="flex">
-                                        <Input 
-                                            {...field} 
-                                            placeholder="0"
-                                            type="number"
-                                            min="0"
-                                            step="1"
-                                        />
-                                        <Button
-                                            className="ml-4"
-                                            size="sm"
-                                            type="submit"
-                                            isLoading={isSubmitting}
-                                            isDisabled={isSubmitting}
-                                        >
-                                            Create
-                                        </Button>
-                                    </div>
-                                </FormControl>
-                            )}
-                        />
+                        <div className="flex">
+                            <Controller
+                                control={control}
+                                defaultValue=""
+                                name="ttl"
+                                render={({ field, fieldState: { error } }) => (
+                                    <FormControl
+                                        label="TTL (seconds - optional)"
+                                        isError={Boolean(error)}
+                                        errorText={error?.message}
+                                    >
+                                        <div className="flex">
+                                            <Input 
+                                                {...field} 
+                                                placeholder="0"
+                                                type="number"
+                                                min="0"
+                                                step="1"
+                                            />
+                                            
+                                        </div>
+                                    </FormControl>
+                                )}
+                            />
+                            <Controller
+                                control={control}
+                                defaultValue="0"
+                                name="numUsesLimit"
+                                render={({ field, fieldState: { error } }) => (
+                                    <FormControl
+                                        label="Max Number of Uses"
+                                        isError={Boolean(error)}
+                                        errorText={error?.message}
+                                        className="ml-4"
+                                    >
+                                        <div className="flex">
+                                            <Input 
+                                                {...field} 
+                                                placeholder="0"
+                                                type="number"
+                                                min="0"
+                                                step="1"
+                                            />
+                                            <Button
+                                                className="ml-4"
+                                                size="sm"
+                                                type="submit"
+                                                isLoading={isSubmitting}
+                                                isDisabled={isSubmitting}
+                                            >
+                                                Create
+                                            </Button>
+                                        </div>
+                                    </FormControl>
+                                )}
+                            />
+                        </div>
                     </form>
                 )}
                 <h2 className="mb-4">Client Secrets</h2>
@@ -270,13 +299,14 @@ export const CreateClientSecretModal = ({
                         <THead>
                             <Tr>
                                 <Th>Description</Th>
+                                <Th>Num Uses</Th>
                                 <Th>Expires At</Th>
                                 <Th>Client Secret</Th>
                                 <Th className="w-5" />
                             </Tr>
                         </THead>
                         <TBody>
-                            {isLoading && <TableSkeleton columns={4} innerKey="org-machine-identities-client-secrets" />}
+                            {isLoading && <TableSkeleton columns={5} innerKey="org-machine-identities-client-secrets" />}
                             {!isLoading &&
                             data &&
                             data.length > 0 && 
@@ -284,19 +314,23 @@ export const CreateClientSecretModal = ({
                                 _id,
                                 description,
                                 clientSecretTTL,
-                                clientSecretPrefix
+                                clientSecretPrefix,
+                                clientSecretNumUses,
+                                clientSecretNumUsesLimit,
+                                createdAt
                             }) => {
                                 let expiresAt;
                                 if (clientSecretTTL > 0) {
-                                    expiresAt = new Date(new Date().getTime() + clientSecretTTL * 1000);
+                                    expiresAt = new Date(new Date(createdAt).getTime() + clientSecretTTL * 1000);
                                 }
                                 
                                 return (
-                                    <Tr className="h-10" key={`mi-client-secret-${_id}`}>
+                                    <Tr className="h-10 items-center" key={`mi-client-secret-${_id}`}>
                                         <Td>{description === "" ? "-" : description}</Td>
+                                        <Td>{`${clientSecretNumUses}${clientSecretNumUsesLimit ? `/${clientSecretNumUsesLimit}` : ""}`}</Td>
                                         <Td>{expiresAt ? format(expiresAt, "yyyy-MM-dd") : "-"}</Td>
-                                        <Td>{`${clientSecretPrefix}************`}</Td>
-                                        <Td className="flex">
+                                        <Td>{`${clientSecretPrefix}****`}</Td>
+                                        <Td>
                                             <IconButton
                                                 onClick={() => {
                                                     handlePopUpOpen("deleteClientSecret", {
@@ -308,7 +342,6 @@ export const CreateClientSecretModal = ({
                                                 colorSchema="primary"
                                                 variant="plain"
                                                 ariaLabel="update"
-                                                className="ml-4"
                                             >
                                                 <FontAwesomeIcon icon={faXmark} />
                                             </IconButton>
@@ -318,7 +351,7 @@ export const CreateClientSecretModal = ({
                             })}
                             {!isLoading && data && data?.length === 0 && (
                                 <Tr>
-                                    <Td colSpan={4}>
+                                    <Td colSpan={5}>
                                         <EmptyState title="No client secrets have been created for this machine identity yet" icon={faKey} />
                                     </Td>
                                 </Tr>

@@ -43,15 +43,13 @@ const schema = yup.object({
     name: yup.string().required("MI name is required"),
     accessTokenTTL: yup
         .string()
-        .test("is-positive-integer", "Access Token TTL must be a positive integer", (value) => {
-            if (typeof value === "undefined") {
-                return false;
-            }
-            
-            const num = parseInt(value, 10);
-            return !Number.isNaN(num) && num > 0 && String(num) === value;
-        })
         .required("Access Token TTL is required"),
+    accessTokenMaxTTL: yup
+        .string()
+        .required("Access Max Token TTL is required"),
+    accessTokenNumUsesLimit: yup
+        .string()
+        .required("Access Token Max Number of Uses is required"),
     role: yup.string(),
     clientSecretTrustedIps: yup
         .array(
@@ -111,6 +109,8 @@ export const AddMachineIdentityModal = ({
         defaultValues: {
             name: "",
             accessTokenTTL: "7200",
+            accessTokenMaxTTL: "7200",
+            accessTokenNumUsesLimit: "0",
             clientSecretTrustedIps: [{
                 ipAddress: "0.0.0.0/0"
             }],
@@ -143,6 +143,8 @@ export const AddMachineIdentityModal = ({
             clientSecretTrustedIps: MachineTrustedIp[];
             accessTokenTrustedIps: MachineTrustedIp[];
             accessTokenTTL: number;
+            accessTokenMaxTTL: number;
+            accessTokenNumUsesLimit: number;
         };
 
         if (!roles?.length) return;
@@ -150,6 +152,7 @@ export const AddMachineIdentityModal = ({
         if (machineIdentity) {
             reset({
                 name: machineIdentity.name,
+                accessTokenNumUsesLimit: String(machineIdentity.accessTokenNumUsesLimit),
                 role: machineIdentity?.customRole?.slug ?? machineIdentity.role,
                 clientSecretTrustedIps: machineIdentity.clientSecretTrustedIps.map(({ 
                     ipAddress, 
@@ -167,12 +170,15 @@ export const AddMachineIdentityModal = ({
                         ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
                     });
                 }),
-                accessTokenTTL: String(machineIdentity.accessTokenTTL)
+                accessTokenTTL: String(machineIdentity.accessTokenTTL),
+                accessTokenMaxTTL: String(machineIdentity.accessTokenMaxTTL)
             });
         } else {
             reset({
                 name: "",
                 accessTokenTTL: "7200",
+                accessTokenMaxTTL: "7200",
+                accessTokenNumUsesLimit: "0",
                 role: roles[0].slug,
                 clientSecretTrustedIps: [{
                     ipAddress: "0.0.0.0/0"
@@ -198,9 +204,11 @@ export const AddMachineIdentityModal = ({
     const onFormSubmit = async ({
         name,
         accessTokenTTL,
+        accessTokenMaxTTL,
         role,
         clientSecretTrustedIps,
-        accessTokenTrustedIps
+        accessTokenTrustedIps,
+        accessTokenNumUsesLimit
     }: FormData) => {
         try {
             
@@ -219,7 +227,9 @@ export const AddMachineIdentityModal = ({
                     role: role || undefined,
                     clientSecretTrustedIps,
                     accessTokenTrustedIps,
-                    accessTokenTTL: Number(accessTokenTTL)
+                    accessTokenTTL: Number(accessTokenTTL),
+                    accessTokenMaxTTL: Number(accessTokenMaxTTL),
+                    accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit)
                 });
                 
                 handlePopUpToggle("machineIdentity", false);
@@ -232,6 +242,8 @@ export const AddMachineIdentityModal = ({
                     clientSecretTrustedIps,
                     accessTokenTrustedIps,
                     accessTokenTTL: Number(accessTokenTTL),
+                    accessTokenMaxTTL: Number(accessTokenMaxTTL),
+                    accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit)
                 });
                 
                 handlePopUpToggle("machineIdentity", false);
@@ -358,6 +370,26 @@ export const AddMachineIdentityModal = ({
                                 <Controller
                                     control={control}
                                     defaultValue="7200"
+                                    name="accessTokenMaxTTL"
+                                    render={({ field, fieldState: { error } }) => (
+                                        <FormControl
+                                            label="Access Token Max TTL (seconds)"
+                                            isError={Boolean(error)}
+                                            errorText={error?.message}
+                                        >
+                                        <Input 
+                                            {...field} 
+                                            placeholder="7200"
+                                            type="number"
+                                            min="0"
+                                            step="1"
+                                        />
+                                        </FormControl>
+                                    )}
+                                />
+                                <Controller
+                                    control={control}
+                                    defaultValue="7200"
                                     name="accessTokenTTL"
                                     render={({ field, fieldState: { error } }) => (
                                         <FormControl
@@ -368,6 +400,29 @@ export const AddMachineIdentityModal = ({
                                         <Input 
                                             {...field} 
                                             placeholder="7200"
+                                            type="number"
+                                            min="0"
+                                            step="1"
+                                        />
+                                        </FormControl>
+                                    )}
+                                />
+                                <Controller
+                                    control={control}
+                                    defaultValue="0"
+                                    name="accessTokenNumUsesLimit"
+                                    render={({ field, fieldState: { error } }) => (
+                                        <FormControl
+                                            label="Access Token Max Number of Uses"
+                                            isError={Boolean(error)}
+                                            errorText={error?.message}
+                                        >
+                                        <Input 
+                                            {...field} 
+                                            placeholder="0"
+                                            type="number"
+                                            min="0"
+                                            step="1"
                                         />
                                         </FormControl>
                                     )}

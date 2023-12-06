@@ -7,17 +7,14 @@ export interface IMachineIdentityTrustedIp {
     prefix: number;
 }
 
-// TODO: rename to AppClient
-
 export interface IMachineIdentity extends Document {
     _id: Types.ObjectId;
     clientId: string;
     name: string;
     organization: Types.ObjectId;
-    isActive: boolean;
     accessTokenTTL: number;
-    accessTokenLastUsed?: Date;
-    accessTokenUsageCount: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
     clientSecretTrustedIps: Array<IMachineIdentityTrustedIp>;
     accessTokenTrustedIps: Array<IMachineIdentityTrustedIp>;
 }
@@ -37,23 +34,22 @@ const machineIdentitySchema = new Schema(
             ref: "Organization",
             required: true
         },
-        isActive: {
-            type: Boolean,
-            default: true,
-            required: true
-        },
         accessTokenTTL: { // seconds
+            // incremental lifetime
             type: Number,
             default: 7200,
             required: true
         },
-        accessTokenLastUsed: {
-            type: Date,
-            required: false
-        },
-        accessTokenUsageCount: {
+        accessTokenMaxTTL: { // seconds
+            // max lifetime
             type: Number,
-            default: 0,
+            default: 7200,
+            required: true
+        },
+        accessTokenNumUsesLimit: {
+            // number of times access token can be used for
+            type: Number,
+            default: 0, // default: used as many times as needed
             required: true
         },
         clientSecretTrustedIps: {
@@ -118,6 +114,6 @@ const machineIdentitySchema = new Schema(
     }
 );
 
-machineIdentitySchema.index({ clientId: 1, isActive: 1 })
+machineIdentitySchema.index({ clientId: 1 })
 
 export const MachineIdentity = model<IMachineIdentity>("MachineIdentity", machineIdentitySchema);

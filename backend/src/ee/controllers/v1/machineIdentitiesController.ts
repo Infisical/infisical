@@ -1,3 +1,4 @@
+import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { Request, Response } from "express";
@@ -6,6 +7,7 @@ import {
     IMachineIdentity,
     IMachineIdentityClientSecret,
     IMachineIdentityTrustedIp,
+    IdentityAccessToken,
     MachineIdentity,
     MachineIdentityClientSecret,
     MachineMembership,
@@ -47,12 +49,14 @@ import { getUserAgentType } from "../../../utils/posthog";
 const packageClientSecretData = (machineIdentityClientSecret: IMachineIdentityClientSecret) => ({
     _id: machineIdentityClientSecret._id,
     machineIdentity: machineIdentityClientSecret.machineIdentity,
-    isActive: machineIdentityClientSecret.isActive,
+    isClientSecretRevoked: machineIdentityClientSecret.isClientSecretRevoked,
     description: machineIdentityClientSecret.description,
     clientSecretPrefix: machineIdentityClientSecret.clientSecretPrefix,
     clientSecretNumUses: machineIdentityClientSecret.clientSecretNumUses,
     clientSecretNumUsesLimit: machineIdentityClientSecret.clientSecretNumUsesLimit,
-    clientSecretTTL: machineIdentityClientSecret.clientSecretTTL
+    clientSecretTTL: machineIdentityClientSecret.clientSecretTTL,
+    createdAt: machineIdentityClientSecret.createdAt,
+    updatedAt: machineIdentityClientSecret.updatedAt
 });
 
 /**
@@ -65,7 +69,7 @@ export const getMIClientSecrets = async (req: Request, res: Response) => {
         params: {
             machineId
         }
-    } = await validateRequest(reqValidator.GetClientSecretsV3, req);
+    } = await validateRequest(reqValidator.GetClientSecretsV1, req);
 
     const machineMembershipOrg = await MachineMembershipOrg.findOne({
         machineIdentity: new Types.ObjectId(machineId)
@@ -97,8 +101,7 @@ export const getMIClientSecrets = async (req: Request, res: Response) => {
 
     const clientSecretData = await MachineIdentityClientSecret
         .find({
-            machineIdentity: machineMembershipOrg.machineIdentity,
-            isActive: true
+            machineIdentity: machineMembershipOrg.machineIdentity
         })
         .sort({ createdAt: -1 })
         .limit(5);
@@ -108,8 +111,7 @@ export const getMIClientSecrets = async (req: Request, res: Response) => {
         {
             type: EventType.GET_MACHINE_IDENTITY_CLIENT_SECRETS,
             metadata: {
-                machineId: machineMembershipOrg.machineIdentity._id.toString(),
-                clientId: machineMembershipOrg.machineIdentity.clientId,
+                machineId: machineMembershipOrg.machineIdentity._id.toString()
             }
         },
         {
@@ -137,7 +139,7 @@ export const createMIClientSecret = async (req: Request, res: Response) => {
             ttl,
             numUsesLimit
         }
-    } = await validateRequest(reqValidator.CreateClientSecretV3, req);
+    } = await validateRequest(reqValidator.CreateClientSecretV1, req);
 
     const machineMembershipOrg = await MachineMembershipOrg.findOne({
         machineIdentity: new Types.ObjectId(machineId)
@@ -173,14 +175,13 @@ export const createMIClientSecret = async (req: Request, res: Response) => {
 
     const machineIdentityClientSecret = await new MachineIdentityClientSecret({
         machineIdentity: machineMembershipOrg.machineIdentity,
-        isActive: true,
         description,
         clientSecretPrefix: clientSecret.slice(0, 4),
         clientSecretHash,
         clientSecretNumUses: 0,
         clientSecretNumUsesLimit: numUsesLimit,
         clientSecretTTL: ttl,
-        accessTokenVersion: 1,
+        isClientSecretRevoked: false
     }).save();
 
     await EEAuditLogService.createAuditLog(
@@ -189,7 +190,6 @@ export const createMIClientSecret = async (req: Request, res: Response) => {
             type: EventType.CREATE_MACHINE_IDENTITY_CLIENT_SECRET,
             metadata: {
                 machineId: machineMembershipOrg.machineIdentity._id.toString(),
-                clientId: machineMembershipOrg.machineIdentity.clientId,
                 clientSecretId: machineIdentityClientSecret._id.toString()
             }
         },
@@ -215,7 +215,7 @@ export const deleteMIClientSecret = async (req: Request, res: Response) => {
             machineId,
             clientSecretId
         }
-    } = await validateRequest(reqValidator.DeleteClientSecretV3, req);
+    } = await validateRequest(reqValidator.DeleteClientSecretV1, req);
 
     const machineMembershipOrg = await MachineMembershipOrg
         .findOne({
@@ -250,20 +250,27 @@ export const deleteMIClientSecret = async (req: Request, res: Response) => {
         message: "Failed to delete client secrets for more privileged MI"
     });
 
-    const machineIdentityClientSecret = await MachineIdentityClientSecret.findOneAndDelete({
-        _id: clientSecretId,
-        machineIdentity: machineId
-    });
+    const machineIdentityClientSecret = await MachineIdentityClientSecret.findOneAndUpdate(
+        {
+            _id: clientSecretId,
+            machineIdentity: machineId
+        },
+        {
+            isClientSecretRevoked: true
+        },
+        {
+            new: true
+        }
+    );
 
     if (!machineIdentityClientSecret) throw ResourceNotFoundError();
 
     await EEAuditLogService.createAuditLog(
         req.authData,
         {
-            type: EventType.DELETE_MACHINE_IDENTITY_CLIENT_SECRET,
+            type: EventType.REVOKE_MACHINE_IDENTITY_CLIENT_SECRET,
             metadata: {
                 machineId: machineMembershipOrg.machineIdentity._id.toString(),
-                clientId: machineMembershipOrg.machineIdentity.clientId,
                 clientSecretId: clientSecretId
             }
         },
@@ -289,11 +296,10 @@ export const loginMI = async (req: Request, res: Response) => {
             clientId,
             clientSecret
         }
-    } = await validateRequest(reqValidator.LoginMachineIdentityV3, req);
+    } = await validateRequest(reqValidator.LoginMachineIdentityV1, req);
 
     const machineIdentity = await MachineIdentity.findOne({
-        clientId,
-        isActive: true
+        clientId
     });
 
     if (!machineIdentity) throw UnauthorizedRequestError();
@@ -305,7 +311,7 @@ export const loginMI = async (req: Request, res: Response) => {
 
     const clientSecretData = await MachineIdentityClientSecret.find({
         machineIdentity: machineIdentity._id,
-        isActive: true
+        isClientSecretRevoked: false
     });
 
     let validatedClientSecretDatum: IMachineIdentityClientSecret | undefined;
@@ -340,7 +346,7 @@ export const loginMI = async (req: Request, res: Response) => {
             await MachineIdentityClientSecret.findByIdAndUpdate(
                 validatedClientSecretDatum._id,
                 {
-                    isActive: false
+                    isClientSecretRevoked: true
                 }
             );
 
@@ -350,13 +356,13 @@ export const loginMI = async (req: Request, res: Response) => {
         }
     }
 
-    if (clientSecretNumUses > 0 && clientSecretNumUses === clientSecretNumUsesLimit) {
+    if (clientSecretNumUsesLimit > 0 && clientSecretNumUses === clientSecretNumUsesLimit) {
         // number of times client secret can be used for 
         // a login operation reached
         await MachineIdentityClientSecret.findByIdAndUpdate(
             validatedClientSecretDatum._id,
             {
-                isActive: false
+                isClientSecretRevoked: true
             },
             {
                 new: true
@@ -372,20 +378,31 @@ export const loginMI = async (req: Request, res: Response) => {
     await MachineIdentityClientSecret.findByIdAndUpdate(
         validatedClientSecretDatum._id,
         {
+            clientSecretLastUsedAt: new Date(),
             $inc: { clientSecretNumUses: 1 }
         },
         {
             new: true
         }
     );
+    
+    const identityAccessToken = await new IdentityAccessToken({
+        machineIdentity: machineIdentity._id,
+        machineIdentityClientSecret: validatedClientSecretDatum._id,
+        accessTokenNumUses: 0,
+        accessTokenNumUsesLimit: machineIdentity.accessTokenNumUsesLimit,
+        accessTokenTTL: machineIdentity.accessTokenTTL,
+        accessTokenMaxTTL: machineIdentity.accessTokenMaxTTL,
+        isAccessTokenRevoked: false
+    }).save();
 
     // token version
     const accessToken = createToken({
         payload: {
             machineId: machineIdentity._id.toString(),
-            clientSecretDataId: validatedClientSecretDatum._id.toString(),
-            authTokenType: AuthTokenType.MACHINE_ACCESS_TOKEN,
-            tokenVersion: validatedClientSecretDatum.accessTokenVersion
+            clientSecretId: validatedClientSecretDatum._id.toString(),
+            identityAccessTokenId: identityAccessToken._id.toString(),
+            authTokenType: AuthTokenType.MACHINE_ACCESS_TOKEN
         },
         expiresIn: machineIdentity.accessTokenTTL,
         secret: await getAuthSecret()
@@ -411,8 +428,9 @@ export const loginMI = async (req: Request, res: Response) => {
             type: EventType.LOGIN_MACHINE_IDENTITY,
             metadata: {
                 machineId: machineIdentity._id.toString(),
-                clientId,
-                clientSecretId: validatedClientSecretDatum._id.toString()
+                machineAccessTokenId: identityAccessToken._id.toString(),
+                clientSecretId: validatedClientSecretDatum._id.toString(),
+                identityAccessTokenId: identityAccessToken._id.toString()
             }
         },
         {
@@ -423,6 +441,79 @@ export const loginMI = async (req: Request, res: Response) => {
     return res.status(200).send({
         accessToken,
         expiresIn: machineIdentity.accessTokenTTL,
+        tokenType: "Bearer"
+    });
+}
+
+/**
+ * Renews an access token by its TTL
+ * @param req 
+ * @param res 
+ */
+export const renewAccessToken = async (req: Request, res: Response) => {
+    const {
+        body: {
+            accessToken
+        }
+    } = await validateRequest(reqValidator.RenewAccessTokenV1, req);
+    
+    const decodedToken = <jwt.MachineAccessTokenJwtPayload>(
+		jwt.verify(accessToken, await getAuthSecret())
+	);
+
+	if (decodedToken.authTokenType !== AuthTokenType.MACHINE_ACCESS_TOKEN) throw UnauthorizedRequestError();
+	
+	const machineIdentityAccessToken = await IdentityAccessToken.findOne({
+        _id: decodedToken.identityAccessTokenId,
+        isAccessTokenRevoked: false
+    });
+	
+	if (!machineIdentityAccessToken) throw UnauthorizedRequestError();
+
+    const {
+		accessTokenTTL,
+		accessTokenLastRenewedAt,
+		accessTokenMaxTTL,
+		createdAt: accessTokenCreatedAt
+	} = machineIdentityAccessToken;
+
+    if (accessTokenTTL === accessTokenMaxTTL) throw UnauthorizedRequestError({
+        message: "Failed to renew non-renewable access token"
+    });
+    
+    if (accessTokenTTL > 0) {
+        const currentDate = new Date();
+        if (accessTokenLastRenewedAt) {
+            // access token has been renewed
+            const accessTokenRenewed = new Date(accessTokenLastRenewedAt);
+            const ttlInMilliseconds = accessTokenTTL * 1000;
+            const expirationTime = new Date(accessTokenRenewed.getTime() + ttlInMilliseconds);
+            
+            if (currentDate > expirationTime) throw UnauthorizedRequestError({
+                message: "Failed to renew MI access token due to TTL expiration"
+            });
+        } else {
+            // access token has never been renewed
+            const accessTokenCreated = new Date(accessTokenCreatedAt);
+            const ttlInMilliseconds = accessTokenTTL * 1000;
+            const expirationTime = new Date(accessTokenCreated.getTime() + ttlInMilliseconds);
+            
+            if (currentDate > expirationTime) throw UnauthorizedRequestError({
+                message: "Failed to renew MI access token due to TTL expiration"
+            });
+        }
+	}
+    
+    await IdentityAccessToken.findByIdAndUpdate(
+        machineIdentityAccessToken._id,
+        {
+            accessTokenLastRenewedAt: new Date()
+        }
+    );
+
+    return res.status(200).send({
+        accessToken,
+        expiresIn: machineIdentityAccessToken.accessTokenTTL,
         tokenType: "Bearer"
     });
 }
@@ -442,8 +533,10 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
             clientSecretTrustedIps,
             accessTokenTrustedIps,
             accessTokenTTL,
+            accessTokenMaxTTL,
+            accessTokenNumUsesLimit
         }
-    } = await validateRequest(reqValidator.CreateMachineIdentityV3, req);
+    } = await validateRequest(reqValidator.CreateMachineIdentityV1, req);
 
     const { permission } = await getAuthDataOrgPermissions({
         authData: req.authData,
@@ -509,14 +602,14 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
         return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const isActive = true;
     const machineIdentity = await new MachineIdentity({
         clientId: crypto.randomUUID(),
         name,
         organization: new Types.ObjectId(organizationId),
-        isActive,
         accessTokenTTL,
-        accessTokenUsageCount: 0,
+        accessTokenMaxTTL,
+        accessTokenNumUses: 0,
+        accessTokenNumUsesLimit,
         clientSecretTrustedIps: reformattedClientSecretTrustedIps,
         accessTokenTrustedIps: reformattedAccessTokenTrustedIps,
     }).save();
@@ -534,7 +627,6 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
             type: EventType.CREATE_MACHINE_IDENTITY,
             metadata: {
                 name,
-                isActive,
                 role,
                 clientSecretTrustedIps: reformattedClientSecretTrustedIps as Array<IMachineIdentityTrustedIp>,
                 accessTokenTrustedIps: reformattedAccessTokenTrustedIps as Array<IMachineIdentityTrustedIp>
@@ -564,9 +656,10 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
             role,
             clientSecretTrustedIps,
             accessTokenTrustedIps,
-            accessTokenTTL
+            accessTokenTTL,
+            accessTokenNumUsesLimit
         }
-    } = await validateRequest(reqValidator.UpdateMachineIdentityV3, req);
+    } = await validateRequest(reqValidator.UpdateMachineIdentityV1, req);
 
     const machineMembershipOrg = await MachineMembershipOrg
         .findOne({
@@ -666,7 +759,8 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
             name,
             clientSecretTrustedIps: reformattedClientSecretTrustedIps,
             accessTokenTrustedIps: reformattedAccessTokenTrustedIps,
-            accessTokenTTL
+            accessTokenTTL,
+            accessTokenNumUsesLimit
         },
         {
             new: true
@@ -727,7 +821,7 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
 export const deleteMachineIdentity = async (req: Request, res: Response) => {
     const {
         params: { machineId }
-    } = await validateRequest(reqValidator.DeleteMachineIdentityV3, req);
+    } = await validateRequest(reqValidator.DeleteMachineIdentityV1, req);
 
     const machineMembershipOrg = await MachineMembershipOrg
         .findOne({
@@ -775,8 +869,18 @@ export const deleteMachineIdentity = async (req: Request, res: Response) => {
         machineIdentity: machineMembershipOrg.machineIdentity
     });
 
+    const machineIdentityClientSecretIds = await MachineIdentityClientSecret.distinct("_id", {
+        machineIdentity: machineMembershipOrg.machineIdentity
+    });
+
     await MachineIdentityClientSecret.deleteMany({
         machineIdentity: machineMembershipOrg.machineIdentity
+    });
+    
+    await IdentityAccessToken.deleteMany({
+        machineIdentityClientSecret: {
+            $in: machineIdentityClientSecretIds
+        }
     });
 
     await EEAuditLogService.createAuditLog(
@@ -785,7 +889,6 @@ export const deleteMachineIdentity = async (req: Request, res: Response) => {
             type: EventType.DELETE_MACHINE_IDENTITY,
             metadata: {
                 name: machineIdentity.name,
-                isActive: machineIdentity.isActive,
                 role: machineMembershipOrg.role,
                 clientSecretTrustedIps: machineIdentity.clientSecretTrustedIps as Array<IMachineIdentityTrustedIp>,
                 accessTokenTrustedIps: machineIdentity.accessTokenTrustedIps as Array<IMachineIdentityTrustedIp>,

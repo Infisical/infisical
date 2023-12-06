@@ -12,10 +12,9 @@ export type MachineIdentity = {
     clientId: string;
     name: string;
     organization: string;
-    isActive: boolean;
     accessTokenTTL: number;
-    accessTokenLastUsed?: string;
-    accessTokenUsageCount: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
     clientSecretTrustedIps: MachineTrustedIp[];
     accessTokenTrustedIps: MachineTrustedIp[];
     createdAt: string;
@@ -25,7 +24,6 @@ export type MachineIdentity = {
 export type MachineIdentityClientSecret = {
     _id: string;
     machineIdentity: string;
-    isActive: boolean;
     description: string;
     clientSecretPrefix: string;
     clientSecretNumUses: number;
@@ -33,6 +31,7 @@ export type MachineIdentityClientSecret = {
     clientSecretTTL: number;
     createdAt: string;
     updatedAt: string;
+    isClientSecretRevoked: boolean;
 }
 
 export type MachineMembershipOrg = {
@@ -66,13 +65,15 @@ export type CreateMachineIdentityDTO = {
       ipAddress: string;
     }[];
     accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
 }
 
 export type CreateMachineIdentityClientSecretDTO = {
     machineId: string;
     description?: string;
     ttl?: number;
-    usageLimit?: number;
+    numUsesLimit?: number;
 }
 
 export type CreateMachineIdentityClientSecretRes = {
@@ -100,6 +101,8 @@ export type UpdateMachineIdentityDTO = {
         ipAddress: string;
     }[];
     accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
 }
 
 export type DeleteMachineIdentityDTO = {

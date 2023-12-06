@@ -1,7 +1,7 @@
 export enum ActorType { // would extend to AWS, Azure, ...
-  USER = "user",
+  USER = "user", // userIdentity
   SERVICE = "service",
-  MACHINE = "machine"
+  MACHINE = "machine" // machineIdentity
 }
 
 export enum UserAgentType {
@@ -36,7 +36,7 @@ export enum EventType {
   DELETE_MACHINE_IDENTITY = "delete-machine-identity",
   LOGIN_MACHINE_IDENTITY = "login-machine-identity",
   CREATE_MACHINE_IDENTITY_CLIENT_SECRET = "create-machine-identity-secret",
-  DELETE_MACHINE_IDENTITY_CLIENT_SECRET = "delete-machine-identity-secret",
+  REVOKE_MACHINE_IDENTITY_CLIENT_SECRET = "revoke-machine-identity-secret",
   GET_MACHINE_IDENTITY_CLIENT_SECRETS = "get-machine-identity-secrets",
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",

@@ -42,7 +42,9 @@ type Props = {
         };
         clientSecretTrustedIps?: MachineTrustedIp[];
         accessTokenTrustedIps?: MachineTrustedIp[];
+        accessTokenMaxTTL?: number;
         accessTokenTTL?: number;
+        accessTokenNumUsesLimit?: number;
       }
     ) => void;
   };
@@ -148,7 +150,9 @@ export const MachineIdentityTable = ({
                             accessTokenTrustedIps,
                             // createdAt,
                             // expiresAt,
+                            accessTokenMaxTTL,
                             accessTokenTTL,
+                            accessTokenNumUsesLimit
                         },
                         role,
                         customRole
@@ -223,6 +227,8 @@ export const MachineIdentityTable = ({
                                                         clientSecretTrustedIps,
                                                         accessTokenTrustedIps,
                                                         accessTokenTTL,
+                                                        accessTokenMaxTTL,
+                                                        accessTokenNumUsesLimit
                                                     });
                                                 }}
                                                 size="lg"

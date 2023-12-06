@@ -33,6 +33,12 @@ router.post(
   machineIdentitiesController.loginMI
 );
 
+// note: currently this is machine-identity specific
+router.post(
+  "/access-token/renew",
+  machineIdentitiesController.renewAccessToken
+);
+
 router.post(
   "/",
   requireAuth({

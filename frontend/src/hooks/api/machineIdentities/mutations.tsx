@@ -34,14 +34,14 @@ export const useCreateMachineIdentityClientSecret = () => {
             machineId,
             description,
             ttl,
-            usageLimit
+            numUsesLimit
         }) => {
 
             const { data } = await apiRequest.post(`/api/v1/machine-identities/${machineId}/client-secrets`, {
                 machineId,
                 description,
                 ttl,
-                usageLimit
+                numUsesLimit
             });
 
             return data;
@@ -80,7 +80,8 @@ export const useUpdateMachineIdentity = () => {
             role,
             clientSecretTrustedIps,
             accessTokenTrustedIps,
-            accessTokenTTL
+            accessTokenTTL,
+            accessTokenNumUsesLimit
         }) => {
             
             const { data: { machineIdentity } } = await apiRequest.patch(`/api/v1/machine-identities/${machineId}`, {
@@ -89,6 +90,7 @@ export const useUpdateMachineIdentity = () => {
                 clientSecretTrustedIps,
                 accessTokenTrustedIps,
                 accessTokenTTL,
+                accessTokenNumUsesLimit
             });
 
             return machineIdentity;

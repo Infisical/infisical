@@ -22,6 +22,7 @@ export * from "./workspace";
 export * from "./serviceTokenData"; // TODO: deprecate
 export * from "./machineIdentity";
 export * from "./machineIdentityClientSecret";
+export * from "./identityAccessToken";
 export * from "./machineMembershipOrg";
 export * from "./machineMembership";
 export * from "./apiKeyData"; // TODO: deprecate

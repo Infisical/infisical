@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { NO_ACCESS } from "../variables";
 
-export const GetClientSecretsV3 = z.object({
+export const GetClientSecretsV1 = z.object({
   params: z.object({
     machineId: z.string()
   })
 });
 
-export const CreateClientSecretV3 = z.object({
+export const CreateClientSecretV1 = z.object({
   params: z.object({
     machineId: z.string()
   }),
@@ -18,21 +18,27 @@ export const CreateClientSecretV3 = z.object({
   }),
 });
 
-export const DeleteClientSecretV3 = z.object({
+export const DeleteClientSecretV1 = z.object({
   params: z.object({
     machineId: z.string(),
     clientSecretId: z.string()
   })
 });
 
-export const LoginMachineIdentityV3 = z.object({
+export const LoginMachineIdentityV1 = z.object({
   body: z.object({
     clientId: z.string().trim(),
     clientSecret: z.string().trim()
   })
 });
 
-export const CreateMachineIdentityV3 = z.object({
+export const RenewAccessTokenV1 = z.object({
+  body: z.object({
+    accessToken: z.string().trim()
+  })
+});
+
+export const CreateMachineIdentityV1 = z.object({
   body: z.object({
     name: z.string().trim(),
     organizationId: z.string().trim(),
@@ -51,11 +57,17 @@ export const CreateMachineIdentityV3 = z.object({
       .array()
       .min(1)
       .default([{ ipAddress: "0.0.0.0/0" }]),
-    accessTokenTTL: z.number().int().min(1).default(7200)
+    accessTokenTTL: z.number().int().min(0).default(7200),
+    accessTokenMaxTTL: z.number().int().min(0).default(7200),
+    accessTokenNumUsesLimit: z.number().int().min(0).default(0)
+  })
+  .refine(data => data.accessTokenTTL <= data.accessTokenMaxTTL, {
+    message: "accessTokenTTL cannot be greater than accessTokenMaxTTL",
+    path: ["accessTokenTTL"],
   })
 });
   
-export const UpdateMachineIdentityV3 = z.object({
+export const UpdateMachineIdentityV1 = z.object({
   params: z.object({
     machineId: z.string()
   }),
@@ -76,11 +88,12 @@ export const UpdateMachineIdentityV3 = z.object({
       .array()
       .min(1)
       .optional(),
-    accessTokenTTL: z.number().int().min(1).optional()
+    accessTokenTTL: z.number().int().min(0).optional(),
+    accessTokenNumUsesLimit: z.number().int().min(0).optional()
   }),
 });
 
-export const DeleteMachineIdentityV3 = z.object({
+export const DeleteMachineIdentityV1 = z.object({
   params: z.object({
     machineId: z.string()
   }),
