@@ -58,15 +58,11 @@ export const CreateMachineIdentityV1 = z.object({
       .min(1)
       .default([{ ipAddress: "0.0.0.0/0" }]),
     accessTokenTTL: z.number().int().min(0).default(7200),
-    accessTokenMaxTTL: z.number().int().min(0).default(7200),
+    accessTokenMaxTTL: z.number().int().min(0).default(0),
     accessTokenNumUsesLimit: z.number().int().min(0).default(0)
   })
-  .refine(data => data.accessTokenTTL <= data.accessTokenMaxTTL, {
-    message: "accessTokenTTL cannot be greater than accessTokenMaxTTL",
-    path: ["accessTokenTTL"],
-  })
 });
-  
+
 export const UpdateMachineIdentityV1 = z.object({
   params: z.object({
     machineId: z.string()
@@ -89,7 +85,8 @@ export const UpdateMachineIdentityV1 = z.object({
       .min(1)
       .optional(),
     accessTokenTTL: z.number().int().min(0).optional(),
-    accessTokenNumUsesLimit: z.number().int().min(0).optional()
+    accessTokenNumUsesLimit: z.number().int().min(0).optional(),
+    accessTokenMaxTTL: z.number().int().min(0).default(0),
   }),
 });
 

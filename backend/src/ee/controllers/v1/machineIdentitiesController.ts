@@ -557,6 +557,10 @@ export const createMachineIdentity = async (req: Request, res: Response) => {
         }
     } = await validateRequest(reqValidator.CreateMachineIdentityV1, req);
 
+    if (accessTokenMaxTTL > 0 && accessTokenTTL > accessTokenMaxTTL) {
+        throw BadRequestError({ message: "Access token TTL cannot be greater than max TTL" })
+    }
+
     const { permission } = await getAuthDataOrgPermissions({
         authData: req.authData,
         organizationId: new Types.ObjectId(organizationId)
@@ -676,9 +680,14 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
             clientSecretTrustedIps,
             accessTokenTrustedIps,
             accessTokenTTL,
-            accessTokenNumUsesLimit
+            accessTokenNumUsesLimit,
+            accessTokenMaxTTL
         }
     } = await validateRequest(reqValidator.UpdateMachineIdentityV1, req);
+
+    if (accessTokenTTL && accessTokenMaxTTL > 0 && accessTokenTTL > accessTokenMaxTTL) {
+        throw BadRequestError({ message: "Access token TTL cannot be greater than max TTL" })
+    }
 
     const machineMembershipOrg = await MachineMembershipOrg
         .findOne({
@@ -779,7 +788,8 @@ export const updateMachineIdentity = async (req: Request, res: Response) => {
             clientSecretTrustedIps: reformattedClientSecretTrustedIps,
             accessTokenTrustedIps: reformattedAccessTokenTrustedIps,
             accessTokenTTL,
-            accessTokenNumUsesLimit
+            accessTokenNumUsesLimit,
+            accessTokenMaxTTL
         },
         {
             new: true

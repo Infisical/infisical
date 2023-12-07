@@ -81,7 +81,8 @@ export const useUpdateMachineIdentity = () => {
             clientSecretTrustedIps,
             accessTokenTrustedIps,
             accessTokenTTL,
-            accessTokenNumUsesLimit
+            accessTokenNumUsesLimit,
+            accessTokenMaxTTL
         }) => {
             
             const { data: { machineIdentity } } = await apiRequest.patch(`/api/v1/machine-identities/${machineId}`, {
@@ -90,7 +91,8 @@ export const useUpdateMachineIdentity = () => {
                 clientSecretTrustedIps,
                 accessTokenTrustedIps,
                 accessTokenTTL,
-                accessTokenNumUsesLimit
+                accessTokenNumUsesLimit,
+                accessTokenMaxTTL
             });
 
             return machineIdentity;

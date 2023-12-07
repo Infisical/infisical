@@ -109,7 +109,7 @@ export const AddMachineIdentityModal = ({
         defaultValues: {
             name: "",
             accessTokenTTL: "7200",
-            accessTokenMaxTTL: "7200",
+            accessTokenMaxTTL: "0",
             accessTokenNumUsesLimit: "0",
             clientSecretTrustedIps: [{
                 ipAddress: "0.0.0.0/0"
@@ -177,7 +177,7 @@ export const AddMachineIdentityModal = ({
             reset({
                 name: "",
                 accessTokenTTL: "7200",
-                accessTokenMaxTTL: "7200",
+                accessTokenMaxTTL: "0",
                 accessTokenNumUsesLimit: "0",
                 role: roles[0].slug,
                 clientSecretTrustedIps: [{
