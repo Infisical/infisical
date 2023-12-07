@@ -367,7 +367,7 @@ export const AddMachineIdentityModal = ({
                                         </FormControl>
                                     )}
                                 /> */}
-                                <Controller
+                                {/* <Controller
                                     control={control}
                                     defaultValue="7200"
                                     name="accessTokenMaxTTL"
@@ -386,7 +386,7 @@ export const AddMachineIdentityModal = ({
                                         />
                                         </FormControl>
                                     )}
-                                />
+                                /> */}
                                 <Controller
                                     control={control}
                                     defaultValue="7200"
