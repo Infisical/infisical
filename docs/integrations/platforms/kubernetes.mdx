@@ -161,12 +161,65 @@ Default re-sync interval is every 1 minute.
 </Accordion>
 
 <Accordion title="managedSecretReference">
-The `managedSecretReference` field in the InfisicalSecret resource is used to specify the location where secrets retrieved from an Infisical project should be stored. 
-You should specify the name and namespace of the Kubernetes secret that will hold these secrets. The operator will create the secret for you, you just need to provide its name and namespace.
+The `managedSecretReference` field is used to define the target location for storing secrets retrieved from an Infisical project. 
+This field requires specifying both the name and namespace of the Kubernetes secret that will hold these secrets. 
+The Infisical operator will automatically create the Kubernetes secret with the specified name/namespace and keep it continuously updated.
 
-The managed secret be should be created in the same namespace as the deployment that will use it.
+Note: The managed secret be should be created in the same namespace as the deployment that will use it.
 
 </Accordion>
+<Accordion title="managedSecretReference.secretName">
+The name of the managed Kubernetes secret to be created
+</Accordion>
+<Accordion title="managedSecretReference.secretNamespace">
+The namespace of the managed Kubernetes secret to be created. 
+</Accordion>
+<Accordion title="managedSecretReference.secretType">
+Override the default Opaque type for managed secrets with this field. Useful for creating kubernetes.io/dockerconfigjson secrets.
+</Accordion>
+
+### Propagating labels & annotations 
+
+The operator will transfer all labels & annotations present on the `InfisicalSecret` CRD to the managed Kubernetes secret to be created. 
+Thus, if a specific label is required on the resulting secret, it can be applied as demonstrated in the following example:
+
+<Accordion title="Example propagation">
+```yaml
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  name: infisicalsecret-sample
+  labels:
+    label-to-be-passed-to-managed-secret: sample-value
+  annotations:
+    example.com/annotation-to-be-passed-to-managed-secret: "sample-value"
+spec:
+  ..
+  authentication:
+    ...
+  managedSecretReference:
+    ...
+```
+
+This would result in the following managed secret to be created:
+
+```yaml
+apiVersion: v1
+data:
+ ...
+kind: Secret
+metadata:
+  annotations:
+    example.com/annotation-to-be-passed-to-managed-secret: sample-value
+    secrets.infisical.com/version: W/"3f1-ZyOSsrCLGSkAhhCkY2USPu2ivRw"
+  labels:
+    label-to-be-passed-to-managed-secret: sample-value
+  name: managed-token
+  namespace: default
+type: Opaque
+```
+</Accordion>
+
 
 ### Apply the Infisical CRD to your cluster 
 Once you have configured the Infisical CRD with the required fields, you can apply it to your cluster. 
