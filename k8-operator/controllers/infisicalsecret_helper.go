@@ -72,7 +72,6 @@ func (r *InfisicalSecretReconciler) GetInfisicalTokenFromKubeSecret(ctx context.
 	// default to new secret ref structure
 	secretName := infisicalSecret.Spec.Authentication.ServiceToken.ServiceTokenSecretReference.SecretName
 	secretNamespace := infisicalSecret.Spec.Authentication.ServiceToken.ServiceTokenSecretReference.SecretNamespace
-
 	// fall back to previous secret ref
 	if secretName == "" {
 		secretName = infisicalSecret.Spec.TokenSecretReference.SecretName
@@ -129,20 +128,34 @@ func (r *InfisicalSecretReconciler) GetInfisicalServiceAccountCredentialsFromKub
 
 func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret, secretsFromAPI []model.SingleEnvironmentVariable, encryptedSecretsResponse api.GetEncryptedSecretsV3Response) error {
 	plainProcessedSecrets := make(map[string][]byte)
+	secretType := infisicalSecret.Spec.ManagedSecretReference.SecretType
+
 	for _, secret := range secretsFromAPI {
 		plainProcessedSecrets[secret.Key] = []byte(secret.Value) // plain process
 	}
 
+	// copy labels and annotations from InfisicalSecret CRD
+	labels := map[string]string{}
+	for k, v := range infisicalSecret.Labels {
+		labels[k] = v
+	}
+
+	annotations := map[string]string{}
+	for k, v := range infisicalSecret.Annotations {
+		annotations[k] = v
+	}
+
+	annotations[SECRET_VERSION_ANNOTATION] = encryptedSecretsResponse.ETag
+
 	// create a new secret as specified by the managed secret spec of CRD
 	newKubeSecretInstance := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      infisicalSecret.Spec.ManagedSecretReference.SecretName,
-			Namespace: infisicalSecret.Spec.ManagedSecretReference.SecretNamespace,
-			Annotations: map[string]string{
-				SECRET_VERSION_ANNOTATION: encryptedSecretsResponse.ETag,
-			},
+			Name:        infisicalSecret.Spec.ManagedSecretReference.SecretName,
+			Namespace:   infisicalSecret.Spec.ManagedSecretReference.SecretNamespace,
+			Annotations: annotations,
+			Labels:      labels,
 		},
-		Type: "Opaque",
+		Type: corev1.SecretType(secretType),
 		Data: plainProcessedSecrets,
 	}
 
@@ -151,7 +164,7 @@ func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context
 		return fmt.Errorf("unable to create the managed Kubernetes secret : %w", err)
 	}
 
-	fmt.Println("Successfully created a managed Kubernetes secret with your Infisical secrets")
+	fmt.Printf("Successfully created a managed Kubernetes secret with your Infisical secrets. Type: %s\n", secretType)
 	return nil
 }
 

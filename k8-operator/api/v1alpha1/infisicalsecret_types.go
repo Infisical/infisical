@@ -43,6 +43,21 @@ type KubeSecretReference struct {
 	SecretNamespace string `json:"secretNamespace"`
 }
 
+type MangedKubeSecretConfig struct {
+	// The name of the Kubernetes Secret
+	// +kubebuilder:validation:Required
+	SecretName string `json:"secretName"`
+
+	// The name space where the Kubernetes Secret is located
+	// +kubebuilder:validation:Required
+	SecretNamespace string `json:"secretNamespace"`
+
+	// The Kubernetes Secret type (experimental feature). More info: https://kubernetes.io/docs/concepts/configuration/secret/#secret-types
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=Opaque
+	SecretType string `json:"secretType"`
+}
+
 // InfisicalSecretSpec defines the desired state of InfisicalSecret
 type InfisicalSecretSpec struct {
 	// +kubebuilder:validation:Optional
@@ -52,7 +67,7 @@ type InfisicalSecretSpec struct {
 	Authentication Authentication `json:"authentication"`
 
 	// +kubebuilder:validation:Required
-	ManagedSecretReference KubeSecretReference `json:"managedSecretReference"`
+	ManagedSecretReference MangedKubeSecretConfig `json:"managedSecretReference"`
 
 	// +kubebuilder:default:=60
 	ResyncInterval int `json:"resyncInterval"`

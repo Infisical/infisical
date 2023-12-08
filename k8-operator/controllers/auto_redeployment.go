@@ -36,6 +36,8 @@ func (r *InfisicalSecretReconciler) ReconcileDeploymentsWithManagedSecrets(ctx c
 	var wg sync.WaitGroup
 	// Iterate over the deployments and check if they use the managed secret
 	for _, deployment := range listOfDeployments.Items {
+		// Adding bc of https://github.com/golang/go/issues/16520
+		deployment := deployment
 		if deployment.Annotations[AUTO_RELOAD_DEPLOYMENT_ANNOTATION] == "true" && r.IsDeploymentUsingManagedSecret(deployment, infisicalSecret) {
 			// Start a goroutine to reconcile the deployment
 			wg.Add(1)
