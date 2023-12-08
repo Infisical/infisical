@@ -24,7 +24,7 @@ spec:
         envSlug: dev
         secretsPath: "/"
   managedSecretReference:
-    secretName: managed-token
+    secretName: managed-secret
     secretNamespace: default
     # secretType: kubernetes.io/dockerconfigjson
 
