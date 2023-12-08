@@ -50,10 +50,10 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
         type: "success"
       });
 
-      if (router.isReady) router.push(`/org/${organization._id}/overview`);
-      else window.location.href = `/org/${organization._id}/overview`;
+      if (router.isReady) router.push(`/org/${organization.id}/overview`);
+      else window.location.href = `/org/${organization.id}/overview`;
 
-      localStorage.setItem("orgData.id", organization._id);
+      localStorage.setItem("orgData.id", organization.id);
 
       reset();
       onClose();

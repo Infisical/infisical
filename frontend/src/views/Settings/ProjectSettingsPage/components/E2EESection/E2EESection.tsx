@@ -9,9 +9,9 @@ import { useGetUserWsKey, useGetWorkspaceBot, useUpdateBotActiveStatus } from "@
 
 export const E2EESection = () => {
   const { currentWorkspace } = useWorkspace();
-  const { data: bot } = useGetWorkspaceBot(currentWorkspace?._id ?? "");
+  const { data: bot } = useGetWorkspaceBot(currentWorkspace?.id ?? "");
   const { mutateAsync: updateBotActiveStatus } = useUpdateBotActiveStatus();
-  const { data: wsKey } = useGetUserWsKey(currentWorkspace?._id ?? "");
+  const { data: wsKey } = useGetUserWsKey(currentWorkspace?.id ?? "");
 
   /**
    * Activate bot for project by performing the following steps:
@@ -23,7 +23,7 @@ export const E2EESection = () => {
   const toggleBotActivate = async () => {
     let botKey;
     try {
-      if (!currentWorkspace?._id) return;
+      if (!currentWorkspace?.id) return;
 
       if (bot && wsKey) {
         // case: there is a bot
@@ -56,17 +56,17 @@ export const E2EESection = () => {
           };
 
           await updateBotActiveStatus({
-            workspaceId: currentWorkspace._id,
+            workspaceId: currentWorkspace.id,
             botKey,
             isActive: true,
-            botId: bot._id
+            botId: bot.id
           });
         } else {
           // bot is active -> deactivate bot
           await updateBotActiveStatus({
             isActive: false,
-            botId: bot._id,
-            workspaceId: currentWorkspace._id
+            botId: bot.id,
+            workspaceId: currentWorkspace.id
           });
         }
       }

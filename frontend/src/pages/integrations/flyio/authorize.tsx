@@ -9,9 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import {
-  useSaveIntegrationAccessToken
-} from "@app/hooks/api";
+import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
 
@@ -24,10 +22,7 @@ type FormData = yup.InferType<typeof schema>;
 export default function FlyioAuthorizeIntegrationPage() {
   const router = useRouter();
 
-  const {
-    control,
-    handleSubmit
-  } = useForm<FormData>({
+  const { control, handleSubmit } = useForm<FormData>({
     resolver: yupResolver(schema),
     defaultValues: {
       accessToken: ""
@@ -35,38 +30,36 @@ export default function FlyioAuthorizeIntegrationPage() {
   });
 
   const { mutateAsync } = useSaveIntegrationAccessToken();
-  
+
   const [isLoading, setIsLoading] = useState(false);
-  
-  const onFormSubmit = async ({
-    accessToken
-  }: FormData) => {
+
+  const onFormSubmit = async ({ accessToken }: FormData) => {
     try {
       setIsLoading(true);
-      
+
       const integrationAuth = await mutateAsync({
         workspaceId: localStorage.getItem("projectData.id"),
         integration: "flyio",
         accessToken
       });
-      
+
       setIsLoading(false);
       router.push(`/integrations/flyio/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       setIsLoading(false);
       console.error(err);
     }
-  }
+  };
 
   return (
     <div className="flex h-full w-full items-center justify-center">
       <Head>
         <title>Authorize Fly.io Integration</title>
-        <link rel='icon' href='/infisical.ico' />
+        <link rel="icon" href="/infisical.ico" />
       </Head>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600 mb-12">
-        <CardTitle 
-          className="text-left px-6 text-xl" 
+      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
+        <CardTitle
+          className="px-6 text-left text-xl"
           subTitle="After adding your access token, you will be prompted to set up an integration for a particular Infisical project and environment."
         >
           <div className="flex flex-row items-center">
@@ -81,19 +74,19 @@ export default function FlyioAuthorizeIntegrationPage() {
             <span className="ml-2.5">Fly.io Integration </span>
             <Link href="https://infisical.com/docs/integrations/cloud/flyio" passHref>
               <a target="_blank" rel="noopener noreferrer">
-                <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
-                    Docs
-                  <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
+                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="ml-1.5 mb-[0.07rem] text-xxs"
+                  />
                 </div>
               </a>
             </Link>
           </div>
         </CardTitle>
-        <form
-          onSubmit={handleSubmit(onFormSubmit)}
-          className="px-6 text-right pb-8"
-        >
+        <form onSubmit={handleSubmit(onFormSubmit)} className="px-6 pb-8 text-right">
           <Controller
             control={control}
             name="accessToken"
@@ -103,10 +96,7 @@ export default function FlyioAuthorizeIntegrationPage() {
                 errorText={error?.message}
                 isError={Boolean(error)}
               >
-                <Input 
-                  {...field}
-                  placeholder="" 
-                />
+                <Input {...field} placeholder="" />
               </FormControl>
             )}
           />

@@ -2,10 +2,7 @@ import { useRouter } from "next/router";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { 
-  Button, 
-  DeleteActionModal,
-} from "@app/components/v2";
+import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -19,30 +16,30 @@ import { usePopUp } from "@app/hooks/usePopUp";
 export const DeleteProjectSection = () => {
   const router = useRouter();
   const { createNotification } = useNotificationContext();
-  const { popUp, handlePopUpOpen, handlePopUpClose,  handlePopUpToggle } = usePopUp([
+  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteWorkspace"
-] as const);
+  ] as const);
 
   const { currentOrg } = useOrganization();
   const { currentWorkspace } = useWorkspace();
   const [isDeleting, setIsDeleting] = useToggle();
   const deleteWorkspace = useDeleteWorkspace();
-  
+
   const handleDeleteWorkspaceSubmit = async () => {
     setIsDeleting.on();
     try {
-      if (!currentWorkspace?._id) return;
-      
+      if (!currentWorkspace?.id) return;
+
       await deleteWorkspace.mutateAsync({
-        workspaceID: currentWorkspace?._id
+        workspaceID: currentWorkspace?.id
       });
-      
+
       createNotification({
         text: "Successfully deleted project",
         type: "success"
       });
-      
-      router.push(`/org/${currentOrg?._id}/overview`);
+
+      router.push(`/org/${currentOrg?.id}/overview`);
       handlePopUpClose("deleteWorkspace");
     } catch (err) {
       console.error(err);
@@ -53,36 +50,34 @@ export const DeleteProjectSection = () => {
     } finally {
       setIsDeleting.off();
     }
-  }
+  };
 
   return (
-    <div className="p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600 mb-6">
-        <p className="text-xl font-semibold text-mineshaft-100 mb-4">
-            Danger Zone
-        </p>
-        <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Workspace}>
-          {(isAllowed) => (
-            <Button
-                isLoading={isDeleting}
-                isDisabled={!isAllowed || isDeleting}
-                colorSchema="danger"
-                variant="outline_bg"
-                type="submit"
-                onClick={() => handlePopUpOpen("deleteWorkspace")}
-            >
-                {`Delete ${currentWorkspace?.name}`}
-            </Button>
-          )}
-        </ProjectPermissionCan>
-        <DeleteActionModal
-            isOpen={popUp.deleteWorkspace.isOpen}
-            title="Are you sure want to delete this project?"
-            subTitle={`Permanently delete ${currentWorkspace?.name} and all of its data. This action is not reversible, so please be careful.`}
-            onChange={(isOpen) => handlePopUpToggle("deleteWorkspace", isOpen)}
-            deleteKey="confirm"
-            buttonText="Delete Project"
-            onDeleteApproved={handleDeleteWorkspaceSubmit}
-        />
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <p className="mb-4 text-xl font-semibold text-mineshaft-100">Danger Zone</p>
+      <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Workspace}>
+        {(isAllowed) => (
+          <Button
+            isLoading={isDeleting}
+            isDisabled={!isAllowed || isDeleting}
+            colorSchema="danger"
+            variant="outline_bg"
+            type="submit"
+            onClick={() => handlePopUpOpen("deleteWorkspace")}
+          >
+            {`Delete ${currentWorkspace?.name}`}
+          </Button>
+        )}
+      </ProjectPermissionCan>
+      <DeleteActionModal
+        isOpen={popUp.deleteWorkspace.isOpen}
+        title="Are you sure want to delete this project?"
+        subTitle={`Permanently delete ${currentWorkspace?.name} and all of its data. This action is not reversible, so please be careful.`}
+        onChange={(isOpen) => handlePopUpToggle("deleteWorkspace", isOpen)}
+        deleteKey="confirm"
+        buttonText="Delete Project"
+        onDeleteApproved={handleDeleteWorkspaceSubmit}
+      />
     </div>
   );
 };

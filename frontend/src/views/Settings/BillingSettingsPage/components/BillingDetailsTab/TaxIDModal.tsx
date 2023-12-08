@@ -1,4 +1,4 @@
-import { Controller, useForm } from "react-hook-form"; 
+import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
@@ -69,10 +69,12 @@ const taxIDTypes = [
   { label: "South Africa VAT", value: "za_vat" }
 ];
 
-const schema = yup.object({
+const schema = yup
+  .object({
     type: yup.string().required("Tax ID type is required"),
     value: yup.string().required("Tax ID value is required")
-}).required();
+  })
+  .required();
 
 export type AddTaxIDFormData = yup.InferType<typeof schema>;
 
@@ -82,115 +84,100 @@ type Props = {
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["addTaxID"]>, state?: boolean) => void;
 };
 
-export const TaxIDModal = ({
-    popUp,
-    handlePopUpClose,
-    handlePopUpToggle
-}: Props) => {
-    const { createNotification } = useNotificationContext();
-    const { currentOrg } = useOrganization();
-    const addOrgTaxId = useAddOrgTaxId();
+export const TaxIDModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
+  const { createNotification } = useNotificationContext();
+  const { currentOrg } = useOrganization();
+  const addOrgTaxId = useAddOrgTaxId();
 
-    const {
-        control,
-        handleSubmit,
-        reset,
-        formState: { isSubmitting }
-    } = useForm<AddTaxIDFormData>({
-        resolver: yupResolver(schema)
-    });
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting }
+  } = useForm<AddTaxIDFormData>({
+    resolver: yupResolver(schema)
+  });
 
-    const onTaxIDModalSubmit = async ({ type, value }: AddTaxIDFormData) => {
-        try {
-            if (!currentOrg?._id) return;
-            await addOrgTaxId.mutateAsync({
-                organizationId: currentOrg._id,
-                type,
-                value
-            });
+  const onTaxIDModalSubmit = async ({ type, value }: AddTaxIDFormData) => {
+    try {
+      if (!currentOrg?.id) return;
+      await addOrgTaxId.mutateAsync({
+        organizationId: currentOrg.id,
+        type,
+        value
+      });
 
-            createNotification({
-                text: "Successfully added Tax ID",
-                type: "success"
-            });
-            handlePopUpClose("addTaxID");
-        } catch (err) {
-            console.error(err);
-            createNotification({
-                text: "Failed to add Tax ID",
-                type: "error"
-            });
-        }
+      createNotification({
+        text: "Successfully added Tax ID",
+        type: "success"
+      });
+      handlePopUpClose("addTaxID");
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to add Tax ID",
+        type: "error"
+      });
     }
+  };
 
-    return (
-        <Modal
-            isOpen={popUp?.addTaxID?.isOpen}
-                onOpenChange={(isOpen) => {
-                handlePopUpToggle("addTaxID", isOpen);
-                reset();
-            }}
-        >
-            <ModalContent title="Add Tax ID">
-            <form onSubmit={handleSubmit(onTaxIDModalSubmit)}>
-                <Controller
-                    control={control}
-                    name="type"
-                    defaultValue="eu_vat"
-                    render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                        <FormControl
-                            label="Type"
-                            errorText={error?.message}
-                            isError={Boolean(error)}
-                        >
-                            <Select
-                                defaultValue={field.value}
-                                {...field}
-                                onValueChange={(e) => onChange(e)}
-                                className="w-full"
-                            >
-                                {taxIDTypes.map(({ label, value }) => (
-                                    <SelectItem value={String(value || "")} key={label}>
-                                        {label}
-                                    </SelectItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                    )}
-                />
-                <Controller
-                    control={control}
-                    defaultValue=""
-                    name="value"
-                    render={({ field, fieldState: { error } }) => (
-                        <FormControl
-                            label="Value"
-                            isError={Boolean(error)}
-                            errorText={error?.message}
-                        >
-                        <Input 
-                            {...field} 
-                            placeholder="DE000000000"
-                        />
-                        </FormControl>
-                    )}
-                />
-                <div className="mt-8 flex items-center">
-                <Button
-                    className="mr-4"
-                    size="sm"
-                    type="submit"
-                    isLoading={isSubmitting}
-                    isDisabled={isSubmitting}
+  return (
+    <Modal
+      isOpen={popUp?.addTaxID?.isOpen}
+      onOpenChange={(isOpen) => {
+        handlePopUpToggle("addTaxID", isOpen);
+        reset();
+      }}
+    >
+      <ModalContent title="Add Tax ID">
+        <form onSubmit={handleSubmit(onTaxIDModalSubmit)}>
+          <Controller
+            control={control}
+            name="type"
+            defaultValue="eu_vat"
+            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              <FormControl label="Type" errorText={error?.message} isError={Boolean(error)}>
+                <Select
+                  defaultValue={field.value}
+                  {...field}
+                  onValueChange={(e) => onChange(e)}
+                  className="w-full"
                 >
-                    Add
-                </Button>
-                <Button colorSchema="secondary" variant="plain">
-                    Cancel
-                </Button>
-                </div>
-            </form>
-            </ModalContent>
-        </Modal>
-    );
-}
+                  {taxIDTypes.map(({ label, value }) => (
+                    <SelectItem value={String(value || "")} key={label}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue=""
+            name="value"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Value" isError={Boolean(error)} errorText={error?.message}>
+                <Input {...field} placeholder="DE000000000" />
+              </FormControl>
+            )}
+          />
+          <div className="mt-8 flex items-center">
+            <Button
+              className="mr-4"
+              size="sm"
+              type="submit"
+              isLoading={isSubmitting}
+              isDisabled={isSubmitting}
+            >
+              Add
+            </Button>
+            <Button colorSchema="secondary" variant="plain">
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </ModalContent>
+    </Modal>
+  );
+};

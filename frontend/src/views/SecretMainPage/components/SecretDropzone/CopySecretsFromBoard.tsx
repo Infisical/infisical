@@ -199,7 +199,7 @@ export const CopySecretsFromBoard = ({
           <div className="border-t border-mineshaft-600 pt-4">
             <div className="mb-4 flex items-center justify-between">
               <div>Secrets</div>
-              <div className="w-1/2 flex items-center space-x-2">
+              <div className="flex w-1/2 items-center space-x-2">
                 <Input
                   placeholder="Search for secret"
                   value={searchFilter}
@@ -232,7 +232,7 @@ export const CopySecretsFromBoard = ({
             {!isSecretsLoading && !secrets?.length && (
               <EmptyState title="No secrets found" icon={faKey} />
             )}
-            <div className="grid grid-cols-2 gap-4 max-h-64 overflow-auto thin-scrollbar ">
+            <div className="thin-scrollbar grid max-h-64 grid-cols-2 gap-4 overflow-auto ">
               {isSecretsLoading &&
                 Array.apply(0, Array(2)).map((_x, i) => (
                   <Skeleton key={`secret-pull-loading-${i + 1}`} className="bg-mineshaft-700" />

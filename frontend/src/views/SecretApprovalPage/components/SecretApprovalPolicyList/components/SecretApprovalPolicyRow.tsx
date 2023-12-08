@@ -50,7 +50,7 @@ export const SecretApprovalPolicyRow = ({
               updateSecretApprovalPolicy(
                 {
                   workspaceId,
-                  id: policy._id,
+                  id: policy.id,
                   approvers: selectedApprovers
                 },
                 {
@@ -81,18 +81,20 @@ export const SecretApprovalPolicyRow = ({
             style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
             align="start"
           >
-            <DropdownMenuLabel>Select members that are allowed to approve changes</DropdownMenuLabel>
-            {members?.map(({ _id, user }) => {
-              const isChecked = selectedApprovers.includes(_id);
+            <DropdownMenuLabel>
+              Select members that are allowed to approve changes
+            </DropdownMenuLabel>
+            {members?.map(({ id, user }) => {
+              const isChecked = selectedApprovers.includes(id);
               return (
                 <DropdownMenuItem
                   onClick={(evt) => {
                     evt.preventDefault();
                     setSelectedApprovers((state) =>
-                      isChecked ? state.filter((el) => el !== _id) : [...state, _id]
+                      isChecked ? state.filter((el) => el !== id) : [...state, id]
                     );
                   }}
-                  key={`create-policy-members-${_id}`}
+                  key={`create-policy-members-${id}`}
                   iconPos="right"
                   icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
                 >

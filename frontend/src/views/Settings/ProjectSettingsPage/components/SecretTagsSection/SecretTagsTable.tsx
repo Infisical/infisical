@@ -33,7 +33,7 @@ type Props = {
 
 export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace } = useWorkspace();
-  const { data, isLoading } = useGetWsTags(currentWorkspace?._id ?? "");
+  const { data, isLoading } = useGetWsTags(currentWorkspace?.id ?? "");
 
   return (
     <TableContainer className="mt-4">
@@ -49,7 +49,7 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
           {isLoading && <TableSkeleton columns={3} innerKey="secret-tags" />}
           {!isLoading &&
             data &&
-            data.map(({ _id, name, slug }) => (
+            data.map(({ id, name, slug }) => (
               <Tr key={name}>
                 <Td>{name}</Td>
                 <Td>{slug}</Td>
@@ -63,7 +63,7 @@ export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
                         onClick={() =>
                           handlePopUpOpen("deleteTagConfirmation", {
                             name,
-                            id: _id
+                            id
                           })
                         }
                         colorSchema="danger"

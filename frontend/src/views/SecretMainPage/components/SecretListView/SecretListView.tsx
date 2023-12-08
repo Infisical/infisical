@@ -72,7 +72,7 @@ export const filterSecrets = (secrets: DecryptedSecret[], filter: Filter) =>
     const isTagFilterActive = Boolean(Object.keys(filter.tags).length);
     const searchTerm = filter.searchFilter.toLowerCase();
     return (
-      (!isTagFilterActive || tags.some(({ _id }) => filter.tags?.[_id])) &&
+      (!isTagFilterActive || tags.some(({ id }) => filter.tags?.[id])) &&
       (key.toLowerCase().includes(searchTerm) || value.toLowerCase().includes(searchTerm))
     );
   });
@@ -191,7 +191,7 @@ export const SecretListView = ({
   const handleSaveSecret = useCallback(
     async (
       orgSecret: DecryptedSecret,
-      modSecret: Omit<DecryptedSecret, "tags"> & { tags: { _id: string }[] },
+      modSecret: Omit<DecryptedSecret, "tags"> & { tags: { id: string }[] },
       cb?: () => void
     ) => {
       const { key: oldKey } = orgSecret;
@@ -208,8 +208,8 @@ export const SecretListView = ({
       } = modSecret;
       const hasKeyChanged = oldKey !== key;
 
-      const tagIds = tags.map(({ _id }) => _id);
-      const oldTagIds = orgSecret.tags.map(({ _id }) => _id);
+      const tagIds = tags.map(({ id }) => id);
+      const oldTagIds = orgSecret.tags.map(({ id }) => id);
       const isSameTags = JSON.stringify(tagIds) === JSON.stringify(oldTagIds);
       const isSharedSecUnchanged =
         (
@@ -248,7 +248,7 @@ export const SecretListView = ({
             comment,
             reminderRepeatDays,
             reminderNote,
-            secretId: orgSecret._id,
+            secretId: orgSecret.id,
             newKey: hasKeyChanged ? key : undefined,
             skipMultilineEncoding: modSecret.skipMultilineEncoding
           });
@@ -283,7 +283,7 @@ export const SecretListView = ({
   );
 
   const handleSecretDelete = useCallback(async () => {
-    const { key, _id: secretId } = popUp.deleteSecret?.data as DecryptedSecret;
+    const { key, id: secretId } = popUp.deleteSecret?.data as DecryptedSecret;
     try {
       await handleSecretOperation("delete", "shared", key, { secretId });
       // wrap this in another function and then reuse
@@ -346,11 +346,11 @@ export const SecretListView = ({
                   environment={environment}
                   secretPath={secretPath}
                   tags={wsTags}
-                  isSelected={selectedSecrets?.[secret._id]}
+                  isSelected={selectedSecrets?.[secret.id]}
                   onToggleSecretSelect={toggleSelectedSecret}
                   isVisible={isVisible}
                   secret={secret}
-                  key={secret._id}
+                  key={secret.id}
                   onSaveSecret={handleSaveSecret}
                   onDeleteSecret={onDeleteSecret}
                   onDetailViewSecret={onDetailViewSecret}

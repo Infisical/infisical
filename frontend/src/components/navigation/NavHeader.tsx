@@ -157,7 +157,7 @@ export default function NavHeader({
         })}
       {isProtectedBranch && (
         <Tooltip content={`Protected by policy ${protectionPolicyName}`}>
-          <FontAwesomeIcon icon={faLock} className="text-primary ml-2" />
+          <FontAwesomeIcon icon={faLock} className="ml-2 text-primary" />
         </Tooltip>
       )}
     </div>

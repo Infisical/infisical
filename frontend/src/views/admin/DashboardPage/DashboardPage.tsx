@@ -42,7 +42,7 @@ export const AdminDashboardPage = () => {
         <div>
           <Tabs defaultValue={TabSections.Settings}>
             <TabList>
-              <div className="flex flex-row border-b border-mineshaft-600 w-full">
+              <div className="flex w-full flex-row border-b border-mineshaft-600">
                 <Tab value={TabSections.Settings}>General</Tab>
               </div>
             </TabList>

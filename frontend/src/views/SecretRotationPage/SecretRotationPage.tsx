@@ -182,22 +182,28 @@ export const SecretRotationPage = withProjectPermission(
     };
 
     return (
-      <div className="container mx-auto bg-bunker-800 text-white w-full h-full max-w-7xl px-6">
-        <div className="py-6 flex justify-between items-center">
-          <div className="flex flex-col w-full">
+      <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 px-6 text-white">
+        <div className="flex items-center justify-between py-6">
+          <div className="flex w-full flex-col">
             <h2 className="text-3xl font-semibold text-gray-200">Secret Rotation</h2>
-            <p className="text-bunker-300">Stop manually rotating secrets and automate credential rotation.</p>
+            <p className="text-bunker-300">
+              Stop manually rotating secrets and automate credential rotation.
+            </p>
           </div>
-          <div className="flex justify-center w-max">
+          <div className="flex w-max justify-center">
             <Link href="https://infisical.com/docs/documentation/platform/secret-rotation/overview">
-              <span className="rounded-md px-4 py-2 w-max text-mineshaft-200 hover:text-white bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/10 hover:border-primary/40 duration-200 cursor-pointer">
-                Documentation <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs mb-[0.06rem] ml-1"/>
+              <span className="w-max cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
+                Documentation{" "}
+                <FontAwesomeIcon
+                  icon={faArrowUpRightFromSquare}
+                  className="mb-[0.06rem] ml-1 text-xs"
+                />
               </span>
-            </Link> 
+            </Link>
           </div>
         </div>
         <div className="mb-6">
-          <div className="text-xl font-semibold text-gray-200 mb-2 mt-6">Rotated Secrets</div>
+          <div className="mb-2 mt-6 text-xl font-semibold text-gray-200">Rotated Secrets</div>
           <div className="flex flex-col space-y-2">
             <TableContainer>
               <Table>
@@ -249,9 +255,9 @@ export const SecretRotationPage = withProjectPermission(
                               .toUpperCase()}
                           </Td>
                           <Td>
-                            <div className="flex items-center border border-bunker-400 rounded p-1 px-2 w-min">
+                            <div className="flex w-min items-center rounded border border-bunker-400 p-1 px-2">
                               <div>{environment}</div>
-                              <div className="flex items-center border-l border-bunker-400 pl-1 ml-1 text-xs">
+                              <div className="ml-1 flex items-center border-l border-bunker-400 pl-1 text-xs">
                                 <FontAwesomeIcon icon={faFolder} className="mr-1" />
                                 {secretPath}
                               </div>
@@ -278,7 +284,7 @@ export const SecretRotationPage = withProjectPermission(
                               : "-"}
                           </Td>
                           <Td>
-                            <div className="flex space-x-2 justify-end">
+                            <div className="flex justify-end space-x-2">
                               <ProjectPermissionCan
                                 I={ProjectPermissionActions.Edit}
                                 a={ProjectPermissionSub.SecretRotation}
@@ -313,7 +319,7 @@ export const SecretRotationPage = withProjectPermission(
                                     colorSchema="danger"
                                     ariaLabel="delete-rotation"
                                     isDisabled={isDeleting || !isAllowed}
-                                    onClick={() => handlePopUpOpen("deleteRotation", { id: id })}
+                                    onClick={() => handlePopUpOpen("deleteRotation", { id })}
                                   >
                                     {isDeleting ? (
                                       <Spinner size="xs" />
@@ -334,8 +340,10 @@ export const SecretRotationPage = withProjectPermission(
             </TableContainer>
           </div>
         </div>
-        <div className="text-xl font-semibold text-gray-200 mb-2 mt-12">Infisical Rotation Providers</div>
-        <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
+        <div className="mb-2 mt-12 text-xl font-semibold text-gray-200">
+          Infisical Rotation Providers
+        </div>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-4">
           {isRotationProviderLoading &&
             Array.from({ length: 12 }).map((_, index) => (
               <Skeleton className="h-32" key={`rotation-provider-skeleton-${index + 1}`} />
@@ -343,7 +351,7 @@ export const SecretRotationPage = withProjectPermission(
           {!isRotationProviderLoading &&
             secretRotationProviders?.providers.map((provider) => (
               <div
-                className="group relative cursor-pointer h-32 flex flex-row items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 hover:border-primary/40 hover:bg-primary/10"
+                className="group relative flex h-32 cursor-pointer flex-row items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 hover:border-primary/40 hover:bg-primary/10"
                 key={`infisical-rotation-provider-${provider.name}`}
                 tabIndex={0}
                 role="button"
@@ -361,21 +369,21 @@ export const SecretRotationPage = withProjectPermission(
                 <div className="ml-4 max-w-xs text-xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
                   {provider.title}
                 </div>
-                <div className="group-hover:opacity-100 transition-all opacity-0 absolute top-1 right-1.5">
+                <div className="absolute top-1 right-1.5 opacity-0 transition-all group-hover:opacity-100">
                   <Tooltip content={provider.description} sideOffset={10}>
                     <FontAwesomeIcon icon={faInfoCircle} className="text-primary" />
                   </Tooltip>
                 </div>
               </div>
             ))}
-            <Link href="https://github.com/Infisical/infisical/issues">
-              <div className="group relative cursor-pointer h-32 flex flex-row items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 hover:border-primary/40 hover:bg-primary/10">
-                <FontAwesomeIcon icon={faPlus} className="text-gray-300 text-3xl pl-3 pr-2" />
-                <div className="ml-4 max-w-xs text-xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
-                  Request or create your own template
-                </div>
+          <Link href="https://github.com/Infisical/infisical/issues">
+            <div className="group relative flex h-32 cursor-pointer flex-row items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 hover:border-primary/40 hover:bg-primary/10">
+              <FontAwesomeIcon icon={faPlus} className="pl-3 pr-2 text-3xl text-gray-300" />
+              <div className="ml-4 max-w-xs text-xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
+                Request or create your own template
               </div>
-            </Link>
+            </div>
+          </Link>
         </div>
         <CreateRotationForm
           isOpen={popUp.createRotation.isOpen}

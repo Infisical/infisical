@@ -33,7 +33,7 @@ export const LogsTable = ({ eventType, userAgentType, actor, startDate, endDate 
   const { currentWorkspace } = useWorkspace();
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useGetAuditLogs(
-    currentWorkspace?._id ?? "",
+    currentWorkspace?.id ?? "",
     {
       eventType,
       userAgentType,
@@ -64,7 +64,7 @@ export const LogsTable = ({ eventType, userAgentType, actor, startDate, endDate 
               data?.pages?.map((group, i) => (
                 <Fragment key={`auditlog-item-${i + 1}`}>
                   {group.map((auditLog) => (
-                    <LogsTableRow auditLog={auditLog} key={`audit-log-${auditLog._id}`} />
+                    <LogsTableRow auditLog={auditLog} key={`audit-log-${auditLog.id}`} />
                   ))}
                 </Fragment>
               ))}

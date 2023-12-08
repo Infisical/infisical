@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
-import {
-  useCreateIntegration
-} from "@app/hooks/api";
+import { useCreateIntegration } from "@app/hooks/api";
 
 import {
   Button,
@@ -16,8 +14,8 @@ import {
   SelectItem
 } from "../../../components/v2";
 import {
-  useGetIntegrationAuthApps, 
-  useGetIntegrationAuthById,
+  useGetIntegrationAuthApps,
+  useGetIntegrationAuthById
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 
@@ -64,7 +62,9 @@ export default function Cloud66CreateIntegrationPage() {
         integrationAuthId: integrationAuth?.id,
         isActive: true,
         app: targetApp,
-        appId: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp)?.appId,
+        appId: integrationAuthApps?.find(
+          (integrationAuthApp) => integrationAuthApp.name === targetApp
+        )?.appId,
         sourceEnvironment: selectedSourceEnvironment,
         secretPath
       });

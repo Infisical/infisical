@@ -53,9 +53,9 @@ export const IPAllowlistSection = () => {
   };
 
   return (
-    <div className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600">
-      <div className="flex items-center mb-8">
-        <h2 className="text-xl font-semibold flex-1 text-white">IP Allowlist</h2>
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-8 flex items-center">
+        <h2 className="flex-1 text-xl font-semibold text-white">IP Allowlist</h2>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Create}
           a={ProjectPermissionSub.IpAllowList}

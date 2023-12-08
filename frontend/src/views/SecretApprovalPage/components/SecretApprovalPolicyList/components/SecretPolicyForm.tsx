@@ -98,10 +98,10 @@ export const SecretPolicyForm = ({
   };
 
   const handleUpdatePolicy = async (data: TFormSchema) => {
-    if (!editValues?._id) return;
+    if (!editValues?.id) return;
     try {
       await updateSecretApprovalPolicy({
-        id: editValues?._id,
+        id: editValues?.id,
         ...data,
         secretPath: data.secretPath || null,
         workspaceId
@@ -199,20 +199,20 @@ export const SecretPolicyForm = ({
                     style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
                     align="start"
                   >
-                    <DropdownMenuLabel>Select members that are allowed to approve changes</DropdownMenuLabel>
-                    {members.map(({ _id, user }) => {
-                      const isChecked = value?.includes(_id);
+                    <DropdownMenuLabel>
+                      Select members that are allowed to approve changes
+                    </DropdownMenuLabel>
+                    {members.map(({ id, user }) => {
+                      const isChecked = value?.includes(id);
                       return (
                         <DropdownMenuItem
                           onClick={(evt) => {
                             evt.preventDefault();
                             onChange(
-                              isChecked
-                                ? value?.filter((el) => el !== _id)
-                                : [...(value || []), _id]
+                              isChecked ? value?.filter((el) => el !== id) : [...(value || []), id]
                             );
                           }}
-                          key={`create-policy-members-${_id}`}
+                          key={`create-policy-members-${id}`}
                           iconPos="right"
                           icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
                         >
@@ -243,7 +243,7 @@ export const SecretPolicyForm = ({
               </FormControl>
             )}
           />
-          <div className="flex mt-8 space-x-4 items-center">
+          <div className="mt-8 flex items-center space-x-4">
             <Button type="submit" isLoading={isSubmitting} isDisabled={isSubmitting}>
               Save
             </Button>

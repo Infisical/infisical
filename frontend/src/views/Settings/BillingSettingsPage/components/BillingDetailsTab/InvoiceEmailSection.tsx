@@ -24,7 +24,7 @@ export const InvoiceEmailSection = () => {
     },
     resolver: yupResolver(schema)
   });
-  const { data } = useGetOrgBillingDetails(currentOrg?._id ?? "");
+  const { data } = useGetOrgBillingDetails(currentOrg?.id ?? "");
   const { mutateAsync, isLoading } = useUpdateOrgBillingDetails();
 
   useEffect(() => {
@@ -37,12 +37,12 @@ export const InvoiceEmailSection = () => {
 
   const onFormSubmit = async ({ email }: { email: string }) => {
     try {
-      if (!currentOrg?._id) return;
+      if (!currentOrg?.id) return;
       if (email === "") return;
 
       await mutateAsync({
         email,
-        organizationId: currentOrg._id
+        organizationId: currentOrg.id
       });
 
       createNotification({
@@ -61,9 +61,9 @@ export const InvoiceEmailSection = () => {
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit)}
-      className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
+      className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
     >
-      <h2 className="text-xl font-semibold flex-1 text-white mb-8">Invoice email recipient</h2>
+      <h2 className="mb-8 flex-1 text-xl font-semibold text-white">Invoice email recipient</h2>
       <div className="max-w-md">
         <Controller
           defaultValue=""

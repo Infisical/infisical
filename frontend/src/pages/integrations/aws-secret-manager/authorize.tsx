@@ -61,11 +61,11 @@ export default function AWSSecretManagerCreateIntegrationPage() {
     <div className="flex h-full w-full items-center justify-center">
       <Head>
         <title>Authorize AWS Secrets Manager Integration</title>
-        <link rel='icon' href='/infisical.ico' />
+        <link rel="icon" href="/infisical.ico" />
       </Head>
       <Card className="max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle 
-          className="text-left px-6 text-xl" 
+        <CardTitle
+          className="px-6 text-left text-xl"
           subTitle="After adding the details below, you will be prompted to set up an integration for a particular Infisical project and environment."
         >
           <div className="flex flex-row items-center">
@@ -80,10 +80,13 @@ export default function AWSSecretManagerCreateIntegrationPage() {
             <span className="ml-1.5">AWS Secrets Manager Integration </span>
             <Link href="https://infisical.com/docs/integrations/cloud/aws-secret-manager" passHref>
               <a target="_blank" rel="noopener noreferrer">
-                <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
+                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   Docs
-                  <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="ml-1.5 mb-[0.07rem] text-xxs"
+                  />
                 </div>
               </a>
             </Link>

@@ -2,15 +2,13 @@ import { useEffect } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
-import {
-  useAuthorizeIntegration
-} from "@app/hooks/api";
+import { useAuthorizeIntegration } from "@app/hooks/api";
 
 export default function GCPSecretManagerOAuth2CallbackPage() {
-    const router = useRouter();
-    const { mutateAsync } = useAuthorizeIntegration();
+  const router = useRouter();
+  const { mutateAsync } = useAuthorizeIntegration();
 
-    const { code, state } = queryString.parse(router.asPath.split("?")[1]);
+  const { code, state } = queryString.parse(router.asPath.split("?")[1]);
 
   useEffect(() => {
     (async () => {
@@ -24,8 +22,10 @@ export default function GCPSecretManagerOAuth2CallbackPage() {
           code: code as string,
           integration: "gcp-secret-manager"
         });
-        
-        router.push(`/integrations/gcp-secret-manager/create?integrationAuthId=${integrationAuth.id}`);
+
+        router.push(
+          `/integrations/gcp-secret-manager/create?integrationAuthId=${integrationAuth.id}`
+        );
       } catch (err) {
         console.error(err);
       }

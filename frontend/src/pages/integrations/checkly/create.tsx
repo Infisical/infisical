@@ -21,9 +21,7 @@ import {
   TabPanel,
   Tabs
 } from "@app/components/v2";
-import {
-  useCreateIntegration
-} from "@app/hooks/api";
+import { useCreateIntegration } from "@app/hooks/api";
 
 import {
   useGetIntegrationAuthApps,
@@ -54,13 +52,15 @@ export default function ChecklyCreateIntegrationPage() {
 
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
-  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } = useGetIntegrationAuthApps({
-    integrationAuthId: (integrationAuthId as string) ?? ""
-  });
-  const { data: integrationAuthGroups, isLoading: isintegrationAuthGroupsLoading } = useGetIntegrationAuthChecklyGroups({
-    integrationAuthId: (integrationAuthId as string) ?? "",
-    accountId: targetAppId
-  });
+  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } =
+    useGetIntegrationAuthApps({
+      integrationAuthId: (integrationAuthId as string) ?? ""
+    });
+  const { data: integrationAuthGroups, isLoading: isintegrationAuthGroupsLoading } =
+    useGetIntegrationAuthChecklyGroups({
+      integrationAuthId: (integrationAuthId as string) ?? "",
+      accountId: targetAppId
+    });
 
   useEffect(() => {
     if (workspace) {
@@ -90,9 +90,9 @@ export default function ChecklyCreateIntegrationPage() {
       const targetGroup = integrationAuthGroups?.find(
         (group) => group.groupId === Number(targetGroupId)
       );
-      
+
       if (!targetApp) return;
-      
+
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
@@ -118,17 +118,17 @@ export default function ChecklyCreateIntegrationPage() {
   return integrationAuth &&
     workspace &&
     selectedSourceEnvironment &&
-    integrationAuthApps && 
+    integrationAuthApps &&
     integrationAuthGroups &&
     targetAppId ? (
-    <div className="flex h-full flex-col w-full py-6 items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
+    <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900 py-6">
       <Head>
         <title>Set Up Checkly Integration</title>
-        <link rel='icon' href='/infisical.ico' />
+        <link rel="icon" href="/infisical.ico" />
       </Head>
       <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
-        <CardTitle 
-          className="text-left px-6 text-xl" 
+        <CardTitle
+          className="px-6 text-left text-xl"
           subTitle="Choose which environment in Infisical you want to sync to Checkly environment variables."
         >
           <div className="flex flex-row items-center">
@@ -143,10 +143,13 @@ export default function ChecklyCreateIntegrationPage() {
             <span className="ml-2.5">Checkly Integration </span>
             <Link href="https://infisical.com/docs/integrations/cloud/checkly" passHref>
               <a target="_blank" rel="noopener noreferrer">
-                <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
+                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   Docs
-                  <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="ml-1.5 mb-[0.07rem] text-xxs"
+                  />
                 </div>
               </a>
             </Link>
@@ -154,7 +157,7 @@ export default function ChecklyCreateIntegrationPage() {
         </CardTitle>
         <Tabs defaultValue={TabSections.Connection} className="px-6">
           <TabList>
-            <div className="flex flex-row border-b border-mineshaft-600 w-full">
+            <div className="flex w-full flex-row border-b border-mineshaft-600">
               <Tab value={TabSections.Connection}>Connection</Tab>
               <Tab value={TabSections.Options}>Options</Tab>
             </div>
@@ -268,24 +271,35 @@ export default function ChecklyCreateIntegrationPage() {
       </Card>
     </div>
   ) : (
-    <div className="flex justify-center items-center w-full h-full">
+    <div className="flex h-full w-full items-center justify-center">
       <Head>
         <title>Set Up Checkly Integration</title>
-        <link rel='icon' href='/infisical.ico' />
+        <link rel="icon" href="/infisical.ico" />
       </Head>
-      {isIntegrationAuthAppsLoading || isintegrationAuthGroupsLoading ? <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" /> : <div className="max-w-md h-max p-6 border border-mineshaft-600 rounded-md bg-mineshaft-800 text-mineshaft-200 flex flex-col text-center">
-        <FontAwesomeIcon icon={faBugs} className="text-6xl my-2 inlineli"/>
-        <p>
-          Something went wrong. Please contact <a
-            className="inline underline underline-offset-4 decoration-primary-500 opacity-80 hover:opacity-100 text-mineshaft-100 duration-200 cursor-pointer"
-            target="_blank"
-            rel="noopener noreferrer"
-            href="mailto:support@infisical.com"
-          >
-            support@infisical.com
-          </a> if the issue persists.
-        </p>
-      </div>}
+      {isIntegrationAuthAppsLoading || isintegrationAuthGroupsLoading ? (
+        <img
+          src="/images/loading/loading.gif"
+          height={70}
+          width={120}
+          alt="infisical loading indicator"
+        />
+      ) : (
+        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+          <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
+          <p>
+            Something went wrong. Please contact{" "}
+            <a
+              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              target="_blank"
+              rel="noopener noreferrer"
+              href="mailto:support@infisical.com"
+            >
+              support@infisical.com
+            </a>{" "}
+            if the issue persists.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -25,28 +25,28 @@ export type IGitRisks = {
   isFalsePositive: boolean; // New field for marking risks as false positives
   isResolved: boolean; // New field for marking risks as resolved
   riskOwner: string | null; // New field for setting a risk owner (nullable string)
-  installationId: string,
-  repositoryId: string,
-  repositoryLink: string
-  repositoryFullName: string
+  installationId: string;
+  repositoryId: string;
+  repositoryLink: string;
+  repositoryFullName: string;
   pusher: {
-    name: string,
-    email: string
-  },
-  createdAt: string,
-  organization: string,
-}
+    name: string;
+    email: string;
+  };
+  createdAt: string;
+  organization: string;
+};
 
 /**
  * Will create a new integration session and return it for the given org
- * @returns 
+ * @returns
  */
 const getRisksByOrganization = (oranizationId: string): Promise<IGitRisks[]> =>
   SecurityClient.fetchCall(`/api/v1/secret-scanning/organization/${oranizationId}/risks`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json"
-    },
+    }
   }).then(async (res) => {
     if (res && res.status === 200) {
       return (await res.json()).risks;

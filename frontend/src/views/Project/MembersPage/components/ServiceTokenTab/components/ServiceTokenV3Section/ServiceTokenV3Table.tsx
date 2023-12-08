@@ -1,47 +1,44 @@
-import { faKey, faPencil,faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faKey, faPencil, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-    EmptyState,
-    IconButton,
-    Switch,
-    Table,
-    TableContainer,
-    TableSkeleton,
-    TBody,
-    Td,
-    Th,
-    THead,
-    Tr
+  EmptyState,
+  IconButton,
+  Switch,
+  Table,
+  TableContainer,
+  TableSkeleton,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub , useWorkspace } from "@app/context";
-import {
-    useGetWorkspaceServiceTokenDataV3,
-    useUpdateServiceTokenV3
-} from "@app/hooks/api";
-import { ServiceTokenV3TrustedIp } from "@app/hooks/api/serviceTokens/types"
+import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { useGetWorkspaceServiceTokenDataV3, useUpdateServiceTokenV3 } from "@app/hooks/api";
+import { ServiceTokenV3TrustedIp } from "@app/hooks/api/serviceTokens/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
-    handlePopUpOpen: (
-      popUpName: keyof UsePopUpState<["deleteServiceTokenV3", "serviceTokenV3"]>,
-      data?: {
-        serviceTokenDataId?: string;
-        name?: string;
-        role?: string;
-        customRole?: {
-            name: string;
-            slug: string;
-        };
-        trustedIps?: ServiceTokenV3TrustedIp[];
-        accessTokenTTL?: number;
-        isRefreshTokenRotationEnabled?: boolean;
-      }
-    ) => void;
-  };
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["deleteServiceTokenV3", "serviceTokenV3"]>,
+    data?: {
+      serviceTokenDataId?: string;
+      name?: string;
+      role?: string;
+      customRole?: {
+        name: string;
+        slug: string;
+      };
+      trustedIps?: ServiceTokenV3TrustedIp[];
+      accessTokenTTL?: number;
+      isRefreshTokenRotationEnabled?: boolean;
+    }
+  ) => void;
+};
 
 export const ServiceTokenV3Table = ({
     handlePopUpOpen
@@ -51,30 +48,29 @@ export const ServiceTokenV3Table = ({
     const { data, isLoading } = useGetWorkspaceServiceTokenDataV3(currentWorkspace?.id || "");
     const { mutateAsync: updateMutateAsync } = useUpdateServiceTokenV3();
 
-    const handleToggleServiceTokenDataStatus = async ({
+  const handleToggleServiceTokenDataStatus = async ({
+    serviceTokenDataId,
+    isActive
+  }: {
+    serviceTokenDataId: string;
+    isActive: boolean;
+  }) => {
+    try {
+      await updateMutateAsync({
         serviceTokenDataId,
         isActive
-    }: {
-        serviceTokenDataId: string;
-        isActive: boolean;
-    }) => {
-        try {
-            await updateMutateAsync({
-                serviceTokenDataId,
-                isActive
-            });
+      });
 
-            createNotification({
-                text: `Successfully ${isActive ? "enabled" : "disabled"} service token v3`,
-                type: "success"
-              });
-        } catch (err) {
-            console.log(err);
-            createNotification({
-                text: `Failed to ${isActive ? "enable" : "disable"} service token v3`,
-                type: "error"
-            });
-        }
+      createNotification({
+        text: `Successfully ${isActive ? "enabled" : "disabled"} service token v3`,
+        type: "success"
+      });
+    } catch (err) {
+      console.log(err);
+      createNotification({
+        text: `Failed to ${isActive ? "enable" : "disable"} service token v3`,
+        type: "error"
+      });
     }
       
     return (
@@ -203,16 +199,76 @@ export const ServiceTokenV3Table = ({
                                 </Td>
                             </Tr>
                         );
-                    })}
-                    {!isLoading && data && data?.length === 0 && (
-                        <Tr>
-                            <Td colSpan={7}>
-                                <EmptyState title="No service token v3 on file" icon={faKey} />
-                            </Td>
-                        </Tr>
-                    )}
-                </TBody>
-            </Table>
-        </TableContainer>
-    );
-}
+                      })}
+                    </Td>
+                    <Td>{accessTokenTTL}</Td>
+                    <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
+                    <Td>{expiresAt ? format(new Date(expiresAt), "yyyy-MM-dd") : "-"}</Td>
+                    <Td className="flex justify-end">
+                      <ProjectPermissionCan
+                        I={ProjectPermissionActions.Edit}
+                        a={ProjectPermissionSub.ServiceTokens}
+                      >
+                        {(isAllowed) => (
+                          <IconButton
+                            onClick={async () => {
+                              handlePopUpOpen("serviceTokenV3", {
+                                serviceTokenDataId: id,
+                                name,
+                                role,
+                                customRole,
+                                trustedIps,
+                                accessTokenTTL,
+                                isRefreshTokenRotationEnabled
+                              });
+                            }}
+                            size="lg"
+                            colorSchema="primary"
+                            variant="plain"
+                            ariaLabel="update"
+                            isDisabled={!isAllowed}
+                          >
+                            <FontAwesomeIcon icon={faPencil} />
+                          </IconButton>
+                        )}
+                      </ProjectPermissionCan>
+                      <ProjectPermissionCan
+                        I={ProjectPermissionActions.Delete}
+                        a={ProjectPermissionSub.ServiceTokens}
+                      >
+                        {(isAllowed) => (
+                          <IconButton
+                            onClick={() => {
+                              handlePopUpOpen("deleteServiceTokenV3", {
+                                serviceTokenDataId: id,
+                                name
+                              });
+                            }}
+                            size="lg"
+                            colorSchema="danger"
+                            variant="plain"
+                            ariaLabel="update"
+                            className="ml-4"
+                            isDisabled={!isAllowed}
+                          >
+                            <FontAwesomeIcon icon={faXmark} />
+                          </IconButton>
+                        )}
+                      </ProjectPermissionCan>
+                    </Td>
+                  </Tr>
+                );
+              }
+            )}
+          {!isLoading && data && data?.length === 0 && (
+            <Tr>
+              <Td colSpan={7}>
+                <EmptyState title="No service token v3 on file" icon={faKey} />
+              </Td>
+            </Tr>
+          )}
+        </TBody>
+      </Table>
+    </TableContainer>
+  );
+};

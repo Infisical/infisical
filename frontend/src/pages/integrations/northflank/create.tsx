@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
-import {
-  useCreateIntegration
-} from "@app/hooks/api";
+import { useCreateIntegration } from "@app/hooks/api";
 
 import {
   Button,
@@ -44,7 +42,7 @@ export default function NorthflankCreateIntegrationPage() {
     integrationAuthId: (integrationAuthId as string) ?? "",
     appId: targetAppId
   });
-  
+
   useEffect(() => {
     if (workspace) {
       setSelectedSourceEnvironment(workspace.environments[0].slug);
@@ -62,7 +60,7 @@ export default function NorthflankCreateIntegrationPage() {
       }
     }
   }, [integrationAuthApps]);
-  
+
   useEffect(() => {
     if (integrationAuthSecretGroups) {
       if (integrationAuthSecretGroups.length > 0) {
@@ -73,9 +71,8 @@ export default function NorthflankCreateIntegrationPage() {
         setTargetSecretGroupId("none");
       }
     }
-      
   }, [integrationAuthSecretGroups]);
-  
+
   const handleButtonClick = async () => {
     try {
       if (!integrationAuth?.id) return;
@@ -85,7 +82,9 @@ export default function NorthflankCreateIntegrationPage() {
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
-        app: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId)?.name,
+        app: integrationAuthApps?.find(
+          (integrationAuthApp) => integrationAuthApp.appId === targetAppId
+        )?.name,
         appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
         targetServiceId: targetSecretGroupId,
@@ -99,7 +98,7 @@ export default function NorthflankCreateIntegrationPage() {
       console.error(err);
     }
   };
-  
+
   return integrationAuth &&
     workspace &&
     selectedSourceEnvironment &&

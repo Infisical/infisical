@@ -82,9 +82,9 @@ export const OrgSSOSection = (): JSX.Element => {
   };
 
   return (
-    <div className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600">
-      <div className="flex items-center mb-8">
-        <h2 className="text-xl font-semibold flex-1 text-white">SAML SSO Configuration</h2>
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-8 flex items-center">
+        <h2 className="flex-1 text-xl font-semibold text-white">SAML SSO Configuration</h2>
         {!isLoading && (
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Sso}>
             {(isAllowed) => (
@@ -117,24 +117,24 @@ export const OrgSSOSection = (): JSX.Element => {
         </div>
       )}
       <div className="mb-4">
-        <h3 className="text-mineshaft-400 text-sm">SSO identifier</h3>
-        <p className="text-gray-400 text-md">{data && data.id !== "" ? data.id : "-"}</p>
+        <h3 className="text-sm text-mineshaft-400">SSO identifier</h3>
+        <p className="text-md text-gray-400">{data && data.id !== "" ? data.id : "-"}</p>
       </div>
       <div className="mb-4">
-        <h3 className="text-mineshaft-400 text-sm">Type</h3>
-        <p className="text-gray-400 text-md">
+        <h3 className="text-sm text-mineshaft-400">Type</h3>
+        <p className="text-md text-gray-400">
           {data && data.authProvider !== "" ? ssoAuthProviderMap[data.authProvider] : "-"}
         </p>
       </div>
       <div className="mb-4">
-        <h3 className="text-mineshaft-400 text-sm">Entrypoint</h3>
-        <p className="text-gray-400 text-md">
+        <h3 className="text-sm text-mineshaft-400">Entrypoint</h3>
+        <p className="text-md text-gray-400">
           {data && data.entryPoint !== "" ? data.entryPoint : "-"}
         </p>
       </div>
       <div className="mb-4">
-        <h3 className="text-mineshaft-400 text-sm">Issuer</h3>
-        <p className="text-gray-400 text-md">{data && data.issuer !== "" ? data.issuer : "-"}</p>
+        <h3 className="text-sm text-mineshaft-400">Issuer</h3>
+        <p className="text-md text-gray-400">{data && data.issuer !== "" ? data.issuer : "-"}</p>
       </div>
       <SSOModal
         popUp={popUp}

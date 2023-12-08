@@ -31,18 +31,18 @@ const AddTagPopoverContent = ({
   return (
     <PopoverContent
       side="left"
-      className="relative max-h-96 w-auto min-w-[200px] p-2 overflow-y-auto overflow-x-hidden border border-mineshaft-600 bg-mineshaft-800 text-bunker-200"
+      className="relative max-h-96 w-auto min-w-[200px] overflow-y-auto overflow-x-hidden border border-mineshaft-600 bg-mineshaft-800 p-2 text-bunker-200"
       hideCloseBtn
     >
       <div className=" text-center text-sm font-medium text-bunker-200">
         Add tags to {secKey || "this secret"}
       </div>
-      <div className="absolute left-0 w-full border-mineshaft-600 border-t mt-2" />
+      <div className="absolute left-0 mt-2 w-full border-t border-mineshaft-600" />
       <div className="flex flex-col space-y-1.5">
         {wsTags?.map((wsTag: WsTag) => (
           <div
             key={`tag-${wsTag.id}`}
-            className="mt-4 h-[32px] relative flex items-center  justify-start hover:border-mineshaft-600 hover:border   hover:bg-mineshaft-700  p-2 rounded-md  hover:text-bunker-200 bg-none"
+            className="relative mt-4 flex h-[32px] items-center  justify-start rounded-md bg-none   p-2  hover:border hover:border-mineshaft-600  hover:bg-mineshaft-700 hover:text-bunker-200"
             onClick={() => handleSelectTag(wsTag)}
             onMouseEnter={() => handleTagOnMouseEnter(wsTag)}
             onMouseLeave={() => handleTagOnMouseLeave()}
@@ -54,7 +54,7 @@ const AddTagPopoverContent = ({
               <Checkbox
                 id="autoCapitalization"
                 isChecked={selectedTagIds?.[wsTag.slug]}
-                className="absolute top-[50%] translate-y-[-50%] left-[10px] "
+                className="absolute top-[50%] left-[10px] translate-y-[-50%] "
                 checkIndicatorBg={`${
                   !selectedTagIds?.[wsTag.slug] ? "text-transparent" : "text-mineshaft-800"
                 }`}
@@ -62,7 +62,7 @@ const AddTagPopoverContent = ({
             )}
             <div className="ml-7 flex items-center gap-3">
               <div
-                className="w-[10px] h-[10px] rounded-full"
+                className="h-[10px] w-[10px] rounded-full"
                 style={{ background: wsTag?.tagColor ? wsTag.tagColor : "#bec2c8" }}
               >
                 {" "}

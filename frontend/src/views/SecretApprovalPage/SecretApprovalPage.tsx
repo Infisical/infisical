@@ -18,18 +18,25 @@ export const SecretApprovalPage = () => {
   const workspaceId = currentWorkspace?.id || "";
 
   return (
-    <div className="container mx-auto bg-bunker-800 text-white w-full h-full max-w-7xl px-6">
-      <div className="py-6 flex justify-between items-center">
-        <div className="flex flex-col w-full">
+    <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 px-6 text-white">
+      <div className="flex items-center justify-between py-6">
+        <div className="flex w-full flex-col">
           <h2 className="text-3xl font-semibold text-gray-200">Secret Approval Workflows</h2>
-          <p className="text-bunker-300">Create approval policies for any modifications to secrets in sensitive environments and folders.</p>
+          <p className="text-bunker-300">
+            Create approval policies for any modifications to secrets in sensitive environments and
+            folders.
+          </p>
         </div>
-        <div className="flex justify-center w-max">
+        <div className="flex w-max justify-center">
           <Link href="https://infisical.com/docs/documentation/platform/pr-workflows">
-            <span className="rounded-md px-4 py-2 w-max text-mineshaft-200 hover:text-white bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/10 hover:border-primary/40 duration-200 cursor-pointer">
-              Documentation <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs mb-[0.06rem] ml-1"/>
+            <span className="w-max cursor-pointer rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
+              Documentation{" "}
+              <FontAwesomeIcon
+                icon={faArrowUpRightFromSquare}
+                className="mb-[0.06rem] ml-1 text-xs"
+              />
             </span>
-          </Link> 
+          </Link>
         </div>
       </div>
       <Tabs defaultValue={TabSection.ApprovalRequests}>

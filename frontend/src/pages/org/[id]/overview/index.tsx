@@ -68,7 +68,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 const features = [
   {
-    _id: 0,
+    id: 0,
     name: "Kubernetes Operator",
     link: "https://infisical.com/docs/documentation/getting-started/kubernetes",
     description:
@@ -519,7 +519,7 @@ const OrganizationPage = withPermission(
       try {
         const {
           data: {
-            workspace: { _id: newWorkspaceId }
+            workspace: { id: newWorkspaceId }
           }
         } = await createWs.mutateAsync({
           organizationId: currentOrg,
@@ -537,7 +537,7 @@ const OrganizationPage = withPermission(
         await uploadWsKey.mutateAsync({
           encryptedKey: ciphertext,
           nonce,
-          userId: user?._id,
+          userId: user?.id,
           workspaceId: newWorkspaceId
         });
 
@@ -553,7 +553,7 @@ const OrganizationPage = withPermission(
               .filter(
                 ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
               )
-              .map(({ user: orgUser, _id: orgMembershipId }) => ({
+              .map(({ user: orgUser, id: orgMembershipId }) => ({
                 userPublicKey: orgUser.publicKey,
                 orgMembershipId
               }))
@@ -682,7 +682,7 @@ const OrganizationPage = withPermission(
               .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
               .map((workspace) => (
                 <div
-                  key={workspace._id}
+                  key={workspace.id}
                   className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
                 >
                   <div className="mt-0 text-lg text-mineshaft-100">{workspace.name}</div>
@@ -692,8 +692,8 @@ const OrganizationPage = withPermission(
                   <button
                     type="button"
                     onClick={() => {
-                      router.push(`/project/${workspace._id}/secrets/overview`);
-                      localStorage.setItem("projectData.id", workspace._id);
+                      router.push(`/project/${workspace.id}/secrets/overview`);
+                      localStorage.setItem("projectData.id", workspace.id);
                     }}
                   >
                     <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
@@ -782,7 +782,7 @@ const OrganizationPage = withPermission(
                     icon={faPlus}
                     time="1 min"
                     userAction="first_time_secrets_pushed"
-                    link={`/project/${orgWorkspaces[0]?._id}/secrets/overview`}
+                    link={`/project/${orgWorkspaces[0]?.id}/secrets/overview`}
                   />
                   <LearningItemSquare
                     text="Invite your teammates"

@@ -18,7 +18,7 @@ import { useGetOrgInvoices } from "@app/hooks/api";
 
 export const InvoicesTable = () => {
   const { currentOrg } = useOrganization();
-  const { data, isLoading } = useGetOrgInvoices(currentOrg?._id ?? "");
+  const { data, isLoading } = useGetOrgInvoices(currentOrg?.id ?? "");
   return (
     <TableContainer className="mt-8">
       <Table>
@@ -35,7 +35,7 @@ export const InvoicesTable = () => {
           {!isLoading &&
             data &&
             data?.length > 0 &&
-            data.map(({ _id, created, paid, number, total, invoice_pdf }) => {
+            data.map(({ id, created, paid, number, total, invoice_pdf }) => {
               const formattedTotal = (Math.floor(total) / 100).toLocaleString("en-US", {
                 style: "currency",
                 currency: "USD"
@@ -47,7 +47,7 @@ export const InvoicesTable = () => {
               const formattedDate: string = `${day}/${month}/${year}`;
 
               return (
-                <Tr key={`invoice-${_id}`} className="h-10">
+                <Tr key={`invoice-${id}`} className="h-10">
                   <Td>{number}</Td>
                   <Td>{formattedDate}</Td>
                   <Td>{paid ? "Paid" : "Not Paid"}</Td>

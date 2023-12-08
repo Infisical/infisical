@@ -100,7 +100,7 @@ export const AdminLayout = ({ children }: LayoutProps) => {
             <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:[color-scheme:dark]">
               <div>
                 {!router.asPath.includes("personal") && (
-                  <div className="flex h-12 cursor-default justify-between items-center px-3 pt-6">
+                  <div className="flex h-12 cursor-default items-center justify-between px-3 pt-6">
                     <Link href={`/org/${currentOrg?.id}/overview`}>
                       <div className="my-6 flex cursor-default items-center justify-center pr-2 text-sm text-mineshaft-300 hover:text-mineshaft-100">
                         <FontAwesomeIcon icon={faArrowLeft} className="pr-3" />
@@ -179,7 +179,7 @@ export const AdminLayout = ({ children }: LayoutProps) => {
                 <div
                   className={`${
                     !updateClosed ? "block" : "hidden"
-                  } relative z-10 mb-6 flex pb-2 w-52 flex-col items-center justify-start rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3`}
+                  } relative z-10 mb-6 flex w-52 flex-col items-center justify-start rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 pb-2`}
                 >
                   <div className="text-md mt-2 w-full font-semibold text-mineshaft-100">
                     Infisical December update

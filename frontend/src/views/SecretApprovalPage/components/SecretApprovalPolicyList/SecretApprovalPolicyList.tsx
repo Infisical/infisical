@@ -59,7 +59,7 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
   const { mutateAsync: deleteSecretApprovalPolicy } = useDeleteSecretApprovalPolicy();
 
   const handleDeletePolicy = async () => {
-    const { id: id } = popUp.deletePolicy.data as TSecretApprovalPolicy;
+    const { id } = popUp.deletePolicy.data as TSecretApprovalPolicy;
     try {
       await deleteSecretApprovalPolicy({
         workspaceId,
@@ -81,10 +81,10 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
 
   return (
     <div>
-      <div className="flex justify-between mb-6">
+      <div className="mb-6 flex justify-between">
         <div className="flex flex-col">
           <span className="text-xl font-semibold text-mineshaft-100">Approval Policies</span>
-          <div className="text-bunker-300 mt-2 text-sm">
+          <div className="mt-2 text-sm text-bunker-300">
             Implement policies to prevent unauthorized secret changes.
           </div>
         </div>

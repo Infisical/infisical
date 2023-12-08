@@ -14,10 +14,10 @@ export const AutoCapitalizationSection = () => {
 
   const handleToggleCapitalizationToggle = async (state: boolean) => {
     try {
-      if (!currentWorkspace?._id) return;
+      if (!currentWorkspace?.id) return;
 
       await mutateAsync({
-        workspaceID: currentWorkspace._id,
+        workspaceID: currentWorkspace.id,
         state
       });
 
@@ -36,7 +36,7 @@ export const AutoCapitalizationSection = () => {
   };
 
   return (
-    <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <p className="mb-3 text-xl font-semibold">{t("settings.project.auto-capitalization")}</p>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
         {(isAllowed) => (

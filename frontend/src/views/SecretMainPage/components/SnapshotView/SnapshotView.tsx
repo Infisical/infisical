@@ -98,7 +98,7 @@ export const SnapshotView = ({
     );
     const diffView: Array<TDiffView<DecryptedSecret>> = [];
     rollingSecrets.forEach((rollSecret) => {
-      const { id: id } = rollSecret;
+      const { id } = rollSecret;
       const doesExist = Boolean(secretGroupById?.[id]);
       if (doesExist) {
         diffView.push({
@@ -154,11 +154,11 @@ export const SnapshotView = ({
 
   return (
     <>
-      <div className="flex space-x-4 items-center">
+      <div className="flex items-center space-x-4">
         <h6 className="text-2xl">Snapshot</h6>
         <Tag colorSchema="green">{new Date(snapshotData?.createdAt || "").toLocaleString()}</Tag>
       </div>
-      <div className="flex items-center space-x-2 mt-4">
+      <div className="mt-4 flex items-center space-x-2">
         <div className="w-2/5">
           <Input
             className="bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
@@ -210,19 +210,19 @@ export const SnapshotView = ({
           </ProjectPermissionCan>
         </div>
       </div>
-      <div className="mt-4 bg-mineshaft-800 text-left text-bunker-300 rounded-md text-sm">
+      <div className="mt-4 rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300">
         <div className="flex flex-col ">
-          <div className="flex font-medium border-b border-mineshaft-600">
+          <div className="flex border-b border-mineshaft-600 font-medium">
             <div className="w-12 flex-shrink-0" />
             <div className="w-12 flex-shrink-0" />
-            <div className="flex-grow px-4 py-2 flex items-center">Changes</div>
+            <div className="flex flex-grow items-center px-4 py-2">Changes</div>
           </div>
           {folderDiffView
             .sort((a, b) => a.post.name.toLowerCase().localeCompare(b.post.name.toLowerCase()))
             .filter((a) => a.post.name.toLowerCase().includes(search.toLowerCase()))
             .map(({ mode, pre, post }, index) => (
               <div
-                className="flex group border-b border-mineshaft-600 hover:bg-mineshaft-700 cursor-pointer"
+                className="group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
                 key={`folder-${mode}-${index + 1}`}
               >
                 <div className="w-12 flex-shrink-0 px-4 py-3">
@@ -231,7 +231,7 @@ export const SnapshotView = ({
                 <div className="w-12 flex-shrink-0 px-4 py-3">
                   <FontAwesomeIcon icon={faFolder} />
                 </div>
-                <div className="flex-grow px-4 py-3 flex items-center space-x-4">
+                <div className="flex flex-grow items-center space-x-4 px-4 py-3">
                   {mode === "modified" ? (
                     <>
                       <div>{pre?.name}</div>

@@ -9,7 +9,7 @@ export type WsTag = {
   createdAt: string;
   updatedAt: string;
   __v: number;
-}
+};
 
 export type WorkspaceTag = { id: string; name: string; slug: string };
 
@@ -30,7 +30,7 @@ export type CreateTagRes = {
   id: string;
 };
 
-export type DeleteTagDTO = { tagID: string; };
+export type DeleteTagDTO = { tagID: string };
 
 export type DeleteWsTagRes = {
   name: string;
@@ -41,17 +41,16 @@ export type DeleteWsTagRes = {
   id: string;
 };
 
-export type SecretTags = { 
-  id: string;  
+export type SecretTags = {
   id: string;
-  slug: string; 
+  slug: string;
   tagColor: string;
-}
+};
 
-export type TagColor  =  {
+export type TagColor = {
   id: number;
-  hex: string
-  rgba: string
-  name: string
-  selected: boolean
-}
+  hex: string;
+  rgba: string;
+  name: string;
+  selected: boolean;
+};

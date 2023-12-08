@@ -3,14 +3,19 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faAngleDown, faArrowUpRightFromSquare, faBookOpen, faBugs, faCheckCircle, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import {
+  faAngleDown,
+  faArrowUpRightFromSquare,
+  faBookOpen,
+  faBugs,
+  faCheckCircle,
+  faCircleInfo
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { motion } from "framer-motion";
 import queryString from "query-string";
 
-import {
-  useCreateIntegration
-} from "@app/hooks/api";
+import { useCreateIntegration } from "@app/hooks/api";
 
 import {
   Button,
@@ -48,9 +53,10 @@ export default function GitHubCreateIntegrationPage() {
 
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
-  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } = useGetIntegrationAuthApps({
-    integrationAuthId: (integrationAuthId as string) ?? ""
-  });
+  const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } =
+    useGetIntegrationAuthApps({
+      integrationAuthId: (integrationAuthId as string) ?? ""
+    });
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
@@ -81,8 +87,8 @@ export default function GitHubCreateIntegrationPage() {
 
       if (!integrationAuth?.id) return;
 
-      const targetApps = integrationAuthApps?.filter(
-        (integrationAuthApp) => targetAppIds.includes(String(integrationAuthApp.appId))
+      const targetApps = integrationAuthApps?.filter((integrationAuthApp) =>
+        targetAppIds.includes(String(integrationAuthApp.appId))
       );
 
       if (!targetApps) return;
@@ -99,7 +105,7 @@ export default function GitHubCreateIntegrationPage() {
             metadata: {
               secretSuffix
             }
-          })
+          });
         })
       );
 
@@ -115,18 +121,18 @@ export default function GitHubCreateIntegrationPage() {
     selectedSourceEnvironment &&
     integrationAuthApps &&
     targetAppIds ? (
-    <div className="flex flex-col h-full w-full items-center justify-center">
+    <div className="flex h-full w-full flex-col items-center justify-center">
       <Head>
         <title>Set Up GitHub Integration</title>
-        <link rel='icon' href='/infisical.ico' />
+        <link rel="icon" href="/infisical.ico" />
       </Head>
       <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
-        <CardTitle 
-          className="text-left px-6 text-xl" 
+        <CardTitle
+          className="px-6 text-left text-xl"
           subTitle="Choose which environment in Infisical you want to sync to environment variables in GitHub."
         >
           <div className="flex flex-row items-center">
-            <div className="inline flex items-center bg-mineshaft-200 rounded-full">
+            <div className="inline flex items-center rounded-full bg-mineshaft-200">
               <Image
                 src="/images/integrations/GitHub.png"
                 height={30}
@@ -137,10 +143,13 @@ export default function GitHubCreateIntegrationPage() {
             <span className="ml-2.5">GitHub Integration </span>
             <Link href="https://infisical.com/docs/integrations/cicd/githubactions" passHref>
               <a target="_blank" rel="noopener noreferrer">
-                <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
+                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   Docs
-                  <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="ml-1.5 mb-[0.07rem] text-xxs"
+                  />
                 </div>
               </a>
             </Link>
@@ -148,7 +157,7 @@ export default function GitHubCreateIntegrationPage() {
         </CardTitle>
         <Tabs defaultValue={TabSections.Connection} className="px-6">
           <TabList>
-            <div className="flex flex-row border-b border-mineshaft-600 w-full">
+            <div className="flex w-full flex-row border-b border-mineshaft-600">
               <Tab value={TabSections.Connection}>Connection</Tab>
               <Tab value={TabSections.Options}>Options</Tab>
             </div>
@@ -187,17 +196,27 @@ export default function GitHubCreateIntegrationPage() {
               <FormControl label="GitHub Repo">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    {(integrationAuthApps.length > 0) ? <div className="w-full cursor-pointer border border-mineshaft-600 inline-flex items-center justify-between rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
-                        {targetAppIds.length === 1 ? integrationAuthApps?.find(
-                          (integrationAuthApp) => targetAppIds[0] === String(integrationAuthApp.appId)
-                        )?.name : `${targetAppIds.length} repositories selected`}
+                    {integrationAuthApps.length > 0 ? (
+                      <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                        {targetAppIds.length === 1
+                          ? integrationAuthApps?.find(
+                              (integrationAuthApp) =>
+                                targetAppIds[0] === String(integrationAuthApp.appId)
+                            )?.name
+                          : `${targetAppIds.length} repositories selected`}
                         <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
-                      </div> : <div className="w-full cursor-default border border-mineshaft-600 inline-flex items-center justify-between rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                      </div>
+                    ) : (
+                      <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
                         No repositories found
-                      </div>}
+                      </div>
+                    )}
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="z-[100] max-h-80 overflow-y-scroll thin-scrollbar">
-                    {(integrationAuthApps.length > 0) ? (
+                  <DropdownMenuContent
+                    align="start"
+                    className="thin-scrollbar z-[100] max-h-80 overflow-y-scroll"
+                  >
+                    {integrationAuthApps.length > 0 ? (
                       integrationAuthApps.map((integrationAuthApp) => {
                         const isSelected = targetAppIds.includes(String(integrationAuthApp.appId));
 
@@ -205,20 +224,39 @@ export default function GitHubCreateIntegrationPage() {
                           <DropdownMenuItem
                             onClick={() => {
                               if (targetAppIds.includes(String(integrationAuthApp.appId))) {
-                                setTargetAppIds(targetAppIds.filter((appId) => appId !== String(integrationAuthApp.appId)));
+                                setTargetAppIds(
+                                  targetAppIds.filter(
+                                    (appId) => appId !== String(integrationAuthApp.appId)
+                                  )
+                                );
                               } else {
-                                setTargetAppIds([...targetAppIds, String(integrationAuthApp.appId)]);
+                                setTargetAppIds([
+                                  ...targetAppIds,
+                                  String(integrationAuthApp.appId)
+                                ]);
                               }
                             }}
                             key={integrationAuthApp.appId}
-                            icon={isSelected ? <FontAwesomeIcon icon={faCheckCircle} className="text-primary pr-0.5" /> : <div className="pl-[1.01rem]"/>}
+                            icon={
+                              isSelected ? (
+                                <FontAwesomeIcon
+                                  icon={faCheckCircle}
+                                  className="pr-0.5 text-primary"
+                                />
+                              ) : (
+                                <div className="pl-[1.01rem]" />
+                              )
+                            }
                             iconPos="left"
                             className="w-[28.4rem] text-sm"
                           >
                             {integrationAuthApp.name}
-                          </DropdownMenuItem> 
-                        )})
-                    ) : <div/>}
+                          </DropdownMenuItem>
+                        );
+                      })
+                    ) : (
+                      <div />
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </FormControl>
@@ -253,31 +291,48 @@ export default function GitHubCreateIntegrationPage() {
           Create Integration
         </Button>
       </Card>
-      <div className="border-t border-mineshaft-800 w-full max-w-md mt-6"/>
-      <div className="flex flex-col bg-mineshaft-800 border border-mineshaft-600 w-full p-4 max-w-lg mt-6 rounded-md">
-        <div className="flex flex-row items-center"><FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl"/> <span className="ml-3 text-md text-mineshaft-100">Pro Tips</span></div>
-        <span className="text-mineshaft-300 text-sm mt-4">After creating an integration, your secrets will start syncing immediately. This might cause an unexpected override of current secrets in GitHub with secrets from Infisical.</span>
+      <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
+      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+        <div className="flex flex-row items-center">
+          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
+          <span className="text-md ml-3 text-mineshaft-100">Pro Tips</span>
+        </div>
+        <span className="mt-4 text-sm text-mineshaft-300">
+          After creating an integration, your secrets will start syncing immediately. This might
+          cause an unexpected override of current secrets in GitHub with secrets from Infisical.
+        </span>
       </div>
     </div>
   ) : (
-    <div className="flex justify-center items-center w-full h-full">
+    <div className="flex h-full w-full items-center justify-center">
       <Head>
         <title>Set Up GitHub Integration</title>
-        <link rel='icon' href='/infisical.ico' />
+        <link rel="icon" href="/infisical.ico" />
       </Head>
-      {isIntegrationAuthAppsLoading ? <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" /> : <div className="max-w-md h-max p-6 border border-mineshaft-600 rounded-md bg-mineshaft-800 text-mineshaft-200 flex flex-col text-center">
-        <FontAwesomeIcon icon={faBugs} className="text-6xl my-2 inlineli"/>
-        <p>
-          Something went wrong. Please contact <a
-            className="inline underline underline-offset-4 decoration-primary-500 opacity-80 hover:opacity-100 text-mineshaft-100 duration-200 cursor-pointer"
-            target="_blank"
-            rel="noopener noreferrer"
-            href="mailto:support@infisical.com"
-          >
-            support@infisical.com
-          </a> if the issue persists.
-        </p>
-      </div>}
+      {isIntegrationAuthAppsLoading ? (
+        <img
+          src="/images/loading/loading.gif"
+          height={70}
+          width={120}
+          alt="infisical loading indicator"
+        />
+      ) : (
+        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+          <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
+          <p>
+            Something went wrong. Please contact{" "}
+            <a
+              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              target="_blank"
+              rel="noopener noreferrer"
+              href="mailto:support@infisical.com"
+            >
+              support@infisical.com
+            </a>{" "}
+            if the issue persists.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

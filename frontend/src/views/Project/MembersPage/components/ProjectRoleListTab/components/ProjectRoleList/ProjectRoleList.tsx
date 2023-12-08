@@ -38,9 +38,9 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["deleteRole"] as const);
   const { currentOrg } = useOrganization();
   const { currentWorkspace } = useWorkspace();
-  const orgId = currentOrg?._id || "";
-  const workspaceId = currentWorkspace?._id || "";
-  
+  const orgId = currentOrg?.id || "";
+  const workspaceId = currentWorkspace?.id || "";
+
   const { data: roles, isLoading: isRolesLoading } = useGetRoles({
     orgId,
     workspaceId
@@ -49,7 +49,7 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
   const { mutateAsync: deleteRole } = useDeleteRole();
 
   const handleRoleDelete = async () => {
-    const { _id: id } = popUp?.deleteRole?.data as TRole<string>;
+    const { id } = popUp?.deleteRole?.data as TRole<string>;
     try {
       await deleteRole({
         orgId,
@@ -100,7 +100,7 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
             <TBody>
               {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
               {(roles as TRole<string>[])?.map((role) => {
-                const { _id: id, name, slug } = role;
+                const { id, name, slug } = role;
                 const isNonMutatable = ["admin", "member", "viewer", "no-access"].includes(slug);
 
                 return (
@@ -108,7 +108,7 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
                     <Td>{name}</Td>
                     <Td>{slug}</Td>
                     <Td>
-                      <div className="flex space-x-2 justify-end">
+                      <div className="flex justify-end space-x-2">
                         <ProjectPermissionCan
                           I={ProjectPermissionActions.Edit}
                           a={ProjectPermissionSub.Role}

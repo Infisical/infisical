@@ -3,13 +3,16 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faArrowUpRightFromSquare, faBookOpen, faBugs, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowUpRightFromSquare,
+  faBookOpen,
+  faBugs,
+  faCircleInfo
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import queryString from "query-string";
 
-import {
-  useCreateIntegration
-} from "@app/hooks/api";
+import { useCreateIntegration } from "@app/hooks/api";
 
 import {
   Button,
@@ -62,7 +65,9 @@ export default function AWSParameterStoreCreateIntegrationPage() {
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
-  const { data: integrationAuth, isLoading: isintegrationAuthLoading } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
+  const { data: integrationAuth, isLoading: isintegrationAuthLoading } = useGetIntegrationAuthById(
+    (integrationAuthId as string) ?? ""
+  );
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
@@ -118,14 +123,14 @@ export default function AWSParameterStoreCreateIntegrationPage() {
   };
 
   return integrationAuth && workspace && selectedSourceEnvironment ? (
-    <div className="flex flex-col h-full w-full items-center justify-center">
+    <div className="flex h-full w-full flex-col items-center justify-center">
       <Head>
         <title>Set Up AWS Parameter Integration</title>
-        <link rel='icon' href='/infisical.ico' />
+        <link rel="icon" href="/infisical.ico" />
       </Head>
       <Card className="max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle 
-          className="text-left px-6 text-xl" 
+        <CardTitle
+          className="px-6 text-left text-xl"
           subTitle="Choose which environment in Infisical you want to sync to secerts in AWS Parameter Store."
         >
           <div className="flex flex-row items-center">
@@ -140,10 +145,13 @@ export default function AWSParameterStoreCreateIntegrationPage() {
             <span className="ml-1.5">AWS Parameter Store Integration </span>
             <Link href="https://infisical.com/docs/integrations/cloud/aws-parameter-store" passHref>
               <a target="_blank" rel="noopener noreferrer">
-                <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
+                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   Docs
-                  <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="ml-1.5 mb-[0.07rem] text-xxs"
+                  />
                 </div>
               </a>
             </Link>
@@ -185,7 +193,12 @@ export default function AWSParameterStoreCreateIntegrationPage() {
             ))}
           </Select>
         </FormControl>
-        <FormControl label="Path" errorText={pathErrorText} isError={pathErrorText !== "" ?? false} className="px-6">
+        <FormControl
+          label="Path"
+          errorText={pathErrorText}
+          isError={pathErrorText !== "" ?? false}
+          className="px-6"
+        >
           <Input
             placeholder={`/${workspace.name
               .toLowerCase()
@@ -204,31 +217,49 @@ export default function AWSParameterStoreCreateIntegrationPage() {
           Create Integration
         </Button>
       </Card>
-      <div className="border-t border-mineshaft-800 w-full max-w-md mt-6"/>
-      <div className="flex flex-col bg-mineshaft-800 border border-mineshaft-600 w-full p-4 max-w-lg mt-6 rounded-md">
-        <div className="flex flex-row items-center"><FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl"/> <span className="ml-3 text-md text-mineshaft-100">Pro Tips</span></div>
-        <span className="text-mineshaft-300 text-sm mt-4">After creating an integration, your secrets will start syncing immediately. This might cause an unexpected override of current secrets in AWS Parameter Store with secrets from Infisical.</span>
+      <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
+      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+        <div className="flex flex-row items-center">
+          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
+          <span className="text-md ml-3 text-mineshaft-100">Pro Tips</span>
+        </div>
+        <span className="mt-4 text-sm text-mineshaft-300">
+          After creating an integration, your secrets will start syncing immediately. This might
+          cause an unexpected override of current secrets in AWS Parameter Store with secrets from
+          Infisical.
+        </span>
       </div>
     </div>
   ) : (
-    <div className="flex justify-center items-center w-full h-full">
+    <div className="flex h-full w-full items-center justify-center">
       <Head>
         <title>Set Up AWS Parameter Store Integration</title>
-        <link rel='icon' href='/infisical.ico' />
+        <link rel="icon" href="/infisical.ico" />
       </Head>
-      {isintegrationAuthLoading ? <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" /> : <div className="max-w-md h-max p-6 border border-mineshaft-600 rounded-md bg-mineshaft-800 text-mineshaft-200 flex flex-col text-center">
-        <FontAwesomeIcon icon={faBugs} className="text-6xl my-2 inlineli"/>
-        <p>
-          Something went wrong. Please contact <a
-            className="inline underline underline-offset-4 decoration-primary-500 opacity-80 hover:opacity-100 text-mineshaft-100 duration-200 cursor-pointer"
-            target="_blank"
-            rel="noopener noreferrer"
-            href="mailto:support@infisical.com"
-          >
-            support@infisical.com
-          </a> if the issue persists.
-        </p>
-      </div>}
+      {isintegrationAuthLoading ? (
+        <img
+          src="/images/loading/loading.gif"
+          height={70}
+          width={120}
+          alt="infisical loading indicator"
+        />
+      ) : (
+        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+          <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
+          <p>
+            Something went wrong. Please contact{" "}
+            <a
+              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              target="_blank"
+              rel="noopener noreferrer"
+              href="mailto:support@infisical.com"
+            >
+              support@infisical.com
+            </a>{" "}
+            if the issue persists.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

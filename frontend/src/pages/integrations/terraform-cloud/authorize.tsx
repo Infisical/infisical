@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 
-import {
-  useSaveIntegrationAccessToken
-} from "@app/hooks/api";
+import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
 
@@ -26,7 +24,7 @@ export default function TerraformCloudCreateIntegrationPage() {
         setApiKeyErrorText("API Token cannot be blank");
         return;
       }
-      
+
       if (workspacesId.length === 0) {
         setWorkspacesIdErrorText("Workspace Id cannot be blank");
         return;
@@ -58,14 +56,22 @@ export default function TerraformCloudCreateIntegrationPage() {
           errorText={apiKeyErrorText}
           isError={apiKeyErrorText !== "" ?? false}
         >
-          <Input placeholder="API Token" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+          <Input
+            placeholder="API Token"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+          />
         </FormControl>
         <FormControl
           label="Terraform Cloud Workspace ID"
           errorText={workspacesIdErrorText}
           isError={workspacesIdErrorText !== "" ?? false}
         >
-          <Input placeholder="Workspace Id" value={workspacesId} onChange={(e) => setWorkSpacesId(e.target.value)} />
+          <Input
+            placeholder="Workspace Id"
+            value={workspacesId}
+            onChange={(e) => setWorkSpacesId(e.target.value)}
+          />
         </FormControl>
         <Button
           onClick={handleButtonClick}

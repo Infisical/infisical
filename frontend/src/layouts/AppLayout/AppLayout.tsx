@@ -120,7 +120,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const { user } = useUser();
   const { subscription } = useSubscription();
-  const workspaceId = currentWorkspace?._id || "";
+  const workspaceId = currentWorkspace?.id || "";
   const { data: updateClosed } = useGetUserAction("december_update_closed");
 
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
@@ -179,19 +179,19 @@ export const AppLayout = ({ children }: LayoutProps) => {
     // Put a user in an org if they're not in one yet
     const putUserInOrg = async () => {
       if (tempLocalStorage("orgData.id") === "") {
-        localStorage.setItem("orgData.id", orgs[0]?._id);
+        localStorage.setItem("orgData.id", orgs[0]?.id);
       }
 
       if (
         currentOrg &&
         ((workspaces?.length === 0 && router.asPath.includes("project")) ||
           router.asPath.includes("/project/undefined") ||
-          (!orgs?.map((org) => org._id)?.includes(router.query.id) &&
+          (!orgs?.map((org) => org.id)?.includes(router.query.id) &&
             !router.asPath.includes("project") &&
             !router.asPath.includes("personal") &&
             !router.asPath.includes("integration")))
       ) {
-        router.push(`/org/${currentOrg?._id}/overview`);
+        router.push(`/org/${currentOrg?.id}/overview`);
       }
       // else if (!router.asPath.includes("org") && !router.asPath.includes("project") && !router.asPath.includes("integrations") && !router.asPath.includes("personal-settings")) {
 
@@ -221,14 +221,14 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
     // type check
-    if (!currentOrg?._id) return;
+    if (!currentOrg?.id) return;
     try {
       const {
         data: {
-          workspace: { _id: newWorkspaceId }
+          workspace: { id: newWorkspaceId }
         }
       } = await createWs.mutateAsync({
-        organizationId: currentOrg?._id,
+        organizationId: currentOrg?.id,
         workspaceName: name
       });
 
@@ -243,13 +243,13 @@ export const AppLayout = ({ children }: LayoutProps) => {
       await uploadWsKey.mutateAsync({
         encryptedKey: ciphertext,
         nonce,
-        userId: user?._id,
+        userId: user?.id,
         workspaceId: newWorkspaceId
       });
 
       if (addMembers) {
         // not using hooks because need at this point only
-        const orgUsers = await fetchOrgUsers(currentOrg._id);
+        const orgUsers = await fetchOrgUsers(currentOrg.id);
         const decryptKey = await fetchUserWsKey(newWorkspaceId);
         await addWsUser.mutateAsync({
           workspaceId: newWorkspaceId,
@@ -259,7 +259,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
             .filter(
               ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
             )
-            .map(({ user: orgUser, _id: orgMembershipId }) => ({
+            .map(({ user: orgUser, id: orgMembershipId }) => ({
               userPublicKey: orgUser.publicKey,
               orgMembershipId
             }))
@@ -285,7 +285,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   <div className="flex h-12 cursor-default items-center px-3 pt-6">
                     {(router.asPath.includes("project") ||
                       router.asPath.includes("integrations")) && (
-                      <Link href={`/org/${currentOrg?._id}/overview`}>
+                      <Link href={`/org/${currentOrg?.id}/overview`}>
                         <div className="pl-1 pr-2 text-mineshaft-400 duration-200 hover:text-mineshaft-100">
                           <FontAwesomeIcon icon={faArrowLeft} />
                         </div>
@@ -298,7 +298,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             {currentOrg?.name.charAt(0)}
                           </div>
                           <div
-                            className="pl-2 text-sm text-mineshaft-100 text-ellipsis overflow-hidden"
+                            className="overflow-hidden text-ellipsis pl-2 text-sm text-mineshaft-100"
                             style={{ maxWidth: "140px" }}
                           >
                             {currentOrg?.name}
@@ -312,15 +312,15 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <DropdownMenuContent align="start" className="p-1">
                         <div className="px-2 py-1 text-xs text-mineshaft-400">{user?.email}</div>
                         {orgs?.map((org) => (
-                          <DropdownMenuItem key={org._id}>
+                          <DropdownMenuItem key={org.id}>
                             <Button
-                              onClick={() => changeOrg(org?._id)}
+                              onClick={() => changeOrg(org?.id)}
                               variant="plain"
                               colorSchema="secondary"
                               size="xs"
                               className="flex w-full items-center justify-start p-0 font-normal"
                               leftIcon={
-                                currentOrg._id === org._id && (
+                                currentOrg.id === org.id && (
                                   <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary" />
                                 )
                               }
@@ -421,8 +421,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         Project
                       </p>
                       <Select
-                        defaultValue={currentWorkspace?._id}
-                        value={currentWorkspace?._id}
+                        defaultValue={currentWorkspace?.id}
+                        value={currentWorkspace?.id}
                         className="w-full truncate bg-mineshaft-600 py-2.5 font-medium"
                         onValueChange={(value) => {
                           router.push(`/project/${value}/secrets/overview`);
@@ -433,12 +433,12 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       >
                         <div className="no-scrollbar::-webkit-scrollbar h-full no-scrollbar">
                           {workspaces
-                            .filter((ws) => ws.organization === currentOrg?._id)
-                            .map(({ _id, name }) => (
+                            .filter((ws) => ws.organization === currentOrg?.id)
+                            .map(({ id, name }) => (
                               <SelectItem
-                                key={`ws-layout-list-${_id}`}
-                                value={_id}
-                                className={`${currentWorkspace?._id === _id && "bg-mineshaft-600"}`}
+                                key={`ws-layout-list-${id}`}
+                                value={id}
+                                className={`${currentWorkspace?.id === id && "bg-mineshaft-600"}`}
                               >
                                 {name}
                               </SelectItem>
@@ -474,7 +474,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </Select>
                     </div>
                   ) : (
-                    <Link href={`/org/${currentOrg?._id}/overview`}>
+                    <Link href={`/org/${currentOrg?.id}/overview`}>
                       <div className="my-6 flex cursor-default items-center justify-center pr-2 text-sm text-mineshaft-300 hover:text-mineshaft-100">
                         <FontAwesomeIcon icon={faArrowLeft} className="pr-3" />
                         Back to organization
@@ -485,11 +485,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   {(router.asPath.includes("project") || router.asPath.includes("integrations")) &&
                   currentWorkspace ? (
                     <Menu>
-                      <Link href={`/project/${currentWorkspace?._id}/secrets/overview`} passHref>
+                      <Link href={`/project/${currentWorkspace?.id}/secrets/overview`} passHref>
                         <a>
                           <MenuItem
                             isSelected={router.asPath.includes(
-                              `/project/${currentWorkspace?._id}/secrets`
+                              `/project/${currentWorkspace?.id}/secrets`
                             )}
                             icon="system-outline-90-lock-closed"
                           >
@@ -497,11 +497,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/project/${currentWorkspace?._id}/members`} passHref>
+                      <Link href={`/project/${currentWorkspace?.id}/members`} passHref>
                         <a>
                           <MenuItem
                             isSelected={
-                              router.asPath === `/project/${currentWorkspace?._id}/members`
+                              router.asPath === `/project/${currentWorkspace?.id}/members`
                             }
                             icon="system-outline-96-groups"
                           >
@@ -509,7 +509,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/integrations/${currentWorkspace?._id}`} passHref>
+                      <Link href={`/integrations/${currentWorkspace?.id}`} passHref>
                         <a>
                           <MenuItem
                             isSelected={router.asPath.includes("/integrations")}
@@ -519,11 +519,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/project/${currentWorkspace?._id}/secret-rotation`} passHref>
+                      <Link href={`/project/${currentWorkspace?.id}/secret-rotation`} passHref>
                         <a className="relative">
                           <MenuItem
                             isSelected={
-                              router.asPath === `/project/${currentWorkspace?._id}/secret-rotation`
+                              router.asPath === `/project/${currentWorkspace?.id}/secret-rotation`
                             }
                             icon="rotation"
                           >
@@ -531,11 +531,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/project/${currentWorkspace?._id}/approval`} passHref>
+                      <Link href={`/project/${currentWorkspace?.id}/approval`} passHref>
                         <a className="relative">
                           <MenuItem
                             isSelected={
-                              router.asPath === `/project/${currentWorkspace?._id}/approval`
+                              router.asPath === `/project/${currentWorkspace?.id}/approval`
                             }
                             icon="system-outline-189-domain-verification"
                           >
@@ -548,11 +548,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/project/${currentWorkspace?._id}/audit-logs`} passHref>
+                      <Link href={`/project/${currentWorkspace?.id}/audit-logs`} passHref>
                         <a>
                           <MenuItem
                             isSelected={
-                              router.asPath === `/project/${currentWorkspace?._id}/audit-logs`
+                              router.asPath === `/project/${currentWorkspace?.id}/audit-logs`
                             }
                             icon="system-outline-168-view-headline"
                           >
@@ -560,11 +560,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/project/${currentWorkspace?._id}/settings`} passHref>
+                      <Link href={`/project/${currentWorkspace?.id}/settings`} passHref>
                         <a>
                           <MenuItem
                             isSelected={
-                              router.asPath === `/project/${currentWorkspace?._id}/settings`
+                              router.asPath === `/project/${currentWorkspace?.id}/settings`
                             }
                             icon="system-outline-109-slider-toggle-settings"
                           >
@@ -575,7 +575,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     </Menu>
                   ) : (
                     <Menu className="mt-4">
-                      <Link href={`/org/${currentOrg?._id}/overview`} passHref>
+                      <Link href={`/org/${currentOrg?.id}/overview`} passHref>
                         <a>
                           <MenuItem
                             isSelected={router.asPath.includes("/overview")}
@@ -585,40 +585,40 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/org/${currentOrg?._id}/members`} passHref>
+                      <Link href={`/org/${currentOrg?.id}/members`} passHref>
                         <a>
                           <MenuItem
-                            isSelected={router.asPath === `/org/${currentOrg?._id}/members`}
+                            isSelected={router.asPath === `/org/${currentOrg?.id}/members`}
                             icon="system-outline-96-groups"
                           >
                             Access Control
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/org/${currentOrg?._id}/secret-scanning`} passHref>
+                      <Link href={`/org/${currentOrg?.id}/secret-scanning`} passHref>
                         <a>
                           <MenuItem
-                            isSelected={router.asPath === `/org/${currentOrg?._id}/secret-scanning`}
+                            isSelected={router.asPath === `/org/${currentOrg?.id}/secret-scanning`}
                             icon="system-outline-69-document-scan"
                           >
                             Secret Scanning
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/org/${currentOrg?._id}/billing`} passHref>
+                      <Link href={`/org/${currentOrg?.id}/billing`} passHref>
                         <a>
                           <MenuItem
-                            isSelected={router.asPath === `/org/${currentOrg?._id}/billing`}
+                            isSelected={router.asPath === `/org/${currentOrg?.id}/billing`}
                             icon="system-outline-103-coin-cash-monetization"
                           >
                             Usage & Billing
                           </MenuItem>
                         </a>
                       </Link>
-                      <Link href={`/org/${currentOrg?._id}/settings`} passHref>
+                      <Link href={`/org/${currentOrg?.id}/settings`} passHref>
                         <a>
                           <MenuItem
-                            isSelected={router.asPath === `/org/${currentOrg?._id}/settings`}
+                            isSelected={router.asPath === `/org/${currentOrg?.id}/settings`}
                             icon="system-outline-109-slider-toggle-settings"
                           >
                             Organization Settings
@@ -717,7 +717,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </DropdownMenuItem>
                     ))}
                     {infisicalPlatformVersion && (
-                      <div className="cursor-default mb-2 mt-2 w-full pl-5 duration-200 hover:text-mineshaft-200 text-sm">
+                      <div className="mb-2 mt-2 w-full cursor-default pl-5 text-sm duration-200 hover:text-mineshaft-200">
                         <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
                         Version: {infisicalPlatformVersion}
                       </div>
@@ -734,7 +734,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
                         // direct user to start pro trial
                         const url = await mutateAsync({
-                          orgId: currentOrg._id,
+                          orgId: currentOrg.id,
                           success_url: window.location.href
                         });
 

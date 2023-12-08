@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 
-import {
-  useSaveIntegrationAccessToken
-} from "@app/hooks/api";
+import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
 
@@ -26,7 +24,7 @@ export default function LaravelForgeCreateIntegrationPage() {
         setApiKeyErrorText("Access Token cannot be blank");
         return;
       }
-      
+
       if (serverId.length === 0) {
         setServerIdErrorText("Server Id cannot be blank");
         return;
@@ -58,14 +56,22 @@ export default function LaravelForgeCreateIntegrationPage() {
           errorText={apiKeyErrorText}
           isError={apiKeyErrorText !== "" ?? false}
         >
-          <Input placeholder="Access Token" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+          <Input
+            placeholder="Access Token"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+          />
         </FormControl>
         <FormControl
           label="Laravel Forge Server ID"
           errorText={serverIdErrorText}
           isError={serverIdErrorText !== "" ?? false}
         >
-          <Input placeholder="123456" value={serverId} onChange={(e) => setServerId(e.target.value)} />
+          <Input
+            placeholder="123456"
+            value={serverId}
+            onChange={(e) => setServerId(e.target.value)}
+          />
         </FormControl>
         <Button
           onClick={handleButtonClick}

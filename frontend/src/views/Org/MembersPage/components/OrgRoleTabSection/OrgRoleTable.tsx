@@ -27,12 +27,10 @@ type Props = {
   onSelectRole: (role?: TRole<undefined>) => void;
 };
 
-export const OrgRoleTable = ({ 
-  onSelectRole 
-}: Props) => {
+export const OrgRoleTable = ({ onSelectRole }: Props) => {
   const [searchRoles, setSearchRoles] = useState("");
   const { currentOrg } = useOrganization();
-  const orgId = currentOrg?._id || "";
+  const orgId = currentOrg?.id || "";
   const { createNotification } = useNotificationContext();
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["deleteRole"] as const);
 
@@ -43,7 +41,7 @@ export const OrgRoleTable = ({
   const { mutateAsync: deleteRole } = useDeleteRole();
 
   const handleRoleDelete = async () => {
-    const { _id: id } = popUp?.deleteRole?.data as TRole<undefined>;
+    const { id } = popUp?.deleteRole?.data as TRole<undefined>;
     try {
       await deleteRole({
         orgId,
@@ -93,7 +91,7 @@ export const OrgRoleTable = ({
             <TBody>
               {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
               {(roles as TRole<undefined>[])?.map((role) => {
-                const { _id: id, name, slug } = role;
+                const { id, name, slug } = role;
                 const isNonMutatable = ["owner", "admin", "member", "no-access"].includes(slug);
 
                 return (

@@ -28,7 +28,7 @@ export const LogsFilter = ({ control, reset }: Props) => {
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
 
   const { currentWorkspace } = useWorkspace();
-  const { data, isLoading } = useGetAuditLogActorFilterOpts(currentWorkspace?._id ?? "");
+  const { data, isLoading } = useGetAuditLogActorFilterOpts(currentWorkspace?.id ?? "");
 
   const renderActorSelectItem = (actor: Actor) => {
     switch (actor.type) {
@@ -69,7 +69,7 @@ export const LogsFilter = ({ control, reset }: Props) => {
   };
 
   return (
-    <div className="flex justify-between items-center sticky top-20 z-10 bg-bunker-800">
+    <div className="sticky top-20 z-10 flex items-center justify-between bg-bunker-800">
       <div className="flex items-center">
         <Controller
           control={control}
@@ -79,13 +79,13 @@ export const LogsFilter = ({ control, reset }: Props) => {
               label="Event"
               errorText={error?.message}
               isError={Boolean(error)}
-              className="w-40 mr-4"
+              className="mr-4 w-40"
             >
               <Select
                 {...(field.value ? { value: field.value } : { placeholder: "Select" })}
                 {...field}
                 onValueChange={(e) => onChange(e)}
-                className="w-full bg-mineshaft-700 border border-mineshaft-500 text-mineshaft-100"
+                className="w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100"
               >
                 {eventTypes.map(({ label, value }) => (
                   <SelectItem value={String(value || "")} key={label}>
@@ -105,13 +105,13 @@ export const LogsFilter = ({ control, reset }: Props) => {
                 label="Actor"
                 errorText={error?.message}
                 isError={Boolean(error)}
-                className="w-40 mr-4"
+                className="mr-4 w-40"
               >
                 <Select
                   {...(field.value ? { value: field.value } : { placeholder: "Select" })}
                   {...field}
                   onValueChange={(e) => onChange(e)}
-                  className="w-full bg-mineshaft-700 border border-mineshaft-500 text-mineshaft-100"
+                  className="w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100"
                 >
                   {data.map((actor) => renderActorSelectItem(actor))}
                 </Select>
@@ -127,13 +127,13 @@ export const LogsFilter = ({ control, reset }: Props) => {
               label="Source"
               errorText={error?.message}
               isError={Boolean(error)}
-              className="w-40 mr-4"
+              className="mr-4 w-40"
             >
               <Select
                 {...(field.value ? { value: field.value } : { placeholder: "Select" })}
                 {...field}
                 onValueChange={(e) => onChange(e)}
-                className="w-full bg-mineshaft-700 border border-mineshaft-500 text-mineshaft-100"
+                className="w-full border border-mineshaft-500 bg-mineshaft-700 text-mineshaft-100"
               >
                 {userAgentTypes.map(({ label, value }) => (
                   <SelectItem value={String(value || "")} key={label}>

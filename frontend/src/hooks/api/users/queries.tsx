@@ -14,7 +14,8 @@ import {
   RenameUserDTO,
   TokenVersion,
   UpdateOrgUserRoleDTO,
-  User
+  User,
+  UserEnc
 } from "./types";
 
 export const userKeys = {
@@ -29,7 +30,7 @@ export const userKeys = {
 };
 
 export const fetchUserDetails = async () => {
-  const { data } = await apiRequest.get<{ user: User }>("/api/v1/user");
+  const { data } = await apiRequest.get<{ user: User & UserEnc }>("/api/v1/user");
 
   return data.user;
 };

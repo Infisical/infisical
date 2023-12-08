@@ -58,17 +58,17 @@ export const SecretApprovalRequestChangeItem = ({
   const hasConflict = Boolean(itemConflict);
 
   return (
-    <div className="bg-bunker-500 rounded-lg pt-2 pb-4 px-4">
-      <div className="py-3 px-1 flex items-center">
+    <div className="rounded-lg bg-bunker-500 px-4 pt-2 pb-4">
+      <div className="flex items-center py-3 px-1">
         <div className="flex-grow">{generateItemTitle(op)}</div>
         {!hasMerged && isStale && (
           <div className="flex items-center">
-            <FontAwesomeIcon icon={faInfo} className="text-primary-600 text-sm" />
-            <span className="text-xs ml-2">Secret has been changed(stale)</span>
+            <FontAwesomeIcon icon={faInfo} className="text-sm text-primary-600" />
+            <span className="ml-2 text-xs">Secret has been changed(stale)</span>
           </div>
         )}
         {hasMerged && hasConflict && (
-          <div className="flex items-center text-sm text-bunker-300 space-x-2">
+          <div className="flex items-center space-x-2 text-sm text-bunker-300">
             <Tooltip content="Merge Conflict">
               <FontAwesomeIcon icon={faExclamationTriangle} className="text-red-700" />
             </Tooltip>
@@ -99,11 +99,11 @@ export const SecretApprovalRequestChangeItem = ({
                 <Td>
                   {secretVersion?.tags?.map(({ name, id: tagId, tagColor }) => (
                     <Tag
-                      className="flex items-center space-x-2 w-min"
+                      className="flex w-min items-center space-x-2"
                       key={`${secretVersion.id}-${tagId}`}
                     >
                       <div
-                        className="w-3 h-3 rounded-full"
+                        className="h-3 w-3 rounded-full"
                         style={{ backgroundColor: tagColor || "#bec2c8" }}
                       />
                       <div className="text-sm">{name}</div>
@@ -121,11 +121,11 @@ export const SecretApprovalRequestChangeItem = ({
                 <Td>
                   {newVersion?.tags?.map(({ name, id: tagId, tagColor }) => (
                     <Tag
-                      className="flex items-center space-x-2 w-min"
+                      className="flex w-min items-center space-x-2"
                       key={`${newVersion.id}-${tagId}`}
                     >
                       <div
-                        className="w-3 h-3 rounded-full"
+                        className="h-3 w-3 rounded-full"
                         style={{ backgroundColor: tagColor || "#bec2c8" }}
                       />
                       <div className="text-sm">{name}</div>
@@ -153,13 +153,13 @@ export const SecretApprovalRequestChangeItem = ({
                   {(op === CommitType.CREATE ? newVersion?.tags : secretVersion?.tags)?.map(
                     ({ name, id: tagId, tagColor }) => (
                       <Tag
-                        className="flex items-center space-x-2 w-min"
+                        className="flex w-min items-center space-x-2"
                         key={`${
                           op === CommitType.CREATE ? newVersion?.id : secretVersion?.id
                         }-${tagId}`}
                       >
                         <div
-                          className="w-3 h-3 rounded-full"
+                          className="h-3 w-3 rounded-full"
                           style={{ backgroundColor: tagColor || "#bec2c8" }}
                         />
                         <div className="text-sm">{name}</div>

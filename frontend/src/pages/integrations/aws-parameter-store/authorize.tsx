@@ -6,16 +6,14 @@ import { useRouter } from "next/router";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import {
-  useSaveIntegrationAccessToken
-} from "@app/hooks/api";
+import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
 
 export default function AWSParameterStoreAuthorizeIntegrationPage() {
   const router = useRouter();
   const { mutateAsync } = useSaveIntegrationAccessToken();
-  
+
   const [isLoading, setIsLoading] = useState(false);
 
   const [accessKey, setAccessKey] = useState("");
@@ -63,11 +61,11 @@ export default function AWSParameterStoreAuthorizeIntegrationPage() {
     <div className="flex h-full w-full items-center justify-center">
       <Head>
         <title>Authorize AWS Parameter Integration</title>
-        <link rel='icon' href='/infisical.ico' />
+        <link rel="icon" href="/infisical.ico" />
       </Head>
       <Card className="max-w-lg rounded-md border border-mineshaft-600">
-        <CardTitle 
-          className="text-left px-6 text-xl" 
+        <CardTitle
+          className="px-6 text-left text-xl"
           subTitle="After adding the details below, you will be prompted to set up an integration for a particular Infisical project and environment."
         >
           <div className="flex flex-row items-center">
@@ -82,10 +80,13 @@ export default function AWSParameterStoreAuthorizeIntegrationPage() {
             <span className="ml-1.5">AWS Parameter Store Integration </span>
             <Link href="https://infisical.com/docs/integrations/cloud/aws-parameter-store" passHref>
               <a target="_blank" rel="noopener noreferrer">
-                <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
+                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   Docs
-                  <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="ml-1.5 mb-[0.07rem] text-xxs"
+                  />
                 </div>
               </a>
             </Link>
@@ -97,11 +98,7 @@ export default function AWSParameterStoreAuthorizeIntegrationPage() {
           isError={accessKeyErrorText !== "" ?? false}
           className="px-6"
         >
-          <Input 
-            placeholder="" 
-            value={accessKey} 
-            onChange={(e) => setAccessKey(e.target.value)} 
-          />
+          <Input placeholder="" value={accessKey} onChange={(e) => setAccessKey(e.target.value)} />
         </FormControl>
         <FormControl
           label="Secret Access Key"

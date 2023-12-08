@@ -55,14 +55,14 @@ export type BitBucketWorkspace = {
   uuid: string;
   name: string;
   slug: string;
-}
+};
 
 export type NorthflankSecretGroup = {
   name: string;
   groupId: string;
-}
+};
 
 export type TeamCityBuildConfig = {
   name: string;
   buildConfigId: string;
-}
+};

@@ -194,7 +194,8 @@ interface DeleteServiceTokenEvent {
   };
 }
 
-interface CreateIdentityEvent { // note: currently not logging org-role
+interface CreateIdentityEvent {
+  // note: currently not logging org-role
   type: EventType.CREATE_IDENTITY;
   metadata: {
     identityId: string;
@@ -218,7 +219,7 @@ interface DeleteIdentityEvent {
 }
 
 interface LoginIdentityUniversalAuthEvent {
-  type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH ;
+  type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH;
   metadata: {
     identityId: string;
     identityUniversalAuthId: string;
@@ -259,7 +260,7 @@ interface GetIdentityUniversalAuthEvent {
 }
 
 interface CreateIdentityUniversalAuthClientSecretEvent {
-  type: EventType.CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET ;
+  type: EventType.CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET;
   metadata: {
     identityId: string;
     clientSecretId: string;
@@ -273,9 +274,8 @@ interface GetIdentityUniversalAuthClientSecretsEvent {
   };
 }
 
-
 interface RevokeIdentityUniversalAuthClientSecretEvent {
-  type: EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET ;
+  type: EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET;
   metadata: {
     identityId: string;
     clientSecretId: string;
@@ -507,7 +507,7 @@ export type Event =
   | UpdateUserDeniedPermissions;
 
 export type AuditLog = {
-  _id: string;
+  id: string;
   actor: Actor;
   organization: string;
   workspace: string;

@@ -2,9 +2,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
-import {
-  useAuthorizeIntegration
-} from "@app/hooks/api";
+import { useAuthorizeIntegration } from "@app/hooks/api";
 
 export default function HerokuOAuth2CallbackPage() {
   const router = useRouter();

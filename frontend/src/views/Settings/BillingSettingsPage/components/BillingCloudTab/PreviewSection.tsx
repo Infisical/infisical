@@ -71,7 +71,7 @@ export const PreviewSection = () => {
       console.error(err);
     }
   };
-  
+
   return (
     <div>
       {subscription &&
@@ -79,10 +79,15 @@ export const PreviewSection = () => {
         subscription?.slug !== "pro" &&
         subscription?.slug !== "pro-annual" && (
           <div className="flex flex-row space-x-6">
-            <div className="p-4 rounded-lg flex-1 border border-primary/40 mb-6 flex items-center bg-primary/10">
+            <div className="mb-6 flex flex-1 items-center rounded-lg border border-primary/40 bg-primary/10 p-4">
               <div className="flex-1">
-                <h2 className="text-xl font-medium text-mineshaft-100">Unleash the full power of <span className="text-transparent font-semibold bg-clip-text bg-gradient-to-r from-primary-500 to-yellow">Infisical</span></h2>
-                <p className="text-gray-400 mt-4">
+                <h2 className="text-xl font-medium text-mineshaft-100">
+                  Unleash the full power of{" "}
+                  <span className="bg-gradient-to-r from-primary-500 to-yellow bg-clip-text font-semibold text-transparent">
+                    Infisical
+                  </span>
+                </h2>
+                <p className="mt-4 text-gray-400">
                   Get unlimited members, projects, RBAC, smart alerts, and so much more.
                 </p>
               </div>
@@ -98,23 +103,29 @@ export const PreviewSection = () => {
                 )}
               </OrgPermissionCan>
             </div>
-            <div className="flex flex-col max-w-[12rem] w-full items-start border border-mineshaft-600 mb-6 flex items-center bg-mineshaft-800 p-4 rounded-lg">
-              <div className="mb-4 flex justify-center w-full font-semibold text-mineshaft-200">Want to learn more? </div>
-              <div className="flex justify-center w-full">
+            <div className="mb-6 flex flex w-full max-w-[12rem] flex-col items-start items-center rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
+              <div className="mb-4 flex w-full justify-center font-semibold text-mineshaft-200">
+                Want to learn more?{" "}
+              </div>
+              <div className="flex w-full justify-center">
                 <Link href="https://infisical.com/schedule-demo">
-                  <span className="rounded-full px-4 py-2 bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/10 hover:border-primary/40 duration-200 cursor-pointer">
-                    Book a demo <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs mb-[0.06rem] ml-1"/>
+                  <span className="cursor-pointer rounded-full border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 duration-200 hover:border-primary/40 hover:bg-primary/10">
+                    Book a demo{" "}
+                    <FontAwesomeIcon
+                      icon={faArrowUpRightFromSquare}
+                      className="mb-[0.06rem] ml-1 text-xs"
+                    />
                   </span>
-                </Link> 
+                </Link>
               </div>
             </div>
           </div>
         )}
       {!isLoading && subscription && data && (
-        <div className="flex mb-6">
-          <div className="p-4 bg-mineshaft-900 rounded-lg flex-1 mr-4 border border-mineshaft-600">
+        <div className="mb-6 flex">
+          <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <p className="mb-2 text-gray-400">Current plan</p>
-            <p className="text-2xl text-mineshaft-50 font-semibold mb-8">
+            <p className="mb-8 text-2xl font-semibold text-mineshaft-50">
               {`${formatPlanSlug(subscription.slug)} ${
                 subscription.status === "trialing" ? "(Trial)" : ""
               }`}
@@ -136,17 +147,17 @@ export const PreviewSection = () => {
               )}
             </OrgPermissionCan>
           </div>
-          <div className="p-4 bg-mineshaft-900 rounded-lg flex-1 border border-mineshaft-600 mr-4">
+          <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <p className="mb-2 text-gray-400">Price</p>
-            <p className="text-2xl mb-8 text-mineshaft-50 font-semibold">
+            <p className="mb-8 text-2xl font-semibold text-mineshaft-50">
               {subscription.status === "trialing"
                 ? "$0.00 / month"
                 : `${formatAmount(data.amount)} / ${data.interval}`}
             </p>
           </div>
-          <div className="p-4 bg-mineshaft-900 rounded-lg flex-1 border border-mineshaft-600">
+          <div className="flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <p className="mb-2 text-gray-400">Subscription renews on</p>
-            <p className="text-2xl mb-8 text-mineshaft-50 font-semibold">
+            <p className="mb-8 text-2xl font-semibold text-mineshaft-50">
               {formatDate(data.currentPeriodEnd)}
             </p>
           </div>

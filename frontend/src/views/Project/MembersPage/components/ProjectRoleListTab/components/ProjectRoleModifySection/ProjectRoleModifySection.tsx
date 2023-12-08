@@ -121,9 +121,9 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
 
   const { createNotification } = useNotificationContext();
   const { currentOrg } = useOrganization();
-  const orgId = currentOrg?._id || "";
+  const orgId = currentOrg?.id || "";
   const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?._id || "";
+  const workspaceId = currentWorkspace?.id || "";
 
   const {
     handleSubmit,
@@ -139,12 +139,12 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
   const { mutateAsync: updateRole } = useUpdateRole();
 
   const handleRoleUpdate = async (el: TFormSchema) => {
-    if (!role?._id) return;
-    
+    if (!role?.id) return;
+
     try {
       await updateRole({
         orgId,
-        id: role?._id,
+        id: role?.id,
         workspaceId,
         ...el,
         permissions: formRolePermission2API(el.permissions)

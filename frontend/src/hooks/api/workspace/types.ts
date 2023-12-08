@@ -22,7 +22,7 @@ export type NameWorkspaceSecretsDTO = {
     secretName: string;
     id: string;
   }[];
-}
+};
 
 // mutation dto
 export type CreateWorkspaceDTO = {
@@ -47,7 +47,6 @@ export type ReorderEnvironmentsDTO = {
   environmentName: string;
   otherEnvironmentSlug: string;
   otherEnvironmentName: string;
-
 };
 
 export type UpdateEnvironmentDTO = {

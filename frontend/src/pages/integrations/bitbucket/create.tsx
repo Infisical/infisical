@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
-import {
-  useCreateIntegration
-} from "@app/hooks/api";
+import { useCreateIntegration } from "@app/hooks/api";
 
 import {
   Button,
@@ -18,7 +16,7 @@ import {
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthBitBucketWorkspaces,
-  useGetIntegrationAuthById,
+  useGetIntegrationAuthById
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 
@@ -36,7 +34,9 @@ export default function BitBucketCreateIntegrationPage() {
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
-  const { data: targetEnvironments } = useGetIntegrationAuthBitBucketWorkspaces((integrationAuthId as string) ?? "");
+  const { data: targetEnvironments } = useGetIntegrationAuthBitBucketWorkspaces(
+    (integrationAuthId as string) ?? ""
+  );
   const { data: integrationAuthApps } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? "",
     workspaceSlug: targetEnvironmentId

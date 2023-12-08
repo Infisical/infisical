@@ -6,9 +6,7 @@ import { useRouter } from "next/router";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import {
-  useSaveIntegrationAccessToken
-} from "@app/hooks/api";
+import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
 
@@ -18,7 +16,7 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
 
   const [vaultURL, setVaultURL] = useState("");
   const [vaultURLErrorText, setVaultURLErrorText] = useState("");
-  
+
   const [vaultNamespace, setVaultNamespace] = useState("");
   const [vaultNamespaceErrorText, setVaultNamespaceErrorText] = useState("");
 
@@ -35,44 +33,44 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
       if (vaultURL.length === 0) {
         setVaultURLErrorText("Vault Cluster URL cannot be blank");
       } else {
-        setVaultURLErrorText(""); 
+        setVaultURLErrorText("");
       }
-      
+
       if (vaultNamespace.length === 0) {
         setVaultNamespaceErrorText("Vault Namespace cannot be blank");
       } else {
         setVaultNamespaceErrorText("");
       }
-      
+
       if (vaultRoleID.length === 0) {
         setVaultRoleIDErrorText("Vault Role ID cannot be blank");
       } else {
         setVaultRoleIDErrorText("");
       }
-        
+
       if (vaultSecretID.length === 0) {
         setVaultSecretIDErrorText("Vault Secret ID cannot be blank");
       } else {
         setVaultSecretIDErrorText("");
       }
       if (
-          vaultURL.length === 0 ||
-          vaultNamespace.length === 0 ||
-          vaultRoleID.length === 0 ||
-          vaultSecretID.length === 0
+        vaultURL.length === 0 ||
+        vaultNamespace.length === 0 ||
+        vaultRoleID.length === 0 ||
+        vaultSecretID.length === 0
       ) {
-          return;
+        return;
       }
 
       setIsLoading(true);
 
       const integrationAuth = await mutateAsync({
-          workspaceId: localStorage.getItem("projectData.id"),
-          integration: "hashicorp-vault",
-          accessId: vaultRoleID,
-          accessToken: vaultSecretID,
-          url: vaultURL,
-          namespace: vaultNamespace
+        workspaceId: localStorage.getItem("projectData.id"),
+        integration: "hashicorp-vault",
+        accessId: vaultRoleID,
+        accessToken: vaultSecretID,
+        url: vaultURL,
+        namespace: vaultNamespace
       });
 
       setIsLoading(false);
@@ -87,11 +85,11 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
     <div className="flex h-full w-full items-center justify-center">
       <Head>
         <title>Authorize Vault Integration</title>
-        <link rel='icon' href='/infisical.ico' />
+        <link rel="icon" href="/infisical.ico" />
       </Head>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600 mb-12">
-        <CardTitle 
-          className="text-left px-6 text-xl" 
+      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
+        <CardTitle
+          className="px-6 text-left text-xl"
           subTitle="After connecting to Vault, you will be prompted to set up an integration for a particular Infisical project and environment."
         >
           <div className="flex flex-row items-center">
@@ -106,10 +104,13 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
             <span className="ml-2.5">HashiCorp Vault Integration</span>
             <Link href="https://infisical.com/docs/integrations/cloud/hashicorp-vault" passHref>
               <a target="_blank" rel="noopener noreferrer">
-                <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
+                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   Docs
-                  <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="ml-1.5 mb-[0.07rem] text-xxs"
+                  />
                 </div>
               </a>
             </Link>
@@ -129,11 +130,11 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
           isError={vaultNamespaceErrorText !== "" ?? false}
           className="px-6"
         >
-          <Input 
-                placeholder="admin/education" 
-                value={vaultNamespace} 
-                onChange={(e) => setVaultNamespace(e.target.value)} 
-            />
+          <Input
+            placeholder="admin/education"
+            value={vaultNamespace}
+            onChange={(e) => setVaultNamespace(e.target.value)}
+          />
         </FormControl>
         <FormControl
           label="Vault RoleID"
@@ -141,7 +142,11 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
           isError={vaultRoleIDErrorText !== "" ?? false}
           className="px-6"
         >
-          <Input placeholder="" value={vaultRoleID} onChange={(e) => setVaultRoleID(e.target.value)} />
+          <Input
+            placeholder=""
+            value={vaultRoleID}
+            onChange={(e) => setVaultRoleID(e.target.value)}
+          />
         </FormControl>
         <FormControl
           label="Vault SecretID"
@@ -149,11 +154,11 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
           isError={vaultSecretIDErrorText !== "" ?? false}
           className="px-6"
         >
-          <Input 
-                placeholder="" 
-                value={vaultSecretID} 
-                onChange={(e) => setVaultSecretID(e.target.value)} 
-            />
+          <Input
+            placeholder=""
+            value={vaultSecretID}
+            onChange={(e) => setVaultSecretID(e.target.value)}
+          />
         </FormControl>
         <Button
           onClick={handleButtonClick}

@@ -19,10 +19,7 @@ import {
 } from "../../../hooks/api/integrationAuth";
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 
-const variableTypes = [
-  { name: "env" },
-  { name: "terraform" }
-];
+const variableTypes = [{ name: "env" }, { name: "terraform" }];
 
 export default function TerraformCloudCreateIntegrationPage() {
   const router = useRouter();
@@ -65,9 +62,9 @@ export default function TerraformCloudCreateIntegrationPage() {
       if (!integrationAuth?.id) return;
 
       setVariableTypeErrorText("");
-      if (variableType.length === 0 ) {
-      setVariableTypeErrorText("Variable Type cannot be blank!")
-      return;
+      if (variableType.length === 0) {
+        setVariableTypeErrorText("Variable Type cannot be blank!");
+        return;
       }
 
       setIsLoading(true);
@@ -76,7 +73,9 @@ export default function TerraformCloudCreateIntegrationPage() {
         integrationAuthId: integrationAuth?.id,
         isActive: true,
         app: targetApp,
-        appId: integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp)?.appId,
+        appId: integrationAuthApps?.find(
+          (integrationAuthApp) => integrationAuthApp.name === targetApp
+        )?.appId,
         sourceEnvironment: selectedSourceEnvironment,
         targetService: variableType,
         secretPath
@@ -89,7 +88,6 @@ export default function TerraformCloudCreateIntegrationPage() {
       console.error(err);
     }
   };
-
 
   return integrationAuth &&
     workspace &&
@@ -122,23 +120,22 @@ export default function TerraformCloudCreateIntegrationPage() {
             placeholder="Provide a path, default is /"
           />
         </FormControl>
-        <FormControl label="Category" className="mt-4" errorText={variableTypeErrorText}
-            isError={variableTypeErrorText !== "" ?? false}>
+        <FormControl
+          label="Category"
+          className="mt-4"
+          errorText={variableTypeErrorText}
+          isError={variableTypeErrorText !== "" ?? false}
+        >
           <Select
             value={variableType}
             onValueChange={(val) => setVariableType(val)}
             className="w-full border border-mineshaft-500"
           >
-            {
-              variableTypes.map((variable) => (
-                <SelectItem
-                  value={variable.name}
-                  key={`target-app-${variable.name}`}
-                >
-                  {variable.name}
-                </SelectItem>
-              ))
-            }
+            {variableTypes.map((variable) => (
+              <SelectItem value={variable.name} key={`target-app-${variable.name}`}>
+                {variable.name}
+              </SelectItem>
+            ))}
           </Select>
         </FormControl>
         <FormControl label="Terraform Cloud Project" className="mt-4">

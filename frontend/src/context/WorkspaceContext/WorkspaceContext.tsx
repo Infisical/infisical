@@ -26,7 +26,7 @@ export const WorkspaceProvider = ({ children }: Props): JSX.Element => {
     const wsId = workspaceId || localStorage.getItem("projectData.id");
     return {
       workspaces: ws || [],
-      currentWorkspace: (ws || []).find(({ id: id }) => id === wsId),
+      currentWorkspace: (ws || []).find(({ id }) => id === wsId),
       isLoading
     };
   }, [ws, workspaceId, isLoading]);

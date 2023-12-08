@@ -112,8 +112,8 @@ const initProjectHelper = async ({
   });
 
   await uploadWsKey({
-    workspaceId: workspace._id,
-    userId: user._id,
+    workspaceId: workspace.id,
+    userId: user.id,
     encryptedKey: ciphertext,
     nonce
   });
@@ -121,13 +121,13 @@ const initProjectHelper = async ({
   // encrypt and upload secrets to new project
   const secrets = await encryptSecrets({
     secretsToEncrypt: secretsToBeAdded,
-    workspaceId: workspace._id,
+    workspaceId: workspace.id,
     env: "dev"
   });
 
   secrets?.forEach((secret) => {
     createSecret({
-      workspaceId: workspace._id,
+      workspaceId: workspace.id,
       environment: secret.environment,
       type: secret.type,
       secretKey: secret.secretName,

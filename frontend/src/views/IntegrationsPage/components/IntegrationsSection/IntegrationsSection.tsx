@@ -162,7 +162,8 @@ export const IntegrationsSection = ({
                     </div>
                   </div>
                 )}
-                {((integration.integration === "checkly") || (integration.integration === "github")) && (
+                {(integration.integration === "checkly" ||
+                  integration.integration === "github") && (
                   <>
                     {integration.targetService && (
                       <div className="ml-2">

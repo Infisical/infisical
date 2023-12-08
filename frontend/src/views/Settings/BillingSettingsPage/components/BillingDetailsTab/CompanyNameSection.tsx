@@ -24,7 +24,7 @@ export const CompanyNameSection = () => {
     },
     resolver: yupResolver(schema)
   });
-  const { data } = useGetOrgBillingDetails(currentOrg?._id ?? "");
+  const { data } = useGetOrgBillingDetails(currentOrg?.id ?? "");
   const { mutateAsync, isLoading } = useUpdateOrgBillingDetails();
 
   useEffect(() => {
@@ -37,11 +37,11 @@ export const CompanyNameSection = () => {
 
   const onFormSubmit = async ({ name }: { name: string }) => {
     try {
-      if (!currentOrg?._id) return;
+      if (!currentOrg?.id) return;
       if (name === "") return;
       await mutateAsync({
         name,
-        organizationId: currentOrg._id
+        organizationId: currentOrg.id
       });
 
       createNotification({
@@ -60,9 +60,9 @@ export const CompanyNameSection = () => {
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit)}
-      className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
+      className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
     >
-      <h2 className="text-xl font-semibold flex-1 text-mineshaft-100 mb-8">Business name</h2>
+      <h2 className="mb-8 flex-1 text-xl font-semibold text-mineshaft-100">Business name</h2>
       <div className="max-w-md">
         <Controller
           defaultValue=""

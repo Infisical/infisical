@@ -2,9 +2,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
-import {
-  useAuthorizeIntegration
-} from "@app/hooks/api";
+import { useAuthorizeIntegration } from "@app/hooks/api";
 
 export default function GitLabOAuth2CallbackPage() {
   const router = useRouter();
@@ -16,7 +14,7 @@ export default function GitLabOAuth2CallbackPage() {
       try {
         // validate state
         const [csrfToken, url] = (state as string).split("|", 2);
-        
+
         if (csrfToken !== localStorage.getItem("latestCSRFToken")) return;
         localStorage.removeItem("latestCSRFToken");
 
@@ -24,9 +22,11 @@ export default function GitLabOAuth2CallbackPage() {
           workspaceId: localStorage.getItem("projectData.id") as string,
           code: code as string,
           integration: "gitlab",
-          ...(url === "" ? {} : {
-            url
-          })
+          ...(url === ""
+            ? {}
+            : {
+                url
+              })
         });
 
         router.push(`/integrations/gitlab/create?integrationAuthId=${integrationAuth.id}`);

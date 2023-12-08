@@ -20,10 +20,7 @@ const schema = yup.object({
 type FormData = yup.InferType<typeof schema>;
 
 export default function GitLabAuthorizeIntegrationPage() {
-  const {
-    control,
-    handleSubmit
-  } = useForm<FormData>({
+  const { control, handleSubmit } = useForm<FormData>({
     resolver: yupResolver(schema),
     defaultValues: {
       gitLabURL: ""
@@ -31,35 +28,38 @@ export default function GitLabAuthorizeIntegrationPage() {
   });
 
   const { data: cloudIntegrations } = useGetCloudIntegrations();
-  
-  const onFormSubmit = ({
-    gitLabURL
-  }: FormData) => {
+
+  const onFormSubmit = ({ gitLabURL }: FormData) => {
     if (!cloudIntegrations) return;
-    const integrationOption = cloudIntegrations.find((integration) => integration.slug === "gitlab");
-    
+    const integrationOption = cloudIntegrations.find(
+      (integration) => integration.slug === "gitlab"
+    );
+
     if (!integrationOption) return;
-    
-    const baseURL = (gitLabURL as string).trim() === "" ? "https://gitlab.com" : (gitLabURL as string).trim();
-    
+
+    const baseURL =
+      (gitLabURL as string).trim() === "" ? "https://gitlab.com" : (gitLabURL as string).trim();
+
     const csrfToken = crypto.randomBytes(16).toString("hex");
     localStorage.setItem("latestCSRFToken", csrfToken);
-    
-    const state = `${csrfToken}|${(gitLabURL as string).trim() === "" ? "" : (gitLabURL as string).trim()}`;
+
+    const state = `${csrfToken}|${
+      (gitLabURL as string).trim() === "" ? "" : (gitLabURL as string).trim()
+    }`;
     const link = `${baseURL}/oauth/authorize?clientid=${integrationOption.clientId}&redirect_uri=${window.location.origin}/integrations/gitlab/oauth2/callback&response_type=code&state=${state}`;
-    
+
     window.location.assign(link);
-  }
+  };
 
   return (
     <div className="flex h-full w-full items-center justify-center">
       <Head>
         <title>Authorize GitLab Integration</title>
-        <link rel='icon' href='/infisical.ico' />
+        <link rel="icon" href="/infisical.ico" />
       </Head>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600 mb-12">
-        <CardTitle 
-          className="text-left px-6 text-xl" 
+      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
+        <CardTitle
+          className="px-6 text-left text-xl"
           subTitle="Authorize this integration to sync secrets from Infisical to GitLab. If no self-hosted GitLab URL is specified, then Infisical will connect you to GitLab Cloud."
         >
           <div className="flex flex-row items-center">
@@ -74,19 +74,19 @@ export default function GitLabAuthorizeIntegrationPage() {
             <span className="ml-2.5">GitLab Integration </span>
             <Link href="https://infisical.com/docs/integrations/cicd/gitlab" passHref>
               <a target="_blank" rel="noopener noreferrer">
-                <div className="ml-2 mb-1 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5"/> 
+                <div className="ml-2 mb-1 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   Docs
-                  <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-1.5 text-xxs mb-[0.07rem]"/> 
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="ml-1.5 mb-[0.07rem] text-xxs"
+                  />
                 </div>
               </a>
             </Link>
           </div>
         </CardTitle>
-        <form 
-          onSubmit={handleSubmit(onFormSubmit)}
-          className="px-6 text-right pb-8"
-        >
+        <form onSubmit={handleSubmit(onFormSubmit)} className="px-6 pb-8 text-right">
           <Controller
             control={control}
             name="gitLabURL"
@@ -96,10 +96,7 @@ export default function GitLabAuthorizeIntegrationPage() {
                 errorText={error?.message}
                 isError={Boolean(error)}
               >
-                <Input 
-                  {...field}
-                  placeholder="https://self-hosted-gitlab.com" 
-                />
+                <Input {...field} placeholder="https://self-hosted-gitlab.com" />
               </FormControl>
             )}
           />

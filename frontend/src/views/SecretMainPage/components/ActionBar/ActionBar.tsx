@@ -188,7 +188,7 @@ export const ActionBar = ({
 
   return (
     <>
-      <div className="flex items-center space-x-2 mt-4">
+      <div className="mt-4 flex items-center space-x-2">
         <div className="w-2/5">
           <Input
             className="bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
@@ -206,7 +206,7 @@ export const ActionBar = ({
                 ariaLabel="Download"
                 className={twMerge(
                   "transition-all",
-                  Object.keys(filter.tags).length && "text-primary border-primary/50"
+                  Object.keys(filter.tags).length && "border-primary/50 text-primary"
                 )}
               >
                 <FontAwesomeIcon icon={faFilter} />
@@ -245,7 +245,7 @@ export const ActionBar = ({
                     >
                       <div className="flex items-center">
                         <div
-                          className="w-2 h-2 rounded-full mr-2"
+                          className="mr-2 h-2 w-2 rounded-full"
                           style={{ background: tagColor || "#bec2c8" }}
                         />
                         {name}
@@ -304,7 +304,7 @@ export const ActionBar = ({
                 variant="outline_bg"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => openPopUp(PopUpNames.CreateSecretForm)}
-                className="rounded-r-none h-10"
+                className="h-10 rounded-r-none"
                 isDisabled={!isAllowed}
               >
                 Add Secret
@@ -326,7 +326,7 @@ export const ActionBar = ({
               </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <div className="p-1.5 flex flex-col space-y-1">
+              <div className="flex flex-col space-y-1 p-1.5">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
                   a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
@@ -374,17 +374,17 @@ export const ActionBar = ({
       </div>
       <div
         className={twMerge(
-          "overflow-hidden transition-all h-0 flex-shrink-0",
+          "h-0 flex-shrink-0 overflow-hidden transition-all",
           isMultiSelectActive && "h-16"
         )}
       >
-        <div className="text-bunker-300 flex items-center bg-mineshaft-800 mt-3.5 py-2 px-4 rounded-md border border-mineshaft-600">
+        <div className="mt-3.5 flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 py-2 px-4 text-bunker-300">
           <Tooltip content="Clear">
             <IconButton variant="plain" ariaLabel="clear-selection" onClick={resetSelectedSecret}>
               <FontAwesomeIcon icon={faMinusSquare} size="lg" />
             </IconButton>
           </Tooltip>
-          <div className="text-sm ml-4 px-2 flex-grow">
+          <div className="ml-4 flex-grow px-2 text-sm">
             {Object.keys(selectedSecrets).length} Selected
           </div>
           <ProjectPermissionCan

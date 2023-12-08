@@ -60,7 +60,7 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
   return (
     <>
       <div
-        className="flex group border-b border-mineshaft-600 hover:bg-mineshaft-700 cursor-pointer"
+        className="group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
         role="button"
         tabIndex={0}
         onClick={setIsExpanded.toggle}
@@ -74,17 +74,17 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
         <div className="w-12 flex-shrink-0 px-4 py-3">
           <FontAwesomeIcon icon={faKey} />
         </div>
-        <div className="flex-grow px-4 py-3 flex items-center space-x-4">
+        <div className="flex flex-grow items-center space-x-4 px-4 py-3">
           {mode === "modified" ? (
             <>
               <div>{preSecret?.key}</div>
-              <div className="bg-primary text-black rounded-lg font-bold px-1 py-0.5 text-xs">
+              <div className="rounded-lg bg-primary px-1 py-0.5 text-xs font-bold text-black">
                 v{preSecret?.version}
               </div>
               <div>
                 <FontAwesomeIcon icon={faChevronRight} size="sm" className="text-orange-700" />
               </div>
-              <div className="bg-primary text-black rounded-lg font-bold px-1 py-0.5 text-xs">
+              <div className="rounded-lg bg-primary px-1 py-0.5 text-xs font-bold text-black">
                 v{postSecret?.version}
               </div>
             </>
@@ -94,7 +94,7 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
         </div>
       </div>
       {isExpanded && (
-        <div className="flex bg-bunker-600 cursor-pointer p-4">
+        <div className="flex cursor-pointer bg-bunker-600 p-4">
           <TableContainer>
             <Table>
               <THead>
@@ -153,11 +153,11 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                     <Td className="border-r border-mineshaft-600">
                       {preSecret?.tags?.map(({ name, id: tagId, tagColor }) => (
                         <Tag
-                          className="flex items-center space-x-2 w-min"
+                          className="flex w-min items-center space-x-2"
                           key={`${preSecret.id}-${tagId}`}
                         >
                           <div
-                            className="w-3 h-3 rounded-full"
+                            className="h-3 w-3 rounded-full"
                             style={{ backgroundColor: tagColor || "#bec2c8" }}
                           />
                           <div className="text-sm">{name}</div>
@@ -168,11 +168,11 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                   <Td>
                     {postSecret?.tags?.map(({ name, id: tagId, tagColor }) => (
                       <Tag
-                        className="flex items-center space-x-2 w-min"
+                        className="flex w-min items-center space-x-2"
                         key={`${postSecret.id}-${tagId}`}
                       >
                         <div
-                          className="w-3 h-3 rounded-full"
+                          className="h-3 w-3 rounded-full"
                           style={{ backgroundColor: tagColor || "#bec2c8" }}
                         />
                         <div className="text-sm">{name}</div>

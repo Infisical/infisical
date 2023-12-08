@@ -18,7 +18,7 @@ export const ProjectPermissionProvider = ({ children }: Props): JSX.Element => {
 
   if ((isLoading && currentWorkspace) || isWsLoading) {
     return (
-      <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
+      <div className="flex h-screen w-screen items-center justify-center bg-bunker-800">
         <img
           src="/images/loading/loading.gif"
           height={70}
@@ -31,7 +31,7 @@ export const ProjectPermissionProvider = ({ children }: Props): JSX.Element => {
 
   if (!permission && currentWorkspace) {
     return (
-      <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
+      <div className="flex h-screen w-screen items-center justify-center bg-bunker-800">
         Failed to load user permissions
       </div>
     );

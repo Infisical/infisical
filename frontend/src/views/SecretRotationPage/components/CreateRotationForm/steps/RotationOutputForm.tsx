@@ -97,9 +97,9 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
           </FormControl>
         )}
       />
-      <div className="flex flex-col mt-4 pt-4 mb-2 border-t border-bunker-300/30">
+      <div className="mt-4 mb-2 flex flex-col border-t border-bunker-300/30 pt-4">
         <div>Mapping</div>
-        <div className="text-bunker-300 text-sm">Select keys for rotated value to get saved</div>
+        <div className="text-sm text-bunker-300">Select keys for rotated value to get saved</div>
       </div>
       {Object.keys(outputSchema).map((outputName) => (
         <Controller
@@ -117,8 +117,7 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
                 {!isSecretsLoading &&
                   secrets
                     ?.filter(
-                      ({ id }) =>
-                        value === id || !Object.values(selectedSecrets || {}).includes(id)
+                      ({ id }) => value === id || !Object.values(selectedSecrets || {}).includes(id)
                     )
                     ?.map(({ key, id }) => (
                       <SelectItem value={id} key={id}>

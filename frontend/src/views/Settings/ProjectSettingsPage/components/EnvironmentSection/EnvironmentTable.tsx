@@ -39,7 +39,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
 
   const handleReorderEnv = async (shouldMoveUp: boolean, name: string, slug: string) => {
     try {
-      if (!currentWorkspace?._id) return;
+      if (!currentWorkspace?.id) return;
 
       const indexOfEnv = currentWorkspace.environments.findIndex(
         (env) => env.name === name && env.slug === slug
@@ -56,7 +56,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
       const indexToSwap = shouldMoveUp ? indexOfEnv - 1 : indexOfEnv + 1;
 
       await reorderWsEnvironment.mutateAsync({
-        workspaceID: currentWorkspace._id,
+        workspaceID: currentWorkspace.id,
         environmentSlug: slug,
         environmentName: name,
         otherEnvironmentSlug: currentWorkspace.environments[indexToSwap].slug,

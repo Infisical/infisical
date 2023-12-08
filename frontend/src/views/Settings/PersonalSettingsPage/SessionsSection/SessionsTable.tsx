@@ -43,9 +43,9 @@ export const SessionsTable = () => {
           {!isLoading &&
             data &&
             data.length > 0 &&
-            data.map(({ _id, createdAt, lastUsed, ip, userAgent }) => {
+            data.map(({ id, createdAt, lastUsed, ip, userAgent }) => {
               return (
-                <Tr className="h-10" key={`session-${_id}`}>
+                <Tr className="h-10" key={`session-${id}`}>
                   <Td>{formatDate(createdAt)}</Td>
                   <Td>{formatDate(lastUsed)}</Td>
                   <Td>{ip}</Td>

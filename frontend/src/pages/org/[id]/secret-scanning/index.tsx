@@ -63,20 +63,20 @@ const SecretScanning = withPermission(
           <link rel="icon" href="/infisical.ico" />
           <meta property="og:image" content="/images/message.png" />
         </Head>
-        <div className="flex justify-center bg-bunker-800 text-white w-full h-full">
-          <div className="max-w-7xl px-6 w-full">
+        <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
+          <div className="w-full max-w-7xl px-6">
             <div className="mt-6 text-3xl font-semibold text-gray-200">Secret Scanning</div>
             <div className="mb-6 text-lg text-mineshaft-300">
               Automatically monitor your GitHub activity and prevent secret leaks
             </div>
-            <div className="relative flex justify-between bg-mineshaft-800 border border-mineshaft-600 rounded-md p-6 mb-6">
+            <div className="relative mb-6 flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6">
               <div className="flex flex-col items-start">
-                <div className="flex flex-row mb-1">
+                <div className="mb-1 flex flex-row">
                   Secret Scanning Status:{" "}
                   {integrationEnabled ? (
-                    <p className="text-green ml-1.5 font-semibold">Enabled</p>
+                    <p className="ml-1.5 font-semibold text-green">Enabled</p>
                   ) : (
-                    <p className="text-red ml-1.5 font-semibold">Not enabled</p>
+                    <p className="ml-1.5 font-semibold text-red">Not enabled</p>
                   )}
                 </div>
                 <div>
@@ -94,12 +94,12 @@ const SecretScanning = withPermission(
               </div>
               {integrationEnabled ? (
                 <div>
-                  <div className="absolute right-[2.5rem] top-[2.5rem] animate-ping rounded-full h-6 w-6 bg-green flex items-center justify-center" />
-                  <div className="absolute right-[2.63rem] top-[2.63rem] animate-ping rounded-full h-5 w-5 bg-green flex items-center justify-center" />
-                  <div className="absolute right-[2.82rem] top-[2.82rem] animate-ping rounded-full h-3.5 w-3.5 bg-green flex items-center justify-center" />
+                  <div className="absolute right-[2.5rem] top-[2.5rem] flex h-6 w-6 animate-ping items-center justify-center rounded-full bg-green" />
+                  <div className="absolute right-[2.63rem] top-[2.63rem] flex h-5 w-5 animate-ping items-center justify-center rounded-full bg-green" />
+                  <div className="absolute right-[2.82rem] top-[2.82rem] flex h-3.5 w-3.5 animate-ping items-center justify-center rounded-full bg-green" />
                 </div>
               ) : (
-                <div className="flex items-center h-[3.25rem]">
+                <div className="flex h-[3.25rem] items-center">
                   <OrgPermissionCan
                     I={OrgPermissionActions.Create}
                     a={OrgPermissionSubjects.SecretScanning}
@@ -109,7 +109,7 @@ const SecretScanning = withPermission(
                         variant="solid"
                         colorSchema="primary"
                         onClick={generateNewIntegrationSession}
-                        className="py-2 h-min"
+                        className="h-min py-2"
                         isDisabled={!isAllowed}
                       >
                         Integrate with GitHub

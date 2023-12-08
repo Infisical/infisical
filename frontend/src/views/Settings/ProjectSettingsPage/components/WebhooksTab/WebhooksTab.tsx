@@ -36,7 +36,7 @@ export const WebhooksTab = withProjectPermission(
     const { t } = useTranslation();
     const { createNotification } = useNotificationContext();
     const { currentWorkspace } = useWorkspace();
-    const workspaceId = currentWorkspace?._id || "";
+    const workspaceId = currentWorkspace?.id || "";
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
       "addWebhook",
       "deleteWebhook"
@@ -182,7 +182,7 @@ export const WebhooksTab = withProjectPermission(
                 {!isWebhooksLoading &&
                   webhooks?.map(
                     ({
-                      _id: id,
+                      id,
                       url,
                       environment,
                       secretPath,
