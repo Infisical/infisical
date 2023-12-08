@@ -15,7 +15,7 @@
     "ajv": "^8.12.0",
     "argon2": "^0.30.3",
     "aws-sdk": "^2.1364.0",
-    "axios": "^1.3.5",
+    "axios": "^1.6.0",
     "axios-retry": "^3.4.0",
     "bcrypt": "^5.1.0",
     "bigint-conversion": "^2.4.0",
