@@ -130,23 +130,30 @@ func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context
 	plainProcessedSecrets := make(map[string][]byte)
 	secretType := infisicalSecret.Spec.ManagedSecretReference.SecretType
 
-	// Set the default secret type to "Opaque" if not provided
-	if secretType == "" {
-		secretType = "Opaque"
-	}
-
 	for _, secret := range secretsFromAPI {
 		plainProcessedSecrets[secret.Key] = []byte(secret.Value) // plain process
 	}
 
+	// copy labels and annotations from InfisicalSecret CRD
+	labels := map[string]string{}
+	for k, v := range infisicalSecret.Labels {
+		labels[k] = v
+	}
+
+	annotations := map[string]string{}
+	for k, v := range infisicalSecret.Annotations {
+		annotations[k] = v
+	}
+
+	annotations[SECRET_VERSION_ANNOTATION] = encryptedSecretsResponse.ETag
+
 	// create a new secret as specified by the managed secret spec of CRD
 	newKubeSecretInstance := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      infisicalSecret.Spec.ManagedSecretReference.SecretName,
-			Namespace: infisicalSecret.Spec.ManagedSecretReference.SecretNamespace,
-			Annotations: map[string]string{
-				SECRET_VERSION_ANNOTATION: encryptedSecretsResponse.ETag,
-			},
+			Name:        infisicalSecret.Spec.ManagedSecretReference.SecretName,
+			Namespace:   infisicalSecret.Spec.ManagedSecretReference.SecretNamespace,
+			Annotations: annotations,
+			Labels:      labels,
 		},
 		Type: corev1.SecretType(secretType),
 		Data: plainProcessedSecrets,
