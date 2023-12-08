@@ -7,6 +7,7 @@ import { CreateTagModal } from "@app/components/tags/CreateTagModal";
 import { DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 import { useCreateSecretV3, useDeleteSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
+import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { DecryptedSecret } from "@app/hooks/api/secrets/types";
 import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
@@ -262,6 +263,7 @@ export const SecretListView = ({
         queryClient.invalidateQueries(
           secretSnapshotKeys.count({ workspaceId, environment, directory: secretPath })
         );
+        queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
         handlePopUpClose("secretDetail");
         createNotification({
           type: "success",
@@ -284,6 +286,7 @@ export const SecretListView = ({
     const { key, _id: secretId } = popUp.deleteSecret?.data as DecryptedSecret;
     try {
       await handleSecretOperation("delete", "shared", key, { secretId });
+      // wrap this in another function and then reuse
       queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );
@@ -293,6 +296,7 @@ export const SecretListView = ({
       queryClient.invalidateQueries(
         secretSnapshotKeys.count({ workspaceId, environment, directory: secretPath })
       );
+      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
       handlePopUpClose("deleteSecret");
       handlePopUpClose("secretDetail");
       createNotification({

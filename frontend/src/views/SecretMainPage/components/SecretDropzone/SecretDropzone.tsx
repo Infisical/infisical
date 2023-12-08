@@ -14,6 +14,7 @@ import { Button, Modal, ModalContent } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useCreateSecretBatch, useUpdateSecretBatch } from "@app/hooks/api";
+import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { DecryptedSecret, UserWsKeyPair } from "@app/hooks/api/types";
 
@@ -194,6 +195,7 @@ export const SecretDropzone = ({
       queryClient.invalidateQueries(
         secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
       );
+      queryClient.invalidateQueries(secretApprovalRequestKeys.count({ workspaceId }));
       handlePopUpClose("overlapKeyWarning");
       createNotification({
         type: "success",
@@ -222,9 +224,9 @@ export const SecretDropzone = ({
         onDragOver={handleDrag}
         onDrop={handleDrop}
         className={twMerge(
-          "relative mx-0.5 mb-4 mt-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 py-4 text-sm px-2 text-mineshaft-200 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100",
+          "relative mx-0.5 mb-4 mt-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 py-4 px-2 text-sm text-mineshaft-200 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100",
           isDragActive && "opacity-100",
-          !isSmaller && "w-full max-w-3xl flex-col space-y-4 py-20 mx-auto",
+          !isSmaller && "mx-auto w-full max-w-3xl flex-col space-y-4 py-20",
           isLoading && "bg-bunker-800"
         )}
       >
@@ -238,7 +240,7 @@ export const SecretDropzone = ({
             />
           </div>
         ) : (
-          <div className="flex items-center justify-cente flex-col space-y-2">
+          <div className="justify-cente flex flex-col items-center space-y-2">
             <div>
               <FontAwesomeIcon icon={faUpload} size={isSmaller ? "2x" : "5x"} />
             </div>
