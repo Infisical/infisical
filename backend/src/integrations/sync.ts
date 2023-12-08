@@ -1374,6 +1374,11 @@ const syncSecretsGitHub = async ({
     key: string;
   }
 
+  interface GitHubEnvPublicKey{
+    key_id: string;
+    key: string;
+  }
+
   interface GitHubSecret {
     name: string;
     created_at: string;
@@ -1438,6 +1443,95 @@ const syncSecretsGitHub = async ({
     }
   });
 
+        try {
+              
+          await octokit.request('GET /repos/{owner}/{repo}/environments/{environment_name}', {
+            owner: integration.owner,
+            repo: integration.app,
+            environment_name: integration.environment,
+          })
+        
+      }catch(err) {
+                      //Create environment if does not exist
+                        await octokit.request('PUT /repos/{owner}/{repo}/environments/{environment_name}', {
+                          owner: integration.owner,
+                          repo: integration.app,
+                          environment_name: integration.environment,
+                          wait_timer: 30,
+                          prevent_self_review: false,
+                          reviewers: [
+                            {
+                              type: 'User',
+                              id: 1
+                            },
+                            {
+                              type: 'Team',
+                              id: 1
+                            }
+                          ],
+                          deployment_branch_policy: {
+                            protected_branches: false,
+                            custom_branch_policies: true
+                          },
+                        })
+                      }
+                        
+                    //  get repo id 
+                    let repo_id: number = (
+                      await octokit.request('GET /repos/{owner}/{repo}', {
+                        owner: integration.owner,
+                        repo: integration.app,
+                      })
+                    ).data.id
+                    // Get local copy of decrypted secrets. We cannot decrypt them as we dont have access to GH private key
+                    let encryptedEnvSecrets: GitHubSecretRes = (
+                      await octokit.request('GET /repositories/{repository_id}/environments/{environment_name}/secrets', {
+                        repository_id: repo_id,
+                        environment_name: integration.environment,
+                      })
+                    ).data.secrets.reduce(
+                      (obj: any, secret: any) => ({
+                        ...obj,
+                        [secret.name]: secret
+                      }),
+                      {}
+                    );
+                    encryptedEnvSecrets = Object.keys(encryptedEnvSecrets).reduce(
+                      (
+                        result: {
+                          [key: string]: GitHubSecret;
+                        },
+                        key
+                      ) => {
+                        if (
+                          (appendices?.prefix !== undefined ? key.startsWith(appendices?.prefix) : true) &&
+                          (appendices?.suffix !== undefined ? key.endsWith(appendices?.suffix) : true)
+                        ) {
+                          result[key] = encryptedEnvSecrets[key];
+                        }
+                        return result;
+                      },
+                      {}
+                    );
+                    // delete all encrypted env secrets
+                    Object.keys(encryptedEnvSecrets).map(async (key) => {
+                      if (!(key in secrets)) {
+                        await octokit.request('DELETE /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}', {
+                          repository_id: repo_id,
+                          environment_name: integration.environment,
+                          secret_name: key,
+                        });
+                      }
+                    });
+     
+      
+      //get Environemetns public key
+      let envPublicKey: GitHubEnvPublicKey = (
+        await octokit.request('GET /repositories/{repository_id}/environments/{environment_name}/secrets/public-key', {
+          repository_id: repo_id,
+          environment_name: integration.environment,
+        })
+      ).data
   Object.keys(secrets).map((key) => {
     // let encryptedSecret;
     sodium.ready.then(async () => {
@@ -1450,7 +1544,7 @@ const syncSecretsGitHub = async ({
 
       // convert encrypted Uint8Array to base64
       const encryptedSecret = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
-
+      
       await octokit.request("PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}", {
         owner: integration.owner,
         repo: integration.app,
@@ -1458,9 +1552,30 @@ const syncSecretsGitHub = async ({
         encrypted_value: encryptedSecret,
         key_id: repoPublicKey.key_id
       });
+     
+      // convert secret & base64 key to Uint8Array.
+      const binkeyEnv = sodium.from_base64(envPublicKey.key, sodium.base64_variants.ORIGINAL);
+      const binsecEnv = sodium.from_string(secrets[key].value);
+  
+      // encrypt secret using libsodium
+      const encBytesEnv = sodium.crypto_box_seal(binsecEnv, binkeyEnv);
+  
+      // convert encrypted Uint8Array to base64
+      const encryptedSecretEnv = sodium.to_base64(encBytesEnv, sodium.base64_variants.ORIGINAL);
+  
+      await octokit.request('PUT /repositories/{repository_id}/environments/{environment_name}/secrets/{secret_name}', {
+        repository_id: repo_id,
+        environment_name: integration.environment,
+        secret_name: key,
+        encrypted_value: encryptedSecretEnv,
+        key_id: envPublicKey.key_id,
+      })
+      
     });
   });
-};
+    
+}
+
 
 /**
  * Sync/push [secrets] to Render service with id [integration.appId]

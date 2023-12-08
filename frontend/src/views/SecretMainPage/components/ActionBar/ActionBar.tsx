@@ -363,7 +363,7 @@ export const ActionBar = ({
                       isFullWidth
                       isDisabled={!isAllowed}
                     >
-                      Add Import
+                      Add Imports
                     </Button>
                   )}
                 </ProjectPermissionCan>
