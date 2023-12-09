@@ -13,12 +13,13 @@ module.exports = {
     tsconfigRootDir: __dirname
   },
   rules: {
-    "import/prefer-default-export": "off",
-    "simple-import-sort/exports": "error",
+    "consistent-return": "off", // my style
+    'import/order': 'off', // for simple-import-order
+    "import/prefer-default-export": "off", // why
     "import/first": "error",
     "import/newline-after-import": "error",
     "import/no-duplicates": "error",
-    "consistent-return": "off",
+    "simple-import-sort/exports": "error",
     "simple-import-sort/imports": [
       "warn",
       {

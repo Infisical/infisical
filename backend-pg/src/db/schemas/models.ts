@@ -7,7 +7,12 @@ export enum TableName {
   AuthTokenSession = "auth_token_sessions",
   BackupPrivateKey = "backup_private_key",
   Organization = "organizations",
-  OrgMembership = "organization_memberships"
+  OrgMembership = "org_memberships",
+  OrgRoles = "org_roles",
+  IncidentContact = "incident_contacts",
+  UserAction = "user_actions",
+  ServerConfig = "server_config",
+  ApiKey = "api_keys"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";

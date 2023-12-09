@@ -100,4 +100,54 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       return { message: "Successfully set up account", user, token: accessToken };
     }
   });
+
+  server.route({
+    url: "/complete-account/invite",
+    method: "POST",
+    schema: {
+      body: z.object({
+        email: z.string().email().trim(),
+        firstName: z.string().trim(),
+        lastName: z.string().trim().optional(),
+        protectedKey: z.string().trim(),
+        protectedKeyIV: z.string().trim(),
+        protectedKeyTag: z.string().trim(),
+        publicKey: z.string().trim(),
+        encryptedPrivateKey: z.string().trim(),
+        encryptedPrivateKeyIV: z.string().trim(),
+        encryptedPrivateKeyTag: z.string().trim(),
+        salt: z.string().trim(),
+        verifier: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          user: UsersSchema,
+          token: z.string()
+        })
+      }
+    },
+    handler: async (req, res) => {
+      const userAgent = req.headers["user-agent"];
+      if (!userAgent) throw new Error("user agent header is required");
+      const appCfg = getConfig();
+
+      const { user, accessToken, refreshToken } =
+        await server.services.signup.completeAccountInvite({
+          ...req.body,
+          ip: req.realIp,
+          userAgent
+        });
+
+      res.setCookie("jid", refreshToken, {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: appCfg.HTTPS_ENABLED
+      });
+      // TODO(akhilmhdh-pg): add telemetry service
+
+      return { message: "Successfully set up account", user, token: accessToken };
+    }
+  });
 };

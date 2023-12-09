@@ -6,6 +6,7 @@ import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TAuthTokenServiceFactory } from "../token/token-service";
 import { TokenType } from "../token/token-types";
+import { TUserDalFactory } from "../user/user-dal";
 import { TAuthDalFactory } from "./auth-dal";
 import {
   TChangePasswordDTO,
@@ -16,6 +17,7 @@ import { AuthTokenType } from "./auth-type";
 
 type TAuthPasswordServiceFactoryDep = {
   authDal: TAuthDalFactory;
+  userDal: TUserDalFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
 };
@@ -23,6 +25,7 @@ type TAuthPasswordServiceFactoryDep = {
 export type TAuthPasswordFactory = ReturnType<typeof authPaswordServiceFactory>;
 export const authPaswordServiceFactory = ({
   authDal,
+  userDal,
   tokenService,
   smtpService
 }: TAuthPasswordServiceFactoryDep) => {
@@ -31,11 +34,11 @@ export const authPaswordServiceFactory = ({
    * Gets srp server user salt and server public key
    */
   const generateServerPubKey = async (userId: string, clientPublicKey: string) => {
-    const user = await authDal.getUserEncKeyByUserId(userId);
-    if (!user) throw new Error("Failed to find user");
+    const userEnc = await userDal.findUserEncKeyByUserId(userId);
+    if (!userEnc) throw new Error("Failed to find user");
 
-    const serverSrpKey = await generateSrpServerKey(user.salt, user.verifier);
-    const userEncKeys = await authDal.updateUserEncryptionByUserId(user.id, {
+    const serverSrpKey = await generateSrpServerKey(userEnc.salt, userEnc.verifier);
+    const userEncKeys = await userDal.updateUserEncryptionByUserId(userEnc.userId, {
       clientPublicKey,
       serverPrivateKey: serverSrpKey.privateKey
     });
@@ -59,10 +62,10 @@ export const authPaswordServiceFactory = ({
     verifier,
     tokenVersionId
   }: TChangePasswordDTO) => {
-    const userEnc = await authDal.getUserEncKeyByUserId(userId);
+    const userEnc = await userDal.findUserEncKeyByUserId(userId);
     if (!userEnc) throw new Error("Failed to find user");
 
-    await authDal.updateUserEncryptionByUserId(userEnc.userId, {
+    await userDal.updateUserEncryptionByUserId(userEnc.userId, {
       serverPrivateKey: null,
       clientPublicKey: null
     });
@@ -77,7 +80,7 @@ export const authPaswordServiceFactory = ({
     );
     if (!isValidClientProof) throw new Error("Failed to authenticate. Try again?");
 
-    await authDal.updateUserEncryptionByUserId(userId, {
+    await userDal.updateUserEncryptionByUserId(userId, {
       encryptionVersion: 2,
       protectedKey,
       protectedKeyIV,
@@ -100,7 +103,7 @@ export const authPaswordServiceFactory = ({
    * Email password reset flow via email. Step 1 send email
    */
   const sendPasswordResetEmail = async (email: string) => {
-    const user = await authDal.getUserByEmail(email);
+    const user = await userDal.findUserByEmail(email);
     // ignore as user is not found to avoid an outside entity to identify infisical registered accounts
     if (!user || (user && !user.isAccepted)) return;
 
@@ -127,7 +130,7 @@ export const authPaswordServiceFactory = ({
    * */
   const verifyPasswordResetEmail = async (email: string, code: string) => {
     const cfg = getConfig();
-    const user = await authDal.getUserByEmail(email);
+    const user = await userDal.findUserByEmail(email);
     // ignore as user is not found to avoid an outside entity to identify infisical registered accounts
     if (!user || (user && !user.isAccepted)) {
       throw new Error("Failed email verification for pass reset");
@@ -166,7 +169,7 @@ export const authPaswordServiceFactory = ({
       encryptedPrivateKeyTag
     }: TResetPasswordViaBackupKeyDTO
   ) => {
-    await authDal.updateUserEncryptionByUserId(userId, {
+    await userDal.updateUserEncryptionByUserId(userId, {
       encryptionVersion: 2,
       protectedKey,
       protectedKeyIV,
@@ -193,23 +196,23 @@ export const authPaswordServiceFactory = ({
     tag,
     userId
   }: TCreateBackupPrivateKeyDTO) => {
-    const user = await authDal.getUserEncKeyByUserId(userId);
-    if (!user || (user && !user.isAccepted)) {
+    const userEnc = await userDal.findUserEncKeyByUserId(userId);
+    if (!userEnc || (userEnc && !userEnc.isAccepted)) {
       throw new Error("Failed to find  user");
     }
 
-    if (!user.clientPublicKey || !user.serverPrivateKey)
+    if (!userEnc.clientPublicKey || !userEnc.serverPrivateKey)
       throw new Error("failed to create backup key");
     const isValidClientProff = await srpCheckClientProof(
-      user.salt,
-      user.verifier,
-      user.serverPrivateKey,
-      user.clientPublicKey,
+      userEnc.salt,
+      userEnc.verifier,
+      userEnc.serverPrivateKey,
+      userEnc.clientPublicKey,
       clientProof
     );
     if (!isValidClientProff) throw new Error("failed to create backup key");
     const backup = await authDal.transaction(async (tx) => {
-      const backupKey = await authDal.upsertBackupKey(user.id, {
+      const backupKey = await authDal.upsertBackupKey(userEnc.userId, {
         encryptedPrivateKey,
         iv,
         tag,
@@ -217,8 +220,8 @@ export const authPaswordServiceFactory = ({
         verifier
       });
 
-      await authDal.updateUserEncryptionByUserId(
-        user.id,
+      await userDal.updateUserEncryptionByUserId(
+        userEnc.userId,
         {
           serverPrivateKey: null,
           clientPublicKey: null
@@ -235,7 +238,7 @@ export const authPaswordServiceFactory = ({
    * Return user back up
    * */
   const getBackupPrivateKeyOfUser = async (userId: string) => {
-    const user = await authDal.getUserEncKeyByUserId(userId);
+    const user = await userDal.findUserEncKeyByUserId(userId);
     if (!user || (user && !user.isAccepted)) {
       throw new Error("Failed to find  user");
     }

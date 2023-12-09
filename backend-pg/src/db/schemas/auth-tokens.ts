@@ -13,10 +13,11 @@ export const AuthTokensSchema = z.object({
   phoneNumber: z.string().nullable().optional(),
   tokenHash: z.string(),
   triesLeft: z.number().nullable().optional(),
-  expiresAt: z.string().datetime(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  expiresAt: z.date(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
   userId: z.string().uuid().nullable().optional(),
+  orgId: z.string().uuid().nullable().optional(),
 });
 
 export type TAuthTokens = z.infer<typeof AuthTokensSchema>;

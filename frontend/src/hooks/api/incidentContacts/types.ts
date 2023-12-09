@@ -9,7 +9,7 @@ export type IncidentContact = {
 
 export type DeleteIncidentContactDTO = {
   orgId: string;
-  email: string;
+  incidentContactId: string;
 };
 
 export type AddIncidentContactDTO = {

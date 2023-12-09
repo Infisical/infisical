@@ -17,3 +17,20 @@ export type TCompleteAccountSignupDTO = {
   ip: string;
   userAgent: string;
 };
+
+export type TCompleteAccountInviteDTO = {
+  email: string;
+  firstName: string;
+  lastName?: string;
+  protectedKey: string;
+  protectedKeyIV: string;
+  protectedKeyTag: string;
+  publicKey: string;
+  encryptedPrivateKey: string;
+  encryptedPrivateKeyIV: string;
+  encryptedPrivateKeyTag: string;
+  salt: string;
+  verifier: string;
+  ip: string;
+  userAgent: string;
+};

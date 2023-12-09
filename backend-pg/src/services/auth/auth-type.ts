@@ -33,3 +33,10 @@ export type AuthModeJwtTokenPayload = {
   tokenVersionId: string;
   accessVersion: number;
 };
+
+export type AuthModeRefreshJwtTokenPayload = {
+  authTokenType: AuthTokenType.REFRESH_TOKEN;
+  userId: string;
+  tokenVersionId: string;
+  refreshVersion: number;
+};

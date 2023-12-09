@@ -42,10 +42,10 @@ export const useDeleteIncidentContact = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, DeleteIncidentContactDTO>({
-    mutationFn: async ({ orgId, email }) => {
-      const { data } = await apiRequest.delete(`/api/v1/organization/${orgId}/incidentContactOrg`, {
-        data: { email }
-      });
+    mutationFn: async ({ orgId, incidentContactId }) => {
+      const { data } = await apiRequest.delete(
+        `/api/v1/organization/${orgId}/incidentContactOrg/${incidentContactId}`
+      );
       return data;
     },
     onSuccess: (_, { orgId }) => {

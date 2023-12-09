@@ -8,12 +8,19 @@ export enum TokenType {
 export type TCreateTokenForUserDTO = {
   type: TokenType;
   userId: string;
+  orgId?: string;
+};
+
+export type TCreateOrgInviteTokenDTO = {
+  userId: string;
+  orgId: string;
 };
 
 export type TValidateTokenForUserDTO = {
   type: TokenType;
   code: string;
   userId: string;
+  orgId?: string;
 };
 
 export type TUpsertTokenForUserDalDTO = {
@@ -32,6 +39,7 @@ export type TGetTokenForUserDalDTO = {
 export type TDeleteTokenForUserDalDTO = {
   userId: string;
   type: TokenType;
+  orgId: string | null;
 };
 
 export type TIssueAuthTokenDTO = {

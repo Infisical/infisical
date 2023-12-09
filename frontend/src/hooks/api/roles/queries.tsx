@@ -67,13 +67,11 @@ const getUserOrgPermissions = async ({ orgId }: TGetUserOrgPermissionsDTO) => {
   if (orgId === "") return { permissions: [], membership: null };
 
   const { data } = await apiRequest.get<{
-    data: {
-      permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[];
-      membership: OrgUser;
-    };
-  }>(`/api/v1/roles/organization/${orgId}/permissions`);
+    permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[];
+    membership: OrgUser;
+  }>(`/api/ee/v1/organization/${orgId}/permissions`);
 
-  return data.data;
+  return data;
 };
 
 export const useGetUserOrgPermissions = ({ orgId }: TGetUserOrgPermissionsDTO) =>

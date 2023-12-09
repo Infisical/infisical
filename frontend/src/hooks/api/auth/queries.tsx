@@ -72,7 +72,7 @@ export const completeAccountSignup = async (details: CompleteAccountSignupDTO) =
 };
 
 export const completeAccountSignupInvite = async (details: CompleteAccountDTO) => {
-  const { data } = await apiRequest.post("/api/v2/signup/complete-account/invite", details);
+  const { data } = await apiRequest.post("/api/v3/signup/complete-account/invite", details);
   return data;
 };
 

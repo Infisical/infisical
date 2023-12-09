@@ -1,4 +1,5 @@
 import { FastifyRequest } from "fastify";
+import fp from "fastify-plugin";
 import jwt, { JwtPayload } from "jsonwebtoken";
 
 import { getConfig } from "@app/lib/config/env";
@@ -27,7 +28,7 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
     case AuthMode.SERVICE_ACCESS_TOKEN:
       return { authMode: AuthMode.SERVICE_ACCESS_TOKEN, token: decodedToken } as const;
     default:
-      throw new UnauthorizedError({ name: "Invalid token type" });
+      return { authMode: null, token: null } as const;
   }
 };
 
@@ -41,13 +42,13 @@ const getJwtIdentity = async (server: FastifyZodProvider, token: AuthModeJwtToke
   if (token.accessVersion !== session.accessVersion)
     throw new UnauthorizedError({ name: "Stale session" });
 
-  const user = await server.store.user.getUserById(session.userId);
+  const user = await server.store.user.findById(session.userId);
   if (!user || !user.isAccepted) throw new UnauthorizedError({ name: "Token user not found" });
 
-  return user;
+  return { user, tokenVersionId: token.tokenVersionId };
 };
 
-export const injectIdentity = (server: FastifyZodProvider) => {
+export const injectIdentity = fp(async (server: FastifyZodProvider) => {
   server.decorateRequest("auth", null);
   server.addHook("onRequest", async (req) => {
     const appCfg = getConfig();
@@ -56,8 +57,11 @@ export const injectIdentity = (server: FastifyZodProvider) => {
     // TODO(akhilmhdh-pg): fill in rest of auth mode logic
     switch (authMode) {
       case AuthMode.JWT: {
-        const user = await getJwtIdentity(server, token as AuthModeJwtTokenPayload);
-        req.auth = { authMode: AuthMode.JWT, user, userId: user.id };
+        const { user, tokenVersionId } = await getJwtIdentity(
+          server,
+          token as AuthModeJwtTokenPayload
+        );
+        req.auth = { authMode: AuthMode.JWT, user, userId: user.id, tokenVersionId };
         break;
       }
       case AuthMode.SERVICE_TOKEN:
@@ -72,4 +76,4 @@ export const injectIdentity = (server: FastifyZodProvider) => {
         throw new UnauthorizedError({ name: "Unknown token strategy" });
     }
   });
-};
+});

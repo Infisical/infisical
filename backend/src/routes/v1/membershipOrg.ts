@@ -5,6 +5,8 @@ import { requireAuth, validateRequest } from "../../middleware";
 import { membershipOrgController } from "../../controllers/v1";
 import { AuthMode } from "../../variables";
 
+// depreciated  completely
+// ignored for new codebase
 router.post(
   // TODO endpoint: check dashboard
   "/membershipOrg/:membershipOrgId/change-role",

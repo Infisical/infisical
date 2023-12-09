@@ -35,12 +35,12 @@ export const OrgIncidentContactsTable = () => {
 
   const onRemoveIncidentContact = async () => {
     try {
-      const incidentContactEmail = (popUp?.removeContact?.data as { email: string })?.email;
+      const incidentContactId = (popUp?.removeContact?.data as { id: string })?.id;
 
       if (!currentOrg?.id) return;
       await mutateAsync({
         orgId: currentOrg.id,
-        email: incidentContactEmail
+        incidentContactId
       });
 
       createNotification({
@@ -80,7 +80,7 @@ export const OrgIncidentContactsTable = () => {
           </THead>
           <TBody>
             {isLoading && <TableSkeleton columns={2} innerKey="incident-contact" />}
-            {filteredContacts?.map(({ email }) => (
+            {filteredContacts?.map(({ email, id }) => (
               <Tr key={email}>
                 <Td className="w-full">{email}</Td>
                 <Td className="mr-4">
@@ -92,7 +92,7 @@ export const OrgIncidentContactsTable = () => {
                       <IconButton
                         ariaLabel="delete"
                         colorSchema="danger"
-                        onClick={() => handlePopUpOpen("removeContact", { email })}
+                        onClick={() => handlePopUpOpen("removeContact", { email, id })}
                         isDisabled={!isAllowed}
                       >
                         <FontAwesomeIcon icon={faTrash} />

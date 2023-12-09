@@ -1,61 +1,46 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
+import { DatabaseError } from "@app/lib/errors";
+import { ormify } from "@app/lib/knex";
 
-import {
-  TDeleteTokenForUserDalDTO,
-  TGetTokenForUserDalDTO,
-  TUpsertTokenForUserDalDTO
-} from "./token-types";
+import { TDeleteTokenForUserDalDTO } from "./token-types";
 
 export type TTokenDalConfig = {};
 
 export type TTokenDalFactory = ReturnType<typeof tokenDalFactory>;
 
+// TODO(akhilmhdh-pg): wrap all with database error
 export const tokenDalFactory = (db: TDbClient) => {
-  const upsertTokenForUser = async ({
-    tokenHash,
-    expiresAt,
-    userId,
-    type,
-    triesLeft
-  }: TUpsertTokenForUserDalDTO): Promise<TAuthTokens | undefined> => {
-    const token = await db.transaction(async (tx) => {
-      await tx(TableName.AuthTokens).where({ userId, type }).delete().returning("*");
-      const [newToken] = await tx(TableName.AuthTokens)
-        .insert({ tokenHash, expiresAt: expiresAt.toUTCString(), type, userId, triesLeft })
-        .returning("*");
-      return newToken;
-    });
-    return token;
-  };
+  const authOrm = ormify(db, TableName.AuthTokens);
 
-  const getTokenForUser = async ({
-    userId,
-    type
-  }: TGetTokenForUserDalDTO): Promise<TAuthTokens | undefined> =>
-    db(TableName.AuthTokens).where({ userId, type }).first();
-
-  const getTokenSession = async (
-    userId: string,
-    ip: string,
-    userAgent: string
+  const findOneTokenSession = async (
+    filter: Partial<TAuthTokenSessions>
   ): Promise<TAuthTokenSessions | undefined> =>
-    db(TableName.AuthTokenSession).where({ userId, ip, userAgent }).first();
-
-  const getTokenSessionById = async (id: string, userId: string) =>
-    db(TableName.AuthTokenSession).where({ id, userId }).first();
+    db(TableName.AuthTokenSession).where(filter).first();
 
   const deleteTokenForUser = async ({
     userId,
-    type
+    type,
+    orgId
   }: TDeleteTokenForUserDalDTO): Promise<TAuthTokens[] | undefined> =>
-    db(TableName.AuthTokens).where({ userId, type }).delete().returning("*");
+    db(TableName.AuthTokens).where({ userId, type, orgId }).delete().returning("*");
 
   const decrementTriesField = async ({
     userId,
     type
   }: TDeleteTokenForUserDalDTO): Promise<void> => {
     await db(TableName.AuthTokens).where({ userId, type }).decrement("triesLeft", 1);
+  };
+
+  const findTokenSessions = async (filter: Partial<TAuthTokenSessions>, tx?: Knex) => {
+    try {
+      const sessions = await (tx || db)(TableName.AuthTokenSession).where(filter);
+      return sessions;
+    } catch (error) {
+      throw new DatabaseError({ name: "Find all token session", error });
+    }
   };
 
   const insertTokenSession = async (
@@ -70,13 +55,13 @@ export const tokenDalFactory = (db: TDbClient) => {
         userAgent,
         accessVersion: 1,
         refreshVersion: 1,
-        lastUsed: new Date().toUTCString()
+        lastUsed: new Date()
       })
       .returning("*");
     return session;
   };
 
-  const incrementVersion = async (
+  const incrementTokenSessionVersion = async (
     userId: string,
     sessionId: string
   ): Promise<TAuthTokenSessions | undefined> => {
@@ -88,14 +73,26 @@ export const tokenDalFactory = (db: TDbClient) => {
     return session;
   };
 
+  const deleteTokenSession = async (filter: Partial<TAuthTokenSessions>, tx?: Knex) => {
+    try {
+      const sessions = await (tx || db)(TableName.AuthTokenSession)
+        .where(filter)
+        .del()
+        .returning("*");
+      return sessions;
+    } catch (error) {
+      throw new DatabaseError({ name: "Delete token session", error });
+    }
+  };
+
   return {
-    getTokenForUser,
-    getTokenSessionById,
-    upsertTokenForUser,
+    ...authOrm,
+    findTokenSessions,
     deleteTokenForUser,
     decrementTriesField,
-    getTokenSession,
+    findOneTokenSession,
     insertTokenSession,
-    incrementVersion
+    incrementTokenSessionVersion,
+    deleteTokenSession
   };
 };

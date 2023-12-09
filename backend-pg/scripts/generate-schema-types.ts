@@ -3,6 +3,7 @@ import path from "path";
 import knex from "knex";
 import { appendFileSync, readFileSync, writeFileSync } from "fs";
 import promptSync from "prompt-sync";
+import { TableName } from "@app/db/schemas";
 
 const prompt = promptSync();
 
@@ -27,11 +28,11 @@ const getZodPrimitiveType = (type: string) => {
     case "boolean":
       return "z.boolean()";
     case "jsonb":
-      return "z.string()";
+      return "z.unknown()";
     case "json":
-      return "z.string()";
+      return "z.unknown()";
     case "timestamp with time zone":
-      return "z.string().datetime()";
+      return "z.date()";
     case "integer":
       return "z.number()";
     case "text":

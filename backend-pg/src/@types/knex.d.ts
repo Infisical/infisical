@@ -10,10 +10,24 @@ import {
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
   TBackupPrivateKeyUpdate,
-  TOrganizationMemberships,
+  TIncidentContacts,
+  TIncidentContactsInsert,
+  TIncidentContactsUpdate,
   TOrganizations,
   TOrganizationsInsert,
   TOrganizationsUpdate,
+  TOrgMemberships,
+  TOrgMembershipsInsert,
+  TOrgMembershipsUpdate,
+  TOrgRoles,
+  TOrgRolesInsert,
+  TOrgRolesUpdate,
+  TServerConfig,
+  TServerConfigInsert,
+  TServerConfigUpdate,
+  TUserActions,
+  TUserActionsInsert,
+  TUserActionsUpdate,
   TUserEncryptionKeys,
   TUserEncryptionKeysInsert,
   TUserEncryptionKeysUpdate,
@@ -21,6 +35,7 @@ import {
   TUsersInsert,
   TUsersUpdate
 } from "@app/db/schemas";
+import { TApiKeys, TApiKeysInsert, TApiKeysUpdate } from "@app/db/schemas/api-keys";
 
 declare module "knex/types/tables" {
   interface Tables extends { [key in TableName]: Knex.CompositeTableType<any> } {
@@ -51,9 +66,26 @@ declare module "knex/types/tables" {
       TOrganizationsUpdate
     >;
     [TableName.OrgMembership]: Knex.CompositeTableType<
-      TOrganizationMemberships,
-      TOrganizationsInsert,
-      TOrganizationsUpdate
+      TOrgMemberships,
+      TOrgMembershipsInsert,
+      TOrgMembershipsUpdate
     >;
+    [TableName.OrgRoles]: Knex.CompositeTableType<TOrgRoles, TOrgRolesInsert, TOrgRolesUpdate>;
+    [TableName.IncidentContact]: Knex.CompositeTableType<
+      TIncidentContacts,
+      TIncidentContactsInsert,
+      TIncidentContactsUpdate
+    >;
+    [TableName.UserAction]: Knex.CompositeTableType<
+      TUserActions,
+      TUserActionsInsert,
+      TUserActionsUpdate
+    >;
+    [TableName.ServerConfig]: Knex.CompositeTableType<
+      TServerConfig,
+      TServerConfigInsert,
+      TServerConfigUpdate
+    >;
+    [TableName.ApiKey]: Knex.CompositeTableType<TApiKeys, TApiKeysInsert, TApiKeysUpdate>;
   }
 }

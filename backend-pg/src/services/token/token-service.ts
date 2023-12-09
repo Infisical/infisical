@@ -56,30 +56,37 @@ export const getTokenConfig = (tokenType: TokenType) => {
 };
 
 export const tokenServiceFactory = ({ tokenDal }: TAuthTokenServiceFactoryDep) => {
-  const createTokenForUser = async ({ type, userId }: TCreateTokenForUserDTO) => {
+  const createTokenForUser = async ({ type, userId, orgId }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
     const tokenHash = await bcrypt.hash(token, appCfg.SALT_ROUNDS);
-    await tokenDal.upsertTokenForUser({
-      userId,
-      type,
-      expiresAt: tkCfg.expiresAt,
-      tokenHash,
-      triesLeft: tkCfg?.triesLeft
+    await tokenDal.transaction(async (tx) => {
+      await tokenDal.delete({ userId, type, orgId: orgId || null }, tx);
+      const newToken = await tokenDal.create({
+        tokenHash,
+        expiresAt: tkCfg.expiresAt.toUTCString(),
+        type,
+        userId,
+        orgId,
+        triesLeft: tkCfg?.triesLeft
+      });
+      return newToken;
     });
+
     return token;
   };
 
   const validateTokenForUser = async ({
     type,
     userId,
-    code
+    code,
+    orgId
   }: TValidateTokenForUserDTO): Promise<TAuthTokens | undefined> => {
-    const token = await tokenDal.getTokenForUser({ type, userId });
+    const token = await tokenDal.findOne({ type, userId, orgId: orgId || null });
     // validate token
     if (!token) throw new Error("Failed to find token");
     if (token?.expiresAt && new Date(token.expiresAt) < new Date()) {
-      await tokenDal.deleteTokenForUser({ type, userId });
+      await tokenDal.delete({ type, userId, orgId });
       throw new Error("Token expired. Please try again");
     }
 
@@ -87,15 +94,15 @@ export const tokenServiceFactory = ({ tokenDal }: TAuthTokenServiceFactoryDep) =
     if (!isValidToken) {
       if (token?.triesLeft) {
         if (token.triesLeft === 1) {
-          await tokenDal.deleteTokenForUser({ type, userId });
+          await tokenDal.deleteTokenForUser({ type, userId, orgId: orgId || null });
         } else {
-          await tokenDal.decrementTriesField({ type, userId });
+          await tokenDal.decrementTriesField({ type, userId, orgId: orgId || null });
         }
       }
       throw new Error("Invalid token");
     }
 
-    const deletedToken = await tokenDal.deleteTokenForUser({ type, userId });
+    const deletedToken = await tokenDal.delete({ type, userId, orgId: orgId || null });
     return deletedToken?.[0];
   };
 
@@ -104,7 +111,7 @@ export const tokenServiceFactory = ({ tokenDal }: TAuthTokenServiceFactoryDep) =
     ip,
     userAgent
   }: TIssueAuthTokenDTO): Promise<TAuthTokenSessions | undefined> => {
-    let session = await tokenDal.getTokenSession(userId, ip, userAgent);
+    let session = await tokenDal.findOneTokenSession({ userId, ip, userAgent });
     if (!session) {
       session = await tokenDal.insertTokenSession(userId, ip, userAgent);
     }
@@ -112,18 +119,25 @@ export const tokenServiceFactory = ({ tokenDal }: TAuthTokenServiceFactoryDep) =
   };
 
   const getUserTokenSessionById = async (id: string, userId: string) =>
-    tokenDal.getTokenSessionById(id, userId);
+    tokenDal.findOneTokenSession({ id, userId });
 
   const clearTokenSessionById = async (
     userId: string,
     sessionId: string
-  ): Promise<TAuthTokenSessions | undefined> => tokenDal.incrementVersion(userId, sessionId);
+  ): Promise<TAuthTokenSessions | undefined> =>
+    tokenDal.incrementTokenSessionVersion(userId, sessionId);
+
+  const getTokenSessionByUser = async (userId: string) => tokenDal.findTokenSessions({ userId });
+
+  const revokeAllMySessions = async (userId: string) => tokenDal.deleteTokenSession({ userId });
 
   return {
     createTokenForUser,
     validateTokenForUser,
     getUserTokenSession,
     clearTokenSessionById,
-    getUserTokenSessionById
+    getUserTokenSessionById,
+    getTokenSessionByUser,
+    revokeAllMySessions
   };
 };

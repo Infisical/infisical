@@ -13,12 +13,21 @@ export async function up(knex: Knex): Promise<void> {
       // does not need update trigger we will do it manually
       t.timestamps(true, true, true);
     });
+    await knex.schema.alterTable(TableName.AuthTokens, (t) => {
+      t.uuid("orgId");
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+    });
   }
   // this is a one time function
   await createOnUpdateTrigger(knex, TableName.Organization);
 }
 
 export async function down(knex: Knex): Promise<void> {
+  if (await knex.schema.hasColumn(TableName.AuthTokens, "orgId")) {
+    await knex.schema.alterTable(TableName.AuthTokens, (t) => {
+      t.dropColumn("orgId");
+    });
+  }
   await knex.schema.dropTableIfExists(TableName.Organization);
   await dropOnUpdateTrigger(knex, TableName.Organization);
 }

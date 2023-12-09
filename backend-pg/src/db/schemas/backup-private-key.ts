@@ -16,8 +16,8 @@ export const BackupPrivateKeySchema = z.object({
   keyEncoding: z.string(),
   salt: z.string(),
   verifier: z.string(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
   userId: z.string().uuid(),
 });
 

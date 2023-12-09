@@ -25,7 +25,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
     if (decodedToken.authTokenType !== AuthTokenType.MFA_TOKEN)
       throw new Error("Unauthorized access");
 
-    const user = await server.store.user.getUserById(decodedToken.userId);
+    const user = await server.store.user.findById(decodedToken.userId);
     if (!user) throw new Error("User not found");
     req.mfa = { userId: user.id, user };
   });

@@ -17,9 +17,9 @@ export const UsersSchema = z.object({
   isAccepted: z.boolean().default(false).nullable().optional(),
   isMfaEnabled: z.boolean().default(false).nullable().optional(),
   mfaMethods: z.string().array().nullable().optional(),
-  devices: z.string().nullable().optional(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  devices: z.unknown().nullable().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 });
 
 export type TUsers = z.infer<typeof UsersSchema>;

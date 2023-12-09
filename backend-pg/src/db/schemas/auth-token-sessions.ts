@@ -13,9 +13,9 @@ export const AuthTokenSessionsSchema = z.object({
   userAgent: z.string().nullable().optional(),
   refreshVersion: z.number().default(1),
   accessVersion: z.number().default(1),
-  lastUsed: z.string().datetime(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  lastUsed: z.date(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
   userId: z.string().uuid(),
 });
 

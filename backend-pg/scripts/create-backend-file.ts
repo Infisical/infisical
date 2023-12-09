@@ -16,11 +16,18 @@ const componentType = parseInt(prompt("Select a component: "), 10);
 if (componentType === 1) {
   const componentName = prompt("Enter service name: ");
   const dir = path.join(__dirname, `../src/services/${componentName}`);
-  const capitalizedComponentName = componentName.at(0)?.toUpperCase() + componentName.slice(1);
-  const dalTypeName = `T${capitalizedComponentName}DalFactory`;
-  const dalName = `${componentName}DalFactory`;
-  const serviceTypeName = `T${capitalizedComponentName}ServiceFactory`;
-  const serviceName = `${componentName}ServiceFactory`;
+  const pascalCase = componentName
+    .split("-")
+    .map((el) => `${el[0].toUpperCase()}${el.slice(1)}`)
+    .join("");
+  const camelCase = componentName
+    .split("-")
+    .map((el, index) => (index === 0 ? el : `${el[0].toUpperCase()}${el.slice(1)}`))
+    .join("");
+  const dalTypeName = `T${pascalCase}DalFactory`;
+  const dalName = `${camelCase}DalFactory`;
+  const serviceTypeName = `T${pascalCase}ServiceFactory`;
+  const serviceName = `${camelCase}ServiceFactory`;
 
   mkdirSync(dir);
 
@@ -29,9 +36,9 @@ if (componentType === 1) {
     `import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 
-export type ${dalTypeName} = {};
+export type ${dalTypeName} = ReturnType<typeof ${dalName}>;
 
-export const ${dalName} = (db: TDbClient): ${dalTypeName} => {
+export const ${dalName} = (db: TDbClient) => {
 
   return {  };
 };
@@ -43,12 +50,12 @@ export const ${dalName} = (db: TDbClient): ${dalTypeName} => {
     `import { ${dalTypeName} } from "./${componentName}-dal";
 
 type ${serviceTypeName}Dep = {
-  ${componentName}Dal: ${dalTypeName};
+  ${camelCase}Dal: ${dalTypeName};
 };
 
 export type ${serviceTypeName} = ReturnType<typeof ${serviceName}>;
 
-export const ${serviceName} = ({ ${componentName}Dal }: ${serviceTypeName}Dep) => {
+export const ${serviceName} = ({ ${camelCase}Dal }: ${serviceTypeName}Dep) => {
   return {};
 };
 `
