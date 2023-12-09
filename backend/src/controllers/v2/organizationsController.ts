@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { 
-  MachineMembershipOrg, 
+  IdentityMembershipOrg,
   Membership, 
   MembershipOrg,
   Workspace
@@ -419,15 +419,15 @@ export const deleteOrganizationById = async (req: Request, res: Response) => {
 };
 
 /**
- * Return list of service memberships for organization with id [organizationId]
+ * Return list of identity memberships for organization with id [organizationId]
  * @param req
  * @param res 
  * @returns 
  */
-export const getOrganizationMachineMemberships = async (req: Request, res: Response) => {
+ export const getOrganizationIdentityMemberships = async (req: Request, res: Response) => {
   const {
     params: { organizationId }
-  } = await validateRequest(reqValidator.GetOrgServiceMembersV2, req);
+  } = await validateRequest(reqValidator.GetOrgIdentityMembershipsV2, req);
 
   const { permission } = await getAuthDataOrgPermissions({
     authData: req.authData,
@@ -435,14 +435,14 @@ export const getOrganizationMachineMemberships = async (req: Request, res: Respo
   });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
-    OrgPermissionSubjects.MachineIdentity
+    OrgPermissionSubjects.Identity
   );
-  
-  const machineMemberships = await MachineMembershipOrg.find({
+ 
+  const identityMemberships = await IdentityMembershipOrg.find({
     organization: new Types.ObjectId(organizationId)
-  }).populate("machineIdentity customRole");
+  }).populate("identity customRole");
   
   return res.status(200).send({
-    machineMemberships
+    identityMemberships
   });
 }

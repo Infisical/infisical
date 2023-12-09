@@ -60,9 +60,9 @@ export const validateClientForWorkspace = async ({
         requiredPermissions
       });
       return { membership, workspace };
-    case ActorType.MACHINE:
+    case ActorType.IDENTITY:
       throw UnauthorizedRequestError({
-        message: "Failed machine authorization for organization"
+        message: "Failed identity authorization for organization"
       });
   }
 };
@@ -280,34 +280,34 @@ export const ToggleAutoCapitalizationV2 = z.object({
   })
 });
 
-export const AddMachineToWorkspaceV2 = z.object({
+export const AddIdentityToWorkspaceV2 = z.object({
   params: z.object({
     workspaceId: z.string().trim(),
-    machineId: z.string().trim()
+    identityId: z.string().trim()
   }),
   body: z.object({
     role: z.string().trim().min(1).default(NO_ACCESS),
   })
 });
 
-export const UpdateMachineWorkspaceRoleV2 = z.object({
+export const UpdateIdentityWorkspaceRoleV2 = z.object({
   params: z.object({
     workspaceId: z.string().trim(),
-    machineId: z.string().trim()
+    identityId: z.string().trim()
   }),
   body: z.object({
     role: z.string().trim().min(1).default(NO_ACCESS),
   })
 });
 
-export const DeleteMachineFromWorkspaceV2 = z.object({
+export const DeleteIdentityFromWorkspaceV2 = z.object({
   params: z.object({
     workspaceId: z.string().trim(),
-    machineId: z.string().trim()
+    identityId: z.string().trim()
   })
 });
 
-export const GetWorkspaceMachineMembersV2 = z.object({
+export const GetWorkspaceIdentityMembersV2 = z.object({
   params: z.object({
     workspaceId: z.string().trim()
   }),

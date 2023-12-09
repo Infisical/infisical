@@ -1,4 +1,4 @@
-import machineIdentities from "./machineIdentities";
+import identities from "./identities";
 import secret from "./secret";
 import secretSnapshot from "./secretSnapshot";
 import organizations from "./organizations";
@@ -14,7 +14,7 @@ import secretRotationProvider from "./secretRotationProvider";
 import secretRotation from "./secretRotation";
 
 export {
-  machineIdentities,
+  identities,
   secret,
   secretSnapshot,
   organizations,

@@ -2,8 +2,8 @@ import { Request, Response } from "express";
 import { PipelineStage, Types } from "mongoose";
 import {
   Folder,
-  MachineIdentity,
-  MachineMembership,
+  Identity,
+  IdentityMembership,
   Membership,
   Secret,
   ServiceTokenData,
@@ -18,7 +18,7 @@ import {
   FolderVersion,
   IPType,
   ISecretVersion,
-  MachineActor,
+  IdentityActor,
   SecretSnapshot,
   SecretVersion,
   ServiceActor,
@@ -679,8 +679,8 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
       case ActorType.SERVICE:
         actorMetadataQuery = "actor.metadata.serviceId";
         break;
-      case ActorType.MACHINE:
-        actorMetadataQuery = "actor.metadata.machineId";
+      case ActorType.IDENTITY:
+        actorMetadataQuery = "actor.metadata.identityId";
         break;
     }
   }
@@ -772,25 +772,25 @@ export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Res
     }
   }));
 
-  const machineIds = await MachineMembership.distinct("machineIdentity", {
+  const identityIds = await IdentityMembership.distinct("identity", {
     workspace: new Types.ObjectId(workspaceId)
   });
   
-  const machineActors: MachineActor[] = (
-    await MachineIdentity.find({
+  const identityActors: IdentityActor[] = (
+    await Identity.find({
       _id: {
-        $in: machineIds
+        $in: identityIds
       }
     })
-  ).map((machineIdentity) => ({
-    type: ActorType.MACHINE,
+  ).map((identity) => ({
+    type: ActorType.IDENTITY,
     metadata: {
-      machineId: machineIdentity._id.toString(),
-      name: machineIdentity.name
+      identityId: identity._id.toString(),
+      name: identity.name
     }
   }));
 
-  const actors = [...userActors, ...serviceActors, ...machineActors];
+  const actors = [...userActors, ...serviceActors, ...identityActors];
 
   return res.status(200).send({
     actors

@@ -33,7 +33,7 @@ export const formSchema = z.object({
     .object({
       secrets: z.record(multiEnvPermissionSchema).optional(),
       member: generalPermissionSchema,
-      "machine-identity": generalPermissionSchema,
+      "identity": generalPermissionSchema,
       role: generalPermissionSchema,
       integrations: generalPermissionSchema,
       webhooks: generalPermissionSchema,

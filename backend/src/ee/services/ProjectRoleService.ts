@@ -13,13 +13,12 @@ import picomatch from "picomatch";
 import { AuthData } from "../../interfaces/middleware";
 import { ActorType, IRole, Role } from "../models";
 import { 
-  IMachineIdentity,
-  MachineMembership, 
+  IIdentity,
+  IdentityMembership,
   Membership,
   ServiceTokenData
 } from "../../models";
 import { ADMIN, CUSTOM, MEMBER, NO_ACCESS, VIEWER } from "../../variables";
-import { checkIPAgainstBlocklist } from "../../utils/ip";
 import { BadRequestError } from "../../utils/errors";
 
 const $glob: FieldInstruction<string> = {
@@ -62,7 +61,7 @@ export enum ProjectPermissionSub {
   SecretRollback = "secret-rollback",
   SecretApproval = "secret-approval",
   SecretRotation = "secret-rotation",
-  MachineIdentity = "machine-identity"
+  Identity = "identity"
 }
 
 type SubjectFields = {
@@ -87,7 +86,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.ServiceTokens]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretApproval]
   | [ProjectPermissionActions, ProjectPermissionSub.SecretRotation]
-  | [ProjectPermissionActions, ProjectPermissionSub.MachineIdentity]
+  | [ProjectPermissionActions, ProjectPermissionSub.Identity]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Edit, ProjectPermissionSub.Workspace]
   | [ProjectPermissionActions.Read, ProjectPermissionSub.SecretRollback]
@@ -134,10 +133,10 @@ const buildAdminPermission = () => {
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.MachineIdentity);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.MachineIdentity);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.MachineIdentity);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.MachineIdentity);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Identity);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Identity);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
@@ -204,10 +203,10 @@ const buildMemberPermission = () => {
   can(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
   can(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
 
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.MachineIdentity);
-  can(ProjectPermissionActions.Create, ProjectPermissionSub.MachineIdentity);
-  can(ProjectPermissionActions.Edit, ProjectPermissionSub.MachineIdentity);
-  can(ProjectPermissionActions.Delete, ProjectPermissionSub.MachineIdentity);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
+  can(ProjectPermissionActions.Create, ProjectPermissionSub.Identity);
+  can(ProjectPermissionActions.Edit, ProjectPermissionSub.Identity);
+  can(ProjectPermissionActions.Delete, ProjectPermissionSub.Identity);
 
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
   can(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
@@ -249,7 +248,7 @@ const buildViewerPermission = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.MachineIdentity);
+  can(ProjectPermissionActions.Read, ProjectPermissionSub.Identity);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
@@ -310,28 +309,23 @@ export const getAuthDataProjectPermissions = async ({
       role = "viewer";
       break;
     }
-    case ActorType.MACHINE: {
-      const machineMembership = await MachineMembership.findOne({
-        machineIdentity: authData.authPayload._id,
+    case ActorType.IDENTITY: {
+      const identityMembership = await IdentityMembership.findOne({
+        identity: authData.authPayload._id,
         workspace: workspaceId
       })
       .populate<{
         customRole: IRole & { permissions: RawRuleOf<MongoAbility<ProjectPermissionSet>>[] };
-        machineIdentity: IMachineIdentity
-      }>("customRole machineIdentity")
+        identity: IIdentity
+      }>("customRole identity")
       .exec();
       
-      if (!machineMembership || (machineMembership.role === "custom" && !machineMembership.customRole)) {
+      if (!identityMembership || (identityMembership.role === "custom" && !identityMembership.customRole)) {
         throw UnauthorizedRequestError();
       }
-
-      checkIPAgainstBlocklist({
-        ipAddress: authData.ipAddress,
-        trustedIps: machineMembership.machineIdentity.accessTokenTrustedIps
-      });
     
-      role = machineMembership.role;
-      customRole = machineMembership.customRole;
+      role = identityMembership.role;
+      customRole = identityMembership.customRole;
 
       break;
     }

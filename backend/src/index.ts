@@ -25,7 +25,7 @@ import {
   secretSnapshot as eeSecretSnapshotRouter,
   users as eeUsersRouter,
   workspace as eeWorkspaceRouter,
-  machineIdentities as v1MachineIdentitiesRouter,
+  identities as v1IdentitiesRouter,
   roles as v1RoleRouter,
   secretApprovalPolicy as v1SecretApprovalPolicyRouter,
   secretApprovalRequest as v1SecretApprovalRequestRouter,
@@ -198,7 +198,7 @@ const main = async () => {
   }
 
   // (EE) routes
-  app.use("/api/v1/machine-identities", v1MachineIdentitiesRouter);
+  app.use("/api/v1/identities", v1IdentitiesRouter);
   app.use("/api/v1/secret", eeSecretRouter);
   app.use("/api/v1/secret-snapshot", eeSecretSnapshotRouter);
   app.use("/api/v1/users", eeUsersRouter);
@@ -212,7 +212,7 @@ const main = async () => {
 
   // v1 routes
   app.use("/api/v1/signup", v1SignupRouter);
-  app.use("/api/v1/auth", v1AuthRouter);
+  app.use("/api/v1/auth", v1AuthRouter); // note: updated for identities
   app.use("/api/v1/admin", v1AdminRouter);
   app.use("/api/v1/bot", v1BotRouter);
   app.use("/api/v1/user", v1UserRouter);

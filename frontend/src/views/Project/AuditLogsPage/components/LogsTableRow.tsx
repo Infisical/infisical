@@ -29,11 +29,11 @@ export const LogsTableRow = ({
                         <p>Service token</p>
                     </Td>
                 ); 
-            case ActorType.MACHINE:
+            case ActorType.IDENTITY:
                     return (
                         <Td>
                             <p>{`${actor.metadata.name}`}</p>
-                            <p>Machine identity</p>
+                            <p>Machine Identity</p>
                         </Td>
                     );
             default:
@@ -167,22 +167,24 @@ export const LogsTableRow = ({
                         <p>{`Name: ${event.metadata.name}`}</p>
                     </Td>
                 );
-                case EventType.CREATE_MACHINE_IDENTITY:
+                case EventType.CREATE_IDENTITY:
                     return (
                         <Td>
+                            <p>{`ID: ${event.metadata.identityId}`}</p>
                             <p>{`Name: ${event.metadata.name}`}</p>
                         </Td>
                     );
-                case EventType.UPDATE_MACHINE_IDENTITY:
+                case EventType.UPDATE_IDENTITY:
                     return (
                         <Td>
+                            <p>{`ID: ${event.metadata.identityId}`}</p>
                             <p>{`Name: ${event.metadata.name}`}</p>
                         </Td>
                     );
-                case EventType.DELETE_MACHINE_IDENTITY:
+                case EventType.DELETE_IDENTITY:
                     return (
                         <Td>
-                            <p>{`Name: ${event.metadata.name}`}</p>
+                            <p>{`ID: ${event.metadata.identityId}`}</p>
                         </Td>
                     );
             case EventType.CREATE_ENVIRONMENT:

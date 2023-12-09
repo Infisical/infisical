@@ -41,9 +41,9 @@ const SIMPLE_PERMISSION_OPTIONS = [
   },
   {
     title: "Machine identity management",
-    subtitle: "Create, view, update and remove machine identities from the organization",
+    subtitle: "Create, view, update and remove (machine) identities from the organization",
     icon: faServer,
-    formName: "machine-identity"
+    formName: "identity"
   },
   {
     title: "Billing & usage",

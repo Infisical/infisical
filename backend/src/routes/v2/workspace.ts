@@ -94,35 +94,36 @@ router.patch(
 );
 
 router.post(
-  "/:workspaceId/machine-memberships/:machineId",
+  "/:workspaceId/identity-memberships/:identityId",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
-  workspaceController.addMachineToWorkspace
+  workspaceController.addIdentityToWorkspace
 );
 
 router.patch(
-  "/:workspaceId/machine-memberships/:machineId",
+  "/:workspaceId/identity-memberships/:identityId",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
-  workspaceController.updateMachineWorkspaceRole
+  workspaceController.updateIdentityWorkspaceRole
 );
 
 router.delete(
-  "/:workspaceId/machine-memberships/:machineId",
+  "/:workspaceId/identity-memberships/:identityId",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
   }),
-  workspaceController.deleteMachineFromWorkspace
+  workspaceController.deleteIdentityFromWorkspace
 );
 
 router.get(
-  "/:workspaceId/machine-memberships",
+  "/:workspaceId/identity-memberships",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  workspaceController.getWorkspaceMachineMemberships
+  workspaceController.getWorkspaceIdentityMemberships
 );
+
 
 export default router;

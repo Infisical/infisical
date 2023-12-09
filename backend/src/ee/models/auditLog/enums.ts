@@ -1,7 +1,7 @@
 export enum ActorType { // would extend to AWS, Azure, ...
-  USER = "user", // userIdentity
-  SERVICE = "service",
-  MACHINE = "machine" // machineIdentity
+    USER = "user", // userIdentity
+    SERVICE = "service",
+    IDENTITY = "identity"
 }
 
 export enum UserAgentType {
@@ -31,13 +31,16 @@ export enum EventType {
   DELETE_TRUSTED_IP = "delete-trusted-ip",
   CREATE_SERVICE_TOKEN = "create-service-token", // v2
   DELETE_SERVICE_TOKEN = "delete-service-token", // v2
-  CREATE_MACHINE_IDENTITY = "create-machine-identity",
-  UPDATE_MACHINE_IDENTITY = "update-machine-identity",
-  DELETE_MACHINE_IDENTITY = "delete-machine-identity",
-  LOGIN_MACHINE_IDENTITY = "login-machine-identity",
-  CREATE_MACHINE_IDENTITY_CLIENT_SECRET = "create-machine-identity-secret",
-  REVOKE_MACHINE_IDENTITY_CLIENT_SECRET = "revoke-machine-identity-secret",
-  GET_MACHINE_IDENTITY_CLIENT_SECRETS = "get-machine-identity-secrets",
+  CREATE_IDENTITY = "create-identity",
+  UPDATE_IDENTITY = "update-identity",
+  DELETE_IDENTITY = "delete-identity",
+  LOGIN_IDENTITY_UNIVERSAL_AUTH = "login-identity-universal-auth",
+  ADD_IDENTITY_UNIVERSAL_AUTH = "add-identity-universal-auth",
+  UPDATE_IDENTITY_UNIVERSAL_AUTH = "update-identity-universal-auth",
+  GET_IDENTITY_UNIVERSAL_AUTH = "get-identity-universal-auth",
+  CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
+  REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET =  "revoke-identity-universal-auth-client-secret",
+  GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",

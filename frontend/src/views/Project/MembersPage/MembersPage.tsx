@@ -6,7 +6,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 
 import {
-  MachineIdentityTab,
+  IdentityTab,
   MemberListTab,
   ProjectRoleListTab,
   ServiceTokenTab
@@ -15,7 +15,7 @@ import {
 enum TabSections {
   Member = "members",
   Roles = "roles",
-  MachineIdentities = "machine-identities",
+  Identities = "identities",
   ServiceTokens = "service-tokens"
 }
 
@@ -30,7 +30,7 @@ export const MembersPage = withProjectPermission(
           <Tabs defaultValue={TabSections.Member}>
             <TabList>
               <Tab value={TabSections.Member}>People</Tab>
-              <Tab value={TabSections.MachineIdentities}>
+              <Tab value={TabSections.Identities}>
                 <div className="flex items-center">
                   <p>Machine Identities</p>
                   <div className="ml-2 rounded-md text-yellow text-sm inline-block bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] opacity-80 hover:opacity-100 cursor-default">
@@ -52,8 +52,8 @@ export const MembersPage = withProjectPermission(
                 <MemberListTab />
               </motion.div>
             </TabPanel>
-            <TabPanel value={TabSections.MachineIdentities}>
-              <MachineIdentityTab />
+            <TabPanel value={TabSections.Identities}>
+              <IdentityTab />
             </TabPanel>
             <TabPanel value={TabSections.ServiceTokens}>
               <ServiceTokenTab />

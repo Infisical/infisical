@@ -23,7 +23,7 @@ type Props = {
     | "tags"
     | "audit-logs"
     | "ip-allowlist"
-    | "machine-identity"
+    | "identity"
     | ProjectPermissionSub.SecretApproval;
   isNonEditable?: boolean;
   setValue: UseFormSetValue<TFormSchema>;

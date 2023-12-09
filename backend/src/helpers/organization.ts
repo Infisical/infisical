@@ -4,13 +4,13 @@ import {
   BotKey,
   BotOrg,
   Folder,
+  Identity,
+  IdentityMembership,
+  IdentityMembershipOrg,
   IncidentContactOrg,
   Integration,
   IntegrationAuth,
   Key,
-  MachineIdentity,
-  MachineMembership,
-  MachineMembershipOrg,
   Membership,
   MembershipOrg,
   Organization,
@@ -125,11 +125,11 @@ export const deleteOrganization = async ({
     organization: organization._id
   });
   
-  await MachineIdentity.deleteMany({
+  await Identity.deleteMany({
     organization: organization._id
   });
   
-  await MachineMembershipOrg.deleteMany({
+  await IdentityMembershipOrg.deleteMany({
     organization: organization._id
   });
   
@@ -277,7 +277,7 @@ export const deleteOrganization = async ({
     }
   });
 
-  await MachineMembership.deleteMany({
+  await IdentityMembership.deleteMany({
     workspace: {
       $in: workspaceIds
     }

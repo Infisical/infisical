@@ -2,4 +2,4 @@ export * from "./apiKey";
 export * from "./apiKeyV2";
 export * from "./jwt";
 export * from "./serviceTokenV2";
-export * from "./machineIdentity";
+export * from "./identity";

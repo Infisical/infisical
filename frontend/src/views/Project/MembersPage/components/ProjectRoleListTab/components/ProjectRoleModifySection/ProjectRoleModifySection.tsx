@@ -62,9 +62,9 @@ const SINGLE_PERMISSION_LIST = [
   },
   {
     title: "Machine identity management",
-    subtitle: "Add, view, update and remove machine identities from the project",
+    subtitle: "Add, view, update and remove (machine) identities from the project",
     icon: faServer,
-    formName: "machine-identity"
+    formName: "identity"
   },
   {
     title: "Webhooks",

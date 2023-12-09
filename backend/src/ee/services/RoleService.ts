@@ -1,13 +1,12 @@
 import { Types } from "mongoose";
 import { AbilityBuilder, MongoAbility, RawRuleOf, createMongoAbility } from "@casl/ability";
 import { 
-  IMachineIdentity,
-  MachineMembershipOrg,
+  IIdentity,
+  IdentityMembershipOrg,
   MembershipOrg
 } from "../../models";
 import { ActorType, IRole, Role } from "../models";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import { checkIPAgainstBlocklist } from "../../utils/ip";
 import { ACCEPTED, ADMIN, CUSTOM, MEMBER, NO_ACCESS} from "../../variables";
 import { conditionsMatcher } from "./ProjectRoleService";
 import { AuthData } from "../../interfaces/middleware";
@@ -28,7 +27,7 @@ export enum OrgPermissionSubjects {
   Sso = "sso",
   Billing = "billing",
   SecretScanning = "secret-scanning",
-  MachineIdentity = "machine-identity"
+  Identity = "identity"
 }
 
 export type OrgPermissionSet =
@@ -41,7 +40,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Sso]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
   | [OrgPermissionActions, OrgPermissionSubjects.Billing]
-  | [OrgPermissionActions, OrgPermissionSubjects.MachineIdentity];
+  | [OrgPermissionActions, OrgPermissionSubjects.Identity];
 
 const buildAdminPermission = () => {
   const { can, build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
@@ -84,10 +83,10 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Billing);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Billing);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.MachineIdentity);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.MachineIdentity);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.MachineIdentity);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.MachineIdentity);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
 
   return build({ conditionsMatcher });
 };
@@ -112,10 +111,10 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.SecretScanning);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.SecretScanning);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.MachineIdentity);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.MachineIdentity);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.MachineIdentity);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.MachineIdentity);
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
 
   return build({ conditionsMatcher });
 };
@@ -203,28 +202,23 @@ export const getUserOrgPermissions = async (userId: string, orgId: string) => {
         message: "Failed to access organization-level resources with service token"
       });
     }
-    case ActorType.MACHINE: {
-      const machineMembershipOrg = await MachineMembershipOrg.findOne({
-        machineIdentity: authData.authPayload._id,
+    case ActorType.IDENTITY: {
+      const identityMembershipOrg = await IdentityMembershipOrg.findOne({
+        identity: authData.authPayload._id,
         organization: organizationId
       })
       .populate<{
         customRole: IRole & { permissions: RawRuleOf<MongoAbility<OrgPermissionSet>>[] };
-        machineIdentity: IMachineIdentity
-      }>("customRole machineIdentity")
+        identity: IIdentity
+      }>("customRole identity")
       .exec();
       
-      if (!machineMembershipOrg || (machineMembershipOrg.role === "custom" && !machineMembershipOrg.customRole)) {
+      if (!identityMembershipOrg || (identityMembershipOrg.role === "custom" && !identityMembershipOrg.customRole)) {
         throw UnauthorizedRequestError();
       }
-
-      checkIPAgainstBlocklist({
-        ipAddress: authData.ipAddress,
-        trustedIps: machineMembershipOrg.machineIdentity.accessTokenTrustedIps
-      });
       
-      role = machineMembershipOrg.role;
-      customRole = machineMembershipOrg.customRole;
+      role = identityMembershipOrg.role;
+      customRole = identityMembershipOrg.customRole;
       break;
     }
     default:

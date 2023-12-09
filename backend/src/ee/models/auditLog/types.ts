@@ -1,5 +1,5 @@
 import { ActorType, EventType } from "./enums";
-import { IMachineIdentityTrustedIp } from "../../../models/machineIdentity";
+import { IIdentityTrustedIp } from "../../../models";
 
 interface UserActorMetadata {
   userId: string;
@@ -11,8 +11,8 @@ interface ServiceActorMetadata {
   name: string;
 }
 
-interface MachineActorMetadata {
-  machineId: string;
+interface IdentityActorMetadata {
+  identityId: string;
   name: string;
 }
 
@@ -26,16 +26,12 @@ export interface ServiceActor {
   metadata: ServiceActorMetadata;
 }
 
-export interface MachineActor {
-  type: ActorType.MACHINE;
-  metadata: MachineActorMetadata;
+export interface IdentityActor {
+  type: ActorType.IDENTITY;
+  metadata: IdentityActorMetadata;
 }
 
-// export interface MachineActor {
-//   type: ActorType.Machine;
-// }
-
-export type Actor = UserActor | ServiceActor | MachineActor;
+export type Actor = UserActor | ServiceActor | IdentityActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -225,66 +221,90 @@ interface DeleteServiceTokenEvent {
   };
 }
 
-interface CreateMachineIdentityEvent {
-  type: EventType.CREATE_MACHINE_IDENTITY;
+interface CreateIdentityEvent { // note: currently not logging org-role
+  type: EventType.CREATE_IDENTITY;
   metadata: {
+    identityId: string;
     name: string;
-    role: string;
-    clientSecretTrustedIps: Array<IMachineIdentityTrustedIp>;
-    accessTokenTrustedIps: Array<IMachineIdentityTrustedIp>;
   };
 }
 
-interface UpdateMachineIdentityEvent {
-  type: EventType.UPDATE_MACHINE_IDENTITY;
+interface UpdateIdentityEvent {
+  type: EventType.UPDATE_IDENTITY;
   metadata: {
+    identityId: string;
     name?: string;
-    role?: string;
-    clientSecretTrustedIps?: Array<IMachineIdentityTrustedIp>;
-    accessTokenTrustedIps?: Array<IMachineIdentityTrustedIp>;
   };
 }
 
-interface DeleteMachineIdentityEvent {
-  type: EventType.DELETE_MACHINE_IDENTITY;
+interface DeleteIdentityEvent {
+  type: EventType.DELETE_IDENTITY;
   metadata: {
-    name: string;
-    role: string;
-    clientSecretTrustedIps: Array<IMachineIdentityTrustedIp>;
-    accessTokenTrustedIps: Array<IMachineIdentityTrustedIp>;
+    identityId: string;
   };
 }
 
-interface LoginMachineIdentityEvent {
-  type: EventType.LOGIN_MACHINE_IDENTITY ;
+interface LoginIdentityUniversalAuthEvent {
+  type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH ;
   metadata: {
-    machineId: string;
-    machineAccessTokenId: string;
+    identityId: string;
     clientSecretId: string;
     identityAccessTokenId: string;
   };
 }
 
-interface CreateMachineIdentitySecretEvent {
-  type: EventType.CREATE_MACHINE_IDENTITY_CLIENT_SECRET ;
+interface AddIdentityUniversalAuthEvent {
+  type: EventType.ADD_IDENTITY_UNIVERSAL_AUTH;
   metadata: {
-    machineId: string;
+    identityId: string;
+    clientSecretTrustedIps: Array<IIdentityTrustedIp>;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<IIdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityUniversalAuthEvent {
+  type: EventType.UPDATE_IDENTITY_UNIVERSAL_AUTH;
+  metadata: {
+    identityId: string;
+    clientSecretTrustedIps?: Array<IIdentityTrustedIp>;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<IIdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityUniversalAuthEvent {
+  type: EventType.GET_IDENTITY_UNIVERSAL_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface CreateIdentityUniversalAuthClientSecretEvent {
+  type: EventType.CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET ;
+  metadata: {
+    identityId: string;
     clientSecretId: string;
   };
 }
 
-interface DeleteMachineIdentitySecretEvent {
-  type: EventType.REVOKE_MACHINE_IDENTITY_CLIENT_SECRET ;
+interface GetIdentityUniversalAuthClientSecretsEvent {
+  type: EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS;
   metadata: {
-    machineId: string;
-    clientSecretId: string;
+    identityId: string;
   };
 }
 
-interface GetMachineIdentitySecretsEvent {
-  type: EventType.GET_MACHINE_IDENTITY_CLIENT_SECRETS ;
+
+interface RevokeIdentityUniversalAuthClientSecretEvent {
+  type: EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET ;
   metadata: {
-    machineId: string;
+    identityId: string;
+    clientSecretId: string;
   };
 }
 
@@ -530,13 +550,16 @@ export type Event =
   | DeleteTrustedIPEvent
   | CreateServiceTokenEvent
   | DeleteServiceTokenEvent
-  | CreateMachineIdentityEvent
-  | UpdateMachineIdentityEvent
-  | DeleteMachineIdentityEvent
-  | CreateMachineIdentitySecretEvent
-  | DeleteMachineIdentitySecretEvent
-  | LoginMachineIdentityEvent
-  | GetMachineIdentitySecretsEvent
+  | CreateIdentityEvent
+  | UpdateIdentityEvent
+  | DeleteIdentityEvent
+  | LoginIdentityUniversalAuthEvent
+  | AddIdentityUniversalAuthEvent
+  | UpdateIdentityUniversalAuthEvent
+  | GetIdentityUniversalAuthEvent
+  | CreateIdentityUniversalAuthClientSecretEvent
+  | GetIdentityUniversalAuthClientSecretsEvent
+  | RevokeIdentityUniversalAuthClientSecretEvent
   | CreateEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent

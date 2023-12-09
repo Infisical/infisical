@@ -3,10 +3,10 @@ import {
 	Bot,
 	BotKey,
 	Folder,
+	IdentityMembership,
 	Integration,
 	IntegrationAuth,
 	Key,
-	MachineMembership,
 	Membership,
 	Secret,
 	SecretBlindIndexData,
@@ -178,7 +178,7 @@ export const deleteWorkspace = async ({
 		workspace: workspace._id
 	});
 	
-	await MachineMembership.deleteMany({
+	await IdentityMembership.deleteMany({
 		workspace: workspace._id
 	});
 

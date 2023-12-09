@@ -1,6 +1,6 @@
 import { AuthData } from "../../../interfaces/middleware";
 import {
-  MachineIdentity,
+  Identity,
   ServiceTokenData,
   User
 } from "../../../models";
@@ -19,7 +19,7 @@ import {
         return { serviceTokenDataId: authData.authPayload._id };
     }
   
-    if (authData.authPayload instanceof MachineIdentity) {
+    if (authData.authPayload instanceof Identity) {
         return { serviceTokenDataId: authData.authPayload._id };
     }
 };
@@ -38,7 +38,7 @@ export const getAuthDataPayloadUserObj = (authData: AuthData) => {
         return { user: authData.authPayload.user };
     }
 
-    if (authData.authPayload instanceof MachineIdentity) {
+    if (authData.authPayload instanceof Identity) {
         return {};
     }
 }

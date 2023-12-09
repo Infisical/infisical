@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { MachineMembershipOrg } from "../machineIdentities/types";
+import { IdentityMembershipOrg } from "../identities/types";
 import {
   BillingDetails,
   Invoice,
@@ -27,7 +27,7 @@ export const organizationKeys = {
   getOrgTaxIds: (orgId: string) => [{ orgId }, "organization-tax-ids"] as const,
   getOrgInvoices: (orgId: string) => [{ orgId }, "organization-invoices"] as const,
   getOrgLicenses: (orgId: string) => [{ orgId }, "organization-licenses"] as const,
-  getOrgServiceMemberships: (orgId: string) => [{ orgId }, "organization-service-memberships"] as const,
+  getOrgIdentityMemberships: (orgId: string) => [{ orgId }, "organization-identity-memberships"] as const,
 };
 
 export const fetchOrganizations = async () => {
@@ -351,17 +351,17 @@ export const useGetOrgLicenses = (organizationId: string) => {
   });
 };
 
-export const useGetMachineMembershipOrgs = (organizationId: string) => {
+export const useGetIdentityMembershipOrgs = (organizationId: string) => {
   return useQuery({
-    queryKey: organizationKeys.getOrgServiceMemberships(organizationId),
+    queryKey: organizationKeys.getOrgIdentityMemberships(organizationId),
     queryFn: async () => {
       const {
-        data: { machineMemberships }
-      } = await apiRequest.get<{ machineMemberships: MachineMembershipOrg[] }>(
-        `/api/v2/organizations/${organizationId}/machine-memberships`
+        data: { identityMemberships }
+      } = await apiRequest.get<{ identityMemberships: IdentityMembershipOrg[] }>(
+        `/api/v2/organizations/${organizationId}/identity-memberships`
       );
 
-      return machineMemberships;
+      return identityMemberships;
     },
     enabled: true
   });

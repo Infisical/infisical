@@ -1,15 +1,18 @@
 import { Document, Schema, Types, model } from "mongoose";
+import { IIdentityTrustedIp } from "./identity";
+import { IPType } from "../ee/models/trustedIp";
 
 export interface IIdentityAccessToken extends Document {
     _id: Types.ObjectId;
-    machineIdentity?: Types.ObjectId;
-    machineIdentityClientSecret?: Types.ObjectId;
+    identity: Types.ObjectId;
+    identityUniversalAuthClientSecret?: Types.ObjectId;
     accessTokenLastUsedAt?: Date;
     accessTokenLastRenewedAt?: Date;
     accessTokenNumUses: number;
     accessTokenNumUsesLimit: number;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
+    accessTokenTrustedIps: Array<IIdentityTrustedIp>;
     isAccessTokenRevoked: boolean;
     updatedAt: Date;
     createdAt: Date;
@@ -17,14 +20,14 @@ export interface IIdentityAccessToken extends Document {
 
 const identityAccessTokenSchema = new Schema(
     {
-        machineIdentity: {
+        identity: {
             type: Schema.Types.ObjectId,
-            ref: "MachineIdentity",
+            ref: "Identity",
             required: false
         },
-        machineIdentityClientSecret: {
+        identityUniversalAuthClientSecret: {
             type: Schema.Types.ObjectId,
-            ref: "MachineIdentityClientSecret",
+            ref: "IdentityUniversalAuthClientSecret",
             required: false
         },
         accessTokenLastUsedAt: {
@@ -57,6 +60,34 @@ const identityAccessTokenSchema = new Schema(
             // max lifetime
             type: Number,
             default: 7200,
+            required: true
+        },
+        accessTokenTrustedIps: {
+            type: [
+                {
+                    ipAddress: {
+                        type: String,
+                        required: true
+                    },
+                    type: {
+                        type: String,
+                        enum: [
+                            IPType.IPV4,
+                            IPType.IPV6
+                        ],
+                        required: true
+                    },
+                    prefix: {
+                        type: Number,
+                        required: false
+                    }
+                }
+            ],
+            default: [{
+                ipAddress: "0.0.0.0",
+                type: IPType.IPV4.toString(),
+                prefix: 0
+            }],
             required: true
         },
         isAccessTokenRevoked: {

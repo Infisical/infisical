@@ -20,11 +20,15 @@ export * from "./user";
 export * from "./userAction";
 export * from "./workspace";
 export * from "./serviceTokenData"; // TODO: deprecate
-export * from "./machineIdentity";
-export * from "./machineIdentityClientSecret";
+
+// new
+export * from "./identity";
+export * from "./identityMembership";
+export * from "./identityMembershipOrg";
+export * from "./identityUniversalAuth";
+export * from "./identityUniversalAuthClientSecret";
 export * from "./identityAccessToken";
-export * from "./machineMembershipOrg";
-export * from "./machineMembership";
+
 export * from "./apiKeyData"; // TODO: deprecate
 export * from "./apiKeyDataV2";
 export * from "./loginSRPDetail";
