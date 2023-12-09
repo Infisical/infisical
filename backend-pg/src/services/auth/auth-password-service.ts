@@ -3,9 +3,9 @@ import jwt from "jsonwebtoken";
 import { getConfig } from "@app/lib/config/env";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 
+import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
+import { TokenType } from "../auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { TAuthTokenServiceFactory } from "../token/token-service";
-import { TokenType } from "../token/token-types";
 import { TUserDalFactory } from "../user/user-dal";
 import { TAuthDalFactory } from "./auth-dal";
 import {

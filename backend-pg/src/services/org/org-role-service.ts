@@ -57,7 +57,7 @@ export const orgRoleServiceFactory = ({
       if (existingRole && existingRole.id !== roleId)
         throw new BadRequestError({ name: "Update Role", message: "Duplicate role" });
     }
-    const updatedRole = await orgRoleDal.updateOne({ id: roleId, orgId }, { ...data });
+    const [updatedRole] = await orgRoleDal.update({ id: roleId, orgId }, { ...data });
     if (!updateRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
     return updatedRole;
   };
@@ -68,7 +68,7 @@ export const orgRoleServiceFactory = ({
       OrgPermissionActions.Delete,
       OrgPermissionSubjects.Role
     );
-    const deletedRole = await orgRoleDal.deleteOne({ id: roleId, orgId });
+    const [deletedRole] = await orgRoleDal.delete({ id: roleId, orgId });
     if (!deleteRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
 
     return deletedRole;

@@ -11,7 +11,7 @@ export const UserEncryptionKeysSchema = z.object({
   id: z.string().uuid(),
   clientPublicKey: z.string().nullable().optional(),
   serverPrivateKey: z.string().nullable().optional(),
-  encryptionVersion: z.number().default(1).nullable().optional(),
+  encryptionVersion: z.number().default(2).nullable().optional(),
   protectedKey: z.string(),
   protectedKeyIV: z.string(),
   protectedKeyTag: z.string(),

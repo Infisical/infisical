@@ -1,6 +1,6 @@
-import { registerAdminRouter } from "./admin";
-import { registerAuthRoutes } from "./auth";
-import { registerInviteOrgRouter } from "./invite-org";
+import { registerAdminRouter } from "./admin-router";
+import { registerAuthRoutes } from "./auth-router";
+import { registerInviteOrgRouter } from "./invite-org-router";
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
 import { registerUserActionRouter } from "./user-action-router";

@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { mkdirSync, writeFileSync } from "fs";
 import path from "path";
 import promptSync from "prompt-sync";

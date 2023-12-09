@@ -11,16 +11,16 @@ import { authDalFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
+import { tokenDalFactory } from "@app/services/auth-token/auth-token-dal";
+import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { incidentContactDalFactory } from "@app/services/org/incident-contacts-dal";
 import { orgDalFactory } from "@app/services/org/org-dal";
 import { orgRoleDalFactory } from "@app/services/org/org-role-dal";
 import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
-import { serverCfgDalFactory } from "@app/services/server-cfg/server-cfg-dal";
-import { serverCfgServiceFactory } from "@app/services/server-cfg/server-cfg-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
-import { tokenDalFactory } from "@app/services/token/token-dal";
-import { tokenServiceFactory } from "@app/services/token/token-service";
+import { superAdminDalFactory } from "@app/services/super-admin/super-admin-dal";
+import { superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { userDalFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 
@@ -40,7 +40,7 @@ export const registerRoutes = async (
   const orgDal = orgDalFactory(db);
   const incidentContactDal = incidentContactDalFactory(db);
   const orgRoleDal = orgRoleDalFactory(db);
-  const serverCfgDal = serverCfgDalFactory(db);
+  const superAdminDal = superAdminDalFactory(db);
   const apiKeyDal = apiKeyDalFactory(db);
 
   // ee db layer ops
@@ -77,16 +77,16 @@ export const registerRoutes = async (
     orgService
   });
   const orgRoleService = orgRoleServiceFactory({ permissionService, orgRoleDal });
-  const serverCfgService = serverCfgServiceFactory({
+  const superAdminService = superAdminServiceFactory({
     userDal,
     authService: loginService,
-    serverCfgDal
+    serverCfgDal: superAdminDal
   });
   const apiKeyService = apiKeyServiceFactory({ apiKeyDal });
 
-  await serverCfgService.initServerCfg();
+  await superAdminService.initServerCfg();
   // inject all services
-  server.decorate("services", {
+  server.decorate<FastifyZodProvider["services"]>("services", {
     login: loginService,
     password: passwordService,
     signup: signupService,
@@ -94,14 +94,14 @@ export const registerRoutes = async (
     permission: permissionService,
     org: orgService,
     orgRole: orgRoleService,
-    serverCfg: serverCfgService,
     apiKey: apiKeyService,
-    authToken: tokenService
-  } as FastifyZodProvider["services"]);
+    authToken: tokenService,
+    superAdmin: superAdminService
+  });
 
-  server.decorate("store", {
+  server.decorate<FastifyZodProvider["store"]>("store", {
     user: userDal
-  } as FastifyZodProvider["store"]);
+  });
 
   await server.register(injectIdentity);
 

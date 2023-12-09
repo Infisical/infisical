@@ -11,7 +11,7 @@ export enum TableName {
   OrgRoles = "org_roles",
   IncidentContact = "incident_contacts",
   UserAction = "user_actions",
-  ServerConfig = "server_config",
+  SuperAdmin = "super_admin",
   ApiKey = "api_keys"
 }
 

@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const ServerConfigSchema = z.object({
+export const SuperAdminSchema = z.object({
   id: z.string().uuid(),
   initialized: z.boolean().default(false).nullable().optional(),
   allowSignUp: z.boolean().default(true).nullable().optional(),
@@ -15,6 +15,6 @@ export const ServerConfigSchema = z.object({
   updatedAt: z.date(),
 });
 
-export type TServerConfig = z.infer<typeof ServerConfigSchema>;
-export type TServerConfigInsert = Omit<TServerConfig, TImmutableDBKeys>;
-export type TServerConfigUpdate = Partial<Omit<TServerConfig, TImmutableDBKeys>>;
+export type TSuperAdmin = z.infer<typeof SuperAdminSchema>;
+export type TSuperAdminInsert = Omit<TSuperAdmin, TImmutableDBKeys>;
+export type TSuperAdminUpdate = Partial<Omit<TSuperAdmin, TImmutableDBKeys>>;

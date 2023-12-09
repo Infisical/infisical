@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ServerConfigSchema, UsersSchema } from "@app/db/schemas";
+import { SuperAdminSchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
@@ -14,12 +14,12 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          config: ServerConfigSchema
+          config: SuperAdminSchema
         })
       }
     },
     handler: () => {
-      const config = server.services.serverCfg.getServerCfg();
+      const config = server.services.superAdmin.getServerCfg();
       return { config };
     }
   });
@@ -33,7 +33,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          config: ServerConfigSchema
+          config: SuperAdminSchema
         })
       }
     },
@@ -42,7 +42,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       verifySuperAdmin(req);
     },
     handler: async (req) => {
-      const config = await server.services.serverCfg.updateServerCfg(req.body);
+      const config = await server.services.superAdmin.updateServerCfg(req.body);
       return { config };
     }
   });
@@ -75,10 +75,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const appCfg = getConfig();
-      const serverCfg = server.services.serverCfg.getServerCfg();
+      const serverCfg = server.services.superAdmin.getServerCfg();
       if (serverCfg.initialized)
         throw new UnauthorizedError({ name: "Admin sign up", message: "Admin has been created" });
-      const { user, token } = await server.services.serverCfg.adminSignUp({
+      const { user, token } = await server.services.superAdmin.adminSignUp({
         ...req.body,
         ip: req.realIp,
         userAgent: req.headers["user-agent"] || ""

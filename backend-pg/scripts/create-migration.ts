@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { execSync } from "child_process";
 import path from "path";
 import promptSync from "prompt-sync";

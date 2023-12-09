@@ -1,9 +1,9 @@
+/* eslint-disable */
 import dotenv from "dotenv";
 import path from "path";
 import knex from "knex";
-import { appendFileSync, readFileSync, writeFileSync } from "fs";
+import { writeFileSync } from "fs";
 import promptSync from "prompt-sync";
-import { TableName } from "@app/db/schemas";
 
 const prompt = promptSync();
 
@@ -96,11 +96,11 @@ const main = async () => {
   const tableNumbers =
     selectedTables !== "all" ? selectedTables.split(",").map((el) => Number(el)) : [];
 
-  for (let i = 0; i < tables.length; i++) {
+  for (let i = 0; i < tables.length; i += 1) {
     // skip if not desired table
     if (selectedTables !== "all" && !tableNumbers.includes(i)) continue;
 
-    const tableName = tables[i].tableName;
+    const { tableName } = tables[i];
     const columns = await db(tableName).columnInfo();
     const columnNames = Object.keys(columns);
 
@@ -110,7 +110,7 @@ const main = async () => {
       const colInfo = columns[columnName];
       let ztype = getZodPrimitiveType(colInfo.type);
       if (colInfo.defaultValue) {
-        const defaultValue = colInfo.defaultValue;
+        const { defaultValue } = colInfo;
         const zSchema = getZodDefaultValue(colInfo.type, defaultValue);
         if (zSchema) {
           ztype = ztype.concat(zSchema);

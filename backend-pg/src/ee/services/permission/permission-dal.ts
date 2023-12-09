@@ -10,8 +10,9 @@ export const permissionDalFactory = (db: TDbClient) => {
   ): Promise<(TOrgMemberships & { permissions: string }) | undefined> => {
     const membership = await db(TableName.OrgMembership)
       .leftJoin(TableName.OrgRoles, `${TableName.OrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
-      .select(`${TableName.OrgMembership}.*`, `${TableName.OrgRoles}.permissions`)
-      .where({ userId, [`${TableName.OrgMembership}.orgId`]: orgId })
+      .where("userId", userId)
+      .where(`${TableName.OrgMembership}.orgId`, orgId)
+      .select(`${TableName.OrgMembership}.*`, "permissions")
       .first();
 
     return membership;

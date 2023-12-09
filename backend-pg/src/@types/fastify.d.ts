@@ -7,7 +7,7 @@ import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
 import { AuthMode } from "@app/services/auth/auth-signup-type";
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
-import { TServerCfgServiceFactory } from "@app/services/server-cfg/server-cfg-service";
+import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TAuthTokenServiceFactory } from "@app/services/token/token-service";
 import { TUserDalFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
@@ -40,7 +40,7 @@ declare module "fastify" {
       permission: TPermissionServiceFactory;
       org: TOrgServiceFactory;
       orgRole: TOrgRoleServiceFactory;
-      serverCfg: TServerCfgServiceFactory;
+      superAdmin: TSuperAdminServiceFactory;
       user: TUserServiceFactory;
       apiKey: TApiKeyServiceFactory;
     };

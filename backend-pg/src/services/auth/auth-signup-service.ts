@@ -5,11 +5,11 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
 
+import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
+import { TokenType } from "../auth-token/auth-token-types";
 import { TOrgDalFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { TAuthTokenServiceFactory } from "../token/token-service";
-import { TokenType } from "../token/token-types";
 import { TUserDalFactory } from "../user/user-dal";
 import { TAuthDalFactory } from "./auth-dal";
 import { TCompleteAccountInviteDTO, TCompleteAccountSignupDTO } from "./auth-signup-type";

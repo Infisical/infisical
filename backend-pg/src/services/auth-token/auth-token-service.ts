@@ -4,13 +4,13 @@ import bcrypt from "bcrypt";
 import { TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 
-import { TTokenDalFactory } from "./token-dal";
+import { TTokenDalFactory } from "./auth-token-dal";
 import {
   TCreateTokenForUserDTO,
   TIssueAuthTokenDTO,
   TokenType,
   TValidateTokenForUserDTO
-} from "./token-types";
+} from "./auth-token-types";
 
 type TAuthTokenServiceFactoryDep = {
   tokenDal: TTokenDalFactory;

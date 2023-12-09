@@ -20,25 +20,35 @@ export const userDalFactory = (db: TDbClient) => {
 
   // USER ENCRYPTION FUNCTIONS
   // -------------------------
-  const findUserEncKeyByEmail = async (email: string) =>
-    db(TableName.Users)
-      .where({ email })
-      .join(
-        TableName.UserEncryptionKey,
-        `${TableName.Users}.id`,
-        `${TableName.UserEncryptionKey}.userId`
-      )
-      .first();
+  const findUserEncKeyByEmail = async (email: string) => {
+    try {
+      return await db(TableName.Users)
+        .where({ email })
+        .join(
+          TableName.UserEncryptionKey,
+          `${TableName.Users}.id`,
+          `${TableName.UserEncryptionKey}.userId`
+        )
+        .first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find user enc by email" });
+    }
+  };
 
-  const findUserEncKeyByUserId = async (userId: string) =>
-    db(TableName.Users)
-      .where({ [`${TableName.Users}.id`]: userId })
-      .join(
-        TableName.UserEncryptionKey,
-        `${TableName.Users}.id`,
-        `${TableName.UserEncryptionKey}.userId`
-      )
-      .first();
+  const findUserEncKeyByUserId = async (userId: string) => {
+    try {
+      return await db(TableName.Users)
+        .where(`${TableName.Users}.id`, userId)
+        .join(
+          TableName.UserEncryptionKey,
+          `${TableName.Users}.id`,
+          `${TableName.UserEncryptionKey}.userId`
+        )
+        .first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find user enc by user id" });
+    }
+  };
 
   const createUserEncryption = async (data: TUserEncryptionKeysInsert, tx?: Knex) => {
     try {
@@ -54,11 +64,15 @@ export const userDalFactory = (db: TDbClient) => {
     data: TUserEncryptionKeysUpdate,
     tx?: Knex
   ) => {
-    const [userEnc] = await (tx || db)(TableName.UserEncryptionKey)
-      .where({ userId })
-      .update({ ...data })
-      .returning("*");
-    return userEnc;
+    try {
+      const [userEnc] = await (tx || db)(TableName.UserEncryptionKey)
+        .where({ userId })
+        .update({ ...data })
+        .returning("*");
+      return userEnc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Update user enc by user id" });
+    }
   };
 
   const upsertUserEncryptionKey = async (
@@ -66,13 +80,20 @@ export const userDalFactory = (db: TDbClient) => {
     data: Omit<TUserEncryptionKeysUpdate, "userId">,
     tx?: Knex
   ) => {
-    const [userEnc] = await (tx ? tx(TableName.UserEncryptionKey) : db(TableName.UserEncryptionKey))
-      // if user insert make sure to pass all required data
-      .insert({ userId, ...data } as TUserEncryptionKeys)
-      .onConflict("userId")
-      .merge()
-      .returning("*");
-    return userEnc;
+    try {
+      const [userEnc] = await (tx
+        ? tx(TableName.UserEncryptionKey)
+        : db(TableName.UserEncryptionKey)
+      )
+        // if user insert make sure to pass all required data
+        .insert({ userId, ...data } as TUserEncryptionKeys)
+        .onConflict("userId")
+        .merge()
+        .returning("*");
+      return userEnc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Upsert user enc key" });
+    }
   };
 
   // USER ACTION FUNCTIONS

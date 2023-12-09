@@ -5,7 +5,7 @@ import { TableName, TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-import { TDeleteTokenForUserDalDTO } from "./token-types";
+import { TDeleteTokenForUserDalDTO } from "./auth-token-types";
 
 export type TTokenDalConfig = {};
 

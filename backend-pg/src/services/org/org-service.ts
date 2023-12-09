@@ -11,9 +11,9 @@ import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
 
 import { AuthTokenType } from "../auth/auth-type";
+import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
+import { TokenType } from "../auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { TAuthTokenServiceFactory } from "../token/token-service";
-import { TokenType } from "../token/token-types";
 import { TUserDalFactory } from "../user/user-dal";
 import { TIncidentContactsDalFactory } from "./incident-contacts-dal";
 import { TOrgDalFactory } from "./org-dal";

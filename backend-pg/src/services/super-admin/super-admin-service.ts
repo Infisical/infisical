@@ -1,25 +1,25 @@
-import { TServerConfig, TServerConfigUpdate } from "@app/db/schemas";
+import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { TUserDalFactory } from "../user/user-dal";
-import { TServerCfgDalFactory } from "./server-cfg-dal";
-import { TAdminSignUpDTO } from "./server-cfg-types";
+import { TSuperAdminDalFactory } from "./super-admin-dal";
+import { TAdminSignUpDTO } from "./super-admin-types";
 
-type TServerCfgServiceFactoryDep = {
-  serverCfgDal: TServerCfgDalFactory;
+type TSuperAdminServiceFactoryDep = {
+  serverCfgDal: TSuperAdminDalFactory;
   userDal: TUserDalFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
 };
 
-export type TServerCfgServiceFactory = ReturnType<typeof serverCfgServiceFactory>;
+export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
 
-export const serverCfgServiceFactory = ({
+export const superAdminServiceFactory = ({
   serverCfgDal,
   userDal,
   authService
-}: TServerCfgServiceFactoryDep) => {
-  let serverCfg: TServerConfig;
+}: TSuperAdminServiceFactoryDep) => {
+  let serverCfg: TSuperAdmin;
 
   const initServerCfg = async () => {
     serverCfg = await serverCfgDal.findOne({});
@@ -37,7 +37,7 @@ export const serverCfgServiceFactory = ({
     return serverCfg;
   };
 
-  const updateServerCfg = async (data: TServerConfigUpdate) => {
+  const updateServerCfg = async (data: TSuperAdminUpdate) => {
     const cfg = await serverCfgDal.updateById(serverCfg.id, data);
     return cfg;
   };

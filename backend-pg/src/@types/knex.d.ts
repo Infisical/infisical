@@ -2,6 +2,9 @@ import { Knex } from "knex";
 
 import {
   TableName,
+  TApiKeys,
+  TApiKeysInsert,
+  TApiKeysUpdate,
   TAuthTokens,
   TAuthTokenSessions,
   TAuthTokenSessionsInsert,
@@ -22,9 +25,9 @@ import {
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
-  TServerConfig,
-  TServerConfigInsert,
-  TServerConfigUpdate,
+  TSuperAdmin,
+  TSuperAdminInsert,
+  TSuperAdminUpdate,
   TUserActions,
   TUserActionsInsert,
   TUserActionsUpdate,
@@ -35,7 +38,6 @@ import {
   TUsersInsert,
   TUsersUpdate
 } from "@app/db/schemas";
-import { TApiKeys, TApiKeysInsert, TApiKeysUpdate } from "@app/db/schemas/api-keys";
 
 declare module "knex/types/tables" {
   interface Tables extends { [key in TableName]: Knex.CompositeTableType<any> } {
@@ -81,10 +83,10 @@ declare module "knex/types/tables" {
       TUserActionsInsert,
       TUserActionsUpdate
     >;
-    [TableName.ServerConfig]: Knex.CompositeTableType<
-      TServerConfig,
-      TServerConfigInsert,
-      TServerConfigUpdate
+    [TableName.SuperAdmin]: Knex.CompositeTableType<
+      TSuperAdmin,
+      TSuperAdminInsert,
+      TSuperAdminUpdate
     >;
     [TableName.ApiKey]: Knex.CompositeTableType<TApiKeys, TApiKeysInsert, TApiKeysUpdate>;
   }
