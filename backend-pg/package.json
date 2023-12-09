@@ -17,7 +17,9 @@
     "migration:down": "knex --knexfile ./src/db/knexfile.ts --client pg migrate:down",
     "migration:list": "knex --knexfile ./src/db/knexfile.ts --client pg migrate:list",
     "migration:latest": "knex --knexfile ./src/db/knexfile.ts --client pg migrate:latest",
-    "migration:rollback": "knex --knexfile ./src/db/knexfile.ts migrate:rollback"
+    "migration:rollback": "knex --knexfile ./src/db/knexfile.ts migrate:rollback",
+    "seed:new": "tsx ./scripts/create-seed-file.ts",
+    "seed:run": "knex --knexfile ./src/db/knexfile.ts --client pg seed:run"
   },
   "keywords": [],
   "author": "",

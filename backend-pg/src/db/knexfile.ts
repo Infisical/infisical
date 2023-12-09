@@ -11,14 +11,29 @@ dotenv.config({
   debug: true
 });
 export default {
-  useNullAsDefault: true,
-  client: "postgres",
-  connection: process.env.DB_CONNECTION_URI,
-  pool: {
-    min: 2,
-    max: 10
+  development: {
+    client: "postgres",
+    connection: process.env.DB_CONNECTION_URI,
+    pool: {
+      min: 2,
+      max: 10
+    },
+    seeds: {
+      directory: "./seeds"
+    },
+    migrations: {
+      tableName: "infisical_migrations"
+    }
   },
-  migrations: {
-    tableName: "infisical_migrations"
+  production: {
+    client: "postgres",
+    connection: process.env.DB_CONNECTION_URI,
+    pool: {
+      min: 2,
+      max: 10
+    },
+    migrations: {
+      tableName: "infisical_migrations"
+    }
   }
 } as Knex.Config;
