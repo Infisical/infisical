@@ -27,14 +27,26 @@ const envSchema = z
     SMTP_PASSWORD: zpStr(z.string().optional()),
     SMTP_FROM_ADDRESS: zpStr(z.string().optional()),
     SMTP_FROM_NAME: zpStr(z.string().optional().default("Infisical")),
-    COOKIE_SECRET_SIGN_KEY: z.string().default("g5giLbOMpaJhqEogXApkiw2ZFW5Q0jvA"),
+    COOKIE_SECRET_SIGN_KEY: z
+      .string()
+      .min(32)
+      .default("#5VihU%rbXHcHwWwCot5L3vyPsx$7dWYw^iGk!EJg2bC*f$PD$%KCqx^R@#^LSEf"),
     SITE_URL: zpStr(z.string().optional()),
     // jwt options
     JWT_AUTH_SECRET: zpStr(z.string()),
     JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),
     JWT_SIGNUP_LIFETIME: zpStr(z.string().default("15m")),
     JWT_REFRESH_LIFETIME: zpStr(z.string().default("90d")),
-    JWT_MFA_LIFETIME: zpStr(z.string().default("5m"))
+    JWT_MFA_LIFETIME: zpStr(z.string().default("5m")),
+    JWT_PROVIDER_AUTH_LIFETIME: zpStr(z.string().default("15m")),
+    // Oauth
+    CLIENT_ID_GOOGLE_LOGIN: zpStr(z.string().optional()),
+    CLIENT_SECRET_GOOGLE_LOGIN: zpStr(z.string().optional()),
+    CLIENT_ID_GITHUB_LOGIN: zpStr(z.string().optional()),
+    CLIENT_SECRET_GITHUB_LOGIN: zpStr(z.string().optional()),
+    CLIENT_ID_GITLAB_LOGIN: zpStr(z.string().optional()),
+    CLIENT_SECRET_GITLAB_LOGIN: zpStr(z.string().optional()),
+    CLIENT_GITLAB_LOGIN_URL: zpStr(z.string().optional())
   })
   .transform((data) => ({ ...data, isSmtpConfigured: Boolean(data.SMTP_HOST) }));
 

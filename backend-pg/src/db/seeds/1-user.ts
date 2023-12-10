@@ -1,6 +1,7 @@
 import { Knex } from "knex";
-import { TableName } from "../schemas";
+
 import { AuthMethod } from "../../services/auth/auth-type";
+import { TableName } from "../schemas";
 
 export const testUser = {
   email: "test@localhost.local"

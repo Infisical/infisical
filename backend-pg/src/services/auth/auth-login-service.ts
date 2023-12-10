@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { TUsers, UserDeviceSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
+import { BadRequestError } from "@app/lib/errors";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -11,6 +12,7 @@ import { TUserDalFactory } from "../user/user-dal";
 import {
   TLoginClientProofDTO,
   TLoginGenServerPublicKeyDTO,
+  TOauthLoginDTO,
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
 import { AuthMethod, AuthTokenType } from "./auth-type";
@@ -228,6 +230,53 @@ export const authLoginServiceFactory = ({
     const token = await generateUserTokens({ ...userEnc, id: userEnc.userId }, ip, userAgent);
     return { token, user: userEnc };
   };
+  /*
+   * OAuth2 login for google,github, and other oauth2 provider
+   * */
+  const oauth2Login = async ({
+    email,
+    firstName,
+    lastName,
+    authMethod,
+    callbackPort,
+    isSignupAllowed
+  }: TOauthLoginDTO) => {
+    let user = await userDal.findUserByEmail(email);
+    const appCfg = getConfig();
+    const isOauthSignUpDisabled = !isSignupAllowed && !user;
+    if (isOauthSignUpDisabled)
+      throw new BadRequestError({ message: "User signup disabled", name: "Oauth 2 login" });
+
+    if (!user) {
+      user = await userDal.create({ email, firstName, lastName, authMethods: [authMethod] });
+    }
+    const isLinkingRequired = !user?.authMethods?.includes(authMethod);
+    const isUserCompleted = user.isAccepted;
+
+    const providerAuthToken = jwt.sign(
+      {
+        authTokenType: AuthTokenType.PROVIDER_TOKEN,
+        userId: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        authMethod,
+        isUserCompleted,
+        isLinkingRequired,
+        ...(callbackPort
+          ? {
+              callbackPort
+            }
+          : {})
+      },
+      appCfg.JWT_AUTH_SECRET,
+      {
+        expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
+      }
+    );
+
+    return { isUserCompleted, providerAuthToken };
+  };
 
   /*
    * logout user by incrementing the version by 1 meaning any old session will become invalid
@@ -241,6 +290,7 @@ export const authLoginServiceFactory = ({
     loginGenServerPublicKey,
     loginExchangeClientProof,
     logout,
+    oauth2Login,
     resendMfaToken,
     verifyMfaToken,
     generateUserTokens

@@ -29,6 +29,11 @@ declare module "fastify" {
       tokenVersionId: string; // the session id of token used
       user: TUsers;
     };
+    // passport data
+    passportUser: {
+      isCompleted: string;
+      providerAuthToken: string;
+    };
   }
 
   interface FastifyInstance {
