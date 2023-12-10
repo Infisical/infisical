@@ -5,7 +5,7 @@ export {
     useCreateIdentity,
     useCreateIdentityUniversalAuthClientSecret,
     useDeleteIdentity,
-    useDeleteIdentityUniversalAuthClientSecret,
+    useRevokeIdentityUniversalAuthClientSecret,
     useUpdateIdentity,
     useUpdateIdentityUniversalAuth} from "./mutations";
 export {

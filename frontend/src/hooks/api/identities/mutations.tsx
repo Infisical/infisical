@@ -6,6 +6,7 @@ import { organizationKeys } from "../organization/queries";
 import { identitiesKeys } from "./queries";
 import { 
     AddIdentityUniversalAuthDTO,
+    ClientSecretData,
     CreateIdentityDTO, 
     CreateIdentityUniversalAuthClientSecretDTO,
     CreateIdentityUniversalAuthClientSecretRes,
@@ -146,15 +147,15 @@ export const useCreateIdentityUniversalAuthClientSecret = () => {
     });
 };
 
-export const useDeleteIdentityUniversalAuthClientSecret = () => {
+export const useRevokeIdentityUniversalAuthClientSecret = () => {
     const queryClient = useQueryClient();
-    return useMutation<Identity, {}, DeleteIdentityUniversalAuthClientSecretDTO>({
+    return useMutation<ClientSecretData, {}, DeleteIdentityUniversalAuthClientSecretDTO>({
         mutationFn: async ({
             identityId,
             clientSecretId
         }) => {
-            const { data: { identity } } = await apiRequest.delete(`/api/v1/auth/universal-auth/identities/${identityId}/client-secrets/${clientSecretId}`);
-            return identity;
+            const { data: { clientSecretData } } = await apiRequest.post<{ clientSecretData: ClientSecretData }>(`/api/v1/auth/universal-auth/identities/${identityId}/client-secrets/${clientSecretId}/revoke`);
+            return clientSecretData;
         },
         onSuccess: (_, { identityId }) => {
             queryClient.invalidateQueries(identitiesKeys.getIdentityUniversalAuthClientSecrets(identityId));

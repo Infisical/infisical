@@ -221,6 +221,7 @@ interface LoginIdentityUniversalAuthEvent {
   type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH ;
   metadata: {
     identityId: string;
+    identityUniversalAuthId: string;
     clientSecretId: string;
     identityAccessTokenId: string;
   };

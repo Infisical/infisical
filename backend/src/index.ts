@@ -52,6 +52,7 @@ import {
   secretsFolder as v1SecretsFolder,
   serviceToken as v1ServiceTokenRouter,
   signup as v1SignupRouter,
+  universalAuth as v1UniversalAuthRouter,
   userAction as v1UserActionRouter,
   user as v1UserRouter,
   webhooks as v1WebhooksRouter,
@@ -212,7 +213,8 @@ const main = async () => {
 
   // v1 routes
   app.use("/api/v1/signup", v1SignupRouter);
-  app.use("/api/v1/auth", v1AuthRouter); // note: updated for identities
+  app.use("/api/v1/auth", v1AuthRouter);
+  app.use("/api/v1/auth", v1UniversalAuthRouter); // new
   app.use("/api/v1/admin", v1AdminRouter);
   app.use("/api/v1/bot", v1BotRouter);
   app.use("/api/v1/user", v1UserRouter);

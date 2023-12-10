@@ -1,6 +1,7 @@
 import signup from "./signup";
 import bot from "./bot";
 import auth from "./auth";
+import universalAuth from "./universalAuth";
 import user from "./user";
 import userAction from "./userAction";
 import organization from "./organization";
@@ -23,6 +24,7 @@ import admin from "./admin";
 export {
   signup,
   auth,
+  universalAuth,
   bot,
   user,
   userAction,

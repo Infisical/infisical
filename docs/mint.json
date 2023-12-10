@@ -118,7 +118,7 @@
         "documentation/platform/pit-recovery",
         "documentation/platform/audit-logs",
         "documentation/platform/token",
-        "documentation/platform/machine-identity",
+        "documentation/platform/identity",
         "documentation/platform/mfa",
         "documentation/platform/pr-workflows",
         "documentation/platform/role-based-access-controls",

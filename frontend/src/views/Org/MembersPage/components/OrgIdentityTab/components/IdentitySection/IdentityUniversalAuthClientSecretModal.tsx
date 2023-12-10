@@ -29,9 +29,8 @@ import {
 import { useToggle } from "@app/hooks";
 import { 
     useCreateIdentityUniversalAuthClientSecret,
-    useDeleteIdentityUniversalAuthClientSecret,
     useGetIdentityUniversalAuth,
-    useGetIdentityUniversalAuthClientSecrets} from "@app/hooks/api";
+    useGetIdentityUniversalAuthClientSecrets,    useRevokeIdentityUniversalAuthClientSecret} from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = yup.object({
@@ -73,7 +72,7 @@ export const IdentityUniversalAuthClientSecretModal = ({
     const { data: identityUniversalAuth } = useGetIdentityUniversalAuth(popUpData?.identityId ?? "");
 
     const { mutateAsync: createClientSecretMutateAsync } = useCreateIdentityUniversalAuthClientSecret();
-    const { mutateAsync: deleteClientSecretMutateAsync } = useDeleteIdentityUniversalAuthClientSecret();
+    const { mutateAsync: revokeClientSecretMutateAsync } = useRevokeIdentityUniversalAuthClientSecret();
 
     const {
         control,
@@ -145,7 +144,7 @@ export const IdentityUniversalAuthClientSecretModal = ({
             
             if (!popUpData?.identityId) return;
 
-            await deleteClientSecretMutateAsync({
+            await revokeClientSecretMutateAsync({
                 identityId: popUpData.identityId,
                 clientSecretId
             });

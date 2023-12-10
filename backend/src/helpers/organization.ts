@@ -7,6 +7,8 @@ import {
   Identity,
   IdentityMembership,
   IdentityMembershipOrg,
+  IdentityUniversalAuth,
+  IdentityUniversalAuthClientSecret,
   IncidentContactOrg,
   Integration,
   IntegrationAuth,
@@ -124,13 +126,31 @@ export const deleteOrganization = async ({
   await MembershipOrg.deleteMany({
     organization: organization._id
   });
-  
-  await Identity.deleteMany({
+
+  const identityIds = await IdentityMembershipOrg.distinct("identity", {
     organization: organization._id
   });
   
   await IdentityMembershipOrg.deleteMany({
     organization: organization._id
+  });
+  
+  await Identity.deleteMany({
+    _id: {
+      $in: identityIds
+    }
+  });
+  
+  await IdentityUniversalAuth.deleteMany({
+    identity: {
+      $in: identityIds
+    }
+  });
+
+  await IdentityUniversalAuthClientSecret.deleteMany({
+    identity: {
+      $in: identityIds
+    }
   });
   
   await BotOrg.deleteMany({
