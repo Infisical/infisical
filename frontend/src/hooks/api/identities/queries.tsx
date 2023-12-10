@@ -13,7 +13,7 @@ export const useGetIdentityUniversalAuth = (identityId: string) => {
     return useQuery({
         queryKey: identitiesKeys.getIdentityUniversalAuth(identityId),
         queryFn: async () => {
-            if (identityId === "") return undefined;
+            if (identityId === "") throw new Error("Identity ID is required");
 
             const { data: { identityUniversalAuth } } = await apiRequest.get<{ identityUniversalAuth: IdentityUniversalAuth }>(
                 `/api/v1/auth/universal-auth/identities/${identityId}`

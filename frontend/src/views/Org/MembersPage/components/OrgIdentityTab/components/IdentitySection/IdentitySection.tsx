@@ -52,8 +52,12 @@ export const IdentitySection = withPermission(
                 handlePopUpClose("deleteIdentity");
             } catch (err) {
                 console.error(err);
+                const error = err as any;
+                const text = error?.response?.data?.message
+                    ?? "Failed to delete identity"
+
                 createNotification({
-                    text: "Failed to delete identity",
+                    text,
                     type: "error"
                 });
             }

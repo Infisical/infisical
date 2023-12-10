@@ -61,7 +61,8 @@ export const IdentityUniversalAuthClientSecretModal = ({
     const { t } = useTranslation();
     const { createNotification } = useNotificationContext();
     const [token, setToken] = useState("");
-    const [isTokenCopied, setIsTokenCopied] = useToggle(false);
+    const [isClientSecretCopied, setIsClientSecretCopied] = useToggle(false);
+    const [isClientIdCopied, setIsClientIdCopied] = useToggle(false);
 
     const popUpData = (popUp?.universalAuthClientSecret?.data as {
         identityId?: string;
@@ -90,17 +91,21 @@ export const IdentityUniversalAuthClientSecretModal = ({
     
     useEffect(() => {
         let timer: NodeJS.Timeout;
-        if (isTokenCopied) {
-            timer = setTimeout(() => setIsTokenCopied.off(), 2000);
+        if (isClientSecretCopied) {
+            timer = setTimeout(() => setIsClientSecretCopied.off(), 2000);
         }
     
         return () => clearTimeout(timer);
-    }, [isTokenCopied]);
-
-    const copyTokenToClipboard = () => {
-        navigator.clipboard.writeText(token);
-        setIsTokenCopied.on();
-    };
+    }, [isClientSecretCopied]);
+    
+    useEffect(() => {
+        let timer: NodeJS.Timeout;
+        if (isClientIdCopied) {
+            timer = setTimeout(() => setIsClientIdCopied.off(), 2000);
+        }
+    
+        return () => clearTimeout(timer);
+    }, [isClientIdCopied]);
     
     const onFormSubmit = async ({
         description,
@@ -189,9 +194,12 @@ export const IdentityUniversalAuthClientSecretModal = ({
                         ariaLabel="copy icon"
                         colorSchema="secondary"
                         className="group relative"
-                        onClick={() => navigator.clipboard.writeText(identityUniversalAuth?.clientId ?? "")}
+                        onClick={() => {
+                            navigator.clipboard.writeText(identityUniversalAuth?.clientId ?? "")
+                            setIsClientIdCopied.on();
+                        }}
                     >
-                        <FontAwesomeIcon icon={isTokenCopied ? faCheck : faCopy} />
+                        <FontAwesomeIcon icon={isClientIdCopied ? faCheck : faCopy} />
                         <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">
                             {t("common.click-to-copy")}
                         </span>
@@ -219,9 +227,12 @@ export const IdentityUniversalAuthClientSecretModal = ({
                                 ariaLabel="copy icon"
                                 colorSchema="secondary"
                                 className="group relative"
-                                onClick={copyTokenToClipboard}
+                                onClick={() => {
+                                    navigator.clipboard.writeText(token);
+                                    setIsClientSecretCopied.on();
+                                }}
                             >
-                                <FontAwesomeIcon icon={isTokenCopied ? faCheck : faCopy} />
+                                <FontAwesomeIcon icon={isClientSecretCopied ? faCheck : faCopy} />
                                 <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">
                                     {t("common.click-to-copy")}
                                 </span>
