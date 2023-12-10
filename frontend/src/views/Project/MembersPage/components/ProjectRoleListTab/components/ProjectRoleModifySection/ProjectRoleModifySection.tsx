@@ -9,6 +9,7 @@ import {
   faLock,
   faNetworkWired,
   faPuzzlePiece,
+  faServer,
   faShield,
   faTags,
   faUser,
@@ -18,9 +19,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import { Button, FormControl, Input, UpgradePlanModal } from "@app/components/v2";
-import { ProjectPermissionSub, useOrganization, useSubscription, useWorkspace } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { Button, FormControl, Input } from "@app/components/v2";
+import { ProjectPermissionSub, useOrganization, useWorkspace } from "@app/context";
 import { useCreateRole, useUpdateRole } from "@app/hooks/api";
 import { TRole } from "@app/hooks/api/roles/types";
 
@@ -59,6 +59,12 @@ const SINGLE_PERMISSION_LIST = [
     subtitle: "Project members management control",
     icon: faUser,
     formName: "member"
+  },
+  {
+    title: "Machine identity management",
+    subtitle: "Add, view, update and remove (machine) identities from the project",
+    icon: faServer,
+    formName: "identity"
   },
   {
     title: "Webhooks",
@@ -110,16 +116,13 @@ type Props = {
 };
 
 export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
-  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["upgradePlan"] as const);
-
-  const isNonEditable = ["admin", "member", "viewer"].includes(role?.slug || "");
+  const isNonEditable = ["admin", "member", "viewer", "no-access"].includes(role?.slug || "");
   const isNewRole = !role?.slug;
 
   const { createNotification } = useNotificationContext();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?._id || "";
   const { currentWorkspace } = useWorkspace();
-  const { subscription } = useSubscription();
   const workspaceId = currentWorkspace?._id || "";
 
   const {
@@ -137,7 +140,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
 
   const handleRoleUpdate = async (el: TFormSchema) => {
     if (!role?._id) return;
-
+    
     try {
       await updateRole({
         orgId,
@@ -155,11 +158,6 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
   };
 
   const handleFormSubmit = async (el: TFormSchema) => {
-    if (subscription && !subscription?.rbac) {
-      handlePopUpOpen("upgradePlan");
-      return;
-    }
-
     if (!isNewRole) {
       await handleRoleUpdate(el);
       return;
@@ -282,17 +280,6 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
           </Button>
         </div>
       </form>
-      {subscription && (
-        <UpgradePlanModal
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text={
-            subscription.slug === null
-              ? "You can use RBAC under an Enterprise license"
-              : "You can use RBAC if you switch to Infisical's Team Plan."
-          }
-        />
-      )}
     </div>
   );
 };

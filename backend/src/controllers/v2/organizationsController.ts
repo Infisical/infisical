@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Membership, MembershipOrg, Workspace } from "../../models";
+import { 
+  IdentityMembershipOrg,
+  Membership, 
+  MembershipOrg,
+  Workspace
+} from "../../models";
 import { Role } from "../../ee/models";
 import { deleteMembershipOrg } from "../../helpers/membershipOrg";
 import {
@@ -9,15 +14,16 @@ import {
   updateSubscriptionOrgQuantity
 } from "../../helpers/organization";
 import { addMembershipsOrg } from "../../helpers/membershipOrg";
-import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import { ACCEPTED, ADMIN, CUSTOM } from "../../variables";
+import { BadRequestError, ResourceNotFoundError, UnauthorizedRequestError } from "../../utils/errors";
+import { ACCEPTED, ADMIN, CUSTOM, MEMBER, NO_ACCESS } from "../../variables";
 import * as reqValidator from "../../validation/organization";
 import { validateRequest } from "../../helpers/validation";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
-  getUserOrgPermissions
+  getAuthDataOrgPermissions
 } from "../../ee/services/RoleService";
+import { EELicenseService } from "../../ee/services";
 import { ForbiddenError } from "@casl/ability";
 
 /**
@@ -63,7 +69,10 @@ export const getOrganizationMemberships = async (req: Request, res: Response) =>
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgMembersv2, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Member
@@ -141,16 +150,32 @@ export const updateOrganizationMembership = async (req: Request, res: Response) 
     params: { organizationId, membershipId },
     body: { role }
   } = await validateRequest(reqValidator.UpdateOrgMemberv2, req);
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Edit,
     OrgPermissionSubjects.Member
   );
 
-  const isCustomRole = !["admin", "member"].includes(role);
+  const isCustomRole = ![ADMIN, MEMBER, NO_ACCESS].includes(role);
   if (isCustomRole) {
-    const orgRole = await Role.findOne({ slug: role, isOrgRole: true });
+    const orgRole = await Role.findOne({ 
+      slug: role, 
+      isOrgRole: true,
+      organization: new Types.ObjectId(organizationId)
+    });
+
     if (!orgRole) throw BadRequestError({ message: "Role not found" });
+    
+    const plan = await EELicenseService.getPlan(new Types.ObjectId(organizationId));
+    
+    if (!plan.rbac) return res.status(400).send({
+      message:
+        "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
+    });
 
     const membership = await MembershipOrg.findByIdAndUpdate(membershipId, {
       role: CUSTOM,
@@ -227,7 +252,18 @@ export const deleteOrganizationMembership = async (req: Request, res: Response) 
   const {
     params: { organizationId, membershipId }
   } = await validateRequest(reqValidator.DeleteOrgMemberv2, req);
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  
+  const membershipOrg = await MembershipOrg.findOne({
+    _id: new Types.ObjectId(membershipId),
+    organization: new Types.ObjectId(organizationId)
+  });
+  
+  if (!membershipOrg) throw ResourceNotFoundError();
+  
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: membershipOrg.organization
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Delete,
     OrgPermissionSubjects.Member
@@ -291,7 +327,11 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgWorkspacesv2, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
+
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Workspace
@@ -377,3 +417,32 @@ export const deleteOrganizationById = async (req: Request, res: Response) => {
     organization
   });
 };
+
+/**
+ * Return list of identity memberships for organization with id [organizationId]
+ * @param req
+ * @param res 
+ * @returns 
+ */
+ export const getOrganizationIdentityMemberships = async (req: Request, res: Response) => {
+  const {
+    params: { organizationId }
+  } = await validateRequest(reqValidator.GetOrgIdentityMembershipsV2, req);
+
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
+  ForbiddenError.from(permission).throwUnlessCan(
+    OrgPermissionActions.Read,
+    OrgPermissionSubjects.Identity
+  );
+ 
+  const identityMemberships = await IdentityMembershipOrg.find({
+    organization: new Types.ObjectId(organizationId)
+  }).populate("identity customRole");
+  
+  return res.status(200).send({
+    identityMemberships
+  });
+}

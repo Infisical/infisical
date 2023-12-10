@@ -93,4 +93,37 @@ router.patch(
   workspaceController.toggleAutoCapitalization
 );
 
+router.post(
+  "/:workspaceId/identity-memberships/:identityId",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+  }),
+  workspaceController.addIdentityToWorkspace
+);
+
+router.patch(
+  "/:workspaceId/identity-memberships/:identityId",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+  }),
+  workspaceController.updateIdentityWorkspaceRole
+);
+
+router.delete(
+  "/:workspaceId/identity-memberships/:identityId",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+  }),
+  workspaceController.deleteIdentityFromWorkspace
+);
+
+router.get(
+  "/:workspaceId/identity-memberships",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  workspaceController.getWorkspaceIdentityMemberships
+);
+
+
 export default router;

@@ -1,3 +1,4 @@
+import { IdentityTrustedIp } from "../identities/types";
 import { ActorType, EventType, UserAgentType } from "./enums";
 
 interface UserActorMetadata {
@@ -7,6 +8,11 @@ interface UserActorMetadata {
 
 interface ServiceActorMetadata {
   serviceId: string;
+  name: string;
+}
+
+interface IdentityActorMetadata {
+  identityId: string;
   name: string;
 }
 
@@ -20,12 +26,12 @@ export interface ServiceActor {
   metadata: ServiceActorMetadata;
 }
 
-export interface ServiceActorV3 {
-  type: ActorType.SERVICE_V3;
-  metadata: ServiceActorMetadata;
+export interface IdentityActor {
+  type: ActorType.IDENTITY;
+  metadata: IdentityActorMetadata;
 }
 
-export type Actor = UserActor | ServiceActor | ServiceActorV3;
+export type Actor = UserActor | ServiceActor | IdentityActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -188,34 +194,92 @@ interface DeleteServiceTokenEvent {
   };
 }
 
-interface CreateServiceTokenV3Event {
-    type: EventType.CREATE_SERVICE_TOKEN_V3;
-    metadata: {
-        name: string;
-        isActive: boolean;
-        role: string;
-        expiresAt?: Date;
-    }
+interface CreateIdentityEvent { // note: currently not logging org-role
+  type: EventType.CREATE_IDENTITY;
+  metadata: {
+    identityId: string;
+    name: string;
+  };
 }
 
-interface UpdateServiceTokenV3Event {
-    type: EventType.UPDATE_SERVICE_TOKEN_V3;
-    metadata: {
-        name?: string;
-        isActive?: boolean;
-        role?: string;
-        expiresAt?: Date;
-    }
+interface UpdateIdentityEvent {
+  type: EventType.UPDATE_IDENTITY;
+  metadata: {
+    identityId: string;
+    name?: string;
+  };
 }
 
-interface DeleteServiceTokenV3Event {
-    type: EventType.DELETE_SERVICE_TOKEN_V3;
-    metadata: {
-        name: string;
-        isActive: boolean;
-        role?: string;
-        expiresAt?: Date;
-    }
+interface DeleteIdentityEvent {
+  type: EventType.DELETE_IDENTITY;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface LoginIdentityUniversalAuthEvent {
+  type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH ;
+  metadata: {
+    identityId: string;
+    identityUniversalAuthId: string;
+    clientSecretId: string;
+    identityAccessTokenId: string;
+  };
+}
+
+interface AddIdentityUniversalAuthEvent {
+  type: EventType.ADD_IDENTITY_UNIVERSAL_AUTH;
+  metadata: {
+    identityId: string;
+    clientSecretTrustedIps: Array<IdentityTrustedIp>;
+    accessTokenTTL: number;
+    accessTokenMaxTTL: number;
+    accessTokenNumUsesLimit: number;
+    accessTokenTrustedIps: Array<IdentityTrustedIp>;
+  };
+}
+
+interface UpdateIdentityUniversalAuthEvent {
+  type: EventType.UPDATE_IDENTITY_UNIVERSAL_AUTH;
+  metadata: {
+    identityId: string;
+    clientSecretTrustedIps?: Array<IdentityTrustedIp>;
+    accessTokenTTL?: number;
+    accessTokenMaxTTL?: number;
+    accessTokenNumUsesLimit?: number;
+    accessTokenTrustedIps?: Array<IdentityTrustedIp>;
+  };
+}
+
+interface GetIdentityUniversalAuthEvent {
+  type: EventType.GET_IDENTITY_UNIVERSAL_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface CreateIdentityUniversalAuthClientSecretEvent {
+  type: EventType.CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET ;
+  metadata: {
+    identityId: string;
+    clientSecretId: string;
+  };
+}
+
+interface GetIdentityUniversalAuthClientSecretsEvent {
+  type: EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS;
+  metadata: {
+    identityId: string;
+  };
+}
+
+
+interface RevokeIdentityUniversalAuthClientSecretEvent {
+  type: EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET ;
+  metadata: {
+    identityId: string;
+    clientSecretId: string;
+  };
 }
 
 interface CreateEnvironmentEvent {
@@ -414,9 +478,16 @@ export type Event =
   | DeleteTrustedIPEvent
   | CreateServiceTokenEvent
   | DeleteServiceTokenEvent
-  | CreateServiceTokenV3Event
-  | UpdateServiceTokenV3Event
-  | DeleteServiceTokenV3Event
+  | CreateIdentityEvent
+  | UpdateIdentityEvent
+  | DeleteIdentityEvent
+  | LoginIdentityUniversalAuthEvent
+  | AddIdentityUniversalAuthEvent
+  | UpdateIdentityUniversalAuthEvent
+  | GetIdentityUniversalAuthEvent
+  | CreateIdentityUniversalAuthClientSecretEvent
+  | GetIdentityUniversalAuthClientSecretsEvent
+  | RevokeIdentityUniversalAuthClientSecretEvent
   | CreateEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent

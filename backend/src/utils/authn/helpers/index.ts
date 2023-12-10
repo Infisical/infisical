@@ -7,9 +7,9 @@ import { UnauthorizedRequestError } from "../../errors";
 import {
   validateAPIKey,
   validateAPIKeyV2,
+  validateIdentity,
   validateJWT,
-  validateServiceTokenV2,
-  validateServiceTokenV3
+  validateServiceTokenV2
 } from "../authModeValidators";
 import { getUserAgentType } from "../../posthog";
 
@@ -36,7 +36,7 @@ interface GetAuthDataParams {
  * - SERVICE_TOKEN
  * - API_KEY
  * - JWT
- * - SERVICE_ACCESS_TOKEN (from ST V3)
+ * - IDENTITY_ACCESS_TOKEN (from identity)
  * - API_KEY_V2
  * @param {Object} params
  * @param {Object.<string, (string|string[]|undefined)>} params.headers - The HTTP request headers, usually from Express's `req.headers`.
@@ -77,8 +77,8 @@ export const extractAuthMode = async ({
             return { authMode: AuthMode.JWT, authTokenValue };
         case AuthTokenType.API_KEY:
             return { authMode: AuthMode.API_KEY_V2, authTokenValue };
-        case AuthTokenType.SERVICE_ACCESS_TOKEN:
-            return { authMode: AuthMode.SERVICE_ACCESS_TOKEN, authTokenValue };
+        case AuthTokenType.IDENTITY_ACCESS_TOKEN:
+            return { authMode: AuthMode.IDENTITY_ACCESS_TOKEN, authTokenValue };
         default:
             throw UnauthorizedRequestError({
                 message: "Failed to authenticate unknown authentication method"
@@ -115,20 +115,21 @@ export const getAuthData = async ({
                 userAgentType
             }
         }
-        case AuthMode.SERVICE_ACCESS_TOKEN: {
-            const serviceTokenData = await validateServiceTokenV3({
-                authTokenValue
+        case AuthMode.IDENTITY_ACCESS_TOKEN: {
+            const identity = await validateIdentity({
+                authTokenValue,
+                ipAddress
             });
 
             return {
                 actor: {
-                    type: ActorType.SERVICE_V3,
+                    type: ActorType.IDENTITY,
                     metadata: {
-                        serviceId: serviceTokenData._id.toString(),
-                        name: serviceTokenData.name
+                        identityId: identity._id.toString(),
+                        name: identity.name
                     }
                 },
-                authPayload: serviceTokenData,
+                authPayload: identity,
                 ipAddress,
                 userAgent,
                 userAgentType

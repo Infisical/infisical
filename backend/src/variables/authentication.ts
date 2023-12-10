@@ -7,14 +7,13 @@ export enum AuthTokenType {
     MFA_TOKEN = "mfaToken", // TODO: remove in favor of claim
     PROVIDER_TOKEN = "providerToken", // TODO: remove in favor of claim
     API_KEY = "apiKey",
-    SERVICE_ACCESS_TOKEN = "serviceAccessToken",
-    SERVICE_REFRESH_TOKEN = "serviceRefreshToken"
+    IDENTITY_ACCESS_TOKEN = "identityAccessToken",
 }
 
 export enum AuthMode {
     JWT = "jwt",
     SERVICE_TOKEN = "serviceToken",
-    SERVICE_ACCESS_TOKEN = "serviceAccessToken",
+    IDENTITY_ACCESS_TOKEN = "identityAccessToken",
     API_KEY = "apiKey",
     API_KEY_V2 = "apiKeyV2"
 }

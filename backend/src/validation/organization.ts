@@ -46,9 +46,9 @@ export const validateClientForOrganization = async ({
       throw UnauthorizedRequestError({
         message: "Failed service token authorization for organization"
       });
-    case ActorType.SERVICE_V3:
+    case ActorType.IDENTITY:
       throw UnauthorizedRequestError({
-        message: "Failed service token authorization for organization"
+        message: "Failed identity authorization for organization"
       });
   }
 };
@@ -211,5 +211,13 @@ export const CreateOrgv2 = z.object({
 });
 
 export const DeleteOrgv2 = z.object({
+  params: z.object({ organizationId: z.string().trim() })
+});
+
+export const GetOrgServiceMembersV2 = z.object({
+  params: z.object({ organizationId: z.string().trim() })
+});
+
+export const GetOrgIdentityMembershipsV2 = z.object({
   params: z.object({ organizationId: z.string().trim() })
 });

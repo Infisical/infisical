@@ -1,6 +1,15 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Key, Membership, ServiceTokenData, Workspace } from "../../models";
+import { 
+  IIdentity,
+  IdentityMembership,
+  IdentityMembershipOrg,
+  Key, 
+  Membership,
+  ServiceTokenData,
+  Workspace
+} from "../../models";
+import { IRole, Role } from "../../ee/models";
 import {
   pullSecrets as pull,
   v2PushSecrets as push,
@@ -16,9 +25,13 @@ import * as reqValidator from "../../validation";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getAuthDataProjectPermissions
+  getAuthDataProjectPermissions,
+  getWorkspaceRolePermissions,
+  isAtLeastAsPrivilegedWorkspace
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
+import { BadRequestError, ForbiddenRequestError, ResourceNotFoundError } from "../../utils/errors";
+import { ADMIN, CUSTOM, MEMBER, NO_ACCESS, VIEWER } from "../../variables";
 
 interface V2PushSecret {
   type: string; // personal or shared
@@ -491,3 +504,254 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
     workspace
   });
 };
+
+/**
+ * Add identity with id [identityId] to workspace
+ * with id [workspaceId]
+ * @param req 
+ * @param res 
+ */
+ export const addIdentityToWorkspace = async (req: Request, res: Response) => {
+  const {
+    params: { workspaceId, identityId },
+    body: {
+      role
+    }
+  } = await validateRequest(reqValidator.AddIdentityToWorkspaceV2, req);
+  
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.Identity
+  );
+
+  let identityMembership = await IdentityMembership.findOne({
+    identity: new Types.ObjectId(identityId),
+    workspace: new Types.ObjectId(workspaceId)
+  });
+
+  if (identityMembership) throw BadRequestError({
+    message: `Identity with id ${identityId} already exists in project with id ${workspaceId}`
+  });
+
+  
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw ResourceNotFoundError();
+
+  const identityMembershipOrg = await IdentityMembershipOrg.findOne({
+    identity: new Types.ObjectId(identityId),
+    organization: workspace.organization
+  });
+
+  if (!identityMembershipOrg) throw ResourceNotFoundError({
+    message: `Failed to find identity with id ${identityId}`
+  });
+  
+  if (!identityMembershipOrg.organization.equals(workspace.organization)) throw BadRequestError({
+    message: "Failed to add identity to project in another organization"
+  });
+
+  const rolePermission = await getWorkspaceRolePermissions(role, workspaceId);
+  const isAsPrivilegedAsIntendedRole = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
+  
+  if (!isAsPrivilegedAsIntendedRole) throw ForbiddenRequestError({
+      message: "Failed to add identity to project with more privileged role"
+  });
+
+  let customRole;
+  if (role) {
+    const isCustomRole = ![ADMIN, MEMBER, VIEWER, NO_ACCESS].includes(role);
+    if (isCustomRole) {
+      customRole = await Role.findOne({
+        slug: role,
+        isOrgRole: false,
+        workspace: new Types.ObjectId(workspaceId)
+      });
+      
+      if (!customRole) throw BadRequestError({ message: "Role not found" });
+    }
+  }
+  
+  identityMembership = await new IdentityMembership({
+    identity: identityMembershipOrg.identity,
+    workspace: new Types.ObjectId(workspaceId),
+    role: customRole ? CUSTOM : role,
+    customRole
+  }).save();
+  
+  return res.status(200).send({
+    identityMembership
+  });
+}
+
+/**
+ * Update role of identity with id [identityId] in workspace
+ * with id [workspaceId] to [role]
+ * @param req 
+ * @param res 
+ */
+ export const updateIdentityWorkspaceRole = async (req: Request, res: Response) => {
+  const {
+    params: { workspaceId, identityId },
+    body: {
+      role
+    }
+  } = await validateRequest(reqValidator.UpdateIdentityWorkspaceRoleV2, req);
+  
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Identity
+  );
+  
+  let identityMembership = await IdentityMembership
+    .findOne({
+      identity: new Types.ObjectId(identityId),
+      workspace: new Types.ObjectId(workspaceId)
+    })
+    .populate<{
+      identity: IIdentity,
+      customRole: IRole
+    }>("identity customRole");
+
+  if (!identityMembership) throw BadRequestError({
+    message: `Identity with id ${identityId} does not exist in project with id ${workspaceId}`
+  });
+  
+  const identityRolePermission = await getWorkspaceRolePermissions(
+    identityMembership?.customRole?.slug ?? identityMembership.role, 
+    identityMembership.workspace.toString()
+  );
+  const isAsPrivilegedAsIdentity = isAtLeastAsPrivilegedWorkspace(permission, identityRolePermission);
+  if (!isAsPrivilegedAsIdentity) throw ForbiddenRequestError({
+      message: "Failed to update role of more privileged identity"
+  });
+
+  const rolePermission = await getWorkspaceRolePermissions(role, workspaceId);
+  const isAsPrivilegedAsIntendedRole = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
+  
+  if (!isAsPrivilegedAsIntendedRole) throw ForbiddenRequestError({
+      message: "Failed to update identity to a more privileged role"
+  });
+
+  let customRole;
+  if (role) {
+    const isCustomRole = ![ADMIN, MEMBER, VIEWER, NO_ACCESS].includes(role);
+    if (isCustomRole) {
+      customRole = await Role.findOne({
+        slug: role,
+        isOrgRole: false,
+        workspace: new Types.ObjectId(workspaceId)
+      });
+      
+      if (!customRole) throw BadRequestError({ message: "Role not found" });
+    }
+  }
+  
+  identityMembership = await IdentityMembership.findOneAndUpdate(
+    {
+      identity: identityMembership.identity._id,
+      workspace: new Types.ObjectId(workspaceId),
+    },
+    {
+      role: customRole ? CUSTOM : role,
+      customRole
+    },
+    {
+      new: true
+    }
+  );
+
+  return res.status(200).send({
+    identityMembership
+  });
+}
+
+/**
+ * Delete identity with id [identityId] to workspace
+ * with id [workspaceId]
+ * @param req 
+ * @param res 
+ */
+ export const deleteIdentityFromWorkspace = async (req: Request, res: Response) => {
+  const {
+    params: { workspaceId, identityId }
+  } = await validateRequest(reqValidator.DeleteIdentityFromWorkspaceV2, req);
+  
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.Identity
+  );
+  
+  const identityMembership = await IdentityMembership
+    .findOne({
+      identity: new Types.ObjectId(identityId),
+      workspace: new Types.ObjectId(workspaceId)
+    })
+    .populate<{
+      identity: IIdentity,
+      customRole: IRole
+    }>("identity customRole");
+  
+  if (!identityMembership) throw ResourceNotFoundError({
+    message: `Identity with id ${identityId} does not exist in project with id ${workspaceId}`
+  });
+  
+  const identityRolePermission = await getWorkspaceRolePermissions(
+    identityMembership?.customRole?.slug ?? identityMembership.role, 
+    identityMembership.workspace.toString()
+  );
+  const isAsPrivilegedAsIdentity = isAtLeastAsPrivilegedWorkspace(permission, identityRolePermission);
+  if (!isAsPrivilegedAsIdentity) throw ForbiddenRequestError({
+      message: "Failed to remove more privileged identity from project"
+  });
+  
+  await IdentityMembership.findByIdAndDelete(identityMembership._id);
+
+  return res.status(200).send({
+    identityMembership
+  });
+}
+
+/**
+ * Return list of identity memberships for workspace with id [workspaceId]
+ * @param req
+ * @param res 
+ * @returns 
+ */
+ export const getWorkspaceIdentityMemberships = async (req: Request, res: Response) => {
+  const {
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.GetWorkspaceIdentityMembersV2, req);
+  
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Identity
+  );
+
+  const identityMemberships = await IdentityMembership.find({
+    workspace: new Types.ObjectId(workspaceId)
+  }).populate("identity customRole");
+
+  return res.status(200).send({
+    identityMemberships
+  });
+}

@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
-import { faMagnifyingGlass, faPlus, faTrash, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faPlus, faUsers,faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -38,9 +38,9 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
+  useSubscription,
   useUser,
-  useWorkspace
-} from "@app/context";
+  useWorkspace} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   useAddUserToWs,
@@ -60,6 +60,7 @@ type TAddMemberForm = z.infer<typeof addMemberFormSchema>;
 
 export const MemberListTab = () => {
   const { createNotification } = useNotificationContext();
+  const { subscription } = useSubscription();
   const { t } = useTranslation();
 
   const { currentOrg } = useOrganization();
@@ -78,7 +79,7 @@ export const MemberListTab = () => {
   const { data: wsKey } = useGetUserWsKey(workspaceId);
   const { data: members, isLoading: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
   const { data: orgUsers } = useGetOrgUsers(orgId);
-
+  
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -170,6 +171,15 @@ export const MemberListTab = () => {
     if (!currentOrg?._id) return;
 
     try {
+      const isCustomRole = !["admin", "member", "viewer"].includes(role);
+          
+      if (isCustomRole && subscription && !subscription?.rbac) {
+        handlePopUpOpen("upgradePlan", {
+          description: "You can assign custom roles to members if you upgrade your Infisical plan."
+        });
+        return;
+      }
+          
       await updateUserWorkspaceRole({ membershipId, role });
       createNotification({
         text: "Successfully updated user role",
@@ -205,7 +215,7 @@ export const MemberListTab = () => {
       ({ status, user: u }) => status === "accepted" && !wsUserEmails.has(u.email)
     );
   }, [orgUsers, members]);
-
+  
   const onGrantAccess = async (grantedUserId: string, publicKey: string) => {
     try {
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
@@ -243,29 +253,35 @@ export const MemberListTab = () => {
   const isLoading = isMembersLoading || isRolesLoading;
 
   return (
-    <div className="w-full">
-      <div className="mb-4 flex">
-        <div className="mr-4 flex-1">
-          <Input
-            value={searchMemberFilter}
-            onChange={(e) => setSearchMemberFilter(e.target.value)}
-            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-            placeholder="Search members..."
-          />
-        </div>
-        <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Member}>
-          {(isAllowed) => (
-            <Button
-              isDisabled={!isAllowed}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handlePopUpOpen("addMember")}
-            >
-              Add Member
-            </Button>
-          )}
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="flex justify-between mb-8">
+        <p className="text-xl font-semibold text-mineshaft-100">
+            Members
+        </p>
+        <ProjectPermissionCan
+            I={ProjectPermissionActions.Create} 
+            a={ProjectPermissionSub.Member}
+        >
+            {(isAllowed) => (
+                <Button
+                colorSchema="secondary"
+                type="submit"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => handlePopUpOpen("addMember")}
+                isDisabled={!isAllowed}
+                >
+                    Add Member
+                </Button>
+            )}
         </ProjectPermissionCan>
       </div>
-      <div>
+      <Input
+        value={searchMemberFilter}
+        onChange={(e) => setSearchMemberFilter(e.target.value)}
+        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+        placeholder="Search members..."
+      />
+      <div className="mt-4">
         <TableContainer>
           <Table>
             <THead>
@@ -273,7 +289,7 @@ export const MemberListTab = () => {
                 <Th>Name</Th>
                 <Th>Email</Th>
                 <Th>Role</Th>
-                <Th aria-label="actions" />
+                <Th className="w-5" />
               </Tr>
             </THead>
             <TBody>
@@ -296,7 +312,7 @@ export const MemberListTab = () => {
                             {(isAllowed) => (
                               <>
                                 <Select
-                                  defaultValue={
+                                  value={
                                     role === "custom" ? findRoleFromId(customRole)?.slug : role
                                   }
                                   isDisabled={userId === u?._id || !isAllowed}
@@ -339,14 +355,17 @@ export const MemberListTab = () => {
                             >
                               {(isAllowed) => (
                                 <IconButton
-                                  ariaLabel="delete"
+                                  size="lg"
                                   colorSchema="danger"
+                                  variant="plain"
+                                  ariaLabel="update"
+                                  className="ml-4"
                                   isDisabled={userId === u?._id || !isAllowed}
                                   onClick={() =>
                                     handlePopUpOpen("removeMember", { id: membershipId })
                                   }
                                 >
-                                  <FontAwesomeIcon icon={faTrash} />
+                                  <FontAwesomeIcon icon={faXmark} />
                                 </IconButton>
                               )}
                             </ProjectPermissionCan>
@@ -434,7 +453,7 @@ export const MemberListTab = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can add custom environments if you switch to Infisical's Team plan."
+        text={(popUp.upgradePlan?.data as { description: string })?.description}
       />
     </div>
   );

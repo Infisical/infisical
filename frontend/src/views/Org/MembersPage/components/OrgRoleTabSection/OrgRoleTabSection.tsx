@@ -6,14 +6,8 @@ import { TRole } from "@app/hooks/api/roles/types";
 import { OrgRoleModifySection } from "./OrgRoleModifySection";
 import { OrgRoleTable } from "./OrgRoleTable";
 
-type Props = {
-  roles?: TRole<undefined>[];
-  isRolesLoading?: boolean;
-};
-
-export const OrgRoleTabSection = ({ roles = [], isRolesLoading }: Props) => {
+export const OrgRoleTabSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["editRole"] as const);
-
   return popUp.editRole.isOpen ? (
     <motion.div
       key="role-modify"
@@ -35,11 +29,7 @@ export const OrgRoleTabSection = ({ roles = [], isRolesLoading }: Props) => {
       animate={{ opacity: 1, translateX: 0 }}
       exit={{ opacity: 0, translateX: -30 }}
     >
-      <OrgRoleTable
-        roles={roles}
-        isRolesLoading={isRolesLoading}
-        onSelectRole={(role) => handlePopUpOpen("editRole", role)}
-      />
+      <OrgRoleTable onSelectRole={(role) => handlePopUpOpen("editRole", role)} />
     </motion.div>
   );
 };

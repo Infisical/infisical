@@ -2,10 +2,11 @@ import { Request, Response } from "express";
 import { PipelineStage, Types } from "mongoose";
 import {
   Folder,
+  Identity,
+  IdentityMembership,
   Membership,
   Secret,
   ServiceTokenData,
-  ServiceTokenDataV3,
   TFolderSchema,
   User,
   Workspace
@@ -17,10 +18,10 @@ import {
   FolderVersion,
   IPType,
   ISecretVersion,
+  IdentityActor,
   SecretSnapshot,
   SecretVersion,
   ServiceActor,
-  ServiceActorV3,
   TFolderRootVersionSchema,
   TrustedIP,
   UserActor
@@ -669,6 +670,21 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
     ProjectPermissionSub.AuditLogs
   );
 
+  let actorMetadataQuery = "";
+  if (actor) {
+    switch (actor?.split("-", 2)[0]) {
+      case ActorType.USER:
+        actorMetadataQuery = "actor.metadata.userId";
+        break;
+      case ActorType.SERVICE:
+        actorMetadataQuery = "actor.metadata.serviceId";
+        break;
+      case ActorType.IDENTITY:
+        actorMetadataQuery = "actor.metadata.identityId";
+        break;
+    }
+  }
+
   const query = {
     workspace: new Types.ObjectId(workspaceId),
     ...(eventType
@@ -684,13 +700,9 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
     ...(actor
       ? {
           "actor.type": actor.substring(0, actor.lastIndexOf("-")),
-          ...(actor.split("-", 2)[0] === ActorType.USER
-            ? {
-                "actor.metadata.userId": actor.substring(actor.lastIndexOf("-") + 1)
-              }
-            : {
-                "actor.metadata.serviceId": actor.substring(actor.lastIndexOf("-") + 1)
-              })
+          ...({
+            [actorMetadataQuery]: actor.substring(actor.lastIndexOf("-") + 1)
+          })
         }
       : {}),
     ...(startDate || endDate
@@ -702,7 +714,9 @@ export const getWorkspaceAuditLogs = async (req: Request, res: Response) => {
         }
       : {})
   };
+  
   const auditLogs = await AuditLog.find(query).sort({ createdAt: -1 }).skip(offset).limit(limit);
+  
   return res.status(200).send({
     auditLogs
   });
@@ -731,6 +745,7 @@ export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Res
   const userIds = await Membership.distinct("user", {
     workspace: new Types.ObjectId(workspaceId)
   });
+  
   const userActors: UserActor[] = (
     await User.find({
       _id: {
@@ -757,19 +772,25 @@ export const getWorkspaceAuditLogActorFilterOpts = async (req: Request, res: Res
     }
   }));
 
-  const serviceV3Actors: ServiceActorV3[] = (
-    await ServiceTokenDataV3.find({
-      workspace: new Types.ObjectId(workspaceId)
+  const identityIds = await IdentityMembership.distinct("identity", {
+    workspace: new Types.ObjectId(workspaceId)
+  });
+  
+  const identityActors: IdentityActor[] = (
+    await Identity.find({
+      _id: {
+        $in: identityIds
+      }
     })
-  ).map((serviceTokenData) => ({
-    type: ActorType.SERVICE_V3,
+  ).map((identity) => ({
+    type: ActorType.IDENTITY,
     metadata: {
-      serviceId: serviceTokenData._id.toString(),
-      name: serviceTokenData.name
+      identityId: identity._id.toString(),
+      name: identity.name
     }
   }));
 
-  const actors = [...userActors, ...serviceActors, ...serviceV3Actors];
+  const actors = [...userActors, ...serviceActors, ...identityActors];
 
   return res.status(200).send({
     actors

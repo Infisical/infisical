@@ -3,15 +3,22 @@ import jwt from "jsonwebtoken";
 import * as bigintConversion from "bigint-conversion";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const jsrp = require("jsrp");
-import { LoginSRPDetail, TokenVersion, User } from "../../models";
+import { 
+  LoginSRPDetail,
+  TokenVersion,
+  User
+} from "../../models";
 import { clearTokens, createToken, issueAuthTokens } from "../../helpers/auth";
 import { checkUserDevice } from "../../helpers/user";
 import { AuthTokenType } from "../../variables";
-import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
+import { 
+  BadRequestError, 
+  UnauthorizedRequestError
+} from "../../utils/errors";
 import {
   getAuthSecret,
   getHttpsEnabled,
-  getJwtAuthLifetime
+  getJwtAuthLifetime,
 } from "../../config";
 import { ActorType } from "../../ee/models";
 import { validateRequest } from "../../helpers/validation";
@@ -25,10 +32,11 @@ declare module "jsonwebtoken" {
     userId: string;
     refreshVersion?: number;
   }
-  export interface ServiceRefreshTokenJwtPayload extends jwt.JwtPayload {
-    serviceTokenDataId: string;
+  export interface IdentityAccessTokenJwtPayload extends jwt.JwtPayload {
+    _id: string;
+    clientSecretId: string;
+    identityAccessTokenId: string;
     authTokenType: string;
-    tokenVersion: number;
   }
 }
 

@@ -54,4 +54,12 @@ router.delete(
   organizationsController.deleteOrganizationById
 );
 
+router.get(
+  "/:organizationId/identity-memberships",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  organizationsController.getOrganizationIdentityMemberships
+);
+
 export default router;

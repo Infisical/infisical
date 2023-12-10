@@ -2,10 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { IdentityMembership } from "../identities/types";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
 import { EncryptedSecret } from "../secrets/types";
-import { ServiceTokenDataV3 } from "../serviceTokens/types";
 import { TWorkspaceUser } from "../users/types";
 import {
   CreateEnvironmentDTO,
@@ -31,8 +31,7 @@ export const workspaceKeys = {
   getAllUserWorkspace: ["workspaces"] as const,
   getWorkspaceAuditLogs: (workspaceId: string) => [{ workspaceId }] as const,
   getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }] as const,
-  getWorkspaceServiceTokenDataV3: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-service-token-data-v3"] as const
+  getWorkspaceIdentityMemberships: (workspaceId: string) => [{ workspaceId }, "workspace-identity-memberships"] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -97,6 +96,7 @@ const fetchUserWorkspaceMemberships = async (orgId: string) => {
   const { data } = await apiRequest.get<Record<string, Workspace[]>>(
     `/api/v1/organization/${orgId}/workspace-memberships`
   );
+  
   return data;
 };
 
@@ -356,17 +356,91 @@ export const useUpdateUserWorkspaceRole = () => {
   });
 };
 
-export const useGetWorkspaceServiceTokenDataV3 = (workspaceId: string) => {
+export const useAddIdentityToWorkspace = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      identityId,
+      workspaceId,
+      role
+    }: {
+      identityId: string;
+      workspaceId: string;
+      role?: string;
+    }) => {
+
+      const {
+        data: { identityMembership }
+      } = await apiRequest.post(`/api/v2/workspace/${workspaceId}/identity-memberships/${identityId}`, {
+        role
+      });
+      
+      return identityMembership;
+    },
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIdentityMemberships(workspaceId));
+    }
+  });
+};
+
+export const useUpdateIdentityWorkspaceRole = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      identityId,
+      workspaceId,
+      role
+    }: {
+      identityId: string;
+      workspaceId: string;
+      role?: string;
+    }) => {
+
+      const {
+        data: { identityMembership }
+      } = await apiRequest.patch(`/api/v2/workspace/${workspaceId}/identity-memberships/${identityId}`, {
+        role
+      });
+
+      return identityMembership;
+    },
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIdentityMemberships(workspaceId));
+    }
+  });
+};
+
+export const useDeleteIdentityFromWorkspace = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      identityId,
+      workspaceId,
+    }: {
+      identityId: string;
+      workspaceId: string;
+    }) => {
+      const {
+        data: { identityMembership }
+      } = await apiRequest.delete(`/api/v2/workspace/${workspaceId}/identity-memberships/${identityId}`);
+      return identityMembership;
+    },
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIdentityMemberships(workspaceId));
+    }
+  });
+};
+
+export const useGetWorkspaceIdentityMemberships = (workspaceId: string) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceServiceTokenDataV3(workspaceId),
+    queryKey: workspaceKeys.getWorkspaceIdentityMemberships(workspaceId),
     queryFn: async () => {
       const {
-        data: { serviceTokenData }
-      } = await apiRequest.get<{ serviceTokenData: ServiceTokenDataV3[] }>(
-        `/api/v3/workspaces/${workspaceId}/service-token`
+        data: { identityMemberships }
+      } = await apiRequest.get<{ identityMemberships: IdentityMembership[] }>(
+        `/api/v2/workspace/${workspaceId}/identity-memberships`
       );
-
-      return serviceTokenData;
+      return identityMemberships;
     },
     enabled: true
   });

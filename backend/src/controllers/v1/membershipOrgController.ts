@@ -21,7 +21,7 @@ import { validateRequest } from "../../helpers/validation";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
-  getUserOrgPermissions
+  getAuthDataOrgPermissions
 } from "../../ee/services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 
@@ -44,11 +44,12 @@ export const deleteMembershipOrg = async (req: Request, _res: Response) => {
   if (!membershipOrgToDelete) {
     throw new Error("Failed to delete organization membership that doesn't exist");
   }
+  
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: membershipOrgToDelete.organization
+  });
 
-  const { permission, membership: membershipOrg } = await getUserOrgPermissions(
-    req.user._id,
-    membershipOrgToDelete.organization.toString()
-  );
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Delete,
     OrgPermissionSubjects.Member
@@ -60,7 +61,7 @@ export const deleteMembershipOrg = async (req: Request, _res: Response) => {
   });
 
   await updateSubscriptionOrgQuantity({
-    organizationId: membershipOrg.organization.toString()
+    organizationId: membershipOrgToDelete.organization.toString()
   });
 
   return membershipOrgToDelete;
@@ -96,7 +97,11 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
     body: { inviteeEmail, organizationId }
   } = await validateRequest(reqValidator.InviteUserToOrgv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
+  
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Create,
     OrgPermissionSubjects.Member

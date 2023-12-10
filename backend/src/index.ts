@@ -25,6 +25,7 @@ import {
   secretSnapshot as eeSecretSnapshotRouter,
   users as eeUsersRouter,
   workspace as eeWorkspaceRouter,
+  identities as v1IdentitiesRouter,
   roles as v1RoleRouter,
   secretApprovalPolicy as v1SecretApprovalPolicyRouter,
   secretApprovalRequest as v1SecretApprovalRequestRouter,
@@ -33,7 +34,6 @@ import {
   secretScanning as v1SecretScanningRouter
 } from "./ee/routes/v1";
 import { apiKeyData as v3apiKeyDataRouter } from "./ee/routes/v3";
-import { serviceTokenData as v3ServiceTokenDataRouter } from "./ee/routes/v3";
 import {
   admin as v1AdminRouter,
   auth as v1AuthRouter,
@@ -52,6 +52,7 @@ import {
   secretsFolder as v1SecretsFolder,
   serviceToken as v1ServiceTokenRouter,
   signup as v1SignupRouter,
+  universalAuth as v1UniversalAuthRouter,
   userAction as v1UserActionRouter,
   user as v1UserRouter,
   webhooks as v1WebhooksRouter,
@@ -198,6 +199,7 @@ const main = async () => {
   }
 
   // (EE) routes
+  app.use("/api/v1/identities", v1IdentitiesRouter);
   app.use("/api/v1/secret", eeSecretRouter);
   app.use("/api/v1/secret-snapshot", eeSecretSnapshotRouter);
   app.use("/api/v1/users", eeUsersRouter);
@@ -205,14 +207,14 @@ const main = async () => {
   app.use("/api/v1/organizations", eeOrganizationsRouter);
   app.use("/api/v1/sso", eeSSORouter);
   app.use("/api/v1/cloud-products", eeCloudProductsRouter);
-  app.use("/api/v3/api-key", v3apiKeyDataRouter); // new
-  app.use("/api/v3/service-token", v3ServiceTokenDataRouter); // new
+  app.use("/api/v3/api-key", v3apiKeyDataRouter);
   app.use("/api/v1/secret-rotation-providers", v1SecretRotationProviderRouter);
   app.use("/api/v1/secret-rotations", v1SecretRotation);
 
   // v1 routes
   app.use("/api/v1/signup", v1SignupRouter);
   app.use("/api/v1/auth", v1AuthRouter);
+  app.use("/api/v1/auth", v1UniversalAuthRouter); // new
   app.use("/api/v1/admin", v1AdminRouter);
   app.use("/api/v1/bot", v1BotRouter);
   app.use("/api/v1/user", v1UserRouter);
@@ -220,7 +222,7 @@ const main = async () => {
   app.use("/api/v1/organization", v1OrganizationRouter);
   app.use("/api/v1/workspace", v1WorkspaceRouter);
   app.use("/api/v1/membership-org", v1MembershipOrgRouter);
-  app.use("/api/v1/membership", v1MembershipRouter); //
+  app.use("/api/v1/membership", v1MembershipRouter);
   app.use("/api/v1/key", v1KeyRouter);
   app.use("/api/v1/invite-org", v1InviteOrgRouter);
   app.use("/api/v1/secret", v1SecretRouter); // deprecate
@@ -247,7 +249,7 @@ const main = async () => {
   app.use("/api/v2/workspace", v2TagsRouter);
   app.use("/api/v2/workspace", v2WorkspaceRouter);
   app.use("/api/v2/secret", v2SecretRouter); // deprecate
-  app.use("/api/v2/secrets", v2SecretsRouter); // note: in the process of moving to v3/secrets
+  app.use("/api/v2/secrets", v2SecretsRouter);
   app.use("/api/v2/service-token", v2ServiceTokenDataRouter);
 
   // v3 routes (experimental)

@@ -18,7 +18,7 @@ export const validateMembershipOrg = async ({
 }: {
   userId: Types.ObjectId;
   organizationId: Types.ObjectId;
-  acceptedRoles?: Array<"owner" | "admin" | "member" | "custom">;
+  acceptedRoles?: Array<"owner" | "admin" | "member" | "custom" | "no-access">;
   acceptedStatuses?: Array<"invited" | "accepted">;
 }) => {
   const membershipOrg = await MembershipOrg.findOne({

@@ -44,7 +44,7 @@ export type OrgUser = {
   };
   inviteEmail: string;
   organization: string;
-  role: "owner" | "admin" | "member" | "custom";
+  role: "owner" | "admin" | "member" | "no-access" | "custom";
   status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];
   customRole: string;
