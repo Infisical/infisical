@@ -30,6 +30,7 @@ import {
 import {
   useAddUserToOrg,
   useFetchServerStatus,
+  useGetOrgRoles,
   useGetOrgUsers,
   useGetRoles,
   useUpdateOrgUserRole
@@ -56,9 +57,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
   const userId = user?.id || "";
   const orgId = currentOrg?.id || "";
 
-  const { data: roles, isLoading: isRolesLoading } = useGetRoles({
-    orgId
-  });
+  const { data: roles, isLoading: isRolesLoading } = useGetOrgRoles(orgId);
 
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
 

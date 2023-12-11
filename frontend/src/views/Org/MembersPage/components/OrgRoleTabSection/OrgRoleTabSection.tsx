@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 
 import { usePopUp } from "@app/hooks";
-import { TRole } from "@app/hooks/api/roles/types";
+import { TOrgRole } from "@app/hooks/api/roles/types";
 
 import { OrgRoleModifySection } from "./OrgRoleModifySection";
 import { OrgRoleTable } from "./OrgRoleTable";
@@ -17,7 +17,7 @@ export const OrgRoleTabSection = () => {
       exit={{ opacity: 0, translateX: 30 }}
     >
       <OrgRoleModifySection
-        role={popUp.editRole.data as TRole<undefined>}
+        role={popUp.editRole.data as TOrgRole}
         onGoBack={() => handlePopUpClose("editRole")}
       />
     </motion.div>

@@ -8,15 +8,16 @@ import {
   faServer,
   faSignIn,
   faUserCog,
-  faUsers} from "@fortawesome/free-solid-svg-icons";
+  faUsers
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import { useCreateRole, useUpdateRole } from "@app/hooks/api";
-import { TRole } from "@app/hooks/api/roles/types";
+import { useCreateOrgRole, useUpdateOrgRole } from "@app/hooks/api";
+import { TOrgRole } from "@app/hooks/api/roles/types";
 
 import {
   formRolePermission2API,
@@ -28,7 +29,7 @@ import { SimpleLevelPermissionOption } from "./SimpleLevelPermissionOptions";
 import { WorkspacePermission } from "./WorkspacePermission";
 
 type Props = {
-  role?: TRole<undefined>;
+  role?: TOrgRole;
   onGoBack: VoidFunction;
 };
 
@@ -101,8 +102,8 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
     resolver: zodResolver(formSchema)
   });
 
-  const { mutateAsync: createRole } = useCreateRole();
-  const { mutateAsync: updateRole } = useUpdateRole();
+  const { mutateAsync: createRole } = useCreateOrgRole();
+  const { mutateAsync: updateRole } = useUpdateOrgRole();
 
   const handleRoleUpdate = async (el: TFormSchema) => {
     if (!role?.id) return;

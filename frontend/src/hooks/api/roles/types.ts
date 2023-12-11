@@ -3,6 +3,7 @@ export type TGetRolesDTO = {
   workspaceId?: string;
 };
 
+// @depreciated
 export type TRole<T extends string | undefined> = {
   id: string;
   organization: string;
@@ -13,6 +14,17 @@ export type TRole<T extends string | undefined> = {
   permissions: T extends string ? TProjectPermission[] : TPermission[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type TOrgRole = {
+  slug: string;
+  name: string;
+  orgId: string;
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  description?: string;
+  permissions: TPermission[];
 };
 
 export type TPermission = {
@@ -54,4 +66,22 @@ export type TGetUserOrgPermissionsDTO = {
 
 export type TGetUserProjectPermissionDTO = {
   workspaceId: string;
+};
+
+export type TCreateOrgRoleDTO = {
+  orgId: string;
+  name: string;
+  description?: string;
+  slug: string;
+  permissions: TPermission[];
+};
+
+export type TUpdateOrgRoleDTO = {
+  orgId: string;
+  id: string;
+} & Partial<Omit<TCreateOrgRoleDTO, "orgId">>;
+
+export type TDeleteOrgRoleDTO = {
+  orgId: string;
+  id: string;
 };

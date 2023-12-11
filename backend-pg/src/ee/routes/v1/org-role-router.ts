@@ -17,7 +17,6 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         name: z.string().trim(),
         description: z.string().trim().optional(),
         workspaceId: z.string().trim().optional(),
-        orgId: z.string().trim(),
         permissions: z.any().array()
       }),
       response: {
@@ -31,7 +30,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       const role = await server.services.orgRole.createRole(
         req.auth.userId,
         req.params.organizationId,
-        { ...req.body, permissions: JSON.stringify(req.body.permissions) }
+        req.body
       );
       return { role };
     }
@@ -49,8 +48,6 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         slug: z.string().trim().optional(),
         name: z.string().trim().optional(),
         description: z.string().trim().optional(),
-        workspaceId: z.string().trim().optional(),
-        orgId: z.string().trim(),
         permissions: z.any().array()
       }),
       response: {
@@ -108,9 +105,11 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          roles: OrgRolesSchema.omit({ permissions: true })
-            .merge(z.object({ permissions: z.unknown() }))
-            .array()
+          data: z.object({
+            roles: OrgRolesSchema.omit({ permissions: true })
+              .merge(z.object({ permissions: z.unknown() }))
+              .array()
+          })
         })
       }
     },
@@ -120,7 +119,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         req.auth.userId,
         req.params.organizationId
       );
-      return { roles };
+      return { data: { roles } };
     }
   });
 

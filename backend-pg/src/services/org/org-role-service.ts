@@ -36,8 +36,11 @@ export const orgRoleServiceFactory = ({
     );
     const existingRole = await orgRoleDal.findOne({ slug: data.slug, orgId });
     if (existingRole) throw new BadRequestError({ name: "Create Role", message: "Duplicate role" });
-
-    const role = await orgRoleDal.create({ ...data, orgId });
+    const role = await orgRoleDal.create({
+      ...data,
+      orgId,
+      permissions: JSON.stringify(data.permissions)
+    });
     return role;
   };
 
@@ -83,8 +86,8 @@ export const orgRoleServiceFactory = ({
     const customRoles = await orgRoleDal.find({ orgId });
     const roles = [
       {
-        id: "admin",
-        orgId: "",
+        id: "b11b49a9-09a9-4443-916a-4246f9ff2c69", // dummy userid
+        orgId,
         name: "Admin",
         slug: "admin",
         description: "Complete administration access over the organization",
@@ -93,8 +96,8 @@ export const orgRoleServiceFactory = ({
         updatedAt: new Date()
       },
       {
-        id: "member",
-        orgId: "",
+        id: "b11b49a9-09a9-4443-916a-4246f9ff2c70", // dummy user for zod validation in response
+        orgId,
         name: "Member",
         slug: "member",
         description: "Non-administrative role in an organization",

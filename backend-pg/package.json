@@ -19,7 +19,8 @@
     "migration:latest": "knex --knexfile ./src/db/knexfile.ts --client pg migrate:latest",
     "migration:rollback": "knex --knexfile ./src/db/knexfile.ts migrate:rollback",
     "seed:new": "tsx ./scripts/create-seed-file.ts",
-    "seed:run": "knex --knexfile ./src/db/knexfile.ts --client pg seed:run"
+    "seed:run": "knex --knexfile ./src/db/knexfile.ts --client pg seed:run",
+    "db:reset": "npm run migration:rollback -- --all && npm run migration:latest && npm run seed:run"
   },
   "keywords": [],
   "author": "",

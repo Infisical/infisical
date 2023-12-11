@@ -32,7 +32,7 @@ export const formSchema = z.object({
       "secret-scanning": generalPermissionSchema,
       sso: generalPermissionSchema,
       billing: generalPermissionSchema,
-      "identity": generalPermissionSchema
+      identity: generalPermissionSchema
     })
     .optional()
 });

@@ -13,6 +13,8 @@ import {
   TGetRolesDTO,
   TGetUserOrgPermissionsDTO,
   TGetUserProjectPermissionDTO,
+  TOrgRole,
+  TPermission,
   TRole
 } from "./types";
 
@@ -36,6 +38,7 @@ const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
 
 export const roleQueryKeys = {
   getRoles: ({ orgId, workspaceId }: TGetRolesDTO) => ["roles", { orgId, workspaceId }] as const,
+  getOrgRoles: (orgId: string) => ["org-roles", { orgId }] as const,
   getUserOrgPermissions: ({ orgId }: TGetUserOrgPermissionsDTO) =>
     ["user-permissions", { orgId }] as const,
   getUserProjectPermissions: ({ workspaceId }: TGetUserProjectPermissionDTO) =>
@@ -61,6 +64,23 @@ export const useGetRoles = ({ orgId, workspaceId }: TGetRolesDTO) =>
     queryKey: roleQueryKeys.getRoles({ orgId, workspaceId }),
     queryFn: () => getRoles({ orgId, workspaceId }),
     enabled: Boolean(orgId)
+  });
+
+const getOrgRoles = async (orgId: string) => {
+  const { data } = await apiRequest.get<{
+    data: { roles: Array<Omit<TOrgRole, "permissions"> & { permissions: unknown }> };
+  }>(`/api/ee/v1/organization/${orgId}/roles`);
+  return data.data.roles.map(({ permissions, ...el }) => ({
+    ...el,
+    permissions: unpackRules(permissions as PackRule<TPermission>[])
+  }));
+};
+
+export const useGetOrgRoles = (orgId: string, enable = true) =>
+  useQuery({
+    queryKey: roleQueryKeys.getOrgRoles(orgId),
+    queryFn: () => getOrgRoles(orgId),
+    enabled: Boolean(orgId) && enable
   });
 
 const getUserOrgPermissions = async ({ orgId }: TGetUserOrgPermissionsDTO) => {

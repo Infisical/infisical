@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("name").notNullable();
       t.string("description");
       t.string("slug").notNullable();
-      t.json("permissions").notNullable();
+      t.jsonb("permissions").notNullable();
       // does not need update trigger we will do it manually
       t.timestamps(true, true, true);
       t.uuid("orgId").notNullable();
