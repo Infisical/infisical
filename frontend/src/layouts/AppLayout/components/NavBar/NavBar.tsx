@@ -324,7 +324,7 @@ export const Navbar = () => {
 
               // direct user to start pro trial
               const url = await mutateAsync({
-                orgId: currentOrg._id,
+                orgId: currentOrg.id,
                 success_url: window.location.href
               });
 

@@ -2,14 +2,14 @@ import { TRole } from "../roles/types";
 import { IdentityAuthMethod } from "./enums";
 
 export type IdentityTrustedIp = {
-    _id: string;
+    id: string;
     ipAddress: string;
     type: "ipv4" | "ipv6";
     prefix?: number;
 }
 
 export type Identity = {
-    _id: string;
+    id: string;
     name: string;
     authMethod?: IdentityAuthMethod;
     createdAt: string;
@@ -17,7 +17,7 @@ export type Identity = {
 };
 
 export type IdentityMembershipOrg = {
-    _id: string;
+    id: string;
     identity: Identity;
     organization: string;
     role: "admin" | "member" | "viewer" | "no-access" | "custom";
@@ -27,7 +27,7 @@ export type IdentityMembershipOrg = {
 }
 
 export type IdentityMembership = {
-    _id: string;
+    id: string;
     identity: Identity;
     organization: string;
     role: "admin" | "member" | "viewer" | "no-access" | "custom";
@@ -100,7 +100,7 @@ export type CreateIdentityUniversalAuthClientSecretDTO = {
 }
 
 export type ClientSecretData = {
-    _id: string;
+    id: string;
     identityUniversalAuth: string;
     isClientSecretRevoked: boolean;
     description: string;
