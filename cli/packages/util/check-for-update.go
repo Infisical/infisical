@@ -28,9 +28,9 @@ func CheckForUpdate() {
 		return
 	}
 
-	daysSinceRelease, _ := daysSinceDate(publishedDate)
+	// daysSinceRelease, _ := daysSinceDate(publishedDate)
 
-	if latestVersion != CLI_VERSION && daysSinceRelease > 2 {
+	if latestVersion != CLI_VERSION {
 		yellow := color.New(color.FgYellow).SprintFunc()
 		blue := color.New(color.FgCyan).SprintFunc()
 		black := color.New(color.FgBlack).SprintFunc()
@@ -151,15 +151,15 @@ func IsRunningInDocker() bool {
 	return strings.Contains(string(cgroup), "docker")
 }
 
-func daysSinceDate(dateString string) (int, error) {
-	layout := "2006-01-02T15:04:05Z"
-	parsedDate, err := time.Parse(layout, dateString)
-	if err != nil {
-		return 0, err
-	}
+// func daysSinceDate(dateString string) (int, error) {
+// 	layout := "2006-01-02T15:04:05Z"
+// 	parsedDate, err := time.Parse(layout, dateString)
+// 	if err != nil {
+// 		return 0, err
+// 	}
 
-	currentTime := time.Now()
-	difference := currentTime.Sub(parsedDate)
-	days := int(difference.Hours() / 24)
-	return days, nil
-}
+// 	currentTime := time.Now()
+// 	difference := currentTime.Sub(parsedDate)
+// 	days := int(difference.Hours() / 24)
+// 	return days, nil
+// }
