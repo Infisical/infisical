@@ -88,8 +88,8 @@ export const IdentityUniversalAuthForm = ({
     } = useForm<FormData>({
         resolver: yupResolver(schema),
         defaultValues: {
-            accessTokenTTL: "7200",
-            accessTokenMaxTTL: "0",
+            accessTokenTTL: "2592000",
+            accessTokenMaxTTL: "2592000",
             accessTokenNumUsesLimit: "0",
             clientSecretTrustedIps: [{
                 ipAddress: "0.0.0.0/0"
@@ -136,8 +136,8 @@ export const IdentityUniversalAuthForm = ({
             });
         } else {
             reset({
-                accessTokenTTL: "7200",
-                accessTokenMaxTTL: "0",
+                accessTokenTTL: "2592000",
+                accessTokenMaxTTL: "2592000",
                 accessTokenNumUsesLimit: "0",
                 clientSecretTrustedIps: [{
                     ipAddress: "0.0.0.0/0"
@@ -211,7 +211,7 @@ export const IdentityUniversalAuthForm = ({
         <form onSubmit={handleSubmit(onFormSubmit)}>
             <Controller
                 control={control}
-                defaultValue="7200"
+                defaultValue="2592000"
                 name="accessTokenTTL"
                 render={({ field, fieldState: { error } }) => (
                     <FormControl
@@ -221,7 +221,7 @@ export const IdentityUniversalAuthForm = ({
                     >
                     <Input 
                         {...field} 
-                        placeholder="7200"
+                        placeholder="2592000"
                         type="number"
                         min="0"
                         step="1"
@@ -231,7 +231,7 @@ export const IdentityUniversalAuthForm = ({
             />
             <Controller
                 control={control}
-                defaultValue="7200"
+                defaultValue="2592000"
                 name="accessTokenMaxTTL"
                 render={({ field, fieldState: { error } }) => (
                     <FormControl
@@ -241,9 +241,9 @@ export const IdentityUniversalAuthForm = ({
                     >
                     <Input 
                         {...field} 
-                        placeholder="7200"
+                        placeholder="2592000"
                         type="number"
-                        min="0"
+                        min="1"
                         step="1"
                     />
                     </FormControl>

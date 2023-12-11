@@ -53,13 +53,13 @@ const identityAccessTokenSchema = new Schema(
         accessTokenTTL: { // seconds
             // incremental lifetime
             type: Number,
-            default: 7200,
+            default: 2592000, // 30 days
             required: true
         },
         accessTokenMaxTTL: { // seconds
             // max lifetime
             type: Number,
-            default: 7200,
+            default: 2592000, // 30 days 
             required: true
         },
         accessTokenTrustedIps: {
