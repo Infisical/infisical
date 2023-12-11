@@ -9,7 +9,7 @@ import { organizationsController } from "../../controllers/v2";
 router.get(
   "/:organizationId/memberships",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]
   }),
   organizationsController.getOrganizationMemberships
 );
@@ -17,7 +17,7 @@ router.get(
 router.patch(
   "/:organizationId/memberships/:membershipId",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]
   }),
   organizationsController.updateOrganizationMembership
 );
@@ -25,7 +25,7 @@ router.patch(
 router.delete(
   "/:organizationId/memberships/:membershipId",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]
   }),
   organizationsController.deleteOrganizationMembership
 );
@@ -33,7 +33,7 @@ router.delete(
 router.get(
   "/:organizationId/workspaces",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]
   }),
   organizationsController.getOrganizationWorkspaces
 );

@@ -16,6 +16,54 @@
     }
   ],
   "paths": {
+    "/api/v1/identities/": {
+      "post": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/identities/{identityId}": {
+      "patch": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "identityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "identityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/secret/{secretId}/secret-versions": {
       "get": {
         "summary": "Return secret versions",
@@ -176,7 +224,25 @@
             "schema": {
               "type": "string"
             },
-            "description": "ID of project"
+            "description": "ID of project where to get secret snapshots for"
+          },
+          {
+            "name": "environment",
+            "description": "Slug of environment where to get secret snapshots for",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "directory",
+            "description": "Path where to get secret snapshots for like / or /foo/bar. Default is /",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "offset",
@@ -220,7 +286,8 @@
         },
         "security": [
           {
-            "apiKeyAuth": []
+            "apiKeyAuth": [],
+            "bearerAuth": []
           }
         ]
       }
@@ -257,7 +324,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "ID of project"
+            "description": "ID of project where to roll back"
           }
         ],
         "responses": {
@@ -283,7 +350,8 @@
         },
         "security": [
           {
-            "apiKeyAuth": []
+            "apiKeyAuth": [],
+            "bearerAuth": []
           }
         ],
         "requestBody": {
@@ -293,6 +361,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "environment": {
+                    "type": "string",
+                    "description": "Slug of environment where to roll back"
+                  },
+                  "directory": {
+                    "type": "string",
+                    "description": "Path where to roll back for like / or /foo/bar. Default is /"
+                  },
                   "version": {
                     "type": "integer",
                     "description": "Version of secret snapshot to roll back to"
@@ -978,80 +1054,6 @@
         }
       }
     },
-    "/api/v3/service-token/me/key": {
-      "get": {
-        "description": "",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/v3/service-token/me/token": {
-      "post": {
-        "description": "",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/v3/service-token/": {
-      "post": {
-        "description": "",
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          }
-        }
-      }
-    },
-    "/api/v3/service-token/{serviceTokenDataId}": {
-      "patch": {
-        "description": "",
-        "parameters": [
-          {
-            "name": "serviceTokenDataId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          }
-        }
-      },
-      "delete": {
-        "description": "",
-        "parameters": [
-          {
-            "name": "serviceTokenDataId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/api/v1/secret-rotation-providers/{workspaceId}": {
       "get": {
         "description": "",
@@ -1211,6 +1213,163 @@
     "/api/v1/auth/sessions": {
       "delete": {
         "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/token/renew": {
+      "post": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/universal-auth/login": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/universal-auth/identities/{identityId}": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "identityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      },
+      "patch": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "identityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      },
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "identityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/universal-auth/identities/{identityId}/client-secrets": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "identityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "identityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/universal-auth/identities/{identityId}/client-secrets/{clientSecretId}/revoke": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "identityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "clientSecretId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -1807,6 +1966,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
           }
         }
       }
@@ -4130,8 +4292,8 @@
     },
     "/api/v2/organizations/{organizationId}/memberships": {
       "get": {
-        "summary": "Return organization memberships",
-        "description": "Return organization memberships",
+        "summary": "Return organization user memberships",
+        "description": "Return organization user memberships",
         "parameters": [
           {
             "name": "organizationId",
@@ -4166,15 +4328,16 @@
         },
         "security": [
           {
-            "apiKeyAuth": []
+            "apiKeyAuth": [],
+            "bearerAuth": []
           }
         ]
       }
     },
     "/api/v2/organizations/{organizationId}/memberships/{membershipId}": {
       "patch": {
-        "summary": "Update organization membership",
-        "description": "Update organization membership",
+        "summary": "Update organization user membership",
+        "description": "Update organization user membership",
         "parameters": [
           {
             "name": "organizationId",
@@ -4211,11 +4374,15 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Bad Request"
           }
         },
         "security": [
           {
-            "apiKeyAuth": []
+            "apiKeyAuth": [],
+            "bearerAuth": []
           }
         ],
         "requestBody": {
@@ -4236,8 +4403,8 @@
         }
       },
       "delete": {
-        "summary": "Delete organization membership",
-        "description": "Delete organization membership",
+        "summary": "Delete organization user membership",
+        "description": "Delete organization user membership",
         "parameters": [
           {
             "name": "organizationId",
@@ -4278,7 +4445,8 @@
         },
         "security": [
           {
-            "apiKeyAuth": []
+            "apiKeyAuth": [],
+            "bearerAuth": []
           }
         ]
       }
@@ -4356,6 +4524,26 @@
         }
       }
     },
+    "/api/v2/organizations/{organizationId}/identity-memberships": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v2/workspace/{workspaceId}/memberships": {
       "post": {
         "description": "",
@@ -4376,8 +4564,8 @@
         }
       },
       "get": {
-        "summary": "Return project memberships",
-        "description": "Return project memberships",
+        "summary": "Return project user memberships",
+        "description": "Return project user memberships",
         "parameters": [
           {
             "name": "workspaceId",
@@ -4412,7 +4600,8 @@
         },
         "security": [
           {
-            "apiKeyAuth": []
+            "apiKeyAuth": [],
+            "bearerAuth": []
           }
         ]
       }
@@ -4878,8 +5067,8 @@
     },
     "/api/v2/workspace/{workspaceId}/memberships/{membershipId}": {
       "patch": {
-        "summary": "Update project membership",
-        "description": "Update project membership",
+        "summary": "Update project user membership",
+        "description": "Update project user membership",
         "parameters": [
           {
             "name": "workspaceId",
@@ -4920,7 +5109,8 @@
         },
         "security": [
           {
-            "apiKeyAuth": []
+            "apiKeyAuth": [],
+            "bearerAuth": []
           }
         ],
         "requestBody": {
@@ -4941,8 +5131,8 @@
         }
       },
       "delete": {
-        "summary": "Delete project membership",
-        "description": "Delete project membership",
+        "summary": "Delete project user membership",
+        "description": "Delete project user membership",
         "parameters": [
           {
             "name": "workspaceId",
@@ -4983,13 +5173,114 @@
         },
         "security": [
           {
-            "apiKeyAuth": []
+            "apiKeyAuth": [],
+            "bearerAuth": []
           }
         ]
       }
     },
     "/api/v2/workspace/{workspaceId}/auto-capitalization": {
       "patch": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v2/workspace/{workspaceId}/identity-memberships/{identityId}": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "identityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "patch": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "identityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "identityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v2/workspace/{workspaceId}/identity-memberships": {
+      "get": {
         "description": "",
         "parameters": [
           {
@@ -6171,26 +6462,6 @@
         }
       }
     },
-    "/api/v3/workspaces/{workspaceId}/service-token": {
-      "get": {
-        "description": "",
-        "parameters": [
-          {
-            "name": "workspaceId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/api/v3/signup/complete-account/signup": {
       "post": {
         "description": "",
@@ -6990,7 +7261,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "A service token in Infisical"
+        "description": "An access token in Infisical"
       },
       "apiKeyAuth": {
         "type": "apiKey",

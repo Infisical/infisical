@@ -117,8 +117,14 @@
         "documentation/platform/webhooks",
         "documentation/platform/pit-recovery",
         "documentation/platform/audit-logs",
+        {
+          "group": "Identities",
+          "pages": [
+            "documentation/platform/identities/overview",
+            "documentation/platform/identities/universal-auth"
+          ]
+        },
         "documentation/platform/token",
-        "documentation/platform/identity",
         "documentation/platform/mfa",
         "documentation/platform/pr-workflows",
         "documentation/platform/role-based-access-controls",
@@ -317,8 +323,7 @@
             "api-reference/overview/examples/e2ee-disabled",
             "api-reference/overview/examples/e2ee-enabled"
           ]
-        },
-        "api-reference/overview/blind-indices"
+        }
       ]
     },
     {

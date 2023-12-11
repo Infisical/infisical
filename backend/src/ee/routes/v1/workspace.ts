@@ -7,7 +7,7 @@ import { workspaceController } from "../../controllers/v1";
 router.get(
   "/:workspaceId/secret-snapshots",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]
   }),
   workspaceController.getWorkspaceSecretSnapshots
 );
@@ -23,7 +23,7 @@ router.get(
 router.post(
   "/:workspaceId/secret-snapshots/rollback",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]
   }),
   workspaceController.rollbackWorkspaceSecretSnapshot
 );
@@ -31,7 +31,7 @@ router.post(
 router.get(
   "/:workspaceId/audit-logs",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]
   }),
   workspaceController.getWorkspaceAuditLogs
 );

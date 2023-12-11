@@ -137,7 +137,7 @@ export const IdentityUniversalAuthForm = ({
         } else {
             reset({
                 accessTokenTTL: "7200",
-                accessTokenMaxTTL: "0",
+                accessTokenMaxTTL: "7200",
                 accessTokenNumUsesLimit: "0",
                 clientSecretTrustedIps: [{
                     ipAddress: "0.0.0.0/0"

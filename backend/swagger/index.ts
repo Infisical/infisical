@@ -30,7 +30,7 @@ const generateOpenAPISpec = async () => {
         type: "http",
         scheme: "bearer",
         bearerFormat: "JWT",
-        description: "A service token in Infisical"
+        description: "An access token in Infisical"
       },
       apiKeyAuth: {
         type: "apiKey",

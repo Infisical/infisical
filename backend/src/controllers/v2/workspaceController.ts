@@ -249,11 +249,12 @@ export const getWorkspaceServiceTokenData = async (req: Request, res: Response) 
  */
 export const getWorkspaceMemberships = async (req: Request, res: Response) => {
   /* 
-    #swagger.summary = 'Return project memberships'
-    #swagger.description = 'Return project memberships'
+    #swagger.summary = 'Return project user memberships'
+    #swagger.description = 'Return project user memberships'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
 	#swagger.parameters['workspaceId'] = {
@@ -312,11 +313,12 @@ export const getWorkspaceMemberships = async (req: Request, res: Response) => {
  */
 export const updateWorkspaceMembership = async (req: Request, res: Response) => {
   /* 
-    #swagger.summary = 'Update project membership'
-    #swagger.description = 'Update project membership'
+    #swagger.summary = 'Update project user membership'
+    #swagger.description = 'Update project user membership'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
 	#swagger.parameters['workspaceId'] = {
@@ -402,11 +404,12 @@ export const updateWorkspaceMembership = async (req: Request, res: Response) => 
  */
 export const deleteWorkspaceMembership = async (req: Request, res: Response) => {
   /* 
-    #swagger.summary = 'Delete project membership'
-    #swagger.description = 'Delete project membership'
+    #swagger.summary = 'Delete project user membership'
+    #swagger.description = 'Delete project user membership'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
 	#swagger.parameters['workspaceId'] = {
