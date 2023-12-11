@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/fatih/color"
 	"github.com/rs/zerolog/log"
@@ -21,7 +20,7 @@ func CheckForUpdate() {
 	if checkEnv := os.Getenv("INFISICAL_DISABLE_UPDATE_CHECK"); checkEnv != "" {
 		return
 	}
-	latestVersion, publishedDate, err := getLatestTag("Infisical", "infisical")
+	latestVersion, _, err := getLatestTag("Infisical", "infisical")
 	if err != nil {
 		log.Debug().Err(err)
 		// do nothing and continue
