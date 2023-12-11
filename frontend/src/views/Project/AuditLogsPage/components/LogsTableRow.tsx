@@ -158,21 +158,21 @@ export const LogsTableRow = ({ auditLog }: Props) => {
             <p>{`Name: ${event.metadata.name}`}</p>
           </Td>
         );
-      case EventType.CREATEidENTITY:
+      case EventType.CREATE_IDENTITY:
         return (
           <Td>
             <p>{`ID: ${event.metadata.identityId}`}</p>
             <p>{`Name: ${event.metadata.name}`}</p>
           </Td>
         );
-      case EventType.UPDATEidENTITY:
+      case EventType.UPDATE_IDENTITY:
         return (
           <Td>
             <p>{`ID: ${event.metadata.identityId}`}</p>
             <p>{`Name: ${event.metadata.name}`}</p>
           </Td>
         );
-      case EventType.DELETEidENTITY:
+      case EventType.DELETE_IDENTITY:
         return (
           <Td>
             <p>{`ID: ${event.metadata.identityId}`}</p>
