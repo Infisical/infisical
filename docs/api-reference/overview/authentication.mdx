@@ -8,7 +8,7 @@ You can authenticate with the Infisical API using [Identities](/documentation/pl
 In the following steps, we explore how to create an identity representing a workload or application to access the Infisical API.
 
 <Steps>
-  <Step title="Creating an identity">
+  <Step title="Create an identity">
     To create an identity, head to your Organization Settings > Access Control > Machine Identities and press **Create identity**.
 
     ![identities organization](../../images/platform/identities/identities-org.png)
@@ -22,7 +22,7 @@ In the following steps, we explore how to create an identity representing a work
     ![identities organization create auth method](../../images/platform/identities/identities-org-create-auth-method.png)
 
   </Step>
-  <Step title="Creating a Client Secret">
+  <Step title="Create a Client Secret">
     In order to use the identity, you'll need the non-sensitive **Client ID**
     of the identity and a **Client Secret** for it; you can think of these credentials akin to a username
     and password used to authenticate with the Infisical API. With that, press on the key icon on the identity to generate a **Client Secret**
@@ -32,7 +32,7 @@ In the following steps, we explore how to create an identity representing a work
     ![identities client secret create](../../images/platform/identities/identities-org-client-secret-create-1.png)
     ![identities client secret create](../../images/platform/identities/identities-org-client-secret-create-2.png)
   </Step>
-  <Step title="Adding an identity to a project">
+  <Step title="Add an identity to a project">
     To enable the identity to access project-level resources such as secrets within a specific project, you should add it to that project.
 
     To do this, head over to the project you want to add the identity to and go to Project Settings > Access Control > Machine Identities and press **Add identity**.
@@ -43,7 +43,7 @@ In the following steps, we explore how to create an identity representing a work
     
     ![identities project create](../../images/platform/identities/identities-project-create.png)
   </Step>
-  <Step title="Accessing the Infisical API with the identity">
+  <Step title="Access the Infisical API with the identity">
     To access the Infisical API as the identity, you should first perform a login operation
     that is to exchange the **Client ID** and **Client Secret** of the identity for an access token
     by making a request to the `/api/v1/auth/universal-auth/login` endpoint.
