@@ -41,6 +41,7 @@ import {
 } from "@app/hooks/api";
 
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
+import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
 // import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
@@ -260,7 +261,7 @@ export const SecretOverviewPage = () => {
 
   return (
     <div className="container mx-auto px-6 text-mineshaft-50 dark:[color-scheme:dark]">
-      {/* <ProjectIndexSecretsSection decryptFileKey={latestFileKey!} /> */}
+      <ProjectIndexSecretsSection decryptFileKey={latestFileKey!} />
       <div className="relative right-5 ml-4">
         <NavHeader pageName={t("dashboard.title")} isProjectRelated />
       </div>
@@ -328,7 +329,7 @@ export const SecretOverviewPage = () => {
                       <div className="flex items-center justify-center border-b border-mineshaft-600 px-5 pt-3.5 pb-3">
                         <button
                           type="button"
-                          className="font-medium hover:text-mineshaft-100 duration-100 text-sm"
+                          className="text-sm font-medium duration-100 hover:text-mineshaft-100"
                           onClick={() => handleExploreEnvClick(slug)}
                         >
                           {name}
