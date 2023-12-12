@@ -89,7 +89,7 @@ export const IdentityUniversalAuthForm = ({
         resolver: yupResolver(schema),
         defaultValues: {
             accessTokenTTL: "7200",
-            accessTokenMaxTTL: "0",
+            accessTokenMaxTTL: "2592000",
             accessTokenNumUsesLimit: "0",
             clientSecretTrustedIps: [{
                 ipAddress: "0.0.0.0/0"
@@ -112,7 +112,7 @@ export const IdentityUniversalAuthForm = ({
     } = useFieldArray({ control, name: "accessTokenTrustedIps" });
     
     useEffect(() => {
-        if (data) { // TODO: fix data type
+        if (data) {
             reset({
                 accessTokenTTL: String(data.accessTokenTTL),
                 accessTokenMaxTTL: String(data.accessTokenMaxTTL),
@@ -137,7 +137,7 @@ export const IdentityUniversalAuthForm = ({
         } else {
             reset({
                 accessTokenTTL: "7200",
-                accessTokenMaxTTL: "7200",
+                accessTokenMaxTTL: "2592000",
                 accessTokenNumUsesLimit: "0",
                 clientSecretTrustedIps: [{
                     ipAddress: "0.0.0.0/0"
@@ -231,7 +231,7 @@ export const IdentityUniversalAuthForm = ({
             />
             <Controller
                 control={control}
-                defaultValue="7200"
+                defaultValue="2592000"
                 name="accessTokenMaxTTL"
                 render={({ field, fieldState: { error } }) => (
                     <FormControl
@@ -241,9 +241,9 @@ export const IdentityUniversalAuthForm = ({
                     >
                     <Input 
                         {...field} 
-                        placeholder="7200"
+                        placeholder="2592000"
                         type="number"
-                        min="0"
+                        min="1"
                         step="1"
                     />
                     </FormControl>

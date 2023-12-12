@@ -204,7 +204,8 @@ func init() {
 func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string) error {
 	command := args[0]
 	argsForCommand := args[1:]
-	color.Green("Injecting %v Infisical secrets into your application process", secretsCount)
+
+	log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", secretsCount))
 
 	cmd := exec.Command(command, argsForCommand...)
 	cmd.Stdin = os.Stdin
@@ -232,7 +233,7 @@ func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []
 	cmd.Stderr = os.Stderr
 	cmd.Env = env
 
-	color.Green("Injecting %v Infisical secrets into your application process", secretsCount)
+	log.Info().Msgf(color.GreenString("Injecting %v Infisical secrets into your application process", secretsCount))
 	log.Debug().Msgf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
 
 	return execCmd(cmd)
