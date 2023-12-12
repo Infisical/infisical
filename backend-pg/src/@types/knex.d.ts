@@ -25,6 +25,17 @@ import {
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
+  TProjectEnvironments,
+  TProjectEnvironmentsInsert,
+  TProjectMemberships,
+  TProjectMembershipsInsert,
+  TProjectMembershipsUpdate,
+  TProjectRoles,
+  TProjectRolesInsert,
+  TProjectRolesUpdate,
+  TProjects,
+  TProjectsInsert,
+  TProjectsUpdate,
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
@@ -89,5 +100,21 @@ declare module "knex/types/tables" {
       TSuperAdminUpdate
     >;
     [TableName.ApiKey]: Knex.CompositeTableType<TApiKeys, TApiKeysInsert, TApiKeysUpdate>;
+    [TableName.Project]: Knex.CompositeTableType<TProjects, TProjectsInsert, TProjectsUpdate>;
+    [TableName.ProjectMembership]: Knex.CompositeTableType<
+      TProjectMemberships,
+      TProjectMembershipsInsert,
+      TProjectMembershipsUpdate
+    >;
+    [TableName.Environment]: Knex.CompositeTableType<
+      TProjectEnvironments,
+      TProjectEnvironmentsInsert,
+      TPRo
+    >;
+    [TableName.ProjectRoles]: Knex.CompositeTableType<
+      TProjectRoles,
+      TProjectRolesInsert,
+      TProjectRolesUpdate
+    >;
   }
 }

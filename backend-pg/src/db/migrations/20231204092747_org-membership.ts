@@ -33,7 +33,6 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
       t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-      // until role is changed/removed the role should not deleted
       t.uuid("roleId");
       t.foreign("roleId").references("id").inTable(TableName.OrgRoles);
     });

@@ -8,7 +8,7 @@
     "dev": "tsx watch --clear-screen=false ./src/main.ts  | pino-pretty --colorize --colorizeObjects --singleLine",
     "dev:docker": "nodemon",
     "build": "rimraf dist && tsup src --out-dir dist --loader '.handlebars=copy' --loader '.md=copy'",
-    "start": "node dist/server/app.js",
+    "start": "node dist/server/main.js",
     "type:check": "tsc --noEmit",
     "lint:fix": "eslint --fix --ext js,ts ./src",
     "lint": "eslint 'src/**/*.ts'",

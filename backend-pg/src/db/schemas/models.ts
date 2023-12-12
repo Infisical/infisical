@@ -12,7 +12,11 @@ export enum TableName {
   IncidentContact = "incident_contacts",
   UserAction = "user_actions",
   SuperAdmin = "super_admin",
-  ApiKey = "api_keys"
+  ApiKey = "api_keys",
+  Project = "projects",
+  Environment = "project_environments",
+  ProjectMembership = "project_memberships",
+  ProjectRoles = "project_roles"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
@@ -34,6 +38,14 @@ export enum OrgMembershipRole {
 export enum OrgMembershipStatus {
   Invited = "invited",
   Accepted = "accepted"
+}
+
+export enum ProjectMembershipRole {
+  Admin = "admin",
+  Member = "member",
+  Custom = "custom",
+  Viewer = "viewer",
+  NoAccess = "no-access"
 }
 
 export enum SecretEncryptionAlgo {

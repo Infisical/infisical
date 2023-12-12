@@ -33,11 +33,11 @@ DROP FUNCTION IF EXISTS on_update_timestamp() CASCADE;
 // remember to set `timestamps(true,true,true)` before this on schema
 export const createOnUpdateTrigger = (knex: Knex, tableName: string) =>
   knex.raw(`
-CREATE TRIGGER ${tableName}_updatedAt
+CREATE TRIGGER "${tableName}_updatedAt"
 BEFORE UPDATE ON ${tableName}
 FOR EACH ROW
 EXECUTE PROCEDURE on_update_timestamp();
 `);
 
 export const dropOnUpdateTrigger = (knex: Knex, tableName: string) =>
-  knex.raw(`DROP TRIGGER IF EXISTS ${tableName}_updatedAt ON ${tableName}`);
+  knex.raw(`DROP TRIGGER IF EXISTS "${tableName}_updatedAt" ON ${tableName}`);
