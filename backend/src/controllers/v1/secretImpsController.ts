@@ -70,21 +70,21 @@ export const createSecretImp = async (req: Request, res: Response) => {
     }
 
     #swagger.responses[200] = {
+        description: 'Successfully created secrets import',
         content: {
             "application/json": {
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "message": {
-                            "type": "string",
-                            "example": "successfully created secret import"
+                        "secretImport": {
+                          $ref: '#/definitions/SecretImport'
                         }
-                    },
-                    "description": "Confirmation of secret import creation"
+                    }
                 }
             }
         }
     }
+
     #swagger.responses[400] = {
         description: "Bad Request. For example, 'Secret import already exist'"
     }
@@ -133,21 +133,20 @@ export const createSecretImp = async (req: Request, res: Response) => {
     folderId = folder.id;
   }
 
-  const importSecDoc = await SecretImport.findOne({
+  let importSecDoc = await SecretImport.findOne({
     workspace: workspaceId,
     environment,
     folderId
   });
 
   if (!importSecDoc) {
-    const doc = new SecretImport({
+    const doc = await new SecretImport({
       workspace: workspaceId,
       environment,
       folderId,
       imports: [{ environment: secretImport.environment, secretPath: secretImport.secretPath }]
-    });
+    }).save();
 
-    await doc.save();
     await EEAuditLogService.createAuditLog(
       req.authData,
       {
@@ -165,7 +164,7 @@ export const createSecretImp = async (req: Request, res: Response) => {
         workspaceId: doc.workspace
       }
     );
-    return res.status(200).json({ message: "successfully created secret import" });
+    return res.status(200).json({ secretImport: doc });
   }
 
   const doesImportExist = importSecDoc.imports.find(
@@ -179,7 +178,7 @@ export const createSecretImp = async (req: Request, res: Response) => {
     environment: secretImport.environment,
     secretPath: secretImport.secretPath
   });
-  await importSecDoc.save();
+  importSecDoc = await importSecDoc.save();
 
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -198,7 +197,7 @@ export const createSecretImp = async (req: Request, res: Response) => {
       workspaceId: importSecDoc.workspace
     }
   );
-  return res.status(200).json({ message: "successfully created secret import" });
+  return res.status(200).json({ secretImport: importSecDoc });
 };
 
 // to keep the ordering, you must pass all the imports in here not the only updated one
@@ -257,15 +256,14 @@ export const updateSecretImport = async (req: Request, res: Response) => {
     }
 
     #swagger.responses[200] = {
-        description: 'Successfully updated the secret import',
+        description: 'Successfully updated secrets import',
         content: {
             "application/json": {
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "message": {
-                            "type": "string",
-                            "example": "successfully updated secret import"
+                        "secretImport": {
+                          $ref: '#/definitions/SecretImport'
                         }
                     }
                 }
@@ -336,7 +334,7 @@ export const updateSecretImport = async (req: Request, res: Response) => {
   const orderBefore = importSecDoc.imports;
   importSecDoc.imports = secretImports;
 
-  await importSecDoc.save();
+  const secImportDoc = await importSecDoc.save();
 
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -355,7 +353,7 @@ export const updateSecretImport = async (req: Request, res: Response) => {
       workspaceId: importSecDoc.workspace
     }
   );
-  return res.status(200).json({ message: "successfully updated secret import" });
+  return res.status(200).json({ secretImport: secImportDoc });
 };
 
 /**
@@ -401,17 +399,16 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
     }
 
     #swagger.responses[200] = {
+        description: 'Successfully deleted secrets import',
         content: {
             "application/json": {
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "message": {
-                            "type": "string",
-                            "example": "successfully delete secret import"
+                        "secretImport": {
+                          $ref: '#/definitions/SecretImport'
                         }
-                    },
-                    "description": "Confirmation of secret import deletion"
+                    }
                 }
             }
         }
@@ -466,7 +463,7 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
     ({ environment, secretPath }) =>
       !(environment === secretImportEnv && secretPath === secretImportPath)
   );
-  await importSecDoc.save();
+  const secImportDoc = await importSecDoc.save();
 
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -486,7 +483,7 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
     }
   );
 
-  return res.status(200).json({ message: "successfully delete secret import" });
+  return res.status(200).json({ secretImport: secImportDoc });
 };
 
 /**
