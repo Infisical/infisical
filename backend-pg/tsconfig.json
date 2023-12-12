@@ -4,11 +4,20 @@
     "module": "commonjs",
     "allowJs": true,
     "resolveJsonModule": true,
-    "typeRoots": ["./node_modules/@types", "./src/@types"],
+    "types": [
+      "vitest/globals"
+    ],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/@types",
+      "./node_modules"
+    ],
     "sourceMap": true,
     "outDir": "dist",
     "strict": true,
-    "lib": ["esnext"],
+    "lib": [
+      "esnext"
+    ],
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "experimentalDecorators": true,
@@ -17,11 +26,23 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@app/*": ["./src/*"],
-      "@lib/*": ["./src/lib/*"],
-      "@server/*": ["./src/server/*"]
+      "@app/*": [
+        "./src/*"
+      ],
+      "@lib/*": [
+        "./src/lib/*"
+      ],
+      "@server/*": [
+        "./src/server/*"
+      ]
     }
   },
-  "include": ["src/**/*","scripts/**/*"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src/**/*",
+    "scripts/**/*",
+    "e2e-test/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

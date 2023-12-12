@@ -1,5 +1,6 @@
-import dotenv from "dotenv";
 import fasitfy from "fastify";
+import { Knex } from "knex";
+import { Logger } from "pino";
 import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
 import type { FastifyCorsOptions } from "@fastify/cors";
@@ -8,11 +9,9 @@ import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
 
-import { initDbConnection } from "@app/db";
-import { smtpServiceFactory } from "@app/services/smtp/smtp-service";
+import { TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { formatSmtpConfig, initEnvConfig } from "@lib/config/env";
-import { initLogger } from "@lib/logger";
+import { getConfig } from "@lib/config/env";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
@@ -20,13 +19,15 @@ import { fastifyIp } from "./plugins/ip";
 import { fastifySwagger } from "./plugins/swagger";
 import { registerRoutes } from "./routes";
 
-dotenv.config();
+type TMain = {
+  db: Knex;
+  smtp: TSmtpService;
+  logger?: Logger;
+};
 
 // Run the server!
-const main = async () => {
-  const logger = await initLogger();
-  const envCfg = initEnvConfig(logger);
-
+export const main = async ({ db, smtp, logger }: TMain) => {
+  const appCfg = getConfig();
   const server = fasitfy({
     logger,
     trustProxy: true
@@ -35,12 +36,9 @@ const main = async () => {
   server.setValidatorCompiler(validatorCompiler);
   server.setSerializerCompiler(serializerCompiler);
 
-  const db = initDbConnection(envCfg.DB_CONNECTION_URI);
-  const smtp = smtpServiceFactory(formatSmtpConfig());
-
   try {
     await server.register<FastifyCookieOptions>(cookie, {
-      secret: envCfg.COOKIE_SECRET_SIGN_KEY
+      secret: appCfg.COOKIE_SECRET_SIGN_KEY
     });
 
     await server.register<FastifyCorsOptions>(cors, {
@@ -59,11 +57,9 @@ const main = async () => {
     await server.register(registerRoutes, { prefix: "/api", smtp, db });
     await server.ready();
     server.swagger();
-    await server.listen({ port: envCfg.PORT, host: envCfg.HOST });
+    return server;
   } catch (err) {
     server.log.error(err);
     process.exit(1);
   }
 };
-
-main();

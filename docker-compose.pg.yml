@@ -24,6 +24,16 @@ services:
       POSTGRES_USER: infisical
       POSTGRES_DB: infisical
 
+  db-test:
+    profiles: ["test"]
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: infisical
+      POSTGRES_USER: infisical
+      POSTGRES_DB: infisical-test
+
   backend:
     container_name: infisical-dev-api
     build:

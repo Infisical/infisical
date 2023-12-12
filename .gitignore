@@ -1,6 +1,7 @@
 # backend
 node_modules
 .env
+.env.test
 .env.dev
 .env.gamma
 .env.prod

@@ -40,7 +40,7 @@ import {
 } from "@app/db/schemas";
 
 declare module "knex/types/tables" {
-  interface Tables extends { [key in TableName]: Knex.CompositeTableType<any> } {
+  interface Tables {
     [TableName.Users]: Knex.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
     [TableName.UserEncryptionKey]: Knex.CompositeTableType<
       TUserEncryptionKeys,

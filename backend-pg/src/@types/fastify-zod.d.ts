@@ -16,4 +16,7 @@ declare global {
     Readonly<Logger>,
     ZodTypeProvider
   >;
+
+  // used only for testing
+  const testServer: FastifyZodProvider;
 }
