@@ -42,6 +42,58 @@ import { ForbiddenError } from "@casl/ability";
  * @returns 
  */
 export const createIdentity = async (req: Request, res: Response) => {
+    /*
+        #swagger.summary = 'Create identity'
+        #swagger.description = 'Create identity'
+
+        #swagger.security = [{
+            "bearerAuth": []
+        }]
+        
+        #swagger.requestBody = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Name of entity to create",
+                                "example": "development"
+                            },
+                            "organizationId": {
+                                "type": "string",
+                                "description": "ID of organization where to create identity",
+                                "example": "dev-environment"
+                            },
+                            "role": {
+                                "type": "string",
+                                "description": "Role to assume for organization membership",
+                                "example": "no-access"
+                            }
+                        },
+                        "required": ["name", "organizationId", "role"]
+                    }
+                }
+            }
+        }
+
+        #swagger.responses[200] = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "identity": {
+                                $ref: '#/definitions/Identity'
+                            }
+                        },
+                        "description": "Details of the created identity"
+                    }
+                }
+            }
+        }
+    */
     const {
         body: {
             name,
@@ -120,6 +172,59 @@ export const createIdentity = async (req: Request, res: Response) => {
  * @returns 
  */
  export const updateIdentity = async (req: Request, res: Response) => {
+    /*
+        #swagger.summary = 'Update identity'
+        #swagger.description = 'Update identity'
+
+        #swagger.security = [{
+            "bearerAuth": []
+        }]
+
+        #swagger.parameters['identityId'] = {
+            "description": "ID of identity to update",
+            "required": true,
+            "type": "string",
+            "in": "path"
+        }
+        
+        #swagger.requestBody = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Name of entity to update to",
+                                "example": "development"
+                            },
+                            "role": {
+                                "type": "string",
+                                "description": "Role to update to for organization membership",
+                                "example": "no-access"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        #swagger.responses[200] = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "identity": {
+                                $ref: '#/definitions/Identity'
+                            }
+                        },
+                        "description": "Details of the updated identity"
+                    }
+                }
+            }
+        }
+    */
     const {
         params: { identityId  },
         body: {
@@ -242,6 +347,37 @@ export const createIdentity = async (req: Request, res: Response) => {
  * @returns 
  */
  export const deleteIdentity = async (req: Request, res: Response) => {
+     /*
+        #swagger.summary = 'Delete identity'
+        #swagger.description = 'Delete identity'
+
+        #swagger.security = [{
+            "bearerAuth": []
+        }]
+
+        #swagger.parameters['identityId'] = {
+            "description": "ID of identity",
+            "required": true,
+            "type": "string",
+            "in": "path"
+        }
+
+        #swagger.responses[200] = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "identity": {
+                                $ref: '#/definitions/Identity'
+                            }
+                        },
+                        "description": "Details of the deleted identity"
+                    }
+                }
+            }
+        }
+    */
     const {
         params: { identityId }
     } = await validateRequest(reqValidator.DeleteIdentityV1, req);

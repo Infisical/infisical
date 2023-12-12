@@ -337,11 +337,33 @@
           ]
         },
         {
+          "group": "Identities",
+          "pages": [
+            "api-reference/endpoints/identities/create",
+            "api-reference/endpoints/identities/update",
+            "api-reference/endpoints/identities/delete"
+          ]
+        },
+        {
+          "group": "Universal Auth",
+          "pages": [
+            "api-reference/endpoints/universal-auth/login",
+            "api-reference/endpoints/universal-auth/attach",
+            "api-reference/endpoints/universal-auth/retrieve",
+            "api-reference/endpoints/universal-auth/update",
+            "api-reference/endpoints/universal-auth/create-client-secret",
+            "api-reference/endpoints/universal-auth/list-client-secrets",
+            "api-reference/endpoints/universal-auth/revoke-client-secret",
+            "api-reference/endpoints/universal-auth/renew-access-token"
+          ]
+        },
+        {
           "group": "Organizations",
           "pages": [
             "api-reference/endpoints/organizations/memberships",
             "api-reference/endpoints/organizations/update-membership",
             "api-reference/endpoints/organizations/delete-membership",
+            "api-reference/endpoints/organizations/list-identity-memberships",
             "api-reference/endpoints/organizations/workspaces"
           ]
         },
@@ -351,6 +373,9 @@
             "api-reference/endpoints/workspaces/memberships",
             "api-reference/endpoints/workspaces/update-membership",
             "api-reference/endpoints/workspaces/delete-membership",
+            "api-reference/endpoints/workspaces/list-identity-memberships",
+            "api-reference/endpoints/workspaces/update-identity-membership",
+            "api-reference/endpoints/workspaces/delete-identity-membership",
             "api-reference/endpoints/workspaces/workspace-key",
             "api-reference/endpoints/workspaces/secret-snapshots",
             "api-reference/endpoints/workspaces/rollback-snapshot"

@@ -60,6 +60,52 @@ const packageUniversalAuthClientSecretData = (identityUniversalAuthClientSecret:
  * @param res 
  */
 export const renewAccessToken = async (req: Request, res: Response) => {
+    /*
+        #swagger.summary = 'Renew access token'
+        #swagger.description = 'Renew access token'
+        
+        #swagger.requestBody = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "accessToken": {
+                                "type": "string",
+                                "description": "Access token to renew",
+                                "example": "..."
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        #swagger.responses[200] = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "accessToken": {
+                                "type": "string",
+                                "description": "(Same) Access token after successful renewal"
+                            },
+                            "expiresIn": {
+                                "type": "number",
+                                "description": "TTL of access token in seconds"
+                            },
+                            "tokenType": {
+                                "type": "string",
+                                "description": "Type of access token (e.g. Bearer)"
+                            }
+                        },
+                        "description": "Access token and its details"
+                    }
+                }
+            }
+        }
+    */
     const {
         body: {
             accessToken
@@ -152,6 +198,57 @@ export const renewAccessToken = async (req: Request, res: Response) => {
  * @param res 
  */
 export const loginIdentityUniversalAuth = async (req: Request, res: Response) => {
+    /*
+        #swagger.summary = 'Login with Universal Auth'
+        #swagger.description = 'Login with Universal Auth'
+        
+        #swagger.requestBody = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "clientId": {
+                                "type": "string",
+                                "description": "Client ID for identity to login with Universal Auth",
+                                "example": "..."
+                            },
+                            "clientSecret": {
+                                "type": "string",
+                                "description": "Client Secret for identity to login with Universal Auth",
+                                "example": "..."
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        #swagger.responses[200] = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "accessToken": {
+                                "type": "string",
+                                "description": "Access token issued after successful login"
+                            },
+                            "expiresIn": {
+                                "type": "number",
+                                "description": "TTL of access token in seconds"
+                            },
+                            "tokenType": {
+                                "type": "string",
+                                "description": "Type of access token (e.g. Bearer)"
+                            }
+                        },
+                        "description": "Access token and its details"
+                    }
+                }
+            }
+        }
+    */
     const {
         body: {
             clientId,
@@ -304,7 +401,105 @@ export const loginIdentityUniversalAuth = async (req: Request, res: Response) =>
     });
 }
 
-export const addIdentityUniversalAuth = async (req: Request, res: Response) => {
+/**
+ * Attach identity universal auth method onto identity with id [identityId]
+ * @param req 
+ * @param res 
+ */
+export const attachIdentityUniversalAuth = async (req: Request, res: Response) => {
+    /*
+        #swagger.summary = 'Attach Universal Auth configuration onto identity'
+        #swagger.description = 'Attach Universal Auth configuration onto identity'
+
+        #swagger.security = [{
+            "bearerAuth": []
+        }]
+        
+        #swagger.parameters['identityId'] = {
+            "description": "ID of identity to attach Universal Auth onto",
+            "required": true,
+            "type": "string",
+            "in": "path"
+        }
+        
+        #swagger.requestBody = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "clientSecretTrustedIps": {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    "properties": {
+                                        "ipAddress": {
+                                            type: "string",
+                                            description: "IP address to trust",
+                                            default: "0.0.0.0/0"
+                                        }
+                                    }
+                                },
+                                "description": "List of IPs or CIDR ranges that the Client Secret can be used from together with the Client ID to get back an access token. By default, Client Secrets are given the 0.0.0.0/0 entry representing all possible IPv4 addresses.",
+                                "example": "...",
+                                "default": [{ ipAddress: "0.0.0.0/0" }]
+                            },
+                            "accessTokenTTL": {
+                                "type": "number",
+                                "description": "The incremental lifetime for an acccess token in seconds; a value of 0 implies an infinite incremental lifetime.",
+                                "example": "...",
+                                "default": 100
+                            },
+                            "accessTokenMaxTTL": {
+                                "type": "number",
+                                "description": "The maximum lifetime for an acccess token in seconds; a value of 0 implies an infinite maximum lifetime.",
+                                "example": "...",
+                                "default": 2592000
+                            },
+                            "accessTokenNumUsesLimit": {
+                                "type": "number",
+                                "description": "The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses.",
+                                "example": "...",
+                                "default": 0
+                            },
+                            "accessTokenTrustedIps": {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    "properties": {
+                                        "ipAddress": {
+                                            type: "string",
+                                            description: "IP address to trust",
+                                            default: "0.0.0.0/0"
+                                        }
+                                    }
+                                },
+                                "description": "List of IPs or CIDR ranges that access tokens can be used from. By default, each token is given the 0.0.0.0/0 entry representing all possible IPv4 addresses.",
+                                "example": "...",
+                                "default": [{ ipAddress: "0.0.0.0/0" }]
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        #swagger.responses[200] = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "identityUniversalAuth": {
+                                $ref: '#/definitions/IdentityUniversalAuth'
+                            }
+                        },
+                        "description": "Details of attached Universal Auth"
+                    }
+                }
+            }
+        }
+    */
     const {
         params: { identityId },
         body: {
@@ -415,7 +610,98 @@ export const addIdentityUniversalAuth = async (req: Request, res: Response) => {
     });
 }
 
+/**
+ * Update identity universal auth method on identity with id [identityId]
+ * @param req 
+ * @param res 
+ */
 export const updateIdentityUniversalAuth = async (req: Request, res: Response) => {
+    /*
+        #swagger.summary = 'Update Universal Auth configuration on identity'
+        #swagger.description = 'Update Universal Auth configuration on identity'
+
+        #swagger.security = [{
+            "bearerAuth": []
+        }]
+        
+        #swagger.parameters['identityId'] = {
+            "description": "ID of identity to update Universal Auth on",
+            "required": true,
+            "type": "string",
+            "in": "path"
+        }
+        
+        #swagger.requestBody = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "clientSecretTrustedIps": {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    "properties": {
+                                        "ipAddress": {
+                                            type: "string",
+                                            description: "IP address to trust"
+                                        }
+                                    }
+                                },
+                                "description": "List of IPs or CIDR ranges that the Client Secret can be used from together with the Client ID to get back an access token. By default, Client Secrets are given the 0.0.0.0/0 entry representing all possible IPv4 addresses.",
+                                "example": "...",
+                            },
+                            "accessTokenTTL": {
+                                "type": "number",
+                                "description": "The incremental lifetime for an acccess token in seconds; a value of 0 implies an infinite incremental lifetime.",
+                                "example": "...",
+                            },
+                            "accessTokenMaxTTL": {
+                                "type": "number",
+                                "description": "The maximum lifetime for an acccess token in seconds; a value of 0 implies an infinite maximum lifetime.",
+                                "example": "...",
+                            },
+                            "accessTokenNumUsesLimit": {
+                                "type": "number",
+                                "description": "The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses.",
+                                "example": "...",
+                            },
+                            "accessTokenTrustedIps": {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    "properties": {
+                                        "ipAddress": {
+                                            type: "string",
+                                            description: "IP address to trust"
+                                        }
+                                    }
+                                },
+                                "description": "List of IPs or CIDR ranges that access tokens can be used from. By default, each token is given the 0.0.0.0/0 entry representing all possible IPv4 addresses.",
+                                "example": "...",
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        #swagger.responses[200] = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "identityUniversalAuth": {
+                                $ref: '#/definitions/IdentityUniversalAuth'
+                            }
+                        },
+                        "description": "Details of updated Universal Auth"
+                    }
+                }
+            }
+        }
+    */
     const {
         params: { identityId },
         body: {
@@ -527,7 +813,43 @@ export const updateIdentityUniversalAuth = async (req: Request, res: Response) =
     });
 }
 
+/**
+ * Return identity universal auth method on identity with id [identityId]
+ * @param req 
+ * @param res 
+ */
 export const getIdentityUniversalAuth = async (req: Request, res: Response) => {
+    /*
+        #swagger.summary = 'Retrieve Universal Auth configuration on identity'
+        #swagger.description = 'Retrieve Universal Auth configuration on identity'
+
+        #swagger.security = [{
+            "bearerAuth": []
+        }]
+        
+        #swagger.parameters['identityId'] = {
+            "description": "ID of identity to retrieve Universal Auth on",
+            "required": true,
+            "type": "string",
+            "in": "path"
+        }
+
+        #swagger.responses[200] = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "identityUniversalAuth": {
+                                $ref: '#/definitions/IdentityUniversalAuth'
+                            }
+                        },
+                        "description": "Details of retrieved Universal Auth"
+                    }
+                }
+            }
+        }
+    */
     const {
         params: { identityId }
     } = await validateRequest(reqValidator.GetUniversalAuthForIdentityV1, req);
@@ -578,7 +900,77 @@ export const getIdentityUniversalAuth = async (req: Request, res: Response) => {
     });
 }
 
+
+/**
+ * Create client secret for identity universal auth method on identity with id [identityId]
+ * @param req 
+ * @param res 
+ */
 export const createUniversalAuthClientSecret = async (req: Request, res: Response) => {
+    /*
+        #swagger.summary = 'Create Universal Auth Client Secret for identity'
+        #swagger.description = 'Create Universal Auth Client Secret for identity'
+
+        #swagger.security = [{
+            "bearerAuth": []
+        }]
+        
+        #swagger.parameters['identityId'] = {
+            "description": "ID of identity to create Universal Auth Client Secret for",
+            "required": true,
+            "type": "string",
+            "in": "path"
+        }
+        
+        #swagger.requestBody = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "description": {
+                                "type": "string",
+                                "description": "A description for the Client Secret to create.",
+                                "example": "..."
+                            },
+                            "ttl": {
+                                "type": "number",
+                                "description": "The time-to-live for the Client Secret to create. By default, the TTL will be set to 0 which implies that the Client Secret will never expire; a value of 0 implies an infinite lifetime.",
+                                "example": "...",
+                                "default": 0
+                            },
+                            "numUsesLimit": {
+                                "type": "number",
+                                "description": "The maximum number of times that the Client Secret can be used together with the Client ID to get back an access token; a value of 0 implies infinite number of uses.",
+                                "example": "...",
+                                "default": 0
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        #swagger.responses[200] = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "clientSecret": {
+                                "type": "string",
+                                "description": "The created Client Secret"
+                            },
+                            "clientSecretData": {
+                                $ref: '#/definitions/IdentityUniversalAuthClientSecretData'
+                            }
+                        },
+                        "description": "Details of the created Client Secret"
+                    }
+                }
+            }
+        }
+    */
     const {
         params: { identityId },
         body: {
@@ -661,7 +1053,46 @@ export const createUniversalAuthClientSecret = async (req: Request, res: Respons
     });
 }
 
-export const getUniversalAuthClientSecrets = async (req: Request, res: Response) => {
+/**
+ * Return list of client secret details for identity universal auth method on identity with id [identityId]
+ * @param req 
+ * @param res 
+ */
+export const getUniversalAuthClientSecretsDetails = async (req: Request, res: Response) => {
+    /*
+        #swagger.summary = 'List Universal Auth Client Secrets for identity'
+        #swagger.description = 'List Universal Auth Client Secrets for identity'
+
+        #swagger.security = [{
+            "bearerAuth": []
+        }]
+        
+        #swagger.parameters['identityId'] = {
+            "description": "ID of identity for which to get Client Secrets for",
+            "required": true,
+            "type": "string",
+            "in": "path"
+        }
+
+        #swagger.responses[200] = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "clientSecretData": {
+                                type: "array",
+                                items: {
+                                    $ref: '#/definitions/IdentityUniversalAuthClientSecretData'
+                                }
+                            }
+                        },
+                        "description": "Details of the Client Secrets"
+                    }
+                }
+            }
+        }
+    */
     const {
         params: { identityId }
     } = await validateRequest(reqValidator.GetUniversalAuthClientSecretsV1, req);
@@ -721,7 +1152,50 @@ export const getUniversalAuthClientSecrets = async (req: Request, res: Response)
     });
 }
 
+/**
+ * Revoke client secret for identity universal auth method on identity with id [identityId]
+ * @param req 
+ * @param res 
+ */
 export const revokeUniversalAuthClientSecret = async (req: Request, res: Response) => {
+    /*
+        #swagger.summary = 'Revoke Universal Auth Client Secret for identity'
+        #swagger.description = 'Revoke Universal Auth Client Secret for identity'
+
+        #swagger.security = [{
+            "bearerAuth": []
+        }]
+        
+        #swagger.parameters['identityId'] = {
+            "description": "ID of identity under which Client Secret was issued for",
+            "required": true,
+            "type": "string",
+            "in": "path"
+        }
+
+        #swagger.parameters['clientSecretId'] = {
+            "description": "ID of Client Secret to revoke",
+            "required": true,
+            "type": "string",
+            "in": "path"
+        }
+
+        #swagger.responses[200] = {
+            content: {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "clientSecretData": {
+                                $ref: '#/definitions/IdentityUniversalAuthClientSecretData'
+                            }
+                        },
+                        "description": "Details of the revoked Client Secret"
+                    }
+                }
+            }
+        }
+    */
     const {
         params: { identityId, clientSecretId }
     } = await validateRequest(reqValidator.RevokeUniversalAuthClientSecretV1, req);

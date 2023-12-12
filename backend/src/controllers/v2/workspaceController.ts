@@ -342,7 +342,7 @@ export const updateWorkspaceMembership = async (req: Request, res: Response) => 
             "properties": {
                 "role": {
                     "type": "string",
-                    "description": "Role of membership - either admin or member",
+                    "description": "Role to update to for project membership",
                 }
             }
           }
@@ -598,6 +598,59 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
  * @param res 
  */
  export const updateIdentityWorkspaceRole = async (req: Request, res: Response) => {
+   /* 
+    #swagger.summary = 'Update project identity membership'
+    #swagger.description = 'Update project identity membership'
+    
+    #swagger.security = [{
+        "bearerAuth": []
+    }]
+
+	#swagger.parameters['workspaceId'] = {
+		"description": "ID of project",
+		"required": true,
+		"type": "string"
+	} 
+
+	#swagger.parameters['identityId'] = {
+		"description": "ID of identity whose membership to update in project",
+		"required": true,
+		"type": "string"
+	} 
+
+	#swagger.requestBody = {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+                "role": {
+                    "type": "string",
+                    "description": "Role to update to for identity project membership",
+                }
+            }
+          }
+        }
+      }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+          "application/json": {
+            "schema": { 
+              "type": "object",
+              "properties": {
+                "identityMembership": {
+                  $ref: "#/components/schemas/IdentityMembership",
+                  "description": "Updated identity membership"
+                }
+              }
+            }
+          }           
+        }
+    }   
+    */
   const {
     params: { workspaceId, identityId },
     body: {
@@ -679,12 +732,48 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
 }
 
 /**
- * Delete identity with id [identityId] to workspace
+ * Delete identity with id [identityId] from workspace
  * with id [workspaceId]
  * @param req 
  * @param res 
  */
  export const deleteIdentityFromWorkspace = async (req: Request, res: Response) => {
+   /* 
+    #swagger.summary = 'Delete project identity membership'
+    #swagger.description = 'Delete project identity membership'
+    
+    #swagger.security = [{
+        "bearerAuth": []
+    }]
+
+	#swagger.parameters['workspaceId'] = {
+		"description": "ID of project",
+		"required": true,
+		"type": "string"
+	} 
+
+	#swagger.parameters['identityId'] = {
+		"description": "ID of identity whose membership to delete in project",
+		"required": true,
+		"type": "string"
+	} 
+
+    #swagger.responses[200] = {
+        content: {
+          "application/json": {
+            "schema": { 
+              "type": "object",
+              "properties": {
+                "identityMembership": {
+                  $ref: "#/components/schemas/IdentityMembership",
+                  "description": "Deleted identity membership"
+                }
+              }
+            }
+          }           
+        }
+    }   
+    */
   const {
     params: { workspaceId, identityId }
   } = await validateRequest(reqValidator.DeleteIdentityFromWorkspaceV2, req);
@@ -736,6 +825,40 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
  * @returns 
  */
  export const getWorkspaceIdentityMemberships = async (req: Request, res: Response) => {
+   /*
+    #swagger.summary = 'Return project identity memberships'
+    #swagger.description = 'Return project identity memberships'
+
+    #swagger.security = [{
+        "bearerAuth": []
+    }]
+    
+    #swagger.parameters['workspaceId'] = {
+        "description": "ID of project",
+        "required": true,
+        "type": "string",
+        "in": "path"
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+              "schema": { 
+                "type": "object",
+                "properties": {
+                  "identityMemberships": {
+                    "type": "array",
+                    "items": {
+                      $ref: "#/components/schemas/IdentityMembership" 
+                    },
+                    "description": "Identity memberships of project"
+                  }
+                }
+              }
+            }           
+        }
+    }
+  */
   const {
     params: { workspaceId }
   } = await validateRequest(reqValidator.GetWorkspaceIdentityMembersV2, req);

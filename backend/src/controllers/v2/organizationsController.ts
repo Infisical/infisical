@@ -428,6 +428,40 @@ export const deleteOrganizationById = async (req: Request, res: Response) => {
  * @returns 
  */
  export const getOrganizationIdentityMemberships = async (req: Request, res: Response) => {
+   /*
+    #swagger.summary = 'Return organization identity memberships'
+    #swagger.description = 'Return organization identity memberships'
+
+    #swagger.security = [{
+        "bearerAuth": []
+    }]
+    
+    #swagger.parameters['organizationId'] = {
+        "description": "ID of organization",
+        "required": true,
+        "type": "string",
+        "in": "path"
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+              "schema": { 
+                "type": "object",
+                "properties": {
+                  "identityMemberships": {
+                    "type": "array",
+                    "items": {
+                      $ref: "#/components/schemas/IdentityMembershipOrg" 
+                    },
+                    "description": "Identity memberships of organization"
+                  }
+                }
+              }
+            }           
+        }
+    }
+  */
   const {
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgIdentityMembershipsV2, req);
