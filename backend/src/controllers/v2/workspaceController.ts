@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { 
+import {
   IIdentity,
   IdentityMembership,
   IdentityMembershipOrg,
-  Key, 
+  Key,
   Membership,
   ServiceTokenData,
   Workspace
@@ -182,11 +182,11 @@ export const getWorkspaceKey = async (req: Request, res: Response) => {
         "apiKeyAuth": []
     }]
 
-	#swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
-		"required": true,
-		"type": "string"
-	} 
+  #swagger.parameters['workspaceId'] = {
+    "description": "ID of project",
+    "required": true,
+    "type": "string"
+  } 
 
     #swagger.responses[200] = {
         content: {
@@ -211,7 +211,7 @@ export const getWorkspaceKey = async (req: Request, res: Response) => {
     receiver: req.user._id
   }).populate("sender", "+publicKey");
 
-  if (!key) throw new Error("Failed to find workspace key");
+  if (!key) throw new Error(`getWorkspaceKey: Failed to find workspace key [workspaceId=${workspaceId}] [receiver=${req.user._id}]`);
 
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -256,26 +256,26 @@ export const getWorkspaceMemberships = async (req: Request, res: Response) => {
         "apiKeyAuth": []
     }]
 
-	#swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
-		"required": true,
-		"type": "string"
-	} 
+  #swagger.parameters['workspaceId'] = {
+    "description": "ID of project",
+    "required": true,
+    "type": "string"
+  } 
 
     #swagger.responses[200] = {
         content: {
             "application/json": {
                 "schema": { 
                     "type": "object",
-					"properties": {
-						"memberships": {
-							"type": "array",
-							"items": {
-								$ref: "#/components/schemas/Membership" 
-							},
-							"description": "Memberships of project"
-						}
-					}
+          "properties": {
+            "memberships": {
+              "type": "array",
+              "items": {
+                $ref: "#/components/schemas/Membership" 
+              },
+              "description": "Memberships of project"
+            }
+          }
                 }
             }           
         }
@@ -319,19 +319,19 @@ export const updateWorkspaceMembership = async (req: Request, res: Response) => 
         "apiKeyAuth": []
     }]
 
-	#swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
-		"required": true,
-		"type": "string"
-	} 
+  #swagger.parameters['workspaceId'] = {
+    "description": "ID of project",
+    "required": true,
+    "type": "string"
+  } 
 
-	#swagger.parameters['membershipId'] = {
-		"description": "ID of project membership to update",
-		"required": true,
-		"type": "string"
-	} 
+  #swagger.parameters['membershipId'] = {
+    "description": "ID of project membership to update",
+    "required": true,
+    "type": "string"
+  } 
 
-	#swagger.requestBody = {
+  #swagger.requestBody = {
       "required": true,
       "content": {
         "application/json": {
@@ -352,13 +352,13 @@ export const updateWorkspaceMembership = async (req: Request, res: Response) => 
         content: {
             "application/json": {
                 "schema": { 
-					"type": "object",
-					"properties": {
-						"membership": {
-							$ref: "#/components/schemas/Membership",
-							"description": "Updated membership"
-						}
-					}
+          "type": "object",
+          "properties": {
+            "membership": {
+              $ref: "#/components/schemas/Membership",
+              "description": "Updated membership"
+            }
+          }
                 }
             }           
         }
@@ -409,29 +409,29 @@ export const deleteWorkspaceMembership = async (req: Request, res: Response) => 
         "apiKeyAuth": []
     }]
 
-	#swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
-		"required": true,
-		"type": "string"
-	} 
+  #swagger.parameters['workspaceId'] = {
+    "description": "ID of project",
+    "required": true,
+    "type": "string"
+  } 
 
-	#swagger.parameters['membershipId'] = {
-		"description": "ID of project membership to delete",
-		"required": true,
-		"type": "string"
-	} 
+  #swagger.parameters['membershipId'] = {
+    "description": "ID of project membership to delete",
+    "required": true,
+    "type": "string"
+  } 
 
     #swagger.responses[200] = {
         content: {
             "application/json": {
                 "schema": { 
-					"type": "object",
-					"properties": {
-						"membership": {
-							$ref: "#/components/schemas/Membership",
-							"description": "Deleted membership"
-						}
-					}
+          "type": "object",
+          "properties": {
+            "membership": {
+              $ref: "#/components/schemas/Membership",
+              "description": "Deleted membership"
+            }
+          }
                 }
             }           
         }
@@ -511,14 +511,14 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
  * @param req 
  * @param res 
  */
- export const addIdentityToWorkspace = async (req: Request, res: Response) => {
+export const addIdentityToWorkspace = async (req: Request, res: Response) => {
   const {
     params: { workspaceId, identityId },
     body: {
       role
     }
   } = await validateRequest(reqValidator.AddIdentityToWorkspaceV2, req);
-  
+
   const { permission } = await getAuthDataProjectPermissions({
     authData: req.authData,
     workspaceId: new Types.ObjectId(workspaceId)
@@ -538,7 +538,7 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
     message: `Identity with id ${identityId} already exists in project with id ${workspaceId}`
   });
 
-  
+
   const workspace = await Workspace.findById(workspaceId);
   if (!workspace) throw ResourceNotFoundError();
 
@@ -550,16 +550,16 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
   if (!identityMembershipOrg) throw ResourceNotFoundError({
     message: `Failed to find identity with id ${identityId}`
   });
-  
+
   if (!identityMembershipOrg.organization.equals(workspace.organization)) throw BadRequestError({
     message: "Failed to add identity to project in another organization"
   });
 
   const rolePermission = await getWorkspaceRolePermissions(role, workspaceId);
   const isAsPrivilegedAsIntendedRole = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
-  
+
   if (!isAsPrivilegedAsIntendedRole) throw ForbiddenRequestError({
-      message: "Failed to add identity to project with more privileged role"
+    message: "Failed to add identity to project with more privileged role"
   });
 
   let customRole;
@@ -571,18 +571,18 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
         isOrgRole: false,
         workspace: new Types.ObjectId(workspaceId)
       });
-      
+
       if (!customRole) throw BadRequestError({ message: "Role not found" });
     }
   }
-  
+
   identityMembership = await new IdentityMembership({
     identity: identityMembershipOrg.identity,
     workspace: new Types.ObjectId(workspaceId),
     role: customRole ? CUSTOM : role,
     customRole
   }).save();
-  
+
   return res.status(200).send({
     identityMembership
   });
@@ -594,14 +594,14 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
  * @param req 
  * @param res 
  */
- export const updateIdentityWorkspaceRole = async (req: Request, res: Response) => {
+export const updateIdentityWorkspaceRole = async (req: Request, res: Response) => {
   const {
     params: { workspaceId, identityId },
     body: {
       role
     }
   } = await validateRequest(reqValidator.UpdateIdentityWorkspaceRoleV2, req);
-  
+
   const { permission } = await getAuthDataProjectPermissions({
     authData: req.authData,
     workspaceId: new Types.ObjectId(workspaceId)
@@ -611,7 +611,7 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.Identity
   );
-  
+
   let identityMembership = await IdentityMembership
     .findOne({
       identity: new Types.ObjectId(identityId),
@@ -625,21 +625,21 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
   if (!identityMembership) throw BadRequestError({
     message: `Identity with id ${identityId} does not exist in project with id ${workspaceId}`
   });
-  
+
   const identityRolePermission = await getWorkspaceRolePermissions(
-    identityMembership?.customRole?.slug ?? identityMembership.role, 
+    identityMembership?.customRole?.slug ?? identityMembership.role,
     identityMembership.workspace.toString()
   );
   const isAsPrivilegedAsIdentity = isAtLeastAsPrivilegedWorkspace(permission, identityRolePermission);
   if (!isAsPrivilegedAsIdentity) throw ForbiddenRequestError({
-      message: "Failed to update role of more privileged identity"
+    message: "Failed to update role of more privileged identity"
   });
 
   const rolePermission = await getWorkspaceRolePermissions(role, workspaceId);
   const isAsPrivilegedAsIntendedRole = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
-  
+
   if (!isAsPrivilegedAsIntendedRole) throw ForbiddenRequestError({
-      message: "Failed to update identity to a more privileged role"
+    message: "Failed to update identity to a more privileged role"
   });
 
   let customRole;
@@ -651,11 +651,11 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
         isOrgRole: false,
         workspace: new Types.ObjectId(workspaceId)
       });
-      
+
       if (!customRole) throw BadRequestError({ message: "Role not found" });
     }
   }
-  
+
   identityMembership = await IdentityMembership.findOneAndUpdate(
     {
       identity: identityMembership.identity._id,
@@ -681,11 +681,11 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
  * @param req 
  * @param res 
  */
- export const deleteIdentityFromWorkspace = async (req: Request, res: Response) => {
+export const deleteIdentityFromWorkspace = async (req: Request, res: Response) => {
   const {
     params: { workspaceId, identityId }
   } = await validateRequest(reqValidator.DeleteIdentityFromWorkspaceV2, req);
-  
+
   const { permission } = await getAuthDataProjectPermissions({
     authData: req.authData,
     workspaceId: new Types.ObjectId(workspaceId)
@@ -695,7 +695,7 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
     ProjectPermissionActions.Delete,
     ProjectPermissionSub.Identity
   );
-  
+
   const identityMembership = await IdentityMembership
     .findOne({
       identity: new Types.ObjectId(identityId),
@@ -705,20 +705,20 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
       identity: IIdentity,
       customRole: IRole
     }>("identity customRole");
-  
+
   if (!identityMembership) throw ResourceNotFoundError({
     message: `Identity with id ${identityId} does not exist in project with id ${workspaceId}`
   });
-  
+
   const identityRolePermission = await getWorkspaceRolePermissions(
-    identityMembership?.customRole?.slug ?? identityMembership.role, 
+    identityMembership?.customRole?.slug ?? identityMembership.role,
     identityMembership.workspace.toString()
   );
   const isAsPrivilegedAsIdentity = isAtLeastAsPrivilegedWorkspace(permission, identityRolePermission);
   if (!isAsPrivilegedAsIdentity) throw ForbiddenRequestError({
-      message: "Failed to remove more privileged identity from project"
+    message: "Failed to remove more privileged identity from project"
   });
-  
+
   await IdentityMembership.findByIdAndDelete(identityMembership._id);
 
   return res.status(200).send({
@@ -732,11 +732,11 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
  * @param res 
  * @returns 
  */
- export const getWorkspaceIdentityMemberships = async (req: Request, res: Response) => {
+export const getWorkspaceIdentityMemberships = async (req: Request, res: Response) => {
   const {
     params: { workspaceId }
   } = await validateRequest(reqValidator.GetWorkspaceIdentityMembersV2, req);
-  
+
   const { permission } = await getAuthDataProjectPermissions({
     authData: req.authData,
     workspaceId: new Types.ObjectId(workspaceId)
