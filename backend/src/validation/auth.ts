@@ -116,7 +116,9 @@ export const AddUniversalAuthToIdentityV1 = z.object({
       .array()
       .min(1)
       .default([{ ipAddress: "0.0.0.0/0" }]),
-    accessTokenTTL: z.number().int().min(0).default(7200),
+    accessTokenTTL: z.number().int().min(1).refine(value => value !== 0, {
+      message: "accessTokenTTL must have a non zero number",
+    }).default(2592000),
     accessTokenMaxTTL: z.number().int().refine(value => value !== 0, {
       message: "accessTokenMaxTTL must have a non zero number",
     }).default(2592000), // 30 days
