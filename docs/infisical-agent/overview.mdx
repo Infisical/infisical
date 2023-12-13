@@ -12,7 +12,7 @@ It eliminates the need to modify application logic by enabling clients to decide
 - Templating: Renders secrets via user provided templates to desired formats for applications to consume
 
 ### Token renewal
-The Infisical agent can help manage the life cycle of access tokens. The token renewal process is split into two main components: a Method, which is the authentication process suitable for your current setup, and Sinks, which are the places where the agent deposits the new access token whenever it receives updates.
+The Infisical agent can help manage the life cycle of access tokens. The token renewal process is split into two main components: a `Method`, which is the authentication process suitable for your current setup, and `Sinks`, which are the places where the agent deposits the new access token whenever it receives updates.
 
 When the Infisical Agent is started, it will attempt to obtain a valid access token using the authentication method you have configured. If the agent is unable to fetch a valid token, the agent will keep trying, increasing the time between each attempt. 
 
@@ -43,8 +43,10 @@ While specifying an authentication method is mandatory to start the agent, confi
 | Field                        | Description |
 | ---------------------------- | ----------- |
 | `infisical.address`          | The URL of the Infisical service. Default: `"https://app.infisical.com"`. |
-| `auth.type`                  | The type of authentication method used. Only `"token"` type is currently available |
-| `auth.config.token-path`     | The file path where the initial token for authentication is stored.  |
+| `auth.type`                  | The type of authentication method used. Only `"universal-auth"` type is currently available |
+| `auth.config.client-id`      | The file path where the universal-auth client id is stored.  |
+| `auth.config.client-secret`  | The file path where the universal-auth client secret is stored.  |
+| `auth.config.remove_client_secret_on_read`     | This will instruct the agent to remove the client secret from disk.  |
 | `sinks[].type`               | The type of sink in a list of sinks. Each item specifies a sink type. Currently, only `"file"` type is available. |
 | `sinks[].config.path`        | The file path where the access token should be stored for each sink in the list. |
 | `templates[].source-path`    | The path to the template file that should be used to render secrets. |
@@ -60,9 +62,11 @@ Once you have the CLI installed, you will need to create a agent configuration f
 infisical:
   address: "https://app.infisical.com"
 auth:
-  type: "token"
+  type: "universal-auth"
   config:
-    token-path: "/path/to/initial/token"
+    client-id: "./client-id"
+    client-secret: "./client-secret"
+    remove_client_secret_on_read: false
 sinks:
   - type: "file"
     config:
