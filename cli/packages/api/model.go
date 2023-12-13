@@ -463,14 +463,27 @@ type CreateServiceTokenResponse struct {
 	ServiceTokenData ServiceTokenData `json:"serviceTokenData"`
 }
 
-type ServiceTokenV3RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token"`
+type UniversalAuthLoginRequest struct {
+	ClientSecret string `json:"clientSecret"`
+	ClientId     string `json:"clientId"`
 }
-type ServiceTokenV3RefreshTokenResponse struct {
-	RefreshToken string `json:"refresh_token"`
-	AccessToken  string `json:"access_token"`
-	ExpiresIn    int    `json:"expires_in"`
-	TokenType    string `json:"token_type"`
+
+type UniversalAuthLoginResponse struct {
+	AccessToken       string `json:"accessToken"`
+	AccessTokenTTL    int    `json:"expiresIn"`
+	TokenType         string `json:"tokenType"`
+	AccessTokenMaxTTL int    `json:"accessTokenMaxTTL"`
+}
+
+type UniversalAuthRefreshRequest struct {
+	AccessToken string `json:"accessToken"`
+}
+
+type UniversalAuthRefreshResponse struct {
+	AccessToken       string `json:"accessToken"`
+	AccessTokenTTL    int    `json:"expiresIn"`
+	TokenType         string `json:"tokenType"`
+	AccessTokenMaxTTL int    `json:"accessTokenMaxTTL"`
 }
 
 type GetRawSecretsV3Request struct {
