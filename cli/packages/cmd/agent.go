@@ -395,18 +395,14 @@ func (tm *TokenManager) FetchSecrets() {
 			for _, secretTemplate := range tm.templates {
 				processedTemplate, err := ProcessTemplate(secretTemplate.SourcePath, nil, token)
 				if err != nil {
-					log.Error().Msgf("template engine: unable to render secrets because %s. Will try again in 30 seconds", err)
+					log.Error().Msgf("template engine: unable to render secrets because %s. Will try again on next cycle", err)
 
-					// wait a bit before trying again
-					time.Sleep((30 * time.Second))
 					continue
 				}
 
 				if err := WriteBytesToFile(processedTemplate, secretTemplate.DestinationPath); err != nil {
-					log.Error().Msgf("template engine: unable to write secrets to path because %s. Will try again in 30 seconds", err)
+					log.Error().Msgf("template engine: unable to write secrets to path because %s. Will try again on next cycle", err)
 
-					// wait a bit before trying again
-					time.Sleep((30 * time.Second))
 					continue
 				}
 
