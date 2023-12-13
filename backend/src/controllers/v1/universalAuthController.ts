@@ -3,28 +3,28 @@ import { Types } from "mongoose";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
-import { 
-  IIdentity, 
-  IIdentityTrustedIp, 
-  IIdentityUniversalAuthClientSecret,
-  Identity,
-  IdentityAccessToken,
-  IdentityAuthMethod,
-  IdentityMembershipOrg,
-  IdentityUniversalAuth,
-  IdentityUniversalAuthClientSecret,
+import {
+    IIdentity,
+    IIdentityTrustedIp,
+    IIdentityUniversalAuthClientSecret,
+    Identity,
+    IdentityAccessToken,
+    IdentityAuthMethod,
+    IdentityMembershipOrg,
+    IdentityUniversalAuth,
+    IdentityUniversalAuthClientSecret,
 } from "../../models";
 import { createToken } from "../../helpers/auth";
 import { AuthTokenType } from "../../variables";
-import { 
-  BadRequestError, 
-  ForbiddenRequestError, 
-  ResourceNotFoundError,
-  UnauthorizedRequestError
+import {
+    BadRequestError,
+    ForbiddenRequestError,
+    ResourceNotFoundError,
+    UnauthorizedRequestError
 } from "../../utils/errors";
 import {
-  getAuthSecret,
-  getSaltRounds
+    getAuthSecret,
+    getSaltRounds
 } from "../../config";
 import { ActorType, EventType, IRole } from "../../ee/models";
 import { validateRequest } from "../../helpers/validation";
@@ -32,12 +32,12 @@ import * as reqValidator from "../../validation/auth";
 import { checkIPAgainstBlocklist, extractIPDetails, isValidIpOrCidr } from "../../utils/ip";
 import { getUserAgentType } from "../../utils/posthog";
 import { EEAuditLogService, EELicenseService } from "../../ee/services";
-import { 
-  OrgPermissionActions, 
-  OrgPermissionSubjects, 
-  getAuthDataOrgPermissions, 
-  getOrgRolePermissions, 
-  isAtLeastAsPrivilegedOrg 
+import {
+    OrgPermissionActions,
+    OrgPermissionSubjects,
+    getAuthDataOrgPermissions,
+    getOrgRolePermissions,
+    isAtLeastAsPrivilegedOrg
 } from "../../ee/services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 
@@ -53,7 +53,7 @@ const packageUniversalAuthClientSecretData = (identityUniversalAuthClientSecret:
     createdAt: identityUniversalAuthClientSecret.createdAt,
     updatedAt: identityUniversalAuthClientSecret.updatedAt
 });
-  
+
 /**
  * Renews an access token by its TTL
  * @param req 
@@ -132,9 +132,6 @@ export const renewAccessToken = async (req: Request, res: Response) => {
         createdAt: accessTokenCreatedAt
     } = identityAccessToken;
 
-    if (accessTokenTTL === accessTokenMaxTTL) throw UnauthorizedRequestError({
-        message: "Failed to renew non-renewable access token"
-    });
 
     // ttl check
     if (accessTokenTTL > 0) {
@@ -187,6 +184,7 @@ export const renewAccessToken = async (req: Request, res: Response) => {
     return res.status(200).send({
         accessToken,
         expiresIn: identityAccessToken.accessTokenTTL,
+        accessTokenMaxTTL: identityAccessToken.accessTokenMaxTTL,
         tokenType: "Bearer"
     });
 }
@@ -259,7 +257,7 @@ export const loginIdentityUniversalAuth = async (req: Request, res: Response) =>
     const identityUniversalAuth = await IdentityUniversalAuth.findOne({
         clientId
     }).populate<{ identity: IIdentity }>("identity");
-    
+
     if (!identityUniversalAuth) throw UnauthorizedRequestError();
 
     checkIPAgainstBlocklist({
@@ -334,16 +332,16 @@ export const loginIdentityUniversalAuth = async (req: Request, res: Response) =>
 
     // increment usage count by 1
     await IdentityUniversalAuthClientSecret
-    .findByIdAndUpdate(
-        validatedClientSecretDatum._id,
-        {
-            clientSecretLastUsedAt: new Date(),
-            $inc: { clientSecretNumUses: 1 }
-        },
-        {
-            new: true
-        }
-    );
+        .findByIdAndUpdate(
+            validatedClientSecretDatum._id,
+            {
+                clientSecretLastUsedAt: new Date(),
+                $inc: { clientSecretNumUses: 1 }
+            },
+            {
+                new: true
+            }
+        );
 
     const identityAccessToken = await new IdentityAccessToken({
         identity: identityUniversalAuth.identity,
@@ -397,7 +395,8 @@ export const loginIdentityUniversalAuth = async (req: Request, res: Response) =>
     return res.status(200).send({
         accessToken,
         expiresIn: identityUniversalAuth.accessTokenTTL,
-        tokenType: "Bearer"
+        accessTokenMaxTTL: identityUniversalAuth.accessTokenMaxTTL,
+        tokenType: "Bearer",
     });
 }
 
@@ -523,7 +522,7 @@ export const attachIdentityUniversalAuth = async (req: Request, res: Response) =
     if (!identityMembershipOrg) throw ResourceNotFoundError({
         message: `Failed to find identity with id ${identityId}`
     });
-    
+
     if (identityMembershipOrg.identity?.authMethod) throw BadRequestError({
         message: "Failed to add universal auth to already-configured identity"
     });
@@ -572,7 +571,7 @@ export const attachIdentityUniversalAuth = async (req: Request, res: Response) =
 
         return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
-    
+
     const identityUniversalAuth = await new IdentityUniversalAuth({
         identity: identityMembershipOrg.identity._id,
         clientId: crypto.randomUUID(),
@@ -582,7 +581,7 @@ export const attachIdentityUniversalAuth = async (req: Request, res: Response) =
         accessTokenNumUsesLimit,
         accessTokenTrustedIps: reformattedAccessTokenTrustedIps,
     }).save();
-    
+
     await Identity.findByIdAndUpdate(
         identityMembershipOrg.identity._id,
         {
@@ -725,7 +724,7 @@ export const updateIdentityUniversalAuth = async (req: Request, res: Response) =
     if (!identityMembershipOrg) throw ResourceNotFoundError({
         message: `Failed to find identity with id ${identityId}`
     });
-    
+
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.UNIVERSAL_AUTH) throw BadRequestError({
         message: "Failed to add universal auth to already-configured identity"
     });
@@ -776,7 +775,7 @@ export const updateIdentityUniversalAuth = async (req: Request, res: Response) =
             return extractIPDetails(accessTokenTrustedIp.ipAddress);
         });
     }
-    
+
     const identityUniversalAuth = await IdentityUniversalAuth.findOneAndUpdate(
         {
             identity: identityMembershipOrg.identity._id,
@@ -853,7 +852,7 @@ export const getIdentityUniversalAuth = async (req: Request, res: Response) => {
     const {
         params: { identityId }
     } = await validateRequest(reqValidator.GetUniversalAuthForIdentityV1, req);
-    
+
     const identityMembershipOrg = await IdentityMembershipOrg
         .findOne({
             identity: new Types.ObjectId(identityId)
@@ -880,7 +879,7 @@ export const getIdentityUniversalAuth = async (req: Request, res: Response) => {
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.UNIVERSAL_AUTH) throw BadRequestError({
         message: "The identity does not have universal auth configured"
     });
-    
+
     const identityUniversalAuth = await IdentityUniversalAuth.findOne({
         identity: identityMembershipOrg.identity._id,
     });
@@ -1017,11 +1016,11 @@ export const createUniversalAuthClientSecret = async (req: Request, res: Respons
 
     const clientSecret = crypto.randomBytes(32).toString("hex");
     const clientSecretHash = await bcrypt.hash(clientSecret, await getSaltRounds());
-    
+
     const identityUniversalAuth = await IdentityUniversalAuth.findOne({
         identity: identityMembershipOrg.identity._id
     });
-    
+
     if (!identityUniversalAuth) throw ResourceNotFoundError();
 
     const identityUniversalAuthClientSecret = await new IdentityUniversalAuthClientSecret({
@@ -1096,7 +1095,7 @@ export const getUniversalAuthClientSecretsDetails = async (req: Request, res: Re
     const {
         params: { identityId }
     } = await validateRequest(reqValidator.GetUniversalAuthClientSecretsV1, req);
-    
+
     const identityMembershipOrg = await IdentityMembershipOrg.findOne({
         identity: new Types.ObjectId(identityId)
     }).populate<{
@@ -1199,7 +1198,7 @@ export const revokeUniversalAuthClientSecret = async (req: Request, res: Respons
     const {
         params: { identityId, clientSecretId }
     } = await validateRequest(reqValidator.RevokeUniversalAuthClientSecretV1, req);
-    
+
     const identityMembershipOrg = await IdentityMembershipOrg
         .findOne({
             identity: new Types.ObjectId(identityId)
@@ -1247,7 +1246,7 @@ export const revokeUniversalAuthClientSecret = async (req: Request, res: Respons
     );
 
     if (!clientSecretData) throw ResourceNotFoundError();
-    
+
     await EEAuditLogService.createAuditLog(
         req.authData,
         {

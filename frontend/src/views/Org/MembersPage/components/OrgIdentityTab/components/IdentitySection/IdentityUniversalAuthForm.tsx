@@ -223,7 +223,7 @@ export const IdentityUniversalAuthForm = ({
                         {...field} 
                         placeholder="2592000"
                         type="number"
-                        min="0"
+                        min="1"
                         step="1"
                     />
                     </FormControl>
