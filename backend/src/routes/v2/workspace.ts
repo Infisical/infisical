@@ -62,7 +62,7 @@ router.get(
   // new - TODO: rewire dashboard to this route
   "/:workspaceId/memberships",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]
   }),
   workspaceController.getWorkspaceMemberships
 );
@@ -71,7 +71,7 @@ router.patch(
   // TODO - rewire dashboard to this route
   "/:workspaceId/memberships/:membershipId",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]
   }),
   workspaceController.updateWorkspaceMembership
 );
@@ -80,7 +80,7 @@ router.delete(
   // TODO - rewire dashboard to this route
   "/:workspaceId/memberships/:membershipId",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]
   }),
   workspaceController.deleteWorkspaceMembership
 );
@@ -96,7 +96,7 @@ router.patch(
 router.post(
   "/:workspaceId/identity-memberships/:identityId",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]
   }),
   workspaceController.addIdentityToWorkspace
 );
@@ -104,7 +104,7 @@ router.post(
 router.patch(
   "/:workspaceId/identity-memberships/:identityId",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]
   }),
   workspaceController.updateIdentityWorkspaceRole
 );
@@ -112,7 +112,7 @@ router.patch(
 router.delete(
   "/:workspaceId/identity-memberships/:identityId",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT, AuthMode.API_KEY]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]
   }),
   workspaceController.deleteIdentityFromWorkspace
 );
@@ -120,7 +120,7 @@ router.delete(
 router.get(
   "/:workspaceId/identity-memberships",
   requireAuth({
-    acceptedAuthModes: [AuthMode.JWT]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]
   }),
   workspaceController.getWorkspaceIdentityMemberships
 );

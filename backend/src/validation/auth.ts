@@ -149,7 +149,7 @@ export const UpdateUniversalAuthToIdentityV1 = z.object({
     accessTokenNumUsesLimit: z.number().int().min(0).optional(),
     accessTokenMaxTTL: z.number().int().refine(value => value !== 0, {
       message: "accessTokenMaxTTL must have a non zero number",
-    }).default(2592000),
+    }).optional(),
   }),
 });
 

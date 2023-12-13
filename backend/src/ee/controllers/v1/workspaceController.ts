@@ -62,14 +62,29 @@ export const getWorkspaceSecretSnapshots = async (req: Request, res: Response) =
     #swagger.description = 'Return project secret snapshots ids'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
 	#swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
+		"description": "ID of project where to get secret snapshots for",
 		"required": true,
 		"type": "string"
 	} 
+
+	#swagger.parameters['environment'] = {
+      "description": "Slug of environment where to get secret snapshots for",
+      "required": true,
+      "type": "string",
+      "in": "query"
+  }
+
+  #swagger.parameters['directory'] = {
+      "description": "Path where to get secret snapshots for like / or /foo/bar. Default is /",
+      "required": false,
+      "type": "string",
+      "in": "query"
+  }
 
 	#swagger.parameters['offset'] = {
 		"description": "Number of secret snapshots to skip",
@@ -195,11 +210,12 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
     #swagger.description = 'Roll back project secrets to those captured in a secret snapshot version.'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
 	#swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
+		"description": "ID of project where to roll back",
 		"required": true,
 		"type": "string"
 	} 
@@ -211,6 +227,14 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
           "schema": {
             "type": "object",
             "properties": {
+                "environment": {
+                  "type": "string",
+                  "description": "Slug of environment where to roll back"
+                },
+                "directory": {
+                  "type": "string",
+                  "description": "Path where to roll back for like / or /foo/bar. Default is /"
+                },
                 "version": {
                     "type": "integer",
                     "description": "Version of secret snapshot to roll back to",

@@ -9,6 +9,106 @@ servers:
   - url: http://localhost:8080
     description: Local server
 paths:
+  /api/v1/identities/:
+    post:
+      summary: Create identity
+      description: Create identity
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identity:
+                    $ref: '#/components/schemas/Identity'
+                description: Details of the created identity
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Name of entity to create
+                  example: development
+                organizationId:
+                  type: string
+                  description: ID of organization where to create identity
+                  example: dev-environment
+                role:
+                  type: string
+                  description: Role to assume for organization membership
+                  example: no-access
+              required:
+                - name
+                - organizationId
+                - role
+  /api/v1/identities/{identityId}:
+    patch:
+      summary: Update identity
+      description: Update identity
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of identity to update
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identity:
+                    $ref: '#/components/schemas/Identity'
+                description: Details of the updated identity
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Name of entity to update to
+                  example: development
+                role:
+                  type: string
+                  description: Role to update to for organization membership
+                  example: no-access
+    delete:
+      summary: Delete identity
+      description: Delete identity
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of identity
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identity:
+                    $ref: '#/components/schemas/Identity'
+                description: Details of the deleted identity
+      security:
+        - bearerAuth: []
   /api/v1/secret/{secretId}/secret-versions:
     get:
       summary: Return secret versions
@@ -110,7 +210,21 @@ paths:
           required: true
           schema:
             type: string
-          description: ID of project
+          description: ID of project where to get secret snapshots for
+        - name: environment
+          description: Slug of environment where to get secret snapshots for
+          required: true
+          in: query
+          schema:
+            type: string
+        - name: directory
+          description: >-
+            Path where to get secret snapshots for like / or /foo/bar. Default
+            is /
+          required: false
+          in: query
+          schema:
+            type: string
         - name: offset
           description: Number of secret snapshots to skip
           required: false
@@ -138,6 +252,7 @@ paths:
                     description: Project secret snapshots
       security:
         - apiKeyAuth: []
+          bearerAuth: []
   /api/v1/workspace/{workspaceId}/secret-snapshots/count:
     get:
       description: ''
@@ -164,7 +279,7 @@ paths:
           required: true
           schema:
             type: string
-          description: ID of project
+          description: ID of project where to roll back
       responses:
         '200':
           description: OK
@@ -180,6 +295,7 @@ paths:
                     description: Secrets rolled back to
       security:
         - apiKeyAuth: []
+          bearerAuth: []
       requestBody:
         required: true
         content:
@@ -187,6 +303,12 @@ paths:
             schema:
               type: object
               properties:
+                environment:
+                  type: string
+                  description: Slug of environment where to roll back
+                directory:
+                  type: string
+                  description: Path where to roll back for like / or /foo/bar. Default is /
                 version:
                   type: integer
                   description: Version of secret snapshot to roll back to
@@ -604,51 +726,6 @@ paths:
       responses:
         '200':
           description: OK
-  /api/v3/service-token/me/key:
-    get:
-      description: ''
-      responses:
-        '200':
-          description: OK
-  /api/v3/service-token/me/token:
-    post:
-      description: ''
-      responses:
-        '200':
-          description: OK
-  /api/v3/service-token/:
-    post:
-      description: ''
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: Bad Request
-  /api/v3/service-token/{serviceTokenDataId}:
-    patch:
-      description: ''
-      parameters:
-        - name: serviceTokenDataId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: Bad Request
-    delete:
-      description: ''
-      parameters:
-        - name: serviceTokenDataId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
   /api/v1/secret-rotation-providers/{workspaceId}:
     get:
       description: ''
@@ -749,6 +826,374 @@ paths:
       responses:
         '200':
           description: OK
+  /api/v1/auth/token/renew:
+    post:
+      summary: Renew access token
+      description: Renew access token
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                    description: (Same) Access token after successful renewal
+                  expiresIn:
+                    type: number
+                    description: TTL of access token in seconds
+                  tokenType:
+                    type: string
+                    description: Type of access token (e.g. Bearer)
+                description: Access token and its details
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accessToken:
+                  type: string
+                  description: Access token to renew
+                  example: ...
+  /api/v1/auth/universal-auth/login:
+    post:
+      summary: Login with Universal Auth
+      description: Login with Universal Auth
+      parameters:
+        - name: user-agent
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                    description: Access token issued after successful login
+                  expiresIn:
+                    type: number
+                    description: TTL of access token in seconds
+                  tokenType:
+                    type: string
+                    description: Type of access token (e.g. Bearer)
+                description: Access token and its details
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clientId:
+                  type: string
+                  description: Client ID for identity to login with Universal Auth
+                  example: ...
+                clientSecret:
+                  type: string
+                  description: Client Secret for identity to login with Universal Auth
+                  example: ...
+  /api/v1/auth/universal-auth/identities/{identityId}:
+    post:
+      summary: Attach Universal Auth configuration onto identity
+      description: Attach Universal Auth configuration onto identity
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of identity to attach Universal Auth onto
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identityUniversalAuth:
+                    $ref: '#/components/schemas/IdentityUniversalAuth'
+                description: Details of attached Universal Auth
+        '400':
+          description: Bad Request
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clientSecretTrustedIps:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      ipAddress:
+                        type: string
+                        description: IP address to trust
+                        default: 0.0.0.0/0
+                  description: >-
+                    List of IPs or CIDR ranges that the Client Secret can be
+                    used from together with the Client ID to get back an access
+                    token. By default, Client Secrets are given the 0.0.0.0/0
+                    entry representing all possible IPv4 addresses.
+                  example: ...
+                  default:
+                    - ipAddress: 0.0.0.0/0
+                accessTokenTTL:
+                  type: number
+                  description: >-
+                    The incremental lifetime for an acccess token in seconds; a
+                    value of 0 implies an infinite incremental lifetime.
+                  example: ...
+                  default: 100
+                accessTokenMaxTTL:
+                  type: number
+                  description: >-
+                    The maximum lifetime for an acccess token in seconds; a
+                    value of 0 implies an infinite maximum lifetime.
+                  example: ...
+                  default: 2592000
+                accessTokenNumUsesLimit:
+                  type: number
+                  description: >-
+                    The maximum number of times that an access token can be
+                    used; a value of 0 implies infinite number of uses.
+                  example: ...
+                  default: 0
+                accessTokenTrustedIps:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      ipAddress:
+                        type: string
+                        description: IP address to trust
+                        default: 0.0.0.0/0
+                  description: >-
+                    List of IPs or CIDR ranges that access tokens can be used
+                    from. By default, each token is given the 0.0.0.0/0 entry
+                    representing all possible IPv4 addresses.
+                  example: ...
+                  default:
+                    - ipAddress: 0.0.0.0/0
+    patch:
+      summary: Update Universal Auth configuration on identity
+      description: Update Universal Auth configuration on identity
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of identity to update Universal Auth on
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identityUniversalAuth:
+                    $ref: '#/components/schemas/IdentityUniversalAuth'
+                description: Details of updated Universal Auth
+        '400':
+          description: Bad Request
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clientSecretTrustedIps:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      ipAddress:
+                        type: string
+                        description: IP address to trust
+                  description: >-
+                    List of IPs or CIDR ranges that the Client Secret can be
+                    used from together with the Client ID to get back an access
+                    token. By default, Client Secrets are given the 0.0.0.0/0
+                    entry representing all possible IPv4 addresses.
+                  example: ...
+                accessTokenTTL:
+                  type: number
+                  description: >-
+                    The incremental lifetime for an acccess token in seconds; a
+                    value of 0 implies an infinite incremental lifetime.
+                  example: ...
+                accessTokenMaxTTL:
+                  type: number
+                  description: >-
+                    The maximum lifetime for an acccess token in seconds; a
+                    value of 0 implies an infinite maximum lifetime.
+                  example: ...
+                accessTokenNumUsesLimit:
+                  type: number
+                  description: >-
+                    The maximum number of times that an access token can be
+                    used; a value of 0 implies infinite number of uses.
+                  example: ...
+                accessTokenTrustedIps:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      ipAddress:
+                        type: string
+                        description: IP address to trust
+                  description: >-
+                    List of IPs or CIDR ranges that access tokens can be used
+                    from. By default, each token is given the 0.0.0.0/0 entry
+                    representing all possible IPv4 addresses.
+                  example: ...
+    get:
+      summary: Retrieve Universal Auth configuration on identity
+      description: Retrieve Universal Auth configuration on identity
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of identity to retrieve Universal Auth on
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identityUniversalAuth:
+                    $ref: '#/components/schemas/IdentityUniversalAuth'
+                description: Details of retrieved Universal Auth
+      security:
+        - bearerAuth: []
+  /api/v1/auth/universal-auth/identities/{identityId}/client-secrets:
+    post:
+      summary: Create Universal Auth Client Secret for identity
+      description: Create Universal Auth Client Secret for identity
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of identity to create Universal Auth Client Secret for
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clientSecret:
+                    type: string
+                    description: The created Client Secret
+                  clientSecretData:
+                    $ref: '#/components/schemas/IdentityUniversalAuthClientSecretData'
+                description: Details of the created Client Secret
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type: string
+                  description: A description for the Client Secret to create.
+                  example: ...
+                ttl:
+                  type: number
+                  description: >-
+                    The time-to-live for the Client Secret to create. By
+                    default, the TTL will be set to 0 which implies that the
+                    Client Secret will never expire; a value of 0 implies an
+                    infinite lifetime.
+                  example: ...
+                  default: 0
+                numUsesLimit:
+                  type: number
+                  description: >-
+                    The maximum number of times that the Client Secret can be
+                    used together with the Client ID to get back an access
+                    token; a value of 0 implies infinite number of uses.
+                  example: ...
+                  default: 0
+    get:
+      summary: List Universal Auth Client Secrets for identity
+      description: List Universal Auth Client Secrets for identity
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of identity for which to get Client Secrets for
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clientSecretData:
+                    type: array
+                    items:
+                      $ref: >-
+                        #/components/schemas/IdentityUniversalAuthClientSecretData
+                description: Details of the Client Secrets
+      security:
+        - bearerAuth: []
+  /api/v1/auth/universal-auth/identities/{identityId}/client-secrets/{clientSecretId}/revoke:
+    post:
+      summary: Revoke Universal Auth Client Secret for identity
+      description: Revoke Universal Auth Client Secret for identity
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of identity under which Client Secret was issued for
+        - name: clientSecretId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of Client Secret to revoke
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clientSecretData:
+                    $ref: '#/components/schemas/IdentityUniversalAuthClientSecretData'
+                description: Details of the revoked Client Secret
+      security:
+        - bearerAuth: []
   /api/v1/admin/config:
     get:
       description: ''
@@ -1106,6 +1551,8 @@ paths:
       responses:
         '200':
           description: OK
+        '400':
+          description: Bad Request
   /api/v1/key/{workspaceId}:
     post:
       description: ''
@@ -2560,8 +3007,8 @@ paths:
           description: OK
   /api/v2/organizations/{organizationId}/memberships:
     get:
-      summary: Return organization memberships
-      description: Return organization memberships
+      summary: Return organization user memberships
+      description: Return organization user memberships
       parameters:
         - name: organizationId
           in: path
@@ -2584,10 +3031,11 @@ paths:
                     description: Memberships of organization
       security:
         - apiKeyAuth: []
+          bearerAuth: []
   /api/v2/organizations/{organizationId}/memberships/{membershipId}:
     patch:
-      summary: Update organization membership
-      description: Update organization membership
+      summary: Update organization user membership
+      description: Update organization user membership
       parameters:
         - name: organizationId
           in: path
@@ -2612,8 +3060,11 @@ paths:
                   membership:
                     $ref: '#/components/schemas/MembershipOrg'
                     description: Updated organization membership
+        '400':
+          description: Bad Request
       security:
         - apiKeyAuth: []
+          bearerAuth: []
       requestBody:
         required: true
         content:
@@ -2627,8 +3078,8 @@ paths:
                     Role of organization membership - either owner, admin, or
                     member
     delete:
-      summary: Delete organization membership
-      description: Delete organization membership
+      summary: Delete organization user membership
+      description: Delete organization user membership
       parameters:
         - name: organizationId
           in: path
@@ -2655,6 +3106,7 @@ paths:
                     description: Deleted organization membership
       security:
         - apiKeyAuth: []
+          bearerAuth: []
   /api/v2/organizations/{organizationId}/workspaces:
     get:
       summary: Return projects in organization that user is part of
@@ -2699,6 +3151,32 @@ paths:
       responses:
         '200':
           description: OK
+  /api/v2/organizations/{organizationId}/identity-memberships:
+    get:
+      summary: Return organization identity memberships
+      description: Return organization identity memberships
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of organization
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identityMemberships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IdentityMembershipOrg'
+                    description: Identity memberships of organization
+      security:
+        - bearerAuth: []
   /api/v2/workspace/{workspaceId}/memberships:
     post:
       description: ''
@@ -2712,8 +3190,8 @@ paths:
         '200':
           description: OK
     get:
-      summary: Return project memberships
-      description: Return project memberships
+      summary: Return project user memberships
+      description: Return project user memberships
       parameters:
         - name: workspaceId
           in: path
@@ -2736,6 +3214,7 @@ paths:
                     description: Memberships of project
       security:
         - apiKeyAuth: []
+          bearerAuth: []
   /api/v2/workspace/{workspaceId}/environments:
     post:
       summary: Create environment
@@ -3031,8 +3510,8 @@ paths:
           description: OK
   /api/v2/workspace/{workspaceId}/memberships/{membershipId}:
     patch:
-      summary: Update project membership
-      description: Update project membership
+      summary: Update project user membership
+      description: Update project user membership
       parameters:
         - name: workspaceId
           in: path
@@ -3059,6 +3538,7 @@ paths:
                     description: Updated membership
       security:
         - apiKeyAuth: []
+          bearerAuth: []
       requestBody:
         required: true
         content:
@@ -3068,10 +3548,10 @@ paths:
               properties:
                 role:
                   type: string
-                  description: Role of membership - either admin or member
+                  description: Role to update to for project membership
     delete:
-      summary: Delete project membership
-      description: Delete project membership
+      summary: Delete project user membership
+      description: Delete project user membership
       parameters:
         - name: workspaceId
           in: path
@@ -3098,6 +3578,7 @@ paths:
                     description: Deleted membership
       security:
         - apiKeyAuth: []
+          bearerAuth: []
   /api/v2/workspace/{workspaceId}/auto-capitalization:
     patch:
       description: ''
@@ -3110,6 +3591,117 @@ paths:
       responses:
         '200':
           description: OK
+  /api/v2/workspace/{workspaceId}/identity-memberships/{identityId}:
+    post:
+      description: ''
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+    patch:
+      summary: Update project identity membership
+      description: Update project identity membership
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of project
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of identity whose membership to update in project
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identityMembership:
+                    $ref: '#/components/schemas/IdentityMembership'
+                    description: Updated identity membership
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  description: Role to update to for identity project membership
+    delete:
+      summary: Delete project identity membership
+      description: Delete project identity membership
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of project
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of identity whose membership to delete in project
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identityMembership:
+                    $ref: '#/components/schemas/IdentityMembership'
+                    description: Deleted identity membership
+      security:
+        - bearerAuth: []
+  /api/v2/workspace/{workspaceId}/identity-memberships:
+    get:
+      summary: Return project identity memberships
+      description: Return project identity memberships
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of project
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identityMemberships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IdentityMembership'
+                    description: Identity memberships of project
+      security:
+        - bearerAuth: []
   /api/v2/secret/batch-create/workspace/{workspaceId}/environment/{environment}:
     post:
       description: ''
@@ -3842,18 +4434,6 @@ paths:
       responses:
         '200':
           description: OK
-  /api/v3/workspaces/{workspaceId}/service-token:
-    get:
-      description: ''
-      parameters:
-        - name: workspaceId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
   /api/v3/signup/complete-account/signup:
     post:
       description: ''
@@ -3918,6 +4498,100 @@ components:
           type: string
           example: '2023-01-13T14:16:12.210Z'
         createdAt:
+          type: string
+          example: '2023-01-13T14:16:12.210Z'
+    Identity:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: ''
+        name:
+          type: string
+          example: Machine 1
+        authMethod:
+          type: string
+          example: universal-auth
+    IdentityUniversalAuth:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: ''
+        identity:
+          type: string
+          example: ''
+        clientId:
+          type: string
+          example: ...
+        clientSecretTrustedIps:
+          type: array
+          items:
+            type: object
+            properties:
+              ipAddress:
+                type: string
+                example: 0.0.0.0
+              type:
+                type: string
+                example: ipv4
+              prefix:
+                type: string
+                example: '0'
+        accessTokenTTL:
+          type: number
+          example: 7200
+        accessTokenMaxTTL:
+          type: number
+          example: 2592000
+        accessTokenNumUsesLimit:
+          type: number
+          example: 0
+        accessTokenTrustedIps:
+          type: array
+          items:
+            type: object
+            properties:
+              ipAddress:
+                type: string
+                example: 0.0.0.0
+              type:
+                type: string
+                example: ipv4
+              prefix:
+                type: string
+                example: '0'
+    IdentityUniversalAuthClientSecretData:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: ''
+        identityUniversalAuth:
+          type: string
+          example: ''
+        isClientSecretRevoked:
+          type: boolean
+          example: false
+        description:
+          type: string
+          example: ''
+        clientSecretPrefix:
+          type: string
+          example: abc
+        clientSecretNumUses:
+          type: number
+          example: 0
+        clientSecretNumUsesLimit:
+          type: number
+          example: 0
+        clientSecretTTL:
+          type: number
+          example: 0
+        createdAt:
+          type: string
+          example: '2023-01-13T14:16:12.210Z'
+        updatedAt:
           type: string
           example: '2023-01-13T14:16:12.210Z'
     Membership:
@@ -3986,6 +4660,51 @@ components:
         role:
           type: string
           example: owner
+        status:
+          type: string
+          example: accepted
+    IdentityMembership:
+      type: object
+      properties:
+        identity:
+          type: object
+          properties:
+            _id:
+              type: string
+              example: ''
+            name:
+              type: string
+              example: Machine 1
+            authMethod:
+              type: string
+              example: universal-auth
+        workspace:
+          type: string
+          example: ''
+        role:
+          type: string
+          example: member
+    IdentityMembershipOrg:
+      type: object
+      properties:
+        identity:
+          type: object
+          properties:
+            _id:
+              type: string
+              example: ''
+            name:
+              type: string
+              example: Machine 1
+            authMethod:
+              type: string
+              example: universal-auth
+        organization:
+          type: string
+          example: ''
+        role:
+          type: string
+          example: member
         status:
           type: string
           example: accepted
@@ -4424,7 +5143,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: A service token in Infisical
+      description: An access token in Infisical
     apiKeyAuth:
       type: apiKey
       in: header

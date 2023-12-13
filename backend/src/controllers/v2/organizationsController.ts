@@ -33,11 +33,12 @@ import { ForbiddenError } from "@casl/ability";
  */
 export const getOrganizationMemberships = async (req: Request, res: Response) => {
   /* 
-    #swagger.summary = 'Return organization memberships'
-    #swagger.description = 'Return organization memberships'
+    #swagger.summary = 'Return organization user memberships'
+    #swagger.description = 'Return organization user memberships'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
 	#swagger.parameters['organizationId'] = {
@@ -94,11 +95,12 @@ export const getOrganizationMemberships = async (req: Request, res: Response) =>
  */
 export const updateOrganizationMembership = async (req: Request, res: Response) => {
   /* 
-    #swagger.summary = 'Update organization membership'
-    #swagger.description = 'Update organization membership'
+    #swagger.summary = 'Update organization user membership'
+    #swagger.description = 'Update organization user membership'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
 	#swagger.parameters['organizationId'] = {
@@ -214,11 +216,12 @@ export const updateOrganizationMembership = async (req: Request, res: Response) 
  */
 export const deleteOrganizationMembership = async (req: Request, res: Response) => {
   /* 
-    #swagger.summary = 'Delete organization membership'
-    #swagger.description = 'Delete organization membership'
+    #swagger.summary = 'Delete organization user membership'
+    #swagger.description = 'Delete organization user membership'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
 	#swagger.parameters['organizationId'] = {
@@ -425,6 +428,40 @@ export const deleteOrganizationById = async (req: Request, res: Response) => {
  * @returns 
  */
  export const getOrganizationIdentityMemberships = async (req: Request, res: Response) => {
+   /*
+    #swagger.summary = 'Return organization identity memberships'
+    #swagger.description = 'Return organization identity memberships'
+
+    #swagger.security = [{
+        "bearerAuth": []
+    }]
+    
+    #swagger.parameters['organizationId'] = {
+        "description": "ID of organization",
+        "required": true,
+        "type": "string",
+        "in": "path"
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+              "schema": { 
+                "type": "object",
+                "properties": {
+                  "identityMemberships": {
+                    "type": "array",
+                    "items": {
+                      $ref: "#/components/schemas/IdentityMembershipOrg" 
+                    },
+                    "description": "Identity memberships of organization"
+                  }
+                }
+              }
+            }           
+        }
+    }
+  */
   const {
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgIdentityMembershipsV2, req);

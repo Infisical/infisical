@@ -112,7 +112,7 @@ export const IdentityUniversalAuthForm = ({
     } = useFieldArray({ control, name: "accessTokenTrustedIps" });
     
     useEffect(() => {
-        if (data) { // TODO: fix data type
+        if (data) {
             reset({
                 accessTokenTTL: String(data.accessTokenTTL),
                 accessTokenMaxTTL: String(data.accessTokenMaxTTL),

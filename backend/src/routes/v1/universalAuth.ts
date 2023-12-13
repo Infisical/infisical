@@ -18,15 +18,15 @@ router.post(
 router.post(
     "/universal-auth/identities/:identityId",
     requireAuth({
-    acceptedAuthModes: [AuthMode.JWT]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]
     }),
-    universalAuthController.addIdentityUniversalAuth
+    universalAuthController.attachIdentityUniversalAuth
 );
 
 router.patch(
     "/universal-auth/identities/:identityId",
     requireAuth({
-    acceptedAuthModes: [AuthMode.JWT]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]
     }),
     universalAuthController.updateIdentityUniversalAuth
 );
@@ -34,7 +34,7 @@ router.patch(
 router.get(
     "/universal-auth/identities/:identityId",
     requireAuth({
-    acceptedAuthModes: [AuthMode.JWT]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]
     }),
     universalAuthController.getIdentityUniversalAuth
 );
@@ -42,7 +42,7 @@ router.get(
 router.post(
     "/universal-auth/identities/:identityId/client-secrets",
     requireAuth({
-    acceptedAuthModes: [AuthMode.JWT]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]
     }),
     universalAuthController.createUniversalAuthClientSecret
 );
@@ -50,15 +50,15 @@ router.post(
 router.get(
     "/universal-auth/identities/:identityId/client-secrets",
     requireAuth({
-    acceptedAuthModes: [AuthMode.JWT]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]
     }),
-    universalAuthController.getUniversalAuthClientSecrets
+    universalAuthController.getUniversalAuthClientSecretsDetails
 );
 
 router.post(
     "/universal-auth/identities/:identityId/client-secrets/:clientSecretId/revoke",
     requireAuth({
-    acceptedAuthModes: [AuthMode.JWT]
+    acceptedAuthModes: [AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]
     }),
     universalAuthController.revokeUniversalAuthClientSecret
 );
