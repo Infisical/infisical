@@ -3,81 +3,10 @@ title: "Authentication"
 description: "How to authenticate with the Infisical Public API"
 ---
 
-You can authenticate with the Infisical API using [Identities](/documentation/platform/identities/overview) with the [Universal Auth](/documentation/platform/identities/universal-auth) authentication method.
+You can authenticate with the Infisical API using [Identities](/documentation/platform/identities/overview) paired with authentication modes such as [Universal Auth](/documentation/platform/identities/universal-auth).
 
-In the following steps, we explore how to create an identity representing a workload or application to access the Infisical API.
+To interact with the Infisical API, you will need to obtain an access token. Follow the step by [step guide](/documentation/platform/identities/universal-auth) to get an access token via Universal Auth.
 
-<Steps>
-  <Step title="Create an identity">
-    To create an identity, head to your Organization Settings > Access Control > Machine Identities and press **Create identity**.
-
-    ![identities organization](../../images/platform/identities/identities-org.png)
-    
-    When creating an identity, you specify an organization level [role](/documentation/platform/role-based-access-controls) for it to assume; you can configure roles in Organization Settings > Access Control > Organization Roles.
-    
-    ![identities organization create](../../images/platform/identities/identities-org-create.png)
-    
-    Once you've created an identity, you'll be prompted to configure the **Universal Auth** authentication method for it.
-    
-    ![identities organization create auth method](../../images/platform/identities/identities-org-create-auth-method.png)
-
-  </Step>
-  <Step title="Create a Client Secret">
-    In order to use the identity, you'll need the non-sensitive **Client ID**
-    of the identity and a **Client Secret** for it; you can think of these credentials akin to a username
-    and password used to authenticate with the Infisical API. With that, press on the key icon on the identity to generate a **Client Secret**
-    for it.
-    
-    ![identities client secret create](../../images/platform/identities/identities-org-client-secret.png)
-    ![identities client secret create](../../images/platform/identities/identities-org-client-secret-create-1.png)
-    ![identities client secret create](../../images/platform/identities/identities-org-client-secret-create-2.png)
-  </Step>
-  <Step title="Add an identity to a project">
-    To enable the identity to access project-level resources such as secrets within a specific project, you should add it to that project.
-
-    To do this, head over to the project you want to add the identity to and go to Project Settings > Access Control > Machine Identities and press **Add identity**.
-
-    Next, select the identity you want to add to the project and the role you want to assign it.
-
-    ![identities project](../../images/platform/identities/identities-project.png)
-    
-    ![identities project create](../../images/platform/identities/identities-project-create.png)
-  </Step>
-  <Step title="Access the Infisical API with the identity">
-    To access the Infisical API as the identity, you should first perform a login operation
-    that is to exchange the **Client ID** and **Client Secret** of the identity for an access token
-    by making a request to the `/api/v1/auth/universal-auth/login` endpoint.
-    
-    #### Sample request
-
-    ```
-    curl --location --request POST 'https://app.infisical.com/api/v1/auth/universal-auth/login' \
-      --header 'Content-Type: application/x-www-form-urlencoded' \
-      --data-urlencode 'clientSecret=...' \
-      --data-urlencode 'clientId=...'
-    ```
-    
-    #### Sample response
-    
-    ```
-    {
-      "accessToken": "...",
-      "expiresIn": 7200,
-      "tokenType": "Bearer"
-    }
-    ```
-
-    Next, you can use the access token to authenticate with the [Infisical API](/api-reference/overview/introduction)
-    
-    <Note>
-      Each identity access token has a time-to-live (TLL) which you can infer from the response of the login operation;
-      the default TTL is `7200` seconds which can be adjusted.
-
-      If an identity access token expires, it can no longer authenticate with the Infisical API. In this case,
-      a new access token should be obtained from the aforementioned login operation.
-    </Note>
-  </Step>
-</Steps>
 
 **FAQ**
 
