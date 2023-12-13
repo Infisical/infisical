@@ -425,24 +425,44 @@ func CallCreateServiceToken(httpClient *resty.Client, request CreateServiceToken
 	return createServiceTokenResponse, nil
 }
 
-func CallServiceTokenV3Refresh(httpClient *resty.Client, request ServiceTokenV3RefreshTokenRequest) (ServiceTokenV3RefreshTokenResponse, error) {
-	var serviceTokenV3RefreshTokenResponse ServiceTokenV3RefreshTokenResponse
+func CallUniversalAuthLogin(httpClient *resty.Client, request UniversalAuthLoginRequest) (UniversalAuthLoginResponse, error) {
+	var universalAuthLoginResponse UniversalAuthLoginResponse
 	response, err := httpClient.
 		R().
-		SetResult(&serviceTokenV3RefreshTokenResponse).
+		SetResult(&universalAuthLoginResponse).
 		SetHeader("User-Agent", USER_AGENT).
 		SetBody(request).
-		Post(fmt.Sprintf("%v/v3/service-token/me/token", config.INFISICAL_URL))
+		Post(fmt.Sprintf("%v/v1/auth/universal-auth/login/", config.INFISICAL_URL))
 
 	if err != nil {
-		return ServiceTokenV3RefreshTokenResponse{}, fmt.Errorf("CallServiceTokenV3Refresh: Unable to complete api request [err=%s]", err)
+		return UniversalAuthLoginResponse{}, fmt.Errorf("CallUniversalAuthLogin: Unable to complete api request [err=%s]", err)
 	}
 
 	if response.IsError() {
-		return ServiceTokenV3RefreshTokenResponse{}, fmt.Errorf("CallServiceTokenV3Refresh: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return UniversalAuthLoginResponse{}, fmt.Errorf("CallUniversalAuthLogin: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
 	}
 
-	return serviceTokenV3RefreshTokenResponse, nil
+	return universalAuthLoginResponse, nil
+}
+
+func CallUniversalAuthRefreshAccessToken(httpClient *resty.Client, request UniversalAuthRefreshRequest) (UniversalAuthRefreshResponse, error) {
+	var universalAuthRefreshResponse UniversalAuthRefreshResponse
+	response, err := httpClient.
+		R().
+		SetResult(&universalAuthRefreshResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v1/auth/token/renew", config.INFISICAL_URL))
+
+	if err != nil {
+		return UniversalAuthRefreshResponse{}, fmt.Errorf("CallUniversalAuthRefreshAccessToken: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return UniversalAuthRefreshResponse{}, fmt.Errorf("CallUniversalAuthRefreshAccessToken: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return universalAuthRefreshResponse, nil
 }
 
 func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Request) (GetRawSecretsV3Response, error) {
@@ -466,7 +486,7 @@ func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Reques
 	}
 
 	if response.IsError() {
-		return GetRawSecretsV3Response{}, fmt.Errorf("CallGetRawSecretsV3: Unsuccessful response [%v %v] [status-code=%v]", response.Request.Method, response.Request.URL, response.StatusCode())
+		return GetRawSecretsV3Response{}, fmt.Errorf("CallUniversalAuthLogin: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
 	}
 
 	return getRawSecretsV3Response, nil
