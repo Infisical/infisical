@@ -439,7 +439,7 @@ var agentCmd = &cobra.Command{
 	infisical agent
 	`,
 	Use:                   "agent",
-	Short:                 "Used to launch a client daemon that streamlines authentication and secret retrieval processes in some environments",
+	Short:                 "Used to launch a client daemon that streamlines authentication and secret retrieval processes in various environments",
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
 
