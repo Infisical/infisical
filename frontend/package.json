@@ -12,6 +12,9 @@
     "storybook": "storybook dev -p 6006 -s ./public",
     "build-storybook": "storybook build"
   },
+  "overrides": {
+    "@radix-ui/react-focus-scope": "1.0.4"
+  },
   "dependencies": {
     "@casl/ability": "^6.5.0",
     "@casl/react": "^3.1.0",
@@ -30,16 +33,16 @@
     "@hookform/resolvers": "^2.9.10",
     "@octokit/rest": "^19.0.7",
     "@radix-ui/react-accordion": "^1.1.2",
-    "@radix-ui/react-alert-dialog": "^1.0.2",
+    "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-checkbox": "^1.0.1",
-    "@radix-ui/react-dialog": "^1.0.2",
-    "@radix-ui/react-dropdown-menu": "^2.0.2",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
     "@radix-ui/react-hover-card": "^1.0.3",
     "@radix-ui/react-label": "^2.0.0",
     "@radix-ui/react-popover": "^1.0.3",
     "@radix-ui/react-popper": "^1.1.1",
     "@radix-ui/react-progress": "^1.0.1",
-    "@radix-ui/react-select": "^1.2.0",
+    "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-switch": "^1.0.1",
     "@radix-ui/react-tabs": "^1.0.2",
     "@radix-ui/react-toast": "^1.1.2",

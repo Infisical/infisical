@@ -61,22 +61,24 @@ export const ProjectIndexSecretsSection = ({ decryptFileKey }: Props) => {
     }
   };
 
-  return !isBlindIndexedLoading && !isBlindIndexed ? (
-    <div className="p-4 mt-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
+  // for non admin this would throw an error
+  // so no need to render
+  return !isBlindIndexedLoading && typeof isBlindIndexed === "boolean" && !isBlindIndexed ? (
+    <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       {isIndexing && (
-        <div className="w-screen absolute top-0 left-0 h-screen z-50 bg-bunker-500 bg-opacity-80 flex items-center justify-center">
+        <div className="absolute top-0 left-0 z-50 flex h-screen w-screen items-center justify-center bg-bunker-500 bg-opacity-80">
           <Spinner size="lg" className="text-primary" />
-          <div className="flex flex-col space-y-1 ml-4">
+          <div className="ml-4 flex flex-col space-y-1">
             <div className="text-3xl font-medium">Please wait</div>
             <span className="inline-block">Re-indexing your secrets...</span>
           </div>
         </div>
       )}
       <p className="mb-2 text-lg font-semibold">Enable Blind Indices</p>
-      <p className="text-gray-400 mb-4 leading-7">
-        Your project was created before the introduction of blind indexing. 
-        To continue accessing secrets by name through the SDK, public API and web dashboard, please enable blind
-        indexing. <b>This is a one time process.</b>
+      <p className="mb-4 leading-7 text-gray-400">
+        Your project was created before the introduction of blind indexing. To continue accessing
+        secrets by name through the SDK, public API and web dashboard, please enable blind indexing.{" "}
+        <b>This is a one time process.</b>
       </p>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
         {(isAllowed) => (
