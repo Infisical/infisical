@@ -13,7 +13,7 @@ import {
   SECRET_SHARED
 } from "../variables";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
-import { InternalServerError } from "../utils/errors";
+import { BotNotFoundError, InternalServerError } from "../utils/errors";
 import { Folder } from "../models";
 import { getFolderByPath } from "../services/FolderService";
 import { getAllImportedSecrets } from "../services/SecretImportService";
@@ -223,7 +223,7 @@ export const getKey = async ({ workspaceId }: { workspaceId: Types.ObjectId }) =
     workspace: workspaceId
   }).populate<{ sender: IUser }>("sender", "publicKey");
 
-  if (!botKey) throw new Error("Failed to find bot key");
+  if (!botKey) throw BotNotFoundError({ message: `getKey: Failed to find bot key for [workspaceId=${workspaceId}]` })
 
   const bot = await Bot.findOne({
     workspace: workspaceId
