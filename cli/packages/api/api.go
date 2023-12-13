@@ -481,12 +481,12 @@ func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Reques
 		return GetRawSecretsV3Response{}, fmt.Errorf("CallGetRawSecretsV3: Unable to complete api request [err=%w]", err)
 	}
 
-	if response.IsError() && strings.Contains(response.String(), "Failed to find bot key") {
+	if response.IsError() && strings.Contains(response.String(), "bot_not_found_error") {
 		return GetRawSecretsV3Response{}, fmt.Errorf("project with id %s is a legacy project type, please navigate to project settings and disable end to end encryption then try again", request.WorkspaceId)
 	}
 
 	if response.IsError() {
-		return GetRawSecretsV3Response{}, fmt.Errorf("CallUniversalAuthLogin: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return GetRawSecretsV3Response{}, fmt.Errorf("CallGetRawSecretsV3: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
 	}
 
 	return getRawSecretsV3Response, nil
