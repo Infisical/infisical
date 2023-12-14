@@ -1,10 +1,10 @@
 import dotenv from "dotenv";
 
+import { initDbConnection } from "./db";
 import { formatSmtpConfig, initEnvConfig } from "./lib/config/env";
 import { initLogger } from "./lib/logger";
 import { main } from "./server/app";
 import { smtpServiceFactory } from "./services/smtp/smtp-service";
-import { initDbConnection } from "./db";
 
 dotenv.config();
 const run = async () => {

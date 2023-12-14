@@ -1,5 +1,3 @@
-import picomatch from "picomatch";
-
 import {
   AbilityBuilder,
   buildMongoQueryMatcher,
@@ -7,6 +5,7 @@ import {
   MongoAbility
 } from "@casl/ability";
 import { FieldCondition, FieldInstruction, JsInterpreter } from "@ucast/mongo2js";
+import picomatch from "picomatch";
 
 const $glob: FieldInstruction<string> = {
   type: "field",

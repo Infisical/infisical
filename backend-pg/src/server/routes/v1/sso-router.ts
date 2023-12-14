@@ -1,9 +1,9 @@
+import { Authenticator } from "@fastify/passport";
+import fastifySession from "@fastify/session";
 import { Strategy as GitHubStrategy } from "passport-github";
 import { Strategy as GitLabStrategy } from "passport-gitlab2";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { z } from "zod";
-import { Authenticator } from "@fastify/passport";
-import fastifySession from "@fastify/session";
 
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";

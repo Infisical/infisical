@@ -1,3 +1,4 @@
+import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 
 import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
@@ -24,8 +25,6 @@ import {
   TUpdateOrgMembershipDTO,
   TVerifyUserToOrgDTO
 } from "./org-types";
-
-import { ForbiddenError } from "@casl/ability";
 
 type TOrgServiceFactoryDep = {
   orgDal: TOrgDalFactory;

@@ -1,6 +1,6 @@
-import fp from "fastify-plugin";
 import swagger from "@fastify/swagger";
 import swaggerUI from "@fastify/swagger-ui";
+import fp from "fastify-plugin";
 
 import { jsonSchemaTransform } from "./fastify-zod";
 

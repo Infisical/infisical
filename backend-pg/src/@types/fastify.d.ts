@@ -1,3 +1,5 @@
+import "fastify";
+
 import { TUsers } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
@@ -12,8 +14,6 @@ import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin
 import { TAuthTokenServiceFactory } from "@app/services/token/token-service";
 import { TUserDalFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
-
-import "fastify";
 
 declare module "fastify" {
   interface FastifyRequest {

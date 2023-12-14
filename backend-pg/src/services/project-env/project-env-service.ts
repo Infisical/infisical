@@ -1,3 +1,5 @@
+import { ForbiddenError } from "@casl/ability";
+
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -7,8 +9,6 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectEnvDalFactory } from "./project-env-dal";
 import { TCreateEnvDTO, TDeleteEnvDTO, TUpdateEnvDTO } from "./project-env-types";
-
-import { ForbiddenError } from "@casl/ability";
 
 type TProjectEnvServiceFactoryDep = {
   projectEnvDal: TProjectEnvDalFactory;

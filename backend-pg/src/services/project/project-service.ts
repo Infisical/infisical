@@ -1,3 +1,5 @@
+import { ForbiddenError } from "@casl/ability";
+
 import { ProjectMembershipRole } from "@app/db/schemas";
 import {
   OrgPermissionActions,
@@ -13,8 +15,6 @@ import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
 import { TProjectMembershipDalFactory } from "../project-membership/project-membership-dal";
 import { TProjectDalFactory } from "./project-dal";
 import { TCreateProjectDTO, TDeleteProjectDTO, TGetProjectDTO } from "./project-types";
-
-import { ForbiddenError } from "@casl/ability";
 
 const DEFAULT_PROJECT_ENVS = [
   { name: "Development", slug: "dev" },

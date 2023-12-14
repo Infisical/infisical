@@ -1,3 +1,5 @@
+import { ForbiddenError } from "@casl/ability";
+
 import { OrgMembershipStatus, ProjectMembershipRole } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
@@ -20,8 +22,6 @@ import {
   TInviteUserToProjectDTO,
   TUpdateProjectMembershipDTO
 } from "./project-membership-types";
-
-import { ForbiddenError } from "@casl/ability";
 
 type TProjectMembershipServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;

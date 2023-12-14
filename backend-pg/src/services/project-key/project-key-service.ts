@@ -1,3 +1,5 @@
+import { ForbiddenError } from "@casl/ability";
+
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -8,8 +10,6 @@ import { BadRequestError } from "@app/lib/errors";
 import { TProjectMembershipDalFactory } from "../project-membership/project-membership-dal";
 import { TProjectKeyDalFactory } from "./project-key-dal";
 import { TGetLatestProjectKeyDTO, TUploadProjectKeyDTO } from "./project-key-types";
-
-import { ForbiddenError } from "@casl/ability";
 
 type TProjectKeyServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;

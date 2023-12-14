@@ -1,9 +1,9 @@
+// eslint-disable-next-line
+import "ts-node/register";
+
 import dotenv from "dotenv";
 import type { Knex } from "knex";
 import path from "path";
-
-// eslint-disable-next-line
-import "ts-node/register";
 
 // Update with your config settings.
 dotenv.config({

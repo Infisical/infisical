@@ -1,6 +1,3 @@
-import fasitfy from "fastify";
-import { Knex } from "knex";
-import { Logger } from "pino";
 import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
 import type { FastifyCorsOptions } from "@fastify/cors";
@@ -8,6 +5,9 @@ import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
+import fasitfy from "fastify";
+import { Knex } from "knex";
+import { Logger } from "pino";
 
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
