@@ -75,7 +75,7 @@ export const initializeSamlStrategy = async () => {
           const organization = await Organization.findById(req.ssoConfig.organization);
           
           if (!organization) return done(OrganizationNotFoundError());
-    
+          
           const email = profile.email;
           const firstName = profile.firstName;
           const lastName = profile.lastName;
@@ -154,6 +154,7 @@ export const initializeSamlStrategy = async () => {
               firstName,
               lastName,
               organizationName: organization?.name,
+              organizationId: organization?._id,
               authMethod: req.ssoConfig.authProvider,
               isUserCompleted,
               ...(req.body.RelayState ? {
