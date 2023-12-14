@@ -7,31 +7,32 @@ Prerequisites:
 
 - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
 
-## Navigate to your project's integrations tab
+<Steps>
+  <Step title="Authorize Infisical for Render">
+    Obtain a Render API Key in your Render Account Settings > API Keys.
 
-![integrations](../../images/integrations.png)
+    ![integrations render dashboard](../../images/integrations/render/integrations-render-dashboard.png)
+    ![integrations render token](../../images/integrations/render/integrations-render-token.png)
 
-## Enter your Render API Key
+    Navigate to your project's integrations tab in Infisical.
 
-Obtain a Render API Key in your Render Account Settings > API Keys.
+    ![integrations](../../images/integrations.png)
 
-![integrations render dashboard](../../images/integrations/render/integrations-render-dashboard.png)
-![integrations render token](../../images/integrations/render/integrations-render-token.png)
+    Press on the Render tile and input your Render API Key to grant Infisical access to your Render account.
 
-Press on the Render tile and input your Render API Key to grant Infisical access to your Render account.
+    ![integrations render authorization](../../images/integrations/render/integrations-render-auth.png)
 
-![integrations render authorization](../../images/integrations/render/integrations-render-auth.png)
+    <Info>
+      If this is your project's first cloud integration, then you'll have to grant
+      Infisical access to your project's environment variables. Although this step
+      breaks E2EE, it's necessary for Infisical to sync the environment variables to
+      the cloud platform.
+    </Info>
+  </Step>
+  <Step title="Start integration">
+    Select which Infisical environment secrets you want to sync to which Render service and press create integration to start syncing secrets to Render.
 
-<Info>
-  If this is your project's first cloud integration, then you'll have to grant
-  Infisical access to your project's environment variables. Although this step
-  breaks E2EE, it's necessary for Infisical to sync the environment variables to
-  the cloud platform.
-</Info>
-
-## Start integration
-
-Select which Infisical environment secrets you want to sync to which Render service and press create integration to start syncing secrets to Render.
-
-![integrations render](../../images/integrations/render/integrations-render-create.png)
-![integrations render](../../images/integrations/render/integrations-render.png)
+    ![integrations render](../../images/integrations/render/integrations-render-create.png)
+    ![integrations render](../../images/integrations/render/integrations-render.png)
+  </Step>
+</Steps>

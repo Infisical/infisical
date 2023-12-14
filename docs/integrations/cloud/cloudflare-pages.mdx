@@ -7,38 +7,39 @@ Prerequisites:
 
 - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
 
-## Navigate to your project's integrations tab
+<Steps>
+  <Step title="Authorize Infisical for Cloudflare Pages">
+    Obtain a Cloudflare [API token](https://dash.cloudflare.com/profile/api-tokens) and [Account ID](https://developers.cloudflare.com/fundamentals/get-started/basic-tasks/find-account-and-zone-ids/):
 
-![integrations](../../images/integrations.png)
+    Create a new [API token](https://dash.cloudflare.com/profile/api-tokens) in My Profile > API Tokens
 
-## Authorize Infisical for Cloudflare Pages
+    ![integrations cloudflare credentials 1](../../images/integrations/cloudflare/integrations-cloudflare-credentials-1.png)
+    ![integrations cloudflare credentials 2](../../images/integrations/cloudflare/integrations-cloudflare-credentials-2.png)
+    ![integrations cloudflare credentials 3](../../images/integrations/cloudflare/integrations-cloudflare-credentials-3.png)
 
-Obtain a Cloudflare [API token](https://dash.cloudflare.com/profile/api-tokens) and [Account ID](https://developers.cloudflare.com/fundamentals/get-started/basic-tasks/find-account-and-zone-ids/):
+    Copy your [Account ID](https://developers.cloudflare.com/fundamentals/get-started/basic-tasks/find-account-and-zone-ids/) from Account > Workers & Pages > Overview
 
-1. Create a new [API token](https://dash.cloudflare.com/profile/api-tokens) in My Profile > API Tokens
+    ![integrations cloudflare credentials 4](../../images/integrations/cloudflare/integrations-cloudflare-credentials-4.png)
+    
+    Navigate to your project's integrations tab in Infisical.
 
-![integrations cloudflare credentials 1](../../images/integrations/cloudflare/integrations-cloudflare-credentials-1.png)
-![integrations cloudflare credentials 2](../../images/integrations/cloudflare/integrations-cloudflare-credentials-2.png)
-![integrations cloudflare credentials 3](../../images/integrations/cloudflare/integrations-cloudflare-credentials-3.png)
+    ![integrations](../../images/integrations.png)
 
-2. Copy your [Account ID](https://developers.cloudflare.com/fundamentals/get-started/basic-tasks/find-account-and-zone-ids/) from Account > Workers & Pages > Overview
+    Press on the Cloudflare Pages tile and input your Cloudflare API token and account ID to grant Infisical access to your Cloudflare Pages.
 
-![integrations cloudflare credentials 4](../../images/integrations/cloudflare/integrations-cloudflare-credentials-4.png)
+    ![integrations cloudflare authorization](../../images/integrations/cloudflare/integrations-cloudflare-auth.png)
 
-Press on the Cloudflare Pages tile and input your Cloudflare API token and account ID to grant Infisical access to your Cloudflare Pages.
+    <Info>
+      If this is your project's first cloud integration, then you'll have to grant
+      Infisical access to your project's environment variables. Although this step
+      breaks E2EE, it's necessary for Infisical to sync the environment variables to
+      the cloud platform.
+    </Info>
+  </Step>
+  <Step title="Start integration">
+    Select which Infisical environment secrets you want to sync to Cloudflare and press create integration to start syncing secrets.
 
-![integrations cloudflare authorization](../../images/integrations/cloudflare/integrations-cloudflare-auth.png)
-
-<Info>
-  If this is your project's first cloud integration, then you'll have to grant
-  Infisical access to your project's environment variables. Although this step
-  breaks E2EE, it's necessary for Infisical to sync the environment variables to
-  the cloud platform.
-</Info>
-
-## Start integration
-
-Select which Infisical environment secrets you want to sync to Cloudflare and press create integration to start syncing secrets.
-
-![integrations cloudflare](../../images/integrations/cloudflare/integrations-cloudflare-create.png)
-![integrations cloudflare](../../images/integrations/cloudflare/integrations-cloudflare.png)
+    ![integrations cloudflare](../../images/integrations/cloudflare/integrations-cloudflare-create.png)
+    ![integrations cloudflare](../../images/integrations/cloudflare/integrations-cloudflare.png)
+  </Step>
+</Steps>
