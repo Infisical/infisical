@@ -8,6 +8,7 @@ export * from "./org-memberships";
 export * from "./org-roles";
 export * from "./organizations";
 export * from "./project-environments";
+export * from "./project-keys";
 export * from "./project-memberships";
 export * from "./project-roles";
 export * from "./projects";

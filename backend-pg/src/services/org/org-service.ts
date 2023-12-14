@@ -145,14 +145,20 @@ export const orgServiceFactory = ({
       const customRole = await orgRoleDal.findOne({ slug: role, orgId });
       if (!customRole)
         throw new BadRequestError({ name: "Update membership", message: "Role not found" });
-      const membership = await orgDal.updateMembershipById(membershipId, {
-        role: OrgMembershipRole.Custom,
-        roleId: customRole.id
-      });
+      const [membership] = await orgDal.updateMembership(
+        { id: membershipId, orgId },
+        {
+          role: OrgMembershipRole.Custom,
+          roleId: customRole.id
+        }
+      );
       return membership;
     }
 
-    const membership = await orgDal.updateMembershipById(membershipId, { role, roleId: null });
+    const [membership] = await orgDal.updateMembership(
+      { id: membershipId, orgId },
+      { role, roleId: null }
+    );
     return membership;
   };
   /*

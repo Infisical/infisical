@@ -16,7 +16,8 @@ export enum TableName {
   Project = "projects",
   Environment = "project_environments",
   ProjectMembership = "project_memberships",
-  ProjectRoles = "project_roles"
+  ProjectRoles = "project_roles",
+  ProjectKeys = "project_keys"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";

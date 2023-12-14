@@ -27,6 +27,10 @@ import {
   TOrgRolesUpdate,
   TProjectEnvironments,
   TProjectEnvironmentsInsert,
+  TProjectEnvironmentsUpdate,
+  TProjectKeys,
+  TProjectKeysInsert,
+  TProjectKeysUpdate,
   TProjectMemberships,
   TProjectMembershipsInsert,
   TProjectMembershipsUpdate,
@@ -109,12 +113,17 @@ declare module "knex/types/tables" {
     [TableName.Environment]: Knex.CompositeTableType<
       TProjectEnvironments,
       TProjectEnvironmentsInsert,
-      TPRo
+      TProjectEnvironmentsUpdate
     >;
     [TableName.ProjectRoles]: Knex.CompositeTableType<
       TProjectRoles,
       TProjectRolesInsert,
       TProjectRolesUpdate
+    >;
+    [TableName.ProjectKeys]: Knex.CompositeTableType<
+      TProjectKeys,
+      TProjectKeysInsert,
+      TProjectKeysUpdate
     >;
   }
 }

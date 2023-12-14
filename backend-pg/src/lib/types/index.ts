@@ -1,3 +1,11 @@
+import { ActorType } from "@app/services/auth/auth-type";
+
+export type TProjectPermission = {
+  actor: ActorType;
+  actorId: string;
+  projectId: string;
+};
+
 export type RequiredKeys<T> = {
   [K in keyof T]-?: undefined extends T[K] ? never : K;
 }[keyof T];

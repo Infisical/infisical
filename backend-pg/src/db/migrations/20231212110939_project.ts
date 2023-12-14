@@ -1,4 +1,5 @@
 import { Knex } from "knex";
+
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
@@ -13,6 +14,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
   }
+  // environments
   await createOnUpdateTrigger(knex, TableName.Project);
   if (!(await knex.schema.hasTable(TableName.Environment))) {
     await knex.schema.createTable(TableName.Environment, (t) => {
@@ -24,10 +26,28 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
   }
+  // project key
+  if (!(await knex.schema.hasTable(TableName.ProjectKeys))) {
+    await knex.schema.createTable(TableName.ProjectKeys, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.text("encryptedKey").notNullable();
+      t.text("nonce").notNullable();
+      t.uuid("receiverId").notNullable();
+      t.foreign("receiverId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      t.uuid("senderId").notNullable();
+      // if sender is deleted just don't do anything to this record
+      t.foreign("senderId").references("id").inTable(TableName.Users).onDelete("NO ACTION");
+      t.uuid("projectId").notNullable();
+      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+      t.timestamps(true, true, true);
+    });
+  }
+  await createOnUpdateTrigger(knex, TableName.ProjectKeys);
 }
 
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.Environment);
   await knex.schema.dropTableIfExists(TableName.Project);
   await dropOnUpdateTrigger(knex, TableName.Project);
+  await dropOnUpdateTrigger(knex, TableName.ProjectKeys);
 }

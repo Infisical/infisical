@@ -5,6 +5,8 @@ import { TableName } from "@app/db/schemas";
 
 import { DatabaseError } from "../errors";
 
+export * from "./join";
+
 export const withTransaction = <K extends object>(db: Knex, dal: K) => ({
   transaction: async <T>(cb: (tx: Knex) => Promise<T>) =>
     db.transaction(async (trx) => {
@@ -53,19 +55,29 @@ export const ormify = <DbOps extends object, Tname extends TableName>(
   },
   create: async (data: Tables[Tname]["insert"], tx?: Knex) => {
     try {
-      const [user] = await (tx || db)(tableName).insert(data).returning("*");
-      return user;
+      const [res] = await (tx || db)(tableName).insert(data).returning("*");
+      return res;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Create" });
+    }
+  },
+  insertMany: async (data: readonly Tables[Tname]["insert"][], tx?: Knex) => {
+    try {
+      const res = await (tx || db)(tableName)
+        .insert(data as any)
+        .returning("*");
+      return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Create" });
     }
   },
   updateById: async (id: string, data: Tables[Tname]["update"], tx?: Knex) => {
     try {
-      const [user] = await (tx || db)(tableName)
+      const [res] = await (tx || db)(tableName)
         .where({ id } as any)
         .update(data as any)
         .returning("*");
-      return user;
+      return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update by id" });
     }
@@ -76,30 +88,30 @@ export const ormify = <DbOps extends object, Tname extends TableName>(
     tx?: Knex
   ) => {
     try {
-      const user = await (tx || db)(tableName)
+      const res = await (tx || db)(tableName)
         .where(filter)
         .update(data as any)
         .returning("*");
-      return user;
+      return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update" });
     }
   },
   deleteById: async (id: string, tx?: Knex) => {
     try {
-      const [user] = await (tx || db)(tableName)
+      const [res] = await (tx || db)(tableName)
         .where({ id } as any)
         .delete()
         .returning("*");
-      return user;
+      return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete by id" });
     }
   },
   delete: async (filter: Partial<Tables[Tname]["base"]>, tx?: Knex) => {
     try {
-      const user = await (tx || db)(tableName).where(filter).delete().returning("*");
-      return user;
+      const res = await (tx || db)(tableName).where(filter).delete().returning("*");
+      return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete" });
     }

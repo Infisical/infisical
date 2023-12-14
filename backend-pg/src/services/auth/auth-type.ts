@@ -27,6 +27,12 @@ export enum AuthMode {
   API_KEY_V2 = "apiKeyV2"
 }
 
+export enum ActorType { // would extend to AWS, Azure, ...
+  USER = "user", // userIdentity
+  SERVICE = "service",
+  IDENTITY = "identity"
+}
+
 export type AuthModeJwtTokenPayload = {
   authTokenType: AuthTokenType.ACCESS_TOKEN;
   userId: string;

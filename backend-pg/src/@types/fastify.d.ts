@@ -5,6 +5,7 @@ import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
 import { AuthMode } from "@app/services/auth/auth-signup-type";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
@@ -25,9 +26,14 @@ declare module "fastify" {
     // identity injection. depending on which kinda of token the information is filled in auth
     auth: {
       authMode: AuthMode.JWT | AuthMode.API_KEY_V2 | AuthMode.API_KEY;
+      actor: ActorType.USER;
       userId: string;
       tokenVersionId: string; // the session id of token used
       user: TUsers;
+    };
+    permission: {
+      type: ActorType;
+      id: string;
     };
     // passport data
     passportUser: {

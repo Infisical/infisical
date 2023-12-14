@@ -1,5 +1,5 @@
 import { TDbClient } from "@app/db";
-import { TableName, TOrgMemberships } from "@app/db/schemas";
+import { TableName, TOrgMemberships, TProjectMemberships } from "@app/db/schemas";
 
 export type TPermissionDalFactory = ReturnType<typeof permissionDalFactory>;
 
@@ -18,7 +18,26 @@ export const permissionDalFactory = (db: TDbClient) => {
     return membership;
   };
 
+  const getProjectPermission = async (
+    userId: string,
+    projectId: string
+  ): Promise<(TProjectMemberships & { permissions: string }) | undefined> => {
+    const membership = await db(TableName.ProjectMembership)
+      .leftJoin(
+        TableName.ProjectRoles,
+        `${TableName.ProjectMembership}.roleId`,
+        `${TableName.ProjectRoles}.id`
+      )
+      .where("userId", userId)
+      .where(`${TableName.ProjectMembership}.projectId`, projectId)
+      .select(`${TableName.ProjectMembership}.*`, "permissions")
+      .first();
+
+    return membership;
+  };
+
   return {
-    getOrgPermission
+    getOrgPermission,
+    getProjectPermission
   };
 };

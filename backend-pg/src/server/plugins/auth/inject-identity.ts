@@ -4,29 +4,46 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
-import { AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
+import {
+  ActorType,
+  AuthMode,
+  AuthModeJwtTokenPayload,
+  AuthTokenType
+} from "@app/services/auth/auth-type";
 
 const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
   const apiKey = req.headers?.["x-api-key"];
   if (apiKey) {
-    return { authMode: AuthMode.API_KEY, token: apiKey };
+    return { authMode: AuthMode.API_KEY, token: apiKey, actor: ActorType.USER } as const;
   }
   const authHeader = req.headers?.authorization;
   if (!authHeader) return { authMode: null, token: null };
 
   const authTokenValue = authHeader.slice(7); // slice of after Bearer
   if (authTokenValue.startsWith("st.")) {
-    return { authMode: AuthMode.SERVICE_TOKEN, token: authTokenValue } as const;
+    return {
+      authMode: AuthMode.SERVICE_TOKEN,
+      token: authTokenValue,
+      actor: ActorType.USER
+    } as const;
   }
 
   const decodedToken = jwt.verify(authTokenValue, jwtSecret) as JwtPayload;
   switch (decodedToken.authTokenType) {
     case AuthTokenType.ACCESS_TOKEN:
-      return { authMode: AuthMode.JWT, token: decodedToken as AuthModeJwtTokenPayload } as const;
+      return {
+        authMode: AuthMode.JWT,
+        token: decodedToken as AuthModeJwtTokenPayload,
+        actor: ActorType.USER
+      } as const;
     case AuthTokenType.API_KEY:
-      return { authMode: AuthMode.API_KEY_V2, token: decodedToken } as const;
+      return { authMode: AuthMode.API_KEY_V2, token: decodedToken, actor: ActorType.USER } as const;
     case AuthMode.SERVICE_ACCESS_TOKEN:
-      return { authMode: AuthMode.SERVICE_ACCESS_TOKEN, token: decodedToken } as const;
+      return {
+        authMode: AuthMode.SERVICE_ACCESS_TOKEN,
+        token: decodedToken,
+        actor: ActorType.USER
+      } as const;
     default:
       return { authMode: null, token: null } as const;
   }
@@ -52,7 +69,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
   server.decorateRequest("auth", null);
   server.addHook("onRequest", async (req) => {
     const appCfg = getConfig();
-    const { authMode, token } = await extractAuth(req, appCfg.JWT_AUTH_SECRET);
+    const { authMode, token, actor } = await extractAuth(req, appCfg.JWT_AUTH_SECRET);
     if (!authMode) return;
     // TODO(akhilmhdh-pg): fill in rest of auth mode logic
     switch (authMode) {
@@ -61,7 +78,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
           server,
           token as AuthModeJwtTokenPayload
         );
-        req.auth = { authMode: AuthMode.JWT, user, userId: user.id, tokenVersionId };
+        req.auth = { authMode: AuthMode.JWT, user, userId: user.id, tokenVersionId, actor };
         break;
       }
       case AuthMode.SERVICE_TOKEN:
