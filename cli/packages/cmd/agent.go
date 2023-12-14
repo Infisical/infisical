@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"path"
 	"strings"
 	"sync"
 	"syscall"
@@ -189,7 +190,9 @@ func ProcessTemplate(templatePath string, data interface{}, accessToken string) 
 		"secret": secretFunction,
 	}
 
-	tmpl, err := template.New(templatePath).Funcs(funcs).ParseFiles(templatePath)
+	templateName := path.Base(templatePath)
+
+	tmpl, err := template.New(templateName).Funcs(funcs).ParseFiles(templatePath)
 	if err != nil {
 		return nil, err
 	}
