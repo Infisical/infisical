@@ -8,12 +8,12 @@ import {
   getTelemetryEnabled,
 } from "../config";
 import {
+  Identity,
   ServiceTokenData,
-  User,
+  User
 } from "../models";
 import {
   AccountNotFoundError,
-  BadRequestError,
 } from "../utils/errors";
 
 class Telemetry {
@@ -22,7 +22,7 @@ class Telemetry {
    */
   static logTelemetryMessage = async () => {
 
-    if(!(await getTelemetryEnabled())){
+    if (!(await getTelemetryEnabled())) {
       [
         "To improve, Infisical collects telemetry data about general usage.",
         "This helps us understand how the product is doing and guide our product development to create the best possible platform; it also helps us demonstrate growth as we support Infisical as open-source software.",
@@ -42,8 +42,8 @@ class Telemetry {
       postHogClient = new PostHog(await getPostHogProjectApiKey(), {
         host: await getPostHogHost(),
       });
-    } 
-    
+    }
+
     return postHogClient;
   }
 
@@ -52,6 +52,7 @@ class Telemetry {
   }: {
     authData: AuthData;
   }) => {
+
     let distinctId = "";
     if (authData.authPayload instanceof User) {
       distinctId = authData.authPayload.email;
@@ -59,14 +60,14 @@ class Telemetry {
       if (authData.authPayload.user) {
         const user = await User.findById(authData.authPayload.user, "email");
         if (!user) throw AccountNotFoundError();
-        distinctId = user.email; 
+        distinctId = user.email;
       }
+    } else if (authData.authPayload instanceof Identity) {
+      distinctId = `identity-${authData.authPayload._id.toString()}`
+    } else {
+      distinctId = "unknown-auth-data"
     }
-    
-    if (distinctId === "") throw BadRequestError({
-      message: "Failed to obtain distinct id for logging telemetry",
-    });
-    
+
     return distinctId;
   }
 }
