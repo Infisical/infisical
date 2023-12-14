@@ -38,7 +38,8 @@ export const PasswordStep = ({
     const {
         callbackPort,
         isLinkingRequired,
-        authMethod
+        authMethod,
+        organizationId
     } = jwt_decode(providerAuthToken) as any;
     
     const handleLogin = async (e:React.FormEvent) => {
@@ -107,7 +108,7 @@ export const PasswordStep = ({
                         });
                     }
 
-                    await navigateUserToOrg(router);
+                    await navigateUserToOrg(router, organizationId);
                 }
             }
         } catch (err) {
