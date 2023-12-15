@@ -63,7 +63,7 @@ export const SecretApprovalRequest = () => {
     (prev, curr) => ({ ...prev, [curr._id]: curr }),
     {}
   );
-  const myMembershipId = members?.find(({ user }) => user._id === presentUser._id)?._id;
+  const myMembershipId = members?.find(({ user }) => user._id === presentUser?._id)?._id;
   const isSecretApprovalScreen = Boolean(selectedApproval);
 
   const handleGoBackSecretRequestDetail = () => {
@@ -101,7 +101,7 @@ export const SecretApprovalRequest = () => {
           exit={{ opacity: 0, translateX: 30 }}
           className="rounded-md text-gray-300"
         >
-          <div className="p-4 px-8 flex items-center space-x-8 bg-mineshaft-800 rounded-t-md border-t border-x border-mineshaft-600">
+          <div className="flex items-center space-x-8 rounded-t-md border-x border-t border-mineshaft-600 bg-mineshaft-800 p-4 px-8">
             <div
               role="button"
               tabIndex={0}
@@ -110,7 +110,7 @@ export const SecretApprovalRequest = () => {
                 if (evt.key === "Enter") setStatusFilter("open");
               }}
               className={
-                statusFilter === "close" ? "text-gray-500 hover:text-gray-400 duration-100" : ""
+                statusFilter === "close" ? "text-gray-500 duration-100 hover:text-gray-400" : ""
               }
             >
               <FontAwesomeIcon icon={faCodeBranch} className="mr-2" />
@@ -118,7 +118,7 @@ export const SecretApprovalRequest = () => {
             </div>
             <div
               className={
-                statusFilter === "open" ? "text-gray-500 hover:text-gray-400 duration-100" : ""
+                statusFilter === "open" ? "text-gray-500 duration-100 hover:text-gray-400" : ""
               }
               role="button"
               tabIndex={0}
@@ -130,7 +130,7 @@ export const SecretApprovalRequest = () => {
               <FontAwesomeIcon icon={faCheck} className="mr-2" />
               {isSecretApprovalReqCountSuccess && secretApprovalRequestCount.closed} Closed
             </div>
-            <div className="flex-grow flex justify-end space-x-8">
+            <div className="flex flex-grow justify-end space-x-8">
               <DropdownMenu>
                 <DropdownMenuTrigger>
                   <Button
@@ -185,7 +185,7 @@ export const SecretApprovalRequest = () => {
               </DropdownMenu>
             </div>
           </div>
-          <div className="flex flex-col border-t border-mineshaft-600 bg-mineshaft-800 rounded-b-md border-b border-x border-mineshaft-600">
+          <div className="flex flex-col rounded-b-md border-x border-t border-b border-mineshaft-600 border-mineshaft-600 bg-mineshaft-800">
             {isRequestListEmpty && (
               <div className="py-12">
                 <EmptyState title="No more requests pending." />
@@ -246,9 +246,9 @@ export const SecretApprovalRequest = () => {
                   >
                     <div className="mb-2 flex items-center">
                       <FontAwesomeIcon icon={faCodeBranch} className="mr-2" />
-                      <Skeleton className="bg-mineshaft-600 w-1/4" />
+                      <Skeleton className="w-1/4 bg-mineshaft-600" />
                     </div>
-                    <Skeleton className="bg-mineshaft-600 w-1/2" />
+                    <Skeleton className="w-1/2 bg-mineshaft-600" />
                   </div>
                 ))}
               </div>

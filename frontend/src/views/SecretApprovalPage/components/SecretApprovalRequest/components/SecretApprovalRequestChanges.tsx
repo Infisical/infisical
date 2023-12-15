@@ -108,6 +108,7 @@ export const SecretApprovalRequestChanges = ({
     ({ user: membershipUser }) => membershipUser.email === user.email
   );
   const myMembershipId = myMembership?._id || "";
+  const canApprove = secretApprovalRequestDetails?.policy?.approvers?.includes(myMembershipId);
   const reviewedMembers = secretApprovalRequestDetails?.reviewers?.reduce<
     Record<string, ApprovalStatus>
   >(
@@ -164,30 +165,30 @@ export const SecretApprovalRequestChanges = ({
   return (
     <div className="flex space-x-6">
       <div className="flex-grow">
-        <div className="flex items-center space-x-4 pt-2 pb-6 sticky top-0 z-20 bg-bunker-800">
+        <div className="sticky top-0 z-20 flex items-center space-x-4 bg-bunker-800 pt-2 pb-6">
           <IconButton variant="outline_bg" ariaLabel="go-back" onClick={onGoBack}>
             <FontAwesomeIcon icon={faArrowLeft} />
           </IconButton>
-          <div className="bg-red-600 text-white flex items-center space-x-2 px-4 py-2 rounded-3xl">
+          <div className="flex items-center space-x-2 rounded-3xl bg-red-600 px-4 py-2 text-white">
             <FontAwesomeIcon icon={faCodeBranch} size="sm" />
             <span>{secretApprovalRequestDetails.status}</span>
           </div>
-          <div className="flex flex-col flex-grow">
-            <div className="text-lg mb-1">
+          <div className="flex flex-grow flex-col">
+            <div className="mb-1 text-lg">
               {generateCommitText(secretApprovalRequestDetails.commits)}
             </div>
-            <div className="text-sm text-bunker-300 flex items-center">
+            <div className="flex items-center text-sm text-bunker-300">
               {committer?.user?.firstName}
               {committer?.user?.lastName} ({committer?.user?.email}) wants to change{" "}
               {secretApprovalRequestDetails.commits.length} secret values in
-              <span className="text-primary-300 bg-primary-600/60 px-1 mx-1 rounded">
+              <span className="mx-1 rounded bg-primary-600/60 px-1 text-primary-300">
                 {secretApprovalRequestDetails.environment}
               </span>
-              <div className="flex items-center border border-mineshaft-500 pl-1 pr-2 rounded w-min">
+              <div className="flex w-min items-center rounded border border-mineshaft-500 pl-1 pr-2">
                 <div className="border-r border-mineshaft-500 pr-1">
                   <FontAwesomeIcon icon={faFolder} className="text-primary" size="sm" />
                 </div>
-                <div className="text-sm pl-2 pb-0.5">{secretApprovalRequestDetails.secretPath}</div>
+                <div className="pl-2 pb-0.5 text-sm">{secretApprovalRequestDetails.secretPath}</div>
               </div>
             </div>
           </div>
@@ -198,7 +199,7 @@ export const SecretApprovalRequestChanges = ({
                 leftIcon={hasApproved && <FontAwesomeIcon icon={faCheck} />}
                 onClick={() => handleSecretApprovalStatusUpdate(ApprovalStatus.APPROVED)}
                 isLoading={isApproving}
-                isDisabled={isApproving || hasApproved}
+                isDisabled={isApproving || hasApproved || !canApprove}
               >
                 {hasApproved ? "Approved" : "Approve"}
               </Button>
@@ -208,7 +209,7 @@ export const SecretApprovalRequestChanges = ({
                 leftIcon={hasRejected && <FontAwesomeIcon icon={faCheck} />}
                 onClick={() => handleSecretApprovalStatusUpdate(ApprovalStatus.REJECTED)}
                 isLoading={isRejecting}
-                isDisabled={isRejecting || hasRejected}
+                isDisabled={isRejecting || hasRejected || !canApprove}
               >
                 {hasRejected ? "Rejected" : "Reject"}
               </Button>
@@ -230,8 +231,9 @@ export const SecretApprovalRequestChanges = ({
             )
           )}
         </div>
-        <div className="flex items-center px-5 py-6 rounded-lg space-x-6 bg-mineshaft-800 mt-8">
+        <div className="mt-8 flex items-center space-x-6 rounded-lg bg-mineshaft-800 px-5 py-6">
           <SecretApprovalRequestAction
+            canApprove={canApprove}
             approvalRequestId={secretApprovalRequestDetails._id}
             hasMerged={hasMerged}
             approvals={secretApprovalRequestDetails.policy.approvals || 0}
@@ -244,7 +246,7 @@ export const SecretApprovalRequestChanges = ({
           />
         </div>
       </div>
-      <div className="w-1/5 pt-4 sticky top-0" style={{ minWidth: "240px" }}>
+      <div className="sticky top-0 w-1/5 pt-4" style={{ minWidth: "240px" }}>
         <div className="text-sm text-bunker-300">Reviewers</div>
         <div className="mt-2 flex flex-col space-y-2 text-sm">
           {secretApprovalRequestDetails?.policy?.approvers.map((requiredApproverId) => {
@@ -252,7 +254,7 @@ export const SecretApprovalRequestChanges = ({
             const status = reviewedMembers?.[requiredApproverId];
             return (
               <div
-                className="flex items-center space-x-2 flex-nowrap bg-mineshaft-800 px-2 py-1 rounded"
+                className="flex flex-nowrap items-center space-x-2 rounded bg-mineshaft-800 px-2 py-1"
                 key={`required-approver-${requiredApproverId}`}
               >
                 <div className="flex-grow text-sm">
@@ -278,7 +280,7 @@ export const SecretApprovalRequestChanges = ({
               const status = reviewedMembers?.[reviewer.status];
               return (
                 <div
-                  className="flex items-center space-x-2 flex-nowrap bg-mineshaft-800 px-2 py-1 rounded"
+                  className="flex flex-nowrap items-center space-x-2 rounded bg-mineshaft-800 px-2 py-1"
                   key={`required-approver-${reviewer.member}`}
                 >
                   <div className="flex-grow text-sm">
