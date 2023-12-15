@@ -60,7 +60,10 @@ export const orgRoleServiceFactory = ({
       if (existingRole && existingRole.id !== roleId)
         throw new BadRequestError({ name: "Update Role", message: "Duplicate role" });
     }
-    const [updatedRole] = await orgRoleDal.update({ id: roleId, orgId }, { ...data });
+    const [updatedRole] = await orgRoleDal.update(
+      { id: roleId, orgId },
+      { ...data, permissions: data.permissions ? JSON.stringify(data.permissions) : undefined }
+    );
     if (!updateRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
     return updatedRole;
   };

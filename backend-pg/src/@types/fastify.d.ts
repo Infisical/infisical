@@ -10,6 +10,11 @@ import { AuthMode } from "@app/services/auth/auth-signup-type";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
+import { TProjectServiceFactory } from "@app/services/project/project-service";
+import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env-service";
+import { TProjectKeyServiceFactory } from "@app/services/project-key/project-key-service";
+import { TProjectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
+import { TProjectRoleServiceFactory } from "@app/services/project-role/project-role-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TAuthTokenServiceFactory } from "@app/services/token/token-service";
 import { TUserDalFactory } from "@app/services/user/user-dal";
@@ -54,6 +59,11 @@ declare module "fastify" {
       superAdmin: TSuperAdminServiceFactory;
       user: TUserServiceFactory;
       apiKey: TApiKeyServiceFactory;
+      project: TProjectServiceFactory;
+      projectMembership: TProjectMembershipServiceFactory;
+      projectEnv: TProjectEnvServiceFactory;
+      projectKey: TProjectKeyServiceFactory;
+      projectRole: TProjectRoleServiceFactory;
     };
 
     // this is exclusive use for middlewares in which we need to inject data

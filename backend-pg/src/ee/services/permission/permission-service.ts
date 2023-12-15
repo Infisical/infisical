@@ -16,7 +16,9 @@ import {
   projectAdminPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions,
-  projectViewerPermission} from "./project-permission";
+  ProjectPermissionSet,
+  projectViewerPermission
+} from "./project-permission";
 
 type TPermissionServiceFactoryDep = {
   permissionDal: TPermissionDalFactory;
@@ -68,9 +70,9 @@ export const permissionServiceFactory = ({ permissionDal }: TPermissionServiceFa
     if (membership.role === ProjectMembershipRole.NoAccess)
       return { permission: projectNoAccessPermissions, membership };
     if (membership.role === ProjectMembershipRole.Custom) {
-      const permission = createMongoAbility<OrgPermissionSet>(
+      const permission = createMongoAbility<ProjectPermissionSet>(
         // akhilmhdh: putting any due to ts incompatiable matching with string and the other
-        unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(membership.permissions as any),
+        unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(membership.permissions as any),
         {
           conditionsMatcher
         }

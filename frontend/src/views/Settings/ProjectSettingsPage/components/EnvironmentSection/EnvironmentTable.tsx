@@ -24,10 +24,12 @@ type Props = {
     popUpName: keyof UsePopUpState<["updateEnv", "deleteEnv", "upgradePlan"]>,
     {
       name,
-      slug
+      slug,
+      id
     }: {
       name: string;
       slug: string;
+      id: string;
     }
   ) => void;
 };
@@ -56,7 +58,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
       const indexToSwap = shouldMoveUp ? indexOfEnv - 1 : indexOfEnv + 1;
 
       await reorderWsEnvironment.mutateAsync({
-        workspaceID: currentWorkspace.id,
+        workspaceId: currentWorkspace.id,
         environmentSlug: slug,
         environmentName: name,
         otherEnvironmentSlug: currentWorkspace.environments[indexToSwap].slug,
@@ -90,7 +92,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
           {isLoading && <TableSkeleton columns={3} innerKey="project-envs" />}
           {!isLoading &&
             currentWorkspace &&
-            currentWorkspace.environments.map(({ name, slug }, pos) => (
+            currentWorkspace.environments.map(({ name, slug, id }, pos) => (
               <Tr key={name}>
                 <Td>{name}</Td>
                 <Td>{slug}</Td>
@@ -142,7 +144,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                       <IconButton
                         className="mr-3 py-2"
                         onClick={() => {
-                          handlePopUpOpen("updateEnv", { name, slug });
+                          handlePopUpOpen("updateEnv", { name, slug, id });
                         }}
                         isDisabled={!isAllowed}
                         colorSchema="primary"
@@ -160,7 +162,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                     {(isAllowed) => (
                       <IconButton
                         onClick={() => {
-                          handlePopUpOpen("deleteEnv", { name, slug });
+                          handlePopUpOpen("deleteEnv", { name, slug, id });
                         }}
                         size="lg"
                         colorSchema="danger"

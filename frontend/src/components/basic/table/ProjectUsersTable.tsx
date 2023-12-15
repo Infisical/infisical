@@ -60,11 +60,12 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
   // Delete the row in the table (e.g. a user)
   // #TODO: Add a pop-up that warns you that the user is going to be deleted.
   const handleDelete = async (membershipId: string) => {
-    await deleteUserFromWorkspaceMutateAsync(membershipId);
+    await deleteUserFromWorkspaceMutateAsync({ membershipId, workspaceId });
   };
 
   const handleRoleUpdate = async (index: number, e: string) => {
     await updateUserWorkspaceRoleMutateAsync({
+      workspaceId,
       membershipId: userData[index].membershipId,
       role: e.toLowerCase()
     });

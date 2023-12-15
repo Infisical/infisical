@@ -1,16 +1,16 @@
 import { z } from "zod";
 
-import { OrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
+import { ProjectMembershipsSchema, ProjectRolesSchema } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
+export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/:organizationId/roles",
+    url: "/:projectId/roles",
     schema: {
       params: z.object({
-        organizationId: z.string().trim()
+        projectId: z.string().trim()
       }),
       body: z.object({
         slug: z.string().trim(),
@@ -20,15 +20,16 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          role: OrgRolesSchema
+          role: ProjectRolesSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const role = await server.services.orgRole.createRole(
-        req.auth.userId,
-        req.params.organizationId,
+      const role = await server.services.projectRole.createRole(
+        req.permission.type,
+        req.permission.id,
+        req.params.projectId,
         req.body
       );
       return { role };
@@ -37,10 +38,10 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "PATCH",
-    url: "/:organizationId/roles/:roleId",
+    url: "/:projectId/roles/:roleId",
     schema: {
       params: z.object({
-        organizationId: z.string().trim(),
+        projectId: z.string().trim(),
         roleId: z.string().trim()
       }),
       body: z.object({
@@ -51,15 +52,16 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          role: OrgRolesSchema
+          role: ProjectRolesSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const role = await server.services.orgRole.updateRole(
-        req.auth.userId,
-        req.params.organizationId,
+      const role = await server.services.projectRole.updateRole(
+        req.permission.type,
+        req.permission.id,
+        req.params.projectId,
         req.params.roleId,
         req.body
       );
@@ -69,23 +71,24 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "DELETE",
-    url: "/:organizationId/roles/:roleId",
+    url: "/:projectId/roles/:roleId",
     schema: {
       params: z.object({
-        organizationId: z.string().trim(),
+        projectId: z.string().trim(),
         roleId: z.string().trim()
       }),
       response: {
         200: z.object({
-          role: OrgRolesSchema
+          role: ProjectRolesSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const role = await server.services.orgRole.deleteRole(
-        req.auth.userId,
-        req.params.organizationId,
+      const role = await server.services.projectRole.deleteRole(
+        req.permission.type,
+        req.permission.id,
+        req.params.projectId,
         req.params.roleId
       );
       return { role };
@@ -94,15 +97,15 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:organizationId/roles",
+    url: "/:projectId/roles",
     schema: {
       params: z.object({
-        organizationId: z.string().trim()
+        projectId: z.string().trim()
       }),
       response: {
         200: z.object({
           data: z.object({
-            roles: OrgRolesSchema.omit({ permissions: true })
+            roles: ProjectRolesSchema.omit({ permissions: true })
               .merge(z.object({ permissions: z.unknown() }))
               .array()
           })
@@ -111,9 +114,10 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const roles = await server.services.orgRole.listRoles(
-        req.auth.userId,
-        req.params.organizationId
+      const roles = await server.services.projectRole.listRoles(
+        req.permission.type,
+        req.permission.id,
+        req.params.projectId
       );
       return { data: { roles } };
     }
@@ -121,23 +125,23 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:organizationId/permissions",
+    url: "/:projectId/permissions",
     schema: {
       params: z.object({
-        organizationId: z.string().trim()
+        projectId: z.string().trim()
       }),
       response: {
         200: z.object({
-          membership: OrgMembershipsSchema,
+          membership: ProjectMembershipsSchema,
           permissions: z.any().array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { permissions, membership } = await server.services.orgRole.getUserPermission(
+      const { permissions, membership } = await server.services.projectRole.getUserPermission(
         req.auth.userId,
-        req.params.organizationId
+        req.params.projectId
       );
       return { permissions, membership };
     }

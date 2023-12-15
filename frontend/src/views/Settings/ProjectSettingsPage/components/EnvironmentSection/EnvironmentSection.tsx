@@ -38,13 +38,13 @@ export const EnvironmentSection = () => {
     "upgradePlan"
   ] as const);
 
-  const onEnvDeleteSubmit = async (environmentSlug: string) => {
+  const onEnvDeleteSubmit = async (id: string) => {
     try {
       if (!currentWorkspace?.id) return;
 
       await deleteWsEnvironment.mutateAsync({
-        workspaceID: currentWorkspace.id,
-        environmentSlug
+        workspaceId: currentWorkspace.id,
+        id
       });
 
       createNotification({
@@ -116,9 +116,7 @@ export const EnvironmentSection = () => {
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
         deleteKey={(popUp?.deleteEnv?.data as { slug: string })?.slug || ""}
-        onDeleteApproved={() =>
-          onEnvDeleteSubmit((popUp?.deleteEnv?.data as { slug: string })?.slug)
-        }
+        onDeleteApproved={() => onEnvDeleteSubmit((popUp?.deleteEnv?.data as { id: string })?.id)}
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}

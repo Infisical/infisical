@@ -34,9 +34,9 @@ export const AddEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpToggle
       if (!currentWorkspace?.id) return;
 
       await mutateAsync({
-        workspaceID: currentWorkspace.id,
-        environmentName,
-        environmentSlug
+        workspaceId: currentWorkspace.id,
+        name: environmentName,
+        slug: environmentSlug
       });
 
       createNotification({

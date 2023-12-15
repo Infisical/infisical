@@ -177,6 +177,7 @@ export const projectMembershipServiceFactory = ({
         tx
       );
       await projectKeyDal.delete({ receiverId: deletedMembership.userId, projectId }, tx);
+      return deletedMembership;
     });
     return membership;
   };

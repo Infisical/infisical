@@ -1,5 +1,5 @@
 import { TDbClient } from "@app/db";
-import { TableName,TProjects } from "@app/db/schemas";
+import { TableName, TProjects } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { mergeOneToManyRelation, ormify } from "@app/lib/knex";
 
@@ -90,27 +90,9 @@ export const projectDalFactory = (db: TDbClient) => {
     }
   };
 
-  const findAllProjectUserPubKeys = async (projectId: string) => {
-    try {
-      const pubKeys = await db(TableName.ProjectMembership)
-        .where({ projectId })
-        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
-        .join(
-          TableName.UserEncryptionKey,
-          `${TableName.Users}.id`,
-          `${TableName.UserEncryptionKey}.userId`
-        )
-        .select("userId", "publicKey");
-      return pubKeys;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find all workspace pub keys" });
-    }
-  };
-
   return {
     ...projectOrm,
     findAllProjects,
-    findProjectById,
-    findAllProjectUserPubKeys
+    findProjectById
   };
 };

@@ -103,11 +103,28 @@ export const projectServiceFactory = ({
     return updatedProject;
   };
 
+  const updateName = async ({
+    projectId,
+    actor,
+    actorId,
+    name
+  }: TGetProjectDTO & { name: string }) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      ProjectPermissionSub.Settings
+    );
+
+    const updatedProject = await projectDal.updateById(projectId, { name });
+    return updatedProject;
+  };
+
   return {
     createProject,
     deleteProject,
     getProjects,
     getAProject,
-    toggleAutoCapitalization
+    toggleAutoCapitalization,
+    updateName
   };
 };

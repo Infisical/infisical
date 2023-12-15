@@ -29,17 +29,17 @@ export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpTog
     resolver: yupResolver(schema)
   });
 
-  const oldEnvironmentSlug = (popUp?.updateEnv?.data as { slug: string })?.slug;
+  const oldEnvId = (popUp?.updateEnv?.data as { id: string })?.id;
 
   const onFormSubmit = async ({ environmentName, environmentSlug }: FormData) => {
     try {
       if (!currentWorkspace?.id) return;
 
       await mutateAsync({
-        workspaceID: currentWorkspace.id,
-        environmentName,
-        environmentSlug,
-        oldEnvironmentSlug
+        workspaceId: currentWorkspace.id,
+        name: environmentName,
+        slug: environmentSlug,
+        id: oldEnvId
       });
 
       createNotification({

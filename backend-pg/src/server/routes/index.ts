@@ -18,6 +18,16 @@ import { orgDalFactory } from "@app/services/org/org-dal";
 import { orgRoleDalFactory } from "@app/services/org/org-role-dal";
 import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
+import { projectDalFactory } from "@app/services/project/project-dal";
+import { projectServiceFactory } from "@app/services/project/project-service";
+import { projectEnvDalFactory } from "@app/services/project-env/project-env-dal";
+import { projectEnvServiceFactory } from "@app/services/project-env/project-env-service";
+import { projectKeyDalFactory } from "@app/services/project-key/project-key-dal";
+import { projectKeyServiceFactory } from "@app/services/project-key/project-key-service";
+import { projectMembershipDalFactory } from "@app/services/project-membership/project-membership-dal";
+import { projectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
+import { projectRoleDalFactory } from "@app/services/project-role/project-role-dal";
+import { projectRoleServiceFactory } from "@app/services/project-role/project-role-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { superAdminDalFactory } from "@app/services/super-admin/super-admin-dal";
 import { superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
@@ -42,6 +52,12 @@ export const registerRoutes = async (
   const orgRoleDal = orgRoleDalFactory(db);
   const superAdminDal = superAdminDalFactory(db);
   const apiKeyDal = apiKeyDalFactory(db);
+
+  const projectDal = projectDalFactory(db);
+  const projectMembershipDal = projectMembershipDalFactory(db);
+  const projectRoleDal = projectRoleDalFactory(db);
+  const projectEnvDal = projectEnvDalFactory(db);
+  const projectKeyDal = projectKeyDalFactory(db);
 
   // ee db layer ops
   const permissionDal = permissionDalFactory(db);
@@ -84,6 +100,30 @@ export const registerRoutes = async (
   });
   const apiKeyService = apiKeyServiceFactory({ apiKeyDal });
 
+  const projectService = projectServiceFactory({
+    permissionService,
+    projectDal,
+    projectEnvDal,
+    projectMembershipDal
+  });
+  const projectMembershipService = projectMembershipServiceFactory({
+    projectMembershipDal,
+    projectDal,
+    permissionService,
+    orgDal,
+    userDal,
+    smtpService,
+    projectKeyDal,
+    projectRoleDal
+  });
+  const projectEnvService = projectEnvServiceFactory({ permissionService, projectEnvDal });
+  const projectKeyService = projectKeyServiceFactory({
+    permissionService,
+    projectKeyDal,
+    projectMembershipDal
+  });
+  const projectRoleService = projectRoleServiceFactory({ permissionService, projectRoleDal });
+
   await superAdminService.initServerCfg();
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
@@ -96,7 +136,12 @@ export const registerRoutes = async (
     orgRole: orgRoleService,
     apiKey: apiKeyService,
     authToken: tokenService,
-    superAdmin: superAdminService
+    superAdmin: superAdminService,
+    project: projectService,
+    projectMembership: projectMembershipService,
+    projectKey: projectKeyService,
+    projectEnv: projectEnvService,
+    projectRole: projectRoleService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {

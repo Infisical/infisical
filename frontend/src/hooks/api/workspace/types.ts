@@ -8,6 +8,7 @@ export type Workspace = {
 };
 
 export type WorkspaceEnv = {
+  id: string;
   name: string;
   slug: string;
   isReadDenied: boolean;
@@ -36,13 +37,13 @@ export type ToggleAutoCapitalizationDTO = { workspaceID: string; state: boolean 
 export type DeleteWorkspaceDTO = { workspaceID: string };
 
 export type CreateEnvironmentDTO = {
-  workspaceID: string;
-  environmentSlug: string;
-  environmentName: string;
+  workspaceId: string;
+  name: string;
+  slug: string;
 };
 
 export type ReorderEnvironmentsDTO = {
-  workspaceID: string;
+  workspaceId: string;
   environmentSlug: string;
   environmentName: string;
   otherEnvironmentSlug: string;
@@ -50,10 +51,10 @@ export type ReorderEnvironmentsDTO = {
 };
 
 export type UpdateEnvironmentDTO = {
-  workspaceID: string;
-  oldEnvironmentSlug: string;
-  environmentSlug: string;
-  environmentName: string;
+  workspaceId: string;
+  id: string;
+  name?: string;
+  slug?: string;
 };
 
-export type DeleteEnvironmentDTO = { workspaceID: string; environmentSlug: string };
+export type DeleteEnvironmentDTO = { workspaceId: string; id: string };

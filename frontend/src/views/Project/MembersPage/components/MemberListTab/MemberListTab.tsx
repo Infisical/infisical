@@ -142,7 +142,7 @@ export const MemberListTab = () => {
     if (!currentOrg?.id) return;
 
     try {
-      await removeUserFromWorkspace(membershipId);
+      await removeUserFromWorkspace({ workspaceId, membershipId });
       createNotification({
         text: "Successfully removed user from workspace",
         type: "success"
@@ -182,7 +182,7 @@ export const MemberListTab = () => {
         return;
       }
 
-      await updateUserWorkspaceRole({ membershipId, role });
+      await updateUserWorkspaceRole({ membershipId, role, workspaceId });
       createNotification({
         text: "Successfully updated user role",
         type: "success"

@@ -57,8 +57,18 @@ export const projectKeyServiceFactory = ({
     return latestKey;
   };
 
+  const getProjectPublicKeys = async ({ actor, actorId, projectId }: TGetLatestProjectKeyDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.Member
+    );
+    return projectKeyDal.findAllProjectUserPubKeys(projectId);
+  };
+
   return {
     uploadProjectKeys,
+    getProjectPublicKeys,
     getLatestProjectKey
   };
 };

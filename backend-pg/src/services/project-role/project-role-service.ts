@@ -2,15 +2,13 @@ import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
 import { ProjectMembershipRole, TOrgRolesUpdate, TProjectRolesInsert } from "@app/db/schemas";
-import {
-  OrgPermissionActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   projectAdminPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions,
+  ProjectPermissionActions,
+  ProjectPermissionSub,
   projectViewerPermission
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
@@ -22,7 +20,7 @@ type TProjectRoleServiceFactoryDep = {
   projectRoleDal: TProjectRoleDalFactory;
   permissionService: Pick<
     TPermissionServiceFactory,
-    "getProjectPermission" | "getUserOrgPermission"
+    "getProjectPermission" | "getUserProjectPermission"
   >;
 };
 
@@ -40,8 +38,8 @@ export const projectRoleServiceFactory = ({
   ) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Create,
-      OrgPermissionSubjects.Role
+      ProjectPermissionActions.Create,
+      ProjectPermissionSub.Role
     );
     const existingRole = await projectRoleDal.findOne({ slug: data.slug, projectId });
     if (existingRole) throw new BadRequestError({ name: "Create Role", message: "Duplicate role" });
@@ -62,8 +60,8 @@ export const projectRoleServiceFactory = ({
   ) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Edit,
-      OrgPermissionSubjects.Role
+      ProjectPermissionActions.Edit,
+      ProjectPermissionSub.Role
     );
     if (data?.slug) {
       const existingRole = await projectRoleDal.findOne({ slug: data.slug, projectId });
@@ -83,8 +81,8 @@ export const projectRoleServiceFactory = ({
   ) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Delete,
-      OrgPermissionSubjects.Role
+      ProjectPermissionActions.Delete,
+      ProjectPermissionSub.Role
     );
     const [deletedRole] = await projectRoleDal.delete({ id: roleId, projectId });
     if (!deleteRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
@@ -95,8 +93,8 @@ export const projectRoleServiceFactory = ({
   const listRoles = async (actor: ActorType, actorId: string, projectId: string) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Read,
-      OrgPermissionSubjects.Role
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.Role
     );
     const customRoles = await projectRoleDal.find({ projectId });
     const roles = [
@@ -149,8 +147,11 @@ export const projectRoleServiceFactory = ({
     return roles;
   };
 
-  const getUserPermission = async (userId: string, orgId: string) => {
-    const { permission, membership } = await permissionService.getUserOrgPermission(userId, orgId);
+  const getUserPermission = async (userId: string, projectId: string) => {
+    const { permission, membership } = await permissionService.getUserProjectPermission(
+      userId,
+      projectId
+    );
     return { permissions: packRules(permission.rules), membership };
   };
 

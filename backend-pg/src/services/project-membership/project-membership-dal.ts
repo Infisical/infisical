@@ -21,20 +21,18 @@ export const projectMembershipDalFactory = (db: TDbClient) => {
         )
         .select(
           db.ref("id").withSchema(TableName.ProjectMembership),
-          db.ref("inviteEmail").withSchema(TableName.ProjectMembership),
-          db.ref("orgId").withSchema(TableName.ProjectMembership),
+          db.ref("projectId").withSchema(TableName.ProjectMembership),
           db.ref("role").withSchema(TableName.ProjectMembership),
           db.ref("roleId").withSchema(TableName.ProjectMembership),
-          db.ref("status").withSchema(TableName.ProjectMembership),
           db.ref("email").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("id").withSchema(TableName.Users).as("userId"),
           db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
         );
-      return members.map(({ email, firstName, lastName, userId, publicKey, ...data }) => ({
+      return members.map(({ email, firstName, lastName, publicKey, ...data }) => ({
         ...data,
-        user: { email, firstName, lastName, id: userId, publicKey }
+        user: { email, firstName, lastName, id: data.userId, publicKey }
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all project members" });
