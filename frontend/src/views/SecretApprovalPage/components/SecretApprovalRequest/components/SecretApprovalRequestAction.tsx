@@ -22,6 +22,7 @@ type Props = {
   isMergable?: boolean;
   status: "close" | "open";
   approvals: number;
+  canApprove?: boolean;
   statusChangeByEmail: string;
   workspaceId: string;
 };
@@ -33,7 +34,8 @@ export const SecretApprovalRequestAction = ({
   isMergable,
   approvals,
   statusChangeByEmail,
-  workspaceId
+  workspaceId,
+  canApprove
 }: Props) => {
   const { createNotification } = useNotificationContext();
   const { mutateAsync: performSecretApprovalMerge, isLoading: isMerging } =
@@ -83,11 +85,11 @@ export const SecretApprovalRequestAction = ({
 
   if (!hasMerged && status === "open") {
     return (
-      <div className="flex justify-between items-center w-full">
-        <div className="flex space-x-4 items-start">
+      <div className="flex w-full items-center justify-between">
+        <div className="flex items-start space-x-4">
           <FontAwesomeIcon
             icon={isMergable ? faSquareCheck : faSquareXmark}
-            className={twMerge("text-2xl pt-1", isMergable ? "text-primary" : "text-red-600")}
+            className={twMerge("pt-1 text-2xl", isMergable ? "text-primary" : "text-red-600")}
           />
           <span className="flex flex-col">
             {isMergable ? "Good to merge" : "Review required"}
@@ -98,25 +100,31 @@ export const SecretApprovalRequestAction = ({
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <Button
-            onClick={() => handleSecretApprovalStatusChange("close")}
-            isLoading={isStatusChanging}
-            variant="outline_bg"
-            colorSchema="secondary"
-            leftIcon={<FontAwesomeIcon icon={faClose} />}
-          >
-            Close request
-          </Button>
-          <Button
-            leftIcon={<FontAwesomeIcon icon={faCheck} />}
-            isDisabled={!isMergable}
-            isLoading={isMerging}
-            onClick={handleSecretApprovalRequestMerge}
-            colorSchema="primary"
-            variant="solid"
-          >
-            Merge
-          </Button>
+          {canApprove ? (
+            <>
+              <Button
+                onClick={() => handleSecretApprovalStatusChange("close")}
+                isLoading={isStatusChanging}
+                variant="outline_bg"
+                colorSchema="secondary"
+                leftIcon={<FontAwesomeIcon icon={faClose} />}
+              >
+                Close request
+              </Button>
+              <Button
+                leftIcon={<FontAwesomeIcon icon={faCheck} />}
+                isDisabled={!isMergable}
+                isLoading={isMerging}
+                onClick={handleSecretApprovalRequestMerge}
+                colorSchema="primary"
+                variant="solid"
+              >
+                Merge
+              </Button>
+            </>
+          ) : (
+            <div>Only approvers can merge</div>
+          )}
         </div>
       </div>
     );
@@ -124,9 +132,9 @@ export const SecretApprovalRequestAction = ({
 
   if (hasMerged && status === "close")
     return (
-      <div className="flex justify-between items-center w-full">
-        <div className="flex space-x-4 items-start">
-          <FontAwesomeIcon icon={faCheck} className="text-2xl text-primary pt-1" />
+      <div className="flex w-full items-center justify-between">
+        <div className="flex items-start space-x-4">
+          <FontAwesomeIcon icon={faCheck} className="pt-1 text-2xl text-primary" />
           <span className="flex flex-col">
             Change request merged
             <span className="inline-block text-xs text-bunker-200">
@@ -138,9 +146,9 @@ export const SecretApprovalRequestAction = ({
     );
 
   return (
-    <div className="flex justify-between items-center w-full">
-      <div className="flex space-x-4 items-start">
-        <FontAwesomeIcon icon={faUserLock} className="text-2xl text-primary pt-1" />
+    <div className="flex w-full items-center justify-between">
+      <div className="flex items-start space-x-4">
+        <FontAwesomeIcon icon={faUserLock} className="pt-1 text-2xl text-primary" />
         <span className="flex flex-col">
           Change request has been closed
           <span className="inline-block text-xs text-bunker-200">
