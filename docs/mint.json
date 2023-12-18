@@ -162,7 +162,8 @@
             "self-hosting/deployment-options/kubernetes-helm",
             "self-hosting/deployment-options/aws-ec2",
             "self-hosting/deployment-options/docker-compose",
-            "self-hosting/deployment-options/digital-ocean-marketplace"
+            "self-hosting/deployment-options/digital-ocean-marketplace",
+            "self-hosting/deployment-options/fly.io"
           ]
         },
         "self-hosting/configuration/envars",
