@@ -50,11 +50,14 @@ export const projectServiceFactory = ({
     // TODO(backend-pg): licence server
     const newProject = projectDal.transaction(async (tx) => {
       const project = await projectDal.create({ name: workspaceName, orgId }, tx);
-      await projectMembershipDal.create({
-        userId: actorId,
-        role: ProjectMembershipRole.Admin,
-        projectId: project.id
-      });
+      await projectMembershipDal.create(
+        {
+          userId: actorId,
+          role: ProjectMembershipRole.Admin,
+          projectId: project.id
+        },
+        tx
+      );
       const envs = await projectEnvDal.insertMany(
         DEFAULT_PROJECT_ENVS.map((el) => ({ ...el, projectId: project.id })),
         tx

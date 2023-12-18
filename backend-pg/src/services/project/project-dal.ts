@@ -15,13 +15,13 @@ export const projectDalFactory = (db: TDbClient) => {
       const workspaces = await db(TableName.ProjectMembership)
         .where({ userId })
         .join(
-          TableName.Environment,
-          `${TableName.Environment}.projectId`,
+          TableName.Project,
+          `${TableName.ProjectMembership}.projectId`,
           `${TableName.Project}.id`
         )
         .join(
-          TableName.Project,
-          `${TableName.ProjectMembership}.projectId`,
+          TableName.Environment,
+          `${TableName.Environment}.projectId`,
           `${TableName.Project}.id`
         )
         .select(
@@ -57,13 +57,13 @@ export const projectDalFactory = (db: TDbClient) => {
       const workspaces = await db(TableName.ProjectMembership)
         .where(`${TableName.Project}.id`, id)
         .join(
-          TableName.Environment,
-          `${TableName.Environment}.projectId`,
+          TableName.Project,
+          `${TableName.ProjectMembership}.projectId`,
           `${TableName.Project}.id`
         )
         .join(
-          TableName.Project,
-          `${TableName.ProjectMembership}.projectId`,
+          TableName.Environment,
+          `${TableName.Environment}.projectId`,
           `${TableName.Project}.id`
         )
         .select(

@@ -19,7 +19,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { useGetIdentityMembershipOrgs, useGetRoles, useUpdateIdentity } from "@app/hooks/api";
+import { useGetIdentityMembershipOrgs, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
 import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -51,9 +51,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
   const { data, isLoading } = useGetIdentityMembershipOrgs(orgId);
 
-  const { data: roles } = useGetRoles({
-    orgId
-  });
+  const { data: roles } = useGetOrgRoles(orgId);
 
   const handleChangeRole = async ({ identityId, role }: { identityId: string; role: string }) => {
     try {

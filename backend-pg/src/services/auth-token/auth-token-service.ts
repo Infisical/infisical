@@ -63,14 +63,17 @@ export const tokenServiceFactory = ({ tokenDal }: TAuthTokenServiceFactoryDep) =
     const tokenHash = await bcrypt.hash(token, appCfg.SALT_ROUNDS);
     await tokenDal.transaction(async (tx) => {
       await tokenDal.delete({ userId, type, orgId: orgId || null }, tx);
-      const newToken = await tokenDal.create({
-        tokenHash,
-        expiresAt: tkCfg.expiresAt.toUTCString(),
-        type,
-        userId,
-        orgId,
-        triesLeft: tkCfg?.triesLeft
-      });
+      const newToken = await tokenDal.create(
+        {
+          tokenHash,
+          expiresAt: tkCfg.expiresAt.toUTCString(),
+          type,
+          userId,
+          orgId,
+          triesLeft: tkCfg?.triesLeft
+        },
+        tx
+      );
       return newToken;
     });
 

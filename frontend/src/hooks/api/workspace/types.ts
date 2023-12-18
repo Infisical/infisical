@@ -2,7 +2,7 @@ export type Workspace = {
   __v: number;
   id: string;
   name: string;
-  organization: string;
+  orgId: string;
   autoCapitalization: boolean;
   environments: WorkspaceEnv[];
 };

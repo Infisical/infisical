@@ -18,42 +18,32 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useOrganization,
-  useWorkspace
-} from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useDeleteRole, useGetRoles } from "@app/hooks/api";
-import { TRole } from "@app/hooks/api/roles/types";
+import { useDeleteProjectRole, useGetProjectRoles } from "@app/hooks/api";
+import { TProjectRole } from "@app/hooks/api/roles/types";
 
 type Props = {
-  onSelectRole: (role?: TRole<string>) => void;
+  onSelectRole: (role?: TProjectRole) => void;
 };
 
 export const ProjectRoleList = ({ onSelectRole }: Props) => {
   const [searchRoles, setSearchRoles] = useState("");
   const { createNotification } = useNotificationContext();
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["deleteRole"] as const);
-  const { currentOrg } = useOrganization();
   const { currentWorkspace } = useWorkspace();
-  const orgId = currentOrg?.id || "";
   const workspaceId = currentWorkspace?.id || "";
 
-  const { data: roles, isLoading: isRolesLoading } = useGetRoles({
-    orgId,
-    workspaceId
-  });
+  const { data: roles, isLoading: isRolesLoading } = useGetProjectRoles(workspaceId);
+  console.log(roles);
 
-  const { mutateAsync: deleteRole } = useDeleteRole();
+  const { mutateAsync: deleteRole } = useDeleteProjectRole();
 
   const handleRoleDelete = async () => {
-    const { id } = popUp?.deleteRole?.data as TRole<string>;
+    const { id } = popUp?.deleteRole?.data as TProjectRole;
     try {
       await deleteRole({
-        orgId,
-        workspaceId,
+        projectId: workspaceId,
         id
       });
       createNotification({ type: "success", text: "Successfully removed the role" });
@@ -99,7 +89,7 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
             </THead>
             <TBody>
               {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
-              {(roles as TRole<string>[])?.map((role) => {
+              {(roles as TProjectRole[])?.map((role) => {
                 const { id, name, slug } = role;
                 const isNonMutatable = ["admin", "member", "viewer", "no-access"].includes(slug);
 
@@ -157,9 +147,9 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}
         title={`Are you sure want to delete ${
-          (popUp?.deleteRole?.data as TRole<string>)?.name || " "
+          (popUp?.deleteRole?.data as TProjectRole)?.name || " "
         } role?`}
-        deleteKey={(popUp?.deleteRole?.data as TRole<string>)?.slug || ""}
+        deleteKey={(popUp?.deleteRole?.data as TProjectRole)?.slug || ""}
         onClose={() => handlePopUpClose("deleteRole")}
         onDeleteApproved={handleRoleDelete}
       />

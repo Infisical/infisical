@@ -47,7 +47,7 @@ import {
   useAddUserToWs,
   useDeleteUserFromWorkspace,
   useGetOrgUsers,
-  useGetRoles,
+  useGetProjectRoles,
   useGetUserWsKey,
   useGetWorkspaceUsers,
   useUpdateUserWorkspaceRole,
@@ -73,10 +73,7 @@ export const MemberListTab = () => {
   const orgId = currentOrg?.id || "";
   const workspaceId = currentWorkspace?.id || "";
 
-  const { data: roles, isLoading: isRolesLoading } = useGetRoles({
-    orgId,
-    workspaceId
-  });
+  const { data: roles, isLoading: isRolesLoading } = useGetProjectRoles(workspaceId);
 
   const { data: wsKey } = useGetUserWsKey(workspaceId);
   const { data: members, isLoading: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
@@ -433,7 +430,7 @@ export const MemberListTab = () => {
           ) : (
             <div className="flex flex-col space-y-4">
               <div>All the users in your organization are already invited.</div>
-              <Link href={`/org/${currentWorkspace?.organization}/members`}>
+              <Link href={`/org/${currentWorkspace?.orgId}/members`}>
                 <Button variant="outline_bg">Add users to organization</Button>
               </Link>
             </div>

@@ -7,13 +7,13 @@ export async function up(knex: Knex): Promise<void> {
   if (!doesTableExist) {
     await knex.schema.createTable(TableName.BackupPrivateKey, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.string("encryptedPrivateKey").notNullable();
-      t.string("iv").notNullable();
-      t.string("tag").notNullable();
+      t.text("encryptedPrivateKey").notNullable();
+      t.text("iv").notNullable();
+      t.text("tag").notNullable();
       t.string("algorithm").notNullable();
       t.string("keyEncoding").notNullable();
-      t.string("salt").notNullable();
-      t.string("verifier").notNullable();
+      t.text("salt").notNullable();
+      t.text("verifier").notNullable();
       t.timestamps(true, true, true);
       t.uuid("userId").notNullable().unique();
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");

@@ -32,7 +32,6 @@ import {
   useFetchServerStatus,
   useGetOrgRoles,
   useGetOrgUsers,
-  useGetRoles,
   useUpdateOrgUserRole
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -58,6 +57,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
   const orgId = currentOrg?.id || "";
 
   const { data: roles, isLoading: isRolesLoading } = useGetOrgRoles(orgId);
+  console.log(roles);
 
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
 

@@ -4,7 +4,6 @@
 /* eslint-disable vars-on-top */
 /* eslint-disable no-var */
 /* eslint-disable func-names */
-// @ts-nocheck
 import crypto from "crypto";
 
 import { useEffect } from "react";
@@ -167,7 +166,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
     }
   };
 
-  const changeOrg = async (orgId) => {
+  const changeOrg = async (orgId: string) => {
     localStorage.setItem("orgData.id", orgId);
     router.push(`/org/${orgId}/overview`);
   };
@@ -178,15 +177,15 @@ export const AppLayout = ({ children }: LayoutProps) => {
   useEffect(() => {
     // Put a user in an org if they're not in one yet
     const putUserInOrg = async () => {
-      if (tempLocalStorage("orgData.id") === "") {
-        localStorage.setItem("orgData.id", orgs[0]?.id);
+      if (tempLocalStorage("orgData.id") === "" && orgs?.[0]?.id) {
+        localStorage.setItem("orgData.id", orgs?.[0]?.id);
       }
 
       if (
         currentOrg &&
         ((workspaces?.length === 0 && router.asPath.includes("project")) ||
           router.asPath.includes("/project/undefined") ||
-          (!orgs?.map((org) => org.id)?.includes(router.query.id) &&
+          (!orgs?.map((org) => org.id)?.includes(router.query.id as string) &&
             !router.asPath.includes("project") &&
             !router.asPath.includes("personal") &&
             !router.asPath.includes("integration")))
@@ -320,7 +319,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                               size="xs"
                               className="flex w-full items-center justify-start p-0 font-normal"
                               leftIcon={
-                                currentOrg.id === org.id && (
+                                currentOrg?.id === org.id && (
                                   <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary" />
                                 )
                               }
@@ -433,7 +432,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       >
                         <div className="no-scrollbar::-webkit-scrollbar h-full no-scrollbar">
                           {workspaces
-                            .filter((ws) => ws.organization === currentOrg?.id)
+                            .filter((ws) => ws.orgId === currentOrg?.id)
                             .map(({ id, name }) => (
                               <SelectItem
                                 key={`ws-layout-list-${id}`}
@@ -702,7 +701,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="p-1">
                     {supportOptions.map(([icon, text, url]) => (
-                      <DropdownMenuItem key={url}>
+                      <DropdownMenuItem key={url as string}>
                         <a
                           target="_blank"
                           rel="noopener noreferrer"

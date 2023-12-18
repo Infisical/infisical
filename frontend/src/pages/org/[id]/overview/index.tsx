@@ -476,9 +476,8 @@ const OrganizationPage = withPermission(
 
     const { workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
     const orgWorkspaces =
-      workspaces?.filter(
-        (workspace) => workspace.organization === localStorage.getItem("orgData.id")
-      ) || [];
+      workspaces?.filter((workspace) => workspace.orgId === localStorage.getItem("orgData.id")) ||
+      [];
     const currentOrg = String(router.query.id);
     const { createNotification } = useNotificationContext();
     const addWsUser = useAddUserToWs();

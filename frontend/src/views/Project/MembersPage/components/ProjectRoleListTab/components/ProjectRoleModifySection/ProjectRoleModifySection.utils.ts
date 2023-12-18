@@ -33,7 +33,7 @@ export const formSchema = z.object({
     .object({
       secrets: z.record(multiEnvPermissionSchema).optional(),
       member: generalPermissionSchema,
-      "identity": generalPermissionSchema,
+      identity: generalPermissionSchema,
       role: generalPermissionSchema,
       integrations: generalPermissionSchema,
       webhooks: generalPermissionSchema,
@@ -90,7 +90,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
   const formVal: Record<string, any> = {};
 
   permissions.forEach((permission) => {
-    const { subject, action } = permission;
+    const {
+      subject: [subject],
+      action
+    } = permission;
     if (!formVal?.[subject]) formVal[subject] = {};
 
     if (subject === "secrets") {

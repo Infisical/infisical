@@ -14,7 +14,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import { useCreateIdentity, useGetRoles, useUpdateIdentity } from "@app/hooks/api";
+import { useCreateIdentity, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -46,9 +46,7 @@ export const IdentityModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pro
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
-  const { data: roles } = useGetRoles({
-    orgId
-  });
+  const { data: roles } = useGetOrgRoles(orgId);
 
   const { mutateAsync: createMutateAsync } = useCreateIdentity();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentity();

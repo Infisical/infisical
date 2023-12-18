@@ -37,7 +37,7 @@ export const userDalFactory = (db: TDbClient) => {
 
   const findUserEncKeyByUserId = async (userId: string) => {
     try {
-      return await db(TableName.Users)
+      const user = await db(TableName.Users)
         .where(`${TableName.Users}.id`, userId)
         .join(
           TableName.UserEncryptionKey,
@@ -45,6 +45,11 @@ export const userDalFactory = (db: TDbClient) => {
           `${TableName.UserEncryptionKey}.userId`
         )
         .first();
+      if (user?.id) {
+        // change to user id
+        user.id = user.userId;
+      }
+      return user;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find user enc by user id" });
     }

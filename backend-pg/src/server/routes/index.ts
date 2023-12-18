@@ -38,6 +38,7 @@ import { injectIdentity } from "../plugins/auth/inject-identity";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
+import { injectPermission } from "../plugins/auth/inject-permission";
 
 export const registerRoutes = async (
   server: FastifyZodProvider,
@@ -149,6 +150,7 @@ export const registerRoutes = async (
   });
 
   await server.register(injectIdentity);
+  await server.register(injectPermission);
 
   server.route({
     url: "/status",

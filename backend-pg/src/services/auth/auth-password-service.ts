@@ -14,6 +14,7 @@ import {
   TResetPasswordViaBackupKeyDTO
 } from "./auth-password-type";
 import { AuthTokenType } from "./auth-type";
+import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 
 type TAuthPasswordServiceFactoryDep = {
   authDal: TAuthDalFactory;
@@ -212,13 +213,19 @@ export const authPaswordServiceFactory = ({
     );
     if (!isValidClientProff) throw new Error("failed to create backup key");
     const backup = await authDal.transaction(async (tx) => {
-      const backupKey = await authDal.upsertBackupKey(userEnc.userId, {
-        encryptedPrivateKey,
-        iv,
-        tag,
-        salt,
-        verifier
-      });
+      const backupKey = await authDal.upsertBackupKey(
+        userEnc.userId,
+        {
+          encryptedPrivateKey,
+          iv,
+          tag,
+          salt,
+          verifier,
+          algorithm: SecretEncryptionAlgo.AES_256_GCM,
+          keyEncoding: SecretKeyEncoding.UTF8
+        },
+        tx
+      );
 
       await userDal.updateUserEncryptionByUserId(
         userEnc.userId,

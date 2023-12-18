@@ -1,19 +1,16 @@
-export type TGetRolesDTO = {
-  orgId: string;
+export type TGetProjectRolesDTO = {
   workspaceId?: string;
 };
 
-// @depreciated
-export type TRole<T extends string | undefined> = {
-  id: string;
-  organization: string;
-  workspace: T;
-  name: string;
-  description: string;
+export type TProjectRole = {
   slug: string;
-  permissions: T extends string ? TProjectPermission[] : TPermission[];
+  name: string;
+  projectId: string;
+  id: string;
   createdAt: string;
   updatedAt: string;
+  description?: string;
+  permissions: TPermission[];
 };
 
 export type TOrgRole = {
@@ -36,28 +33,7 @@ export type TPermission = {
 export type TProjectPermission = {
   conditions?: Record<string, any>;
   action: string;
-  subject: string;
-};
-
-export type TCreateRoleDTO<T extends string | undefined> = {
-  orgId: string;
-  workspaceId?: T;
-  name: string;
-  description?: string;
-  slug: string;
-  permissions: T extends string ? TProjectPermission[] : TPermission[];
-};
-
-export type TUpdateRoleDTO<T extends string | undefined> = {
-  orgId: string;
-  id: string;
-  workspaceId?: T;
-} & Partial<Omit<TCreateRoleDTO<T>, "orgId" | "workspaceId">>;
-
-export type TDeleteRoleDTO = {
-  orgId: string;
-  id: string;
-  workspaceId?: string;
+  subject: [string];
 };
 
 export type TGetUserOrgPermissionsDTO = {
@@ -83,5 +59,23 @@ export type TUpdateOrgRoleDTO = {
 
 export type TDeleteOrgRoleDTO = {
   orgId: string;
+  id: string;
+};
+
+export type TCreateProjectRoleDTO = {
+  projectId: string;
+  name: string;
+  description?: string;
+  slug: string;
+  permissions: TPermission[];
+};
+
+export type TUpdateProjectRoleDTO = {
+  projectId: string;
+  id: string;
+} & Partial<Omit<TCreateOrgRoleDTO, "orgId">>;
+
+export type TDeleteProjectRoleDTO = {
+  projectId: string;
   id: string;
 };

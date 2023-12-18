@@ -61,11 +61,11 @@ import {
   useUpdateOrgUserRole,
   useUploadWsKey
 } from "@app/hooks/api";
-import { TRole } from "@app/hooks/api/roles/types";
+import { TProjectRole } from "@app/hooks/api/roles/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 
 type Props = {
-  roles?: TRole<undefined>[];
+  roles?: TProjectRole[];
   isRolesLoading?: boolean;
 };
 

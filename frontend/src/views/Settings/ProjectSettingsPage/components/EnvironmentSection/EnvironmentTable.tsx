@@ -93,7 +93,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
           {!isLoading &&
             currentWorkspace &&
             currentWorkspace.environments.map(({ name, slug, id }, pos) => (
-              <Tr key={name}>
+              <Tr key={id}>
                 <Td>{name}</Td>
                 <Td>{slug}</Td>
                 <Td className="flex items-center justify-end">

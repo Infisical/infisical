@@ -10,7 +10,7 @@ import { useOrganization, useWorkspace } from "@app/context";
 import {
   useAddIdentityToWorkspace,
   useGetIdentityMembershipOrgs,
-  useGetRoles,
+  useGetProjectRoles,
   useGetWorkspaceIdentityMemberships
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -40,10 +40,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: identityMembershipOrgs } = useGetIdentityMembershipOrgs(orgId);
   const { data: identityMemberships } = useGetWorkspaceIdentityMemberships(workspaceId);
 
-  const { data: roles } = useGetRoles({
-    orgId,
-    workspaceId
-  });
+  const { data: roles } = useGetProjectRoles(workspaceId);
 
   const { mutateAsync: addIdentityToWorkspaceMutateAsync } = useAddIdentityToWorkspace();
 
@@ -171,7 +168,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
             <div className="text-sm">
               All identities in your organization have already been added to this project.
             </div>
-            <Link href={`/org/${currentWorkspace?.organization}/members`}>
+            <Link href={`/org/${currentWorkspace?.orgId}/members`}>
               <Button variant="outline_bg">Create a new identity</Button>
             </Link>
           </div>

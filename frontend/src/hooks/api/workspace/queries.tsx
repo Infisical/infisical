@@ -196,7 +196,7 @@ export const useToggleAutoCapitalization = () => {
 
   return useMutation<{}, {}, ToggleAutoCapitalizationDTO>({
     mutationFn: ({ workspaceID, state }) =>
-      apiRequest.patch(`/api/v2/workspace/${workspaceID}/auto-capitalization`, {
+      apiRequest.post(`/api/v1/workspace/${workspaceID}/auto-capitalization`, {
         autoCapitalization: state
       }),
     onSuccess: () => {
@@ -245,7 +245,7 @@ export const useReorderWsEnvironment = () => {
       otherEnvironmentSlug,
       otherEnvironmentName
     }) => {
-      return apiRequest.patch(`/api/v2/workspace/${workspaceId}/environments`, {
+      return apiRequest.patch(`/api/v1/workspace/${workspaceId}/environments`, {
         environmentSlug,
         environmentName,
         otherEnvironmentSlug,
@@ -263,7 +263,7 @@ export const useUpdateWsEnvironment = () => {
 
   return useMutation<{}, {}, UpdateEnvironmentDTO>({
     mutationFn: ({ workspaceId, id, name, slug }) => {
-      return apiRequest.put(`/api/v2/workspace/${workspaceId}/environments/${id}`, {
+      return apiRequest.patch(`/api/v1/workspace/${workspaceId}/environments/${id}`, {
         name,
         slug
       });

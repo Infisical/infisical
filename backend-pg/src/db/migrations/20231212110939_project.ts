@@ -14,8 +14,8 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
   }
-  // environments
   await createOnUpdateTrigger(knex, TableName.Project);
+  // environments
   if (!(await knex.schema.hasTable(TableName.Environment))) {
     await knex.schema.createTable(TableName.Environment, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -47,7 +47,8 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.Environment);
+  await knex.schema.dropTableIfExists(TableName.ProjectKeys);
   await knex.schema.dropTableIfExists(TableName.Project);
-  await dropOnUpdateTrigger(knex, TableName.Project);
   await dropOnUpdateTrigger(knex, TableName.ProjectKeys);
+  await dropOnUpdateTrigger(knex, TableName.Project);
 }

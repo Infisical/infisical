@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { AuthTokenSessionsSchema, OrganizationsSchema, UsersSchema } from "@app/db/schemas";
+import {
+  AuthTokenSessionsSchema,
+  OrganizationsSchema,
+  UserEncryptionKeysSchema,
+  UsersSchema
+} from "@app/db/schemas";
 import { ApiKeysSchema } from "@app/db/schemas/api-keys";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMethod, AuthMode } from "@app/services/auth/auth-type";
@@ -195,7 +200,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          user: UsersSchema
+          user: UsersSchema.merge(UserEncryptionKeysSchema.omit({ verifier: true }))
         })
       }
     },

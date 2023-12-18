@@ -132,8 +132,10 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          membership: ProjectMembershipsSchema,
-          permissions: z.any().array()
+          data: z.object({
+            membership: ProjectMembershipsSchema,
+            permissions: z.any().array()
+          })
         })
       }
     },
@@ -143,7 +145,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         req.auth.userId,
         req.params.projectId
       );
-      return { permissions, membership };
+      return { data: { permissions, membership } };
     }
   });
 };

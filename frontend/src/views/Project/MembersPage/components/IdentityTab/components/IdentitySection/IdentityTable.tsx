@@ -18,14 +18,9 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
 import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useOrganization,
-  useWorkspace
-} from "@app/context";
-import {
-  useGetRoles,
+  useGetProjectRoles,
   useGetWorkspaceIdentityMemberships,
   useUpdateIdentityWorkspaceRole
 } from "@app/hooks/api";
@@ -43,16 +38,11 @@ type Props = {
 
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const { createNotification } = useNotificationContext();
-  const { currentOrg } = useOrganization();
   const { currentWorkspace } = useWorkspace();
-  const orgId = currentOrg?.id || "";
   const workspaceId = currentWorkspace?.id || "";
   const { data, isLoading } = useGetWorkspaceIdentityMemberships(currentWorkspace?.id || "");
 
-  const { data: roles } = useGetRoles({
-    orgId,
-    workspaceId
-  });
+  const { data: roles } = useGetProjectRoles(workspaceId);
 
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityWorkspaceRole();
 

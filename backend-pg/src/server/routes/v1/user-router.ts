@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { UsersSchema } from "@app/db/schemas";
+import { UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -11,7 +11,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          user: UsersSchema
+          user: UsersSchema.merge(UserEncryptionKeysSchema.omit({ verifier: true }))
         })
       }
     },

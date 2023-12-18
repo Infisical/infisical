@@ -20,9 +20,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { ProjectPermissionSub, useOrganization, useWorkspace } from "@app/context";
-import { useCreateRole, useUpdateRole } from "@app/hooks/api";
-import { TRole } from "@app/hooks/api/roles/types";
+import { ProjectPermissionSub, useWorkspace } from "@app/context";
+import { useCreateProjectRole, useUpdateProjectRole } from "@app/hooks/api";
+import { TProjectRole } from "@app/hooks/api/roles/types";
 
 import { MultiEnvProjectPermission } from "./MultiEnvProjectPermission";
 import {
@@ -111,7 +111,7 @@ const SINGLE_PERMISSION_LIST = [
 ] as const;
 
 type Props = {
-  role?: TRole<string>;
+  role?: TProjectRole;
   onGoBack: VoidFunction;
 };
 
@@ -120,8 +120,6 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
   const isNewRole = !role?.slug;
 
   const { createNotification } = useNotificationContext();
-  const { currentOrg } = useOrganization();
-  const orgId = currentOrg?.id || "";
   const { currentWorkspace } = useWorkspace();
   const workspaceId = currentWorkspace?.id || "";
 
@@ -135,17 +133,16 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
     defaultValues: role ? { ...role, permissions: rolePermission2Form(role.permissions) } : {},
     resolver: zodResolver(formSchema)
   });
-  const { mutateAsync: createRole } = useCreateRole();
-  const { mutateAsync: updateRole } = useUpdateRole();
+  const { mutateAsync: createRole } = useCreateProjectRole();
+  const { mutateAsync: updateRole } = useUpdateProjectRole();
 
   const handleRoleUpdate = async (el: TFormSchema) => {
     if (!role?.id) return;
 
     try {
       await updateRole({
-        orgId,
         id: role?.id,
-        workspaceId,
+        projectId: workspaceId,
         ...el,
         permissions: formRolePermission2API(el.permissions)
       });
@@ -165,8 +162,7 @@ export const ProjectRoleModifySection = ({ role, onGoBack }: Props) => {
 
     try {
       await createRole({
-        orgId,
-        workspaceId,
+        projectId: workspaceId,
         ...el,
         permissions: formRolePermission2API(el.permissions)
       });

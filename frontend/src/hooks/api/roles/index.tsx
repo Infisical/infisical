@@ -1,14 +1,14 @@
 export {
   useCreateOrgRole,
-  useCreateRole,
+  useCreateProjectRole,
   useDeleteOrgRole,
-  useDeleteRole,
+  useDeleteProjectRole,
   useUpdateOrgRole,
-  useUpdateRole
+  useUpdateProjectRole
 } from "./mutation";
 export {
   useGetOrgRoles,
-  useGetRoles,
+  useGetProjectRoles,
   useGetUserOrgPermissions,
   useGetUserProjectPermissions
 } from "./queries";

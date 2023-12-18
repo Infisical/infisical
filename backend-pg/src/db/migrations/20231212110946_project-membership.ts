@@ -14,7 +14,7 @@ export async function up(knex: Knex): Promise<void> {
       // does not need update trigger we will do it manually
       t.timestamps(true, true, true);
       t.uuid("projectId").notNullable();
-      t.foreign("projectId").references("id").inTable(TableName.ProjectRoles).onDelete("CASCADE");
+      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
     });
   }
 

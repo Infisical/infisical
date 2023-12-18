@@ -82,7 +82,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          backupPrivateKey: BackupPrivateKeySchema
+          backupPrivateKey: BackupPrivateKeySchema.omit({ verifier: true })
         })
       }
     },
@@ -105,7 +105,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          backupPrivateKey: BackupPrivateKeySchema
+          backupPrivateKey: BackupPrivateKeySchema.omit({ verifier: true })
         })
       }
     },

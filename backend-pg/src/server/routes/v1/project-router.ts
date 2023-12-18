@@ -10,7 +10,13 @@ import {
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-export const registerProjectRouter = (server: FastifyZodProvider) => {
+const projectWithEnv = ProjectsSchema.merge(
+  z.object({
+    environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
+  })
+);
+
+export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/:workspaceId/keys",
     method: "GET",
@@ -81,9 +87,7 @@ export const registerProjectRouter = (server: FastifyZodProvider) => {
     schema: {
       response: {
         200: z.object({
-          workspaces: ProjectsSchema.merge(
-            z.object({ environments: z.object({ name: z.string(), slug: z.string() }).array() })
-          ).array()
+          workspaces: projectWithEnv.array()
         })
       }
     },
@@ -103,9 +107,7 @@ export const registerProjectRouter = (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          workspace: ProjectsSchema.merge(
-            z.object({ environments: z.object({ name: z.string(), slug: z.string() }).array() })
-          ).optional()
+          workspace: projectWithEnv.optional()
         })
       }
     },
@@ -130,7 +132,7 @@ export const registerProjectRouter = (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          workspace: ProjectsSchema
+          workspace: projectWithEnv
         })
       }
     },

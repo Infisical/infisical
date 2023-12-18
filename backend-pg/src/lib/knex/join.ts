@@ -11,18 +11,22 @@ export const mergeOneToManyRelation = <
   childMapper: (arg: T) => C,
   childKey: Ck
 ) => {
-  const recordFirstVisitIndex: Record<string, number> = {};
+  let prevPkIndex = -1;
+  let prevPkId: null | string = null;
+
   const groupedRecord: (P & Record<Ck, C[]>)[] = [];
   for (let i = 0; i < data.length; i += 1) {
     const pk = data[i][key];
     const row = data[i];
-    if (typeof recordFirstVisitIndex[pk] === "undefined") {
+    if (pk !== prevPkId) {
       const parent = parentMapper(row) as any;
       parent[childKey] = [];
       groupedRecord.push(parent);
-      recordFirstVisitIndex[pk] = i;
+      prevPkId = pk;
+      prevPkIndex += 1;
     }
-    groupedRecord[recordFirstVisitIndex[pk]][childKey].push(childMapper(row));
+    console.log(prevPkIndex, prevPkId);
+    groupedRecord[prevPkIndex][childKey].push(childMapper(row));
   }
   return groupedRecord;
 };

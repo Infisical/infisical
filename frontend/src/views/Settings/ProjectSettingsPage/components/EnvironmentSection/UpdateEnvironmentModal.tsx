@@ -15,8 +15,8 @@ type Props = {
 };
 
 const schema = yup.object({
-  environmentName: yup.string().label("Environment Name").required(),
-  environmentSlug: yup.string().label("Environment Slug").required()
+  name: yup.string().label("Environment Name").required(),
+  slug: yup.string().label("Environment Slug").required()
 });
 
 export type FormData = yup.InferType<typeof schema>;
@@ -26,19 +26,20 @@ export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpTog
   const { currentWorkspace } = useWorkspace();
   const { mutateAsync, isLoading } = useUpdateWsEnvironment();
   const { control, handleSubmit, reset } = useForm<FormData>({
-    resolver: yupResolver(schema)
+    resolver: yupResolver(schema),
+    values: popUp.updateEnv.data as FormData
   });
 
   const oldEnvId = (popUp?.updateEnv?.data as { id: string })?.id;
 
-  const onFormSubmit = async ({ environmentName, environmentSlug }: FormData) => {
+  const onFormSubmit = async ({ name, slug }: FormData) => {
     try {
       if (!currentWorkspace?.id) return;
 
       await mutateAsync({
         workspaceId: currentWorkspace.id,
-        name: environmentName,
-        slug: environmentSlug,
+        name,
+        slug,
         id: oldEnvId
       });
 
@@ -70,7 +71,7 @@ export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpTog
           <Controller
             control={control}
             defaultValue=""
-            name="environmentName"
+            name="name"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Environment Name"
@@ -84,7 +85,7 @@ export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpTog
           <Controller
             control={control}
             defaultValue=""
-            name="environmentSlug"
+            name="slug"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Environment Slug"
