@@ -24,24 +24,22 @@ docker pull infisical/infisical:latest
 ## Run with docker 
 To run Infisical, we'll need to configure the required configs listed below.
 Other configs can be found [here](../configuration/envars)
-
+    
 <ParamField query="ENCRYPTION_KEY" type="string" default="none" required>
   Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
 </ParamField>
 
 <ParamField query="AUTH_SECRET" type="string" default="none" required>
-  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+  Must be a random 32 byte base64 string. Can be generated with `openssl rand -base64 32`
 </ParamField>
 
 <ParamField query="MONGO_URL" type="string" default="none" required>
-  A MongoDB connection string. Can use any MongoDB PaaS such as Mongo Atlas, AWS Document DB, etc. 
   *TLS based connection string is not yet supported
 </ParamField>
 
-<ParamField query="REDIS_URL" type="string" default="none">
-  Redis connection string. Only required if you plan to use web integrations or secret reminders.
+<ParamField query="REDIS_URL" type="string" default="none" required>
+  Redis connection string
 </ParamField>
-
 
 Once you have added the required environment variables to your docker run command, execute it in your terminal.
 
