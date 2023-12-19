@@ -13,6 +13,8 @@ Prerequisites:
     - [Enabling a TLS endpoint in a sidecar container](https://learn.microsoft.com/en-us/azure/container-instances/container-instances-container-group-ssl).
     - [Enabling automatic HTTPS with Caddy in a sidecar container](https://learn.microsoft.com/en-us/azure/container-instances/container-instances-container-group-automatic-ssl).
     - Using Azure Function Proxies, Application Gateway, etc.
+
+    For a simpler deployment experience with complete TLS/SSL setup, you may try [deploying Infisical with Azure App Services](/self-hosting/deployment-options/azure-app-services).
 </Note>
 
 <Steps>
@@ -48,7 +50,7 @@ Prerequisites:
         
         ![Azure container instance networking](/images/self-hosting/deployment-options/azure-container-instances/aci-create-container-instance-networking.png)
         
-        1.4. Running Infisical requires a few environment variables to be set for the GCP Cloud Run service.
+        1.4. Running Infisical requires a few environment variables to be set for the Azure container instance.
         At minimum, Infisical requires that you set the variables `ENCRYPTION_KEY`, `AUTH_SECRET`, `MONGO_URL`, and `REDIS_URL`
         which you can read more about [here](/self-hosting/configuration/envars).
         
@@ -65,7 +67,6 @@ Prerequisites:
         ![Azure container instance review](/images/self-hosting/deployment-options/azure-container-instances/aci-create-container-instance-review.png)
     </Step>
     <Step title="Navigate to your deployed instance of Infisical">
-    
         Head to the **Overview** page of the newly-created container instance to view its **IP address (Public)**; you can access your instance of Infisical by this IP address under the port `:8080`. 
         
         For example, in the image below, the IP address of the sample deployed container instance is `4.255.87.109`; the instance would be accessible in the browser by heading to `4.255.87.109:8080`.
