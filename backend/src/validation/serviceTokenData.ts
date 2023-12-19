@@ -158,7 +158,7 @@ export const CreateServiceTokenV2 = z.object({
     encryptedKey: z.string().trim(),
     iv: z.string().trim(),
     tag: z.string().trim(),
-    expiresIn: z.number(),
+    expiresIn: z.number().nullable().optional(),
     permissions: z.enum(["read", "write"]).array()
   })
 });
