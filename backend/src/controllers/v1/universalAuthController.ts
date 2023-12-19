@@ -129,9 +129,14 @@ export const renewAccessToken = async (req: Request, res: Response) => {
         accessTokenTTL,
         accessTokenLastRenewedAt,
         accessTokenMaxTTL,
-        createdAt: accessTokenCreatedAt
+        createdAt: accessTokenCreatedAt,
+        accessTokenNumUses,
+        accessTokenNumUsesLimit
     } = identityAccessToken;
 
+    if (accessTokenNumUses >= accessTokenNumUsesLimit) {
+        throw BadRequestError({ message: "Unable to renew because access token number of uses limit reached" })
+    }
 
     // ttl check
     if (accessTokenTTL > 0) {

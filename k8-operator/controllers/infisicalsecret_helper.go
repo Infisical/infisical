@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const SERVICE_ACCOUNT_ACCESS_KEY = "serviceAccountAccessKey"
@@ -159,7 +160,13 @@ func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context
 		Data: plainProcessedSecrets,
 	}
 
-	err := r.Client.Create(ctx, newKubeSecretInstance)
+	// Set InfisicalSecret instance as the owner and controller
+	err := ctrl.SetControllerReference(&infisicalSecret, newKubeSecretInstance, r.Scheme)
+	if err != nil {
+		return err
+	}
+
+	err = r.Client.Create(ctx, newKubeSecretInstance)
 	if err != nil {
 		return fmt.Errorf("unable to create the managed Kubernetes secret : %w", err)
 	}
