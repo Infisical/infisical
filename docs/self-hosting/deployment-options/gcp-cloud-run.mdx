@@ -23,7 +23,7 @@ Prerequisites:
         
         2.2. In the service creation form, select the **Deploy one revision from an existing container image** option and fill in your intended [Infisical public Docker image](https://hub.docker.com/r/infisical/infisical) in the container image URL.
 
-        For example, in order to opt for Infisical `v0.43.4`, you would use the following URL: `docker.io/infisical/infisical:v0.43.4`.
+        For example, in order to opt for Infisical `v0.43.4`, you would input: `docker.io/infisical/infisical:v0.43.4`.
         
         ![GCP Cloud Run create service docker image specification](/images/self-hosting/deployment-options/gcp-cloud-run/gcp-cloud-run-create-service-docker-image.png)
 
@@ -47,6 +47,11 @@ Prerequisites:
         </Note>
 
         Finally, press **Create** to finish setting up the GCP Cloud Run service.
+    </Step>
+    <Step title="Navigate to your deployed instance of Infisical">
+        Head to the **Service details** of the newly-created service to view its URL; you can access your instance of Infisical by clicking on the URL.
+        
+        ![GCP Cloud Run service details](/images/self-hosting/deployment-options/gcp-cloud-run/gcp-cloud-run-service-details.png)
     </Step>
 </Steps>
 
