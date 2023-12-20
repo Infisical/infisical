@@ -167,7 +167,8 @@
             "self-hosting/deployment-options/azure-app-services",
             "self-hosting/deployment-options/azure-container-instances",
             "self-hosting/deployment-options/digital-ocean-marketplace",
-            "self-hosting/deployment-options/fly.io"
+            "self-hosting/deployment-options/fly.io",
+            "self-hosting/deployment-options/railway"
           ]
         },
         "self-hosting/configuration/envars",
