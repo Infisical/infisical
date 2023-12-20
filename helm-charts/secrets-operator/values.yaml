@@ -30,3 +30,10 @@ metricsService:
     protocol: TCP
     targetPort: https
   type: ClusterIP
+
+# -- Enable Prometheus-Operator based resources. Requires crds from https://github.com/prometheus-operator/prometheus-operator/tree/main/example/prometheus-operator-crd-full
+metrics:
+  serviceMonitor:
+    enabled: false
+  prometheusRule:
+    enabled: false
