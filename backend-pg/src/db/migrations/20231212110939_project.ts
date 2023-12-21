@@ -21,8 +21,14 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
       t.string("slug").notNullable();
+      t.integer("position").notNullable();
       t.uuid("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+      // this will ensure ever env has its position
+      t.unique(["projectId", "position"], {
+        indexName: "env_pos_composite_uniqe",
+        deferrable: "deferred"
+      });
       t.timestamps(true, true, true);
     });
   }
@@ -34,9 +40,9 @@ export async function up(knex: Knex): Promise<void> {
       t.text("nonce").notNullable();
       t.uuid("receiverId").notNullable();
       t.foreign("receiverId").references("id").inTable(TableName.Users).onDelete("CASCADE");
-      t.uuid("senderId").notNullable();
+      t.uuid("senderId");
       // if sender is deleted just don't do anything to this record
-      t.foreign("senderId").references("id").inTable(TableName.Users).onDelete("NO ACTION");
+      t.foreign("senderId").references("id").inTable(TableName.Users).onDelete("SET NULL");
       t.uuid("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.timestamps(true, true, true);

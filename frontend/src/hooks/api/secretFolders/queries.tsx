@@ -20,25 +20,25 @@ import {
 } from "./types";
 
 const queryKeys = {
-  getSecretFolders: ({ workspaceId, environment, directory }: TGetProjectFoldersDTO) =>
-    ["secret-folders", { workspaceId, environment, directory }] as const
+  getSecretFolders: ({ projectId, environment, path }: TGetProjectFoldersDTO) =>
+    ["secret-folders", { projectId, environment, path }] as const
 };
 
-const fetchProjectFolders = async (workspaceId: string, environment: string, directory = "/") => {
+const fetchProjectFolders = async (projectId: string, environment: string, path = "/") => {
   const { data } = await apiRequest.get<{ folders: TSecretFolder[] }>("/api/v1/folders", {
     params: {
-      workspaceId,
+      projectId,
       environment,
-      directory
+      path
     }
   });
   return data.folders;
 };
 
 export const useGetProjectFolders = ({
-  workspaceId,
+  projectId,
   environment,
-  directory = "/",
+  path = "/",
   options = {}
 }: TGetProjectFoldersDTO & {
   options?: Omit<
@@ -53,21 +53,21 @@ export const useGetProjectFolders = ({
 }) =>
   useQuery({
     ...options,
-    queryKey: queryKeys.getSecretFolders({ workspaceId, environment, directory }),
-    enabled: Boolean(workspaceId) && Boolean(environment) && (options?.enabled ?? true),
-    queryFn: async () => fetchProjectFolders(workspaceId, environment, directory)
+    queryKey: queryKeys.getSecretFolders({ projectId, environment, path }),
+    enabled: Boolean(projectId) && Boolean(environment) && (options?.enabled ?? true),
+    queryFn: async () => fetchProjectFolders(projectId, environment, path)
   });
 
 export const useGetFoldersByEnv = ({
-  directory = "/",
-  workspaceId,
+  path = "/",
+  projectId,
   environments
 }: TGetFoldersByEnvDTO) => {
   const folders = useQueries({
     queries: environments.map((environment) => ({
-      queryKey: queryKeys.getSecretFolders({ workspaceId, environment, directory }),
-      queryFn: async () => fetchProjectFolders(workspaceId, environment, directory),
-      enabled: Boolean(workspaceId) && Boolean(environment)
+      queryKey: queryKeys.getSecretFolders({ projectId, environment, path }),
+      queryFn: async () => fetchProjectFolders(projectId, environment, path),
+      enabled: Boolean(projectId) && Boolean(environment)
     }))
   });
 
@@ -105,15 +105,13 @@ export const useCreateFolder = () => {
       const { data } = await apiRequest.post("/api/v1/folders", dto);
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, directory }) => {
+    onSuccess: (_, { projectId, environment, path }) => {
+      queryClient.invalidateQueries(queryKeys.getSecretFolders({ projectId, environment, path }));
       queryClient.invalidateQueries(
-        queryKeys.getSecretFolders({ workspaceId, environment, directory })
+        secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
       );
       queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ workspaceId, environment, directory })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ workspaceId, environment, directory })
+        secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
       );
     }
   });
@@ -123,24 +121,22 @@ export const useUpdateFolder = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TUpdateFolderDTO>({
-    mutationFn: async ({ directory = "/", folderName, name, environment, workspaceId }) => {
-      const { data } = await apiRequest.patch(`/api/v1/folders/${folderName}`, {
+    mutationFn: async ({ path = "/", folderId, name, environment, projectId }) => {
+      const { data } = await apiRequest.patch(`/api/v1/folders/${folderId}`, {
         name,
         environment,
-        workspaceId,
-        directory
+        projectId,
+        path
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, directory }) => {
+    onSuccess: (_, { projectId, environment, path }) => {
+      queryClient.invalidateQueries(queryKeys.getSecretFolders({ projectId, environment, path }));
       queryClient.invalidateQueries(
-        queryKeys.getSecretFolders({ workspaceId, environment, directory })
+        secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
       );
       queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ workspaceId, environment, directory })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ workspaceId, environment, directory })
+        secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
       );
     }
   });
@@ -150,25 +146,23 @@ export const useDeleteFolder = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TDeleteFolderDTO>({
-    mutationFn: async ({ directory = "/", folderName, environment, workspaceId }) => {
-      const { data } = await apiRequest.delete(`/api/v1/folders/${folderName}`, {
+    mutationFn: async ({ path = "/", folderId, environment, projectId }) => {
+      const { data } = await apiRequest.delete(`/api/v1/folders/${folderId}`, {
         data: {
           environment,
-          workspaceId,
-          directory
+          projectId,
+          path
         }
       });
       return data;
     },
-    onSuccess: (_, { directory = "/", workspaceId, environment }) => {
+    onSuccess: (_, { path = "/", projectId, environment }) => {
+      queryClient.invalidateQueries(queryKeys.getSecretFolders({ projectId, environment, path }));
       queryClient.invalidateQueries(
-        queryKeys.getSecretFolders({ workspaceId, environment, directory })
+        secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
       );
       queryClient.invalidateQueries(
-        secretSnapshotKeys.list({ workspaceId, environment, directory })
-      );
-      queryClient.invalidateQueries(
-        secretSnapshotKeys.count({ workspaceId, environment, directory })
+        secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
       );
     }
   });

@@ -4,7 +4,7 @@ import { readdirSync } from "fs";
 import path from "path";
 import promptSync from "prompt-sync";
 
-const prompt = promptSync();
+const prompt = promptSync({ sigint: true });
 
 const migrationName = prompt("Enter name for seedfile: ");
 const fileCounter = readdirSync(path.join(__dirname, "../src/db/seed")).length || 1;

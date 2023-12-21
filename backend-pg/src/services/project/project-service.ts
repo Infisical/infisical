@@ -10,9 +10,13 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { getConfig } from "@app/lib/config/env";
+import { createSecretBlindIndex } from "@app/lib/crypto";
 
 import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
 import { TProjectMembershipDalFactory } from "../project-membership/project-membership-dal";
+import { TSecretBlindIndexDalFactory } from "../secret/secret-blind-index-dal";
+import { ROOT_FOLDER_NAME, TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
 import { TProjectDalFactory } from "./project-dal";
 import { TCreateProjectDTO, TDeleteProjectDTO, TGetProjectDTO } from "./project-types";
 
@@ -24,8 +28,10 @@ const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDal: TProjectDalFactory;
+  folderDal: Pick<TSecretFolderDalFactory, "insertMany">;
   projectEnvDal: Pick<TProjectEnvDalFactory, "insertMany">;
   projectMembershipDal: Pick<TProjectMembershipDalFactory, "create">;
+  secretBlindIndexDal: Pick<TSecretBlindIndexDalFactory, "create">;
   permissionService: TPermissionServiceFactory;
 };
 
@@ -34,6 +40,8 @@ export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 export const projectServiceFactory = ({
   projectDal,
   permissionService,
+  folderDal,
+  secretBlindIndexDal,
   projectMembershipDal,
   projectEnvDal
 }: TProjectServiceFactoryDep) => {
@@ -47,9 +55,12 @@ export const projectServiceFactory = ({
       OrgPermissionSubjects.Workspace
     );
 
+    const appCfg = getConfig();
+    const blindIndex = createSecretBlindIndex(appCfg.ROOT_ENCRYPTION_KEY, appCfg.ENCRYPTION_KEY);
     // TODO(backend-pg): licence server
     const newProject = projectDal.transaction(async (tx) => {
       const project = await projectDal.create({ name: workspaceName, orgId }, tx);
+      // set user as admin member for proeject
       await projectMembershipDal.create(
         {
           userId: actorId,
@@ -58,8 +69,25 @@ export const projectServiceFactory = ({
         },
         tx
       );
+      // generate the blind index for project
+      await secretBlindIndexDal.create(
+        {
+          projectId: project.id,
+          keyEncoding: blindIndex.keyEncoding,
+          saltIV: blindIndex.iv,
+          saltTag: blindIndex.tag,
+          algorithm: blindIndex.algorithm,
+          encryptedSaltCipherText: blindIndex.ciphertext
+        },
+        tx
+      );
+      // set default environments and root folder for provided environments
       const envs = await projectEnvDal.insertMany(
-        DEFAULT_PROJECT_ENVS.map((el) => ({ ...el, projectId: project.id })),
+        DEFAULT_PROJECT_ENVS.map((el, i) => ({ ...el, projectId: project.id, position: i + 1 })),
+        tx
+      );
+      await folderDal.insertMany(
+        envs.map(({ id }) => ({ name: ROOT_FOLDER_NAME, envId: id, version: 1 })),
         tx
       );
       return { ...project, environments: envs };

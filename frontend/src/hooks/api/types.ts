@@ -12,7 +12,7 @@ export type {
 } from "./secretApprovalRequest/types";
 export { ApprovalStatus, CommitType } from "./secretApprovalRequest/types";
 export type { TSecretFolder } from "./secretFolders/types";
-export type { TImportedSecrets, TSecretImports } from "./secretImports/types";
+export type { TImportedSecrets, TSecretImport } from "./secretImports/types";
 export type {
   TGetSecretRotationProviders,
   TProviderTemplate,

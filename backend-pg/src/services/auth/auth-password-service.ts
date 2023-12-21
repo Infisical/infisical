@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 
+import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 
@@ -14,7 +15,6 @@ import {
   TResetPasswordViaBackupKeyDTO
 } from "./auth-password-type";
 import { AuthTokenType } from "./auth-type";
-import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 
 type TAuthPasswordServiceFactoryDep = {
   authDal: TAuthDalFactory;

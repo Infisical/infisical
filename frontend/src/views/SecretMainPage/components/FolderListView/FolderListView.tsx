@@ -42,12 +42,13 @@ export const FolderListView = ({
 
   const handleFolderUpdate = async (newFolderName: string) => {
     try {
+      const { id: folderId } = popUp.updateFolder.data as TSecretFolder;
       await updateFolder({
-        folderName: popUp.updateFolder.data as string,
+        folderId,
         name: newFolderName,
-        directory: secretPath,
+        path: secretPath,
         environment,
-        workspaceId
+        projectId: workspaceId
       });
       handlePopUpClose("updateFolder");
       createNotification({
@@ -65,11 +66,12 @@ export const FolderListView = ({
 
   const handleFolderDelete = async () => {
     try {
+      const { id: folderId } = popUp.deleteFolder.data as TSecretFolder;
       await deleteFolder({
-        folderName: popUp.deleteFolder.data as string,
-        directory: secretPath,
+        folderId,
+        path: secretPath,
         environment,
-        workspaceId
+        projectId: workspaceId
       });
       handlePopUpClose("deleteFolder");
       createNotification({
@@ -106,13 +108,13 @@ export const FolderListView = ({
         .map(({ name, id }) => (
           <div
             key={id}
-            className="flex group border-b border-mineshaft-600 hover:bg-mineshaft-700 cursor-pointer"
+            className="group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
           >
-            <div className="w-11 px-5 py-3 text-yellow-700 flex items-center">
+            <div className="flex w-11 items-center px-5 py-3 text-yellow-700">
               <FontAwesomeIcon icon={faFolder} />
             </div>
             <div
-              className="flex-grow px-4 py-3 flex items-center"
+              className="flex flex-grow items-center px-4 py-3"
               role="button"
               tabIndex={0}
               onKeyDown={(evt) => {
@@ -122,7 +124,7 @@ export const FolderListView = ({
             >
               {name}
             </div>
-            <div className="px-3 py-3 flex items-center space-x-4 border-l border-mineshaft-600">
+            <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-3 py-3">
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
                 a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
@@ -134,8 +136,8 @@ export const FolderListView = ({
                     ariaLabel="edit-folder"
                     variant="plain"
                     size="sm"
-                    className="group-hover:opacity-100 opacity-0 p-0"
-                    onClick={() => handlePopUpOpen("updateFolder", name)}
+                    className="p-0 opacity-0 group-hover:opacity-100"
+                    onClick={() => handlePopUpOpen("updateFolder", { id, name })}
                     isDisabled={!isAllowed}
                   >
                     <FontAwesomeIcon icon={faPencilSquare} size="lg" />
@@ -153,8 +155,8 @@ export const FolderListView = ({
                     ariaLabel="delete-folder"
                     variant="plain"
                     size="md"
-                    className="group-hover:opacity-100 opacity-0 p-0"
-                    onClick={() => handlePopUpOpen("deleteFolder", name)}
+                    className="p-0 opacity-0 group-hover:opacity-100"
+                    onClick={() => handlePopUpOpen("deleteFolder", { id, name })}
                     isDisabled={!isAllowed}
                   >
                     <FontAwesomeIcon icon={faClose} size="lg" />
@@ -171,14 +173,14 @@ export const FolderListView = ({
         <ModalContent title="Edit Folder">
           <FolderForm
             isEdit
-            defaultFolderName={popUp.updateFolder.data as string}
+            defaultFolderName={(popUp.updateFolder?.data as TSecretFolder)?.name}
             onUpdateFolder={handleFolderUpdate}
           />
         </ModalContent>
       </Modal>
       <DeleteActionModal
         isOpen={popUp.deleteFolder.isOpen}
-        deleteKey={popUp.deleteFolder?.data as string}
+        deleteKey={(popUp.deleteFolder?.data as TSecretFolder)?.name}
         title="Do you want to delete this folder?"
         onChange={(isOpen) => handlePopUpToggle("deleteFolder", isOpen)}
         onDeleteApproved={handleFolderDelete}

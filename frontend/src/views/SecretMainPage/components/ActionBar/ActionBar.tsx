@@ -112,10 +112,10 @@ export const ActionBar = ({
   const handleFolderCreate = async (folderName: string) => {
     try {
       await createFolder({
-        folderName,
-        directory: secretPath,
+        name: folderName,
+        path: secretPath,
         environment,
-        workspaceId
+        projectId: workspaceId
       });
       handlePopUpClose("addFolder");
       createNotification({

@@ -14,6 +14,7 @@ import {
   TGetUserProjectPermissionDTO,
   TOrgRole,
   TPermission,
+  TProjectPermission,
   TProjectRole
 } from "./types";
 
@@ -50,7 +51,7 @@ const getProjectRoles = async (projectId: string) => {
   }>(`/api/ee/v1/workspace/${projectId}/roles`);
   return data.data.roles.map(({ permissions, ...el }) => ({
     ...el,
-    permissions: unpackRules(permissions as PackRule<TPermission>[])
+    permissions: unpackRules(permissions as PackRule<TProjectPermission>[])
   }));
 };
 

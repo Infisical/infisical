@@ -25,7 +25,6 @@ export const mergeOneToManyRelation = <
       prevPkId = pk;
       prevPkIndex += 1;
     }
-    console.log(prevPkIndex, prevPkId);
     groupedRecord[prevPkIndex][childKey].push(childMapper(row));
   }
   return groupedRecord;

@@ -8,7 +8,7 @@ import {
 import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectEnvDalFactory } from "./project-env-dal";
-import { TCreateEnvDTO, TDeleteEnvDTO, TUpdateEnvDTO } from "./project-env-types";
+import { TCreateEnvDTO, TDeleteEnvDTO, TReorderEnvDTO, TUpdateEnvDTO } from "./project-env-types";
 
 type TProjectEnvServiceFactoryDep = {
   projectEnvDal: TProjectEnvDalFactory;
@@ -36,7 +36,11 @@ export const projectEnvServiceFactory = ({
         name: "Create envv"
       });
 
-    const env = await projectEnvDal.create({ slug, name, projectId });
+    const env = await projectEnvDal.transaction(async (tx) => {
+      const lastPos = await projectEnvDal.findLastEnvPosition(projectId, tx);
+      const doc = await projectEnvDal.create({ slug, name, projectId, position: lastPos }, tx);
+      return doc;
+    });
     return env;
   };
 
@@ -75,13 +79,44 @@ export const projectEnvServiceFactory = ({
       ProjectPermissionSub.Environments
     );
 
-    const [env] = await projectEnvDal.delete({ id, projectId });
+    const env = await projectEnvDal.transaction(async (tx) => {
+      const [doc] = await projectEnvDal.delete({ id, projectId }, tx);
+      if (!doc)
+        throw new BadRequestError({
+          message: "Env doesn't exist",
+          name: "Re-order env"
+        });
+
+      await projectEnvDal.decrementLastPosition(projectId, doc.position, 1, tx);
+      return doc;
+    });
+    return env;
+  };
+
+  const reorderEnvironment = async ({ projectId, id, actorId, actor, pos }: TReorderEnvDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      ProjectPermissionSub.Environments
+    );
+
+    const [env] = await projectEnvDal.transaction(async (tx) => {
+      await projectEnvDal.incrementLastPosition(projectId, pos, 1, tx);
+      return projectEnvDal.update({ id, projectId }, { position: pos }, tx);
+    });
+    if (!env)
+      throw new BadRequestError({
+        message: "Env doesn't exist",
+        name: "Re-order env"
+      });
+
     return env;
   };
 
   return {
     createEnvironment,
     updateEnvironment,
-    deleteEnvironment
+    deleteEnvironment,
+    reorderEnvironment
   };
 };

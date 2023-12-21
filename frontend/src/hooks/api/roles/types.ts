@@ -10,7 +10,7 @@ export type TProjectRole = {
   createdAt: string;
   updatedAt: string;
   description?: string;
-  permissions: TPermission[];
+  permissions: TProjectPermission[];
 };
 
 export type TOrgRole = {
@@ -67,13 +67,13 @@ export type TCreateProjectRoleDTO = {
   name: string;
   description?: string;
   slug: string;
-  permissions: TPermission[];
+  permissions: TProjectPermission[];
 };
 
 export type TUpdateProjectRoleDTO = {
   projectId: string;
   id: string;
-} & Partial<Omit<TCreateOrgRoleDTO, "orgId">>;
+} & Partial<Omit<TCreateProjectRoleDTO, "orgId">>;
 
 export type TDeleteProjectRoleDTO = {
   projectId: string;

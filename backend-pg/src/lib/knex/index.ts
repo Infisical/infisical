@@ -1,8 +1,6 @@
 import { Knex } from "knex";
 import { Tables } from "knex/types/tables";
 
-import { TableName } from "@app/db/schemas";
-
 import { DatabaseError } from "../errors";
 
 export * from "./join";
@@ -19,7 +17,7 @@ export const withTransaction = <K extends object>(db: Knex, dal: K) => ({
 // What is ormify
 // It is to inject typical operations like find, findOne, update, delete, create
 // This will avoid writing most common ones each time
-export const ormify = <DbOps extends object, Tname extends TableName>(
+export const ormify = <DbOps extends object, Tname extends keyof Tables>(
   db: Knex,
   tableName: Tname,
   dal?: DbOps

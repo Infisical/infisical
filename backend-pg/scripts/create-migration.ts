@@ -3,7 +3,7 @@ import { execSync } from "child_process";
 import path from "path";
 import promptSync from "prompt-sync";
 
-const prompt = promptSync();
+const prompt = promptSync({ sigint: true });
 
 const migrationName = prompt("Enter name for migration: ");
 

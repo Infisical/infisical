@@ -17,7 +17,15 @@ export enum TableName {
   Environment = "project_environments",
   ProjectMembership = "project_memberships",
   ProjectRoles = "project_roles",
-  ProjectKeys = "project_keys"
+  ProjectKeys = "project_keys",
+  Secret = "secrets",
+  SecretBlindIndex = "secret_blind_indexes",
+  SecretVersion = "secret_versions",
+  SecretFolder = "secret_folders",
+  SecretImport = "secret_imports",
+  SecretTag = "secret_tags",
+  JnSecretTag = "secret_tag_junction",
+  JnSecretVersionTag = "secret_version_tag_junction"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
@@ -57,4 +65,9 @@ export enum SecretKeyEncoding {
   UTF8 = "utf8",
   BASE64 = "base64",
   HEX = "hex"
+}
+
+export enum SecretType {
+  Shared = "shared",
+  Personal = "personal"
 }

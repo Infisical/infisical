@@ -28,9 +28,9 @@ export class BadRequestError extends Error {
 
   error: unknown;
 
-  constructor({ name, error, message }: { message?: string; name: string; error?: unknown }) {
+  constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
     super(message ?? "The request is invalid");
-    this.name = name;
+    this.name = name || "";
     this.error = error;
   }
 }

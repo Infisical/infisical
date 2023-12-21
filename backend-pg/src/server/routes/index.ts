@@ -28,6 +28,14 @@ import { projectMembershipDalFactory } from "@app/services/project-membership/pr
 import { projectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
 import { projectRoleDalFactory } from "@app/services/project-role/project-role-dal";
 import { projectRoleServiceFactory } from "@app/services/project-role/project-role-service";
+import { secretBlindIndexDalFactory } from "@app/services/secret/secret-blind-index-dal";
+import { secretDalFactory } from "@app/services/secret/secret-dal";
+import { secretServiceFactory } from "@app/services/secret/secret-service";
+import { secretVersionDalFactory } from "@app/services/secret/secret-version-dal";
+import { secretFolderDalFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
+import { secretImportDalFactory } from "@app/services/secret-import/secret-import-dal";
+import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { superAdminDalFactory } from "@app/services/super-admin/super-admin-dal";
 import { superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
@@ -35,10 +43,10 @@ import { userDalFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 
 import { injectIdentity } from "../plugins/auth/inject-identity";
+import { injectPermission } from "../plugins/auth/inject-permission";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
-import { injectPermission } from "../plugins/auth/inject-permission";
 
 export const registerRoutes = async (
   server: FastifyZodProvider,
@@ -59,6 +67,12 @@ export const registerRoutes = async (
   const projectRoleDal = projectRoleDalFactory(db);
   const projectEnvDal = projectEnvDalFactory(db);
   const projectKeyDal = projectKeyDalFactory(db);
+
+  const secretDal = secretDalFactory(db);
+  const folderDal = secretFolderDalFactory(db);
+  const secretImportDal = secretImportDalFactory(db);
+  const secretVersionDal = secretVersionDalFactory(db);
+  const secretBlindIndexDal = secretBlindIndexDalFactory(db);
 
   // ee db layer ops
   const permissionDal = permissionDalFactory(db);
@@ -104,8 +118,10 @@ export const registerRoutes = async (
   const projectService = projectServiceFactory({
     permissionService,
     projectDal,
+    secretBlindIndexDal,
     projectEnvDal,
-    projectMembershipDal
+    projectMembershipDal,
+    folderDal
   });
   const projectMembershipService = projectMembershipServiceFactory({
     projectMembershipDal,
@@ -125,6 +141,25 @@ export const registerRoutes = async (
   });
   const projectRoleService = projectRoleServiceFactory({ permissionService, projectRoleDal });
 
+  const secretService = secretServiceFactory({
+    folderDal,
+    secretVersionDal,
+    secretBlindIndexDal,
+    permissionService,
+    secretDal
+  });
+  const folderService = secretFolderServiceFactory({
+    permissionService,
+    folderDal,
+    projectEnvDal
+  });
+  const secretImportService = secretImportServiceFactory({
+    projectEnvDal,
+    folderDal,
+    permissionService,
+    secretImportDal
+  });
+
   await superAdminService.initServerCfg();
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
@@ -142,7 +177,10 @@ export const registerRoutes = async (
     projectMembership: projectMembershipService,
     projectKey: projectKeyService,
     projectEnv: projectEnvService,
-    projectRole: projectRoleService
+    projectRole: projectRoleService,
+    secret: secretService,
+    folder: folderService,
+    secretImport: secretImportService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {
@@ -169,6 +207,7 @@ export const registerRoutes = async (
     },
     handler: () => {
       const appCfg = getConfig();
+
       return {
         date: new Date(),
         message: "Ok" as const,

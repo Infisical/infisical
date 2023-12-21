@@ -208,8 +208,8 @@ export const SecretListView = ({
       } = modSecret;
       const hasKeyChanged = oldKey !== key;
 
-      const tagIds = tags.map(({ id }) => id);
-      const oldTagIds = orgSecret.tags.map(({ id }) => id);
+      const tagIds = tags?.map(({ id }) => id);
+      const oldTagIds = (orgSecret?.tags || []).map(({ id }) => id);
       const isSameTags = JSON.stringify(tagIds) === JSON.stringify(oldTagIds);
       const isSharedSecUnchanged =
         (

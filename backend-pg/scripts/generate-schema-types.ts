@@ -5,7 +5,7 @@ import knex from "knex";
 import { writeFileSync } from "fs";
 import promptSync from "prompt-sync";
 
-const prompt = promptSync();
+const prompt = promptSync({ sigint: true });
 
 dotenv.config({
   path: path.join(__dirname, "../.env"),

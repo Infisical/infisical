@@ -99,9 +99,9 @@ export const SecretOverviewPage = () => {
     decryptFileKey: latestFileKey!
   });
   const { folders, folderNames, isFolderPresentInEnv } = useGetFoldersByEnv({
-    workspaceId,
-    environments: userAvailableEnvs.map(({ slug }) => slug),
-    directory: secretPath
+    projectId: workspaceId,
+    path: secretPath,
+    environments: userAvailableEnvs.map(({ slug }) => slug)
   });
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
@@ -119,10 +119,10 @@ export const SecretOverviewPage = () => {
         const folderName = pathSegment.at(-1);
         if (folderName && parentPath) {
           await createFolder({
-            workspaceId,
+            projectId: workspaceId,
+            path: secretPath,
             environment: env,
-            directory: parentPath,
-            folderName
+            name: folderName
           });
         }
       }
@@ -216,10 +216,10 @@ export const SecretOverviewPage = () => {
       const folderName = path.at(-1);
       if (folderName && directory) {
         await createFolder({
-          workspaceId,
+          projectId: workspaceId,
           environment: slug,
-          directory,
-          folderName
+          path: secretPath,
+          name: folderName
         });
       }
     }

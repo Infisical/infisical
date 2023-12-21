@@ -17,7 +17,7 @@ import { DeleteActionModal } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSecretImport, useUpdateSecretImport } from "@app/hooks/api";
-import { TSecretImports } from "@app/hooks/api/secretImports/types";
+import { TSecretImport } from "@app/hooks/api/secretImports/types";
 import { DecryptedSecret } from "@app/hooks/api/types";
 
 import { SecretImportItem } from "./SecretImportItem";
@@ -76,17 +76,15 @@ type Props = {
   environment: string;
   workspaceId: string;
   secretPath?: string;
-  secretImports?: TSecretImports;
+  secretImports?: TSecretImport[];
   isFetching?: boolean;
   secrets?: DecryptedSecret[];
   importedSecrets?: TImportedSecrets;
   searchTerm: string;
 };
 
-type TDeleteSecretImport = { environment: string; secretPath: string };
-
 export const SecretImportListView = ({
-  secretImports,
+  secretImports = [],
   environment,
   workspaceId,
   secretPath,
@@ -107,21 +105,11 @@ export const SecretImportListView = ({
     useSensor(KeyboardSensor, {})
   );
 
-  const [items, setItems] = useState(
-    (secretImports?.imports || [])?.map((dto) => ({
-      id: `${dto.environment}-${dto.secretPath}`,
-      ...dto
-    }))
-  );
+  const [items, setItems] = useState(secretImports);
 
   useEffect(() => {
     if (!isFetching) {
-      setItems(
-        (secretImports?.imports || [])?.map((dto) => ({
-          id: `${dto.environment}-${dto.secretPath}`,
-          ...dto
-        }))
-      );
+      setItems(secretImports);
     }
   }, [isFetching]);
 
@@ -129,24 +117,19 @@ export const SecretImportListView = ({
   const { mutate: updateSecretImport } = useUpdateSecretImport();
 
   const handleSecretImportDelete = async () => {
-    const { environment: importEnv, secretPath: impSecPath } = popUp.deleteSecretImport
-      ?.data as TDeleteSecretImport;
+    const { id: secretImportId } = popUp.deleteSecretImport?.data as { id: string };
     try {
-      if (secretImports?.id) {
-        await deleteSecretImport({
-          workspaceId,
-          environment,
-          directory: secretPath,
-          id: secretImports?.id,
-          secretImportEnv: importEnv,
-          secretImportPath: impSecPath
-        });
-        handlePopUpClose("deleteSecretImport");
-        createNotification({
-          type: "success",
-          text: "Successfully removed secret link"
-        });
-      }
+      await deleteSecretImport({
+        projectId: workspaceId,
+        environment,
+        path: secretPath,
+        id: secretImportId
+      });
+      handlePopUpClose("deleteSecretImport");
+      createNotification({
+        type: "success",
+        text: "Successfully removed secret link"
+      });
     } catch (err) {
       console.error(err);
       createNotification({
@@ -163,11 +146,13 @@ export const SecretImportListView = ({
       const newImportOrder = arrayMove(items, oldIndex, newIndex);
       setItems(newImportOrder);
       updateSecretImport({
-        workspaceId,
+        projectId: workspaceId,
         environment,
-        directory: secretPath,
-        id: secretImports?.id || "",
-        secretImports: newImportOrder
+        path: secretPath,
+        id: active.id as string,
+        import: {
+          position: newIndex + 1
+        }
       });
     }
   };
@@ -181,26 +166,28 @@ export const SecretImportListView = ({
         modifiers={[restrictToVerticalAxis]}
       >
         <SortableContext items={items} strategy={verticalListSortingStrategy}>
-          {items?.map(({ secretPath: importedSecPath, environment: importedEnv }) => (
-            <SecretImportItem
-              searchTerm={searchTerm}
-              key={`${importedEnv}-${importedSecPath}`}
-              importedEnv={importedEnv}
-              importedSecPath={importedSecPath}
-              importedSecrets={computeImportedSecretRows(
-                importedEnv,
-                importedSecPath,
-                importedSecrets,
-                secrets,
-                environments
-              )}
-              secretPath={secretPath}
-              environment={environment}
-              onDelete={(env, secPath) =>
-                handlePopUpOpen("deleteSecretImport", { environment: env, secretPath: secPath })
-              }
-            />
-          ))}
+          {items?.map((item) => {
+            const { importPath, importEnv, id } = item;
+            return (
+              <SecretImportItem
+                searchTerm={searchTerm}
+                key={`imported-env-${id}`}
+                id={id}
+                importEnvPath={importPath}
+                importEnvName={importEnv.name}
+                importedSecrets={computeImportedSecretRows(
+                  importEnv.slug,
+                  importPath,
+                  importedSecrets,
+                  secrets,
+                  environments
+                )}
+                secretPath={secretPath}
+                environment={environment}
+                onDelete={() => handlePopUpOpen("deleteSecretImport", item)}
+              />
+            );
+          })}
         </SortableContext>
       </DndContext>
       <DeleteActionModal
@@ -208,8 +195,8 @@ export const SecretImportListView = ({
         deleteKey="unlink"
         title="Do you want to remove this secret import?"
         subTitle={`This will unlink secrets from environment ${
-          (popUp.deleteSecretImport?.data as TDeleteSecretImport)?.environment
-        } of path ${(popUp.deleteSecretImport?.data as TDeleteSecretImport)?.secretPath}?`}
+          (popUp.deleteSecretImport?.data as TSecretImport)?.importEnv
+        } of path ${(popUp.deleteSecretImport?.data as TSecretImport)?.importPath}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteSecretImport", isOpen)}
         onDeleteApproved={handleSecretImportDelete}
       />

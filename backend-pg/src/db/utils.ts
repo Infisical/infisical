@@ -1,15 +1,17 @@
 import { Knex } from "knex";
 
+import { TableName } from "./schemas";
+
 export const createJunctionTable = (
   knex: Knex,
-  tableName: string,
-  table1Name: string,
-  table2Name: string
+  tableName: TableName,
+  table1Name: TableName,
+  table2Name: TableName
 ) =>
   knex.schema.createTable(tableName, (table) => {
-    table.increments(); // Primary key
-    table.integer(`${table1Name}Id`).unsigned().notNullable(); // Foreign key for table1
-    table.integer(`${table2Name}Id`).unsigned().notNullable(); // Foreign key for table2
+    table.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+    table.uuid(`${table1Name}Id`).unsigned().notNullable(); // Foreign key for table1
+    table.uuid(`${table2Name}Id`).unsigned().notNullable(); // Foreign key for table2
     table.foreign(`${table1Name}Id`).references("id").inTable(table2Name);
     table.foreign(`${table2Name}Id`).references("id").inTable(table1Name);
   });

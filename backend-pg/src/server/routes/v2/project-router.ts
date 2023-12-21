@@ -1,7 +1,8 @@
+import { z } from "zod";
+
 import { ProjectKeysSchema } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { z } from "zod";
 
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({

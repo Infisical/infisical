@@ -15,6 +15,9 @@ import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env
 import { TProjectKeyServiceFactory } from "@app/services/project-key/project-key-service";
 import { TProjectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
 import { TProjectRoleServiceFactory } from "@app/services/project-role/project-role-service";
+import { TSecretServiceFactory } from "@app/services/secret/secret-service";
+import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
+import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TAuthTokenServiceFactory } from "@app/services/token/token-service";
 import { TUserDalFactory } from "@app/services/user/user-dal";
@@ -64,6 +67,9 @@ declare module "fastify" {
       projectEnv: TProjectEnvServiceFactory;
       projectKey: TProjectKeyServiceFactory;
       projectRole: TProjectRoleServiceFactory;
+      secret: TSecretServiceFactory;
+      secretImport: TSecretImportServiceFactory;
+      folder: TSecretFolderServiceFactory;
     };
 
     // this is exclusive use for middlewares in which we need to inject data

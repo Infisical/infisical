@@ -40,6 +40,27 @@ import {
   TProjects,
   TProjectsInsert,
   TProjectsUpdate,
+  TSecretBlindIndexes,
+  TSecretBlindIndexesInsert,
+  TSecretBlindIndexesUpdate,
+  TSecretFolders,
+  TSecretFoldersInsert,
+  TSecretFoldersUpdate,
+  TSecretImports,
+  TSecretImportsInsert,
+  TSecretImportsUpdate,
+  TSecrets,
+  TSecretsInsert,
+  TSecretsUpdate,
+  TSecretTagJunction,
+  TSecretTagJunctionInsert,
+  TSecretTagJunctionUpdate,
+  TSecretTags,
+  TSecretTagsInsert,
+  TSecretTagsUpdate,
+  TSecretVersions,
+  TSecretVersionsInsert,
+  TSecretVersionsUpdate,
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
@@ -124,6 +145,37 @@ declare module "knex/types/tables" {
       TProjectKeys,
       TProjectKeysInsert,
       TProjectKeysUpdate
+    >;
+    [TableName.Secret]: Knex.CompositeTableType<TSecrets, TSecretsInsert, TSecretsUpdate>;
+    [TableName.SecretBlindIndex]: Knex.CompositeTableType<
+      TSecretBlindIndexes,
+      TSecretBlindIndexesInsert,
+      TSecretBlindIndexesUpdate
+    >;
+    [TableName.SecretVersion]: Knex.CompositeTableType<
+      TSecretVersions,
+      TSecretVersionsInsert,
+      TSecretVersionsUpdate
+    >;
+    [TableName.SecretFolder]: Knex.CompositeTableType<
+      TSecretFolders,
+      TSecretFoldersInsert,
+      TSecretFoldersUpdate
+    >;
+    [TableName.SecretTag]: Knex.CompositeTableType<
+      TSecretTags,
+      TSecretTagsInsert,
+      TSecretTagsUpdate
+    >;
+    [TableName.SecretImport]: Knex.CompositeTableType<
+      TSecretImports,
+      TSecretImportsInsert,
+      TSecretImportsUpdate
+    >;
+    [TableName.JnSecretTag]: Knex.CompositeTableType<
+      TSecretTagJunction,
+      TSecretTagJunctionInsert,
+      TSecretTagJunctionUpdate
     >;
   }
 }

@@ -9,21 +9,21 @@ export const useCreateSecretImport = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TCreateSecretImportDTO>({
-    mutationFn: async ({ secretImport, environment, workspaceId, directory }) => {
+    mutationFn: async ({ import: secretImport, environment, projectId, path }) => {
       const { data } = await apiRequest.post("/api/v1/secret-imports", {
-        secretImport,
+        import: secretImport,
         environment,
-        workspaceId,
-        directory
+        projectId,
+        path
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, directory }) => {
+    onSuccess: (_, { environment, projectId, path }) => {
       queryClient.invalidateQueries(
-        secretImportKeys.getProjectSecretImports({ workspaceId, environment, directory })
+        secretImportKeys.getProjectSecretImports({ projectId, environment, path })
       );
       queryClient.invalidateQueries(
-        secretImportKeys.getSecretImportSecrets({ workspaceId, environment, directory })
+        secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
       );
     }
   });
@@ -33,21 +33,21 @@ export const useUpdateSecretImport = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TUpdateSecretImportDTO>({
-    mutationFn: async ({ environment, workspaceId, directory, secretImports, id }) => {
-      const { data } = await apiRequest.put(`/api/v1/secret-imports/${id}`, {
-        secretImports,
+    mutationFn: async ({ environment, import: secretImports, projectId, path, id }) => {
+      const { data } = await apiRequest.patch(`/api/v1/secret-imports/${id}`, {
+        import: secretImports,
         environment,
-        workspaceId,
-        directory
+        path,
+        projectId
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, directory }) => {
+    onSuccess: (_, { environment, projectId, path }) => {
       queryClient.invalidateQueries(
-        secretImportKeys.getProjectSecretImports({ workspaceId, environment, directory })
+        secretImportKeys.getProjectSecretImports({ projectId, path, environment })
       );
       queryClient.invalidateQueries(
-        secretImportKeys.getSecretImportSecrets({ workspaceId, environment, directory })
+        secretImportKeys.getSecretImportSecrets({ environment, path, projectId })
       );
     }
   });
@@ -57,21 +57,22 @@ export const useDeleteSecretImport = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TDeleteSecretImportDTO>({
-    mutationFn: async ({ id, secretImportEnv, secretImportPath }) => {
+    mutationFn: async ({ id, projectId, path, environment }) => {
       const { data } = await apiRequest.delete(`/api/v1/secret-imports/${id}`, {
         data: {
-          secretImportPath,
-          secretImportEnv
+          projectId,
+          path,
+          environment
         }
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, directory }) => {
+    onSuccess: (_, { projectId, environment, path }) => {
       queryClient.invalidateQueries(
-        secretImportKeys.getProjectSecretImports({ workspaceId, environment, directory })
+        secretImportKeys.getProjectSecretImports({ projectId, environment, path })
       );
       queryClient.invalidateQueries(
-        secretImportKeys.getSecretImportSecrets({ workspaceId, environment, directory })
+        secretImportKeys.getSecretImportSecrets({ projectId, environment, path })
       );
     }
   });

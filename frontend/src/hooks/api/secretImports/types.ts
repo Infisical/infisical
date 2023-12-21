@@ -1,12 +1,16 @@
 import { UserWsKeyPair } from "../keys/types";
 import { EncryptedSecret } from "../secrets/types";
 
-export type TSecretImports = {
+export type TSecretImport = {
   id: string;
-  workspaceId: string;
-  environment: string;
   folderId: string;
-  imports: Array<{ environment: string; secretPath: string }>;
+  importPath: string;
+  importEnv: {
+    name: string;
+    slug: string;
+    id: string;
+  };
+  position: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -19,44 +23,43 @@ export type TImportedSecrets = {
 };
 
 export type TGetSecretImports = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
-  directory?: string;
+  path?: string;
 };
 
 export type TGetImportedSecrets = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
-  directory?: string;
+  path?: string;
   decryptFileKey: UserWsKeyPair;
 };
 
 export type TCreateSecretImportDTO = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
-  directory?: string;
-  secretImport: {
+  path?: string;
+  import: {
     environment: string;
-    secretPath: string;
+    path: string;
   };
 };
 
 export type TUpdateSecretImportDTO = {
   id: string;
-  workspaceId: string;
+  projectId: string;
   environment: string;
-  directory?: string;
-  secretImports: Array<{
+  path?: string;
+  import: Partial<{
     environment: string;
-    secretPath: string;
+    path: string;
+    position: number;
   }>;
 };
 
 export type TDeleteSecretImportDTO = {
   id: string;
-  workspaceId: string;
+  projectId: string;
   environment: string;
-  directory?: string;
-  secretImportPath: string;
-  secretImportEnv: string;
+  path?: string;
 };

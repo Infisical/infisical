@@ -89,7 +89,7 @@ export const ProjectRoleList = ({ onSelectRole }: Props) => {
             </THead>
             <TBody>
               {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
-              {(roles as TProjectRole[])?.map((role) => {
+              {roles?.map((role) => {
                 const { id, name, slug } = role;
                 const isNonMutatable = ["admin", "member", "viewer", "no-access"].includes(slug);
 

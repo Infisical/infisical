@@ -88,9 +88,9 @@ export const SecretMainPage = () => {
   });
   // fetch folders
   const { data: folders, isLoading: isFoldersLoading } = useGetProjectFolders({
-    workspaceId,
+    projectId: workspaceId,
     environment,
-    directory: secretPath
+    path: secretPath
   });
   // fetch secret imports
   const {
@@ -98,9 +98,9 @@ export const SecretMainPage = () => {
     isLoading: isSecretImportsLoading,
     isFetching: isSecretImportsFetching
   } = useGetSecretImports({
-    workspaceId,
+    projectId: workspaceId,
     environment,
-    directory: secretPath,
+    path: secretPath,
     options: {
       enabled: canReadSecret
     }
@@ -108,15 +108,15 @@ export const SecretMainPage = () => {
 
   // fetch imported secrets to show user the overriden ones
   const { data: importedSecrets } = useGetImportedSecrets({
-    workspaceId,
+    projectId: workspaceId,
     environment,
     decryptFileKey: decryptFileKey!,
-    directory: secretPath,
+    path: secretPath,
     options: {
       enabled: canReadSecret
     }
   });
-  // fetch tags
+  // fech tags
   const { data: tags } = useGetWsTags(canReadSecret ? workspaceId : "");
 
   const { data: boardPolicy } = useGetSecretApprovalPolicyOfABoard({
@@ -146,7 +146,7 @@ export const SecretMainPage = () => {
     isPaused: !canDoReadRollback
   });
 
-  const isNotEmtpy = Boolean(secrets?.length || folders?.length || secretImports?.imports?.length);
+  const isNotEmtpy = Boolean(secrets?.length || folders?.length || secretImports?.length);
 
   const handleSortToggle = () =>
     setSortDir((state) => (state === SortDir.ASC ? SortDir.DESC : SortDir.ASC));

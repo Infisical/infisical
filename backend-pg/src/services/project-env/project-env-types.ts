@@ -14,3 +14,8 @@ export type TUpdateEnvDTO = {
 export type TDeleteEnvDTO = {
   id: string;
 } & TProjectPermission;
+
+export type TReorderEnvDTO = {
+  id: string;
+  pos: number;
+} & TProjectPermission;

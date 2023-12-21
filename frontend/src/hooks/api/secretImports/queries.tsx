@@ -7,44 +7,44 @@ import {
 } from "@app/components/utilities/cryptography/crypto";
 import { apiRequest } from "@app/config/request";
 
-import { TGetImportedSecrets, TGetSecretImports, TImportedSecrets, TSecretImports } from "./types";
+import { TGetImportedSecrets, TGetSecretImports, TImportedSecrets, TSecretImport } from "./types";
 
 export const secretImportKeys = {
-  getProjectSecretImports: ({ environment, workspaceId, directory }: TGetSecretImports) =>
-    [{ workspaceId, directory, environment }, "secrets-imports"] as const,
+  getProjectSecretImports: ({ environment, projectId, path }: TGetSecretImports) =>
+    [{ projectId, path, environment }, "secrets-imports"] as const,
   getSecretImportSecrets: ({
-    workspaceId,
     environment,
-    directory
+    projectId,
+    path
   }: Omit<TGetImportedSecrets, "decryptFileKey">) =>
-    [{ workspaceId, environment, directory }, "secrets-import-sec"] as const
+    [{ environment, path, projectId }, "secrets-import-sec"] as const
 };
 
-const fetchSecretImport = async ({ workspaceId, environment, directory }: TGetSecretImports) => {
-  const { data } = await apiRequest.get<{ secretImport: TSecretImports }>(
+const fetchSecretImport = async ({ projectId, environment, path = "/" }: TGetSecretImports) => {
+  const { data } = await apiRequest.get<{ secretImports: TSecretImport[] }>(
     "/api/v1/secret-imports",
     {
       params: {
-        workspaceId,
+        projectId,
         environment,
-        directory
+        path
       }
     }
   );
-  return data.secretImport;
+  return data.secretImports;
 };
 
 export const useGetSecretImports = ({
-  workspaceId,
   environment,
-  directory = "/",
+  path = "/",
+  projectId,
   options = {}
 }: TGetSecretImports & {
   options?: Omit<
     UseQueryOptions<
-      TSecretImports,
+      TSecretImport[],
       unknown,
-      TSecretImports,
+      TSecretImport[],
       ReturnType<typeof secretImportKeys.getProjectSecretImports>
     >,
     "queryKey" | "queryFn"
@@ -52,9 +52,9 @@ export const useGetSecretImports = ({
 }) =>
   useQuery({
     ...options,
-    queryKey: secretImportKeys.getProjectSecretImports({ workspaceId, environment, directory }),
-    enabled: Boolean(workspaceId) && Boolean(environment) && (options?.enabled ?? true),
-    queryFn: () => fetchSecretImport({ workspaceId, environment, directory })
+    queryKey: secretImportKeys.getProjectSecretImports({ environment, projectId, path }),
+    enabled: Boolean(projectId) && Boolean(environment) && (options?.enabled ?? true),
+    queryFn: () => fetchSecretImport({ path, projectId, environment })
   });
 
 const fetchImportedSecrets = async (
@@ -76,10 +76,10 @@ const fetchImportedSecrets = async (
 };
 
 export const useGetImportedSecrets = ({
-  workspaceId,
   environment,
   decryptFileKey,
-  directory,
+  path,
+  projectId,
   options = {}
 }: TGetImportedSecrets & {
   options?: Omit<
@@ -94,16 +94,16 @@ export const useGetImportedSecrets = ({
 }) =>
   useQuery({
     enabled:
-      Boolean(workspaceId) &&
+      Boolean(projectId) &&
       Boolean(environment) &&
       Boolean(decryptFileKey) &&
       (options?.enabled ?? true),
     queryKey: secretImportKeys.getSecretImportSecrets({
-      workspaceId,
       environment,
-      directory
+      path,
+      projectId
     }),
-    queryFn: () => fetchImportedSecrets(workspaceId, environment, directory),
+    queryFn: () => fetchImportedSecrets(projectId, environment, path),
     select: useCallback(
       (data: TImportedSecrets[]) => {
         const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
