@@ -4,6 +4,7 @@ import { Tables } from "knex/types/tables";
 import { DatabaseError } from "../errors";
 
 export * from "./join";
+export * from "./select";
 
 export const withTransaction = <K extends object>(db: Knex, dal: K) => ({
   transaction: async <T>(cb: (tx: Knex) => Promise<T>) =>

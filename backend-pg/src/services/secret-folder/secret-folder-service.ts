@@ -48,7 +48,12 @@ export const secretFolderServiceFactory = ({
       throw new BadRequestError({ message: "Environment not found", name: "Create folder" });
 
     const folder = await folderDal.transaction(async (tx) => {
-      const doc = await folderDal.create({ name, envId: env.id, version: 1 }, tx);
+      const parentFolder = await folderDal.findBySecretPath(projectId, environment, path, tx);
+      if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
+      const doc = await folderDal.create(
+        { name, envId: env.id, version: 1, parentId: parentFolder.id },
+        tx
+      );
       return doc;
     });
 
@@ -75,7 +80,14 @@ export const secretFolderServiceFactory = ({
       throw new BadRequestError({ message: "Environment not found", name: "Create folder" });
 
     const folder = await folderDal.transaction(async (tx) => {
-      const [doc] = await folderDal.update({ envId: env.id, id }, { name, version: 1 }, tx);
+      const parentFolder = await folderDal.findBySecretPath(projectId, environment, path, tx);
+      if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
+
+      const [doc] = await folderDal.update(
+        { envId: env.id, id, parentId: parentFolder.id },
+        { name, version: 1 },
+        tx
+      );
       if (!doc) throw new BadRequestError({ message: "Folder not found", name: "Update folder" });
       return doc;
     });
@@ -102,7 +114,10 @@ export const secretFolderServiceFactory = ({
       throw new BadRequestError({ message: "Environment not found", name: "Create folder" });
 
     const folder = await folderDal.transaction(async (tx) => {
-      const [doc] = await folderDal.delete({ envId: env.id, id }, tx);
+      const parentFolder = await folderDal.findBySecretPath(projectId, environment, path, tx);
+      if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
+
+      const [doc] = await folderDal.delete({ envId: env.id, id, parentId: parentFolder.id }, tx);
       if (!doc) throw new BadRequestError({ message: "Folder not found", name: "Delete folder" });
       return doc;
     });
@@ -110,17 +125,19 @@ export const secretFolderServiceFactory = ({
     return folder;
   };
 
-  const getFolders = async ({ projectId, actor, actorId, environment }: TGetFolderDTO) => {
+  const getFolders = async ({ projectId, actor, actorId, environment, path }: TGetFolderDTO) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
     await permissionService.getProjectPermission(actor, actorId, projectId);
 
     const env = await projectEnvDal.findOne({ projectId, slug: environment });
-    if (!env)
-      throw new BadRequestError({ message: "Environment not found", name: "Create folder" });
+    if (!env) throw new BadRequestError({ message: "Environment not found", name: "get folders" });
 
-    const folders = await folderDal.find({ envId: env.id, parentId: null });
-    return folders.filter(({ name }) => name !== ROOT_FOLDER_NAME);
+    const parentFolder = await folderDal.findBySecretPath(projectId, environment, path);
+    if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
+
+    const folders = await folderDal.find({ envId: env.id, parentId: parentFolder.id });
+    return folders;
   };
 
   return {
