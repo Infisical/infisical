@@ -2,69 +2,34 @@
 title: "Introduction"
 ---
 
-From local development to production, Infisical SDKs provide the easiest way for your app to fetch back secrets from Infisical on demand. 
+From local development to production, Infisical SDKs provide the easiest way for your app to fetch back secrets from Infisical on demand.
 
-- Install and initialize a language-specific client SDK into your application
-- Provision the client scoped-access to a project and environment in Infisical
-- Fetch secrets on demand
+-   Install and initialize a language-specific client SDK into your application
+-   Provision the client scoped-access to a project and environment in Infisical
+-   Fetch secrets on demand
 
 <CardGroup cols={2}>
-  <Card
-    title="Node"
-    href="https://github.com/Infisical/sdk/tree/main/languages/node"
-    icon="node"
-    color="#68a063"
-  >
-    Manage secrets for your Node application on demand
-  </Card>
-  <Card 
-    href="https://github.com/Infisical/sdk/tree/main/crates/infisical-py" 
-    title="Python" 
-    icon="python" 
-    color="#4c8abe"
-    >
-    Manage secrets for your Python application on demand
-  </Card>
-  <Card 
-    href="https://github.com/Infisical/sdk/tree/main/languages/java" 
-    title="Java" 
-    icon="java"
-    color="#e41f23"
->
-    Manage secrets for your Java application on demand
-  </Card>
-  <Card
-    href="/sdks/languages/ruby"
-    title="Ruby"
-    icon="gem"
-    color="#ac0d01"
-  >
-    Manage secrets for your Ruby application on demand
-  </Card>
-  <Card
-    href="/sdks/languages/go"
-    title="Golang"
-    icon="golang"
-    color="#00add8"
-  >
-    Manage secrets for your Go application on demand
-  </Card>
-  <Card
-    href="/sdks/languages/rust"
-    title="Rust"
-    icon="rust"
-    color="#cd412b"
-  >
-    Manage secrets for your Rust application on demand
-  </Card>
-  <Card
-    href="/sdks/languages/php"
-    title="PHP"
-    icon="php"
-    color="#787cb4"
-  >
-    Manage secrets for your PHP application on demand
-  </Card>
+    <Card title="Node" href="/sdks/languages/node" icon="node" color="#68a063">
+        Manage secrets for your Node application on demand
+    </Card>
+    <Card href="/sdks/languages/python" title="Python" icon="python" color="#4c8abe">
+        Manage secrets for your Python application on demand
+    </Card>
+    <Card href="https://github.com/Infisical/sdk/tree/main/languages/java" title="Java" icon="java" color="#e41f23">
+        Manage secrets for your Java application on demand
+    </Card>
+    <Card href="/sdks/languages/ruby" title="Ruby" icon="gem" color="#ac0d01">
+        Manage secrets for your Ruby application on demand
+    </Card>
+    <Card href="/sdks/languages/go" title="Golang" icon="golang" color="#00add8">
+        Manage secrets for your Go application on demand
+    </Card>
+    <Card href="/sdks/languages/rust" title="Rust" icon="rust" color="#cd412b">
+        Manage secrets for your Rust application on demand
+    </Card>
+    <Card href="/sdks/languages/php" title="PHP" icon="php" color="#787cb4">
+        Manage secrets for your PHP application on demand
+    </Card>
 </CardGroup>
 
 ## FAQ
@@ -98,8 +63,8 @@ From local development to production, Infisical SDKs provide the easiest way for
         - You always pull in the right secrets because they're fetched on demand from a centralize source that is Infisical.
         - You can use the Infisical which comes with tons of benefits like secret versioning, access controls, audit logs, etc.
         - You now risk leaking one token that can be revoked instead of dozens of raw secrets.
-        
+
         And much more.
     </Accordion>
-    
+
 </AccordionGroup>
