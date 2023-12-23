@@ -121,7 +121,7 @@ Retrieve all secrets within the Infisical project and environment that client is
 ```py
 secret = client.getSecret(options=GetSecretOptions(
     environment="dev",
-    project_id="658066938ffb84aa0aa507f6",
+    project_id="PROJECT_ID",
     secret_name="API_KEY"
 ))
 value = secret.secret_value # get its value
