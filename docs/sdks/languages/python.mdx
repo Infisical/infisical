@@ -3,31 +3,38 @@ title: "Python"
 icon: "python"
 ---
 
-If you're working with Python, the official [infisical-python](https://github.com/Infisical/infisical-python) package is the easiest way to fetch and work with secrets for your application.
+If you're working with Python, the official [infisical-python](https://github.com/Infisical/sdk/edit/main/crates/infisical-py) package is the easiest way to fetch and work with secrets for your application.
 
 ## Basic Usage
 
 ```py
 from flask import Flask
-from infisical import InfisicalClient
+from infisical_client import ClientSettings, InfisicalClient, GetSecretOptions
 
 app = Flask(__name__)
 
-client = InfisicalClient(token="your_infisical_token")
+client = InfisicalClient(ClientSettings(
+    client_id="MACHINE_IDENTITY_CLIENT_ID",
+    client_secret="MACHINE_IDENTITY_CLIENT_SECRET",
+))
 
 @app.route("/")
 def hello_world():
     # access value
-    name = client.get_secret("NAME")
+
+    name = client.getSecret(options=GetSecretOptions(
+       environment="dev",
+       project_id="PROJECT_ID",
+       secret_name="NAME"
+    ))
+
     return f"Hello! My name is: {name.secret_value}"
 ```
 
 This example demonstrates how to use the Infisical Python SDK with a Flask application. The application retrieves a secret named "NAME" and responds to requests with a greeting that includes the secret value.
 
 <Warning>
-  We do not recommend hardcoding your [Infisical
-  Token](/documentation/platform/token). Setting it as an environment
-  variable would be best.
+    We do not recommend hardcoding your [Machine Identity Tokens](/platform/identities/overview). Setting it as an environment variable would be best.
 </Warning>
 
 ## Installation
@@ -35,26 +42,34 @@ This example demonstrates how to use the Infisical Python SDK with a Flask appli
 Run `pip` to add `infisical-python` to your project
 
 ```console
-$ pip install infisical
+$ pip install infisical-python
 ```
 
 Note: You need Python 3.7+.
 
 ## Configuration
 
-Import the SDK and create a client instance with your [Infisical Token](/documentation/platform/token).
+Import the SDK and create a client instance with your [Machine Identity](/api-reference/overview/authentication).
 
 ```py
-from infisical import InfisicalClient
+from infisical_client import ClientSettings, InfisicalClient
 
-client = InfisicalClient(token="your_infisical_token")
+client = InfisicalClient(ClientSettings(
+    client_id="MACHINE_IDENTITY_CLIENT_ID",
+    client_secret="MACHINE_IDENTITY_CLIENT_SECRET",
+))
 ```
 
 ### Parameters
 
-    <ParamField query="token" type="string" optional>
-      An [Infisical Token](/documentation/platform/token) scoped to a project
-      and environment
+    <ParamField query="client_id" type="string" optional>
+        Your Infisical Client ID.
+    </ParamField>
+     <ParamField query="client_secret" type="string" optional>
+        Your Infisical Client Secret.
+    </ParamField>
+    <ParamField query="access_token" type="string" optional>
+        If you want to directly pass an access token obtained from the authentication endpoints, you can do so.
     </ParamField>
     <ParamField
       query="site_url"
@@ -65,105 +80,186 @@ client = InfisicalClient(token="your_infisical_token")
       Your self-hosted absolute site URL including the protocol (e.g.
       `https://app.infisical.com`)
     </ParamField>
-    <ParamField query="cache_ttl" type="number" default="300" optional>
-      Time-to-live (in seconds) for refreshing cached secrets. Default: `300`.
-    </ParamField>
-    <ParamField query="debug" type="boolean" default="false" optional>
-      Whether or not debug mode is on
-    </ParamField>
-
-## Caching
-
-The SDK caches every secret and updates it periodically based on the provided `cache_ttl`. For example, if `cache_ttl` of `300` is provided, then a secret will be refetched 5 minutes after the first fetch; if the fetch fails, the cached secret is returned.
-
-<Tip>
-  For optimal performance, we recommend creating a single instance of the Infisical client and exporting it to be used across your entire app to take advantage of caching benefits.
-</Tip>
 
 ## Working with Secrets
 
-### client.get_all_secrets()
+### client.listSecrets(options)
 
 ```py
-secrets = client.get_all_secrets()
+client.listSecrets(options=ListSecretsOptions(
+    environment="dev",
+    project_id="PROJECT_ID"
+))
 ```
 
 Retrieve all secrets within the Infisical project and environment that client is connected to
 
-### client.get_secret(secret_name, options)
+### Parameters
+
+<ParamField query="Parameters" type="object">
+    <Expandable title="properties">
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+          <ParamField query="project_id" type="string" required>
+            The project ID where the secret lives in. 
+        </ParamField>
+
+         <ParamField query="path" type="string" optional>
+            The path from where secrets should be fetched from.
+        </ParamField>
+
+        <ParamField query="include_imports" type="string" default="https://app.infisical.com" optional>
+             Whether or not to include imported secrets from the current path. Read about [secret import](/platform/secret-reference)
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### client.getSecret(options)
 
 ```py
-secret = client.get_secret("API_KEY")
+secret = client.getSecret(options=GetSecretOptions(
+    environment="dev",
+    project_id="658066938ffb84aa0aa507f6",
+    secret_name="API_KEY"
+))
 value = secret.secret_value # get its value
 ```
 
-By default, `get_secret()` fetches and returns a personal secret. If not found, it returns a shared secret, or tries to retrieve the value from `os.environ`. If a secret is fetched, `get_secret()` caches it to reduce excessive calls and re-fetches periodically based on the `cacheTTL` option (default is 300 seconds) when initializing the client — for more information, see the caching section.
+By default, `getSecret()` fetches and returns a shared secret. If not found, it returns a personal secret.
 
 ### Parameters
 
-<ParamField query="secret_name" type="string" required>
-  The key of the secret to retrieve
-</ParamField>
-<ParamField query="type" type="string" default="personal" optional>
-  The type of the secret. Valid options are "shared" or "personal"
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secret_name" type="string" required>
+            The key of the secret to retrieve
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="project_id" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be fetched from.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "personal".
+        </ParamField>
+        <ParamField query="include_imports" type="string" default="https://app.infisical.com" optional>
+            Whether or not to include imported secrets from the current path. Read about [secret import](/platform/secret-reference)
+        </ParamField>
+    </Expandable>
 </ParamField>
 
-### client.create_secret(secret_name, secret_value, options)
+### client.createSecret(options)
 
 ```py
-new_api_key = client.create_secret("API_KEY", "FOO");
+api_key = client.createSecret(options=CreateSecretOptions(
+    secret_name="API_KEY",
+    secret_value="Some API Key",
+    environment="dev",
+    project_id="PROJECT_ID"
+))
 ```
 
 Create a new secret in Infisical.
 
 ### Parameters
 
-<ParamField query="secret_name" type="string" required>
-  The key of the secret to create
-</ParamField>
-<ParamField query="secret_value" type="string" required>
-  The value of the secret to create
-</ParamField>
-<ParamField query="type" type="string" default="shared" optional>
-  The type of the secret. Valid options are "shared" or "personal". A personal secret can only be created if a shared secret with the same name exists.
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secret_name" type="string" required>
+            The key of the secret to create.
+        </ParamField>
+        <ParamField query="secret_value" type="string" required>
+            The value of the secret.
+        </ParamField>
+        <ParamField query="project_id" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be created.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
 </ParamField>
 
-### client.update_secret(secret_name, secret_value, options)
+### client.updateSecret(options)
 
 ```py
-updated_api_key = client.update_secret("API_KEY", "BAR");
+client.updateSecret(options=UpdateSecretOptions(
+    secret_name="API_KEY",
+    secret_value="NEW_VALUE",
+    environment="dev",
+    project_id="PROJECT_ID"
+))
 ```
 
 Update an existing secret in Infisical.
 
 ### Parameters
 
-<ParamField query="secret_name" type="string" required>
-  The key of the secret to update
-</ParamField>
-<ParamField query="secret_value" type="string" required>
-  The new value of the secret
-</ParamField>
-<ParamField query="type" type="string" default="shared" optional>
-  The type of the secret. Valid options are "shared" or "personal"
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secret_name" type="string" required>
+            The key of the secret to update.
+        </ParamField>
+        <ParamField query="secret_value" type="string" required>
+            The new value of the secret.
+        </ParamField>
+        <ParamField query="project_id" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be updated.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
 </ParamField>
 
-### client.delete_secret(secret_name, options)
+### client.deleteSecret(options)
 
 ```py
-deleted_secret = client.delete_secret("API_KEY");
+client.deleteSecret(options=DeleteSecretOptions(
+    environment="dev",
+    project_id="PROJECT_ID",
+    secret_name="API_KEY"
+))
 ```
 
 Delete a secret in Infisical.
 
 ### Parameters
 
-<ParamField query="secret_name" type="string" required>
-  The key of the secret to delete
+<ParamField query="Parameters" type="object" optional>
+    <Expandable title="properties">
+        <ParamField query="secret_name" type="string">
+            The key of the secret to update.
+        </ParamField>
+        <ParamField query="project_id" type="string" required>
+            The project ID where the secret lives in.
+        </ParamField>
+        <ParamField query="environment" type="string" required>
+            The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
+        </ParamField>
+        <ParamField query="path" type="string" optional>
+            The path from where secret should be deleted.
+        </ParamField>
+        <ParamField query="type" type="string" optional>
+            The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "shared".
+        </ParamField>
+    </Expandable>
 </ParamField>
-<ParamField query="type" type="string" default="shared" optional>
-  The type of the secret. Valid options are "shared" or "personal"
-</ParamField>
-
-Follow this GitHub
-[issue](https://github.com/Infisical/infisical/issues/433) to stay updated.
