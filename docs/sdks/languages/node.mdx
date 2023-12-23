@@ -27,7 +27,7 @@ app.get("/", async (req, res) => {
 
     const name = await client.getSecret({
         environment: "dev",
-        projectId: "656dba7f979ebd6652586669",
+        projectId: "PROJECT_ID",
         path: "/",
         type: "shared",
         secretName: "NAME"
@@ -131,10 +131,10 @@ Retrieve all secrets within the Infisical project and environment that client is
 
 <ParamField query="Parameters" type="object">
     <Expandable title="properties">
-        <ParamField query="environment" type="string">
+        <ParamField query="environment" type="string" required>
             The slug name (dev, prod, etc) of the environment from where secrets should be fetched from.
         </ParamField>
-          <ParamField query="projectId" type="string">
+          <ParamField query="projectId" type="string" required>
             The project ID where the secret lives in. 
         </ParamField>
 
