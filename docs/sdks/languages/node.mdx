@@ -46,7 +46,8 @@ app.listen(PORT, async () => {
 This example demonstrates how to use the Infisical Node SDK with an Express application. The application retrieves a secret named "NAME" and responds to requests with a greeting that includes the secret value.
 
 <Warning>
-    We do not recommend hardcoding your [Machine Identity Tokens](/platform/identities/overview). Setting it as an environment variable would be best.
+    We do not recommend hardcoding your [Machine Identity Tokens](/documentation/platform/identities/overview). Setting it as an environment variable
+    would be best.
 </Warning>
 
 ## Installation
@@ -59,7 +60,7 @@ $ npm install @infisical/sdk
 
 ## Configuration
 
-Import the SDK and create a client instance with your [Infisical Token](/documentation/platform/token).
+Import the SDK and create a client instance with your [Machine Identity](/documentation/platform/identities/overview).
 
 <Tabs>
   <Tab title="ES6">
@@ -143,7 +144,7 @@ Retrieve all secrets within the Infisical project and environment that client is
         </ParamField>
 
         <ParamField query="includeImports" type="string" default="https://app.infisical.com" optional>
-             Whether or not to include imported secrets from the current path. Read about [secret import](/platform/secret-reference)
+             Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
         </ParamField>
     </Expandable>
 
