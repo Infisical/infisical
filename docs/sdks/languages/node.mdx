@@ -104,6 +104,11 @@ Import the SDK and create a client instance with your [Machine Identity](/docume
             An access token obtained from the machine identity login endpoint.
         </ParamField>
 
+        <ParamField query="cacheTtl" type="number" default="300" optional>
+            Time-to-live (in seconds) for refreshing cached secrets.
+            If manually set to 0, caching will be disabled, this is not recommended.
+        </ParamField>
+
         <ParamField query="siteUrl" type="string" default="https://app.infisical.com" optional>
             Your self-hosted absolute site URL including the protocol (e.g. `https://app.infisical.com`)
         </ParamField>
@@ -113,6 +118,11 @@ Import the SDK and create a client instance with your [Machine Identity](/docume
     </Expandable>
 
 </ParamField>
+
+### Caching
+
+The SDK caches every secret and updates it periodically based on the provided cacheTTL. For example, if cacheTTL of 300 is provided, then a secret will be refetched every 5 minutes. The SDK first attempts to return the cached secret, but if no secret is found it'll make a request to get the fresh secret. Every time the secret is fetched from the cache, the cached secret expiry is reset.
+
 ## Working with Secrets
 
 ### client.listSecrets(options)
@@ -143,7 +153,11 @@ Retrieve all secrets within the Infisical project and environment that client is
             The path from where secrets should be fetched from.
         </ParamField>
 
-        <ParamField query="includeImports" type="string" default="https://app.infisical.com" optional>
+        <ParamField query="attachToProcessEnv" type="boolean" default="false" optional>
+            Whether or not to set the fetched secrets to the process environment. If true, you can access the secrets like so `process.env["SECRET_NAME"]`.
+        </ParamField>
+
+        <ParamField query="includeImports" type="false" default="boolean" optional>
              Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
         </ParamField>
     </Expandable>
