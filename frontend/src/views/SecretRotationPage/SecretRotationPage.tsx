@@ -1,9 +1,12 @@
 import { useTranslation } from "react-i18next";
+import Link from "next/link";
 import {
   faArrowsSpin,
+  faArrowUpRightFromSquare,
   faExclamationTriangle,
   faFolder,
   faInfoCircle,
+  faPlus,
   faRotate,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
@@ -180,12 +183,21 @@ export const SecretRotationPage = withProjectPermission(
 
     return (
       <div className="container mx-auto bg-bunker-800 text-white w-full h-full max-w-7xl px-6">
-        <div className="my-6">
-          <h2 className="text-3xl font-semibold text-gray-200">Secret Rotation</h2>
-          <p className="text-bunker-300">Auto rotate secrets for better security</p>
+        <div className="py-6 flex justify-between items-center">
+          <div className="flex flex-col w-full">
+            <h2 className="text-3xl font-semibold text-gray-200">Secret Rotation</h2>
+            <p className="text-bunker-300">Stop manually rotating secrets and automate credential rotation.</p>
+          </div>
+          <div className="flex justify-center w-max">
+            <Link href="https://infisical.com/docs/documentation/platform/secret-rotation/overview">
+              <span className="rounded-md px-4 py-2 w-max text-mineshaft-200 hover:text-white bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/10 hover:border-primary/40 duration-200 cursor-pointer">
+                Documentation <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs mb-[0.06rem] ml-1"/>
+              </span>
+            </Link> 
+          </div>
         </div>
         <div className="mb-6">
-          <div className="text-xl font-semibold text-gray-200 mb-2">Rotated Secrets</div>
+          <div className="text-xl font-semibold text-gray-200 mb-2 mt-6">Rotated Secrets</div>
           <div className="flex flex-col space-y-2">
             <TableContainer>
               <Table>
@@ -322,7 +334,7 @@ export const SecretRotationPage = withProjectPermission(
             </TableContainer>
           </div>
         </div>
-        <div className="text-xl font-semibold text-gray-200 mb-2">Infisical Rotation Providers</div>
+        <div className="text-xl font-semibold text-gray-200 mb-2 mt-12">Infisical Rotation Providers</div>
         <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
           {isRotationProviderLoading &&
             Array.from({ length: 12 }).map((_, index) => (
@@ -331,7 +343,7 @@ export const SecretRotationPage = withProjectPermission(
           {!isRotationProviderLoading &&
             secretRotationProviders?.providers.map((provider) => (
               <div
-                className="group relative cursor-pointer h-32 flex flex-row items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+                className="group relative cursor-pointer h-32 flex flex-row items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 hover:border-primary/40 hover:bg-primary/10"
                 key={`infisical-rotation-provider-${provider.name}`}
                 tabIndex={0}
                 role="button"
@@ -349,13 +361,21 @@ export const SecretRotationPage = withProjectPermission(
                 <div className="ml-4 max-w-xs text-xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
                   {provider.title}
                 </div>
-                <div className="group-hover:opacity-100 transition-all opacity-0 absolute top-1 right-1">
+                <div className="group-hover:opacity-100 transition-all opacity-0 absolute top-1 right-1.5">
                   <Tooltip content={provider.description} sideOffset={10}>
-                    <FontAwesomeIcon icon={faInfoCircle} className="text-bunker-300" />
+                    <FontAwesomeIcon icon={faInfoCircle} className="text-primary" />
                   </Tooltip>
                 </div>
               </div>
             ))}
+            <Link href="https://github.com/Infisical/infisical/issues">
+              <div className="group relative cursor-pointer h-32 flex flex-row items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 hover:border-primary/40 hover:bg-primary/10">
+                <FontAwesomeIcon icon={faPlus} className="text-gray-300 text-3xl pl-3 pr-2" />
+                <div className="ml-4 max-w-xs text-xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
+                  Request or create your own template
+                </div>
+              </div>
+            </Link>
         </div>
         <CreateRotationForm
           isOpen={popUp.createRotation.isOpen}

@@ -1,4 +1,5 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import Link from "next/link";
+import { faArrowUpRightFromSquare, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -65,17 +66,24 @@ export const IdentitySection = withPermission(
         
         return (
             <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-                <div className="flex justify-between mb-8">
+                <div className="flex justify-between mb-4">
                     <p className="text-xl font-semibold text-mineshaft-100">
                         Identities
                     </p>
+                    <div className="flex justify-end w-full pr-4">
+                        <Link href="https://infisical.com/docs/documentation/platform/identities/overview">
+                            <span className="rounded-md px-4 py-2 w-max text-mineshaft-200 hover:text-white bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/10 hover:border-primary/40 duration-200 cursor-pointer">
+                            Documentation <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs mb-[0.06rem] ml-1"/>
+                            </span>
+                        </Link> 
+                    </div>
                     <OrgPermissionCan
                         I={OrgPermissionActions.Create}
                         a={OrgPermissionSubjects.Identity}
                     >
                         {(isAllowed) => (
                         <Button
-                            colorSchema="secondary"
+                            colorSchema="primary"
                             type="submit"
                             leftIcon={<FontAwesomeIcon icon={faPlus} />}
                             onClick={() => handlePopUpOpen("identity")}
