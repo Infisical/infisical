@@ -19,6 +19,7 @@ public class Example {
         ClientSettings settings = new ClientSettings();
         settings.setClientID("MACHINE_IDENTITY_CLIENT_ID");
         settings.setClientSecret("MACHINE_IDENTITY_CLIENT_SECRET");
+        settings.setCacheTTL(Long.valueOf(300)); // 300 seconds, 5 minutes
 
         InfisicalClient client = new InfisicalClient(settings);
 
@@ -88,12 +89,21 @@ public class App {
             An access token obtained from the machine identity login endpoint.
         </ParamField>
 
+        <ParamField query="setCacheTTL()" type="number" default="300" optional>
+            Time-to-live (in seconds) for refreshing cached secrets.
+            If manually set to 0, caching will be disabled, this is not recommended.
+        </ParamField>
+
         <ParamField query="setSiteURL()" type="string" default="https://app.infisical.com" optional>
             Your self-hosted absolute site URL including the protocol (e.g. `https://app.infisical.com`)
         </ParamField>
     </Expandable>
 
 </ParamField>
+
+### Caching
+
+The SDK caches every secret and updates it periodically based on the provided cacheTTL. For example, if cacheTTL of 300 is provided, then a secret will be refetched every 5 minutes. The SDK first attempts to return the cached secret, but if no secret is found it'll make a request to get the fresh secret. Every time the secret is fetched from the cache, the cached secret expiry is reset.
 
 ## Working with Secrets
 
@@ -127,7 +137,11 @@ Retrieve all secrets within the Infisical project and environment that client is
             The path from where secrets should be fetched from.
         </ParamField>
 
-        <ParamField query="setIncludeImports" type="string" default="https://app.infisical.com" optional>
+        <ParamField query="setAttachToProcessEnv()" type="boolean" default="false" optional>
+             Whether or not to set the fetched secrets to the process environment. If true, you can access the secrets like so `System.getenv("SECRET_NAME")`.
+        </ParamField>
+
+        <ParamField query="setIncludeImports()" type="boolean" default="false" optional>
              Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
         </ParamField>
     </Expandable>
