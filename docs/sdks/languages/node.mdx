@@ -121,7 +121,7 @@ Import the SDK and create a client instance with your [Machine Identity](/docume
 
 ### Caching
 
-The SDK caches every secret and updates it periodically based on the provided cacheTTL. For example, if cacheTTL of 300 is provided, then a secret will be refetched every 5 minutes. The SDK first attempts to return the cached secret, but if no secret is found it'll make a request to get the fresh secret. Every time the secret is fetched from the cache, the cached secret expiry is reset.
+To reduce the number of API requests, the SDK temporarily stores secrets it retrieves. By default, a secret remains cached for 5 minutes after it's first fetched. Each time it's fetched again, this 5-minute timer resets. You can adjust this caching duration by setting the "cacheTtl" option when creating the client.
 
 ## Working with Secrets
 
