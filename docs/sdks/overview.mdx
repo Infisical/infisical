@@ -36,31 +36,18 @@ From local development to production, Infisical SDKs provide the easiest way for
 
 <AccordionGroup>
     <Accordion title="Isn't it inefficient if my app makes a request every time it needs a secret?">
-        The client SDK caches every secret and implements a 5-minute waiting period before
-        re-requesting it. The waiting period can be controlled by setting the `cacheTTL` parameter at
-        the time of initializing the client.
+        The client SDK caches every secret and implements a 5-minute waiting period before re-requesting it. The waiting period can be controlled by
+        setting the `cacheTTL` parameter at the time of initializing the client.
         
         Note: The exact parameter name may differ depending on the language.
     </Accordion>
-       <Accordion title="Can I attach the environment variables to my process environment?">
-        Yes you can! The client SDK provides a method to attach the secrets to your process environment.
-        When using the `listSecrets()` method, you can pass a `attachToProcessEnv` parameter, which tells the SDK to attach all the found secrets to your process environment.
+    <Accordion title="Can I attach the environment variables to my process environment?">
+        Yes you can! The client SDK provides a method to attach the secrets to your process environment. When using the `listSecrets()` method, you
+        can pass a `attachToProcessEnv` parameter, which tells the SDK to attach all the found secrets to your process environment.
         
         Note: The exact parameter name may differ depending on the language.
     </Accordion>
     <Accordion title="What if a request for a secret fails?">
         The SDK caches every secret and falls back to the cached value if a request fails. If no cached value is found, and the request fails, then the SDK throws an error.
     </Accordion>
-    <Accordion title="What's the point if I still have to manage a token for the SDK?">
-        The token enables the SDK to authenticate with Infisical to fetch back your secrets.
-        Although the SDK requires you to pass in a token, it enables greater efficiency and security
-        than if you managed dozens of secrets yourself without it. Here're some benefits:
-
-        - You always pull in the right secrets because they're fetched on demand from a centralize source that is Infisical.
-        - You can use the Infisical which comes with tons of benefits like secret versioning, access controls, audit logs, etc.
-        - You now risk leaking one token that can be revoked instead of dozens of raw secrets.
-
-        And much more.
-    </Accordion>
-
 </AccordionGroup>
