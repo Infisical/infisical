@@ -62,24 +62,40 @@ client = InfisicalClient(ClientSettings(
 
 ### Parameters
 
-    <ParamField query="client_id" type="string" optional>
-        Your Infisical Client ID.
-    </ParamField>
-     <ParamField query="client_secret" type="string" optional>
-        Your Infisical Client Secret.
-    </ParamField>
-    <ParamField query="access_token" type="string" optional>
-        If you want to directly pass an access token obtained from the authentication endpoints, you can do so.
-    </ParamField>
-    <ParamField
-      query="site_url"
-      type="string"
-      default="https://app.infisical.com"
-      optional
-    >
-      Your self-hosted absolute site URL including the protocol (e.g.
-      `https://app.infisical.com`)
-    </ParamField>
+<ParamField query="options" type="object">
+    <Expandable title="properties">
+        <ParamField query="client_id" type="string" optional>
+            Your Infisical Client ID.
+        </ParamField>
+        <ParamField query="client_secret" type="string" optional>
+            Your Infisical Client Secret.
+        </ParamField>
+        <ParamField query="access_token" type="string" optional>
+            If you want to directly pass an access token obtained from the authentication endpoints, you can do so.
+        </ParamField>
+
+        <ParamField query="cache_ttl" type="number" default="300" optional>
+            Time-to-live (in seconds) for refreshing cached secrets.
+            If manually set to 0, caching will be disabled, this is not recommended.
+        </ParamField>
+
+
+        <ParamField
+        query="site_url"
+        type="string"
+        default="https://app.infisical.com"
+        optional
+        >
+        Your self-hosted absolute site URL including the protocol (e.g.
+        `https://app.infisical.com`)
+        </ParamField>
+    </Expandable>
+
+</ParamField>
+
+### Caching
+
+The SDK caches every secret and updates it periodically based on the provided cacheTTL. For example, if cacheTTL of 300 is provided, then a secret will be refetched every 5 minutes. The SDK first attempts to return the cached secret, but if no secret is found it'll make a request to get the fresh secret. Every time the secret is fetched from the cache, the cached secret expiry is reset.
 
 ## Working with Secrets
 
@@ -109,7 +125,11 @@ Retrieve all secrets within the Infisical project and environment that client is
             The path from where secrets should be fetched from.
         </ParamField>
 
-        <ParamField query="include_imports" type="string" default="https://app.infisical.com" optional>
+        <ParamField query="attach_to_process_env" type="boolean" default="false" optional>
+            Whether or not to set the fetched secrets to the process environment. If true, you can access the secrets like so `process.env["SECRET_NAME"]`.
+        </ParamField>
+
+        <ParamField query="include_imports" type="boolean" default="false" optional>
              Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
         </ParamField>
     </Expandable>
@@ -148,7 +168,7 @@ By default, `getSecret()` fetches and returns a shared secret. If not found, it 
         <ParamField query="type" type="string" optional>
             The type of the secret. Valid options are "shared" or "personal". If not specified, the default value is "personal".
         </ParamField>
-        <ParamField query="include_imports" type="string" default="https://app.infisical.com" optional>
+        <ParamField query="include_imports" type="boolean" default="false" optional>
             Whether or not to include imported secrets from the current path. Read about [secret import](/documentation/platform/secret-reference)
         </ParamField>
     </Expandable>
