@@ -50,6 +50,7 @@ export const userAgentTTypeoNameMap: { [K in UserAgentType]: string } = {
     [UserAgentType.WEB]: "Web",
     [UserAgentType.CLI]: "CLI",
     [UserAgentType.K8_OPERATOR]: "K8s operator",
+    [UserAgentType.TERRAFORM]: "Terraform",
     [UserAgentType.NODE_SDK]: "InfisicalNodeSDK",
     [UserAgentType.PYTHON_SDK]: "InfisicalPythonSDK",
     [UserAgentType.OTHER]: "Other",
