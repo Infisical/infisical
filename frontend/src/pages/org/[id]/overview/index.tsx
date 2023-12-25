@@ -67,8 +67,16 @@ const features = [
   {
     _id: 0,
     name: "Kubernetes Operator",
+    link: "https://infisical.com/docs/documentation/getting-started/kubernetes",
     description:
       "Pull secrets into your Kubernetes containers and automatically redeploy upon secret changes."
+  }, 
+  {
+    _id: 1,
+    name: "Infisical Agent",
+    link: "https://infisical.com/docs/infisical-agent/overview",
+    description:
+      "Inject secrets into your apps without modifying any application logic."
   }
 ];
 
@@ -691,11 +699,44 @@ const OrganizationPage = withPermission(
             </div>
           )}
         </div>
+        <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-6 text-3xl">
+          <p className="mr-4 font-semibold text-white">Explore Infisical</p>
+          <div className="mt-4 grid grid-cols-3 w-full gap-4">
+            {features.map((feature) => (
+              <div
+                key={feature._id}
+                className="flex h-44 w-full flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
+              >
+                <div className="mt-0 text-lg text-mineshaft-100">{feature.name}</div>
+                <div className="mb-4 mt-2 text-[15px] font-light text-mineshaft-300">
+                  {feature.description}
+                </div>
+                <div className="flex w-full items-center">
+                  <div className="text-[15px] font-light text-mineshaft-300">
+                    Setup time: 20 min
+                  </div>
+                  <a
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group ml-auto w-max cursor-default rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200"
+                    href={feature.link}
+                  >
+                    Learn more{" "}
+                    <FontAwesomeIcon
+                      icon={faArrowRight}
+                      className="pl-1.5 pr-0.5 duration-200 group-hover:pl-2 group-hover:pr-0"
+                    />
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
         {!(
           new Date().getTime() - new Date(user?.createdAt).getTime() <
           30 * 24 * 60 * 60 * 1000
         ) && (
-          <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
+          <div className="mb-4 flex flex-col items-start justify-start px-6 pb-6 pb-0 text-3xl">
             <p className="mr-4 mb-4 font-semibold text-white">Onboarding Guide</p>
             <div className="mb-3 grid w-full grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               <LearningItemSquare
@@ -784,42 +825,6 @@ const OrganizationPage = withPermission(
             )}
           </div>
         )}
-        <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-6 text-3xl">
-          <p className="mr-4 font-semibold text-white">Explore More</p>
-          <div
-            className="mt-4 grid w-full grid-flow-dense gap-4"
-            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(256px, 4fr))" }}
-          >
-            {features.map((feature) => (
-              <div
-                key={feature._id}
-                className="flex h-44 w-96 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
-              >
-                <div className="mt-0 text-lg text-mineshaft-100">{feature.name}</div>
-                <div className="mb-4 mt-2 text-[15px] font-light text-mineshaft-300">
-                  {feature.description}
-                </div>
-                <div className="flex w-full items-center">
-                  <div className="text-[15px] font-light text-mineshaft-300">
-                    Setup time: 20 min
-                  </div>
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group ml-auto w-max cursor-default rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200"
-                    href="https://infisical.com/docs/documentation/getting-started/kubernetes"
-                  >
-                    Learn more{" "}
-                    <FontAwesomeIcon
-                      icon={faArrowRight}
-                      className="pl-1.5 pr-0.5 duration-200 group-hover:pl-2 group-hover:pr-0"
-                    />
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
         <Modal
           isOpen={popUp.addNewWs.isOpen}
           onOpenChange={(isModalOpen) => {

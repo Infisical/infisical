@@ -191,9 +191,9 @@ export const IdentityModal = ({
                     </form>
                 ) : (
                     <div className="flex flex-col space-y-4">
-                        <div>All identities in your organization are already added.</div>
+                        <div className="text-sm">All identities in your organization have already been added to this project.</div>
                         <Link href={`/org/${currentWorkspace?.organization}/members`}>
-                            <Button variant="outline_bg">Create a new/another identities</Button>
+                            <Button variant="outline_bg">Create a new identity</Button>
                         </Link>
                     </div>
                 )}
