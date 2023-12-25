@@ -9,6 +9,10 @@ export const getUserAgentType = function (userAgent: string | undefined) {
     return UserAgentType.K8_OPERATOR;
   } else if (userAgent.toLowerCase().includes("mozilla")) {
     return UserAgentType.WEB;
+  } else if (userAgent.includes(UserAgentType.NODE_SDK)) {
+    return UserAgentType.NODE_SDK;
+  } else if (userAgent.includes(UserAgentType.PYTHON_SDK)) {
+    return UserAgentType.PYTHON_SDK;
   } else {
     return UserAgentType.OTHER;
   }

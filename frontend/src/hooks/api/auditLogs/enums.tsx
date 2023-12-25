@@ -8,6 +8,8 @@ export enum UserAgentType {
   WEB = "web",
   CLI = "cli",
   K8_OPERATOR = "k8-operator",
+  NODE_SDK = "node-sdk",
+  PYTHON_SDK = "python-sdk",
   OTHER = "other"
 }
 
