@@ -8,9 +8,12 @@ import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
 import { AuthMode } from "@app/services/auth/auth-signup-type";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
+import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TProjectServiceFactory } from "@app/services/project/project-service";
+import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env-service";
 import { TProjectKeyServiceFactory } from "@app/services/project-key/project-key-service";
 import { TProjectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
@@ -69,7 +72,10 @@ declare module "fastify" {
       projectRole: TProjectRoleServiceFactory;
       secret: TSecretServiceFactory;
       secretImport: TSecretImportServiceFactory;
+      projectBot: TProjectBotServiceFactory;
       folder: TSecretFolderServiceFactory;
+      integration: TIntegrationServiceFactory;
+      integrationAuth: TIntegrationAuthServiceFactory;
     };
 
     // this is exclusive use for middlewares in which we need to inject data

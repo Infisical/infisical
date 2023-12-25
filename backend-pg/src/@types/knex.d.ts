@@ -16,6 +16,12 @@ import {
   TIncidentContacts,
   TIncidentContactsInsert,
   TIncidentContactsUpdate,
+  TIntegrationAuths,
+  TIntegrationAuthsInsert,
+  TIntegrationAuthsUpdate,
+  TIntegrations,
+  TIntegrationsInsert,
+  TIntegrationsUpdate,
   TOrganizations,
   TOrganizationsInsert,
   TOrganizationsUpdate,
@@ -25,6 +31,9 @@ import {
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
+  TProjectBots,
+  TProjectBotsInsert,
+  TProjectBotsUpdate,
   TProjectEnvironments,
   TProjectEnvironmentsInsert,
   TProjectEnvironmentsUpdate,
@@ -136,6 +145,11 @@ declare module "knex/types/tables" {
       TProjectEnvironmentsInsert,
       TProjectEnvironmentsUpdate
     >;
+    [TableName.ProjectBot]: Knex.CompositeTableType<
+      TProjectBots,
+      TProjectBotsInsert,
+      TProjectBotsUpdate
+    >;
     [TableName.ProjectRoles]: Knex.CompositeTableType<
       TProjectRoles,
       TProjectRolesInsert,
@@ -171,6 +185,16 @@ declare module "knex/types/tables" {
       TSecretImports,
       TSecretImportsInsert,
       TSecretImportsUpdate
+    >;
+    [TableName.Integration]: Knex.CompositeTableType<
+      TIntegrations,
+      TIntegrationsInsert,
+      TIntegrationsUpdate
+    >;
+    [TableName.IntegrationAuth]: Knex.CompositeTableType<
+      TIntegrationAuths,
+      TIntegrationAuthsInsert,
+      TIntegrationAuthsUpdate
     >;
     [TableName.JnSecretTag]: Knex.CompositeTableType<
       TSecretTagJunction,

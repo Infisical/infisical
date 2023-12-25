@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { zpStr } from "../zod";
 
+export const GITLAB_URL = "https://gitlab.com";
+
 const zodStrBool = z
   .enum(["true", "false"])
   .optional()
@@ -46,7 +48,34 @@ const envSchema = z
     CLIENT_SECRET_GITHUB_LOGIN: zpStr(z.string().optional()),
     CLIENT_ID_GITLAB_LOGIN: zpStr(z.string().optional()),
     CLIENT_SECRET_GITLAB_LOGIN: zpStr(z.string().optional()),
-    CLIENT_GITLAB_LOGIN_URL: zpStr(z.string().optional())
+    CLIENT_GITLAB_LOGIN_URL: zpStr(z.string().optional().default(GITLAB_URL)),
+    // integration client secrets
+    // heroku
+    CLIENT_ID_HEROKU: zpStr(z.string().optional()),
+    CLIENT_SECRET_HEROKU: zpStr(z.string().optional()),
+    // vercel
+    CLIENT_ID_VERCEL: zpStr(z.string().optional()),
+    CLIENT_SECRET_VERCEL: zpStr(z.string().optional()),
+    CLIENT_SLUG_VERCEL: zpStr(z.string().optional()),
+    // netlify
+    CLIENT_ID_NETLIFY: zpStr(z.string().optional()),
+    CLIENT_SECRET_NETLIFY: zpStr(z.string().optional()),
+    // bit bucket
+    CLIENT_ID_BITBUCKET: zpStr(z.string().optional()),
+    CLIENT_SECRET_BITBUCKET: zpStr(z.string().optional()),
+    // gcp secret manager
+    CLIENT_ID_GCP_SECRET_MANAGER: zpStr(z.string().optional()),
+    CLIENT_SECRET_GCP_SECRET_MANAGER: zpStr(z.string().optional()),
+    // github
+    CLIENT_ID_GITHUB: zpStr(z.string().optional()),
+    CLIENT_SECRET_GITHUB: zpStr(z.string().optional()),
+    // azure
+    CLIENT_ID_AZURE: zpStr(z.string().optional()),
+    CLIENT_SECRET_AZURE: zpStr(z.string().optional()),
+    // google
+    CLIENT_ID_GITLAB: zpStr(z.string().optional()),
+    CLIENT_SECRET_GITLAB: zpStr(z.string().optional()),
+    URL_GITLAB_URL: zpStr(z.string().optional().default(GITLAB_URL))
   })
   .transform((data) => ({ ...data, isSmtpConfigured: Boolean(data.SMTP_HOST) }));
 

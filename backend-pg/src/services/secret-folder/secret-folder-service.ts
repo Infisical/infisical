@@ -8,7 +8,7 @@ import {
 import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
-import { ROOT_FOLDER_NAME, TSecretFolderDalFactory } from "./secret-folder-dal";
+import { TSecretFolderDalFactory } from "./secret-folder-dal";
 import {
   TCreateFolderDTO,
   TDeleteFolderDTO,

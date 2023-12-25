@@ -14,6 +14,7 @@ export enum TableName {
   SuperAdmin = "super_admin",
   ApiKey = "api_keys",
   Project = "projects",
+  ProjectBot = "project_bots",
   Environment = "project_environments",
   ProjectMembership = "project_memberships",
   ProjectRoles = "project_roles",
@@ -24,6 +25,8 @@ export enum TableName {
   SecretFolder = "secret_folders",
   SecretImport = "secret_imports",
   SecretTag = "secret_tags",
+  Integration = "integrations",
+  IntegrationAuth = "integration_auths",
   JnSecretTag = "secret_tag_junction",
   JnSecretVersionTag = "secret_version_tag_junction"
 }

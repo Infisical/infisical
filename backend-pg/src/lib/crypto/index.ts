@@ -6,6 +6,7 @@ export {
   decryptSymmetric128BitHexKeyUTF8,
   encryptAsymmetric,
   encryptSymmetric,
-  encryptSymmetric128BitHexKeyUTF8
+  encryptSymmetric128BitHexKeyUTF8,
+  generateAsymmetricKeyPair
 } from "./encryption";
 export { generateSrpServerKey, srpCheckClientProof } from "./srp";

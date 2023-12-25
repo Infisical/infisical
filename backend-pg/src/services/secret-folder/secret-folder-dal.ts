@@ -37,7 +37,7 @@ const sqlFindFolderByPathQuery = (
           depth: 1,
           path: db.raw("'/'")
         })
-        .select(selectAllTableCols(db, TableName.SecretFolder))
+        .select(selectAllTableCols(TableName.SecretFolder))
         .from(TableName.SecretFolder)
         .join(
           TableName.Environment,
@@ -60,7 +60,7 @@ const sqlFindFolderByPathQuery = (
                 "CONCAT((CASE WHEN parent.path = '/' THEN '' ELSE parent.path END),'/', secret_folders.name)"
               )
             })
-            .select(selectAllTableCols(db, TableName.SecretFolder))
+            .select(selectAllTableCols(TableName.SecretFolder))
             .whereRaw(
               `depth = array_position(ARRAY[${pathSegments
                 .map(() => "?")

@@ -13,6 +13,10 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDalFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { integrationDalFactory } from "@app/services/integration/integration-dal";
+import { integrationServiceFactory } from "@app/services/integration/integration-service";
+import { integrationAuthDalFactory } from "@app/services/integration-auth/integration-auth-dal";
+import { integrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { incidentContactDalFactory } from "@app/services/org/incident-contacts-dal";
 import { orgDalFactory } from "@app/services/org/org-dal";
 import { orgRoleDalFactory } from "@app/services/org/org-role-dal";
@@ -20,6 +24,8 @@ import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { projectDalFactory } from "@app/services/project/project-dal";
 import { projectServiceFactory } from "@app/services/project/project-service";
+import { projectBotDalFactory } from "@app/services/project-bot/project-bot-dal";
+import { projectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { projectEnvDalFactory } from "@app/services/project-env/project-env-dal";
 import { projectEnvServiceFactory } from "@app/services/project-env/project-env-service";
 import { projectKeyDalFactory } from "@app/services/project-key/project-key-dal";
@@ -67,12 +73,16 @@ export const registerRoutes = async (
   const projectRoleDal = projectRoleDalFactory(db);
   const projectEnvDal = projectEnvDalFactory(db);
   const projectKeyDal = projectKeyDalFactory(db);
+  const projectBotDal = projectBotDalFactory(db);
 
   const secretDal = secretDalFactory(db);
   const folderDal = secretFolderDalFactory(db);
   const secretImportDal = secretImportDalFactory(db);
   const secretVersionDal = secretVersionDalFactory(db);
   const secretBlindIndexDal = secretBlindIndexDalFactory(db);
+
+  const integrationDal = integrationDalFactory(db);
+  const integrationAuthDal = integrationAuthDalFactory(db);
 
   // ee db layer ops
   const permissionDal = permissionDalFactory(db);
@@ -159,6 +169,20 @@ export const registerRoutes = async (
     permissionService,
     secretImportDal
   });
+  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDal });
+  const integrationService = integrationServiceFactory({
+    permissionService,
+    folderDal,
+    integrationDal,
+    integrationAuthDal
+  });
+  const integrationAuthService = integrationAuthServiceFactory({
+    integrationAuthDal,
+    integrationDal,
+    permissionService,
+    projectBotDal,
+    projectBotService
+  });
 
   await superAdminService.initServerCfg();
   // inject all services
@@ -180,7 +204,10 @@ export const registerRoutes = async (
     projectRole: projectRoleService,
     secret: secretService,
     folder: folderService,
-    secretImport: secretImportService
+    secretImport: secretImportService,
+    projectBot: projectBotService,
+    integration: integrationService,
+    integrationAuth: integrationAuthService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {

@@ -1,5 +1,8 @@
 import { registerAdminRouter } from "./admin-router";
 import { registerAuthRoutes } from "./auth-router";
+import { registerProjectBotRouter } from "./bot-router";
+import { registerIntegrationAuthRouter } from "./integration-auth-router";
+import { registerIntegrationRouter } from "./integration-router";
 import { registerInviteOrgRouter } from "./invite-org-router";
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
@@ -34,4 +37,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/workspace" }
   );
+
+  await server.register(registerProjectBotRouter, { prefix: "/bot" });
+  await server.register(registerIntegrationRouter, { prefix: "/integration" });
+  await server.register(registerIntegrationAuthRouter, { prefix: "/integration-auth" });
 };

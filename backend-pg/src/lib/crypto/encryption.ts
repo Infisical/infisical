@@ -120,6 +120,15 @@ export const decryptAsymmetric = ({
   return naclUtils.encodeUTF8(plaintext);
 };
 
+export const generateAsymmetricKeyPair = () => {
+  const pair = nacl.box.keyPair();
+
+  return {
+    publicKey: naclUtils.encodeBase64(pair.publicKey),
+    privateKey: naclUtils.encodeBase64(pair.secretKey)
+  };
+};
+
 export type TGenSecretBlindIndex = {
   secretName: string;
   keyEncoding: SecretKeyEncoding;
