@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName,TIntegrations } from "@app/db/schemas";
+import { TableName, TIntegrations } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -13,6 +13,7 @@ export const integrationDalFactory = (db: TDbClient) => {
   const integrationFindQuery = (tx: Knex, filter: Partial<TIntegrations>) =>
     tx(TableName.Integration)
       .where(filter)
+      .join(TableName.Environment, `${TableName.Integration}.envId`, `${TableName.Environment}.id`)
       .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))
       .select(tx.ref("slug").withSchema(TableName.Environment).as("envSlug"))
       .select(tx.ref("id").withSchema(TableName.Environment).as("envId"))

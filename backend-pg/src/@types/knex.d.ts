@@ -70,6 +70,9 @@ import {
   TSecretVersions,
   TSecretVersionsInsert,
   TSecretVersionsUpdate,
+  TServiceTokens,
+  TServiceTokensInsert,
+  TServiceTokensUpdate,
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
@@ -81,7 +84,10 @@ import {
   TUserEncryptionKeysUpdate,
   TUsers,
   TUsersInsert,
-  TUsersUpdate
+  TUsersUpdate,
+  TWebhooks,
+  TWebhooksInsert,
+  TWebhooksUpdate
 } from "@app/db/schemas";
 
 declare module "knex/types/tables" {
@@ -190,6 +196,12 @@ declare module "knex/types/tables" {
       TIntegrations,
       TIntegrationsInsert,
       TIntegrationsUpdate
+    >;
+    [TableName.Webhook]: Knex.CompositeTableType<TWebhooks, TWebhooksInsert, TWebhooksUpdate>;
+    [TableName.ServiceToken]: Knex.CompositeTableType<
+      TServiceTokens,
+      TServiceTokensInsert,
+      TServiceTokensUpdate
     >;
     [TableName.IntegrationAuth]: Knex.CompositeTableType<
       TIntegrationAuths,

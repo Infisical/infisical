@@ -4,9 +4,9 @@ import {
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
+  TableName,
   TSecretBlindIndexes,
-  TSecrets
-} from "@app/db/schemas";
+  TSecrets} from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -17,6 +17,7 @@ import { buildSecretBlindIndexFromName } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretTagDalFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretBlindIndexDalFactory } from "./secret-blind-index-dal";
 import { TSecretDalFactory } from "./secret-dal";
 import {
@@ -33,6 +34,7 @@ import { TSecretVersionDalFactory } from "./secret-version-dal";
 
 type TSecretServiceFactoryDep = {
   secretDal: TSecretDalFactory;
+  secretTagDal: TSecretTagDalFactory;
   secretVersionDal: TSecretVersionDalFactory;
   folderDal: TSecretFolderDalFactory;
   secretBlindIndexDal: TSecretBlindIndexDalFactory;
@@ -43,6 +45,7 @@ export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
 
 export const secretServiceFactory = ({
   secretDal,
+  secretTagDal,
   secretVersionDal,
   folderDal,
   secretBlindIndexDal,
@@ -108,6 +111,7 @@ export const secretServiceFactory = ({
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
     const folderId = folder.id;
 
+    // check if secret exist by finding the secret blindIndex
     const existingSecret = await secretDal.findOne({
       secretBlindIndex,
       folderId,
@@ -115,6 +119,7 @@ export const secretServiceFactory = ({
       userId: inputSecret.type === SecretType.Personal ? actorId : null
     });
     if (existingSecret) throw new BadRequestError({ message: "Secret already exist" });
+
     // if user creating personal check its shared also exist
     if (inputSecret.type === SecretType.Personal) {
       const sharedExist = await secretDal.findOne({
@@ -127,6 +132,14 @@ export const secretServiceFactory = ({
           message: "Failed to create personal secret override for no corresponding shared secret"
         });
     }
+
+    // validate tags
+    // fetch all tags and if not same count throw error meaning one was invalid tags
+    const tags = inputSecret.tags
+      ? await secretTagDal.findManyTagsById(projectId, inputSecret.tags)
+      : [];
+    if ((inputSecret.tags || []).length !== tags.length)
+      throw new BadRequestError({ message: "Tag not found" });
 
     const secret = await secretDal.transaction(async (tx) => {
       const { secretName, type, ...el } = inputSecret;
@@ -141,6 +154,10 @@ export const secretServiceFactory = ({
           algorithm: SecretEncryptionAlgo.AES_256_GCM,
           keyEncoding: SecretKeyEncoding.UTF8
         },
+        tx
+      );
+      await secretTagDal.saveTagsToSecret(
+        tags.map(({ id }) => ({ secretsId: doc.id, secret_tagsId: id })),
         tx
       );
       await secretVersionDal.create(
@@ -161,7 +178,7 @@ export const secretServiceFactory = ({
     });
 
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return secret;
+    return { ...secret, tags };
   };
 
   const updateSecret = async ({
@@ -207,6 +224,12 @@ export const secretServiceFactory = ({
       }
     }
 
+    const tags = inputSecret.tags
+      ? await secretTagDal.findManyTagsById(projectId, inputSecret.tags)
+      : [];
+    if ((inputSecret.tags || []).length !== tags.length)
+      throw new BadRequestError({ message: "Tag not found" });
+
     const updatedSecret = await secretDal.transaction(async (tx) => {
       const { secretName, ...el } = inputSecret;
       const [doc] = await secretDal.update(
@@ -220,6 +243,12 @@ export const secretServiceFactory = ({
           secretBlindIndex: newSecretNameBlindIndex,
           ...el
         },
+        tx
+      );
+      // replace tags
+      await secretTagDal.deleteTagsToSecret({ secretsId: doc.id }, tx);
+      await secretTagDal.saveTagsToSecret(
+        tags.map(({ id }) => ({ secretsId: doc.id, secret_tagsId: id })),
         tx
       );
       const { id, createdAt, updatedAt, ...newVersion } = doc;
@@ -290,7 +319,6 @@ export const secretServiceFactory = ({
     const folderId = folder.id;
 
     const secrets = await secretDal.findByFolderId(folderId, actorId);
-
     return secrets;
   };
 
@@ -370,6 +398,10 @@ export const secretServiceFactory = ({
     );
     if (exists.length) throw new BadRequestError({ message: "Secret already exist" });
 
+    // get all tags
+    const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
+    const tags = tagIds.length ? await secretTagDal.findManyTagsById(projectId, tagIds) : [];
+
     const secrets = await secretDal.transaction(async (tx) => {
       const newSecrets = await secretDal.insertMany(
         inputSecrets.map(({ secretName, type, ...el }) => ({
@@ -384,6 +416,20 @@ export const secretServiceFactory = ({
         })),
         tx
       );
+      if (tags.length) {
+        await secretTagDal.saveTagsToSecret(
+          inputSecrets.flatMap(({ tags: secretTags = [], secretName }) => {
+            const secret = newSecrets.find(
+              ({ secretBlindIndex }) => secretBlindIndexes[secretName] === secretBlindIndex
+            );
+            return secretTags.map((tag) => ({
+              [`${TableName.SecretTag}Id`]: tag,
+              [`${TableName.Secret}Id`]: secret?.id || ""
+            }));
+          }),
+          tx
+        );
+      }
       await secretVersionDal.insertMany(
         newSecrets.map(({ id, updatedAt, createdAt, ...el }) => ({
           ...el,
@@ -478,6 +524,11 @@ export const secretServiceFactory = ({
       {}
     );
 
+    // get all tags
+    const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
+    const tags = tagIds.length ? await secretTagDal.findManyTagsById(projectId, tagIds) : [];
+    if (tagIds.length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+
     const secrets = await secretDal.transaction(async (tx) => {
       const newSecrets = await secretDal.bulkUpdate(
         inputSecrets.map(({ secretName, type, ...el }) => {
@@ -498,6 +549,20 @@ export const secretServiceFactory = ({
             keyEncoding: SecretKeyEncoding.UTF8
           };
         }),
+        tx
+      );
+      await secretTagDal.deleteTagsManySecret(
+        projectId,
+        newSecrets.map(({ id }) => id),
+        tx
+      );
+      await secretTagDal.saveTagsToSecret(
+        inputSecrets.flatMap(({ secretName, tags: secretTags = [] }) =>
+          secretTags.map((secretTag) => ({
+            [`${TableName.Secret}Id`]: secretsGroupedByBlindIndex[secretName].id,
+            [`${TableName.SecretTag}Id`]: secretTag
+          }))
+        ),
         tx
       );
       await secretVersionDal.insertMany(

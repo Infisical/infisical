@@ -27,6 +27,8 @@ export enum TableName {
   SecretTag = "secret_tags",
   Integration = "integrations",
   IntegrationAuth = "integration_auths",
+  ServiceToken = "service_tokens",
+  Webhook = "webhooks",
   JnSecretTag = "secret_tag_junction",
   JnSecretVersionTag = "secret_version_tag_junction"
 }
@@ -40,6 +42,13 @@ export const UserDeviceSchema = z
   })
   .array()
   .default([]);
+
+export const ServiceTokenScopes = z
+  .object({
+    environment: z.string(),
+    secretPath: z.string().default("/")
+  })
+  .array();
 
 export enum OrgMembershipRole {
   Admin = "admin",

@@ -1,9 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { SecretType, TableName, TSecrets, TSecretsInsert,TSecretsUpdate } from "@app/db/schemas";
+import { SecretType, TableName, TSecrets, TSecretsInsert, TSecretsUpdate } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { mergeOneToManyRelation, ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TSecretDalFactory = ReturnType<typeof secretDalFactory>;
 
@@ -33,6 +33,7 @@ export const secretDalFactory = (db: TDbClient) => {
     try {
       const secs = await (tx || db)(TableName.Secret)
         .insert(data as TSecretsInsert[])
+        .increment("version", 1)
         .onConflict("id")
         .merge()
         .returning("*");
@@ -70,12 +71,39 @@ export const secretDalFactory = (db: TDbClient) => {
 
   const findByFolderId = async (folderId: string, userId?: string, tx?: Knex) => {
     try {
-      const sec = await (tx || db)(TableName.Secret)
+      const secs = await (tx || db)(TableName.Secret)
         .where({ folderId })
         .where((bd) => {
           bd.whereNull("userId").orWhere({ userId: userId || null });
-        });
-      return sec;
+        })
+        .join(
+          TableName.JnSecretTag,
+          `${TableName.Secret}.id`,
+          `${TableName.JnSecretTag}.${TableName.Secret}Id`
+        )
+        .join(
+          TableName.SecretTag,
+          `${TableName.JnSecretTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .select(selectAllTableCols(TableName.Secret))
+        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"));
+      const formatedSecs = mergeOneToManyRelation(
+        secs,
+        "id",
+        ({ tagColor, tagId, tagName, tagSlug, ...data }) => data,
+        ({ tagSlug: slug, tagName: name, tagId: id, tagColor: color }) => ({
+          id,
+          slug,
+          name,
+          color
+        }),
+        "tags"
+      );
+      return formatedSecs;
     } catch (error) {
       throw new DatabaseError({ error, name: "get all secret" });
     }

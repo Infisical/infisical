@@ -18,6 +18,7 @@ export type TCreateSecretDTO = {
   skipMultilineEncoding?: boolean;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
+  tags?: string[];
   metadata?: {
     source?: string;
   };
@@ -35,6 +36,7 @@ export type TUpdateSecretDTO = {
   secretValueCiphertext: string;
   secretValueIV: string;
   secretValueTag: string;
+  tags?: string[];
   secretCommentCiphertext?: string;
   secretCommentIV?: string;
   secretCommentTag?: string;
@@ -77,6 +79,7 @@ export type TCreateBulkSecretDTO = {
     secretKeyTag: string;
     secretValueCiphertext: string;
     secretValueIV: string;
+    tags?: string[];
     secretValueTag: string;
     secretCommentCiphertext?: string;
     secretCommentIV?: string;
@@ -98,6 +101,7 @@ export type TUpdateBulkSecretDTO = {
     secretValueCiphertext?: string;
     secretValueIV?: string;
     secretValueTag?: string;
+    tags?: string[];
     secretCommentCiphertext?: string;
     secretCommentIV?: string;
     secretCommentTag?: string;

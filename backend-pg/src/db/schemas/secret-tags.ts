@@ -11,10 +11,10 @@ export const SecretTagsSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   slug: z.string(),
-  tagColor: z.string(),
+  color: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  createdBy: z.string().uuid(),
+  createdBy: z.string().uuid().nullable().optional(),
   projectId: z.string().uuid(),
 });
 

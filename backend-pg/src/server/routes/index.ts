@@ -42,6 +42,7 @@ import { secretFolderDalFactory } from "@app/services/secret-folder/secret-folde
 import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 import { secretImportDalFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
+import { secretTagDalFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { superAdminDalFactory } from "@app/services/super-admin/super-admin-dal";
 import { superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
@@ -76,6 +77,7 @@ export const registerRoutes = async (
   const projectBotDal = projectBotDalFactory(db);
 
   const secretDal = secretDalFactory(db);
+  const secretTagDal = secretTagDalFactory(db);
   const folderDal = secretFolderDalFactory(db);
   const secretImportDal = secretImportDalFactory(db);
   const secretVersionDal = secretVersionDalFactory(db);
@@ -156,7 +158,8 @@ export const registerRoutes = async (
     secretVersionDal,
     secretBlindIndexDal,
     permissionService,
-    secretDal
+    secretDal,
+    secretTagDal
   });
   const folderService = secretFolderServiceFactory({
     permissionService,
