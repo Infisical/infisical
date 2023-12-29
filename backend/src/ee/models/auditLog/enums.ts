@@ -8,7 +8,10 @@ export enum UserAgentType {
   WEB = "web",
   CLI = "cli",
   K8_OPERATOR = "k8-operator",
-  OTHER = "other"
+  TERRAFORM = "terraform",
+  OTHER = "other",
+  PYTHON_SDK = "InfisicalPythonSDK",
+  NODE_SDK = "InfisicalNodeSDK"
 }
 
 export enum EventType {
