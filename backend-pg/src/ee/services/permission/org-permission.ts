@@ -1,28 +1,6 @@
-import {
-  AbilityBuilder,
-  buildMongoQueryMatcher,
-  createMongoAbility,
-  MongoAbility
-} from "@casl/ability";
-import { FieldCondition, FieldInstruction, JsInterpreter } from "@ucast/mongo2js";
-import picomatch from "picomatch";
+import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability";
 
-const $glob: FieldInstruction<string> = {
-  type: "field",
-  validate(instruction, value) {
-    if (typeof value !== "string") {
-      throw new Error(`"${instruction.name}" expects value to be a string`);
-    }
-  }
-};
-
-const glob: JsInterpreter<FieldCondition<string>> = (node, object, context) => {
-  const secretPath = context.get(object, node.field);
-  const permissionSecretGlobPath = node.value;
-  return picomatch.isMatch(secretPath, permissionSecretGlobPath, { strictSlashes: false });
-};
-
-export const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
+import { conditionsMatcher } from "@app/lib/casl";
 
 export enum OrgPermissionActions {
   Read = "read",
@@ -39,7 +17,8 @@ export enum OrgPermissionSubjects {
   IncidentAccount = "incident-contact",
   Sso = "sso",
   Billing = "billing",
-  SecretScanning = "secret-scanning"
+  SecretScanning = "secret-scanning",
+  Identity = "identity"
 }
 
 export type OrgPermissionSet =
@@ -51,7 +30,8 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
   | [OrgPermissionActions, OrgPermissionSubjects.Sso]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
-  | [OrgPermissionActions, OrgPermissionSubjects.Billing];
+  | [OrgPermissionActions, OrgPermissionSubjects.Billing]
+  | [OrgPermissionActions, OrgPermissionSubjects.Identity];
 
 const buildAdminPermission = () => {
   const { can, build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
@@ -94,6 +74,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Billing);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Billing);
 
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
+
   return build({ conditionsMatcher });
 };
 
@@ -117,7 +102,19 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.SecretScanning);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.SecretScanning);
 
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.Identity);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.Identity);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.Identity);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.Identity);
+
   return build({ conditionsMatcher });
 };
 
 export const orgMemberPermissions = buildMemberPermission();
+
+const buildNoAccessPermission = () => {
+  const { build } = new AbilityBuilder<MongoAbility<OrgPermissionSet>>(createMongoAbility);
+  return build({ conditionsMatcher });
+};
+
+export const orgNoAccessPermissions = buildNoAccessPermission();

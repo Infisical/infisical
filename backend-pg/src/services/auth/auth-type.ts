@@ -16,7 +16,8 @@ export enum AuthTokenType {
   PROVIDER_TOKEN = "providerToken", // TODO: remove in favor of claim
   API_KEY = "apiKey",
   SERVICE_ACCESS_TOKEN = "serviceAccessToken",
-  SERVICE_REFRESH_TOKEN = "serviceRefreshToken"
+  SERVICE_REFRESH_TOKEN = "serviceRefreshToken",
+  IDENTITY_ACCESS_TOKEN = "identityAccessToken"
 }
 
 export enum AuthMode {

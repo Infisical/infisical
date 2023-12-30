@@ -1,14 +1,17 @@
 import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
-import { unpackRules } from "@casl/ability/extra";
+import { PackRule, unpackRules } from "@casl/ability/extra";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
+import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TOrgRoleDalFactory } from "@app/services/org/org-role-dal";
+import { TProjectRoleDalFactory } from "@app/services/project-role/project-role-dal";
 
 import {
-  conditionsMatcher,
   orgAdminPermissions,
   orgMemberPermissions,
+  orgNoAccessPermissions,
   OrgPermissionSet
 } from "./org-permission";
 import { TPermissionDalFactory } from "./permission-dal";
@@ -21,12 +24,18 @@ import {
 } from "./project-permission";
 
 type TPermissionServiceFactoryDep = {
+  orgRoleDal: Pick<TOrgRoleDalFactory, "findOne">;
+  projectRoleDal: Pick<TProjectRoleDalFactory, "findOne">;
   permissionDal: TPermissionDalFactory;
 };
 
 export type TPermissionServiceFactory = ReturnType<typeof permissionServiceFactory>;
 
-export const permissionServiceFactory = ({ permissionDal }: TPermissionServiceFactoryDep) => {
+export const permissionServiceFactory = ({
+  permissionDal,
+  orgRoleDal,
+  projectRoleDal
+}: TPermissionServiceFactoryDep) => {
   /*
    * Get user permission in an organization
    * */
@@ -37,9 +46,14 @@ export const permissionServiceFactory = ({ permissionDal }: TPermissionServiceFa
       throw new BadRequestError({ name: "Custom permission not found" });
     }
 
-    if (membership.role === "admin") return { permission: orgAdminPermissions, membership };
-    if (membership.role === "member") return { permission: orgMemberPermissions, membership };
-    if (membership.role === "custom") {
+    if (membership.role === OrgMembershipRole.Admin)
+      return { permission: orgAdminPermissions, membership };
+    if (membership.role === OrgMembershipRole.Member)
+      return { permission: orgMemberPermissions, membership };
+
+    if (membership.role === OrgMembershipRole.NoAccess)
+      return { permission: orgNoAccessPermissions, membership };
+    if (membership.role === OrgMembershipRole.Custom) {
       const permission = createMongoAbility<OrgPermissionSet>(
         // akhilmhdh: putting any due to ts incompatiable matching with string and the other
         unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(membership.permissions as any),
@@ -57,7 +71,7 @@ export const permissionServiceFactory = ({ permissionDal }: TPermissionServiceFa
   const getUserProjectPermission = async (userId: string, projectId: string) => {
     const membership = await permissionDal.getProjectPermission(userId, projectId);
     if (!membership) throw new UnauthorizedError({ name: "User not in org" });
-    if (membership.role === "custom" && !membership.permissions) {
+    if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
 
@@ -107,10 +121,72 @@ export const permissionServiceFactory = ({ permissionDal }: TPermissionServiceFa
     }
   };
 
+  const getOrgPermissionByRole = async (role: string, orgId: string) => {
+    const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
+    if (isCustomRole) {
+      const orgRole = await orgRoleDal.findOne({ slug: role, orgId });
+      if (!orgRole) throw new BadRequestError({ message: "Role not found" });
+      return {
+        permission: createMongoAbility<OrgPermissionSet>(
+          unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(
+            (orgRole.permissions as PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[]) || []
+          ),
+          {
+            conditionsMatcher
+          }
+        ),
+        role: orgRole
+      };
+    }
+    switch (role) {
+      case OrgMembershipRole.Admin:
+        return { permission: orgAdminPermissions };
+      case OrgMembershipRole.Member:
+        return { permission: orgMemberPermissions };
+      case OrgMembershipRole.NoAccess:
+        return { permission: orgNoAccessPermissions };
+      default:
+        throw new BadRequestError({ message: "Org role not found" });
+    }
+  };
+
+  const getProjectPermissionByRole = async (role: string, projectId: string) => {
+    const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
+    if (isCustomRole) {
+      const projectRole = await projectRoleDal.findOne({ slug: role, projectId });
+      if (!projectRole) throw new BadRequestError({ message: "Role not found" });
+      return {
+        permission: createMongoAbility<ProjectPermissionSet>(
+          unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
+            (projectRole.permissions as PackRule<
+              RawRuleOf<MongoAbility<ProjectPermissionSet>>
+            >[]) || []
+          ),
+          {
+            conditionsMatcher
+          }
+        ),
+        role: projectRole
+      };
+    }
+    switch (role) {
+      case ProjectMembershipRole.Admin:
+        return { permission: projectAdminPermissions };
+      case ProjectMembershipRole.Member:
+        return { permission: projectMemberPermissions };
+      case ProjectMembershipRole.NoAccess:
+        return { permission: projectNoAccessPermissions };
+      default:
+        throw new BadRequestError({ message: "Org role not found" });
+    }
+  };
+
   return {
     getUserOrgPermission,
     getOrgPermission,
     getUserProjectPermission,
-    getProjectPermission
+    getProjectPermission,
+    getOrgPermissionByRole,
+    getProjectPermissionByRole
   };
 };

@@ -1,28 +1,6 @@
-import {
-  AbilityBuilder,
-  buildMongoQueryMatcher,
-  createMongoAbility,
-  ForcedSubject,
-  MongoAbility} from "@casl/ability";
-import { FieldCondition, FieldInstruction, JsInterpreter } from "@ucast/mongo2js";
-import picomatch from "picomatch";
+import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
 
-const $glob: FieldInstruction<string> = {
-  type: "field",
-  validate(instruction, value) {
-    if (typeof value !== "string") {
-      throw new Error(`"${instruction.name}" expects value to be a string`);
-    }
-  }
-};
-
-const glob: JsInterpreter<FieldCondition<string>> = (node, object, context) => {
-  const secretPath = context.get(object, node.field);
-  const permissionSecretGlobPath = node.value;
-  return picomatch.isMatch(secretPath, permissionSecretGlobPath, { strictSlashes: false });
-};
-
-export const conditionsMatcher = buildMongoQueryMatcher({ $glob }, { glob });
+import { conditionsMatcher } from "@app/lib/casl";
 
 export enum ProjectPermissionActions {
   Read = "read",

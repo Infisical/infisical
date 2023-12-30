@@ -90,7 +90,7 @@ export const registerRoutes = async (
   const permissionDal = permissionDalFactory(db);
 
   // ee services
-  const permissionService = permissionServiceFactory({ permissionDal });
+  const permissionService = permissionServiceFactory({ permissionDal, orgRoleDal, projectRoleDal });
 
   // service layers
   const tokenService = tokenServiceFactory({ tokenDal: authTokenDal });

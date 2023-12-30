@@ -16,6 +16,7 @@ module.exports = {
     "consistent-return": "off", // my style
     "import/order": "off", // for simple-import-order
     "import/prefer-default-export": "off", // why
+    "no-restricted-syntax": "off",
     "import/first": "error",
     "import/newline-after-import": "error",
     "import/no-duplicates": "error",

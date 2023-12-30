@@ -1,5 +1,11 @@
 import { ActorType } from "@app/services/auth/auth-type";
 
+export type TOrgPermission = {
+  actor: ActorType;
+  actorId: string;
+  orgId: string;
+};
+
 export type TProjectPermission = {
   actor: ActorType;
   actorId: string;

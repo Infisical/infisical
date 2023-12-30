@@ -29,6 +29,12 @@ export enum TableName {
   IntegrationAuth = "integration_auths",
   ServiceToken = "service_tokens",
   Webhook = "webhooks",
+  Identity = "identities",
+  IdentityAccessToken = "identity_access_tokens",
+  IdentityUniversalAuth = "identity_universal_auths",
+  IdentityUaClientSecret = "identity_ua_client_secrets",
+  IdentityOrgMembership = "identity_org_memberships",
+  IdentityProjectMembership = " identity_project_memberships",
   JnSecretTag = "secret_tag_junction",
   JnSecretVersionTag = "secret_version_tag_junction"
 }
@@ -53,6 +59,7 @@ export const ServiceTokenScopes = z
 export enum OrgMembershipRole {
   Admin = "admin",
   Member = "member",
+  NoAccess = "no-access",
   Custom = "custom"
 }
 
@@ -82,4 +89,8 @@ export enum SecretKeyEncoding {
 export enum SecretType {
   Shared = "shared",
   Personal = "personal"
+}
+
+export enum IdentityAuthMethod {
+  Univeral = "universal"
 }

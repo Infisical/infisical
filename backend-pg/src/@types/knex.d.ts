@@ -13,6 +13,24 @@ import {
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
   TBackupPrivateKeyUpdate,
+  TIdentities,
+  TIdentitiesInsert,
+  TIdentitiesUpdate,
+  TIdentityAccessTokens,
+  TIdentityAccessTokensInsert,
+  TIdentityAccessTokensUpdate,
+  TIdentityOrgMemberships,
+  TIdentityOrgMembershipsInsert,
+  TIdentityOrgMembershipsUpdate,
+  TIdentityProjectMemberships,
+  TIdentityProjectMembershipsInsert,
+  TIdentityProjectMembershipsUpdate,
+  TIdentityUaClientSecrets,
+  TIdentityUaClientSecretsInsert,
+  TIdentityUaClientSecretsUpdate,
+  TIdentityUniversalAuths,
+  TIdentityUniversalAuthsInsert,
+  TIdentityUniversalAuthsUpdate,
   TIncidentContacts,
   TIncidentContactsInsert,
   TIncidentContactsUpdate,
@@ -208,6 +226,37 @@ declare module "knex/types/tables" {
       TIntegrationAuthsInsert,
       TIntegrationAuthsUpdate
     >;
+    [TableName.Identity]: Knex.CompositeTableType<
+      TIdentities,
+      TIdentitiesInsert,
+      TIdentitiesUpdate
+    >;
+    [TableName.IdentityUniversalAuth]: Knex.CompositeTableType<
+      TIdentityUniversalAuths,
+      TIdentityUniversalAuthsInsert,
+      TIdentityUniversalAuthsUpdate
+    >;
+    [TableName.IdentityUaClientSecret]: Knex.CompositeTableType<
+      TIdentityUaClientSecrets,
+      TIdentityUaClientSecretsInsert,
+      TIdentityUaClientSecretsUpdate
+    >;
+    [TableName.IdentityAccessToken]: Knex.CompositeTableType<
+      TIdentityAccessTokens,
+      TIdentityAccessTokensInsert,
+      TIdentityAccessTokensUpdate
+    >;
+    [TableName.IdentityOrgMembership]: Knex.CompositeTableType<
+      TIdentityOrgMemberships,
+      TIdentityOrgMembershipsInsert,
+      TIdentityOrgMembershipsUpdate
+    >;
+    [TableName.IdentityProjectMembership]: Knex.CompositeTableType<
+      TIdentityProjectMemberships,
+      TIdentityProjectMembershipsInsert,
+      TIdentityProjectMembershipsUpdate
+    >;
+    // Junction tables
     [TableName.JnSecretTag]: Knex.CompositeTableType<
       TSecretTagJunction,
       TSecretTagJunctionInsert,
