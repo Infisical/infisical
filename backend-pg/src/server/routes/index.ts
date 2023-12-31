@@ -13,6 +13,16 @@ import { authPaswordServiceFactory } from "@app/services/auth/auth-password-serv
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { tokenDalFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { identityDalFactory } from "@app/services/identity/identity-dal";
+import { identityOrgDalFactory } from "@app/services/identity/identity-org-dal";
+import { identityServiceFactory } from "@app/services/identity/identity-service";
+import { identityAccessTokenDalFactory } from "@app/services/identity-access-token/identity-access-token-dal";
+import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
+import { identityProjectDalFactory } from "@app/services/identity-project/identity-project-dal";
+import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { identityUaClientSecretDalFactory } from "@app/services/identity-ua/identity-ua-client-secret-dal";
+import { identityUaDalFactory } from "@app/services/identity-ua/identity-ua-dal";
+import { identityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
 import { integrationDalFactory } from "@app/services/integration/integration-dal";
 import { integrationServiceFactory } from "@app/services/integration/integration-service";
 import { integrationAuthDalFactory } from "@app/services/integration-auth/integration-auth-dal";
@@ -43,11 +53,16 @@ import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-f
 import { secretImportDalFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
 import { secretTagDalFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { secretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
+import { serviceTokenDalFactory } from "@app/services/service-token/service-token-dal";
+import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { superAdminDalFactory } from "@app/services/super-admin/super-admin-dal";
 import { superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { userDalFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
+import { webhookDalFactory } from "@app/services/webhook/webhook-dal";
+import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
@@ -85,6 +100,16 @@ export const registerRoutes = async (
 
   const integrationDal = integrationDalFactory(db);
   const integrationAuthDal = integrationAuthDalFactory(db);
+  const webhookDal = webhookDalFactory(db);
+  const serviceTokenDal = serviceTokenDalFactory(db);
+
+  const identityDal = identityDalFactory(db);
+  const identityAccessTokenDal = identityAccessTokenDalFactory(db);
+  const identityOrgMembershipDal = identityOrgDalFactory(db);
+  const identityProjectDal = identityProjectDalFactory(db);
+
+  const identityUaDal = identityUaDalFactory(db);
+  const identityUaClientSecretDal = identityUaClientSecretDalFactory(db);
 
   // ee db layer ops
   const permissionDal = permissionDalFactory(db);
@@ -161,6 +186,7 @@ export const registerRoutes = async (
     secretDal,
     secretTagDal
   });
+  const secretTagService = secretTagServiceFactory({ secretTagDal, permissionService });
   const folderService = secretFolderServiceFactory({
     permissionService,
     folderDal,
@@ -186,6 +212,37 @@ export const registerRoutes = async (
     projectBotDal,
     projectBotService
   });
+  const webhookService = webhookServiceFactory({
+    permissionService,
+    webhookDal,
+    projectEnvDal
+  });
+  const serviceTokenService = serviceTokenServiceFactory({
+    projectEnvDal,
+    serviceTokenDal,
+    permissionService
+  });
+
+  const identityService = identityServiceFactory({
+    permissionService,
+    identityDal,
+    identityOrgMembershipDal
+  });
+  const identityAccessTokenService = identityAccessTokenServiceFactory({ identityAccessTokenDal });
+  const identityProjectService = identityProjectServiceFactory({
+    permissionService,
+    projectDal,
+    identityProjectDal,
+    identityOrgMembershipDal
+  });
+  const identityUaService = identityUaServiceFactory({
+    identityOrgMembershipDal,
+    permissionService,
+    identityDal,
+    identityAccessTokenDal,
+    identityUaClientSecretDal,
+    identityUaDal
+  });
 
   await superAdminService.initServerCfg();
   // inject all services
@@ -206,11 +263,18 @@ export const registerRoutes = async (
     projectEnv: projectEnvService,
     projectRole: projectRoleService,
     secret: secretService,
+    secretTag: secretTagService,
     folder: folderService,
     secretImport: secretImportService,
     projectBot: projectBotService,
     integration: integrationService,
-    integrationAuth: integrationAuthService
+    integrationAuth: integrationAuthService,
+    webhook: webhookService,
+    serviceToken: serviceTokenService,
+    identity: identityService,
+    identityAccessToken: identityAccessTokenService,
+    identityProject: identityProjectService,
+    identityUa: identityUaService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {

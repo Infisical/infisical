@@ -233,7 +233,7 @@ export const ActionBar = ({
                 </DropdownSubMenuTrigger>
                 <DropdownSubMenuContent className="rounded-l-none">
                   <DropdownMenuLabel>Apply tags to filter secrets</DropdownMenuLabel>
-                  {tags.map(({ id, name, tagColor }) => (
+                  {tags.map(({ id, name, color }) => (
                     <DropdownMenuItem
                       onClick={(evt) => {
                         evt.preventDefault();
@@ -246,7 +246,7 @@ export const ActionBar = ({
                       <div className="flex items-center">
                         <div
                           className="mr-2 h-2 w-2 rounded-full"
-                          style={{ background: tagColor || "#bec2c8" }}
+                          style={{ background: color || "#bec2c8" }}
                         />
                         {name}
                       </div>

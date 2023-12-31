@@ -7,8 +7,8 @@ export type TCreateIdentityDTO = {
 
 export type TUpdateIdentityDTO = {
   id: string;
-  role: string;
-  name: string;
+  role?: string;
+  name?: string;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TDeleteIdentityDTO = {

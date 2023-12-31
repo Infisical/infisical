@@ -76,12 +76,12 @@ export const secretDalFactory = (db: TDbClient) => {
         .where((bd) => {
           bd.whereNull("userId").orWhere({ userId: userId || null });
         })
-        .join(
+        .leftJoin(
           TableName.JnSecretTag,
           `${TableName.Secret}.id`,
           `${TableName.JnSecretTag}.${TableName.Secret}Id`
         )
-        .join(
+        .leftJoin(
           TableName.SecretTag,
           `${TableName.JnSecretTag}.${TableName.SecretTag}Id`,
           `${TableName.SecretTag}.id`

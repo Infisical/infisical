@@ -6,7 +6,7 @@ export type ServiceTokenScope = {
 export type ServiceToken = {
   id: string;
   name: string;
-  workspace: string;
+  projectId: string;
   scopes: ServiceTokenScope[];
   user: string;
   expiresAt: string;

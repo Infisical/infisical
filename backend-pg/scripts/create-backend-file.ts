@@ -12,6 +12,7 @@ Component List
 --------------
 1. Service component
 2. DAL component
+3. Router component
 `);
 const componentType = parseInt(prompt("Select a component: "), 10);
 
@@ -87,6 +88,35 @@ export type ${dalTypeName} = ReturnType<typeof ${dalName}>;
 export const ${dalName} = (db: TDbClient) => {
 
   return {  };
+};
+`
+  );
+} else if (componentType === 3) {
+  const name = prompt("Enter router name: ");
+  const version = prompt("Version number: ");
+  const pascalCase = name
+    .split("-")
+    .map((el) => `${el[0].toUpperCase()}${el.slice(1)}`)
+    .join("");
+  writeFileSync(
+    path.join(__dirname, `../src/server/routes/v${Number(version)}/${name}-router.ts`),
+    `import { z } from "zod";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AuthMode } from "@app/services/auth/auth-type";
+
+export const register${pascalCase}Router = async (server: FastifyZodProvider) => {
+  server.route({
+    url: "/",
+    method: "GET",
+    schema: {
+      params: z.object({}),
+      response: {
+        200: z.object({})
+      }
+    }
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {}
+  });
 };
 `
   );

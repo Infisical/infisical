@@ -6,7 +6,8 @@ import {
   SecretType,
   TableName,
   TSecretBlindIndexes,
-  TSecrets} from "@app/db/schemas";
+  TSecrets
+} from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -156,10 +157,12 @@ export const secretServiceFactory = ({
         },
         tx
       );
-      await secretTagDal.saveTagsToSecret(
-        tags.map(({ id }) => ({ secretsId: doc.id, secret_tagsId: id })),
-        tx
-      );
+      if (tags.length) {
+        await secretTagDal.saveTagsToSecret(
+          tags.map(({ id }) => ({ secretsId: doc.id, secret_tagsId: id })),
+          tx
+        );
+      }
       await secretVersionDal.create(
         {
           secretBlindIndex,

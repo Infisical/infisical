@@ -195,7 +195,7 @@ export const WebhooksTab = withProjectPermission(
                         <Td className="max-w-xs overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
                           {url}
                         </Td>
-                        <Td>{environment}</Td>
+                        <Td>{environment.slug}</Td>
                         <Td>{secretPath}</Td>
                         <Td>
                           {!lastStatus ? (

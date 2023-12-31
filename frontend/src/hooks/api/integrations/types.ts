@@ -11,8 +11,9 @@ export type TCloudIntegration = {
 
 export type TIntegration = {
   id: string;
-  workspace: string;
-  environment: string;
+  projectId: string;
+  envId: string;
+  environment: { slug: string; name: string; id: string };
   isActive: boolean;
   url: any;
   app: string;

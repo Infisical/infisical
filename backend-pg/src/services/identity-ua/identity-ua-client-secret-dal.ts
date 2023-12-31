@@ -5,9 +5,9 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-export type TUaClientSecretDalFactory = ReturnType<typeof uaClientSecretDalFactory>;
+export type TIdentityUaClientSecretDalFactory = ReturnType<typeof identityUaClientSecretDalFactory>;
 
-export const uaClientSecretDalFactory = (db: TDbClient) => {
+export const identityUaClientSecretDalFactory = (db: TDbClient) => {
   const uaClientSecretOrm = ormify(db, TableName.IdentityUaClientSecret);
 
   const incrementUsage = async (id: string, tx?: Knex) => {

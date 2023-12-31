@@ -1,6 +1,9 @@
 import { registerAdminRouter } from "./admin-router";
 import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
+import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
+import { registerIdentityRouter } from "./identity-router";
+import { registerIdentityUaRouter } from "./identity-ua";
 import { registerIntegrationAuthRouter } from "./integration-auth-router";
 import { registerIntegrationRouter } from "./integration-router";
 import { registerInviteOrgRouter } from "./invite-org-router";
@@ -12,13 +15,22 @@ import { registerProjectMembershipRouter } from "./project-membership-router";
 import { registerProjectRouter } from "./project-router";
 import { registerSecretFolderRouter } from "./secret-folder-router";
 import { registerSecretImportRouter } from "./secret-import-router";
+import { registerSecretTagRouter } from "./secret-tag-router";
 import { registerSsoRouter } from "./sso-router";
 import { registerUserActionRouter } from "./user-action-router";
 import { registerUserRouter } from "./user-router";
+import { registerWebhookRouter } from "./webhook-router";
 
 export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });
-  await server.register(registerAuthRoutes, { prefix: "/auth" });
+  await server.register(
+    async (authServer) => {
+      await authServer.register(registerAuthRoutes);
+      await authServer.register(registerIdentityUaRouter);
+      await authServer.register(registerIdentityAccessTokenRouter);
+    },
+    { prefix: "/auth" }
+  );
   await server.register(registerPasswordRouter, { prefix: "/password" });
   await server.register(registerOrgRouter, { prefix: "/organization" });
   await server.register(registerAdminRouter, { prefix: "/admin" });
@@ -34,6 +46,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await projectServer.register(registerProjectEnvRouter);
       await projectServer.register(registerProjectKeyRouter);
       await projectServer.register(registerProjectMembershipRouter);
+      await projectServer.register(registerSecretTagRouter);
     },
     { prefix: "/workspace" }
   );
@@ -41,4 +54,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerProjectBotRouter, { prefix: "/bot" });
   await server.register(registerIntegrationRouter, { prefix: "/integration" });
   await server.register(registerIntegrationAuthRouter, { prefix: "/integration-auth" });
+  await server.register(registerWebhookRouter, { prefix: "/webhooks" });
+  await server.register(registerIdentityRouter, { prefix: "/identities" });
 };

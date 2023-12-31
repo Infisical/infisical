@@ -6,6 +6,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
+import { TProjectPermission } from "@app/lib/types";
 
 import { TIntegrationAuthDalFactory } from "../integration-auth/integration-auth-dal";
 import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
@@ -152,9 +153,21 @@ export const integrationServiceFactory = ({
     return deletedIntegration;
   };
 
+  const listIntegrationByProject = async ({ actor, actorId, projectId }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.Integrations
+    );
+
+    const integrations = await integrationDal.findByProjectId(projectId);
+    return integrations;
+  };
+
   return {
     createIntegration,
     updateIntegration,
-    deleteIntegration
+    deleteIntegration,
+    listIntegrationByProject
   };
 };

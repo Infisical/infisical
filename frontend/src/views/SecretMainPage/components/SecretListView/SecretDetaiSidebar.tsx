@@ -269,7 +269,7 @@ export const SecretDetailSidebar = ({
                   <DropdownMenuContent align="end" className="z-[100]">
                     <DropdownMenuLabel>Apply tags to this secrets</DropdownMenuLabel>
                     {tags.map((tag) => {
-                      const { id: tagId, name, tagColor } = tag;
+                      const { id: tagId, name, color } = tag;
 
                       const isSelected = selectedTagsGroupById?.[tagId];
                       return (
@@ -282,7 +282,7 @@ export const SecretDetailSidebar = ({
                           <div className="flex items-center">
                             <div
                               className="mr-2 h-2 w-2 rounded-full"
-                              style={{ background: tagColor || "#bec2c8" }}
+                              style={{ background: color || "#bec2c8" }}
                             />
                             {name}
                           </div>

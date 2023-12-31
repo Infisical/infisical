@@ -19,8 +19,8 @@ import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDalFactory } from "../identity/identity-dal";
 import { TIdentityOrgDalFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDalFactory } from "../identity-access-token/identity-access-token-dal";
-import { TUaClientSecretDalFactory } from "./ua-client-secret-dal";
-import { TUniversalAuthDalFactory } from "./universal-auth-dal";
+import { TIdentityUaClientSecretDalFactory } from "./identity-ua-client-secret-dal";
+import { TIdentityUaDalFactory } from "./identity-ua-dal";
 import {
   TAttachUaDTO,
   TCreateUaClientSecretDTO,
@@ -28,33 +28,33 @@ import {
   TGetUaDTO,
   TRevokeUaClientSecretDTO,
   TUpdateUaDTO
-} from "./universal-auth-types";
+} from "./identity-ua-types";
 
-type TUniversalAuthServiceFactoryDep = {
-  universalAuthDal: TUniversalAuthDalFactory;
-  uaClientSecretDal: TUaClientSecretDalFactory;
+type TIdentityUaServiceFactoryDep = {
+  identityUaDal: TIdentityUaDalFactory;
+  identityUaClientSecretDal: TIdentityUaClientSecretDalFactory;
   identityAccessTokenDal: TIdentityAccessTokenDalFactory;
-  identityOrgDal: TIdentityOrgDalFactory;
+  identityOrgMembershipDal: TIdentityOrgDalFactory;
   identityDal: Pick<TIdentityDalFactory, "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
-export type TUniversalAuthServiceFactory = ReturnType<typeof universalAuthServiceFactory>;
+export type TIdentityUaServiceFactory = ReturnType<typeof identityUaServiceFactory>;
 
-export const universalAuthServiceFactory = ({
-  universalAuthDal,
-  uaClientSecretDal,
+export const identityUaServiceFactory = ({
+  identityUaDal,
+  identityUaClientSecretDal,
   identityAccessTokenDal,
-  identityOrgDal,
+  identityOrgMembershipDal,
   identityDal,
   permissionService
-}: TUniversalAuthServiceFactoryDep) => {
+}: TIdentityUaServiceFactoryDep) => {
   const login = async (clientId: string, clientSecret: string) => {
-    const identityUa = await universalAuthDal.findOne({ clientId });
+    const identityUa = await identityUaDal.findOne({ clientId });
     if (!identityUa) throw new UnauthorizedError();
 
     // TODO(akhilmhdh-pg): add ip checking
-    const clientSecrtInfo = await uaClientSecretDal.find({
+    const clientSecrtInfo = await identityUaClientSecretDal.find({
       identityUAId: identityUa.id,
       isClientSecretRevoked: false
     });
@@ -73,7 +73,7 @@ export const universalAuthServiceFactory = ({
       const expirationTime = new Date(clientSecretCreated.getTime() + ttlInMilliseconds);
 
       if (currentDate > expirationTime) {
-        await uaClientSecretDal.updateById(validClientSecretInfo.id, {
+        await identityUaClientSecretDal.updateById(validClientSecretInfo.id, {
           isClientSecretRevoked: true
         });
 
@@ -86,15 +86,17 @@ export const universalAuthServiceFactory = ({
     if (clientSecretNumUsesLimit > 0 && clientSecretNumUses === clientSecretNumUsesLimit) {
       // number of times client secret can be used for
       // a login operation reached
-      await uaClientSecretDal.updateById(validClientSecretInfo.id, { isClientSecretRevoked: true });
+      await identityUaClientSecretDal.updateById(validClientSecretInfo.id, {
+        isClientSecretRevoked: true
+      });
       throw new UnauthorizedError({
         message:
           "Failed to authenticate identity credentials due to client secret number of uses limit reached"
       });
     }
 
-    const identityAccessToken = await universalAuthDal.transaction(async (tx) => {
-      const uaClientSecretDoc = await uaClientSecretDal.incrementUsage(
+    const identityAccessToken = await identityUaDal.transaction(async (tx) => {
+      const uaClientSecretDoc = await identityUaClientSecretDal.incrementUsage(
         validClientSecretInfo.id,
         tx
       );
@@ -143,7 +145,7 @@ export const universalAuthServiceFactory = ({
     actorId,
     actor
   }: TAttachUaDTO) => {
-    const identityMembershipOrg = await identityOrgDal.findOne({ identityId });
+    const identityMembershipOrg = await identityOrgMembershipDal.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity.authMethod)
       throw new BadRequestError({
@@ -192,8 +194,8 @@ export const universalAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const identityUa = await universalAuthDal.transaction(async (tx) => {
-      const doc = await universalAuthDal.create(
+    const identityUa = await identityUaDal.transaction(async (tx) => {
+      const doc = await identityUaDal.create(
         {
           identityId: identityMembershipOrg.identityId,
           clientId: crypto.randomUUID(),
@@ -227,14 +229,14 @@ export const universalAuthServiceFactory = ({
     actorId,
     actor
   }: TUpdateUaDTO) => {
-    const identityMembershipOrg = await identityOrgDal.findOne({ identityId });
+    const identityMembershipOrg = await identityOrgMembershipDal.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
       throw new BadRequestError({
         message: "Failed to updated universal auth"
       });
 
-    const uaIdentityAuth = await universalAuthDal.findOne({ identityId });
+    const uaIdentityAuth = await identityUaDal.findOne({ identityId });
 
     if (
       (accessTokenMaxTTL || uaIdentityAuth.accessTokenMaxTTL) > 0 &&
@@ -282,7 +284,7 @@ export const universalAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const updatedUaAuth = await universalAuthDal.updateById(uaIdentityAuth.id, {
+    const updatedUaAuth = await identityUaDal.updateById(uaIdentityAuth.id, {
       clientSecretTrustedIps: reformattedClientSecretTrustedIps
         ? JSON.stringify(reformattedClientSecretTrustedIps)
         : undefined,
@@ -297,14 +299,14 @@ export const universalAuthServiceFactory = ({
   };
 
   const getIdentityUa = async ({ identityId, actorId, actor }: TGetUaDTO) => {
-    const identityMembershipOrg = await identityOrgDal.findOne({ identityId });
+    const identityMembershipOrg = await identityOrgMembershipDal.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
       throw new BadRequestError({
         message: "The identity does not have universal auth"
       });
 
-    const uaIdentityAuth = await universalAuthDal.findOne({ identityId });
+    const uaIdentityAuth = await identityUaDal.findOne({ identityId });
 
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -326,7 +328,7 @@ export const universalAuthServiceFactory = ({
     description,
     numUsesLimit
   }: TCreateUaClientSecretDTO) => {
-    const identityMembershipOrg = await identityOrgDal.findOne({ identityId });
+    const identityMembershipOrg = await identityOrgMembershipDal.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
       throw new BadRequestError({
@@ -356,11 +358,11 @@ export const universalAuthServiceFactory = ({
     const appCfg = getConfig();
     const clientSecret = crypto.randomBytes(32).toString("hex");
     const clientSecretHash = await bcrypt.hash(clientSecret, appCfg.SALT_ROUNDS);
-    const identityUniversalAuth = await universalAuthDal.findOne({
+    const identityUniversalAuth = await identityUaDal.findOne({
       identityId
     });
 
-    const identityUaClientSecret = await uaClientSecretDal.create({
+    const identityUaClientSecret = await identityUaClientSecretDal.create({
       identityUAId: identityUniversalAuth.id,
       description,
       clientSecretPrefix: clientSecret.slice(0, 4),
@@ -370,11 +372,15 @@ export const universalAuthServiceFactory = ({
       clientSecretTTL: ttl,
       isClientSecretRevoked: false
     });
-    return { clientSecret: identityUaClientSecret, uaAuth: identityUniversalAuth };
+    return {
+      clientSecret,
+      clientSecretData: identityUaClientSecret,
+      uaAuth: identityUniversalAuth
+    };
   };
 
   const getUaClientSecrets = async ({ actor, actorId, identityId }: TGetUaClientSecretsDTO) => {
-    const identityMembershipOrg = await identityOrgDal.findOne({ identityId });
+    const identityMembershipOrg = await identityOrgMembershipDal.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
       throw new BadRequestError({
@@ -401,11 +407,11 @@ export const universalAuthServiceFactory = ({
         message: "Failed to add identity to project with more privileged role"
       });
 
-    const identityUniversalAuth = await universalAuthDal.findOne({
+    const identityUniversalAuth = await identityUaDal.findOne({
       identityId
     });
 
-    const clientSecrets = await uaClientSecretDal.findOne({
+    const clientSecrets = await identityUaClientSecretDal.find({
       identityUAId: identityUniversalAuth.id,
       isClientSecretRevoked: false
     });
@@ -418,7 +424,7 @@ export const universalAuthServiceFactory = ({
     actor,
     clientSecretId
   }: TRevokeUaClientSecretDTO) => {
-    const identityMembershipOrg = await identityOrgDal.findOne({ identityId });
+    const identityMembershipOrg = await identityOrgMembershipDal.findOne({ identityId });
     if (!identityMembershipOrg) throw new BadRequestError({ message: "Failed to find identity" });
     if (identityMembershipOrg.identity?.authMethod !== IdentityAuthMethod.Univeral)
       throw new BadRequestError({
@@ -445,7 +451,7 @@ export const universalAuthServiceFactory = ({
         message: "Failed to add identity to project with more privileged role"
       });
 
-    const clientSecret = await uaClientSecretDal.updateById(clientSecretId, {
+    const clientSecret = await identityUaClientSecretDal.updateById(clientSecretId, {
       isClientSecretRevoked: true
     });
     return clientSecret;

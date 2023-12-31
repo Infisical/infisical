@@ -1,7 +1,7 @@
 export type IntegrationAuth = {
   id: string;
   integration: string;
-  workspace: string;
+  projectId: string;
   __v: number;
   createdAt: string;
   updatedAt: string;

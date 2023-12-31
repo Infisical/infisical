@@ -60,5 +60,34 @@ export const integrationDalFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...integrationOrm, find, findOne, findById };
+  const findByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const integrations = await (tx || db)(TableName.Integration)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .join(
+          TableName.Environment,
+          `${TableName.Integration}.envId`,
+          `${TableName.Environment}.id`
+        )
+        .select(db.ref("name").withSchema(TableName.Environment).as("envName"))
+        .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
+        .select(db.ref("id").withSchema(TableName.Environment).as("envId"))
+        .select(db.ref("projectId").withSchema(TableName.Environment))
+        .select(selectAllTableCols(TableName.Integration));
+
+      return integrations.map(({ envId, envSlug, envName, ...el }) => ({
+        ...el,
+        envId,
+        environment: {
+          id: envId,
+          slug: envSlug,
+          name: envName
+        }
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByProjectId" });
+    }
+  };
+
+  return { ...integrationOrm, find, findOne, findById, findByProjectId };
 };

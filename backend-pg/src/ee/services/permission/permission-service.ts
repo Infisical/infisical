@@ -19,8 +19,7 @@ import {
   projectAdminPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions,
-  ProjectPermissionSet,
-  projectViewerPermission
+  ProjectPermissionSet
 } from "./project-permission";
 
 type TPermissionServiceFactoryDep = {
@@ -36,35 +35,101 @@ export const permissionServiceFactory = ({
   orgRoleDal,
   projectRoleDal
 }: TPermissionServiceFactoryDep) => {
+  const buildOrgPermission = (role: string, permission?: unknown) => {
+    switch (role) {
+      case OrgMembershipRole.Admin:
+        return orgAdminPermissions;
+      case OrgMembershipRole.Member:
+        return orgMemberPermissions;
+      case OrgMembershipRole.NoAccess:
+        return orgNoAccessPermissions;
+      case OrgMembershipRole.Custom:
+        return createMongoAbility<OrgPermissionSet>(
+          unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(
+            permission as PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[]
+          ),
+          {
+            conditionsMatcher
+          }
+        );
+      default:
+        throw new BadRequestError({ name: "OrgRoleInvalid", message: "Org role not found" });
+    }
+  };
+
+  const buildProjectPermission = (role: string, permission?: unknown) => {
+    switch (role) {
+      case ProjectMembershipRole.Admin:
+        return projectAdminPermissions;
+      case ProjectMembershipRole.Member:
+        return projectMemberPermissions;
+      case ProjectMembershipRole.NoAccess:
+        return projectNoAccessPermissions;
+      case ProjectMembershipRole.Custom:
+        return createMongoAbility<ProjectPermissionSet>(
+          unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
+            permission as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[]
+          ),
+          {
+            conditionsMatcher
+          }
+        );
+      default:
+        throw new BadRequestError({
+          name: "ProjectRoleInvalid",
+          message: "Project role not found"
+        });
+    }
+  };
+
   /*
    * Get user permission in an organization
    * */
   const getUserOrgPermission = async (userId: string, orgId: string) => {
     const membership = await permissionDal.getOrgPermission(userId, orgId);
     if (!membership) throw new UnauthorizedError({ name: "User not in org" });
-    if (membership.role === "custom" && !membership.permissions) {
+    if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
+    return { permission: buildOrgPermission(membership.role, membership.permissions), membership };
+  };
 
-    if (membership.role === OrgMembershipRole.Admin)
-      return { permission: orgAdminPermissions, membership };
-    if (membership.role === OrgMembershipRole.Member)
-      return { permission: orgMemberPermissions, membership };
-
-    if (membership.role === OrgMembershipRole.NoAccess)
-      return { permission: orgNoAccessPermissions, membership };
-    if (membership.role === OrgMembershipRole.Custom) {
-      const permission = createMongoAbility<OrgPermissionSet>(
-        // akhilmhdh: putting any due to ts incompatiable matching with string and the other
-        unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(membership.permissions as any),
-        {
-          conditionsMatcher
-        }
-      );
-      return { permission, membership };
+  const getIdentityOrgPermission = async (identityId: string, orgId: string) => {
+    const membership = await permissionDal.getOrgIdentityPermission(identityId, orgId);
+    if (!membership) throw new UnauthorizedError({ name: "Identity not in org" });
+    if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
+      throw new BadRequestError({ name: "Custom permission not found" });
     }
+    return { permission: buildOrgPermission(membership.role, membership.permissions), membership };
+  };
 
-    throw new BadRequestError({ name: "Role missing", message: "User role not found" });
+  const getOrgPermission = async (type: ActorType, id: string, orgId: string) => {
+    switch (type) {
+      case ActorType.USER:
+        return getUserOrgPermission(id, orgId);
+      case ActorType.IDENTITY:
+        return getIdentityOrgPermission(id, orgId);
+      default:
+        throw new UnauthorizedError({
+          message: "Permission not defined",
+          name: "Get org permission"
+        });
+    }
+  };
+
+  // instead of actor type this will fetch by role slug. meaning it can be the pre defined slugs like
+  // admin member or user defined ones like biller etc
+  const getOrgPermissionByRole = async (role: string, orgId: string) => {
+    const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
+    if (isCustomRole) {
+      const orgRole = await orgRoleDal.findOne({ slug: role, orgId });
+      if (!orgRole) throw new BadRequestError({ message: "Role not found" });
+      return {
+        permission: buildOrgPermission(OrgMembershipRole.Custom, orgRole.permissions),
+        role: orgRole
+      };
+    }
+    return { permission: buildOrgPermission(role, []) };
   };
 
   // user permission for a project in an organization
@@ -74,111 +139,51 @@ export const permissionServiceFactory = ({
     if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
+    return {
+      permission: buildProjectPermission(membership.role, membership.permissions),
+      membership
+    };
+  };
 
-    if (membership.role === ProjectMembershipRole.Admin)
-      return { permission: projectAdminPermissions, membership };
-    if (membership.role === ProjectMembershipRole.Member)
-      return { permission: projectMemberPermissions, membership };
-    if (membership.role === ProjectMembershipRole.Viewer)
-      return { permission: projectViewerPermission, membership };
-    if (membership.role === ProjectMembershipRole.NoAccess)
-      return { permission: projectNoAccessPermissions, membership };
-    if (membership.role === ProjectMembershipRole.Custom) {
-      const permission = createMongoAbility<ProjectPermissionSet>(
-        // akhilmhdh: putting any due to ts incompatiable matching with string and the other
-        unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(membership.permissions as any),
-        {
-          conditionsMatcher
-        }
-      );
-      return { permission, membership };
+  const getIdentityProjectPermission = async (identityId: string, projectId: string) => {
+    const membership = await permissionDal.getProjectIdentityPermission(identityId, projectId);
+    if (!membership) throw new UnauthorizedError({ name: "Identity not in org" });
+    if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
+      throw new BadRequestError({ name: "Custom permission not found" });
     }
-
-    throw new BadRequestError({ name: "Role missing", message: "User role not found" });
+    return {
+      permission: buildProjectPermission(membership.role, membership.permissions),
+      membership
+    };
   };
 
   const getProjectPermission = async (type: ActorType, id: string, projectId: string) => {
     switch (type) {
       case ActorType.USER:
         return getUserProjectPermission(id, projectId);
+      case ActorType.IDENTITY:
+        return getIdentityProjectPermission(id, projectId);
       default:
         throw new UnauthorizedError({
           message: "Permission not defined",
           name: "Get org permission"
         });
-    }
-  };
-
-  const getOrgPermission = async (type: ActorType, id: string, orgId: string) => {
-    switch (type) {
-      case ActorType.USER:
-        return getUserOrgPermission(id, orgId);
-      default:
-        throw new UnauthorizedError({
-          message: "Permission not defined",
-          name: "Get org permission"
-        });
-    }
-  };
-
-  const getOrgPermissionByRole = async (role: string, orgId: string) => {
-    const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
-    if (isCustomRole) {
-      const orgRole = await orgRoleDal.findOne({ slug: role, orgId });
-      if (!orgRole) throw new BadRequestError({ message: "Role not found" });
-      return {
-        permission: createMongoAbility<OrgPermissionSet>(
-          unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(
-            (orgRole.permissions as PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[]) || []
-          ),
-          {
-            conditionsMatcher
-          }
-        ),
-        role: orgRole
-      };
-    }
-    switch (role) {
-      case OrgMembershipRole.Admin:
-        return { permission: orgAdminPermissions };
-      case OrgMembershipRole.Member:
-        return { permission: orgMemberPermissions };
-      case OrgMembershipRole.NoAccess:
-        return { permission: orgNoAccessPermissions };
-      default:
-        throw new BadRequestError({ message: "Org role not found" });
     }
   };
 
   const getProjectPermissionByRole = async (role: string, projectId: string) => {
-    const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
+    const isCustomRole = !Object.values(ProjectMembershipRole).includes(
+      role as ProjectMembershipRole
+    );
     if (isCustomRole) {
       const projectRole = await projectRoleDal.findOne({ slug: role, projectId });
       if (!projectRole) throw new BadRequestError({ message: "Role not found" });
       return {
-        permission: createMongoAbility<ProjectPermissionSet>(
-          unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(
-            (projectRole.permissions as PackRule<
-              RawRuleOf<MongoAbility<ProjectPermissionSet>>
-            >[]) || []
-          ),
-          {
-            conditionsMatcher
-          }
-        ),
+        permission: buildProjectPermission(ProjectMembershipRole.Custom, projectRole.permissions),
         role: projectRole
       };
     }
-    switch (role) {
-      case ProjectMembershipRole.Admin:
-        return { permission: projectAdminPermissions };
-      case ProjectMembershipRole.Member:
-        return { permission: projectMemberPermissions };
-      case ProjectMembershipRole.NoAccess:
-        return { permission: projectNoAccessPermissions };
-      default:
-        throw new BadRequestError({ message: "Org role not found" });
-    }
+    return { permission: buildProjectPermission(role, []) };
   };
 
   return {
@@ -187,6 +192,8 @@ export const permissionServiceFactory = ({
     getUserProjectPermission,
     getProjectPermission,
     getOrgPermissionByRole,
-    getProjectPermissionByRole
+    getProjectPermissionByRole,
+    buildOrgPermission,
+    buildProjectPermission
   };
 };

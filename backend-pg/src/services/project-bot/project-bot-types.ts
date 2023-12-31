@@ -4,7 +4,7 @@ export type TSetActiveStateDTO = {
   isActive: boolean;
   botKey?: {
     nonce?: string;
-    encryptionKey?: string;
+    encryptedKey?: string;
   };
   botId: string;
 } & Omit<TProjectPermission, "projectId">;

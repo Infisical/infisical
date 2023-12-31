@@ -8,6 +8,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { TOrgPermission } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
 import { TIdentityDalFactory } from "./identity-dal";
@@ -16,7 +17,7 @@ import { TCreateIdentityDTO, TDeleteIdentityDTO, TUpdateIdentityDTO } from "./id
 
 type TIdentityServiceFactoryDep = {
   identityDal: TIdentityDalFactory;
-  identityOrgDal: TIdentityOrgDalFactory;
+  identityOrgMembershipDal: TIdentityOrgDalFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
 };
 
@@ -24,7 +25,7 @@ export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
 
 export const identityServiceFactory = ({
   identityDal,
-  identityOrgDal,
+  identityOrgMembershipDal,
   permissionService
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({ name, role, actor, orgId, actorId }: TCreateIdentityDTO) => {
@@ -43,7 +44,7 @@ export const identityServiceFactory = ({
 
     const identity = await identityDal.transaction(async (tx) => {
       const newIdentity = await identityDal.create({ name }, tx);
-      await identityOrgDal.create(
+      await identityOrgMembershipDal.create(
         {
           identityId: newIdentity.id,
           orgId,
@@ -60,7 +61,7 @@ export const identityServiceFactory = ({
   };
 
   const updateIdentity = async ({ id, role, name, actor, actorId }: TUpdateIdentityDTO) => {
-    const identityOrgMembership = await identityOrgDal.findById(id);
+    const identityOrgMembership = await identityOrgMembershipDal.findById(id);
     if (!identityOrgMembership)
       throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
 
@@ -98,7 +99,7 @@ export const identityServiceFactory = ({
     const identity = await identityDal.transaction(async (tx) => {
       const newIdentity = await identityDal.updateById(id, { name }, tx);
       if (role) {
-        await identityOrgDal.update(
+        await identityOrgMembershipDal.update(
           { identityId: id },
           {
             role: customRole ? OrgMembershipRole.Custom : role,
@@ -115,7 +116,7 @@ export const identityServiceFactory = ({
   };
 
   const deleteIdentity = async ({ actorId, actor, id }: TDeleteIdentityDTO) => {
-    const identityOrgMembership = await identityOrgDal.findById(id);
+    const identityOrgMembership = await identityOrgMembershipDal.findById(id);
     if (!identityOrgMembership)
       throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
 
@@ -141,9 +142,21 @@ export const identityServiceFactory = ({
     return deletedIdentity;
   };
 
+  const listOrgIdentities = async ({ orgId, actor, actorId }: TOrgPermission) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionActions.Read,
+      OrgPermissionSubjects.Identity
+    );
+
+    const identityMemberhips = await identityOrgMembershipDal.findByOrgId(orgId);
+    return identityMemberhips;
+  };
+
   return {
     createIdentity,
     updateIdentity,
-    deleteIdentity
+    deleteIdentity,
+    listOrgIdentities
   };
 };

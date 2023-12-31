@@ -10,17 +10,16 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     schema: {
       params: z.object({
-        workspaceId: z.string().trim()
+        projectId: z.string().trim()
       }),
       response: {
         200: z.object({
-          bot: ProjectBotsSchema.pick({
-            name: true,
-            projectId: true,
-            isActive: true,
-            publicKey: true,
-            createdAt: true,
-            updatedAt: true
+          bot: ProjectBotsSchema.omit({
+            iv: true,
+            encryptedPrivateKey: true,
+            tag: true,
+            algorithm: true,
+            keyEncoding: true
           })
         })
       }
@@ -30,7 +29,7 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
       const bot = await server.services.projectBot.findBotByProjectId({
         actor: req.permission.type,
         actorId: req.permission.id,
-        projectId: req.params.workspaceId
+        projectId: req.params.projectId
       });
       return { bot };
     }
@@ -54,13 +53,12 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          bot: ProjectBotsSchema.pick({
-            name: true,
-            projectId: true,
-            isActive: true,
-            publicKey: true,
-            createdAt: true,
-            updatedAt: true
+          bot: ProjectBotsSchema.omit({
+            iv: true,
+            encryptedPrivateKey: true,
+            tag: true,
+            algorithm: true,
+            keyEncoding: true
           })
         })
       }

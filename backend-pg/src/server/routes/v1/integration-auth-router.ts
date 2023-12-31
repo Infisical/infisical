@@ -1,8 +1,9 @@
 import { z } from "zod";
 
-import { IntegrationAuthsSchema } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+import { integrationAuthPubSchema } from "../sanitizedSchemas";
 
 export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -32,18 +33,6 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     }
   });
 
-  const integrationPublicSchema = IntegrationAuthsSchema.pick({
-    projectId: true,
-    integration: true,
-    teamId: true,
-    url: true,
-    namespace: true,
-    accountId: true,
-    metadata: true,
-    createdAt: true,
-    updatedAt: true
-  });
-
   server.route({
     url: "/:integrationAuthId",
     method: "GET",
@@ -54,7 +43,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
       }),
       response: {
         200: z.object({
-          integrationAuth: integrationPublicSchema
+          integrationAuth: integrationAuthPubSchema
         })
       }
     },
@@ -78,7 +67,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
       }),
       response: {
         200: z.object({
-          integrationAuth: integrationPublicSchema
+          integrationAuth: integrationAuthPubSchema
         })
       }
     },
@@ -108,7 +97,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
       }),
       response: {
         200: z.object({
-          integrationAuth: integrationPublicSchema
+          integrationAuth: integrationAuthPubSchema
         })
       }
     },

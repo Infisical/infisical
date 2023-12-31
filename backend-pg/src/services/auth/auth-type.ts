@@ -25,7 +25,8 @@ export enum AuthMode {
   SERVICE_TOKEN = "serviceToken",
   SERVICE_ACCESS_TOKEN = "serviceAccessToken",
   API_KEY = "apiKey",
-  API_KEY_V2 = "apiKeyV2"
+  API_KEY_V2 = "apiKeyV2",
+  IDENTITY_ACCESS_TOKEN = "identityAccessToken"
 }
 
 export enum ActorType { // would extend to AWS, Azure, ...

@@ -12,6 +12,6 @@ export type TUpdateProjectIdentityDTO = {
 
 export type TDeleteProjectIdentityDTO = {
   identityId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TProjectPermission;
 
 export type TListProjectIdentityDTO = TProjectPermission;

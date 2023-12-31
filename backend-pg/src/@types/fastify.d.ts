@@ -8,6 +8,10 @@ import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
 import { AuthMode } from "@app/services/auth/auth-signup-type";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
+import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
+import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
+import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
@@ -21,10 +25,13 @@ import { TProjectRoleServiceFactory } from "@app/services/project-role/project-r
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
+import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
+import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TAuthTokenServiceFactory } from "@app/services/token/token-service";
 import { TUserDalFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
+import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -71,11 +78,18 @@ declare module "fastify" {
       projectKey: TProjectKeyServiceFactory;
       projectRole: TProjectRoleServiceFactory;
       secret: TSecretServiceFactory;
+      secretTag: TSecretTagServiceFactory;
       secretImport: TSecretImportServiceFactory;
       projectBot: TProjectBotServiceFactory;
       folder: TSecretFolderServiceFactory;
       integration: TIntegrationServiceFactory;
       integrationAuth: TIntegrationAuthServiceFactory;
+      webhook: TWebhookServiceFactory;
+      serviceToken: TServiceTokenServiceFactory;
+      identity: TIdentityServiceFactory;
+      identityAccessToken: TIdentityAccessTokenServiceFactory;
+      identityProject: TIdentityProjectServiceFactory;
+      identityUa: TIdentityUaServiceFactory;
     };
 
     // this is exclusive use for middlewares in which we need to inject data

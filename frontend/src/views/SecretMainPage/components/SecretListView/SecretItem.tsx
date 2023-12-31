@@ -319,7 +319,7 @@ export const SecretItem = memo(
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Apply tags to this secrets</DropdownMenuLabel>
                       {tags.map((tag) => {
-                        const { id: tagId, name, tagColor } = tag;
+                        const { id: tagId, name, color } = tag;
 
                         const isTagSelected = selectedTagsGroupById?.[tagId];
                         return (
@@ -332,7 +332,7 @@ export const SecretItem = memo(
                             <div className="flex items-center">
                               <div
                                 className="mr-2 h-2 w-2 rounded-full"
-                                style={{ background: tagColor || "#bec2c8" }}
+                                style={{ background: color || "#bec2c8" }}
                               />
                               {name}
                             </div>

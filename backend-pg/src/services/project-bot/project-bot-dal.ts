@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName,TProjectBots } from "@app/db/schemas";
+import { TableName, TProjectBots } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -14,8 +14,8 @@ export const projectBotDalFactory = (db: TDbClient) => {
     try {
       const bot = await (tx || db)(TableName.ProjectBot)
         .where(filter)
-        .join(TableName.Users, `${TableName.ProjectBot}.senderId`, `${TableName.Users}.id`)
-        .join(
+        .leftJoin(TableName.Users, `${TableName.ProjectBot}.senderId`, `${TableName.Users}.id`)
+        .leftJoin(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
           `${TableName.Users}.id`

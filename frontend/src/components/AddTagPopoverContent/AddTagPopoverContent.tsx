@@ -63,7 +63,7 @@ const AddTagPopoverContent = ({
             <div className="ml-7 flex items-center gap-3">
               <div
                 className="h-[10px] w-[10px] rounded-full"
-                style={{ background: wsTag?.tagColor ? wsTag.tagColor : "#bec2c8" }}
+                style={{ background: wsTag?.color ? wsTag.color : "#bec2c8" }}
               >
                 {" "}
               </div>

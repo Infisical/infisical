@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  IntegrationsSchema,
   ProjectKeysSchema,
   ProjectMembershipsSchema,
   ProjectsSchema,
@@ -9,6 +10,9 @@ import {
 } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+import { integrationAuthPubSchema } from "../sanitizedSchemas";
+import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
 
 const projectWithEnv = ProjectsSchema.merge(
   z.object({
@@ -262,6 +266,78 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         email: req.body.email
       });
       return { invitee, latestKey };
+    }
+  });
+
+  server.route({
+    url: "/:workspaceId/integrations",
+    method: "GET",
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          integrations: IntegrationsSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const integrations = await server.services.integration.listIntegrationByProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        projectId: req.params.workspaceId
+      });
+      return { integrations };
+    }
+  });
+
+  server.route({
+    url: "/:workspaceId/authorizations",
+    method: "GET",
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          authorizations: integrationAuthPubSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const authorizations = await server.services.integration.listIntegrationByProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        projectId: req.params.workspaceId
+      });
+      return { authorizations };
+    }
+  });
+
+  server.route({
+    url: "/:workspaceId/service-token-data",
+    method: "GET",
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          serviceTokenData: sanitizedServiceTokenSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const serviceTokenData = await server.services.serviceToken.getProjectServiceTokens({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        projectId: req.params.workspaceId
+      });
+      return { serviceTokenData };
     }
   });
 };

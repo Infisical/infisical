@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName,TWebhooks } from "@app/db/schemas";
+import { TableName, TWebhooks } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -18,13 +18,14 @@ export const webhookDalFactory = (db: TDbClient) => {
       .select(tx.ref("slug").withSchema(TableName.Environment).as("envSlug"))
       .select(tx.ref("id").withSchema(TableName.Environment).as("envId"))
       .select(tx.ref("projectId").withSchema(TableName.Environment))
-      .select(selectAllTableCols(TableName.Integration));
+      .select(selectAllTableCols(TableName.Webhook));
 
   const find = async (filter: Partial<TWebhooks>, tx?: Knex) => {
     try {
       const docs = await webhookFindQuery(tx || db, filter);
       return docs.map(({ envId, envSlug, envName, ...el }) => ({
         ...el,
+        envId,
         environment: {
           id: envId,
           slug: envSlug,
@@ -50,11 +51,13 @@ export const webhookDalFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const doc = await webhookFindQuery(tx || db, { id }).first();
+      const doc = await webhookFindQuery(tx || db, {
+        [`${TableName.Webhook}.id` as "id"]: id
+      }).first();
       if (!doc) return;
 
       const { envName: name, envSlug: slug, envId, ...el } = doc;
-      return { ...el, environment: { id: envId, name, slug } };
+      return { ...el, envId, environment: { id: envId, name, slug } };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by id webhook" });
     }
@@ -82,9 +85,17 @@ export const webhookDalFactory = (db: TDbClient) => {
         .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
         .select(db.ref("id").withSchema(TableName.Environment).as("envId"))
         .select(db.ref("projectId").withSchema(TableName.Environment))
-        .select(selectAllTableCols(TableName.Integration));
+        .select(selectAllTableCols(TableName.Webhook));
 
-      return webhooks;
+      return webhooks.map(({ envId, envSlug, envName, ...el }) => ({
+        ...el,
+        envId,
+        environment: {
+          id: envId,
+          slug: envSlug,
+          name: envName
+        }
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all webhooks" });
     }

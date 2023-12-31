@@ -82,11 +82,14 @@ export const identityAccessTokenServiceFactory = ({
         });
     }
 
-    await identityAccessTokenDal.updateById(identityAccessToken.id, {
-      accessTokenLastRenewedAt: new Date()
-    });
+    const updatedIdentityAccessToken = await identityAccessTokenDal.updateById(
+      identityAccessToken.id,
+      {
+        accessTokenLastRenewedAt: new Date()
+      }
+    );
 
-    return identityAccessTokenDal;
+    return { accessToken, identityAccessToken: updatedIdentityAccessToken };
   };
 
   return { renewAccessToken };

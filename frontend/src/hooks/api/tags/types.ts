@@ -4,8 +4,8 @@ export type WsTag = {
   id: string;
   name: string;
   slug: string;
-  tagColor?: string;
-  workspace: string;
+  color?: string;
+  projectId: string;
   createdAt: string;
   updatedAt: string;
   __v: number;
@@ -20,26 +20,7 @@ export type CreateTagDTO = {
   tagColor: string;
 };
 
-export type CreateTagRes = {
-  name: string;
-  slug: string;
-  workspace: string;
-  createdAt: string;
-  tagColor?: string;
-  user: string;
-  id: string;
-};
-
-export type DeleteTagDTO = { tagID: string };
-
-export type DeleteWsTagRes = {
-  name: string;
-  slug: string;
-  workspace: string;
-  createdAt: string;
-  user: string;
-  id: string;
-};
+export type DeleteTagDTO = { tagID: string; projectId: string };
 
 export type SecretTags = {
   id: string;

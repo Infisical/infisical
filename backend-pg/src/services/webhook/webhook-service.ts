@@ -83,7 +83,7 @@ export const webhookServiceFactory = ({
 
     const webhook = await webhookDal.create(insertDoc);
     // TODO(akhilmhdh-pg): add audit log
-    return webhook;
+    return { ...webhook,projectId, environment: env };
   };
 
   const updateWebhook = async ({ actorId, actor, id, isDisabled }: TUpdateWebhookDTO) => {
@@ -101,7 +101,7 @@ export const webhookServiceFactory = ({
     );
 
     const updatedWebhook = await webhookDal.updateById(id, { isDisabled });
-    return updatedWebhook;
+    return { ...webhook,...updatedWebhook };
   };
 
   const deleteWebhook = async ({ id, actor, actorId }: TDeleteWebhookDTO) => {
@@ -119,7 +119,7 @@ export const webhookServiceFactory = ({
     );
 
     const deletedWebhook = await webhookDal.deleteById(id);
-    return deletedWebhook;
+    return { ...webhook,...deletedWebhook };
   };
 
   const testWebhook = async ({ id, actor, actorId }: TTestWebhookDTO) => {
@@ -150,7 +150,7 @@ export const webhookServiceFactory = ({
       lastStatus: isSuccess ? "success" : "failed",
       lastRunErrorMessage: isSuccess ? null : webhookError
     });
-    return updatedWebhook;
+    return {...webhook,...updatedWebhook}
   };
 
   const listWebhooks = async ({

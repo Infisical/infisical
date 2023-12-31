@@ -17,6 +17,7 @@ import {
   encryptSymmetric128BitHexKeyUTF8
 } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
+import { TProjectPermission } from "@app/lib/types";
 
 import { TIntegrationDalFactory } from "../integration/integration-dal";
 import { TProjectBotDalFactory } from "../project-bot/project-bot-dal";
@@ -47,7 +48,7 @@ import {
   TTeamCityBuildConfig,
   TVercelBranches
 } from "./integration-auth-types";
-import { getIntegrationOptions,Integrations, IntegrationUrls } from "./integration-list";
+import { getIntegrationOptions, Integrations, IntegrationUrls } from "./integration-list";
 import { getTeams } from "./integration-team";
 import { exchangeCode, exchangeRefresh } from "./integration-token";
 
@@ -68,6 +69,20 @@ export const integrationAuthServiceFactory = ({
   projectBotDal,
   projectBotService
 }: TIntegrationAuthServiceFactoryDep) => {
+  const listIntegrationAuthByProjectId = async ({
+    actorId,
+    actor,
+    projectId
+  }: TProjectPermission) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.Integrations
+    );
+    const authorizations = await integrationAuthDal.find({ projectId });
+    return authorizations;
+  };
+
   const getIntegrationAuth = async ({ actor, id, actorId }: TGetIntegrationAuthDTO) => {
     const integrationAuth = await integrationAuthDal.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
@@ -983,6 +998,7 @@ export const integrationAuthServiceFactory = ({
   };
 
   return {
+listIntegrationAuthByProjectId,
     getIntegrationOptions,
     getIntegrationAuth,
     oauthExchange,

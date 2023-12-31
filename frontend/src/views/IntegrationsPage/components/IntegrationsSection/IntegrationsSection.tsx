@@ -87,7 +87,7 @@ export const IntegrationsSection = ({
                 <div>
                   <FormControl label="Environment">
                     <Select
-                      value={integration.environment}
+                      value={integration.environment.slug}
                       isDisabled={integration.isActive}
                       className="min-w-[8rem] border border-mineshaft-700"
                     >

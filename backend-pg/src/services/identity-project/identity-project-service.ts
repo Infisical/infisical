@@ -138,9 +138,10 @@ export const identityProjectServiceFactory = ({
   const deleteProjectIdentity = async ({
     identityId,
     actorId,
-    actor
+    actor,
+    projectId
   }: TDeleteProjectIdentityDTO) => {
-    const identityProjectMembership = await identityProjectDal.findById(identityId);
+    const identityProjectMembership = await identityProjectDal.findOne({ identityId, projectId });
     if (!identityProjectMembership)
       throw new BadRequestError({ message: `Failed to find identity with id ${identityId}` });
 
@@ -173,7 +174,7 @@ export const identityProjectServiceFactory = ({
       ProjectPermissionSub.Identity
     );
 
-    const identityMemberhips = await identityProjectDal.find({ projectId });
+    const identityMemberhips = await identityProjectDal.findByProjectId(projectId);
     return identityMemberhips;
   };
 

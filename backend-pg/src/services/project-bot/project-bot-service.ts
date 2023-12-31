@@ -139,7 +139,7 @@ export const projectBotServiceFactory = ({
     actorId,
     isActive
   }: TSetActiveStateDTO) => {
-    const bot = await projectBotDal.findOne({ id: botId });
+    const bot = await projectBotDal.findById(botId);
     if (!bot) throw new BadRequestError({ message: "Bot not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -153,12 +153,12 @@ export const projectBotServiceFactory = ({
     );
 
     if (isActive) {
-      if (!botKey?.nonce || !botKey?.encryptionKey) {
+      if (!botKey?.nonce || !botKey?.encryptedKey) {
         throw new BadRequestError({ message: "Failed to set bot active - missing bot key" });
       }
       const doc = await projectBotDal.updateById(botId, {
         isActive: true,
-        encryptedProjectKey: botKey.encryptionKey,
+        encryptedProjectKey: botKey.encryptedKey,
         encryptedProjectKeyNonce: botKey.nonce,
         senderId: actorId
       });
