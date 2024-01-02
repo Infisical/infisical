@@ -16,23 +16,23 @@ monorepo:
   dir: cli
 
 builds:
-  # - id: darwin-build
-  #   binary: infisical
-  #   ldflags:
-  #     - -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Version }}
-  #     - -X github.com/Infisical/infisical-merge/packages/telemetry.POSTHOG_API_KEY_FOR_CLI={{ .Env.POSTHOG_API_KEY_FOR_CLI }}
-  #   flags:
-  #     - -trimpath
-  #   env:
-  #     - CGO_ENABLED=1
-  #     - CC=/home/runner/work/osxcross/target/bin/o64-clang
-  #     - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
-  #   goos:
-  #     - darwin
-  #   ignore:
-  #     - goos: darwin
-  #       goarch: "386"
-  #   dir: ./cli
+  - id: darwin-build
+    binary: infisical
+    ldflags:
+      - -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Version }}
+      - -X github.com/Infisical/infisical-merge/packages/telemetry.POSTHOG_API_KEY_FOR_CLI={{ .Env.POSTHOG_API_KEY_FOR_CLI }}
+    flags:
+      - -trimpath
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/osxcross/target/bin/o64-clang
+      - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
+    goos:
+      - darwin
+    ignore:
+      - goos: darwin
+        goarch: "386"
+    dir: ./cli
 
   - id: all-other-builds
     env:
