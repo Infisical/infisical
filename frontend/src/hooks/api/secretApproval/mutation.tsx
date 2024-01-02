@@ -10,7 +10,7 @@ export const useCreateSecretApprovalPolicy = () => {
 
   return useMutation<{}, {}, TCreateSecretPolicyDTO>({
     mutationFn: async ({ environment, workspaceId, approvals, approvers, secretPath, name }) => {
-      const { data } = await apiRequest.post("/api/v1/secret-approvals", {
+      const { data } = await apiRequest.post("/api/ee/v1/secret-approvals", {
         environment,
         workspaceId,
         approvals,
@@ -31,7 +31,7 @@ export const useUpdateSecretApprovalPolicy = () => {
 
   return useMutation<{}, {}, TUpdateSecretPolicyDTO>({
     mutationFn: async ({ id, approvers, approvals, secretPath, name }) => {
-      const { data } = await apiRequest.patch(`/api/v1/secret-approvals/${id}`, {
+      const { data } = await apiRequest.patch(`/api/ee/v1/secret-approvals/${id}`, {
         approvals,
         approvers,
         secretPath,
@@ -50,7 +50,7 @@ export const useDeleteSecretApprovalPolicy = () => {
 
   return useMutation<{}, {}, TDeleteSecretPolicyDTO>({
     mutationFn: async ({ id }) => {
-      const { data } = await apiRequest.delete(`/api/v1/secret-approvals/${id}`);
+      const { data } = await apiRequest.delete(`/api/ee/v1/secret-approvals/${id}`);
       return data;
     },
     onSuccess: (_, { workspaceId }) => {

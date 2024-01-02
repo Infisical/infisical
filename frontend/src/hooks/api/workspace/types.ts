@@ -11,8 +11,6 @@ export type WorkspaceEnv = {
   id: string;
   name: string;
   slug: string;
-  isReadDenied: boolean;
-  isWriteDenied: boolean;
 };
 
 export type WorkspaceTag = { id: string; name: string; slug: string };

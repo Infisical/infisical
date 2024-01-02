@@ -15,6 +15,21 @@ export const withTransaction = <K extends object>(db: Knex, dal: K) => ({
   ...dal
 });
 
+export type TFindFilter<R extends {} = any> = Partial<R> & {
+  $in?: Partial<{ [K in keyof R]: R[K][] }>;
+};
+export const buildFindFilter =
+  <R extends {} = any>({ $in, ...filter }: TFindFilter<R>) =>
+  (bd: Knex.QueryBuilder<R, R>) => {
+    bd.where(filter);
+    if ($in) {
+      Object.entries($in).forEach(([key, val]) => {
+        bd.whereIn(key as any, val as any);
+      });
+    }
+    return bd;
+  };
+
 // What is ormify
 // It is to inject typical operations like find, findOne, update, delete, create
 // This will avoid writing most common ones each time
@@ -45,9 +60,10 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
       throw new DatabaseError({ error, name: "Find one" });
     }
   },
-  find: (filter: Partial<Tables[Tname]["base"]>, tx?: Knex) => {
+  find: async (filter: TFindFilter<Tables[Tname]["base"]>, tx?: Knex) => {
     try {
-      return (tx || db)(tableName).where(filter);
+      const res = await (tx || db)(tableName).where(buildFindFilter(filter));
+      return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find one" });
     }

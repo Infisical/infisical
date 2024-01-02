@@ -62,7 +62,7 @@ export const SecretPolicyForm = ({
     formState: { isSubmitting }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
-    values: editValues
+    values: editValues ? { ...editValues, environment: editValues.environment.slug } : undefined
   });
   const { currentWorkspace } = useWorkspace();
   const { createNotification } = useNotificationContext();

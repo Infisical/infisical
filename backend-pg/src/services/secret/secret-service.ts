@@ -44,6 +44,23 @@ type TSecretServiceFactoryDep = {
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
 
+export const generateSecretBlindIndexBySalt = async (
+  secretName: string,
+  secretBlindIndexDoc: TSecretBlindIndexes
+) => {
+  const appCfg = getConfig();
+  const secretBlindIndex = await buildSecretBlindIndexFromName({
+    secretName,
+    keyEncoding: secretBlindIndexDoc.keyEncoding as SecretKeyEncoding,
+    rootEncryptionKey: appCfg.ROOT_ENCRYPTION_KEY,
+    encryptionKey: appCfg.ENCRYPTION_KEY,
+    tag: secretBlindIndexDoc.saltTag,
+    ciphertext: secretBlindIndexDoc.encryptedSaltCipherText,
+    iv: secretBlindIndexDoc.saltIV
+  });
+  return secretBlindIndex;
+};
+
 export const secretServiceFactory = ({
   secretDal,
   secretTagDal,
@@ -52,23 +69,6 @@ export const secretServiceFactory = ({
   secretBlindIndexDal,
   permissionService
 }: TSecretServiceFactoryDep) => {
-  const generateSecretBlindIndexBySalt = async (
-    secretName: string,
-    secretBlindIndexDoc: TSecretBlindIndexes
-  ) => {
-    const appCfg = getConfig();
-    const secretBlindIndex = await buildSecretBlindIndexFromName({
-      secretName,
-      keyEncoding: secretBlindIndexDoc.keyEncoding as SecretKeyEncoding,
-      rootEncryptionKey: appCfg.ROOT_ENCRYPTION_KEY,
-      encryptionKey: appCfg.ENCRYPTION_KEY,
-      tag: secretBlindIndexDoc.saltTag,
-      ciphertext: secretBlindIndexDoc.encryptedSaltCipherText,
-      iv: secretBlindIndexDoc.saltIV
-    });
-    return secretBlindIndex;
-  };
-
   // utility function to get secret blind index data
   const generateSecretBlindIndexByName = async (projectId: string, secretName: string) => {
     const appCfg = getConfig();
@@ -516,7 +516,8 @@ export const secretServiceFactory = ({
         type
       }))
     );
-    if (secretsWithNewName.length) throw new BadRequestError({ message: "Secret not found" });
+    if (secretsWithNewName.length)
+      throw new BadRequestError({ message: "Secret with new name already exist" });
 
     const secretsGroupedByBlindIndex = secretsToBeUpdated.reduce<Record<string, TSecrets>>(
       (prev, curr) => {

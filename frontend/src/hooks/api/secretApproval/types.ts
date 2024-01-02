@@ -1,8 +1,11 @@
+import { WorkspaceEnv } from "../workspace/types";
+
 export type TSecretApprovalPolicy = {
   id: string;
   workspace: string;
   name: string;
-  environment: string;
+  envId: string;
+  environment: WorkspaceEnv;
   secretPath?: string;
   approvers: string[];
   approvals: number;

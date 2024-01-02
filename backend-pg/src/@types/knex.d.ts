@@ -67,6 +67,24 @@ import {
   TProjects,
   TProjectsInsert,
   TProjectsUpdate,
+  TSapApprovers,
+  TSapApproversInsert,
+  TSapApproversUpdate,
+  TSaRequestSecrets,
+  TSaRequestSecretsInsert,
+  TSaRequestSecretsUpdate,
+  TSaRequestSecretTags,
+  TSaRequestSecretTagsInsert,
+  TSaRequestSecretTagsUpdate,
+  TSarReviewers,
+  TSarReviewersInsert,
+  TSarReviewersUpdate,
+  TSecretApprovalPolicies,
+  TSecretApprovalPoliciesInsert,
+  TSecretApprovalPoliciesUpdate,
+  TSecretApprovalRequests,
+  TSecretApprovalRequestsInsert,
+  TSecretApprovalRequestsUpdate,
   TSecretBlindIndexes,
   TSecretBlindIndexesInsert,
   TSecretBlindIndexesUpdate,
@@ -255,6 +273,36 @@ declare module "knex/types/tables" {
       TIdentityProjectMemberships,
       TIdentityProjectMembershipsInsert,
       TIdentityProjectMembershipsUpdate
+    >;
+    [TableName.SecretApprovalPolicy]: Knex.CompositeTableType<
+      TSecretApprovalPolicies,
+      TSecretApprovalPoliciesInsert,
+      TSecretApprovalPoliciesUpdate
+    >;
+    [TableName.SapApprover]: Knex.CompositeTableType<
+      TSapApprovers,
+      TSapApproversInsert,
+      TSapApproversUpdate
+    >;
+    [TableName.SecretApprovalRequest]: Knex.CompositeTableType<
+      TSecretApprovalRequests,
+      TSecretApprovalRequestsInsert,
+      TSecretApprovalRequestsUpdate
+    >;
+    [TableName.SarReviewer]: Knex.CompositeTableType<
+      TSarReviewers,
+      TSarReviewersInsert,
+      TSarReviewersUpdate
+    >;
+    [TableName.SarSecret]: Knex.CompositeTableType<
+      TSaRequestSecrets,
+      TSaRequestSecretsInsert,
+      TSaRequestSecretsUpdate
+    >;
+    [TableName.SarSecretTag]: Knex.CompositeTableType<
+      TSaRequestSecretTags,
+      TSaRequestSecretTagsInsert,
+      TSaRequestSecretTagsUpdate
     >;
     // Junction tables
     [TableName.JnSecretTag]: Knex.CompositeTableType<

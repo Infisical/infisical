@@ -34,7 +34,14 @@ export enum TableName {
   IdentityUniversalAuth = "identity_universal_auths",
   IdentityUaClientSecret = "identity_ua_client_secrets",
   IdentityOrgMembership = "identity_org_memberships",
-  IdentityProjectMembership = " identity_project_memberships",
+  IdentityProjectMembership = "identity_project_memberships",
+  SecretApprovalPolicy = "secret_approval_policies",
+  SapApprover = "sap_approvers", // sap: secret approval policy
+  SecretApprovalRequest = "secret_approval_requests",
+  SarReviewer = "sar_reviewers",
+  SarSecret = "sa_request_secrets",
+  SarSecretTag = "sa_request_secret_tags",
+  // junction tables
   JnSecretTag = "secret_tag_junction",
   JnSecretVersionTag = "secret_version_tag_junction"
 }

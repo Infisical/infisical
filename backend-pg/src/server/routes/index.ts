@@ -69,6 +69,9 @@ import { injectPermission } from "../plugins/auth/inject-permission";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
+import { secretApprovalPolicyDalFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
+import { sapApproverDalFactory } from "@app/ee/services/secret-approval-policy/sap-approver-dal";
+import { secretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 
 export const registerRoutes = async (
   server: FastifyZodProvider,
@@ -113,9 +116,18 @@ export const registerRoutes = async (
 
   // ee db layer ops
   const permissionDal = permissionDalFactory(db);
+  const sapApproverDal = sapApproverDalFactory(db);
+  const secretApprovalPolicyDal = secretApprovalPolicyDalFactory(db);
 
   // ee services
   const permissionService = permissionServiceFactory({ permissionDal, orgRoleDal, projectRoleDal });
+  const sapService = secretApprovalPolicyServiceFactory({
+    projectMembershipDal,
+    projectEnvDal,
+    sapApproverDal,
+    permissionService,
+    secretApprovalPolicyDal
+  });
 
   // service layers
   const tokenService = tokenServiceFactory({ tokenDal: authTokenDal });
@@ -274,7 +286,8 @@ export const registerRoutes = async (
     identity: identityService,
     identityAccessToken: identityAccessTokenService,
     identityProject: identityProjectService,
-    identityUa: identityUaService
+    identityUa: identityUaService,
+    secretApprovalPolicy: sapService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {

@@ -63,7 +63,7 @@ export const SecretApprovalRequest = () => {
     (prev, curr) => ({ ...prev, [curr.id]: curr }),
     {}
   );
-  const myMembershipId = members?.find(({ user }) => user.id === presentUser.id)?.id;
+  const myMembershipId = members?.find(({ user }) => user.id === presentUser?.id)?.id;
   const isSecretApprovalScreen = Boolean(selectedApproval);
 
   const handleGoBackSecretRequestDetail = () => {
