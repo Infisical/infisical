@@ -5,5 +5,5 @@ RUN apk add --no-cache tini
 RUN apk update && apk upgrade --no-cache libcrypto3 libssl3
 
 
-COPY infisical /infisical
-ENTRYPOINT ["/sbin/tini", "--", "/infisical"]
+COPY infisical /bin/infisical
+ENTRYPOINT ["/sbin/tini", "--", "/bin/infisical"]
