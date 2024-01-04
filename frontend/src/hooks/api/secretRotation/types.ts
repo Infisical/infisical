@@ -1,5 +1,6 @@
 import { UserWsKeyPair } from "../keys/types";
 import { EncryptedSecret } from "../secrets/types";
+import { WorkspaceEnv } from "../workspace/types";
 
 export enum TProviderFunctionTypes {
   HTTP = "http",
@@ -31,7 +32,6 @@ export type TDirectAssignOp = {
 export type TAssignFunction = TJmesPathAssignOp | TDirectAssignOp;
 
 export type THttpProviderFunction = {
-  type: TProviderFunctionTypes.HTTP;
   url: string;
   method: string;
   header?: Record<string, string>;
@@ -41,33 +41,37 @@ export type THttpProviderFunction = {
   pre?: Record<string, TDirectAssignOp>;
 };
 
-export type TDbProviderFunction = {
-  type: TProviderFunctionTypes.DB;
-  client: TDbProviderClients;
-  username: string;
-  password: string;
-  host: string;
-  database: string;
-  port: string;
-  query: string;
-  setter?: Record<string, TAssignFunction>;
-  pre?: Record<string, TDirectAssignOp>;
+export type TSecretRotationProviderTemplate = {
+  name: string;
+  title: string;
+  image?: string;
+  description?: string;
+  template: THttpProviderTemplate | TDbProviderTemplate;
 };
 
-export type TProviderFunction = THttpProviderFunction | TDbProviderFunction;
-
-export type TProviderTemplate = {
+export type THttpProviderTemplate = {
+  type: TProviderFunctionTypes.HTTP;
   inputs: {
-    properties: Record<string, { type: string; helperText?: string; defaultValue?: string }>;
     type: "object";
+    properties: Record<string, { type: string; [x: string]: unknown; desc?: string }>;
     required: string[];
   };
   outputs: Record<string, unknown>;
   functions: {
-    set: TProviderFunction;
-    remove?: TProviderFunction;
-    test: TProviderFunction;
+    set: THttpProviderFunction;
+    remove?: THttpProviderFunction;
+    test: THttpProviderFunction;
   };
+};
+
+export type TDbProviderTemplate = {
+  type: TProviderFunctionTypes.DB;
+  inputs: {
+    type: "object";
+    properties: Record<string, { type: string; [x: string]: unknown; desc?: string }>;
+    required: string[];
+  };
+  outputs: Record<string, unknown>;
 };
 
 export type TSecretRotation<T extends unknown = EncryptedSecret> = {
@@ -76,7 +80,8 @@ export type TSecretRotation<T extends unknown = EncryptedSecret> = {
   provider: string;
   customProvider: string;
   workspace: string;
-  environment: string;
+  envId: string;
+  environment: WorkspaceEnv;
   secretPath: string;
   outputs: Array<{
     key: string;
@@ -89,17 +94,9 @@ export type TSecretRotation<T extends unknown = EncryptedSecret> = {
   keyEncoding: string;
 };
 
-export type TSecretRotationProvider = {
-  name: string;
-  image: string;
-  title: string;
-  description: string;
-  template: TProviderTemplate;
-};
-
 export type TSecretRotationProviderList = {
-  custom: TSecretRotationProvider[];
-  providers: TSecretRotationProvider[];
+  custom: TSecretRotationProviderTemplate[];
+  providers: TSecretRotationProviderTemplate[];
 };
 
 export type TGetSecretRotationProviders = {

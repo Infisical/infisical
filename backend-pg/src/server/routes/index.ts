@@ -4,7 +4,18 @@ import { z } from "zod";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { permissionDalFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { sapApproverDalFactory } from "@app/ee/services/secret-approval-policy/sap-approver-dal";
+import { secretApprovalPolicyDalFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
+import { secretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
+import { sarReviewerDalFactory } from "@app/ee/services/secret-approval-request/sar-reviewer-dal";
+import { sarSecretDalFactory } from "@app/ee/services/secret-approval-request/sar-secret-dal";
+import { secretApprovalRequestDalFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
+import { secretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { secretRotationDalFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
+import { secretRotationQueueFactory } from "@app/ee/services/secret-rotation/secret-rotation-queue";
+import { secretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
 import { getConfig } from "@app/lib/config/env";
+import { TQueueServiceFactory } from "@app/queue";
 import { apiKeyDalFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { authDalFactory } from "@app/services/auth/auth-dal";
@@ -69,13 +80,14 @@ import { injectPermission } from "../plugins/auth/inject-permission";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
-import { secretApprovalPolicyDalFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
-import { sapApproverDalFactory } from "@app/ee/services/secret-approval-policy/sap-approver-dal";
-import { secretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 
 export const registerRoutes = async (
   server: FastifyZodProvider,
-  { db, smtp: smtpService }: { db: Knex; smtp: TSmtpService }
+  {
+    db,
+    smtp: smtpService,
+    queue: queueService
+  }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory }
 ) => {
   // db layers
   const userDal = userDalFactory(db);
@@ -118,8 +130,12 @@ export const registerRoutes = async (
   const permissionDal = permissionDalFactory(db);
   const sapApproverDal = sapApproverDalFactory(db);
   const secretApprovalPolicyDal = secretApprovalPolicyDalFactory(db);
+  const secretApprovalRequestDal = secretApprovalRequestDalFactory(db);
+  const sarReviewerDal = sarReviewerDalFactory(db);
+  const sarSecretDal = sarSecretDalFactory(db);
 
-  // ee services
+  const secretRotationDal = secretRotationDalFactory(db);
+
   const permissionService = permissionServiceFactory({ permissionDal, orgRoleDal, projectRoleDal });
   const sapService = secretApprovalPolicyServiceFactory({
     projectMembershipDal,
@@ -128,8 +144,17 @@ export const registerRoutes = async (
     permissionService,
     secretApprovalPolicyDal
   });
+  const sarService = secretApprovalRequestServiceFactory({
+    permissionService,
+    folderDal,
+    secretDal,
+    sarSecretDal,
+    sarReviewerDal,
+    secretVersionDal,
+    secretBlindIndexDal,
+    secretApprovalRequestDal
+  });
 
-  // service layers
   const tokenService = tokenServiceFactory({ tokenDal: authTokenDal });
   const userService = userServiceFactory({ userDal });
   const loginService = authLoginServiceFactory({ userDal, smtpService, tokenService });
@@ -211,6 +236,21 @@ export const registerRoutes = async (
     secretImportDal
   });
   const projectBotService = projectBotServiceFactory({ permissionService, projectBotDal });
+
+  const secretRotationQueue = secretRotationQueueFactory({
+    secretRotationDal,
+    queue: queueService,
+    secretDal,
+    secretVersionDal,
+    projectBotService
+  });
+  const secretRotationService = secretRotationServiceFactory({
+    permissionService,
+    projectEnvDal,
+    secretRotationDal,
+    secretRotationQueue
+  });
+
   const integrationService = integrationServiceFactory({
     permissionService,
     folderDal,
@@ -287,7 +327,9 @@ export const registerRoutes = async (
     identityAccessToken: identityAccessTokenService,
     identityProject: identityProjectService,
     identityUa: identityUaService,
-    secretApprovalPolicy: sapService
+    secretApprovalPolicy: sapService,
+    secretApprovalRequest: sarService,
+    secretRotation: secretRotationService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {

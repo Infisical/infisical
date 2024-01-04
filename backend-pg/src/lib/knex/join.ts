@@ -48,7 +48,7 @@ export type TChildMapper<T extends {}, U extends string = string, R extends unkn
 };
 
 type MappedRecord<T extends TChildMapper<any>> = {
-  [K in T["label"]]: ReturnType<Extract<T, { label: K }>["mapper"]>[];
+  [K in T["label"]]: Exclude<ReturnType<Extract<T, { label: K }>["mapper"]>, null | undefined>[];
 };
 
 export const sqlNestRelationships = <

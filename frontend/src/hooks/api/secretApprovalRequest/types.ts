@@ -42,10 +42,7 @@ export type TSecretApprovalSecChange = {
   tags?: string[];
 };
 
-export type TSecretApprovalRequest<
-  T extends unknown = TSecretApprovalSecChangeData,
-  J extends unknown = EncryptedSecret
-> = {
+export type TSecretApprovalRequest<J extends unknown = EncryptedSecret> = {
   id: string;
   slug: string;
   createdAt: string;
@@ -63,14 +60,13 @@ export type TSecretApprovalRequest<
   policy: TSecretApprovalPolicy;
   statusChangeBy: string;
   conflicts: Array<{ secretId: string; op: CommitType.UPDATE }>;
-  commits: {
+  commits: ({
     // if there is no secret means it was creation
     secret?: { version: number };
     secretVersion: J;
     // if there is no new version its for Delete
-    newVersion?: T;
     op: CommitType;
-  }[];
+  } & TSecretApprovalSecChangeData)[];
 };
 
 export type TSecretApprovalRequestCount = {

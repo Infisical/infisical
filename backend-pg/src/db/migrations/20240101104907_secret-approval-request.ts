@@ -1,4 +1,5 @@
 import { Knex } from "knex";
+
 import { SecretEncryptionAlgo, SecretKeyEncoding, TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 

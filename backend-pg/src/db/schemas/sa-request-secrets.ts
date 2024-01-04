@@ -23,15 +23,15 @@ export const SaRequestSecretsSchema = z.object({
   secretReminderNotice: z.string().nullable().optional(),
   secretReminderRepeatDays: z.number().nullable().optional(),
   skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
-  algorithm: z.string().default('aes-256-gcm'),
-  keyEncoding: z.string().default('utf8'),
+  algorithm: z.string().default("aes-256-gcm"),
+  keyEncoding: z.string().default("utf8"),
   metadata: z.unknown().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
   requestId: z.string().uuid(),
   op: z.string(),
   secretId: z.string().uuid().nullable().optional(),
-  secretVersion: z.string().uuid().nullable().optional(),
+  secretVersion: z.string().uuid().nullable().optional()
 });
 
 export type TSaRequestSecrets = z.infer<typeof SaRequestSecretsSchema>;

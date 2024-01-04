@@ -15,9 +15,8 @@ export type { TSecretFolder } from "./secretFolders/types";
 export type { TImportedSecrets, TSecretImport } from "./secretImports/types";
 export type {
   TGetSecretRotationProviders,
-  TProviderTemplate,
-  TSecretRotationProvider,
-  TSecretRotationProviderList
+  TSecretRotationProviderList,
+  TSecretRotationProviderTemplate
 } from "./secretRotation/types";
 export * from "./secrets/types";
 export type { CreateServiceTokenDTO, ServiceToken } from "./serviceTokens/types";

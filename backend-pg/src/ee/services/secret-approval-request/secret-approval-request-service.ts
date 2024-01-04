@@ -1,19 +1,5 @@
-import { TSecretFolderDalFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { TSecretApprovalRequestDalFactory } from "./secret-approval-request-dal";
-import {
-  ApprovalStatus,
-  CommitType,
-  TApprovalRequestCountDTO,
-  TGenerateSecretApprovalRequestDTO,
-  TListApprovalsDTO,
-  TMergeSecretApprovalRequestDTO,
-  TReviewRequestDTO,
-  TSecretApprovalDetailsDTO,
-  TStatusChangeDTO
-} from "./secret-approval-request-types";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
-import { TSecretBlindIndexDalFactory } from "@app/services/secret/secret-blind-index-dal";
-import { generateSecretBlindIndexBySalt } from "@app/services/secret/secret-service";
+import { ForbiddenError, subject } from "@casl/ability";
+
 import {
   ProjectMembershipRole,
   SecretEncryptionAlgo,
@@ -22,13 +8,32 @@ import {
   TSaRequestSecretsInsert,
   TSecrets
 } from "@app/db/schemas";
-import { TSecretDalFactory } from "@app/services/secret/secret-dal";
-import { TSecretVersionDalFactory } from "@app/services/secret/secret-version-dal";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { TSarSecretDalFactory } from "./sar-secret-dal";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TSecretBlindIndexDalFactory } from "@app/services/secret/secret-blind-index-dal";
+import { TSecretDalFactory } from "@app/services/secret/secret-dal";
+import { generateSecretBlindIndexBySalt } from "@app/services/secret/secret-service";
+import { TSecretVersionDalFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretFolderDalFactory } from "@app/services/secret-folder/secret-folder-dal";
+
 import { TPermissionServiceFactory } from "../permission/permission-service";
+import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TSarReviewerDalFactory } from "./sar-reviewer-dal";
+import { TSarSecretDalFactory } from "./sar-secret-dal";
+import { TSecretApprovalRequestDalFactory } from "./secret-approval-request-dal";
+import {
+  ApprovalStatus,
+  CommitType,
+  RequestState,
+  TApprovalRequestCountDTO,
+  TGenerateSecretApprovalRequestDTO,
+  TListApprovalsDTO,
+  TMergeSecretApprovalRequestDTO,
+  TReviewRequestDTO,
+  TSecretApprovalDetailsDTO,
+  TStatusChangeDTO
+} from "./secret-approval-request-types";
 
 type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -167,9 +172,9 @@ export const secretApprovalRequestServiceFactory = ({
 
     if (secretApprovalRequest.hasMerged)
       throw new BadRequestError({ message: "Approval request has been merged" });
-    if (secretApprovalRequest.status === "close" && status === "close")
+    if (secretApprovalRequest.status === RequestState.Closed && status === RequestState.Closed)
       throw new BadRequestError({ message: "Approval request is already closed" });
-    if (secretApprovalRequest.status === "open" && status === "open")
+    if (secretApprovalRequest.status === RequestState.Open && status === RequestState.Open)
       throw new BadRequestError({ message: "Approval request is already open" });
 
     const updatedRequest = await secretApprovalRequestDal.updateById(secretApprovalRequest.id, {
@@ -203,7 +208,7 @@ export const secretApprovalRequestServiceFactory = ({
       throw new UnauthorizedError({ message: "User has no access" });
     }
     const reviewers = secretApprovalRequest.reviewers.reduce<Record<string, ApprovalStatus>>(
-      (prev, curr) => ({ ...prev, [curr.member.toString()]: curr.status }),
+      (prev, curr) => ({ ...prev, [curr.member.toString()]: curr.status as ApprovalStatus }),
       {}
     );
     const hasMinApproval =
@@ -245,10 +250,14 @@ export const secretApprovalRequestServiceFactory = ({
     if (secretUpdationCommits.length) {
       const conflictedByNewBlindIndex = await secretDal.findByBlindIndexes(
         folderId,
-        secretUpdationCommits.map(({ secretBlindIndex }) => ({
-          type: SecretType.Shared,
-          blindIndex: secretBlindIndex
-        }))
+        secretUpdationCommits
+          .filter(
+            ({ secretBlindIndex, secret }) => secret && secret.secretBlindIndex !== secretBlindIndex
+          )
+          .map(({ secretBlindIndex }) => ({
+            type: SecretType.Shared,
+            blindIndex: secretBlindIndex
+          }))
       );
       const conflictGroupByBlindIndex = conflictedByNewBlindIndex.reduce<Record<string, boolean>>(
         (prev, curr) =>
@@ -276,118 +285,128 @@ export const secretApprovalRequestServiceFactory = ({
     );
 
     const mergeStatus = await secretDal.transaction(async (tx) => {
-      const newSecrets = await secretDal.insertMany(
-        secretCreationCommits.map(
-          ({
-            secretBlindIndex,
-            metadata,
-            secretKeyIV,
-            secretKeyTag,
-            secretKeyCiphertext,
-            secretValueIV,
-            secretValueTag,
-            secretValueCiphertext,
-            secretCommentIV,
-            secretCommentTag,
-            secretCommentCiphertext,
-            skipMultilineEncoding,
-            secretReminderNotice,
-            secretReminderRepeatDays
-          }) => ({
-            secretBlindIndex,
-            metadata,
-            secretKeyIV,
-            secretKeyTag,
-            secretKeyCiphertext,
-            secretValueIV,
-            secretValueTag,
-            secretValueCiphertext,
-            secretCommentIV,
-            secretCommentTag,
-            secretCommentCiphertext,
-            skipMultilineEncoding,
-            secretReminderNotice,
-            secretReminderRepeatDays,
-            version: 1,
+      const newSecrets = secretCreationCommits.length
+        ? await secretDal.insertMany(
+            secretCreationCommits.map(
+              ({
+                secretBlindIndex,
+                metadata,
+                secretKeyIV,
+                secretKeyTag,
+                secretKeyCiphertext,
+                secretValueIV,
+                secretValueTag,
+                secretValueCiphertext,
+                secretCommentIV,
+                secretCommentTag,
+                secretCommentCiphertext,
+                skipMultilineEncoding,
+                secretReminderNotice,
+                secretReminderRepeatDays
+              }) => ({
+                secretBlindIndex,
+                metadata,
+                secretKeyIV,
+                secretKeyTag,
+                secretKeyCiphertext,
+                secretValueIV,
+                secretValueTag,
+                secretValueCiphertext,
+                secretCommentIV,
+                secretCommentTag,
+                secretCommentCiphertext,
+                skipMultilineEncoding,
+                secretReminderNotice,
+                secretReminderRepeatDays,
+                version: 1,
+                folderId,
+                type: SecretType.Shared,
+                algorithm: SecretEncryptionAlgo.AES_256_GCM,
+                keyEncoding: SecretKeyEncoding.UTF8
+              })
+            ),
+            tx
+          )
+        : [];
+      const updatedSecrets = secretUpdationCommits.length
+        ? await secretDal.bulkUpdate(
+            secretUpdationCommits.map(
+              ({
+                version,
+                secretId,
+                secretBlindIndex,
+                metadata,
+                secretKeyIV,
+                secretKeyTag,
+                secretKeyCiphertext,
+                secretValueIV,
+                secretValueTag,
+                secretValueCiphertext,
+                secretCommentIV,
+                secretCommentTag,
+                secretCommentCiphertext,
+                skipMultilineEncoding,
+                secretReminderNotice,
+                secretReminderRepeatDays
+              }) => ({
+                folderId,
+                version: (version || 0) + 1,
+                id: secretId as string,
+                type: SecretType.Shared,
+                secretBlindIndex,
+                metadata,
+                secretKeyIV,
+                secretKeyTag,
+                secretKeyCiphertext,
+                secretValueIV,
+                secretValueTag,
+                secretValueCiphertext,
+                secretCommentIV,
+                secretCommentTag,
+                secretCommentCiphertext,
+                skipMultilineEncoding,
+                secretReminderNotice,
+                secretReminderRepeatDays
+              })
+            ),
+            tx
+          )
+        : [];
+      const deletedSecret = secretDeletionCommits.length
+        ? await secretDal.deleteMany(
+            secretDeletionCommits.map(({ secretBlindIndex }) => ({
+              blindIndex: secretBlindIndex,
+              type: SecretType.Shared
+            })),
             folderId,
-            type: SecretType.Shared,
-            algorithm: SecretEncryptionAlgo.AES_256_GCM,
-            keyEncoding: SecretKeyEncoding.UTF8
-          })
-        ),
-        tx
-      );
-      const updatedSecrets = await secretDal.bulkUpdate(
-        secretUpdationCommits.map(
-          ({
-            secretId,
-            secretBlindIndex,
-            metadata,
-            secretKeyIV,
-            secretKeyTag,
-            secretKeyCiphertext,
-            secretValueIV,
-            secretValueTag,
-            secretValueCiphertext,
-            secretCommentIV,
-            secretCommentTag,
-            secretCommentCiphertext,
-            skipMultilineEncoding,
-            secretReminderNotice,
-            secretReminderRepeatDays
-          }) => ({
-            folderId,
-            id: secretId as string,
-            type: SecretType.Shared,
-            secretBlindIndex,
-            metadata,
-            secretKeyIV,
-            secretKeyTag,
-            secretKeyCiphertext,
-            secretValueIV,
-            secretValueTag,
-            secretValueCiphertext,
-            secretCommentIV,
-            secretCommentTag,
-            secretCommentCiphertext,
-            skipMultilineEncoding,
-            secretReminderNotice,
-            secretReminderRepeatDays
-          })
-        ),
-        tx
-      );
-      const deletedSecret = await secretDal.deleteMany(
-        secretDeletionCommits.map(({ secretBlindIndex }) => ({
-          blindIndex: secretBlindIndex,
-          type: SecretType.Shared
-        })),
-        folderId,
-        actorId,
-        tx
-      );
-      await secretVersionDal.insertMany(
-        newSecrets
-          .map(({ id, updatedAt, createdAt, ...el }) => ({
-            ...el,
-            secretId: id
-          }))
-          .concat(
-            updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => ({
+            actorId,
+            tx
+          )
+        : [];
+      if (newSecrets.length || updatedSecrets.length) {
+        await secretVersionDal.insertMany(
+          newSecrets
+            .map(({ id, updatedAt, createdAt, ...el }) => ({
               ...el,
               secretId: id
             }))
-          ),
-        tx
-      );
+            .concat(
+              updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => ({
+                ...el,
+                secretId: id
+              }))
+            ),
+          tx
+        );
+      }
 
       const updatedSecretApproval = await secretApprovalRequestDal.updateById(
         secretApprovalRequest.id,
         {
-          conflicts,
+          conflicts: JSON.stringify(conflicts),
           hasMerged: true,
-          status: "close",
-          statusChangeBy: actorId
+          status: RequestState.Closed,
+          statusChangeBy: membership.id
         },
         tx
       );
@@ -403,12 +422,23 @@ export const secretApprovalRequestServiceFactory = ({
   // this will keep a copy to do merge later when accepting
   const generateSecretApprovalRequest = async ({
     data,
+    actorId,
+    actor,
     policy,
     projectId,
     secretPath,
-    environment,
-    commiterMembershipId
+    environment
   }: TGenerateSecretApprovalRequestDTO) => {
+    const { permission, membership } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      projectId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    );
+
     const folder = await folderDal.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
       throw new BadRequestError({ message: "Folder not  found", name: "GenSecretApproval" });
@@ -449,7 +479,9 @@ export const secretApprovalRequestServiceFactory = ({
           ...el,
           op: CommitType.Create as const,
           version: 0,
-          secretBlindIndex: secretBlindIndexes[el.secretName]
+          secretBlindIndex: secretBlindIndexes[el.secretName],
+          algorithm: SecretEncryptionAlgo.AES_256_GCM,
+          keyEncoding: SecretKeyEncoding.BASE64
         }))
       );
     }
@@ -533,7 +565,8 @@ export const secretApprovalRequestServiceFactory = ({
             secret: secretId,
             secretVersion: latestSecretVersions[secretId].id,
             ...el,
-            secretBlindIndex: newSecretBlindIndexes?.[el.secretName],
+            secretBlindIndex:
+              newSecretBlindIndexes?.[el.secretName] || secretBlindIndexes[el.secretName],
             version: secretsGroupedByBlindIndex[secretBlindIndexes[el.secretName]].version || 1
           };
         })
@@ -596,6 +629,7 @@ export const secretApprovalRequestServiceFactory = ({
       );
     }
 
+    if (!commits.length) throw new BadRequestError({ message: "Empty commits" });
     const secretApprovalRequest = await secretApprovalRequestDal.transaction(async (tx) => {
       const doc = await secretApprovalRequestDal.create(
         {
@@ -604,7 +638,7 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          committerId: commiterMembershipId
+          committerId: membership.id
         },
         tx
       );

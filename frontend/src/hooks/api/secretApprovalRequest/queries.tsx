@@ -15,12 +15,12 @@ import { UserWsKeyPair } from "../keys/types";
 import { decryptSecrets } from "../secrets/queries";
 import { DecryptedSecret } from "../secrets/types";
 import {
+  CommitType,
   TGetSecretApprovalRequestCount,
   TGetSecretApprovalRequestDetails,
   TGetSecretApprovalRequestList,
   TSecretApprovalRequest,
   TSecretApprovalRequestCount,
-  TSecretApprovalSecChange,
   TSecretApprovalSecChangeData
 } from "./types";
 
@@ -96,7 +96,7 @@ const fetchSecretApprovalRequestList = async ({
   offset
 }: TGetSecretApprovalRequestList) => {
   const { data } = await apiRequest.get<{ approvals: TSecretApprovalRequest[] }>(
-    "/api/v1/secret-approval-requests",
+    "/api/ee/v1/secret-approval-requests",
     {
       params: {
         workspaceId,
@@ -158,7 +158,7 @@ const fetchSecretApprovalRequestDetails = async ({
   id
 }: Omit<TGetSecretApprovalRequestDetails, "decryptKey">) => {
   const { data } = await apiRequest.get<{ approval: TSecretApprovalRequest }>(
-    `/api/v1/secret-approval-requests/${id}`
+    `/api/ee/v1/secret-approval-requests/${id}`
   );
 
   return data.approval;
@@ -173,7 +173,7 @@ export const useGetSecretApprovalRequestDetails = ({
     UseQueryOptions<
       TSecretApprovalRequest,
       unknown,
-      TSecretApprovalRequest<TSecretApprovalSecChange, DecryptedSecret>,
+      TSecretApprovalRequest<DecryptedSecret>,
       ReturnType<typeof secretApprovalRequestKeys.detail>
     >,
     "queryKey" | "queryFn"
@@ -184,11 +184,12 @@ export const useGetSecretApprovalRequestDetails = ({
     queryFn: () => fetchSecretApprovalRequestDetails({ id }),
     select: (data) => ({
       ...data,
-      commits: data.commits.map(({ secretVersion, op, newVersion, secret }) => ({
+      commits: data.commits.map(({ secretVersion, op, secret, ...newVersion }) => ({
         op,
         secret,
         secretVersion: secretVersion ? decryptSecrets([secretVersion], decryptKey)[0] : undefined,
-        newVersion: newVersion ? decryptSecretApprovalSecret(newVersion, decryptKey) : undefined
+        newVersion:
+          op !== CommitType.DELETE ? decryptSecretApprovalSecret(newVersion, decryptKey) : undefined
       }))
     }),
     enabled: Boolean(id && decryptKey) && (options?.enabled ?? true)
@@ -196,7 +197,7 @@ export const useGetSecretApprovalRequestDetails = ({
 
 const fetchSecretApprovalRequestCount = async ({ workspaceId }: TGetSecretApprovalRequestCount) => {
   const { data } = await apiRequest.get<{ approvals: TSecretApprovalRequestCount }>(
-    "/api/v1/secret-approval-requests/count",
+    "/api/ee/v1/secret-approval-requests/count",
     { params: { workspaceId } }
   );
 

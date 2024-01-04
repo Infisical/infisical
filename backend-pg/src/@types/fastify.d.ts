@@ -2,6 +2,9 @@ import "fastify";
 
 import { TUsers } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
+import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { TSecretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
@@ -23,7 +26,6 @@ import { TProjectKeyServiceFactory } from "@app/services/project-key/project-key
 import { TProjectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
 import { TProjectRoleServiceFactory } from "@app/services/project-role/project-role-service";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
-import { TSecretApprovalPolicyServiceFactory } from "@app/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
@@ -92,6 +94,8 @@ declare module "fastify" {
       identityProject: TIdentityProjectServiceFactory;
       identityUa: TIdentityUaServiceFactory;
       secretApprovalPolicy: TSecretApprovalPolicyServiceFactory;
+      secretApprovalRequest: TSecretApprovalRequestServiceFactory;
+      secretRotation: TSecretRotationServiceFactory;
     };
 
     // this is exclusive use for middlewares in which we need to inject data

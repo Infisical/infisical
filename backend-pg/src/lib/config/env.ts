@@ -13,6 +13,7 @@ const zodStrBool = z
 const envSchema = z
   .object({
     PORT: z.coerce.number().default(4000),
+    REDIS_URL: zpStr(z.string()),
     HOST: zpStr(z.string().default("localhost")),
     DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database conntection string")),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),

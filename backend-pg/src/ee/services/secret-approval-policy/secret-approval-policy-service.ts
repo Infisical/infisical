@@ -1,6 +1,18 @@
+import { ForbiddenError } from "@casl/ability";
+import picomatch from "picomatch";
+
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { TSecretApprovalPolicyDalFactory } from "./secret-approval-policy-dal";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import { BadRequestError } from "@app/lib/errors";
+import { containsGlobPatterns } from "@app/lib/picomatch";
+import { TProjectEnvDalFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectMembershipDalFactory } from "@app/services/project-membership/project-membership-dal";
+
 import { TSapApproverDalFactory } from "./sap-approver-dal";
+import { TSecretApprovalPolicyDalFactory } from "./secret-approval-policy-dal";
 import {
   TCreateSapDTO,
   TDeleteSapDTO,
@@ -8,16 +20,6 @@ import {
   TListSapDTO,
   TUpdateSapDTO
 } from "./secret-approval-policy-types";
-import { ForbiddenError } from "@casl/ability";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
-import picomatch from "picomatch";
-import { containsGlobPatterns } from "@app/lib/picomatch";
-import { TProjectMembershipDalFactory } from "@app/services/project-membership/project-membership-dal";
-import { TProjectEnvDalFactory } from "@app/services/project-env/project-env-dal";
 
 const getPolicyScore = (policy: { secretPath?: string | null }) =>
   // if glob pattern score is 1, if not exist score is 0 and if its not both then its exact path meaning score 2

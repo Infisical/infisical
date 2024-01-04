@@ -9,7 +9,7 @@ export enum CommitType {
 
 export enum RequestState {
   Open = "open",
-  Closed = "closed"
+  Closed = "close"
 }
 
 export enum ApprovalStatus {
@@ -18,28 +18,36 @@ export enum ApprovalStatus {
   REJECTED = "rejected"
 }
 
-type TApprovalCreateSecret = Omit<TSaRequestSecrets, TImmutableDBKeys | "version"> & {
+type TApprovalCreateSecret = Omit<
+  TSaRequestSecrets,
+  | TImmutableDBKeys
+  | "version"
+  | "algorithm"
+  | "keyEncoding"
+  | "requestId"
+  | "op"
+  | "secretVersion"
+  | "secretBlindIndex"
+> & {
   secretName: string;
   tagIds?: string[];
 };
-type TApprovalUpdateSecret = Partial<Omit<TSaRequestSecrets, TImmutableDBKeys | "version">> & {
+type TApprovalUpdateSecret = Partial<TApprovalCreateSecret> & {
   secretName: string;
   newSecretName?: string;
   tagIds?: string[];
 };
 
 export type TGenerateSecretApprovalRequestDTO = {
-  projectId: string;
   environment: string;
   secretPath: string;
   policy: TSecretApprovalPolicies;
-  commiterMembershipId: string;
   data: {
-    [CommitType.Create]: TApprovalCreateSecret[];
-    [CommitType.Update]: TApprovalUpdateSecret[];
-    [CommitType.Delete]: { secretName: string }[];
+    [CommitType.Create]?: TApprovalCreateSecret[];
+    [CommitType.Update]?: TApprovalUpdateSecret[];
+    [CommitType.Delete]?: { secretName: string }[];
   };
-};
+} & TProjectPermission;
 
 export type TMergeSecretApprovalRequestDTO = {
   approvalId: string;
@@ -47,7 +55,7 @@ export type TMergeSecretApprovalRequestDTO = {
 
 export type TStatusChangeDTO = {
   approvalId: string;
-  status: "open" | "close";
+  status: RequestState;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TReviewRequestDTO = {
@@ -67,5 +75,5 @@ export type TListApprovalsDTO = {
 } & TProjectPermission;
 
 export type TSecretApprovalDetailsDTO = {
-  id:string;
-} & Omit<TProjectPermission, 'projectId'>
+  id: string;
+} & Omit<TProjectPermission, "projectId">;

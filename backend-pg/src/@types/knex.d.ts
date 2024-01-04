@@ -94,6 +94,12 @@ import {
   TSecretImports,
   TSecretImportsInsert,
   TSecretImportsUpdate,
+  TSecretRotationOutputs,
+  TSecretRotationOutputsInsert,
+  TSecretRotationOutputsUpdate,
+  TSecretRotations,
+  TSecretRotationsInsert,
+  TSecretRotationsUpdate,
   TSecrets,
   TSecretsInsert,
   TSecretsUpdate,
@@ -303,6 +309,16 @@ declare module "knex/types/tables" {
       TSaRequestSecretTags,
       TSaRequestSecretTagsInsert,
       TSaRequestSecretTagsUpdate
+    >;
+    [TableName.SecretRotation]: Knex.CompositeTableType<
+      TSecretRotations,
+      TSecretRotationsInsert,
+      TSecretRotationsUpdate
+    >;
+    [TableName.SecretRotationOutput]: Knex.CompositeTableType<
+      TSecretRotationOutputs,
+      TSecretRotationOutputsInsert,
+      TSecretRotationOutputsUpdate
     >;
     // Junction tables
     [TableName.JnSecretTag]: Knex.CompositeTableType<

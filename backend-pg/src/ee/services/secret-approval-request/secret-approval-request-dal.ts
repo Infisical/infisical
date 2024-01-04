@@ -1,8 +1,16 @@
-import { TDbClient } from "@app/db";
-import { TSecretApprovalRequests, TableName } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
-import { TFindFilter, ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { Knex } from "knex";
+
+import { TDbClient } from "@app/db";
+import { SecretApprovalRequestsSchema, TableName, TSecretApprovalRequests } from "@app/db/schemas";
+import { DatabaseError } from "@app/lib/errors";
+import {
+  ormify,
+  selectAllTableCols,
+  sqlNestRelationships,
+  stripUndefinedInWhere,
+  TFindFilter
+} from "@app/lib/knex";
+
 import { RequestState } from "./secret-approval-request-types";
 
 export type TSecretApprovalRequestDalFactory = ReturnType<typeof secretApprovalRequestDalFactory>;
@@ -24,26 +32,32 @@ export const secretApprovalRequestDalFactory = (db: TDbClient) => {
     tx(TableName.SecretApprovalRequest)
       .where(filter)
       .join(
+        TableName.SecretFolder,
+        `${TableName.SecretApprovalRequest}.folderId`,
+        `${TableName.SecretFolder}.id`
+      )
+      .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .join(
         TableName.SecretApprovalPolicy,
         `${TableName.SecretApprovalRequest}.policyId`,
         `${TableName.SecretApprovalPolicy}.id`
-      )
-      .join(
-        TableName.SarReviewer,
-        `${TableName.SecretApprovalRequest}.id`,
-        `${TableName.SarReviewer}.requestId`
       )
       .join(
         TableName.SapApprover,
         `${TableName.SecretApprovalPolicy}.id`,
         `${TableName.SapApprover}.policyId`
       )
+      .leftJoin(
+        TableName.SarReviewer,
+        `${TableName.SecretApprovalRequest}.id`,
+        `${TableName.SarReviewer}.requestId`
+      )
       .select(selectAllTableCols(TableName.SecretApprovalRequest))
-      .select(tx.ref("id").withSchema(TableName.SarReviewer).as("reviewerMemberId"))
-      .select(tx.ref("statue").withSchema(TableName.SarReviewer).as("reviewerStatus"))
+      .select(tx.ref("member").withSchema(TableName.SarReviewer).as("reviewerMemberId"))
+      .select(tx.ref("status").withSchema(TableName.SarReviewer).as("reviewerStatus"))
       .select(tx.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"))
       .select(tx.ref("name").withSchema(TableName.SecretApprovalPolicy).as("policyName"))
-      .select(tx.ref("projectId").withSchema(TableName.SecretApprovalPolicy))
+      .select(tx.ref("projectId").withSchema(TableName.Environment))
       .select(
         tx.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath")
       )
@@ -52,51 +66,27 @@ export const secretApprovalRequestDalFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const docs = await findQuery({ id }, tx || db);
+      const sql = findQuery({ [`${TableName.SecretApprovalRequest}.id` as "id"]: id }, tx || db);
+      const docs = await sql;
       const formatedDoc = sqlNestRelationships({
         data: docs,
         key: "id",
-        parentMapper: ({
-          id: pk,
-          projectId,
-          hasMerged,
-          status,
-          conflicts,
-          slug,
-          folderId,
-          statusChangeBy,
-          committerId,
-          createdAt,
-          updatedAt,
-          policyId,
-          policyName,
-          policyApprovals,
-          policySecretPath
-        }) => ({
-          id: pk,
-          hasMerged,
-          projectId,
-          status,
-          conflicts,
-          slug,
-          folderId,
-          statusChangeBy,
-          committerId,
-          createdAt,
-          updatedAt,
-          policyId,
+        parentMapper: (el) => ({
+          ...SecretApprovalRequestsSchema.parse(el),
+          projectId: el.projectId,
           policy: {
-            id: policyId,
-            name: policyName,
-            approvals: policyApprovals,
-            secretPath: policySecretPath
+            id: el.policyId,
+            name: el.policyName,
+            approvals: el.policyApprovals,
+            secretPath: el.policySecretPath
           }
         }),
         childrenMapper: [
           {
             key: "reviewerMemberId",
             label: "reviewers",
-            mapper: ({ reviewerMemberId: member, reviewerStatus: status }) => ({ member, status })
+            mapper: ({ reviewerMemberId: member, reviewerStatus: status }) =>
+              member ? { member, status } : undefined
           },
           { key: "approverId", label: "approvers", mapper: ({ approverId }) => approverId }
         ] as const
@@ -124,18 +114,27 @@ export const secretApprovalRequestDalFactory = (db: TDbClient) => {
           `${TableName.SecretFolder}.envId`,
           `${TableName.Environment}.id`
         )
-        .where({ projectId })
         .join(
           TableName.SapApprover,
           `${TableName.SecretApprovalRequest}.policyId`,
           `${TableName.SapApprover}.policyId`
         )
+        .where({ projectId })
         .where(`${TableName.SapApprover}.approverId`, membershipId)
         .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
         .groupBy("status")
-        .count("status");
-      console.log(JSON.stringify(doc, null, 4));
-      return { open: 0, closed: 0 };
+        .count("status")
+        .select("status");
+      return {
+        open: parseInt(
+          (doc.find(({ status }) => status === RequestState.Open)?.count as string) || "0",
+          10
+        ),
+        closed: parseInt(
+          (doc.find(({ status }) => status === RequestState.Closed)?.count as string) || "0",
+          10
+        )
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "FindRequestCount" });
     }
@@ -157,7 +156,6 @@ export const secretApprovalRequestDalFactory = (db: TDbClient) => {
           `${TableName.SecretFolder}.envId`,
           `${TableName.Environment}.id`
         )
-        .where({ projectId, slug: environment, status, committerId: committer })
         .join(
           TableName.SecretApprovalPolicy,
           `${TableName.SecretApprovalRequest}.policyId`,
@@ -168,11 +166,28 @@ export const secretApprovalRequestDalFactory = (db: TDbClient) => {
           `${TableName.SecretApprovalPolicy}.id`,
           `${TableName.SapApprover}.policyId`
         )
-        .where(`${TableName.SapApprover}.approverId`, membershipId)
-        .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
+        .leftJoin(
+          TableName.SarReviewer,
+          `${TableName.SecretApprovalRequest}.id`,
+          `${TableName.SarReviewer}.requestId`
+        )
+        .where(
+          stripUndefinedInWhere({
+            projectId,
+            slug: environment,
+            [`${TableName.SecretApprovalRequest}.status`]: status,
+            committerId: committer
+          })
+        )
+        .andWhere((bd) =>
+          bd
+            .where(`${TableName.SapApprover}.approverId`, membershipId)
+            .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
+        )
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
+        .select(db.ref("projectId").withSchema(TableName.Environment))
         .select(db.ref("id").withSchema(TableName.SarReviewer).as("reviewerMemberId"))
-        .select(db.ref("statue").withSchema(TableName.SarReviewer).as("reviewerStatus"))
+        .select(db.ref("status").withSchema(TableName.SarReviewer).as("reviewerStatus"))
         .select(db.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"))
         .select(db.ref("name").withSchema(TableName.SecretApprovalPolicy).as("policyName"))
         .select(
@@ -185,46 +200,22 @@ export const secretApprovalRequestDalFactory = (db: TDbClient) => {
       const formatedDoc = sqlNestRelationships({
         data: docs,
         key: "id",
-        parentMapper: ({
-          id: pk,
-          hasMerged,
-          status: pStatus,
-          conflicts,
-          slug,
-          folderId,
-          statusChangeBy,
-          committerId,
-          createdAt,
-          updatedAt,
-          policyId,
-          policyName,
-          policyApprovals,
-          policySecretPath
-        }) => ({
-          id: pk,
-          hasMerged,
-          projectId,
-          status: pStatus,
-          conflicts,
-          slug,
-          folderId,
-          statusChangeBy,
-          committerId,
-          createdAt,
-          updatedAt,
-          policyId,
+        parentMapper: (el) => ({
+          ...SecretApprovalRequestsSchema.parse(el),
+          projectId: el.projectId,
           policy: {
-            id: policyId,
-            name: policyName,
-            approvals: policyApprovals,
-            secretPath: policySecretPath
+            id: el.policyId,
+            name: el.policyName,
+            approvals: el.policyApprovals,
+            secretPath: el.policySecretPath
           }
         }),
         childrenMapper: [
           {
             key: "reviewerMemberId",
             label: "reviewers",
-            mapper: ({ reviewerMemberId: member, reviewerStatus: s }) => ({ member, status: s })
+            mapper: ({ reviewerMemberId: member, reviewerStatus: s }) =>
+              member ? { member, status: s } : undefined
           },
           { key: "approverId", label: "approvers", mapper: ({ approverId }) => approverId }
         ] as const

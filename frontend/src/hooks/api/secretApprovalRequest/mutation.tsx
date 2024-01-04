@@ -14,7 +14,7 @@ export const useUpdateSecretApprovalReviewStatus = () => {
 
   return useMutation<{}, {}, TUpdateSecretApprovalReviewStatusDTO>({
     mutationFn: async ({ id, status }) => {
-      const { data } = await apiRequest.post(`/api/v1/secret-approval-requests/${id}/review`, {
+      const { data } = await apiRequest.post(`/api/ee/v1/secret-approval-requests/${id}/review`, {
         status
       });
       return data;
@@ -30,7 +30,7 @@ export const useUpdateSecretApprovalRequestStatus = () => {
 
   return useMutation<{}, {}, TUpdateSecretApprovalRequestStatusDTO>({
     mutationFn: async ({ id, status }) => {
-      const { data } = await apiRequest.post(`/api/v1/secret-approval-requests/${id}/status`, {
+      const { data } = await apiRequest.post(`/api/ee/v1/secret-approval-requests/${id}/status`, {
         status
       });
       return data;
@@ -47,7 +47,7 @@ export const usePerformSecretApprovalRequestMerge = () => {
 
   return useMutation<{}, {}, TPerformSecretApprovalRequestMerge>({
     mutationFn: async ({ id }) => {
-      const { data } = await apiRequest.post(`/api/v1/secret-approval-requests/${id}/merge`);
+      const { data } = await apiRequest.post(`/api/ee/v1/secret-approval-requests/${id}/merge`);
       return data;
     },
     onSuccess: (_, { id, workspaceId }) => {

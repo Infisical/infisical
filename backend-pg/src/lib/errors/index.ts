@@ -17,7 +17,7 @@ export class UnauthorizedError extends Error {
   error: unknown;
 
   constructor({ name, error, message }: { message?: string; name?: string; error?: unknown } = {}) {
-    super(message ?? "You are not allowed to access this resourve");
+    super(message ?? "You are not allowed to access this resource");
     this.name = name || "UnauthorizedError";
     this.error = error;
   }
@@ -29,7 +29,7 @@ export class ForbiddenRequestError extends Error {
   error: unknown;
 
   constructor({ name, error, message }: { message?: string; name?: string; error?: unknown }) {
-    super(message ?? "You are not allowed to access this resourve");
+    super(message ?? "You are not allowed to access this resource");
     this.name = name || "ForbideenError";
     this.error = error;
   }

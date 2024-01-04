@@ -1,8 +1,9 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
-import { TSecretVersions, TableName } from "@app/db/schemas";
+import { TableName,TSecretVersions } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
-import { Knex } from "knex";
 
 export type TSecretVersionDalFactory = ReturnType<typeof secretVersionDalFactory>;
 

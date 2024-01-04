@@ -9,6 +9,7 @@ import fasitfy from "fastify";
 import { Knex } from "knex";
 import { Logger } from "pino";
 
+import { TQueueServiceFactory } from "@app/queue";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { getConfig } from "@lib/config/env";
@@ -23,10 +24,11 @@ type TMain = {
   db: Knex;
   smtp: TSmtpService;
   logger?: Logger;
+  queue: TQueueServiceFactory;
 };
 
 // Run the server!
-export const main = async ({ db, smtp, logger }: TMain) => {
+export const main = async ({ db, smtp, logger, queue }: TMain) => {
   const appCfg = getConfig();
   const server = fasitfy({
     logger,
@@ -54,12 +56,13 @@ export const main = async ({ db, smtp, logger }: TMain) => {
     await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg);
     await server.register(helmet, { contentSecurityPolicy: false });
 
-    await server.register(registerRoutes, { prefix: "/api", smtp, db });
+    await server.register(registerRoutes, { prefix: "/api", smtp, queue, db });
     await server.ready();
     server.swagger();
     return server;
   } catch (err) {
     server.log.error(err);
+    await queue.shutdown();
     process.exit(1);
   }
 };

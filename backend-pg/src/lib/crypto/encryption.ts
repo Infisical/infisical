@@ -6,6 +6,8 @@ import naclUtils from "tweetnacl-util";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 
+import { getConfig } from "../config/env";
+
 export type TDecryptSymmetricInput = {
   ciphertext: string;
   iv: string;
@@ -190,4 +192,53 @@ export const createSecretBlindIndex = (rootEncryptionKey?: string, encryptionKey
     };
   }
   throw new Error("Failed to generate blind index due to encryption key missing");
+};
+
+export const infisicalSymmetricEncypt = (data: string) => {
+  const appCfg = getConfig();
+  const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
+  const encryptionKey = appCfg.ENCRYPTION_KEY;
+  if (rootEncryptionKey) {
+    const { iv, tag, ciphertext } = encryptSymmetric(data, rootEncryptionKey);
+    return {
+      iv,
+      tag,
+      ciphertext,
+      algorithm: SecretEncryptionAlgo.AES_256_GCM,
+      encoding: SecretKeyEncoding.BASE64
+    };
+  }
+  if (encryptionKey) {
+    const { iv, tag, ciphertext } = encryptSymmetric128BitHexKeyUTF8(data, encryptionKey);
+    return {
+      iv,
+      tag,
+      ciphertext,
+      algorithm: SecretEncryptionAlgo.AES_256_GCM,
+      encoding: SecretKeyEncoding.UTF8
+    };
+  }
+  throw new Error("Missing both encryption keys");
+};
+
+export const infisicalSymmetricDecrypt = <T extends any = string>({
+  keyEncoding,
+  ciphertext,
+  tag,
+  iv
+}: Omit<TDecryptSymmetricInput, "key"> & {
+  keyEncoding: SecretKeyEncoding;
+}) => {
+  const appCfg = getConfig();
+  const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
+  const encryptionKey = appCfg.ENCRYPTION_KEY;
+  if (rootEncryptionKey && keyEncoding === SecretKeyEncoding.BASE64) {
+    const data = decryptSymmetric({ key: rootEncryptionKey, iv, tag, ciphertext });
+    return data as T;
+  }
+  if (encryptionKey && keyEncoding === SecretKeyEncoding.UTF8) {
+    const data = decryptSymmetric128BitHexKeyUTF8({ key: encryptionKey, iv, tag, ciphertext });
+    return data as T;
+  }
+  throw new Error("Missing both encryption keys");
 };

@@ -113,7 +113,7 @@ export const register${pascalCase}Router = async (server: FastifyZodProvider) =>
       response: {
         200: z.object({})
       }
-    }
+    },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {}
   });

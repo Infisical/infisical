@@ -1,8 +1,9 @@
-import { z } from "zod";
 import { nanoid } from "nanoid";
+import { z } from "zod";
+
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({

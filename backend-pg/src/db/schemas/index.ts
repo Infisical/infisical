@@ -30,6 +30,8 @@ export * from "./secret-approval-requests";
 export * from "./secret-blind-indexes";
 export * from "./secret-folders";
 export * from "./secret-imports";
+export * from "./secret-rotation-outputs";
+export * from "./secret-rotations";
 export * from "./secret-tag-junction";
 export * from "./secret-tags";
 export * from "./secret-versions";

@@ -1,8 +1,9 @@
 import { z } from "zod";
 
-import { SecretsSchema,SecretType } from "@app/db/schemas";
+import { SecretApprovalRequestsSchema, SecretsSchema, SecretType } from "@app/db/schemas";
+import { CommitType } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -102,32 +103,92 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName: z.string().trim()
       }),
       response: {
-        200: z.object({
-          secret: SecretsSchema.omit({ secretBlindIndex: true })
-        })
+        200: z.union([
+          z.object({
+            secret: SecretsSchema.omit({ secretBlindIndex: true })
+          }),
+          z
+            .object({ approval: SecretApprovalRequestsSchema })
+            .describe("When secret protection policy is enabled")
+        ])
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
+      const {
+        workspaceId: projectId,
+        secretPath,
+        environment,
+        metadata,
+        type,
+        secretKeyIV,
+        secretKeyTag,
+        secretValueIV,
+        secretValueTag,
+        secretCommentIV,
+        secretCommentTag,
+        secretKeyCiphertext,
+        secretValueCiphertext,
+        secretCommentCiphertext,
+        skipMultilineEncoding
+      } = req.body;
+      if (req.body.type !== SecretType.Personal && req.permission.type === ActorType.USER) {
+        const policy = await server.services.secretApprovalPolicy.getSapOfFolder({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          secretPath,
+          environment,
+          projectId
+        });
+        if (policy) {
+          const approval =
+            await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+              actorId: req.permission.id,
+              actor: req.permission.type,
+              secretPath,
+              environment,
+              projectId,
+              policy,
+              data: {
+                [CommitType.Create]: [
+                  {
+                    secretName: req.params.secretName,
+                    secretValueCiphertext,
+                    secretValueIV,
+                    secretValueTag,
+                    secretCommentIV,
+                    secretCommentTag,
+                    secretCommentCiphertext,
+                    skipMultilineEncoding,
+                    secretKeyTag,
+                    secretKeyCiphertext,
+                    secretKeyIV
+                  }
+                ]
+              }
+            });
+          return { approval };
+        }
+      }
       const secret = await server.services.secret.createSecret({
         actorId: req.permission.id,
         actor: req.permission.type,
-        path: req.body.secretPath,
-        type: req.body.type,
+        path: secretPath,
+        type,
         environment: req.body.environment,
         secretName: req.params.secretName,
-        projectId: req.body.workspaceId,
-        secretKeyIV: req.body.secretKeyIV,
-        secretKeyTag: req.body.secretKeyTag,
-        secretKeyCiphertext: req.body.secretKeyCiphertext,
-        secretValueIV: req.body.secretValueIV,
-        secretValueTag: req.body.secretValueTag,
-        secretValueCiphertext: req.body.secretValueCiphertext,
-        secretCommentIV: req.body.secretCommentIV,
-        secretCommentTag: req.body.secretCommentTag,
-        secretCommentCiphertext: req.body.secretCommentCiphertext,
-        skipMultilineEncoding: req.body.skipMultilineEncoding,
-        metadata: req.body.metadata
+        projectId,
+        secretKeyIV,
+        secretKeyTag,
+        secretKeyCiphertext,
+        secretValueIV,
+        secretValueTag,
+        secretValueCiphertext,
+        secretCommentIV,
+        secretCommentTag,
+        secretCommentCiphertext,
+        skipMultilineEncoding,
+        metadata
       });
 
       return { secret };
@@ -165,35 +226,103 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         metadata: z.record(z.string()).optional()
       }),
       response: {
-        200: z.object({
-          secret: SecretsSchema.omit({ secretBlindIndex: true })
-        })
+        200: z.union([
+          z.object({
+            secret: SecretsSchema.omit({ secretBlindIndex: true })
+          }),
+          z
+            .object({ approval: SecretApprovalRequestsSchema })
+            .describe("When secret protection policy is enabled")
+        ])
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
+      const {
+        secretValueCiphertext,
+        secretValueTag,
+        secretValueIV,
+        type,
+        environment,
+        secretPath,
+        workspaceId: projectId,
+        tags,
+        secretCommentIV,
+        secretCommentTag,
+        secretCommentCiphertext,
+        secretName: newSecretName,
+        secretKeyIV,
+        secretKeyTag,
+        secretKeyCiphertext,
+        skipMultilineEncoding,
+        secretReminderRepeatDays,
+        secretReminderNote,
+        metadata
+      } = req.body;
+
+      if (req.body.type !== SecretType.Personal && req.permission.type === ActorType.USER) {
+        const policy = await server.services.secretApprovalPolicy.getSapOfFolder({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          secretPath,
+          environment,
+          projectId
+        });
+        if (policy) {
+          const approval =
+            await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+              actorId: req.permission.id,
+              actor: req.permission.type,
+              secretPath,
+              environment,
+              projectId,
+              policy,
+              data: {
+                [CommitType.Update]: [
+                  {
+                    secretName: req.params.secretName,
+                    newSecretName,
+                    secretValueCiphertext,
+                    secretValueIV,
+                    secretValueTag,
+                    secretCommentIV,
+                    secretCommentTag,
+                    secretCommentCiphertext,
+                    skipMultilineEncoding,
+                    secretKeyTag,
+                    secretKeyCiphertext,
+                    secretKeyIV
+                  }
+                ]
+              }
+            });
+          return { approval };
+        }
+      }
+
       const secret = await server.services.secret.updateSecret({
         actorId: req.permission.id,
         actor: req.permission.type,
-        path: req.body.secretPath,
-        type: req.body.type,
-        environment: req.body.environment,
+        path: secretPath,
+        type,
+        environment,
         secretName: req.params.secretName,
-        projectId: req.body.workspaceId,
-        secretKeyIV: req.body.secretKeyIV,
-        secretKeyTag: req.body.secretKeyTag,
-        secretKeyCiphertext: req.body.secretKeyCiphertext,
-        secretValueIV: req.body.secretValueIV,
-        secretValueTag: req.body.secretValueTag,
-        secretValueCiphertext: req.body.secretValueCiphertext,
-        secretCommentIV: req.body.secretCommentIV,
-        secretCommentTag: req.body.secretCommentTag,
-        secretCommentCiphertext: req.body.secretCommentCiphertext,
-        skipMultilineEncoding: req.body.skipMultilineEncoding,
-        metadata: req.body.metadata,
-        secretReminderRepeatDays: req.body.secretReminderRepeatDays,
-        secretReminderNote: req.body.secretReminderNote,
-        newSecretName: req.body.secretName
+        projectId,
+        secretKeyIV,
+        secretKeyTag,
+        secretKeyCiphertext,
+        secretValueIV,
+        tags,
+        secretValueTag,
+        secretValueCiphertext,
+        secretCommentIV,
+        secretCommentTag,
+        secretCommentCiphertext,
+        skipMultilineEncoding,
+        metadata,
+        secretReminderRepeatDays,
+        secretReminderNote,
+        newSecretName
       });
 
       return { secret };
@@ -215,22 +344,57 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         environment: z.string().trim()
       }),
       response: {
-        200: z.object({
-          secret: SecretsSchema.omit({ secretBlindIndex: true })
-        })
+        200: z.union([
+          z.object({
+            secret: SecretsSchema.omit({ secretBlindIndex: true })
+          }),
+          z
+            .object({ approval: SecretApprovalRequestsSchema })
+            .describe("When secret protection policy is enabled")
+        ])
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
+      const { secretPath, type, workspaceId: projectId, secretId, environment } = req.body;
+      if (req.body.type !== SecretType.Personal && req.permission.type === ActorType.USER) {
+        const policy = await server.services.secretApprovalPolicy.getSapOfFolder({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          secretPath,
+          environment,
+          projectId
+        });
+        if (policy) {
+          const approval =
+            await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+              actorId: req.permission.id,
+              actor: req.permission.type,
+              secretPath,
+              environment,
+              projectId,
+              policy,
+              data: {
+                [CommitType.Delete]: [
+                  {
+                    secretName: req.params.secretName
+                  }
+                ]
+              }
+            });
+          return { approval };
+        }
+      }
+
       const secret = await server.services.secret.deleteSecret({
         actorId: req.permission.id,
         actor: req.permission.type,
-        path: req.body.secretPath,
-        type: req.body.type,
-        environment: req.body.environment,
+        path: secretPath,
+        type,
+        environment,
         secretName: req.params.secretName,
-        projectId: req.body.workspaceId,
-        secretId: req.body.secretId
+        projectId,
+        secretId
       });
 
       return { secret };
@@ -265,20 +429,51 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .min(1)
       }),
       response: {
-        200: z.object({
-          secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
-        })
+        200: z.union([
+          z.object({
+            secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
+          }),
+          z
+            .object({ approval: SecretApprovalRequestsSchema })
+            .describe("When secret protection policy is enabled")
+        ])
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
+      const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
+      if (req.permission.type === ActorType.USER) {
+        const policy = await server.services.secretApprovalPolicy.getSapOfFolder({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          secretPath,
+          environment,
+          projectId
+        });
+        if (policy) {
+          const approval =
+            await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+              actorId: req.permission.id,
+              actor: req.permission.type,
+              secretPath,
+              environment,
+              projectId,
+              policy,
+              data: {
+                [CommitType.Create]: inputSecrets.filter(({ type }) => type === "shared")
+              }
+            });
+          return { approval };
+        }
+      }
+
       const secrets = await server.services.secret.createManySecret({
         actorId: req.permission.id,
         actor: req.permission.type,
-        path: req.body.secretPath,
-        environment: req.body.environment,
-        projectId: req.body.workspaceId,
-        secrets: req.body.secrets
+        path: secretPath,
+        environment,
+        projectId,
+        secrets: inputSecrets
       });
 
       return { secrets };
@@ -313,20 +508,50 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .min(1)
       }),
       response: {
-        200: z.object({
-          secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
-        })
+        200: z.union([
+          z.object({
+            secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
+          }),
+          z
+            .object({ approval: SecretApprovalRequestsSchema })
+            .describe("When secret protection policy is enabled")
+        ])
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
+      const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
+      if (req.permission.type === ActorType.USER) {
+        const policy = await server.services.secretApprovalPolicy.getSapOfFolder({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          secretPath,
+          environment,
+          projectId
+        });
+        if (policy) {
+          const approval =
+            await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+              actorId: req.permission.id,
+              actor: req.permission.type,
+              secretPath,
+              environment,
+              projectId,
+              policy,
+              data: {
+                [CommitType.Update]: inputSecrets.filter(({ type }) => type === "shared")
+              }
+            });
+          return { approval };
+        }
+      }
       const secrets = await server.services.secret.updateManySecret({
         actorId: req.permission.id,
         actor: req.permission.type,
-        path: req.body.secretPath,
-        environment: req.body.environment,
-        projectId: req.body.workspaceId,
-        secrets: req.body.secrets
+        path: secretPath,
+        environment,
+        projectId,
+        secrets: inputSecrets
       });
 
       return { secrets };
@@ -350,20 +575,50 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .min(1)
       }),
       response: {
-        200: z.object({
-          secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
-        })
+        200: z.union([
+          z.object({
+            secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
+          }),
+          z
+            .object({ approval: SecretApprovalRequestsSchema })
+            .describe("When secret protection policy is enabled")
+        ])
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
+      const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
+      if (req.permission.type === ActorType.USER) {
+        const policy = await server.services.secretApprovalPolicy.getSapOfFolder({
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          secretPath,
+          environment,
+          projectId
+        });
+        if (policy) {
+          const approval =
+            await server.services.secretApprovalRequest.generateSecretApprovalRequest({
+              actorId: req.permission.id,
+              actor: req.permission.type,
+              secretPath,
+              environment,
+              projectId,
+              policy,
+              data: {
+                [CommitType.Delete]: inputSecrets.filter(({ type }) => type === "shared")
+              }
+            });
+          return { approval };
+        }
+      }
       const secrets = await server.services.secret.deleteManySecret({
         actorId: req.permission.id,
         actor: req.permission.type,
         path: req.body.secretPath,
-        environment: req.body.environment,
-        projectId: req.body.workspaceId,
-        secrets: req.body.secrets
+        environment,
+        projectId,
+        secrets: inputSecrets
       });
 
       return { secrets };

@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Modal, ModalContent, Step, Stepper } from "@app/components/v2";
 import { useCreateSecretRotation } from "@app/hooks/api";
-import { TSecretRotationProvider } from "@app/hooks/api/types";
+import { TSecretRotationProviderTemplate } from "@app/hooks/api/types";
 
 import { RotationInputForm } from "./steps/RotationInputForm";
 import {
@@ -28,7 +28,7 @@ type Props = {
   onToggle: (isOpen: boolean) => void;
   customProvider?: string;
   workspaceId: string;
-  provider: TSecretRotationProvider;
+  provider: TSecretRotationProviderTemplate;
 };
 
 export const CreateRotationForm = ({

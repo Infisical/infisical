@@ -53,7 +53,7 @@ import {
   useRestartSecretRotation,
   useUpdateBotActiveStatus
 } from "@app/hooks/api";
-import { TSecretRotationProvider } from "@app/hooks/api/types";
+import { TSecretRotationProviderTemplate } from "@app/hooks/api/types";
 
 import { CreateRotationForm } from "./components/CreateRotationForm";
 import { generateBotKey } from "./SecretRotationPage.utils";
@@ -143,7 +143,7 @@ export const SecretRotationPage = withProjectPermission(
     };
 
     const handleUserAcceptBotCondition = async () => {
-      const provider = popUp.activeBot?.data as TSecretRotationProvider;
+      const provider = popUp.activeBot?.data as TSecretRotationProviderTemplate;
       try {
         if (bot?.id) {
           const botKey = generateBotKey(bot.publicKey, userWsKey!);
@@ -165,7 +165,7 @@ export const SecretRotationPage = withProjectPermission(
       }
     };
 
-    const handleCreateRotation = async (provider: TSecretRotationProvider) => {
+    const handleCreateRotation = async (provider: TSecretRotationProviderTemplate) => {
       if (subscription && !subscription?.secretRotation) {
         handlePopUpOpen("upgradePlan");
         return;
@@ -256,7 +256,7 @@ export const SecretRotationPage = withProjectPermission(
                           </Td>
                           <Td>
                             <div className="flex w-min items-center rounded border border-bunker-400 p-1 px-2">
-                              <div>{environment}</div>
+                              <div>{environment.slug}</div>
                               <div className="ml-1 flex items-center border-l border-bunker-400 pl-1 text-xs">
                                 <FontAwesomeIcon icon={faFolder} className="mr-1" />
                                 {secretPath}
@@ -389,7 +389,7 @@ export const SecretRotationPage = withProjectPermission(
           isOpen={popUp.createRotation.isOpen}
           workspaceId={workspaceId}
           onToggle={(isOpen) => handlePopUpToggle("createRotation", isOpen)}
-          provider={(popUp.createRotation.data as TSecretRotationProvider) || {}}
+          provider={(popUp.createRotation.data as TSecretRotationProviderTemplate) || {}}
         />
         <Modal
           isOpen={popUp.activeBot?.isOpen}

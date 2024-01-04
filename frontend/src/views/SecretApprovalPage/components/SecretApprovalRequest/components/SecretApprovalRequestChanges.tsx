@@ -93,6 +93,7 @@ export const SecretApprovalRequestChanges = ({
     id: approvalRequestId,
     decryptKey: decryptFileKey!
   });
+  console.log(secretApprovalRequestDetails);
 
   const {
     mutateAsync: updateSecretApprovalRequestStatus,

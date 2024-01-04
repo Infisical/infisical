@@ -14,7 +14,7 @@ export const useCreateSecretRotation = () => {
 
   return useMutation<{}, {}, TCreateSecretRotationDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post("/api/v1/secret-rotations", dto);
+      const { data } = await apiRequest.post("/api/ee/v1/secret-rotations", dto);
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
@@ -28,7 +28,7 @@ export const useDeleteSecretRotation = () => {
 
   return useMutation<{}, {}, TDeleteSecretRotationDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.delete(`/api/v1/secret-rotations/${dto.id}`);
+      const { data } = await apiRequest.delete(`/api/ee/v1/secret-rotations/${dto.id}`);
       return data;
     },
     onSuccess: (_, { workspaceId }) => {
@@ -42,7 +42,7 @@ export const useRestartSecretRotation = () => {
 
   return useMutation<{}, {}, TRestartSecretRotationDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post("/api/v1/secret-rotations/restart", { id: dto.id });
+      const { data } = await apiRequest.post("/api/ee/v1/secret-rotations/restart", { id: dto.id });
       return data;
     },
     onSuccess: (_, { workspaceId }) => {

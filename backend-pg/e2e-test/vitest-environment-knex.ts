@@ -8,6 +8,7 @@ import { initLogger } from "@app/lib/logger";
 
 import "ts-node/register";
 import { main } from "@app/server/app";
+import { mockQueue } from "./mocks/queue";
 
 dotenv.config({ path: path.join(__dirname, "../.env.test") });
 export default {
@@ -31,9 +32,10 @@ export default {
       await db.migrate.latest();
       await db.seed.run();
       const smtp = mockSmtpServer();
+      const queue = mockQueue();
       const logger = await initLogger();
       initEnvConfig(logger);
-      const server = await main({ db, smtp, logger });
+      const server = await main({ db, smtp, logger, queue });
       // @ts-expect-error type
       globalThis.testServer = server;
     } catch (error) {

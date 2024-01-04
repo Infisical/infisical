@@ -29,11 +29,13 @@ export const secretDalFactory = (db: TDbClient) => {
 
   // the idea is to use postgres specific function
   // insert with id this will cause a conflict then merge the data
-  const bulkUpdate = async (data: Array<TSecretsUpdate & { id: string }>, tx?: Knex) => {
+  const bulkUpdate = async (
+    data: Array<TSecretsUpdate & { id: string }>,
+    tx?: Knex
+  ) => {
     try {
       const secs = await (tx || db)(TableName.Secret)
         .insert(data as TSecretsInsert[])
-        .increment("version", 1)
         .onConflict("id")
         .merge()
         .returning("*");

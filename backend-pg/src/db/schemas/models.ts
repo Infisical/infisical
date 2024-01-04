@@ -41,6 +41,8 @@ export enum TableName {
   SarReviewer = "sar_reviewers",
   SarSecret = "sa_request_secrets",
   SarSecretTag = "sa_request_secret_tags",
+  SecretRotation = "secret_rotations",
+  SecretRotationOutput = "secret_rotation_outputs",
   // junction tables
   JnSecretTag = "secret_tag_junction",
   JnSecretVersionTag = "secret_version_tag_junction"

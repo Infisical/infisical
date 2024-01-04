@@ -1,14 +1,14 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
-import { TSecretApprovalPolicies, TableName } from "@app/db/schemas";
+import { TableName,TSecretApprovalPolicies } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import {
-  TFindFilter,
   buildFindFilter,
   mergeOneToManyRelation,
   ormify,
-  selectAllTableCols
-} from "@app/lib/knex";
-import { Knex } from "knex";
+  selectAllTableCols,
+  TFindFilter} from "@app/lib/knex";
 
 export type TSecretApprovalPolicyDalFactory = ReturnType<typeof secretApprovalPolicyDalFactory>;
 
