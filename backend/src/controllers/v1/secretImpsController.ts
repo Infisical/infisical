@@ -111,11 +111,17 @@ export const createSecretImp = async (req: Request, res: Response) => {
       authData: req.authData,
       workspaceId: new Types.ObjectId(workspaceId)
     });
-    
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: directory })
     );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Secrets, { environment: secretImport.environment, secretPath: secretImport.secretPath })
+    );
+
   }
 
   const folders = await Folder.findOne({
@@ -323,7 +329,7 @@ export const updateSecretImport = async (req: Request, res: Response) => {
       authData: req.authData,
       workspaceId: importSecDoc.workspace
     });
-    
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, {
@@ -331,6 +337,13 @@ export const updateSecretImport = async (req: Request, res: Response) => {
         secretPath
       })
     );
+
+    secretImports.forEach(({ environment, secretPath }) => {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+      );
+    })
   }
 
   const orderBefore = importSecDoc.imports;
@@ -453,7 +466,7 @@ export const deleteSecretImport = async (req: Request, res: Response) => {
       authData: req.authData,
       workspaceId: importSecDoc.workspace
     });
-    
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       subject(ProjectPermissionSub.Secrets, {
@@ -620,7 +633,7 @@ export const getAllSecretsFromImport = async (req: Request, res: Response) => {
       authData: req.authData,
       workspaceId: new Types.ObjectId(workspaceId)
     });
-    
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, {
@@ -677,7 +690,7 @@ export const getAllSecretsFromImport = async (req: Request, res: Response) => {
       authData: req.authData,
       workspaceId: importSecDoc.workspace
     });
-    
+
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, {

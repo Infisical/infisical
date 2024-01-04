@@ -13,7 +13,7 @@ import {
   ProjectPermissionSub,
   getAuthDataProjectPermissions
 } from "../../ee/services/ProjectRoleService";
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { Types } from "mongoose";
 
 /**
@@ -85,6 +85,14 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
     ProjectPermissionActions.Create,
     ProjectPermissionSub.ServiceTokens
   );
+
+  scopes.forEach(({ environment, secretPath }) => {
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: secretPath })
+    );
+  })
+
 
   const secret = crypto.randomBytes(16).toString("hex");
   const secretHash = await bcrypt.hash(secret, await getSaltRounds());
