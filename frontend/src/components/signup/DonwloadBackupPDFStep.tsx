@@ -49,7 +49,7 @@ export default function DonwloadBackupPDFStep({
       console.log(err);
       createNotification({
         type: "error",
-        text: "Faield to generate backup key"
+        text: "Failed to generate backup key"
       });
     } finally {
       setIsLoading.off();
