@@ -135,7 +135,7 @@ pub struct CreateSecretResponse {
 
 You will _only_ have to define outputs in our schema generator, then QuickType will take care of the rest behind the scenes. You can find the Rust crate that takes care of type generation here: `crates/sdk-schemas/src/main.rs`.
 
-Simply add the output _(also called response)_, to the write_schema_for_response! macro. This will let QuickType know that it should generate types for the given structs. The main function will look something like this:
+Simply add the output _(also called response)_, to the `write_schema_for_response!` macro. This will let QuickType know that it should generate types for the given structs. The main function will look something like this:
 
 ```rust
 fn main() -> Result<()> {
