@@ -474,6 +474,7 @@ func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Reques
 		SetBody(request).
 		SetQueryParam("workspaceId", request.WorkspaceId).
 		SetQueryParam("environment", request.Environment).
+		SetQueryParam("secretPath", request.SecretPath).
 		SetQueryParam("include_imports", "false").
 		Get(fmt.Sprintf("%v/v3/secrets/raw", config.INFISICAL_URL))
 
