@@ -4962,7 +4962,8 @@
         },
         "security": [
           {
-            "apiKeyAuth": []
+            "apiKeyAuth": [],
+            "bearerAuth": []
           }
         ]
       }

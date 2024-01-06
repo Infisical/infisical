@@ -1,9 +1,13 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { 
-  IdentityMembershipOrg,
-  Membership, 
+  IWorkspace,
+  Identity,
+  IdentityMembership,
+  IdentityMembershipOrg, 
+  Membership,
   MembershipOrg,
+  User,
   Workspace
 } from "../../models";
 import { Role } from "../../ee/models";
@@ -298,7 +302,8 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
     #swagger.description = 'Return projects in organization that user is part of'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
 	#swagger.parameters['organizationId'] = {
@@ -326,6 +331,7 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
         }
     }   
     */
+  
   const {
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgWorkspacesv2, req);
@@ -351,13 +357,27 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
     ).map((w) => w._id.toString())
   );
 
-  const workspaces = (
-    await Membership.find({
-      user: req.user._id
-    }).populate("workspace")
-  )
-    .filter((m) => workspacesSet.has(m.workspace._id.toString()))
-    .map((m) => m.workspace);
+  let workspaces: IWorkspace[] = [];
+  
+  if (req.authData.authPayload instanceof Identity) {
+    workspaces = (
+      await IdentityMembership.find({
+        identity: req.authData.authPayload._id
+      }).populate<{ workspace: IWorkspace }>("workspace")
+    )
+      .filter((m) => workspacesSet.has(m.workspace._id.toString()))
+      .map((m) => m.workspace);
+  }
+  
+  if (req.authData.authPayload instanceof User) {
+    workspaces = (
+      await Membership.find({
+        user: req.authData.authPayload._id
+      }).populate<{ workspace: IWorkspace }>("workspace")
+    )
+      .filter((m) => workspacesSet.has(m.workspace._id.toString()))
+      .map((m) => m.workspace);
+  }
 
   return res.status(200).send({
     workspaces

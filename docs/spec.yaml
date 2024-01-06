@@ -3133,6 +3133,7 @@ paths:
                     description: Projects of organization
       security:
         - apiKeyAuth: []
+          bearerAuth: []
   /api/v2/organizations/:
     post:
       description: ''

@@ -72,9 +72,9 @@ export const IdentitySection = withPermission(
                     </p>
                     <div className="flex justify-end w-full pr-4">
                         <Link href="https://infisical.com/docs/documentation/platform/identities/overview">
-                            <span className="rounded-md px-4 py-2 w-max text-mineshaft-200 hover:text-white bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/10 hover:border-primary/40 duration-200 cursor-pointer">
+                            <a target="_blank" rel="noopener noreferrer" className="rounded-md px-4 py-2 w-max text-mineshaft-200 hover:text-white bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/10 hover:border-primary/40 duration-200 cursor-pointer">
                             Documentation <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs mb-[0.06rem] ml-1"/>
-                            </span>
+                            </a>
                         </Link> 
                     </div>
                     <OrgPermissionCan
