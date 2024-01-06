@@ -319,10 +319,6 @@ const fetchIntegrationAuthRailwayServices = async ({
   integrationAuthId: string;
   appId: string;
 }) => {
-  // console.log('fetchIntegrationAuthRailwayServices params: ', {
-  //   integrationAuthId,
-  //   appId
-  // });
   if (appId === "none") return [];
   const {
     data: { services }
