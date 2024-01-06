@@ -37,7 +37,8 @@ type Config struct {
 }
 
 type InfisicalConfig struct {
-	Address string `yaml:"address"`
+	Address       string `yaml:"address"`
+	ExitAfterAuth bool   `yaml:"exit-after-auth"`
 }
 
 type AuthConfig struct {
@@ -219,10 +220,11 @@ type TokenManager struct {
 	newAccessTokenNotificationChan chan bool
 	removeClientSecretOnRead       bool
 	cachedClientSecret             string
+	exitAfterAuth                  bool
 }
 
-func NewTokenManager(fileDeposits []Sink, templates []Template, clientIdPath string, clientSecretPath string, newAccessTokenNotificationChan chan bool, removeClientSecretOnRead bool) *TokenManager {
-	return &TokenManager{filePaths: fileDeposits, templates: templates, clientIdPath: clientIdPath, clientSecretPath: clientSecretPath, newAccessTokenNotificationChan: newAccessTokenNotificationChan, removeClientSecretOnRead: removeClientSecretOnRead}
+func NewTokenManager(fileDeposits []Sink, templates []Template, clientIdPath string, clientSecretPath string, newAccessTokenNotificationChan chan bool, removeClientSecretOnRead bool, exitAfterAuth bool) *TokenManager {
+	return &TokenManager{filePaths: fileDeposits, templates: templates, clientIdPath: clientIdPath, clientSecretPath: clientSecretPath, newAccessTokenNotificationChan: newAccessTokenNotificationChan, removeClientSecretOnRead: removeClientSecretOnRead, exitAfterAuth: exitAfterAuth}
 }
 
 func (tm *TokenManager) SetToken(token string, accessTokenTTL time.Duration, accessTokenMaxTTL time.Duration) {
@@ -354,6 +356,11 @@ func (tm *TokenManager) ManageTokenLifecycle() {
 			}
 		}
 
+		if tm.exitAfterAuth {
+			time.Sleep(25 * time.Second)
+			os.Exit(0)
+		}
+
 		if accessTokenRefreshedTime.IsZero() {
 			accessTokenRefreshedTime = tm.accessTokenFetchedTime
 		} else {
@@ -471,7 +478,7 @@ var agentCmd = &cobra.Command{
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 		filePaths := agentConfig.Sinks
-		tm := NewTokenManager(filePaths, agentConfig.Templates, configUniversalAuthType.ClientIDPath, configUniversalAuthType.ClientSecretPath, tokenRefreshNotifier, configUniversalAuthType.RemoveClientSecretOnRead)
+		tm := NewTokenManager(filePaths, agentConfig.Templates, configUniversalAuthType.ClientIDPath, configUniversalAuthType.ClientSecretPath, tokenRefreshNotifier, configUniversalAuthType.RemoveClientSecretOnRead, agentConfig.Infisical.ExitAfterAuth)
 
 		go tm.ManageTokenLifecycle()
 		go tm.FetchSecrets()
