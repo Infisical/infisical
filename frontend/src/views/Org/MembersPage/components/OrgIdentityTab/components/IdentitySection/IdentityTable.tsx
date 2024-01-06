@@ -98,6 +98,7 @@ export const IdentityTable = ({
                 <THead>
                     <Tr>
                         <Th>Name</Th>
+                        <Th>ID</Th>
                         <Th>Role</Th>
                         <Th>Auth Method</Th>
                         <Th className="w-5" />
@@ -120,6 +121,7 @@ export const IdentityTable = ({
                         return (
                             <Tr className="h-10" key={`identity-${_id}`}>
                                 <Td>{name}</Td>
+                                <Td>{_id}</Td>
                                 <Td>
                                     <OrgPermissionCan
                                         I={OrgPermissionActions.Edit}
