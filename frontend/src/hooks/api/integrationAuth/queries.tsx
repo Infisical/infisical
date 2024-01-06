@@ -297,6 +297,7 @@ const fetchIntegrationAuthRailwayEnvironments = async ({
   integrationAuthId: string;
   appId: string;
 }) => {
+  if (appId === "none") return [];
   const {
     data: { environments }
   } = await apiRequest.get<{ environments: Environment[] }>(
@@ -318,6 +319,7 @@ const fetchIntegrationAuthRailwayServices = async ({
   integrationAuthId: string;
   appId: string;
 }) => {
+  if (appId === "none") return [];
   const {
     data: { services }
   } = await apiRequest.get<{ services: Service[] }>(
