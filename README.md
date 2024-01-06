@@ -129,7 +129,7 @@ Note that this security address should be used only for undisclosed vulnerabilit
 
 ## Contributing
 
-Whether it's big or small, we love contributions. Check out our guide to see how to [get started](https://infisical.com/docs/contributing/overview).
+Whether it's big or small, we love contributions. Check out our guide to see how to [get started](https://infisical.com/docs/contributing/getting-started).
 
 Not sure where to get started? You can:
 
