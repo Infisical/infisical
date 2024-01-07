@@ -348,7 +348,7 @@ export const getSecretByNameRaw = async (req: Request, res: Response) => {
     }
   */
   const {
-    query: { secretPath, environment, workspaceId, type, include_imports },
+    query: { secretPath, environment, workspaceId, type, include_imports, version },
     params: { secretName }
   } = await validateRequest(reqValidator.GetSecretByNameRawV3, req);
 
@@ -371,7 +371,8 @@ export const getSecretByNameRaw = async (req: Request, res: Response) => {
     type,
     secretPath,
     authData: req.authData,
-    include_imports
+    include_imports,
+    version
   });
 
   const key = await BotService.getWorkspaceKeyWithBot({
@@ -865,7 +866,7 @@ export const getSecrets = async (req: Request, res: Response) => {
  */
 export const getSecretByName = async (req: Request, res: Response) => {
   const {
-    query: { secretPath, environment, workspaceId, type, include_imports },
+    query: { secretPath, environment, workspaceId, type, include_imports, version },
     params: { secretName }
   } = await validateRequest(reqValidator.GetSecretByNameV3, req);
 
@@ -888,7 +889,8 @@ export const getSecretByName = async (req: Request, res: Response) => {
     type,
     secretPath,
     authData: req.authData,
-    include_imports
+    include_imports,
+    version
   });
 
   return res.status(200).send({

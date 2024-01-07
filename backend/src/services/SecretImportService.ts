@@ -1,5 +1,6 @@
 import { Types } from "mongoose";
 import { generateSecretBlindIndexHelper } from "../helpers";
+import { SecretVersion } from "../ee/models";
 import { Folder, ISecret, Secret, SecretImport } from "../models";
 import { getFolderByPath } from "./FolderService";
 
@@ -9,7 +10,8 @@ export const getAnImportedSecret = async (
   secretName: string,
   workspaceId: string,
   environment: string,
-  folderId = "root"
+  folderId = "root",
+  version?: number
 ) => {
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
@@ -48,10 +50,26 @@ export const getAnImportedSecret = async (
   });
   if (importedSecByFid.length === 0) return;
 
-  const secret = await Secret.findOne({
-    workspace: workspaceId,
-    secretBlindIndex
-  }).or(importedSecByFid.map(({ environment, folderId }) => ({ environment, folder: folderId }))).lean()
+  let secret;
+  if (version === undefined) {
+    secret = await Secret.findOne({
+      workspace: workspaceId,
+      secretBlindIndex
+    }).or(importedSecByFid.map(({ environment, folderId }) => ({ environment, folder: folderId }))).lean()
+  } else {
+    const secretVersion = await SecretVersion.findOne({
+      workspace: workspaceId,
+      secretBlindIndex,
+      version
+    }).or(importedSecByFid.map(({ environment, folderId }) => ({ environment, folder: folderId }))).lean();
+    
+    if (secretVersion) {
+      secret = await new Secret({
+        ...secretVersion,
+        _id: secretVersion.secret,
+      });
+    }
+  }
 
   return secret;
 };
