@@ -273,18 +273,26 @@ func (tm *TokenManager) GetToken() string {
 
 // Fetches a new access token using client credentials
 func (tm *TokenManager) FetchNewAccessToken() error {
-	clientIDAsByte, err := ReadFile(tm.clientIdPath)
-	if err != nil {
-		return fmt.Errorf("unable to read client id from file path '%s' due to error: %v", tm.clientIdPath, err)
+	clientID := os.Getenv("INFISICAL_UNIVERSAL_AUTH_CLIENT_ID")
+	if clientID == "" {
+		clientIDAsByte, err := ReadFile(tm.clientIdPath)
+		if err != nil {
+			return fmt.Errorf("unable to read client id from file path '%s' due to error: %v", tm.clientIdPath, err)
+		}
+		clientID = string(clientIDAsByte)
 	}
 
-	clientSecretAsByte, err := ReadFile(tm.clientSecretPath)
-	if err != nil {
-		if len(tm.cachedClientSecret) == 0 {
-			return fmt.Errorf("unable to read client secret from file and no cached client secret found: %v", err)
-		} else {
-			clientSecretAsByte = []byte(tm.cachedClientSecret)
+	clientSecret := os.Getenv("INFISICAL_UNIVERSAL_CLIENT_SECRET")
+	if clientSecret == "" {
+		clientSecretAsByte, err := ReadFile(tm.clientSecretPath)
+		if err != nil {
+			if len(tm.cachedClientSecret) == 0 {
+				return fmt.Errorf("unable to read client secret from file and no cached client secret found: %v", err)
+			} else {
+				clientSecretAsByte = []byte(tm.cachedClientSecret)
+			}
 		}
+		clientSecret = string(clientSecretAsByte)
 	}
 
 	// remove client secret after first read
@@ -292,13 +300,10 @@ func (tm *TokenManager) FetchNewAccessToken() error {
 		os.Remove(tm.clientSecretPath)
 	}
 
-	clientId := string(clientIDAsByte)
-	clientSecret := string(clientSecretAsByte)
-
 	// save as cache in memory
 	tm.cachedClientSecret = clientSecret
 
-	err, loginResponse := universalAuthLogin(clientId, clientSecret)
+	err, loginResponse := universalAuthLogin(clientID, clientSecret)
 	if err != nil {
 		return err
 	}
