@@ -96,6 +96,7 @@ export const useDeleteIntegration = () => {
     mutationFn: ({ id }) => apiRequest.delete(`/api/v1/integration/${id}`),
     onSuccess: (_, { workspaceId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(workspaceId));
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(workspaceId));
     }
   });
 };

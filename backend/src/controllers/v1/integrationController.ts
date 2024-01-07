@@ -251,6 +251,21 @@ export const deleteIntegration = async (req: Request, res: Response) => {
   });
 
   if (!deletedIntegration) throw new Error("Failed to find integration");
+ 
+  const numOtherIntegrationsUsingSameAuth = await Integration.countDocuments({
+    integrationAuth: deletedIntegration.integrationAuth,
+    _id: {
+      $nin: [deletedIntegration._id]
+    }
+  });
+  
+  if (numOtherIntegrationsUsingSameAuth === 0) {
+    // no other integrations are using the same integration auth
+    // -> delete integration auth associated with the integration being deleted
+    await IntegrationAuth.deleteOne({
+      _id: deletedIntegration.integrationAuth
+    });
+  }
 
   await EEAuditLogService.createAuditLog(
     req.authData,
