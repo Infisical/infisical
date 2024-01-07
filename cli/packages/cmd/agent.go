@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -67,8 +68,9 @@ type SinkDetails struct {
 }
 
 type Template struct {
-	SourcePath      string `yaml:"source-path"`
-	DestinationPath string `yaml:"destination-path"`
+	SourcePath            string `yaml:"source-path"`
+	Base64TemplateContent string `yaml:"base64-template-content"`
+	DestinationPath       string `yaml:"destination-path"`
 }
 
 func ReadFile(filePath string) ([]byte, error) {
@@ -108,12 +110,7 @@ func appendAPIEndpoint(address string) string {
 	return address + "/api"
 }
 
-func ParseAgentConfig(filePath string) (*Config, error) {
-	data, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
-
+func ParseAgentConfig(configFile []byte) (*Config, error) {
 	var rawConfig struct {
 		Infisical InfisicalConfig `yaml:"infisical"`
 		Auth      struct {
@@ -124,7 +121,7 @@ func ParseAgentConfig(filePath string) (*Config, error) {
 		Templates []Template `yaml:"templates"`
 	}
 
-	if err := yaml.Unmarshal(data, &rawConfig); err != nil {
+	if err := yaml.Unmarshal(configFile, &rawConfig); err != nil {
 		return nil, err
 	}
 
@@ -194,6 +191,35 @@ func ProcessTemplate(templatePath string, data interface{}, accessToken string) 
 	templateName := path.Base(templatePath)
 
 	tmpl, err := template.New(templateName).Funcs(funcs).ParseFiles(templatePath)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return nil, err
+	}
+
+	return &buf, nil
+}
+
+func ProcessBase64Template(encodedTemplate string, data interface{}, accessToken string) (*bytes.Buffer, error) {
+	// custom template function to fetch secrets from Infisical
+	decoded, err := base64.StdEncoding.DecodeString(encodedTemplate)
+	if err != nil {
+		return nil, err
+	}
+
+	templateString := string(decoded)
+
+	secretFunction := secretTemplateFunction(accessToken)
+	funcs := template.FuncMap{
+		"secret": secretFunction,
+	}
+
+	templateName := "base64Template"
+
+	tmpl, err := template.New(templateName).Funcs(funcs).Parse(templateString)
 	if err != nil {
 		return nil, err
 	}
@@ -403,7 +429,14 @@ func (tm *TokenManager) FetchSecrets() {
 		token := tm.GetToken()
 		if token != "" {
 			for _, secretTemplate := range tm.templates {
-				processedTemplate, err := ProcessTemplate(secretTemplate.SourcePath, nil, token)
+				var processedTemplate *bytes.Buffer
+				var err error
+				if secretTemplate.SourcePath != "" {
+					processedTemplate, err = ProcessTemplate(secretTemplate.SourcePath, nil, token)
+				} else {
+					processedTemplate, err = ProcessBase64Template(secretTemplate.Base64TemplateContent, nil, token)
+				}
+
 				if err != nil {
 					log.Error().Msgf("template engine: unable to render secrets because %s. Will try again on next cycle", err)
 
@@ -456,12 +489,38 @@ var agentCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag config")
 		}
 
-		if !FileExists(configPath) {
-			log.Error().Msgf("Unable to locate %s. The provided agent config file path is either missing or incorrect", configPath)
+		var agentConfigInBytes []byte
+
+		agentConfigInBase64 := os.Getenv("INFISICAL_AGENT_CONFIG_BASE64")
+
+		if configPath != "" {
+			data, err := ioutil.ReadFile(configPath)
+			if err != nil {
+				if !FileExists(configPath) {
+					log.Error().Msgf("Unable to locate %s. The provided agent config file path is either missing or incorrect", configPath)
+					return
+				}
+			}
+
+			agentConfigInBytes = data
+		}
+
+		if agentConfigInBase64 != "" {
+			decodedAgentConfig, err := base64.StdEncoding.DecodeString(agentConfigInBase64)
+			if err != nil {
+				log.Error().Msgf("Unable to decode base64 config file because %v", err)
+				return
+			}
+
+			agentConfigInBytes = decodedAgentConfig
+		}
+
+		if !FileExists(configPath) && agentConfigInBase64 == "" {
+			log.Error().Msgf("No agent config file provided. Please provide a agent config file", configPath)
 			return
 		}
 
-		agentConfig, err := ParseAgentConfig(configPath)
+		agentConfig, err := ParseAgentConfig(agentConfigInBytes)
 		if err != nil {
 			log.Error().Msgf("Unable to prase %s because %v. Please ensure that is follows the Infisical Agent config structure", configPath, err)
 			return
