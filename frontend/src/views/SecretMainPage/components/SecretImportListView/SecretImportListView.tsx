@@ -18,14 +18,14 @@ import { useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSecretImport, useUpdateSecretImport } from "@app/hooks/api";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
-import { DecryptedSecret } from "@app/hooks/api/types";
+import { DecryptedSecret, WorkspaceEnv } from "@app/hooks/api/types";
 
 import { SecretImportItem } from "./SecretImportItem";
 
 const SECRET_IN_DASHBOARD = "Present In Dashboard";
 
 type TImportedSecrets = Array<{
-  environment: string;
+  environment: WorkspaceEnv;
   secretPath: string;
   folderId: string;
   secrets: DecryptedSecret[];
@@ -40,7 +40,7 @@ export const computeImportedSecretRows = (
 ) => {
   const importedSecIndex = importSecrets.findIndex(
     ({ secretPath, environment }) =>
-      secretPath === importedSecPath && importedSecEnv === environment
+      secretPath === importedSecPath && importedSecEnv === environment.slug
   );
   if (importedSecIndex === -1) return [];
 
@@ -55,7 +55,7 @@ export const computeImportedSecretRows = (
   for (let i = importedSecIndex + 1; i < importSecrets.length; i += 1) {
     importSecrets[i].secrets.forEach((el) => {
       overridenSec[el.key] = {
-        env: envSlug2Name?.[importSecrets[i].environment] || "unknown",
+        env: envSlug2Name?.[importSecrets[i].environment.slug] || "unknown",
         secretPath: importSecrets[i].secretPath
       };
     });

@@ -256,7 +256,8 @@ export const registerRoutes = async (
     projectEnvDal,
     folderDal,
     permissionService,
-    secretImportDal
+    secretImportDal,
+    secretDal
   });
   const projectBotService = projectBotServiceFactory({ permissionService, projectBotDal });
 

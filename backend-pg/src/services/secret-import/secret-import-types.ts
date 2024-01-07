@@ -26,3 +26,8 @@ export type TGetSecretImportsDTO = {
   environment: string;
   path: string;
 } & TProjectPermission;
+
+export type TGetSecretsFromImportDTO = {
+  environment: string;
+  path: string;
+} & TProjectPermission;

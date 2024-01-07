@@ -14,12 +14,16 @@ import {
   TCreateSecretImportDTO,
   TDeleteSecretImportDTO,
   TGetSecretImportsDTO,
+  TGetSecretsFromImportDTO,
   TUpdateSecretImportDTO
 } from "./secret-import-types";
+import { TSecretDalFactory } from "../secret/secret-dal";
+import { groupBy } from "@app/lib/fn";
 
 type TSecretImportServiceFactoryDep = {
   secretImportDal: TSecretImportDalFactory;
   folderDal: TSecretFolderDalFactory;
+  secretDal: Pick<TSecretDalFactory, "find">;
   projectEnvDal: TProjectEnvDalFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
@@ -32,7 +36,8 @@ export const secretImportServiceFactory = ({
   secretImportDal,
   projectEnvDal,
   permissionService,
-  folderDal
+  folderDal,
+  secretDal
 }: TSecretImportServiceFactoryDep) => {
   const createImport = async ({
     environment,
@@ -51,6 +56,7 @@ export const secretImportServiceFactory = ({
     const folder = await folderDal.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Create import" });
 
+    // TODO(akhilmhdh-pg): updated permission check add here
     const [importEnv] = await projectEnvDal.findBySlugs(projectId, [data.environment]);
     if (!importEnv)
       throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
@@ -168,10 +174,64 @@ export const secretImportServiceFactory = ({
     const secImports = await secretImportDal.find({ folderId: folder.id });
     return secImports;
   };
+
+  const getSecretsFromImports = async ({
+    path,
+    environment,
+    projectId,
+    actor,
+    actorId
+  }: TGetSecretsFromImportDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+    );
+    const folder = await folderDal.findBySecretPath(projectId, environment, path);
+    if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Get imports" });
+    // this will already order by position
+    // so anything based on this order will also be in right position
+    const secretImports = await secretImportDal.find({ folderId: folder.id });
+
+    const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
+      permission.can(
+        ProjectPermissionActions.Read,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: importEnv.slug,
+          secretPath: importPath
+        })
+      )
+    );
+    const importedFolders = await folderDal.findByManySecretPath(
+      allowedImports.map(({ importEnv, importPath }) => ({
+        envId: importEnv.id,
+        secretPath: importPath
+      }))
+    );
+    const folderIds = importedFolders.map((el) => el?.id).filter(Boolean) as string[];
+    if (!folderIds.length) {
+      return [];
+    }
+    const importedSecrets = await secretDal.find({
+      $in: { folderId: folderIds }
+    });
+
+    const importedSecsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
+    return allowedImports.map(({ importPath, importEnv }, i) => ({
+      secretPath: importPath,
+      environment: importEnv,
+      folderId: importedFolders?.[i]?.id,
+      secrets: importedFolders?.[i]?.id
+        ? importedSecsGroupByFolderId[importedFolders?.[i]?.id as string]
+        : []
+    }));
+  };
+
   return {
     createImport,
     updateImport,
     deleteImport,
-    getImports
+    getImports,
+    getSecretsFromImports
   };
 };

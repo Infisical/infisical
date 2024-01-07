@@ -1,22 +1,19 @@
 import { UserWsKeyPair } from "../keys/types";
 import { EncryptedSecret } from "../secrets/types";
+import { WorkspaceEnv } from "../workspace/types";
 
 export type TSecretImport = {
   id: string;
   folderId: string;
   importPath: string;
-  importEnv: {
-    name: string;
-    slug: string;
-    id: string;
-  };
+  importEnv: WorkspaceEnv;
   position: string;
   createdAt: string;
   updatedAt: string;
 };
 
 export type TImportedSecrets = {
-  environment: string;
+  environment: WorkspaceEnv;
   secretPath: string;
   folderId: string;
   secrets: EncryptedSecret[];

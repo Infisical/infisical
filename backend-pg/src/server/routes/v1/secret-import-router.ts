@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SecretImportsSchema } from "@app/db/schemas";
+import { SecretImportsSchema, SecretsSchema } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -147,6 +147,43 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         ...req.query
       });
       return { message: "Successfully fetched secret imports", secretImports };
+    }
+  });
+
+  server.route({
+    url: "/secrets",
+    method: "GET",
+    schema: {
+      querystring: z.object({
+        projectId: z.string().trim(),
+        environment: z.string().trim(),
+        path: z.string().trim().default("/")
+      }),
+      response: {
+        200: z.object({
+          secrets: z
+            .object({
+              secretPath: z.string(),
+              environment: z.object({
+                id: z.string(),
+                name: z.string(),
+                slug: z.string()
+              }),
+              folderId: z.string().optional(),
+              secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    handler: async (req) => {
+      const importedSecrets = await server.services.secretImport.getSecretsFromImports({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        ...req.query
+      });
+      return { secrets: importedSecrets };
     }
   });
 };

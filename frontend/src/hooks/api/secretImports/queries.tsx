@@ -66,9 +66,9 @@ const fetchImportedSecrets = async (
     "/api/v1/secret-imports/secrets",
     {
       params: {
-        workspaceId,
+        projectId: workspaceId,
         environment,
-        directory
+        path: directory
       }
     }
   );
