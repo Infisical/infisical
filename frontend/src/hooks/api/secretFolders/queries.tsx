@@ -19,7 +19,7 @@ import {
   TUpdateFolderDTO
 } from "./types";
 
-const queryKeys = {
+export const folderQueryKeys = {
   getSecretFolders: ({ projectId, environment, path }: TGetProjectFoldersDTO) =>
     ["secret-folders", { projectId, environment, path }] as const
 };
@@ -46,14 +46,14 @@ export const useGetProjectFolders = ({
       TSecretFolder[],
       unknown,
       TSecretFolder[],
-      ReturnType<typeof queryKeys.getSecretFolders>
+      ReturnType<typeof folderQueryKeys.getSecretFolders>
     >,
     "queryKey" | "queryFn"
   >;
 }) =>
   useQuery({
     ...options,
-    queryKey: queryKeys.getSecretFolders({ projectId, environment, path }),
+    queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path }),
     enabled: Boolean(projectId) && Boolean(environment) && (options?.enabled ?? true),
     queryFn: async () => fetchProjectFolders(projectId, environment, path)
   });
@@ -65,7 +65,7 @@ export const useGetFoldersByEnv = ({
 }: TGetFoldersByEnvDTO) => {
   const folders = useQueries({
     queries: environments.map((environment) => ({
-      queryKey: queryKeys.getSecretFolders({ projectId, environment, path }),
+      queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path }),
       queryFn: async () => fetchProjectFolders(projectId, environment, path),
       enabled: Boolean(projectId) && Boolean(environment)
     }))
@@ -106,7 +106,9 @@ export const useCreateFolder = () => {
       return data;
     },
     onSuccess: (_, { projectId, environment, path }) => {
-      queryClient.invalidateQueries(queryKeys.getSecretFolders({ projectId, environment, path }));
+      queryClient.invalidateQueries(
+        folderQueryKeys.getSecretFolders({ projectId, environment, path })
+      );
       queryClient.invalidateQueries(
         secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
       );
@@ -131,7 +133,9 @@ export const useUpdateFolder = () => {
       return data;
     },
     onSuccess: (_, { projectId, environment, path }) => {
-      queryClient.invalidateQueries(queryKeys.getSecretFolders({ projectId, environment, path }));
+      queryClient.invalidateQueries(
+        folderQueryKeys.getSecretFolders({ projectId, environment, path })
+      );
       queryClient.invalidateQueries(
         secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
       );
@@ -157,7 +161,9 @@ export const useDeleteFolder = () => {
       return data;
     },
     onSuccess: (_, { path = "/", projectId, environment }) => {
-      queryClient.invalidateQueries(queryKeys.getSecretFolders({ projectId, environment, path }));
+      queryClient.invalidateQueries(
+        folderQueryKeys.getSecretFolders({ projectId, environment, path })
+      );
       queryClient.invalidateQueries(
         secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
       );

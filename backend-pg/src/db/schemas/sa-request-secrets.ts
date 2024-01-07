@@ -20,7 +20,7 @@ export const SaRequestSecretsSchema = z.object({
   secretCommentCiphertext: z.string().nullable().optional(),
   secretCommentIV: z.string().nullable().optional(),
   secretCommentTag: z.string().nullable().optional(),
-  secretReminderNotice: z.string().nullable().optional(),
+  secretReminderNote: z.string().nullable().optional(),
   secretReminderRepeatDays: z.number().nullable().optional(),
   skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
   algorithm: z.string().default("aes-256-gcm"),

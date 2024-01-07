@@ -12,7 +12,7 @@ export const ProjectKeysSchema = z.object({
   encryptedKey: z.string(),
   nonce: z.string(),
   receiverId: z.string().uuid(),
-  senderId: z.string().uuid(),
+  senderId: z.string().uuid().nullable().optional(),
   projectId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),

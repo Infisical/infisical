@@ -9,9 +9,6 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.integer("version").defaultTo(1);
       t.string("type").notNullable().defaultTo(SecretType.Shared);
-      // t.text("secretKeyHash").notNullable();
-      // t.text("secretValueHash");
-      // t.text("secretCommentHash");
       t.text("secretBlindIndex").notNullable();
       t.text("secretKeyCiphertext").notNullable();
       t.text("secretKeyIV").notNullable();
@@ -22,18 +19,20 @@ export async function up(knex: Knex): Promise<void> {
       t.text("secretCommentCiphertext");
       t.text("secretCommentIV");
       t.text("secretCommentTag");
-      t.string("secretReminderNotice");
+      t.string("secretReminderNote");
       t.integer("secretReminderRepeatDays");
       t.boolean("skipMultilineEncoding").defaultTo(false);
       t.string("algorithm").notNullable().defaultTo(SecretEncryptionAlgo.AES_256_GCM);
       t.string("keyEncoding").notNullable().defaultTo(SecretKeyEncoding.UTF8);
       t.jsonb("metadata");
-      t.uuid("secretId");
-      t.foreign("secretId").references("id").inTable(TableName.Secret).onDelete("SET NULL");
+      // to avoid orphan rows
+      t.uuid("envId");
+      t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
+      t.uuid("secretId").notNullable();
+      t.uuid("folderId").notNullable();
+      // t.foreign("secretId").references("id").inTable(TableName.Secret).onDelete("SET NULL");
       t.uuid("userId");
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
-      t.uuid("folderId").notNullable();
-      t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
   }

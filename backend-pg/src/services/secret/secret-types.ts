@@ -1,4 +1,6 @@
-import { SecretType } from "@app/db/schemas";
+import { Knex } from "knex";
+
+import { SecretType, TSecretBlindIndexes, TSecretsInsert, TSecretsUpdate } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 export type TCreateSecretDTO = {
@@ -73,7 +75,6 @@ export type TCreateBulkSecretDTO = {
   environment: string;
   secrets: Array<{
     secretName: string;
-    type: SecretType;
     secretKeyCiphertext: string;
     secretKeyIV: string;
     secretKeyTag: string;
@@ -117,3 +118,38 @@ export type TDeleteBulkSecretDTO = {
     secretName: string;
   }>;
 } & TProjectPermission;
+
+export type TListSecretVersionDTO = {
+  secretId: string;
+  offset?: number;
+  limit?: number;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TFnSecretBulkInsert = {
+  folderId: string;
+  tx?: Knex;
+  inputSecrets: Array<Omit<TSecretsInsert, "folderId"> & { tags?: string[] }>;
+};
+
+export type TFnSecretBulkUpdate = {
+  folderId: string;
+  projectId: string;
+  inputSecrets: Array<TSecretsUpdate & { tags?: string[]; id: string }>;
+  tx?: Knex;
+};
+
+export type TFnSecretBulkDelete = {
+  folderId: string;
+  projectId: string;
+  inputSecrets: Array<{ type: SecretType; secretBlindIndex: string }>;
+  actorId: string;
+  tx?: Knex;
+};
+
+export type TFnSecretBlindIndexCheck = {
+  folderId: string;
+  userId?: string;
+  blindIndexCfg: TSecretBlindIndexes;
+  inputSecrets: Array<{ secretName: string; type?: SecretType }>;
+  isNew: boolean;
+};

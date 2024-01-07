@@ -14,6 +14,10 @@ import { secretApprovalRequestServiceFactory } from "@app/ee/services/secret-app
 import { secretRotationDalFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { secretRotationQueueFactory } from "@app/ee/services/secret-rotation/secret-rotation-queue";
 import { secretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
+import { secretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
+import { snapshotDalFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
+import { snapshotFolderDalFactory } from "@app/ee/services/secret-snapshot/snapshot-folder-dal";
+import { snapshotSecretDalFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-dal";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { apiKeyDalFactory } from "@app/services/api-key/api-key-dal";
@@ -61,6 +65,7 @@ import { secretServiceFactory } from "@app/services/secret/secret-service";
 import { secretVersionDalFactory } from "@app/services/secret/secret-version-dal";
 import { secretFolderDalFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
+import { secretFolderVersionDalFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 import { secretImportDalFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
 import { secretTagDalFactory } from "@app/services/secret-tag/secret-tag-dal";
@@ -109,6 +114,7 @@ export const registerRoutes = async (
   const secretDal = secretDalFactory(db);
   const secretTagDal = secretTagDalFactory(db);
   const folderDal = secretFolderDalFactory(db);
+  const folderVersionDal = secretFolderVersionDalFactory(db);
   const secretImportDal = secretImportDalFactory(db);
   const secretVersionDal = secretVersionDalFactory(db);
   const secretBlindIndexDal = secretBlindIndexDalFactory(db);
@@ -135,6 +141,9 @@ export const registerRoutes = async (
   const sarSecretDal = sarSecretDalFactory(db);
 
   const secretRotationDal = secretRotationDalFactory(db);
+  const snapshotDal = snapshotDalFactory(db);
+  const snapshotSecretDal = snapshotSecretDalFactory(db);
+  const snapshotFolderDal = snapshotFolderDalFactory(db);
 
   const permissionService = permissionServiceFactory({ permissionDal, orgRoleDal, projectRoleDal });
   const sapService = secretApprovalPolicyServiceFactory({
@@ -215,19 +224,33 @@ export const registerRoutes = async (
   });
   const projectRoleService = projectRoleServiceFactory({ permissionService, projectRoleDal });
 
+  const snapshotService = secretSnapshotServiceFactory({
+    folderDal,
+    secretDal,
+    snapshotDal,
+    snapshotFolderDal,
+    snapshotSecretDal,
+    secretVersionDal,
+    folderVersionDal,
+    permissionService
+  });
+
   const secretService = secretServiceFactory({
     folderDal,
     secretVersionDal,
     secretBlindIndexDal,
     permissionService,
     secretDal,
-    secretTagDal
+    secretTagDal,
+    snapshotService
   });
   const secretTagService = secretTagServiceFactory({ secretTagDal, permissionService });
   const folderService = secretFolderServiceFactory({
     permissionService,
     folderDal,
-    projectEnvDal
+    folderVersionDal,
+    projectEnvDal,
+    snapshotService
   });
   const secretImportService = secretImportServiceFactory({
     projectEnvDal,
@@ -329,7 +352,8 @@ export const registerRoutes = async (
     identityUa: identityUaService,
     secretApprovalPolicy: sapService,
     secretApprovalRequest: sarService,
-    secretRotation: secretRotationService
+    secretRotation: secretRotationService,
+    snapshot: snapshotService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {

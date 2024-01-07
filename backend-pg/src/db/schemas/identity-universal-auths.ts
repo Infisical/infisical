@@ -17,11 +17,9 @@ export const IdentityUniversalAuthsSchema = z.object({
   accessTokenTrustedIps: z.unknown(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  identityId: z.string().uuid()
+  identityId: z.string().uuid(),
 });
 
 export type TIdentityUniversalAuths = z.infer<typeof IdentityUniversalAuthsSchema>;
 export type TIdentityUniversalAuthsInsert = Omit<TIdentityUniversalAuths, TImmutableDBKeys>;
-export type TIdentityUniversalAuthsUpdate = Partial<
-  Omit<TIdentityUniversalAuths, TImmutableDBKeys>
->;
+export type TIdentityUniversalAuthsUpdate = Partial<Omit<TIdentityUniversalAuths, TImmutableDBKeys>>;

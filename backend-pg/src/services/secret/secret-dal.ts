@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { SecretType, TableName, TSecrets, TSecretsInsert, TSecretsUpdate } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { mergeOneToManyRelation, ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TSecretDalFactory = ReturnType<typeof secretDalFactory>;
@@ -29,10 +29,7 @@ export const secretDalFactory = (db: TDbClient) => {
 
   // the idea is to use postgres specific function
   // insert with id this will cause a conflict then merge the data
-  const bulkUpdate = async (
-    data: Array<TSecretsUpdate & { id: string }>,
-    tx?: Knex
-  ) => {
+  const bulkUpdate = async (data: Array<TSecretsUpdate & { id: string }>, tx?: Knex) => {
     try {
       const secs = await (tx || db)(TableName.Secret)
         .insert(data as TSecretsInsert[])
@@ -59,7 +56,7 @@ export const secretDalFactory = (db: TDbClient) => {
             bd.orWhere({
               secretBlindIndex: el.blindIndex,
               type: el.type,
-              userId: el.type === SecretType.Personal ? userId : null
+              ...(el.type === SecretType.Personal ? { userId } : {})
             });
           });
         })
@@ -123,6 +120,9 @@ export const secretDalFactory = (db: TDbClient) => {
         .where({ folderId })
         .where((bd) => {
           blindIndexes.forEach((el) => {
+            if (el.type === SecretType.Personal && !userId) {
+              throw new BadRequestError({ message: "Missing personal user id" });
+            }
             bd.orWhere({
               secretBlindIndex: el.blindIndex,
               type: el.type,

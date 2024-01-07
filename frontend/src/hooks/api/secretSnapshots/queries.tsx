@@ -35,13 +35,13 @@ const fetchWorkspaceSnaphots = async ({
   offset = 0
 }: TGetSecretSnapshotsDTO & { offset: number }) => {
   const res = await apiRequest.get<{ secretSnapshots: TSecretSnapshot[] }>(
-    `/api/v1/workspace/${workspaceId}/secret-snapshots`,
+    `/api/ee/v1/workspace/${workspaceId}/secret-snapshots`,
     {
       params: {
         limit,
         offset,
         environment,
-        directory
+        path: directory
       }
     }
   );
@@ -60,12 +60,12 @@ export const useGetWorkspaceSnapshotList = (dto: TGetSecretSnapshotsDTO & { isPa
 
 const fetchSnapshotEncSecrets = async (snapshotId: string) => {
   const res = await apiRequest.get<{ secretSnapshot: TSnapshotData }>(
-    `/api/v1/secret-snapshot/${snapshotId}`
+    `/api/ee/v1/secret-snapshot/${snapshotId}`
   );
   return res.data.secretSnapshot;
 };
 
-export const useGetSnapshotSecrets = ({ decryptFileKey, env, snapshotId }: TSnapshotDataProps) =>
+export const useGetSnapshotSecrets = ({ decryptFileKey, snapshotId }: TSnapshotDataProps) =>
   useQuery({
     queryKey: secretSnapshotKeys.snapshotData(snapshotId),
     enabled: Boolean(snapshotId && decryptFileKey),
@@ -82,44 +82,42 @@ export const useGetSnapshotSecrets = ({ decryptFileKey, env, snapshotId }: TSnap
 
       const sharedSecrets: DecryptedSecret[] = [];
       const personalSecrets: Record<string, { id: string; value: string }> = {};
-      data.secretVersions
-        .filter(({ environment }) => environment === env)
-        .forEach((encSecret) => {
-          const secretKey = decryptSymmetric({
-            ciphertext: encSecret.secretKeyCiphertext,
-            iv: encSecret.secretKeyIV,
-            tag: encSecret.secretKeyTag,
-            key
-          });
-
-          const secretValue = decryptSymmetric({
-            ciphertext: encSecret.secretValueCiphertext,
-            iv: encSecret.secretValueIV,
-            tag: encSecret.secretValueTag,
-            key
-          });
-
-          const secretComment = "";
-
-          const decryptedSecret = {
-            id: encSecret.secret,
-            env: encSecret.environment,
-            key: secretKey,
-            value: secretValue,
-            tags: encSecret.tags,
-            comment: secretComment,
-            createdAt: encSecret.createdAt,
-            updatedAt: encSecret.updatedAt,
-            type: "modified",
-            version: encSecret.version
-          };
-
-          if (encSecret.type === "personal") {
-            personalSecrets[decryptedSecret.key] = { id: encSecret.secret, value: secretValue };
-          } else {
-            sharedSecrets.push(decryptedSecret);
-          }
+      data.secretVersions.forEach((encSecret) => {
+        const secretKey = decryptSymmetric({
+          ciphertext: encSecret.secretKeyCiphertext,
+          iv: encSecret.secretKeyIV,
+          tag: encSecret.secretKeyTag,
+          key
         });
+
+        const secretValue = decryptSymmetric({
+          ciphertext: encSecret.secretValueCiphertext,
+          iv: encSecret.secretValueIV,
+          tag: encSecret.secretValueTag,
+          key
+        });
+
+        const secretComment = "";
+
+        const decryptedSecret = {
+          id: encSecret.secretId,
+          env: data.environment.slug,
+          key: secretKey,
+          value: secretValue,
+          tags: encSecret.tags,
+          comment: secretComment,
+          createdAt: encSecret.createdAt,
+          updatedAt: encSecret.updatedAt,
+          type: "modified",
+          version: encSecret.version
+        };
+
+        if (encSecret.type === "personal") {
+          personalSecrets[decryptedSecret.key] = { id: encSecret.secretId, value: secretValue };
+        } else {
+          sharedSecrets.push(decryptedSecret);
+        }
+      });
 
       sharedSecrets.forEach((val) => {
         if (personalSecrets?.[val.key]) {
@@ -130,7 +128,7 @@ export const useGetSnapshotSecrets = ({ decryptFileKey, env, snapshotId }: TSnap
       });
 
       return {
-        version: data.version,
+        id: data.id,
         secrets: sharedSecrets,
         createdAt: data.createdAt,
         folders: data.folderVersion
@@ -144,11 +142,11 @@ const fetchWorkspaceSecretSnaphotCount = async (
   directory = "/"
 ) => {
   const res = await apiRequest.get<{ count: number }>(
-    `/api/v1/workspace/${workspaceId}/secret-snapshots/count`,
+    `/api/ee/v1/workspace/${workspaceId}/secret-snapshots/count`,
     {
       params: {
         environment,
-        directory
+        path: directory
       }
     }
   );
@@ -171,17 +169,18 @@ export const usePerformSecretRollback = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TSecretRollbackDTO>({
-    mutationFn: async ({ workspaceId, ...dto }) => {
-      const { data } = await apiRequest.post(
-        `/api/v1/workspace/${workspaceId}/secret-snapshots/rollback`,
-        dto
-      );
+    mutationFn: async ({ snapshotId }) => {
+      const { data } = await apiRequest.post(`/api/ee/v1/secret-snapshot/${snapshotId}/rollback`);
       return data;
     },
     onSuccess: (_, { workspaceId, environment, directory }) => {
       queryClient.invalidateQueries([
         { workspaceId, environment, secretPath: directory },
         "secrets"
+      ]);
+      queryClient.invalidateQueries([
+        "secret-folders",
+        { projectId: workspaceId, environment, path: directory }
       ]);
       queryClient.invalidateQueries(
         secretSnapshotKeys.list({ workspaceId, environment, directory })

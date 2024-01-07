@@ -97,6 +97,7 @@ export const SnapshotView = ({
       {}
     );
     const diffView: Array<TDiffView<DecryptedSecret>> = [];
+    console.log({ rollingSecrets, secrets });
     rollingSecrets.forEach((rollSecret) => {
       const { id } = rollSecret;
       const doesExist = Boolean(secretGroupById?.[id]);
@@ -118,9 +119,9 @@ export const SnapshotView = ({
     });
     return diffView;
   }, [secrets, rollingSecrets]);
-
+  console.log(secretDiffView);
   const handleClickRollback = async () => {
-    if (!snapshotData?.version) {
+    if (!snapshotData?.id) {
       createNotification({
         text: "Failed to find secret version",
         type: "success"
@@ -130,7 +131,7 @@ export const SnapshotView = ({
     try {
       await performRollback({
         workspaceId,
-        version: snapshotData.version,
+        snapshotId: snapshotData.id,
         environment,
         directory: secretPath
       });

@@ -20,7 +20,8 @@ import {
   secretRotationDbFn,
   secretRotationHttpFn,
   secretRotationHttpSetFn,
-  secretRotationPreSetFn} from "./secret-rotation-queue-fn";
+  secretRotationPreSetFn
+} from "./secret-rotation-queue-fn";
 import {
   TSecretRotationData,
   TSecretRotationDbFn,
@@ -34,7 +35,7 @@ type TSecretRotationQueueFactoryDep = {
   secretRotationDal: TSecretRotationDalFactory;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretDal: Pick<TSecretDalFactory, "bulkUpdate">;
-  secretVersionDal: Pick<TSecretVersionDalFactory, "insertMany">;
+  secretVersionDal: Pick<TSecretVersionDalFactory, "insertMany" | "findLatestVersionMany">;
 };
 
 // These error should stop the repeatable job and ask user to reconfigure rotation

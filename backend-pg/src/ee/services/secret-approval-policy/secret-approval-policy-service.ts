@@ -134,7 +134,7 @@ export const secretApprovalPolicyServiceFactory = ({
             projectId: secretApprovalPolicy.projectId,
             $in: { id: approvers }
           },
-          tx
+          { tx }
         );
         if (secretApprovers.length !== approvers.length)
           throw new BadRequestError({ message: "Approver not found in project" });

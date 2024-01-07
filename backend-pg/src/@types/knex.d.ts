@@ -91,6 +91,9 @@ import {
   TSecretFolders,
   TSecretFoldersInsert,
   TSecretFoldersUpdate,
+  TSecretFolderVersions,
+  TSecretFolderVersionsInsert,
+  TSecretFolderVersionsUpdate,
   TSecretImports,
   TSecretImportsInsert,
   TSecretImportsUpdate,
@@ -102,6 +105,15 @@ import {
   TSecretRotationsUpdate,
   TSecrets,
   TSecretsInsert,
+  TSecretSnapshotFolders,
+  TSecretSnapshotFoldersInsert,
+  TSecretSnapshotFoldersUpdate,
+  TSecretSnapshots,
+  TSecretSnapshotSecrets,
+  TSecretSnapshotSecretsInsert,
+  TSecretSnapshotSecretsUpdate,
+  TSecretSnapshotsInsert,
+  TSecretSnapshotsUpdate,
   TSecretsUpdate,
   TSecretTagJunction,
   TSecretTagJunctionInsert,
@@ -224,6 +236,11 @@ declare module "knex/types/tables" {
       TSecretFoldersInsert,
       TSecretFoldersUpdate
     >;
+    [TableName.SecretFolderVersion]: Knex.CompositeTableType<
+      TSecretFolderVersions,
+      TSecretFolderVersionsInsert,
+      TSecretFolderVersionsUpdate
+    >;
     [TableName.SecretTag]: Knex.CompositeTableType<
       TSecretTags,
       TSecretTagsInsert,
@@ -233,6 +250,11 @@ declare module "knex/types/tables" {
       TSecretImports,
       TSecretImportsInsert,
       TSecretImportsUpdate
+    >;
+    [TableName.SecretSnapshot]: Knex.CompositeTableType<
+      TSecretSnapshots,
+      TSecretSnapshotsInsert,
+      TSecretSnapshotsUpdate
     >;
     [TableName.Integration]: Knex.CompositeTableType<
       TIntegrations,
@@ -319,6 +341,21 @@ declare module "knex/types/tables" {
       TSecretRotationOutputs,
       TSecretRotationOutputsInsert,
       TSecretRotationOutputsUpdate
+    >;
+    [TableName.Snapshot]: Knex.CompositeTableType<
+      TSecretSnapshots,
+      TSecretSnapshotsInsert,
+      TSecretSnapshotsUpdate
+    >;
+    [TableName.SnapshotSecret]: Knex.CompositeTableType<
+      TSecretSnapshotSecrets,
+      TSecretSnapshotSecretsInsert,
+      TSecretSnapshotSecretsUpdate
+    >;
+    [TableName.SnapshotFolder]: Knex.CompositeTableType<
+      TSecretSnapshotFolders,
+      TSecretSnapshotFoldersInsert,
+      TSecretSnapshotFoldersUpdate
     >;
     // Junction tables
     [TableName.JnSecretTag]: Knex.CompositeTableType<

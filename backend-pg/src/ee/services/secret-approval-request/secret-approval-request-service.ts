@@ -301,7 +301,7 @@ export const secretApprovalRequestServiceFactory = ({
                 secretCommentTag,
                 secretCommentCiphertext,
                 skipMultilineEncoding,
-                secretReminderNotice,
+                secretReminderNote,
                 secretReminderRepeatDays
               }) => ({
                 secretBlindIndex,
@@ -316,7 +316,7 @@ export const secretApprovalRequestServiceFactory = ({
                 secretCommentTag,
                 secretCommentCiphertext,
                 skipMultilineEncoding,
-                secretReminderNotice,
+                secretReminderNote,
                 secretReminderRepeatDays,
                 version: 1,
                 folderId,
@@ -346,7 +346,7 @@ export const secretApprovalRequestServiceFactory = ({
                 secretCommentTag,
                 secretCommentCiphertext,
                 skipMultilineEncoding,
-                secretReminderNotice,
+                secretReminderNote,
                 secretReminderRepeatDays
               }) => ({
                 folderId,
@@ -365,7 +365,7 @@ export const secretApprovalRequestServiceFactory = ({
                 secretCommentTag,
                 secretCommentCiphertext,
                 skipMultilineEncoding,
-                secretReminderNotice,
+                secretReminderNote,
                 secretReminderRepeatDays
               })
             ),
@@ -661,7 +661,7 @@ export const secretApprovalRequestServiceFactory = ({
             secretCommentTag,
             secretKeyCiphertext,
             secretValueCiphertext,
-            secretReminderNotice,
+            secretReminderNote,
             skipMultilineEncoding,
             secretCommentCiphertext,
             secretReminderRepeatDays
@@ -683,7 +683,7 @@ export const secretApprovalRequestServiceFactory = ({
             secretCommentTag,
             secretKeyCiphertext,
             secretValueCiphertext,
-            secretReminderNotice,
+            secretReminderNote,
             skipMultilineEncoding,
             secretCommentCiphertext,
             secretReminderRepeatDays

@@ -24,6 +24,16 @@ services:
       POSTGRES_USER: infisical
       POSTGRES_DB: infisical
 
+  redis:
+    image: redis
+    container_name: infisical-dev-redis
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+
   db-test:
     profiles: ["test"]
     image: postgres:14-alpine
@@ -66,4 +76,6 @@ services:
 
 volumes:
   postgres-data:
+    driver: local
+  redis_data:
     driver: local

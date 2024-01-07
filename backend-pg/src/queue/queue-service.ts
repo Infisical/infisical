@@ -18,7 +18,7 @@ export type TQueueJobTypes = {
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;
 export const queueServiceFactory = (redisUrl: string) => {
-  const connection = new Redis(redisUrl);
+  const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
   const queueContainer: Record<
     QueueName,
     Queue<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>
@@ -46,7 +46,7 @@ export const queueServiceFactory = (redisUrl: string) => {
       TQueueJobTypes[T]["payload"],
       void,
       TQueueJobTypes[T]["name"]
-    >(name, jobFn);
+    >(name, jobFn, { connection });
   };
 
   const listen = async <

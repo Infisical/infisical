@@ -37,7 +37,7 @@ export async function up(knex: Knex): Promise<void> {
       t.text("secretCommentCiphertext");
       t.text("secretCommentIV");
       t.text("secretCommentTag");
-      t.string("secretReminderNotice");
+      t.string("secretReminderNote");
       t.integer("secretReminderRepeatDays");
       t.boolean("skipMultilineEncoding").defaultTo(false);
       t.string("algorithm").notNullable().defaultTo(SecretEncryptionAlgo.AES_256_GCM);

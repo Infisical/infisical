@@ -24,7 +24,7 @@ export type TGetUaDTO = {
 
 export type TCreateUaClientSecretDTO = {
   identityId: string;
-  description?: string;
+  description: string;
   numUsesLimit: number;
   ttl: number;
 } & Omit<TProjectPermission, "projectId">;

@@ -5,18 +5,20 @@ import {
   SecretKeyEncoding,
   SecretType,
   TableName,
-  TSecretBlindIndexes,
-  TSecrets
+  TSecretBlindIndexes
 } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
+import { groupBy, pick } from "@app/lib/fn";
 
+import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretTagDalFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretBlindIndexDalFactory } from "./secret-blind-index-dal";
@@ -26,8 +28,13 @@ import {
   TCreateSecretDTO,
   TDeleteBulkSecretDTO,
   TDeleteSecretDTO,
+  TFnSecretBlindIndexCheck,
+  TFnSecretBulkDelete,
+  TFnSecretBulkInsert,
+  TFnSecretBulkUpdate,
   TGetASecretDTO,
   TGetSecretsDTO,
+  TListSecretVersionDTO,
   TUpdateBulkSecretDTO,
   TUpdateSecretDTO
 } from "./secret-types";
@@ -37,9 +44,10 @@ type TSecretServiceFactoryDep = {
   secretDal: TSecretDalFactory;
   secretTagDal: TSecretTagDalFactory;
   secretVersionDal: TSecretVersionDalFactory;
-  folderDal: TSecretFolderDalFactory;
+  folderDal: Pick<TSecretFolderDalFactory, "findBySecretPath" | "updateById" | "findById">;
   secretBlindIndexDal: TSecretBlindIndexDalFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -67,10 +75,11 @@ export const secretServiceFactory = ({
   secretVersionDal,
   folderDal,
   secretBlindIndexDal,
-  permissionService
+  permissionService,
+  snapshotService
 }: TSecretServiceFactoryDep) => {
   // utility function to get secret blind index data
-  const generateSecretBlindIndexByName = async (projectId: string, secretName: string) => {
+  const interalGenSecBlindIndexByName = async (projectId: string, secretName: string) => {
     const appCfg = getConfig();
 
     const secretBlindIndexDoc = await secretBlindIndexDal.findOne({ projectId });
@@ -90,6 +99,136 @@ export const secretServiceFactory = ({
     return secretBlindIndex;
   };
 
+  // these functions are special functions shared by a couple of resources
+  // used by secret approval, rotation or anywhere in which secret needs to modified
+  const fnSecretBulkInsert = async ({ folderId, inputSecrets, tx }: TFnSecretBulkInsert) => {
+    const newSecrets = await secretDal.insertMany(
+      inputSecrets.map(({ tags, ...el }) => ({ ...el, folderId })),
+      tx
+    );
+    const newSecretGroupByBlindIndex = groupBy(newSecrets, (item) => item.secretBlindIndex);
+    const newSecretTags = inputSecrets.flatMap(({ tags: secretTags = [], secretBlindIndex }) =>
+      secretTags.map((tag) => ({
+        [`${TableName.SecretTag}Id`]: tag,
+        [`${TableName.Secret}Id`]: newSecretGroupByBlindIndex[secretBlindIndex][0].id
+      }))
+    );
+    if (newSecretTags.length) {
+      await secretTagDal.saveTagsToSecret(newSecretTags, tx);
+    }
+    await secretVersionDal.insertMany(
+      inputSecrets.map(({ tags, ...el }) => ({
+        ...el,
+        folderId,
+        secretId: newSecretGroupByBlindIndex[el.secretBlindIndex][0].id
+      })),
+      tx
+    );
+
+    return newSecrets;
+  };
+
+  const fnSecretBulkUpdate = async ({
+    tx,
+    inputSecrets,
+    folderId,
+    projectId
+  }: TFnSecretBulkUpdate) => {
+    const newSecrets = await secretDal.bulkUpdate(
+      inputSecrets.map(({ tags, ...el }) => ({ ...el, folderId })),
+      tx
+    );
+    const secsUpdatedTag = inputSecrets.filter(({ tags }) => Boolean(tags));
+    if (secsUpdatedTag.length) {
+      await secretTagDal.deleteTagsManySecret(
+        projectId,
+        secsUpdatedTag.map(({ id }) => id),
+        tx
+      );
+      const newSecretTags = secsUpdatedTag.flatMap(({ tags: secretTags = [], id }) =>
+        secretTags.map((tag) => ({
+          [`${TableName.SecretTag}Id`]: tag,
+          [`${TableName.Secret}Id`]: id
+        }))
+      );
+      await secretTagDal.saveTagsToSecret(newSecretTags, tx);
+    }
+    await secretVersionDal.insertMany(
+      newSecrets.map(({ id, createdAt, updatedAt, ...el }) => ({
+        ...el,
+        secretId: id
+      })),
+      tx
+    );
+
+    return newSecrets;
+  };
+
+  const fnSecretBulkDelete = async ({
+    folderId,
+    inputSecrets,
+    tx,
+    actorId
+  }: TFnSecretBulkDelete) => {
+    const deletedSecrets = await secretDal.deleteMany(
+      inputSecrets.map(({ type, secretBlindIndex }) => ({
+        blindIndex: secretBlindIndex,
+        type
+      })),
+      folderId,
+      actorId,
+      tx
+    );
+    return deletedSecrets;
+  };
+
+  // this is a utility function for secret modification
+  // this will check given secret name blind index exist or not
+  // if its a created secret set isNew to true
+  // thus if these blindindex exist it will throw an error
+  // vice versa when u need to check for updated secret
+  // this will also return the blind index grouped by secretName
+  const fnSecretBlindIndexCheck = async ({
+    inputSecrets,
+    folderId,
+    isNew,
+    userId,
+    blindIndexCfg
+  }: TFnSecretBlindIndexCheck) => {
+    const blindIndex2KeyName: Record<string, string> = {}; // used at audit log point
+    const keyName2BlindIndex = await Promise.all(
+      inputSecrets.map(({ secretName }) =>
+        generateSecretBlindIndexBySalt(secretName, blindIndexCfg)
+      )
+    ).then((blindIndexes) =>
+      blindIndexes.reduce<Record<string, string>>((prev, curr, i) => {
+        // eslint-disable-next-line
+        prev[inputSecrets[i].secretName] = curr;
+        blindIndex2KeyName[curr] = inputSecrets[i].secretName;
+        return prev;
+      }, {})
+    );
+    if (inputSecrets.some(({ type }) => type === SecretType.Personal) && !userId) {
+      throw new BadRequestError({ message: "Missing user id for personal secret" });
+    }
+
+    const secrets = await secretDal.findByBlindIndexes(
+      folderId,
+      inputSecrets.map(({ secretName, type }) => ({
+        blindIndex: keyName2BlindIndex[secretName],
+        type: type || SecretType.Shared
+      })),
+      userId
+    );
+
+    if (isNew) {
+      if (secrets.length) throw new BadRequestError({ message: "Secret already exist" });
+    } else if (secrets.length !== inputSecrets.length)
+      throw new BadRequestError({ message: "Secret not found" });
+
+    return { blindIndex2KeyName, keyName2BlindIndex, secrets };
+  };
+
   const createSecret = async ({
     path,
     actor,
@@ -104,27 +243,29 @@ export const secretServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
-    const secretBlindIndex = await generateSecretBlindIndexByName(
-      projectId,
-      inputSecret.secretName
-    );
     const folder = await folderDal.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
     const folderId = folder.id;
 
-    // check if secret exist by finding the secret blindIndex
-    const existingSecret = await secretDal.findOne({
-      secretBlindIndex,
+    const blindIndexCfg = await secretBlindIndexDal.findOne({ projectId });
+    if (!blindIndexCfg)
+      throw new BadRequestError({ message: "Blind index not found", name: "CreateSecret" });
+
+    if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
+      throw new BadRequestError({ message: "Must be user to create personal secret" });
+    }
+
+    const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
+      inputSecrets: [{ secretName: inputSecret.secretName }],
       folderId,
-      type: inputSecret.type,
-      userId: inputSecret.type === SecretType.Personal ? actorId : null
+      isNew: true,
+      blindIndexCfg
     });
-    if (existingSecret) throw new BadRequestError({ message: "Secret already exist" });
 
     // if user creating personal check its shared also exist
     if (inputSecret.type === SecretType.Personal) {
       const sharedExist = await secretDal.findOne({
-        secretBlindIndex,
+        secretBlindIndex: keyName2BlindIndex[inputSecret.secretName],
         folderId,
         type: SecretType.Shared
       });
@@ -142,46 +283,29 @@ export const secretServiceFactory = ({
     if ((inputSecret.tags || []).length !== tags.length)
       throw new BadRequestError({ message: "Tag not found" });
 
-    const secret = await secretDal.transaction(async (tx) => {
-      const { secretName, type, ...el } = inputSecret;
-      const doc = await secretDal.create(
-        {
-          version: 1,
-          folderId,
-          secretBlindIndex,
-          type,
-          ...el,
-          userId: inputSecret.type === SecretType.Personal ? actorId : null,
-          algorithm: SecretEncryptionAlgo.AES_256_GCM,
-          keyEncoding: SecretKeyEncoding.UTF8
-        },
+    const { secretName, type, ...el } = inputSecret;
+    const secret = await secretDal.transaction((tx) =>
+      fnSecretBulkInsert({
+        folderId,
+        inputSecrets: [
+          {
+            version: 1,
+            secretBlindIndex: keyName2BlindIndex[secretName],
+            type,
+            ...el,
+            userId: inputSecret.type === SecretType.Personal ? actorId : null,
+            algorithm: SecretEncryptionAlgo.AES_256_GCM,
+            keyEncoding: SecretKeyEncoding.UTF8,
+            tags: inputSecret.tags
+          }
+        ],
         tx
-      );
-      if (tags.length) {
-        await secretTagDal.saveTagsToSecret(
-          tags.map(({ id }) => ({ secretsId: doc.id, secret_tagsId: id })),
-          tx
-        );
-      }
-      await secretVersionDal.create(
-        {
-          secretBlindIndex,
-          folderId,
-          version: 1,
-          type,
-          ...el,
-          userId: inputSecret.type === SecretType.Personal ? actorId : null,
-          algorithm: SecretEncryptionAlgo.AES_256_GCM,
-          keyEncoding: SecretKeyEncoding.UTF8,
-          secretId: doc.id
-        },
-        tx
-      );
-      return doc;
-    });
+      })
+    );
 
+    await snapshotService.performSnapshot(folderId);
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return { ...secret, tags };
+    return { ...secret[0], tags };
   };
 
   const updateSecret = async ({
@@ -198,33 +322,38 @@ export const secretServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
-    const blindIndexDoc = await secretBlindIndexDal.findOne({ projectId });
-    if (!blindIndexDoc)
-      throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
-    const oldBlindIndex = await generateSecretBlindIndexBySalt(
-      inputSecret.secretName,
-      blindIndexDoc
-    );
-    if (!oldBlindIndex) throw new BadRequestError({ message: "Secret not found" });
-
     const folder = await folderDal.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
     const folderId = folder.id;
 
-    let newSecretNameBlindIndex: string;
-    if (inputSecret?.newSecretName && inputSecret.type === SecretType.Shared) {
-      newSecretNameBlindIndex = await generateSecretBlindIndexBySalt(
-        inputSecret.newSecretName,
-        blindIndexDoc
-      );
-      const doesSecretExist = await secretDal.findOne({
-        secretBlindIndex: newSecretNameBlindIndex,
+    const blindIndexCfg = await secretBlindIndexDal.findOne({ projectId });
+    if (!blindIndexCfg)
+      throw new BadRequestError({ message: "Blind index not found", name: "CreateSecret" });
+
+    if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
+      throw new BadRequestError({ message: "Must be user to create personal secret" });
+    }
+
+    const { secrets, keyName2BlindIndex } = await fnSecretBlindIndexCheck({
+      inputSecrets: [{ secretName: inputSecret.secretName, type: inputSecret.type as SecretType }],
+      folderId,
+      isNew: false,
+      blindIndexCfg,
+      userId: actorId
+    });
+    if (inputSecret.newSecretName && inputSecret.type === SecretType.Personal) {
+      throw new BadRequestError({ message: "Personal secret cannot change the key name" });
+    }
+
+    let newSecretNameBlindIndex: string | undefined;
+    if (inputSecret?.newSecretName) {
+      const { keyName2BlindIndex: kN2NewBlindIndex } = await fnSecretBlindIndexCheck({
+        inputSecrets: [{ secretName: inputSecret.newSecretName }],
         folderId,
-        type: inputSecret.type
+        isNew: true,
+        blindIndexCfg
       });
-      if (doesSecretExist) {
-        throw new BadRequestError({ message: "Secret with the provided name already exist" });
-      }
+      newSecretNameBlindIndex = kN2NewBlindIndex[inputSecret.newSecretName];
     }
 
     const tags = inputSecret.tags
@@ -233,41 +362,43 @@ export const secretServiceFactory = ({
     if ((inputSecret.tags || []).length !== tags.length)
       throw new BadRequestError({ message: "Tag not found" });
 
-    const updatedSecret = await secretDal.transaction(async (tx) => {
-      const { secretName, ...el } = inputSecret;
-      const [doc] = await secretDal.update(
-        {
-          secretBlindIndex: oldBlindIndex,
-          folderId,
-          type: inputSecret.type,
-          userId: inputSecret.type === SecretType.Personal ? actorId : null
-        },
-        {
-          secretBlindIndex: newSecretNameBlindIndex,
-          ...el
-        },
+    const { secretName, ...el } = inputSecret;
+    const updatedSecret = await secretDal.transaction(async (tx) =>
+      fnSecretBulkUpdate({
+        folderId,
+        projectId,
+        inputSecrets: [
+          {
+            id: secrets[0].id,
+            version: (secrets[0].version || 0) + 1,
+            ...pick(el, [
+              "type",
+              "secretCommentCiphertext",
+              "secretCommentTag",
+              "secretCommentIV",
+              "secretValueIV",
+              "secretValueTag",
+              "secretValueCiphertext",
+              "secretKeyCiphertext",
+              "secretKeyTag",
+              "secretKeyIV",
+              "metadata",
+              "skipMultilineEncoding",
+              "secretReminderNote",
+              "secretReminderRepeatDays",
+              "tags"
+            ]),
+            secretBlindIndex: newSecretNameBlindIndex || keyName2BlindIndex[secretName]
+          }
+        ],
         tx
-      );
-      // replace tags
-      await secretTagDal.deleteTagsToSecret({ secretsId: doc.id }, tx);
-      await secretTagDal.saveTagsToSecret(
-        tags.map(({ id }) => ({ secretsId: doc.id, secret_tagsId: id })),
-        tx
-      );
-      const { id, createdAt, updatedAt, ...newVersion } = doc;
-      await secretVersionDal.create(
-        {
-          userId: inputSecret.type === SecretType.Personal ? actorId : null,
-          secretId: doc.id,
-          ...newVersion
-        },
-        tx
-      );
-      return doc;
-    });
+      })
+    );
+
+    await snapshotService.performSnapshot(folderId);
 
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return updatedSecret;
+    return updatedSecret[0];
   };
 
   const deleteSecret = async ({
@@ -284,30 +415,44 @@ export const secretServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
-    const secretBlindIndex = await generateSecretBlindIndexByName(
-      projectId,
-      inputSecret.secretName
-    );
-
     const folder = await folderDal.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
     const folderId = folder.id;
 
-    const deletedSecret = await secretDal.transaction(async (tx) => {
-      const [doc] = await secretDal.delete(
-        {
-          secretBlindIndex,
-          folderId,
-          type: inputSecret.type,
-          userId: inputSecret.type === SecretType.Personal ? actorId : null
-        },
-        tx
-      );
-      return doc;
+    const blindIndexCfg = await secretBlindIndexDal.findOne({ projectId });
+    if (!blindIndexCfg)
+      throw new BadRequestError({ message: "Blind index not found", name: "CreateSecret" });
+
+    if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
+      throw new BadRequestError({ message: "Must be user to create personal secret" });
+    }
+
+    const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
+      inputSecrets: [{ secretName: inputSecret.secretName }],
+      folderId,
+      isNew: false,
+      blindIndexCfg
     });
 
+    const deletedSecret = await secretDal.transaction(async (tx) =>
+      fnSecretBulkDelete({
+        projectId,
+        folderId,
+        actorId,
+        inputSecrets: [
+          {
+            type: inputSecret.type as SecretType,
+            secretBlindIndex: keyName2BlindIndex[inputSecret.secretName]
+          }
+        ],
+        tx
+      })
+    );
+
+    await snapshotService.performSnapshot(folderId);
+
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return deletedSecret;
+    return deletedSecret[0];
   };
 
   const getSecrets = async ({ actorId, path, environment, projectId, actor }: TGetSecretsDTO) => {
@@ -343,7 +488,7 @@ export const secretServiceFactory = ({
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
     const folderId = folder.id;
 
-    const secretBlindIndex = await generateSecretBlindIndexByName(projectId, secretName);
+    const secretBlindIndex = await interalGenSecBlindIndexByName(projectId, secretName);
 
     const secret = await secretDal.findOne({
       folderId,
@@ -374,76 +519,38 @@ export const secretServiceFactory = ({
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
     const folderId = folder.id;
 
-    const blindIndexDoc = await secretBlindIndexDal.findOne({ projectId });
-    if (!blindIndexDoc)
+    const blindIndexCfg = await secretBlindIndexDal.findOne({ projectId });
+    if (!blindIndexCfg)
       throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
 
-    const secretBlindIndexToKey: Record<string, string> = {}; // used at audit log point
-    const secretBlindIndexes = await Promise.all(
-      inputSecrets.map(({ secretName }) =>
-        generateSecretBlindIndexBySalt(secretName, blindIndexDoc)
-      )
-    ).then((blindIndexes) =>
-      blindIndexes.reduce<Record<string, string>>((prev, curr, i) => {
-        // eslint-disable-next-line
-        prev[inputSecrets[i].secretName] = curr;
-        secretBlindIndexToKey[curr] = inputSecrets[i].secretName;
-        return prev;
-      }, {})
-    );
-
-    const exists = await secretDal.findByBlindIndexes(
+    const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
+      inputSecrets,
       folderId,
-      inputSecrets.map(({ type, secretName }) => ({
-        blindIndex: secretBlindIndexes[secretName],
-        type
-      }))
-    );
-    if (exists.length) throw new BadRequestError({ message: "Secret already exist" });
+      isNew: true,
+      blindIndexCfg
+    });
 
     // get all tags
     const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
     const tags = tagIds.length ? await secretTagDal.findManyTagsById(projectId, tagIds) : [];
+    if (tags.length !== tagIds.length) throw new BadRequestError({ message: "Tag not found" });
 
-    const secrets = await secretDal.transaction(async (tx) => {
-      const newSecrets = await secretDal.insertMany(
-        inputSecrets.map(({ secretName, type, ...el }) => ({
-          version: 1,
-          folderId,
-          type,
-          secretBlindIndex: secretBlindIndexes[secretName],
+    const newSecrets = await secretDal.transaction(async (tx) =>
+      fnSecretBulkInsert({
+        inputSecrets: inputSecrets.map(({ secretName, ...el }) => ({
           ...el,
-          userId: type === SecretType.Personal ? actorId : null,
+          secretBlindIndex: keyName2BlindIndex[secretName],
+          type: SecretType.Shared,
           algorithm: SecretEncryptionAlgo.AES_256_GCM,
           keyEncoding: SecretKeyEncoding.UTF8
         })),
+        folderId,
         tx
-      );
-      if (tags.length) {
-        await secretTagDal.saveTagsToSecret(
-          inputSecrets.flatMap(({ tags: secretTags = [], secretName }) => {
-            const secret = newSecrets.find(
-              ({ secretBlindIndex }) => secretBlindIndexes[secretName] === secretBlindIndex
-            );
-            return secretTags.map((tag) => ({
-              [`${TableName.SecretTag}Id`]: tag,
-              [`${TableName.Secret}Id`]: secret?.id || ""
-            }));
-          }),
-          tx
-        );
-      }
-      await secretVersionDal.insertMany(
-        newSecrets.map(({ id, updatedAt, createdAt, ...el }) => ({
-          ...el,
-          secretId: id
-        })),
-        tx
-      );
+      })
+    );
 
-      return newSecrets;
-    });
-    return secrets;
+    await snapshotService.performSnapshot(folderId);
+    return newSecrets;
   };
 
   const updateManySecret = async ({
@@ -464,121 +571,58 @@ export const secretServiceFactory = ({
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
     const folderId = folder.id;
 
-    const blindIndexDoc = await secretBlindIndexDal.findOne({ projectId });
-    if (!blindIndexDoc)
+    const blindIndexCfg = await secretBlindIndexDal.findOne({ projectId });
+    if (!blindIndexCfg)
       throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
 
-    // get all blind index
-    // Find all those secrets
-    // if not throw not found
-    const secretBlindIndexToKey: Record<string, string> = {}; // used at audit log point
-    const secretBlindIndexes = await Promise.all(
-      inputSecrets.map(({ secretName }) =>
-        generateSecretBlindIndexBySalt(secretName, blindIndexDoc)
-      )
-    ).then((blindIndexes) =>
-      blindIndexes.reduce<Record<string, string>>((prev, curr, i) => {
-        // eslint-disable-next-line
-        prev[inputSecrets[i].secretName] = curr;
-        secretBlindIndexToKey[curr] = inputSecrets[i].secretName;
-        return prev;
-      }, {})
-    );
-
-    const secretsToBeUpdated = await secretDal.findByBlindIndexes(
+    const { keyName2BlindIndex, secrets: secretsToBeUpdated } = await fnSecretBlindIndexCheck({
+      inputSecrets,
       folderId,
-      inputSecrets.map(({ type, secretName }) => ({
-        blindIndex: secretBlindIndexes[secretName],
-        type
-      }))
-    );
-    if (secretsToBeUpdated.length !== inputSecrets.length)
-      throw new BadRequestError({ message: "Secret not found" });
+      isNew: false,
+      blindIndexCfg
+    });
 
     // now find any secret that needs to update its name
     // same process as above
     const nameUpdatedSecrets = inputSecrets.filter(({ newSecretName }) => Boolean(newSecretName));
-    const newSecretBlindIndexes = await Promise.all(
-      nameUpdatedSecrets.map(({ newSecretName }) =>
-        generateSecretBlindIndexBySalt(newSecretName as string, blindIndexDoc)
-      )
-    ).then((blindIndexes) =>
-      blindIndexes.reduce<Record<string, string>>((prev, curr, i) => {
-        // eslint-disable-next-line
-        prev[nameUpdatedSecrets[i].secretName] = curr;
-        return prev;
-      }, {})
-    );
-    const secretsWithNewName = await secretDal.findByBlindIndexes(
+    const { keyName2BlindIndex: newKeyName2BlindIndex } = await fnSecretBlindIndexCheck({
+      inputSecrets: nameUpdatedSecrets,
       folderId,
-      nameUpdatedSecrets.map(({ type, newSecretName }) => ({
-        blindIndex: newSecretBlindIndexes[newSecretName as string],
-        type
-      }))
-    );
-    if (secretsWithNewName.length)
-      throw new BadRequestError({ message: "Secret with new name already exist" });
+      isNew: true,
+      blindIndexCfg
+    });
 
-    const secretsGroupedByBlindIndex = secretsToBeUpdated.reduce<Record<string, TSecrets>>(
-      (prev, curr) => {
-        // eslint-disable-next-line
-        if (curr.secretBlindIndex) prev[curr.secretBlindIndex] = curr;
-        return prev;
-      },
-      {}
-    );
-
+    const secsGroupedByBlindIndex = groupBy(secretsToBeUpdated, (el) => el.secretBlindIndex);
     // get all tags
     const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
     const tags = tagIds.length ? await secretTagDal.findManyTagsById(projectId, tagIds) : [];
     if (tagIds.length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
-
-    const secrets = await secretDal.transaction(async (tx) => {
-      const newSecrets = await secretDal.bulkUpdate(
-        inputSecrets.map(({ secretName, type, ...el }) => {
+    const secrets = await secretDal.transaction(async (tx) =>
+      fnSecretBulkUpdate({
+        folderId,
+        projectId,
+        tx,
+        inputSecrets: inputSecrets.map(({ secretName, newSecretName, ...el }) => {
           const { version, updatedAt, ...info } =
-            secretsGroupedByBlindIndex[secretBlindIndexes[secretName]];
+            secsGroupedByBlindIndex[keyName2BlindIndex[secretName]][0];
           return {
+            ...el,
             version: (version || 0) + 1,
             ...info,
             folderId,
-            type,
+            type: SecretType.Shared,
             secretBlindIndex:
-              el?.newSecretName && newSecretBlindIndexes[el.newSecretName]
-                ? newSecretBlindIndexes[el.newSecretName]
-                : secretBlindIndexes[secretName],
-            ...el,
-            userId: type === SecretType.Personal ? actorId : null,
+              newSecretName && newKeyName2BlindIndex[newSecretName]
+                ? newKeyName2BlindIndex[newSecretName]
+                : keyName2BlindIndex[secretName],
             algorithm: SecretEncryptionAlgo.AES_256_GCM,
             keyEncoding: SecretKeyEncoding.UTF8
           };
-        }),
-        tx
-      );
-      await secretTagDal.deleteTagsManySecret(
-        projectId,
-        newSecrets.map(({ id }) => id),
-        tx
-      );
-      await secretTagDal.saveTagsToSecret(
-        inputSecrets.flatMap(({ secretName, tags: secretTags = [] }) =>
-          secretTags.map((secretTag) => ({
-            [`${TableName.Secret}Id`]: secretsGroupedByBlindIndex[secretName].id,
-            [`${TableName.SecretTag}Id`]: secretTag
-          }))
-        ),
-        tx
-      );
-      await secretVersionDal.insertMany(
-        newSecrets.map(({ id, updatedAt, createdAt, ...el }) => ({
-          ...el,
-          secretId: id
-        })),
-        tx
-      );
+        })
+      })
+    );
 
-      return newSecrets;
-    });
+    await snapshotService.performSnapshot(folderId);
     return secrets;
   };
 
@@ -600,49 +644,61 @@ export const secretServiceFactory = ({
     if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
     const folderId = folder.id;
 
-    const blindIndexDoc = await secretBlindIndexDal.findOne({ projectId });
-    if (!blindIndexDoc)
+    const blindIndexCfg = await secretBlindIndexDal.findOne({ projectId });
+    if (!blindIndexCfg)
       throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
 
-    // get all blind index
-    // Find all those secrets
-    // if not throw not found
-    const secretBlindIndexToKey: Record<string, string> = {}; // used at audit log point
-    const secretBlindIndexes = await Promise.all(
-      inputSecrets.map(({ secretName }) =>
-        generateSecretBlindIndexBySalt(secretName, blindIndexDoc)
-      )
-    ).then((blindIndexes) =>
-      blindIndexes.reduce<Record<string, string>>((prev, curr, i) => {
-        // eslint-disable-next-line
-        prev[inputSecrets[i].secretName] = curr;
-        secretBlindIndexToKey[curr] = inputSecrets[i].secretName;
-        return prev;
-      }, {})
-    );
-    // not find those secrets. if any of them not found throw an not found error
-    const secretsToBeDeleted = await secretDal.findByBlindIndexes(
+    const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
+      inputSecrets,
       folderId,
-      inputSecrets.map(({ type, secretName }) => ({
-        blindIndex: secretBlindIndexes[secretName],
-        type
-      }))
-    );
-    if (secretsToBeDeleted.length !== inputSecrets.length)
-      throw new BadRequestError({ message: "Secret not found" });
+      isNew: false,
+      blindIndexCfg
+    });
+
     const secretsDeleted = await secretDal.transaction(async (tx) =>
-      secretDal.deleteMany(
-        inputSecrets.map(({ type, secretName }) => ({
-          blindIndex: secretBlindIndexes[secretName],
+      fnSecretBulkDelete({
+        inputSecrets: inputSecrets.map(({ type, secretName }) => ({
+          secretBlindIndex: keyName2BlindIndex[secretName],
           type
         })),
+        projectId,
         folderId,
         actorId,
         tx
-      )
+      })
     );
 
+    await snapshotService.performSnapshot(folderId);
     return secretsDeleted;
+  };
+
+  const listSecretVersionsBySecretId = async ({
+    actorId,
+    actor,
+    limit,
+    offset,
+    secretId
+  }: TListSecretVersionDTO) => {
+    const secret = await secretDal.findById(secretId);
+    if (!secret) throw new BadRequestError({ message: "Failed to find secret" });
+
+    const folder = await folderDal.findById(secret.folderId);
+    if (!folder) throw new BadRequestError({ message: "Folder not found" });
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      folder.projectId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.SecretRollback
+    );
+
+    const secretVersions = await secretVersionDal.find(
+      { secretId },
+      { limit, offset, sort: [["createdAt", "desc"]] }
+    );
+    return secretVersions;
   };
 
   return {
@@ -653,6 +709,12 @@ export const secretServiceFactory = ({
     updateManySecret,
     deleteManySecret,
     getASecret,
-    getSecrets
+    getSecrets,
+    listSecretVersionsBySecretId,
+    // external services function
+    fnSecretBulkDelete,
+    fnSecretBulkUpdate,
+    fnSecretBlindIndexCheck,
+    fnSecretBulkInsert
   };
 };

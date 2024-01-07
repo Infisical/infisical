@@ -64,7 +64,7 @@ export async function up(knex: Knex): Promise<void> {
       t.text("secretCommentCiphertext");
       t.text("secretCommentIV");
       t.text("secretCommentTag");
-      t.string("secretReminderNotice");
+      t.string("secretReminderNote");
       t.integer("secretReminderRepeatDays");
       t.boolean("skipMultilineEncoding").defaultTo(false);
       t.string("algorithm").notNullable().defaultTo(SecretEncryptionAlgo.AES_256_GCM);
@@ -103,7 +103,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TableName.SecretTag);
+  await knex.schema.dropTableIfExists(TableName.SarSecretTag);
   await knex.schema.dropTableIfExists(TableName.SarSecret);
   await knex.schema.dropTableIfExists(TableName.SarReviewer);
   await knex.schema.dropTableIfExists(TableName.SecretApprovalRequest);

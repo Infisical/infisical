@@ -5,6 +5,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
@@ -15,19 +16,24 @@ import {
   TGetFolderDTO,
   TUpdateFolderDTO
 } from "./secret-folder-types";
+import { TSecretFolderVersionDalFactory } from "./secret-folder-version-dal";
 
 type TSecretFolderServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   folderDal: TSecretFolderDalFactory;
   projectEnvDal: Pick<TProjectEnvDalFactory, "findOne">;
+  folderVersionDal: TSecretFolderVersionDalFactory;
 };
 
 export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceFactory>;
 
 export const secretFolderServiceFactory = ({
   folderDal,
+  snapshotService,
   permissionService,
-  projectEnvDal
+  projectEnvDal,
+  folderVersionDal
 }: TSecretFolderServiceFactoryDep) => {
   const createFolder = async ({
     projectId,
@@ -54,9 +60,19 @@ export const secretFolderServiceFactory = ({
         { name, envId: env.id, version: 1, parentId: parentFolder.id },
         tx
       );
+      await folderVersionDal.create(
+        {
+          name: doc.name,
+          envId: doc.envId,
+          version: doc.version,
+          folderId: doc.id
+        },
+        tx
+      );
       return doc;
     });
 
+    await snapshotService.performSnapshot(folder.parentId as string);
     return folder;
   };
 
@@ -85,13 +101,23 @@ export const secretFolderServiceFactory = ({
 
       const [doc] = await folderDal.update(
         { envId: env.id, id, parentId: parentFolder.id },
-        { name, version: 1 },
+        { name },
+        tx
+      );
+      await folderVersionDal.create(
+        {
+          name: doc.name,
+          envId: doc.envId,
+          version: doc.version,
+          folderId: doc.id
+        },
         tx
       );
       if (!doc) throw new BadRequestError({ message: "Folder not found", name: "Update folder" });
       return doc;
     });
 
+    await snapshotService.performSnapshot(folder.parentId as string);
     return folder;
   };
 
@@ -122,6 +148,7 @@ export const secretFolderServiceFactory = ({
       return doc;
     });
 
+    await snapshotService.performSnapshot(folder.parentId as string);
     return folder;
   };
 

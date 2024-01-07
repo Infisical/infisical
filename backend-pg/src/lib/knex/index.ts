@@ -16,7 +16,7 @@ export const withTransaction = <K extends object>(db: Knex, dal: K) => ({
 });
 
 export type TFindFilter<R extends {} = any> = Partial<R> & {
-  $in?: Partial<{ [K in keyof R]: R[K][] }>;
+  $in?: Partial<{ [k in keyof R]: R[k][] }>;
 };
 export const buildFindFilter =
   <R extends {} = any>({ $in, ...filter }: TFindFilter<R>) =>
@@ -29,6 +29,13 @@ export const buildFindFilter =
     }
     return bd;
   };
+
+export type TFindOpt<R extends {} = any> = {
+  limit?: number;
+  offset?: number;
+  sort?: Array<[keyof R, "asc" | "desc"] | [keyof R, "asc" | "desc", "first" | "last"]>;
+  tx?: Knex;
+};
 
 // What is ormify
 // It is to inject typical operations like find, findOne, update, delete, create
@@ -60,9 +67,20 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
       throw new DatabaseError({ error, name: "Find one" });
     }
   },
-  find: async (filter: TFindFilter<Tables[Tname]["base"]>, tx?: Knex) => {
+  find: async (
+    filter: TFindFilter<Tables[Tname]["base"]>,
+    { offset, limit, sort, tx }: TFindOpt<Tables[Tname]["base"]> = {}
+  ) => {
     try {
-      const res = await (tx || db)(tableName).where(buildFindFilter(filter));
+      const query = (tx || db)(tableName).where(buildFindFilter(filter));
+      if (limit) query.limit(limit);
+      if (offset) query.offset(offset);
+      if (sort) {
+        query.orderBy(
+          sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls }))
+        );
+      }
+      const res = await query;
       return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find one" });
@@ -78,6 +96,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
   },
   insertMany: async (data: readonly Tables[Tname]["insert"][], tx?: Knex) => {
     try {
+      if (!data.length) return [];
       const res = await (tx || db)(tableName)
         .insert(data as any)
         .returning("*");

@@ -46,12 +46,12 @@ export type DecryptedSecret = {
 
 export type EncryptedSecretVersion = {
   id: string;
-  secret: string;
+  secretId: string;
   version: number;
   workspace: string;
   type: string;
-  environment: string;
   isDeleted: boolean;
+  envId: string;
   secretKeyCiphertext: string;
   secretKeyIV: string;
   secretKeyTag: string;

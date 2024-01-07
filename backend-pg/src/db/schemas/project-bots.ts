@@ -17,12 +17,12 @@ export const ProjectBotsSchema = z.object({
   tag: z.string(),
   algorithm: z.string(),
   keyEncoding: z.string(),
-  encryptedProjectKey: z.string().optional().nullable(),
-  encryptedProjectKeyNonce: z.string().optional().nullable(),
+  encryptedProjectKey: z.string().nullable().optional(),
+  encryptedProjectKeyNonce: z.string().nullable().optional(),
   projectId: z.string().uuid(),
-  senderId: z.string().uuid().optional().nullable(),
+  senderId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
 });
 
 export type TProjectBots = z.infer<typeof ProjectBotsSchema>;

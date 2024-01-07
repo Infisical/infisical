@@ -11,18 +11,16 @@ export const SecretApprovalRequestsSchema = z.object({
   id: z.string().uuid(),
   policyId: z.string().uuid(),
   hasMerged: z.boolean().default(false),
-  status: z.string().default("open"),
+  status: z.string().default('open'),
   conflicts: z.unknown().nullable().optional(),
   slug: z.string(),
   folderId: z.string().uuid(),
-  statusChangeBy: z.string().uuid().optional().nullable(),
+  statusChangeBy: z.string().uuid().nullable().optional(),
   committerId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
 });
 
 export type TSecretApprovalRequests = z.infer<typeof SecretApprovalRequestsSchema>;
 export type TSecretApprovalRequestsInsert = Omit<TSecretApprovalRequests, TImmutableDBKeys>;
-export type TSecretApprovalRequestsUpdate = Partial<
-  Omit<TSecretApprovalRequests, TImmutableDBKeys>
->;
+export type TSecretApprovalRequestsUpdate = Partial<Omit<TSecretApprovalRequests, TImmutableDBKeys>>;

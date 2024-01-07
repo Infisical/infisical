@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TSecretFolders } from "@app/db/schemas";
+import { TableName, TSecretFolders, TSecretFoldersUpdate } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -35,9 +35,9 @@ const sqlFindFolderByPathQuery = (
       baseQb
         .select({
           depth: 1,
+          // latestFolderVerId: db.raw("NULL::uuid"),
           path: db.raw("'/'")
         })
-        .select(selectAllTableCols(TableName.SecretFolder))
         .from(TableName.SecretFolder)
         .join(
           TableName.Environment,
@@ -49,6 +49,7 @@ const sqlFindFolderByPathQuery = (
           parentId: null
         })
         .where(`${TableName.Environment}.slug`, environment)
+        .select(selectAllTableCols(TableName.SecretFolder))
         .union((qb) =>
           // for here on we keep going to next child node.
           // we also keep a measure of depth then we check the depth matches the array path segment and folder name
@@ -100,5 +101,44 @@ export const secretFolderDalFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...secretFolderOrm, findBySecretPath };
+  const update = async (filter: Partial<TSecretFolders>, data: TSecretFoldersUpdate, tx?: Knex) => {
+    try {
+      const folder = await (tx || db)(TableName.SecretFolder)
+        .where(filter)
+        .update(data)
+        .increment("version", 1)
+        .returning("*");
+      return folder;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "SecretFolderUpdate" });
+    }
+  };
+
+  const findById = async (id: string, tx?: Knex) => {
+    try {
+      const folder = await (tx || db)(TableName.SecretFolder)
+        .where({ [`${TableName.SecretFolder}.id` as "id"]: id })
+        .join(
+          TableName.Environment,
+          `${TableName.SecretFolder}.envId`,
+          `${TableName.Environment}.id`
+        )
+        .select(selectAllTableCols(TableName.SecretFolder))
+        .select(
+          db.ref("id").withSchema(TableName.Environment).as("envId"),
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("projectId").withSchema(TableName.Environment)
+        )
+        .first();
+      if (folder) {
+        const { envId, envName, envSlug, ...el } = folder;
+        return { ...el, environment: { envId, envName, envSlug } };
+      }
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by id" });
+    }
+  };
+
+  return { ...secretFolderOrm, update, findBySecretPath, findById };
 };

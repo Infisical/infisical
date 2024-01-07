@@ -76,12 +76,14 @@ export const sqlNestRelationships = <
       parentLookup.add(pk);
     }
     childrenMapper.forEach(({ label, mapper, key: cKey }) => {
-      const ck = `${pk}-${label}-${el[cKey]}`;
-      if (!childLookUp.has(ck)) {
-        if (!recordsGroupedByPk[pk][label]) recordsGroupedByPk[pk][label as keyof Cm] = [] as any;
-        const val = mapper(el);
-        if (typeof val !== "undefined") recordsGroupedByPk[pk][label].push(val);
-        childLookUp.add(ck);
+      if (!recordsGroupedByPk[pk][label]) recordsGroupedByPk[pk][label as keyof Cm] = [] as any;
+      if (el[cKey] !== null && typeof el[cKey] !== "undefined") {
+        const ck = `${pk}-${label}-${el[cKey]}`;
+        if (!childLookUp.has(ck)) {
+          const val = mapper(el);
+          if (typeof val !== "undefined" && val !== null) recordsGroupedByPk[pk][label].push(val);
+          childLookUp.add(ck);
+        }
       }
     });
   });
