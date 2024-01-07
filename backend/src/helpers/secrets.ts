@@ -611,42 +611,81 @@ export const getSecretHelper = async ({
   type,
   authData,
   secretPath = "/",
-  include_imports = true
+  include_imports = true,
+  version
 }: GetSecretParams) => {
+  
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId)
   });
   let secret: ISecret | null | undefined = null;
+
   // if using service token filter towards the folderId by secretpath
 
   const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
 
   // try getting personal secret first (if exists)
-  secret = await Secret.findOne({
-    secretBlindIndex,
-    workspace: new Types.ObjectId(workspaceId),
-    environment,
-    folder: folderId,
-    type: type ?? SECRET_PERSONAL,
-    ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {})
-  }).lean();
-
-  if (!secret) {
-    // case: failed to find personal secret matching criteria
-    // -> find shared secret matching criteria
+  if (version === undefined) {
     secret = await Secret.findOne({
       secretBlindIndex,
       workspace: new Types.ObjectId(workspaceId),
       environment,
       folder: folderId,
-      type: SECRET_SHARED
+      type: type ?? SECRET_PERSONAL,
+      ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {})
     }).lean();
+  } else {
+    const secretVersion = await SecretVersion.findOne({
+      secretBlindIndex,
+      workspace: new Types.ObjectId(workspaceId),
+      environment,
+      folder: folderId,
+      type: type ?? SECRET_PERSONAL,
+      version
+    }).lean();
+  
+    if (secretVersion) {
+      secret = await new Secret({
+        ...secretVersion,
+        _id: secretVersion?.secret
+      });
+    }
   }
 
+  if (!secret) {
+    // case: failed to find personal secret matching criteria
+    // -> find shared secret matching criteria
+    if (version === undefined) {
+      secret = await Secret.findOne({
+        secretBlindIndex,
+        workspace: new Types.ObjectId(workspaceId),
+        environment,
+        folder: folderId,
+        type: SECRET_SHARED
+      }).lean();
+    } else {
+      const secretVersion = await SecretVersion.findOne({
+        secretBlindIndex,
+        workspace: new Types.ObjectId(workspaceId),
+        environment,
+        folder: folderId,
+        type: SECRET_SHARED,
+        version
+      }).lean();
+      
+      if (secretVersion) {
+        secret = await new Secret({
+          ...secretVersion,
+          _id: secretVersion?.secret
+        });
+      }
+    }
+  }
+  
   if (!secret && include_imports) {
     // if still no secret found search in imported secret and retreive
-    secret = await getAnImportedSecret(secretName, workspaceId.toString(), environment, folderId);
+    secret = await getAnImportedSecret(secretName, workspaceId.toString(), environment, folderId, version);
   }
 
   if (!secret) throw SecretNotFoundError();

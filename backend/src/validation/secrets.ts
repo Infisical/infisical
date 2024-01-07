@@ -246,7 +246,15 @@ export const GetSecretByNameRawV3 = z.object({
     include_imports: z
       .enum(["true", "false"])
       .default("true")
-      .transform((value) => value === "true")
+      .transform((value) => value === "true"),
+    version: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => value === undefined ? undefined : parseInt(value, 10))
+      .refine((value) => value === undefined || !isNaN(value), {
+        message: "Version must be a number",
+      })
   })
 });
 
@@ -318,7 +326,15 @@ export const GetSecretByNameV3 = z.object({
     include_imports: z
       .enum(["true", "false"])
       .default("true")
-      .transform((value) => value === "true")
+      .transform((value) => value === "true"),
+    version: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => value === undefined ? undefined : parseInt(value, 10))
+      .refine((value) => value === undefined || !isNaN(value), {
+        message: "Version must be a number",
+      })
   }),
   params: z.object({
     secretName: z.string().trim()
