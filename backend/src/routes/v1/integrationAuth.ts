@@ -157,11 +157,19 @@ router.get(
 );
 
 router.delete(
+  "/",
+  requireAuth({
+    acceptedAuthModes: [AuthMode.JWT]
+  }),
+  integrationAuthController.deleteIntegrationAuths
+);
+
+router.delete(
   "/:integrationAuthId",
   requireAuth({
     acceptedAuthModes: [AuthMode.JWT]
   }),
-  integrationAuthController.deleteIntegrationAuth
+  integrationAuthController.deleteIntegrationAuthById
 );
 
 export default router;

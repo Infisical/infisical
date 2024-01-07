@@ -126,6 +126,7 @@ const fetchWorkspaceAuthorization = async (workspaceId: string) => {
   const { data } = await apiRequest.get<{ authorizations: IntegrationAuth[] }>(
     `/api/v1/workspace/${workspaceId}/authorizations`
   );
+
   return data.authorizations;
 };
 

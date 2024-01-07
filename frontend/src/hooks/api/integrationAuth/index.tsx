@@ -1,6 +1,7 @@
 export {
   useAuthorizeIntegration,
   useDeleteIntegrationAuth,
+  useDeleteIntegrationAuths,
   useGetIntegrationAuthApps,
   useGetIntegrationAuthBitBucketWorkspaces,
   useGetIntegrationAuthById,
