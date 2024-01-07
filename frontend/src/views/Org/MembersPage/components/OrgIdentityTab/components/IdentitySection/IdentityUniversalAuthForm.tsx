@@ -91,12 +91,14 @@ export const IdentityUniversalAuthForm = ({
             accessTokenTTL: "2592000",
             accessTokenMaxTTL: "2592000",
             accessTokenNumUsesLimit: "0",
-            clientSecretTrustedIps: [{
-                ipAddress: "0.0.0.0/0"
-            }],
-            accessTokenTrustedIps: [{
-                ipAddress: "0.0.0.0/0"
-            }],
+            clientSecretTrustedIps: [
+                { ipAddress: "0.0.0.0/0" },
+                { ipAddress: "::/0" }
+            ],
+            accessTokenTrustedIps: [
+                { ipAddress: "0.0.0.0/0" },
+                { ipAddress: "::/0" }
+            ],
         }
     });
 
@@ -139,12 +141,14 @@ export const IdentityUniversalAuthForm = ({
                 accessTokenTTL: "2592000",
                 accessTokenMaxTTL: "2592000",
                 accessTokenNumUsesLimit: "0",
-                clientSecretTrustedIps: [{
-                    ipAddress: "0.0.0.0/0"
-                }],
-                accessTokenTrustedIps: [{
-                    ipAddress: "0.0.0.0/0"
-                }]
+                clientSecretTrustedIps: [
+                    { ipAddress: "0.0.0.0/0" },
+                    { ipAddress: "::/0" }
+                ],
+                accessTokenTrustedIps: [
+                    { ipAddress: "0.0.0.0/0" },
+                    { ipAddress: "::/0" }
+                ]
             });
         }
     }, [data]);

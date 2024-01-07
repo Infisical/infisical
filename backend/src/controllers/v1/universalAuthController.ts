@@ -550,7 +550,7 @@ export const attachIdentityUniversalAuth = async (req: Request, res: Response) =
 
     // validate trusted ips
     const reformattedClientSecretTrustedIps = clientSecretTrustedIps.map((clientSecretTrustedIp) => {
-        if (!plan.ipAllowlisting && clientSecretTrustedIp.ipAddress !== "0.0.0.0/0") return res.status(400).send({
+        if (!plan.ipAllowlisting && (clientSecretTrustedIp.ipAddress !== "0.0.0.0/0" && clientSecretTrustedIp.ipAddress !== "::/0")) return res.status(400).send({
             message: "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
         });
 
@@ -564,7 +564,7 @@ export const attachIdentityUniversalAuth = async (req: Request, res: Response) =
     });
 
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
-        if (!plan.ipAllowlisting && accessTokenTrustedIp.ipAddress !== "0.0.0.0/0") return res.status(400).send({
+        if (!plan.ipAllowlisting && (accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" && accessTokenTrustedIp.ipAddress !== "::/0")) return res.status(400).send({
             message: "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
         });
 
@@ -750,7 +750,7 @@ export const updateIdentityUniversalAuth = async (req: Request, res: Response) =
     let reformattedClientSecretTrustedIps;
     if (clientSecretTrustedIps) {
         reformattedClientSecretTrustedIps = clientSecretTrustedIps.map((clientSecretTrustedIp) => {
-            if (!plan.ipAllowlisting && clientSecretTrustedIp.ipAddress !== "0.0.0.0/0") return res.status(400).send({
+            if (!plan.ipAllowlisting && (clientSecretTrustedIp.ipAddress !== "0.0.0.0/0" && clientSecretTrustedIp.ipAddress !== "::/0")) return res.status(400).send({
                 message: "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
             });
 
@@ -767,7 +767,7 @@ export const updateIdentityUniversalAuth = async (req: Request, res: Response) =
     let reformattedAccessTokenTrustedIps;
     if (accessTokenTrustedIps) {
         reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
-            if (!plan.ipAllowlisting && accessTokenTrustedIp.ipAddress !== "0.0.0.0/0") return res.status(400).send({
+            if (!plan.ipAllowlisting && (accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" && accessTokenTrustedIp.ipAddress !== "::/0")) return res.status(400).send({
                 message: "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
             });
 
