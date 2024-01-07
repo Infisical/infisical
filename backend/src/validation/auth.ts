@@ -108,14 +108,14 @@ export const AddUniversalAuthToIdentityV1 = z.object({
       })
       .array()
       .min(1)
-      .default([{ ipAddress: "0.0.0.0/0" }]),
+      .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
     accessTokenTrustedIps: z
       .object({
         ipAddress: z.string().trim(),
       })
       .array()
       .min(1)
-      .default([{ ipAddress: "0.0.0.0/0" }]),
+      .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
     accessTokenTTL: z.number().int().min(1).refine(value => value !== 0, {
       message: "accessTokenTTL must have a non zero number",
     }).default(2592000),
