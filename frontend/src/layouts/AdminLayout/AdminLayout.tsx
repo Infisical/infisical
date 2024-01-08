@@ -185,7 +185,7 @@ export const AdminLayout = ({ children }: LayoutProps) => {
                     Infisical December update
                   </div>
                   <div className="mt-1 mb-1 w-full text-sm font-normal leading-[1.2rem] text-mineshaft-300">
-                    Improved RBAC, new integrations, dashboard remake, and more!
+                    Infisical Agent, new SDKs, Machine Identities, and more!
                   </div>
                   <div className="mt-2 h-[6.77rem] w-full rounded-md border border-mineshaft-700">
                     <Image
