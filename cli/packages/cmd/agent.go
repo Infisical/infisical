@@ -498,7 +498,7 @@ var agentCmd = &cobra.Command{
 
 		agentConfigInBase64 := os.Getenv("INFISICAL_AGENT_CONFIG_BASE64")
 
-		if configPath != "" {
+		if agentConfigInBase64 == "" {
 			data, err := ioutil.ReadFile(configPath)
 			if err != nil {
 				if !FileExists(configPath) {
@@ -506,7 +506,6 @@ var agentCmd = &cobra.Command{
 					return
 				}
 			}
-
 			agentConfigInBytes = data
 		}
 
