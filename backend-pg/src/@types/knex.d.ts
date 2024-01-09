@@ -5,6 +5,9 @@ import {
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
+  TAuditLogs,
+  TAuditLogsInsert,
+  TAuditLogsUpdate,
   TAuthTokens,
   TAuthTokenSessions,
   TAuthTokenSessionsInsert,
@@ -43,6 +46,9 @@ import {
   TOrganizations,
   TOrganizationsInsert,
   TOrganizationsUpdate,
+  TOrgBots,
+  TOrgBotsInsert,
+  TOrgBotsUpdate,
   TOrgMemberships,
   TOrgMembershipsInsert,
   TOrgMembershipsUpdate,
@@ -67,6 +73,9 @@ import {
   TProjects,
   TProjectsInsert,
   TProjectsUpdate,
+  TSamlConfigs,
+  TSamlConfigsInsert,
+  TSamlConfigsUpdate,
   TSapApprovers,
   TSapApproversInsert,
   TSapApproversUpdate,
@@ -357,6 +366,13 @@ declare module "knex/types/tables" {
       TSecretSnapshotFoldersInsert,
       TSecretSnapshotFoldersUpdate
     >;
+    [TableName.SamlConfig]: Knex.CompositeTableType<
+      TSamlConfigs,
+      TSamlConfigsInsert,
+      TSamlConfigsUpdate
+    >;
+    [TableName.OrgBot]: Knex.CompositeTableType<TOrgBots, TOrgBotsInsert, TOrgBotsUpdate>;
+    [TableName.AuditLog]: Knex.CompositeTableType<TAuditLogs, TAuditLogsInsert, TAuditLogsUpdate>;
     // Junction tables
     [TableName.JnSecretTag]: Knex.CompositeTableType<
       TSecretTagJunction,

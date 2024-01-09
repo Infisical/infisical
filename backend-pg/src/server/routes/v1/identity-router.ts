@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { IdentitiesSchema, OrgMembershipRole } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -28,6 +29,19 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         ...req.body,
         orgId: req.body.organizationId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.body.organizationId,
+        event: {
+          type: EventType.CREATE_IDENTITY,
+          metadata: {
+            name: identity.name,
+            identityId: identity.id
+          }
+        }
+      });
+
       return { identity };
     }
   });
@@ -57,6 +71,19 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         id: req.params.identityId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identity.orgId,
+        event: {
+          type: EventType.UPDATE_IDENTITY,
+          metadata: {
+            name: identity.name,
+            identityId: identity.id
+          }
+        }
+      });
+
       return { identity };
     }
   });
@@ -80,6 +107,17 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorId: req.permission.id,
         id: req.params.identityId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identity.orgId,
+        event: {
+          type: EventType.DELETE_IDENTITY,
+          metadata: {
+            identityId: identity.id
+          }
+        }
       });
       return { identity };
     }

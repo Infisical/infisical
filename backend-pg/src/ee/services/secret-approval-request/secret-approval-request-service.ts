@@ -181,7 +181,7 @@ export const secretApprovalRequestServiceFactory = ({
       status,
       statusChangeBy: membership.id
     });
-    return updatedRequest;
+    return { ...secretApprovalRequest, ...updatedRequest };
   };
 
   const mergeSecretApprovalRequest = async ({

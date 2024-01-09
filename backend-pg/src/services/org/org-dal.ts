@@ -9,7 +9,7 @@ import {
   TOrgMembershipsUpdate
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { withTransaction } from "@app/lib/knex";
+import { ormify, withTransaction } from "@app/lib/knex";
 
 export type TOrgDalFactory = ReturnType<typeof orgDalFactory>;
 
@@ -110,14 +110,7 @@ export const orgDalFactory = (db: TDbClient) => {
 
   // MEMBERSHIP OPERATIONS
   // --------------------
-  const findMembership = async (filter: Partial<TOrgMemberships>, tx?: Knex) => {
-    try {
-      const membership = await (tx || db)(TableName.OrgMembership).where(filter);
-      return membership;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find org membership" });
-    }
-  };
+  const orgMembershipOrm = ormify(db, TableName.OrgMembership);
 
   const createMembership = async (data: TOrgMembershipsInsert, tx?: Knex) => {
     try {
@@ -175,7 +168,7 @@ export const orgDalFactory = (db: TDbClient) => {
     create,
     updateById,
     deleteById,
-    findMembership,
+    findMembership: orgMembershipOrm.find,
     createMembership,
     updateMembershipById,
     deleteMembershipById,

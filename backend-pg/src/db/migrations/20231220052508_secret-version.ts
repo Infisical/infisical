@@ -7,7 +7,7 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.SecretVersion))) {
     await knex.schema.createTable(TableName.SecretVersion, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.integer("version").defaultTo(1);
+      t.integer("version").defaultTo(1).notNullable();
       t.string("type").notNullable().defaultTo(SecretType.Shared);
       t.text("secretBlindIndex").notNullable();
       t.text("secretKeyCiphertext").notNullable();

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ServiceTokensSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -68,6 +69,18 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
         ...req.body,
         projectId: req.body.workspaceId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: serviceToken.projectId,
+        event: {
+          type: EventType.CREATE_SERVICE_TOKEN,
+          metadata: {
+            name: serviceToken.name,
+            scopes: req.body.scopes
+          }
+        }
+      });
       return { serviceToken: token, serviceTokenData: serviceToken };
     }
   });
@@ -92,6 +105,19 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
         actor: req.permission.type,
         id: req.params.serviceTokenId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: serviceTokenData.projectId,
+        event: {
+          type: EventType.DELETE_SERVICE_TOKEN,
+          metadata: {
+            name: serviceTokenData.name,
+            scopes: serviceTokenData.scopes as Array<{ environment: string; secretPath: string }>
+          }
+        }
+      });
+
       return { serviceTokenData };
     }
   });

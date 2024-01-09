@@ -8,6 +8,7 @@ import {
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -264,6 +265,18 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         projectId: req.params.workspaceId,
         email: req.body.email
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.ADD_WORKSPACE_MEMBER,
+          metadata: {
+            userId: invitee.id,
+            email: invitee.email
+          }
+        }
       });
       return { invitee, latestKey };
     }

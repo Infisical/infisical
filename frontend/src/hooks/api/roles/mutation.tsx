@@ -18,7 +18,7 @@ export const useCreateProjectRole = () => {
 
   return useMutation({
     mutationFn: ({ projectId, permissions, ...dto }: TCreateProjectRoleDTO) =>
-      apiRequest.post(`/api/ee/v1/workspace/${projectId}/roles`, {
+      apiRequest.post(`/api/v1/workspace/${projectId}/roles`, {
         ...dto,
         permissions: permissions.length ? packRules(permissions) : []
       }),
@@ -33,7 +33,7 @@ export const useUpdateProjectRole = () => {
 
   return useMutation({
     mutationFn: ({ id, projectId, permissions, ...dto }: TUpdateProjectRoleDTO) =>
-      apiRequest.patch(`/api/ee/v1/workspace/${projectId}/roles/${id}`, {
+      apiRequest.patch(`/api/v1/workspace/${projectId}/roles/${id}`, {
         ...dto,
         permissions: permissions?.length ? packRules(permissions) : []
       }),
@@ -48,7 +48,7 @@ export const useDeleteProjectRole = () => {
 
   return useMutation({
     mutationFn: ({ projectId, id }: TDeleteProjectRoleDTO) =>
-      apiRequest.delete(`/api/ee/v1/workspace/${projectId}/roles/${id}`, {
+      apiRequest.delete(`/api/v1/workspace/${projectId}/roles/${id}`, {
         data: { projectId }
       }),
     onSuccess: (_, { projectId }) => {
@@ -62,7 +62,7 @@ export const useCreateOrgRole = () => {
 
   return useMutation({
     mutationFn: ({ orgId, permissions, ...dto }: TCreateOrgRoleDTO) =>
-      apiRequest.post(`/api/ee/v1/organization/${orgId}/roles`, {
+      apiRequest.post(`/api/v1/organization/${orgId}/roles`, {
         ...dto,
         permissions: permissions.length ? packRules(permissions) : []
       }),
@@ -77,7 +77,7 @@ export const useUpdateOrgRole = () => {
 
   return useMutation({
     mutationFn: ({ id, orgId, permissions, ...dto }: TUpdateOrgRoleDTO) =>
-      apiRequest.patch(`/api/ee/v1/organization/${orgId}/roles/${id}`, {
+      apiRequest.patch(`/api/v1/organization/${orgId}/roles/${id}`, {
         ...dto,
         permissions: permissions?.length ? packRules(permissions) : []
       }),
@@ -92,7 +92,7 @@ export const useDeleteOrgRole = () => {
 
   return useMutation({
     mutationFn: ({ orgId, id }: TDeleteOrgRoleDTO) =>
-      apiRequest.delete(`/api/ee/v1/organization/${orgId}/roles/${id}`, {
+      apiRequest.delete(`/api/v1/organization/${orgId}/roles/${id}`, {
         data: { orgId }
       }),
     onSuccess: (_, { orgId }) => {

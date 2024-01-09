@@ -6,8 +6,10 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
 
 import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
+import { TSecretDalFactory } from "../secret/secret-dal";
 import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDalFactory } from "./secret-import-dal";
 import {
@@ -17,8 +19,6 @@ import {
   TGetSecretsFromImportDTO,
   TUpdateSecretImportDTO
 } from "./secret-import-types";
-import { TSecretDalFactory } from "../secret/secret-dal";
-import { groupBy } from "@app/lib/fn";
 
 type TSecretImportServiceFactoryDep = {
   secretImportDal: TSecretImportDalFactory;

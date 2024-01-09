@@ -3,22 +3,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 const ssoConfigKeys = {
-    getSSOConfig: (orgId: string) => [{ orgId }, "organization-saml-sso"] as const,
-}
+  getSSOConfig: (orgId: string) => [{ orgId }, "organization-saml-sso"] as const
+};
 
 export const useGetSSOConfig = (organizationId: string) => {
   return useQuery({
     queryKey: ssoConfigKeys.getSSOConfig(organizationId),
     queryFn: async () => {
-      const { data } = await apiRequest.get(
-        `/api/v1/sso/config?organizationId=${organizationId}`
-      );
+      const { data } = await apiRequest.get(`/api/v1/sso/config?organizationId=${organizationId}`);
 
       return data;
     },
     enabled: true
   });
-}
+};
 
 export const useCreateSSOConfig = () => {
   const queryClient = useQueryClient();
@@ -38,18 +36,15 @@ export const useCreateSSOConfig = () => {
       issuer: string;
       cert: string;
     }) => {
-      const { data } = await apiRequest.post(
-        "/api/v1/sso/config",
-        {
-          organizationId,
-          authProvider,
-          isActive,
-          entryPoint,
-          issuer,
-          cert
-        }
-      );
-      
+      const { data } = await apiRequest.post("/api/v1/sso/config", {
+        organizationId,
+        authProvider,
+        isActive,
+        entryPoint,
+        issuer,
+        cert
+      });
+
       return data;
     },
     onSuccess(_, dto) {
@@ -76,18 +71,15 @@ export const useUpdateSSOConfig = () => {
       issuer?: string;
       cert?: string;
     }) => {
-      const { data } = await apiRequest.patch(
-        "/api/v1/sso/config",
-        {
-          organizationId,
-          ...(authProvider !== undefined ? { authProvider } : {}),
-          ...(isActive !== undefined ? { isActive } : {}),
-          ...(entryPoint !== undefined ? { entryPoint } : {}),
-          ...(issuer !== undefined ? { issuer } : {}),
-          ...(cert !== undefined ? { cert } : {})
-        }
-      );
-      
+      const { data } = await apiRequest.patch("/api/v1/sso/config", {
+        organizationId,
+        ...(authProvider !== undefined ? { authProvider } : {}),
+        ...(isActive !== undefined ? { isActive } : {}),
+        ...(entryPoint !== undefined ? { entryPoint } : {}),
+        ...(issuer !== undefined ? { issuer } : {}),
+        ...(cert !== undefined ? { cert } : {})
+      });
+
       return data;
     },
     onSuccess(_, dto) {

@@ -111,8 +111,7 @@ export const identityServiceFactory = ({
       return newIdentity;
     });
 
-    // TODO(akhilmhdh-pg): add audit log here
-    return identity;
+    return { ...identity, orgId: identityOrgMembership.orgId };
   };
 
   const deleteIdentity = async ({ actorId, actor, id }: TDeleteIdentityDTO) => {
@@ -139,7 +138,7 @@ export const identityServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
 
     const deletedIdentity = await identityDal.deleteById(id);
-    return deletedIdentity;
+    return { ...deletedIdentity, orgId: identityOrgMembership.orgId };
   };
 
   const listOrgIdentities = async ({ orgId, actor, actorId }: TOrgPermission) => {

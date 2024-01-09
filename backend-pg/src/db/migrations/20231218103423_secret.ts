@@ -22,7 +22,7 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.Secret))) {
     await knex.schema.createTable(TableName.Secret, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.integer("version").defaultTo(1);
+      t.integer("version").defaultTo(1).notNullable();
       t.string("type").notNullable().defaultTo(SecretType.Shared);
       // t.text("secretKeyHash").notNullable();
       // t.text("secretValueHash");

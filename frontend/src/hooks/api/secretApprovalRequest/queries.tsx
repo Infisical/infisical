@@ -96,7 +96,7 @@ const fetchSecretApprovalRequestList = async ({
   offset
 }: TGetSecretApprovalRequestList) => {
   const { data } = await apiRequest.get<{ approvals: TSecretApprovalRequest[] }>(
-    "/api/ee/v1/secret-approval-requests",
+    "/api/v1/secret-approval-requests",
     {
       params: {
         workspaceId,
@@ -158,7 +158,7 @@ const fetchSecretApprovalRequestDetails = async ({
   id
 }: Omit<TGetSecretApprovalRequestDetails, "decryptKey">) => {
   const { data } = await apiRequest.get<{ approval: TSecretApprovalRequest }>(
-    `/api/ee/v1/secret-approval-requests/${id}`
+    `/api/v1/secret-approval-requests/${id}`
   );
 
   return data.approval;
@@ -197,7 +197,7 @@ export const useGetSecretApprovalRequestDetails = ({
 
 const fetchSecretApprovalRequestCount = async ({ workspaceId }: TGetSecretApprovalRequestCount) => {
   const { data } = await apiRequest.get<{ approvals: TSecretApprovalRequestCount }>(
-    "/api/ee/v1/secret-approval-requests/count",
+    "/api/v1/secret-approval-requests/count",
     { params: { workspaceId } }
   );
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SecretApprovalRequestsSchema, SecretsSchema, SecretType } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CommitType } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -33,6 +34,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         environment: req.query.environment,
         projectId: req.query.workspaceId,
         path: req.query.secretPath
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.query.workspaceId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.GET_SECRETS,
+          metadata: {
+            environment: req.query.environment,
+            secretPath: req.query.secretPath,
+            numberOfSecrets: secrets.length
+          }
+        }
       });
 
       return { secrets };
@@ -74,6 +88,20 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         type: req.query.type
       });
 
+      await server.services.auditLog.createAuditLog({
+        projectId: req.query.workspaceId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.GET_SECRET,
+          metadata: {
+            environment: req.query.environment,
+            secretPath: req.query.secretPath,
+            secretId: secret.id,
+            secretKey: req.params.secretName,
+            secretVersion: secret.version
+          }
+        }
+      });
       return { secret };
     }
   });
@@ -167,6 +195,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 ]
               }
             });
+
+          await server.services.auditLog.createAuditLog({
+            projectId: req.body.workspaceId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.SECRET_APPROVAL_REQUEST,
+              metadata: {
+                committedBy: approval.committerId,
+                secretApprovalRequestId: approval.id,
+                secretApprovalRequestSlug: approval.slug
+              }
+            }
+          });
           return { approval };
         }
       }
@@ -191,6 +232,20 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         metadata
       });
 
+      await server.services.auditLog.createAuditLog({
+        projectId: req.body.workspaceId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.CREATE_SECRET,
+          metadata: {
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            secretId: secret.id,
+            secretKey: req.params.secretName,
+            secretVersion: secret.version
+          }
+        }
+      });
       return { secret };
     }
   });
@@ -296,6 +351,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 ]
               }
             });
+
+          await server.services.auditLog.createAuditLog({
+            projectId: req.body.workspaceId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.SECRET_APPROVAL_REQUEST,
+              metadata: {
+                committedBy: approval.committerId,
+                secretApprovalRequestId: approval.id,
+                secretApprovalRequestSlug: approval.slug
+              }
+            }
+          });
           return { approval };
         }
       }
@@ -325,6 +393,20 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         newSecretName
       });
 
+      await server.services.auditLog.createAuditLog({
+        projectId: req.body.workspaceId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.UPDATE_SECRET,
+          metadata: {
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            secretId: secret.id,
+            secretKey: req.params.secretName,
+            secretVersion: secret.version
+          }
+        }
+      });
       return { secret };
     }
   });
@@ -382,6 +464,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 ]
               }
             });
+
+          await server.services.auditLog.createAuditLog({
+            projectId: req.body.workspaceId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.SECRET_APPROVAL_REQUEST,
+              metadata: {
+                committedBy: approval.committerId,
+                secretApprovalRequestId: approval.id,
+                secretApprovalRequestSlug: approval.slug
+              }
+            }
+          });
           return { approval };
         }
       }
@@ -397,6 +492,20 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretId
       });
 
+      await server.services.auditLog.createAuditLog({
+        projectId: req.body.workspaceId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.DELETE_SECRET,
+          metadata: {
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            secretId: secret.id,
+            secretKey: req.params.secretName,
+            secretVersion: secret.version
+          }
+        }
+      });
       return { secret };
     }
   });
@@ -463,6 +572,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 [CommitType.Create]: inputSecrets.filter(({ type }) => type === "shared")
               }
             });
+
+          await server.services.auditLog.createAuditLog({
+            projectId: req.body.workspaceId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.SECRET_APPROVAL_REQUEST,
+              metadata: {
+                committedBy: approval.committerId,
+                secretApprovalRequestId: approval.id,
+                secretApprovalRequestSlug: approval.slug
+              }
+            }
+          });
           return { approval };
         }
       }
@@ -476,6 +598,22 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secrets: inputSecrets
       });
 
+      await server.services.auditLog.createAuditLog({
+        projectId: req.body.workspaceId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.CREATE_SECRETS,
+          metadata: {
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            secrets: secrets.map((secret, i) => ({
+              secretId: secret.id,
+              secretKey: inputSecrets[i].secretName,
+              secretVersion: secret.version
+            }))
+          }
+        }
+      });
       return { secrets };
     }
   });
@@ -542,6 +680,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 [CommitType.Update]: inputSecrets.filter(({ type }) => type === "shared")
               }
             });
+
+          await server.services.auditLog.createAuditLog({
+            projectId: req.body.workspaceId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.SECRET_APPROVAL_REQUEST,
+              metadata: {
+                committedBy: approval.committerId,
+                secretApprovalRequestId: approval.id,
+                secretApprovalRequestSlug: approval.slug
+              }
+            }
+          });
           return { approval };
         }
       }
@@ -554,6 +705,22 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secrets: inputSecrets
       });
 
+      await server.services.auditLog.createAuditLog({
+        projectId: req.body.workspaceId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.UPDATE_SECRETS,
+          metadata: {
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            secrets: secrets.map((secret, i) => ({
+              secretId: secret.id,
+              secretKey: inputSecrets[i].secretName,
+              secretVersion: secret.version
+            }))
+          }
+        }
+      });
       return { secrets };
     }
   });
@@ -609,6 +776,18 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 [CommitType.Delete]: inputSecrets.filter(({ type }) => type === "shared")
               }
             });
+          await server.services.auditLog.createAuditLog({
+            projectId: req.body.workspaceId,
+            ...req.auditLogInfo,
+            event: {
+              type: EventType.SECRET_APPROVAL_REQUEST,
+              metadata: {
+                committedBy: approval.committerId,
+                secretApprovalRequestId: approval.id,
+                secretApprovalRequestSlug: approval.slug
+              }
+            }
+          });
           return { approval };
         }
       }
@@ -621,6 +800,22 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secrets: inputSecrets
       });
 
+      await server.services.auditLog.createAuditLog({
+        projectId: req.body.workspaceId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.DELETE_SECRETS,
+          metadata: {
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            secrets: secrets.map((secret, i) => ({
+              secretId: secret.id,
+              secretKey: inputSecrets[i].secretName,
+              secretVersion: secret.version
+            }))
+          }
+        }
+      });
       return { secrets };
     }
   });

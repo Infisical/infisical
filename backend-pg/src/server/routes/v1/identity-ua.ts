@@ -1,8 +1,10 @@
 import { z } from "zod";
 
 import { IdentityUaClientSecretsSchema, IdentityUniversalAuthsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 
 export const sanitizedClientSecretSchema = IdentityUaClientSecretsSchema.pick({
   id: true,
@@ -36,10 +38,21 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { identityUa, accessToken } = await server.services.identityUa.login(
-        req.body.clientId,
-        req.body.clientSecret
-      );
+      const { identityUa, accessToken, identityAccessToken, validClientSecretInfo } =
+        await server.services.identityUa.login(req.body.clientId, req.body.clientSecret);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH,
+          metadata: {
+            clientSecretId: validClientSecretInfo.id,
+            identityId: identityUa.identityId,
+            identityAccessTokenId: identityAccessToken.id,
+            identityUniversalAuthId: identityUa.id
+          }
+        }
+      });
       return {
         accessToken,
         tokenType: "Bearer" as const,
@@ -102,6 +115,24 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         ...req.body,
         identityId: req.params.identityId
       });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityUniversalAuth.orgId,
+        event: {
+          type: EventType.ADD_IDENTITY_UNIVERSAL_AUTH,
+          metadata: {
+            identityId: identityUniversalAuth.identityId,
+            accessTokenTTL: identityUniversalAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityUniversalAuth.accessTokenMaxTTL,
+            accessTokenTrustedIps:
+              identityUniversalAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
+            clientSecretTrustedIps:
+              identityUniversalAuth.clientSecretTrustedIps as TIdentityTrustedIp[],
+            accessTokenNumUsesLimit: identityUniversalAuth.accessTokenNumUsesLimit
+          }
+        }
+      });
+
       return { identityUniversalAuth };
     }
   });
@@ -152,6 +183,25 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         ...req.body,
         identityId: req.params.identityId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityUniversalAuth.orgId,
+        event: {
+          type: EventType.UPDATE_IDENTITY_UNIVERSAL_AUTH,
+          metadata: {
+            identityId: identityUniversalAuth.identityId,
+            accessTokenTTL: identityUniversalAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityUniversalAuth.accessTokenMaxTTL,
+            accessTokenTrustedIps:
+              identityUniversalAuth.accessTokenTrustedIps as TIdentityTrustedIp[],
+            clientSecretTrustedIps:
+              identityUniversalAuth.clientSecretTrustedIps as TIdentityTrustedIp[],
+            accessTokenNumUsesLimit: identityUniversalAuth.accessTokenNumUsesLimit
+          }
+        }
+      });
+
       return { identityUniversalAuth };
     }
   });
@@ -176,6 +226,18 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         identityId: req.params.identityId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: identityUniversalAuth.orgId,
+        event: {
+          type: EventType.GET_IDENTITY_UNIVERSAL_AUTH,
+          metadata: {
+            identityId: identityUniversalAuth.identityId
+          }
+        }
+      });
+
       return { identityUniversalAuth };
     }
   });
@@ -201,13 +263,26 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { clientSecret, clientSecretData } =
+      const { clientSecret, clientSecretData, orgId } =
         await server.services.identityUa.createUaClientSecret({
           actor: req.permission.type,
           actorId: req.permission.id,
           identityId: req.params.identityId,
           ...req.body
         });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId,
+        event: {
+          type: EventType.CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET,
+          metadata: {
+            identityId: req.params.identityId,
+            clientSecretId: clientSecretData.id
+          }
+        }
+      });
+
       return { clientSecret, clientSecretData };
     }
   });
@@ -227,10 +302,22 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const clientSecretData = await server.services.identityUa.getUaClientSecrets({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        identityId: req.params.identityId
+      const { clientSecrets: clientSecretData, orgId } =
+        await server.services.identityUa.getUaClientSecrets({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          identityId: req.params.identityId
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId,
+        event: {
+          type: EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS,
+          metadata: {
+            identityId: req.params.identityId
+          }
+        }
       });
       return { clientSecretData };
     }
@@ -258,6 +345,19 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         identityId: req.params.identityId,
         clientSecretId: req.params.clientSecretId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: clientSecretData.orgId,
+        event: {
+          type: EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET,
+          metadata: {
+            identityId: clientSecretData.identityId,
+            clientSecretId: clientSecretData.id
+          }
+        }
+      });
+
       return { clientSecretData };
     }
   });

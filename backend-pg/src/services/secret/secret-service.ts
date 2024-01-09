@@ -256,9 +256,10 @@ export const secretServiceFactory = ({
     }
 
     const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
-      inputSecrets: [{ secretName: inputSecret.secretName }],
+      inputSecrets: [{ secretName: inputSecret.secretName, type: inputSecret.type as SecretType }],
       folderId,
       isNew: true,
+      userId: actorId,
       blindIndexCfg
     });
 
@@ -539,6 +540,7 @@ export const secretServiceFactory = ({
       fnSecretBulkInsert({
         inputSecrets: inputSecrets.map(({ secretName, ...el }) => ({
           ...el,
+          version:0,
           secretBlindIndex: keyName2BlindIndex[secretName],
           type: SecretType.Shared,
           algorithm: SecretEncryptionAlgo.AES_256_GCM,

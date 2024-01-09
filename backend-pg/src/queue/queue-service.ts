@@ -1,18 +1,26 @@
 import { Job, JobsOptions, Queue, Worker, WorkerListener } from "bullmq";
 import Redis from "ioredis";
 
+import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+
 export enum QueueName {
-  SecretRotation = "secret-rotation"
+  SecretRotation = "secret-rotation",
+  AuditLog = "audit-log"
 }
 
 export enum QueueJobs {
-  SecretRotation = "secret-rotation-job"
+  SecretRotation = "secret-rotation-job",
+  AuditLog = "audit-log-job"
 }
 
 export type TQueueJobTypes = {
   [QueueName.SecretRotation]: {
     payload: { rotationId: string };
     name: QueueJobs.SecretRotation;
+  };
+  [QueueName.AuditLog]: {
+    name: QueueJobs.AuditLog;
+    payload: TCreateAuditLogDTO;
   };
 };
 
@@ -65,7 +73,7 @@ export const queueServiceFactory = (redisUrl: string) => {
     name: T,
     job: TQueueJobTypes[T]["name"],
     data: TQueueJobTypes[T]["payload"],
-    opts: JobsOptions & { jobId: string }
+    opts: JobsOptions & { jobId?: string }
   ) => {
     const q = queueContainer[name];
     await q.add(job, data, opts);

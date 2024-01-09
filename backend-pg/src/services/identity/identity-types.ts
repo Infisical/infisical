@@ -1,3 +1,4 @@
+import { IPType } from "@app/lib/ip";
 import { TOrgPermission } from "@app/lib/types";
 
 export type TCreateIdentityDTO = {
@@ -14,3 +15,9 @@ export type TUpdateIdentityDTO = {
 export type TDeleteIdentityDTO = {
   id: string;
 } & Omit<TOrgPermission, "orgId">;
+
+export interface TIdentityTrustedIp {
+  ipAddress: string;
+  type: IPType;
+  prefix: number;
+}

@@ -84,12 +84,12 @@ export const secretApprovalRequestDalFactory = (db: TDbClient) => {
         childrenMapper: [
           {
             key: "reviewerMemberId",
-            label: "reviewers",
+            label: "reviewers" as const,
             mapper: ({ reviewerMemberId: member, reviewerStatus: status }) =>
               member ? { member, status } : undefined
           },
-          { key: "approverId", label: "approvers", mapper: ({ approverId }) => approverId }
-        ] as const
+          { key: "approverId", label: "approvers" as const, mapper: ({ approverId }) => approverId }
+        ]
       });
       if (!formatedDoc?.[0]) return;
       return {
@@ -213,12 +213,12 @@ export const secretApprovalRequestDalFactory = (db: TDbClient) => {
         childrenMapper: [
           {
             key: "reviewerMemberId",
-            label: "reviewers",
+            label: "reviewers" as const,
             mapper: ({ reviewerMemberId: member, reviewerStatus: s }) =>
               member ? { member, status: s } : undefined
           },
-          { key: "approverId", label: "approvers", mapper: ({ approverId }) => approverId }
-        ] as const
+          { key: "approverId", label: "approvers" as const, mapper: ({ approverId }) => approverId }
+        ]
       });
       return formatedDoc.map((el) => ({
         ...el,

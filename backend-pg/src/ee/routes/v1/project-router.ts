@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { SecretSnapshotsSchema } from "@app/db/schemas";
+import { AuditLogsSchema, SecretSnapshotsSchema } from "@app/db/schemas";
+import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -64,5 +65,75 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
       return { count };
     }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:workspaceId/audit-logs",
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      querystring: z.object({
+        eventType: z.nativeEnum(EventType).optional(),
+        userAgentType: z.nativeEnum(UserAgentType).optional(),
+        startDate: z.string().datetime().optional(),
+        endDate: z.string().datetime().optional(),
+        offset: z.coerce.number().default(0),
+        limit: z.coerce.number().default(20),
+        actor: z.string().optional()
+      }),
+      response: {
+        200: z.object({
+          auditLogs: AuditLogsSchema.omit({
+            eventMetadata: true,
+            eventType: true,
+            actor: true,
+            actorMetadata: true
+          })
+            .merge(
+              z.object({
+                event: z.object({
+                  type: z.string(),
+                  metadata: z.any()
+                }),
+                actor: z.object({
+                  type: z.string(),
+                  metadata: z.any()
+                })
+              })
+            )
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const auditLogs = await server.services.auditLog.listProjectAuditLogs({
+        actorId: req.permission.id,
+        projectId: req.params.workspaceId,
+        ...req.query,
+        auditLogActor: req.query.actor,
+        actor: req.permission.type
+      });
+      return { auditLogs };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:workspaceId/audit-logs/filters/actors",
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          actors: z.string().array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async () => ({ actors: [] })
   });
 };

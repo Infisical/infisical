@@ -7,7 +7,8 @@ import {
   TSecretFolderVersions,
   TSecretSnapshotFolders,
   TSecretSnapshots,
-  TSecretVersions} from "@app/db/schemas";
+  TSecretVersions
+} from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
@@ -109,15 +110,15 @@ export const snapshotDalFactory = (db: TDbClient) => {
         childrenMapper: [
           {
             key: "id",
-            label: "secretVersions",
+            label: "secretVersions" as const,
             mapper: (el) => SecretVersionsSchema.parse(el)
           },
           {
             key: "folderVerId",
-            label: "folderVersion",
+            label: "folderVersion" as const,
             mapper: ({ folderVerId: id, folderVerName: name }) => ({ id, name })
           }
-        ] as const
+        ]
       })?.[0];
     } catch (error) {
       throw new DatabaseError({ error, name: "FindSecretSnapshotDataById" });
@@ -237,7 +238,7 @@ export const snapshotDalFactory = (db: TDbClient) => {
         childrenMapper: [
           {
             key: "id",
-            label: "secretVersions",
+            label: "secretVersions" as const,
             mapper: (el) => ({
               ...SecretVersionsSchema.parse(el),
               latestSecretVersion: el.latestSecretVersion
@@ -245,14 +246,14 @@ export const snapshotDalFactory = (db: TDbClient) => {
           },
           {
             key: "folderVerId",
-            label: "folderVersion",
+            label: "folderVersion" as const,
             mapper: ({ folderVerId: id, folderVerName: name, latestFolderVersion }) => ({
               id,
               name,
               latestFolderVersion
             })
           }
-        ] as const
+        ]
       });
       return formated;
     } catch (error) {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SecretFoldersSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -28,6 +29,19 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         actor: req.permission.type,
         ...req.body
       });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.CREATE_FOLDER,
+          metadata: {
+            environment: req.body.environment,
+            folderId: folder.id,
+            folderName: folder.name,
+            folderPath: req.body.path
+          }
+        }
+      });
       return { folder };
     }
   });
@@ -53,11 +67,25 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const folder = await server.services.folder.updateFolder({
+      const { folder, old } = await server.services.folder.updateFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
         ...req.body,
         id: req.params.folderId
+      });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.UPDATE_FOLDER,
+          metadata: {
+            environment: req.body.environment,
+            folderId: folder.id,
+            folderPath: req.body.path,
+            newFolderName: folder.name,
+            oldFolderName: old.name
+          }
+        }
       });
       return { folder };
     }
@@ -88,6 +116,19 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         actor: req.permission.type,
         ...req.body,
         id: req.params.folderId
+      });
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.DELETE_FOLDER,
+          metadata: {
+            environment: req.body.environment,
+            folderId: folder.id,
+            folderPath: req.body.path,
+            folderName: folder.name
+          }
+        }
       });
       return { folder };
     }

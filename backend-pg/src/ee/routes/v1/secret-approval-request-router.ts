@@ -7,6 +7,7 @@ import {
   SecretsSchema,
   SecretVersionsSchema
 } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   ApprovalStatus,
   RequestState
@@ -230,6 +231,23 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         approvalId: req.params.id,
         status: req.body.status
       });
+
+      const isClosing = approval.status === RequestState.Closed;
+      await server.services.auditLog.createAuditLog({
+        projectId: approval.projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: isClosing ? EventType.SECRET_APPROVAL_CLOSED : EventType.SECRET_APPROVAL_REOPENED,
+          metadata: {
+            [isClosing ? ("closedBy" as const) : ("reopenedBy" as const)]:
+              approval.statusChangeBy as string,
+            secretApprovalRequestId: approval.id,
+            secretApprovalRequestSlug: approval.slug
+          } as any
+          // akhilmhdh: had to apply any to avoid ts issue with this
+        }
+      });
+
       return { approval };
     }
   });

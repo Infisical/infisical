@@ -2,8 +2,13 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { registerV1EERoutes } from "@app/ee/routes/v1";
+import { auditLogDalFactory } from "@app/ee/services/audit-log/audit-log-dal";
+import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
+import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
 import { permissionDalFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { samlConfigDalFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { sapApproverDalFactory } from "@app/ee/services/secret-approval-policy/sap-approver-dal";
 import { secretApprovalPolicyDalFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { secretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -43,6 +48,7 @@ import { integrationServiceFactory } from "@app/services/integration/integration
 import { integrationAuthDalFactory } from "@app/services/integration-auth/integration-auth-dal";
 import { integrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { incidentContactDalFactory } from "@app/services/org/incident-contacts-dal";
+import { orgBotDalFactory } from "@app/services/org/org-bot-dal";
 import { orgDalFactory } from "@app/services/org/org-dal";
 import { orgRoleDalFactory } from "@app/services/org/org-role-dal";
 import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
@@ -80,6 +86,7 @@ import { userServiceFactory } from "@app/services/user/user-service";
 import { webhookDalFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 
+import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { registerV1Routes } from "./v1";
@@ -99,6 +106,7 @@ export const registerRoutes = async (
   const authDal = authDalFactory(db);
   const authTokenDal = tokenDalFactory(db);
   const orgDal = orgDalFactory(db);
+  const orgBotDal = orgBotDalFactory(db);
   const incidentContactDal = incidentContactDalFactory(db);
   const orgRoleDal = orgRoleDalFactory(db);
   const superAdminDal = superAdminDalFactory(db);
@@ -132,8 +140,11 @@ export const registerRoutes = async (
   const identityUaDal = identityUaDalFactory(db);
   const identityUaClientSecretDal = identityUaClientSecretDalFactory(db);
 
+  const auditLogDal = auditLogDalFactory(db);
+
   // ee db layer ops
   const permissionDal = permissionDalFactory(db);
+  const samlConfigDal = samlConfigDalFactory(db);
   const sapApproverDal = sapApproverDalFactory(db);
   const secretApprovalPolicyDal = secretApprovalPolicyDalFactory(db);
   const secretApprovalRequestDal = secretApprovalRequestDalFactory(db);
@@ -146,12 +157,21 @@ export const registerRoutes = async (
   const snapshotFolderDal = snapshotFolderDalFactory(db);
 
   const permissionService = permissionServiceFactory({ permissionDal, orgRoleDal, projectRoleDal });
+  const auditLogQueue = auditLogQueueServiceFactory({ auditLogDal, queueService });
+  const auditLogService = auditLogServiceFactory({ auditLogDal, permissionService, auditLogQueue });
   const sapService = secretApprovalPolicyServiceFactory({
     projectMembershipDal,
     projectEnvDal,
     sapApproverDal,
     permissionService,
     secretApprovalPolicyDal
+  });
+  const samlService = samlConfigServiceFactory({
+    permissionService,
+    orgBotDal,
+    orgDal,
+    userDal,
+    samlConfigDal
   });
   const sarService = secretApprovalRequestServiceFactory({
     permissionService,
@@ -180,7 +200,8 @@ export const registerRoutes = async (
     incidentContactDal,
     tokenService,
     smtpService,
-    userDal
+    userDal,
+    orgBotDal
   });
   const signupService = authSignupServiceFactory({
     tokenService,
@@ -354,7 +375,9 @@ export const registerRoutes = async (
     secretApprovalPolicy: sapService,
     secretApprovalRequest: sarService,
     secretRotation: secretRotationService,
-    snapshot: snapshotService
+    snapshot: snapshotService,
+    saml: samlService,
+    auditLog: auditLogService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {
@@ -363,6 +386,7 @@ export const registerRoutes = async (
 
   await server.register(injectIdentity);
   await server.register(injectPermission);
+  await server.register(injectAuditLogInfo);
 
   server.route({
     url: "/status",
@@ -394,9 +418,13 @@ export const registerRoutes = async (
   });
 
   // register routes for v1
-  await server.register(registerV1Routes, { prefix: "/v1" });
+  await server.register(
+    async (v1Server) => {
+      await v1Server.register(registerV1EERoutes);
+      await v1Server.register(registerV1Routes);
+    },
+    { prefix: "/v1" }
+  );
   await server.register(registerV2Routes, { prefix: "/v2" });
   await server.register(registerV3Routes, { prefix: "/v3" });
-
-  await server.register(registerV1EERoutes, { prefix: "/ee/v1" });
 };

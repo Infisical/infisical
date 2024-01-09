@@ -8,6 +8,8 @@ import {
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { getConfig } from "@app/lib/config/env";
+import { generateAsymmetricKeyPair } from "@app/lib/crypto";
+import { generateSymmetricKey, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
 
@@ -17,6 +19,7 @@ import { TokenType } from "../auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDalFactory } from "../user/user-dal";
 import { TIncidentContactsDalFactory } from "./incident-contacts-dal";
+import { TOrgBotDalFactory } from "./org-bot-dal";
 import { TOrgDalFactory } from "./org-dal";
 import { TOrgRoleDalFactory } from "./org-role-dal";
 import {
@@ -28,6 +31,7 @@ import {
 
 type TOrgServiceFactoryDep = {
   orgDal: TOrgDalFactory;
+  orgBotDal: TOrgBotDalFactory;
   orgRoleDal: TOrgRoleDalFactory;
   userDal: TUserDalFactory;
   incidentContactDal: TIncidentContactsDalFactory;
@@ -45,7 +49,8 @@ export const orgServiceFactory = ({
   incidentContactDal,
   permissionService,
   smtpService,
-  tokenService
+  tokenService,
+  orgBotDal
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -95,6 +100,23 @@ export const orgServiceFactory = ({
    * Create organization
    * */
   const createOrganization = async (userId: string, orgName: string) => {
+    const { privateKey, publicKey } = generateAsymmetricKeyPair();
+    const key = generateSymmetricKey();
+    const {
+      ciphertext: encryptedPrivateKey,
+      iv: privateKeyIV,
+      tag: privateKeyTag,
+      encoding: privateKeyKeyEncoding,
+      algorithm: privateKeyAlgorithm
+    } = infisicalSymmetricEncypt(privateKey);
+    const {
+      ciphertext: encryptedSymmetricKey,
+      iv: symmetricKeyIV,
+      tag: symmetricKeyTag,
+      encoding: symmetricKeyKeyEncoding,
+      algorithm: symmetricKeyAlgorithm
+    } = infisicalSymmetricEncypt(key);
+
     const organization = await orgDal.transaction(async (tx) => {
       const org = await orgDal.create({ name: orgName }, tx);
       await orgDal.createMembership(
@@ -103,6 +125,24 @@ export const orgServiceFactory = ({
           orgId: org.id,
           role: OrgMembershipRole.Admin,
           status: OrgMembershipStatus.Accepted
+        },
+        tx
+      );
+      await orgBotDal.create(
+        {
+          name: org.name,
+          publicKey,
+          privateKeyIV,
+          encryptedPrivateKey,
+          symmetricKeyIV,
+          symmetricKeyTag,
+          encryptedSymmetricKey,
+          symmetricKeyAlgorithm,
+          orgId: org.id,
+          privateKeyTag,
+          privateKeyAlgorithm,
+          privateKeyKeyEncoding,
+          symmetricKeyKeyEncoding
         },
         tx
       );
@@ -178,7 +218,7 @@ export const orgServiceFactory = ({
         // Thus the signup flow is not needed anymore
         const [inviteeMembership] = await orgDal.findMembership(
           { orgId, userId: inviteeUser.id },
-          tx
+          { tx }
         );
         if (inviteeMembership && inviteeMembership.status === OrgMembershipStatus.Accepted) {
           throw new BadRequestError({

@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-import { ProjectMembershipsSchema, UserEncryptionKeysSchema, UsersSchema } from "@app/db/schemas";
+import {
+  OrgMembershipsSchema,
+  ProjectMembershipsSchema,
+  UserEncryptionKeysSchema,
+  UsersSchema
+} from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -43,6 +49,55 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
   });
 
   server.route({
+    url: "/:workspaceId/memberships",
+    method: "POST",
+    schema: {
+      params: z.object({
+        workspaceId: z.string().trim()
+      }),
+      body: z.object({
+        members: z
+          .object({
+            orgMembershipId: z.string().trim(),
+            workspaceEncryptedKey: z.string().trim(),
+            workspaceEncryptedNonce: z.string().trim()
+          })
+          .array()
+          .min(1)
+      }),
+      response: {
+        200: z.object({
+          success: z.boolean(),
+          data: OrgMembershipsSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const data = await server.services.projectMembership.addUsersToProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        projectId: req.params.workspaceId,
+        members: req.body.members
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.params.workspaceId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.ADD_BATCH_WORKSPACE_MEMBER,
+          metadata: data.map(({ userId }) => ({
+            userId: userId || "",
+            email: ""
+          }))
+        }
+      });
+
+      return { data, success: true };
+    }
+  });
+
+  server.route({
     url: "/:workspaceId/memberships/:membershipId",
     method: "PATCH",
     schema: {
@@ -67,6 +122,20 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         projectId: req.params.workspaceId,
         membershipId: req.params.membershipId,
         role: req.body.role
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.UPDATE_USER_WORKSPACE_ROLE,
+          metadata: {
+            userId: membership.userId,
+            newRole: req.body.role,
+            oldRole: membership.role,
+            email: ""
+          }
+        }
       });
       return { membership };
     }
@@ -93,6 +162,18 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         projectId: req.params.workspaceId,
         membershipId: req.params.membershipId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.params.workspaceId,
+        event: {
+          type: EventType.REMOVE_WORKSPACE_MEMBER,
+          metadata: {
+            userId: membership.userId,
+            email: ""
+          }
+        }
       });
       return { membership };
     }

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -77,12 +78,63 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         actor: req.permission.type,
         id: req.params.integrationAuthId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: integrationAuth.projectId,
+        event: {
+          type: EventType.UNAUTHORIZE_INTEGRATION,
+          metadata: {
+            integration: integrationAuth.integration
+          }
+        }
+      });
+
       return { integrationAuth };
     }
   });
 
   server.route({
     url: "/oauth-token",
+    method: "POST",
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      body: z.object({
+        workspaceId: z.string().trim(),
+        code: z.string().trim(),
+        integration: z.string().trim(),
+        url: z.string().trim().url().optional()
+      }),
+      response: {
+        200: z.object({
+          integrationAuth: integrationAuthPubSchema
+        })
+      }
+    },
+    handler: async (req) => {
+      const integrationAuth = await server.services.integrationAuth.oauthExchange({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        projectId: req.body.workspaceId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.workspaceId,
+        event: {
+          type: EventType.AUTHORIZE_INTEGRATION,
+          metadata: {
+            integration: integrationAuth.integration
+          }
+        }
+      });
+      return { integrationAuth };
+    }
+  });
+
+  server.route({
+    url: "/access-token",
     method: "POST",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
@@ -107,6 +159,17 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         actor: req.permission.type,
         projectId: req.body.workspaceId,
         ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.workspaceId,
+        event: {
+          type: EventType.AUTHORIZE_INTEGRATION,
+          metadata: {
+            integration: integrationAuth.integration
+          }
+        }
       });
       return { integrationAuth };
     }

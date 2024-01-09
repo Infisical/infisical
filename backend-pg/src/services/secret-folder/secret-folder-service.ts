@@ -91,14 +91,16 @@ export const secretFolderServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
+    const parentFolder = await folderDal.findBySecretPath(projectId, environment, path);
+    if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
+
     const env = await projectEnvDal.findOne({ projectId, slug: environment });
     if (!env)
-      throw new BadRequestError({ message: "Environment not found", name: "Create folder" });
+      throw new BadRequestError({ message: "Environment not found", name: "Update folder" });
+    const folder = await folderDal.findOne({ envId: env.id, id, parentId: parentFolder.id });
+    if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
-    const folder = await folderDal.transaction(async (tx) => {
-      const parentFolder = await folderDal.findBySecretPath(projectId, environment, path, tx);
-      if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
-
+    const newFolder = await folderDal.transaction(async (tx) => {
       const [doc] = await folderDal.update(
         { envId: env.id, id, parentId: parentFolder.id },
         { name },
@@ -117,8 +119,8 @@ export const secretFolderServiceFactory = ({
       return doc;
     });
 
-    await snapshotService.performSnapshot(folder.parentId as string);
-    return folder;
+    await snapshotService.performSnapshot(newFolder.parentId as string);
+    return { folder: newFolder, old: folder };
   };
 
   const deleteFolder = async ({

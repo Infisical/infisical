@@ -998,7 +998,7 @@ export const integrationAuthServiceFactory = ({
   };
 
   return {
-listIntegrationAuthByProjectId,
+    listIntegrationAuthByProjectId,
     getIntegrationOptions,
     getIntegrationAuth,
     oauthExchange,

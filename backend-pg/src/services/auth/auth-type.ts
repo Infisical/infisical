@@ -32,7 +32,8 @@ export enum AuthMode {
 export enum ActorType { // would extend to AWS, Azure, ...
   USER = "user", // userIdentity
   SERVICE = "service",
-  IDENTITY = "identity"
+  IDENTITY = "identity",
+  Machine = "machine"
 }
 
 export type AuthModeJwtTokenPayload = {

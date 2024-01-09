@@ -15,3 +15,23 @@ export const pick = <T extends object, TKeys extends keyof T>(
     {} as Pick<T, TKeys>
   );
 };
+
+/**
+ * Removes (shakes out) undefined entries from an
+ * object. Optional second argument shakes out values
+ * by custom evaluation.
+ */
+export const shake = <RemovedKeys extends string, T = {}>(
+  obj: T,
+  filter: (value: any) => boolean = (x) => x === undefined || x === null
+): Omit<T, RemovedKeys> => {
+  if (!obj) return {} as T;
+  const keys = Object.keys(obj) as (keyof T)[];
+  return keys.reduce((acc, key) => {
+    if (filter(obj[key])) {
+      return acc;
+    }
+    acc[key] = obj[key];
+    return acc;
+  }, {} as T);
+};

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { WebhooksSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -9,10 +10,10 @@ export const sanitizedWebhookSchema = WebhooksSchema.omit({
   iv: true,
   tag: true,
   algorithm: true,
-  keyEncoding: true,
+  keyEncoding: true
 }).merge(
   z.object({
-    projectId:z.string(),
+    projectId: z.string(),
     environment: z.object({
       id: z.string(),
       name: z.string(),
@@ -48,6 +49,22 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
         projectId: req.body.workspaceId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.workspaceId,
+        event: {
+          type: EventType.CREATE_WEBHOOK,
+          metadata: {
+            environment: webhook.environment.slug,
+            webhookId: webhook.id,
+            isDisabled: webhook.isDisabled,
+            secretPath: webhook.secretPath,
+            webhookUrl: webhook.url
+          }
+        }
+      });
+
       return { message: "Successfully created webhook", webhook };
     }
   });
@@ -77,6 +94,22 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
         id: req.params.webhookId,
         isDisabled: req.body.isDisabled
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: webhook.projectId,
+        event: {
+          type: EventType.UPDATE_WEBHOOK_STATUS,
+          metadata: {
+            environment: webhook.environment.slug,
+            webhookId: webhook.id,
+            isDisabled: webhook.isDisabled,
+            secretPath: webhook.secretPath,
+            webhookUrl: webhook.url
+          }
+        }
+      });
+
       return { message: "Successfully updated webhook", webhook };
     }
   });
@@ -96,6 +129,22 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         id: req.params.webhookId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: webhook.projectId,
+        event: {
+          type: EventType.DELETE_WEBHOOK,
+          metadata: {
+            environment: webhook.environment.slug,
+            webhookId: webhook.id,
+            isDisabled: webhook.isDisabled,
+            secretPath: webhook.secretPath,
+            webhookUrl: webhook.url
+          }
+        }
+      });
+
       return { message: "Successfully deleted webhook", webhook };
     }
   });

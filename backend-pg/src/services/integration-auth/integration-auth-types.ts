@@ -7,7 +7,7 @@ export type TGetIntegrationAuthDTO = {
 export type TOauthExchangeDTO = {
   integration: string;
   code: string;
-  url: string;
+  url?: string;
 } & TProjectPermission;
 
 export type TSaveIntegrationAccessTokenDTO = {

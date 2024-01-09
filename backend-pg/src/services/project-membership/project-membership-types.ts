@@ -14,3 +14,11 @@ export type TUpdateProjectMembershipDTO = {
 export type TDeleteProjectMembershipDTO = {
   membershipId: string;
 } & TProjectPermission;
+
+export type TAddUsersToWorkspaceDTO = {
+  members: {
+    orgMembershipId: string;
+    workspaceEncryptedKey: string;
+    workspaceEncryptedNonce: string;
+  }[];
+} & TProjectPermission;

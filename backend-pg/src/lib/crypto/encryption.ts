@@ -122,6 +122,8 @@ export const decryptAsymmetric = ({
   return naclUtils.encodeUTF8(plaintext);
 };
 
+export const generateSymmetricKey = (size = 32) => crypto.randomBytes(size).toString("base64");
+
 export const generateAsymmetricKeyPair = () => {
   const pair = nacl.box.keyPair();
 

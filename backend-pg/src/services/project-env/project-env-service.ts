@@ -58,6 +58,9 @@ export const projectEnvServiceFactory = ({
       ProjectPermissionSub.Environments
     );
 
+    const oldEnv = await projectEnvDal.findOne({ id, projectId });
+    if (!oldEnv) throw new BadRequestError({ message: "Environment not found" });
+
     if (slug) {
       const existingEnv = await projectEnvDal.findOne({ slug });
       if (existingEnv && existingEnv.id !== id) {
@@ -68,8 +71,8 @@ export const projectEnvServiceFactory = ({
       }
     }
 
-    const [env] = await projectEnvDal.update({ id, projectId }, { name, slug });
-    return env;
+    const env = await projectEnvDal.updateById(oldEnv.id, { name, slug });
+    return { environment: env, old: oldEnv };
   };
 
   const deleteEnvironment = async ({ projectId, actor, actorId, id }: TDeleteEnvDTO) => {

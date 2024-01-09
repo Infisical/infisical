@@ -1,7 +1,10 @@
 import "fastify";
 
 import { TUsers } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
+import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { TSecretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
@@ -62,6 +65,8 @@ declare module "fastify" {
       isCompleted: string;
       providerAuthToken: string;
     };
+    auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
+    ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
   }
 
   interface FastifyInstance {
@@ -98,6 +103,8 @@ declare module "fastify" {
       secretApprovalRequest: TSecretApprovalRequestServiceFactory;
       secretRotation: TSecretRotationServiceFactory;
       snapshot: TSecretSnapshotServiceFactory;
+      saml: TSamlConfigServiceFactory;
+      auditLog: TAuditLogServiceFactory;
     };
 
     // this is exclusive use for middlewares in which we need to inject data

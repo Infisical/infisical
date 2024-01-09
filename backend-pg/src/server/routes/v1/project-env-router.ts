@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ProjectEnvironmentsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -32,6 +33,18 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: environment.projectId,
+        event: {
+          type: EventType.CREATE_ENVIRONMENT,
+          metadata: {
+            name: environment.name,
+            slug: environment.slug
+          }
+        }
+      });
       return {
         message: "Successfully created new environment",
         workspace: req.params.workspaceId,
@@ -62,13 +75,28 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const environment = await server.services.projectEnv.updateEnvironment({
+      const { environment, old } = await server.services.projectEnv.updateEnvironment({
         actorId: req.permission.id,
         actor: req.permission.type,
         projectId: req.params.workspaceId,
         id: req.params.id,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: environment.projectId,
+        event: {
+          type: EventType.UPDATE_ENVIRONMENT,
+          metadata: {
+            oldName: old.name,
+            oldSlug: old.slug,
+            newName: old.name,
+            newSlug: old.slug
+          }
+        }
+      });
+
       return {
         message: "Successfully updated environment",
         workspace: req.params.workspaceId,
@@ -101,6 +129,19 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         projectId: req.params.workspaceId,
         id: req.params.id
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: environment.projectId,
+        event: {
+          type: EventType.DELETE_ENVIRONMENT,
+          metadata: {
+            slug: environment.slug,
+            name: environment.name
+          }
+        }
+      });
+
       return {
         message: "Successfully deleted environment",
         workspace: req.params.workspaceId,

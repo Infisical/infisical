@@ -132,7 +132,7 @@ export const identityUaServiceFactory = ({
             : identityAccessToken.accessTokenMaxTTL
       }
     );
-    return { accessToken, identityUa };
+    return { accessToken, identityUa, validClientSecretInfo, identityAccessToken };
   };
 
   const attachUa = async ({
@@ -216,7 +216,7 @@ export const identityUaServiceFactory = ({
       );
       return doc;
     });
-    return identityUa;
+    return { ...identityUa, orgId: identityMembershipOrg.orgId };
   };
 
   const updateUa = async ({
@@ -295,7 +295,7 @@ export const identityUaServiceFactory = ({
         ? JSON.stringify(reformattedAccessTokenTrustedIps)
         : undefined
     });
-    return updatedUaAuth;
+    return { ...updatedUaAuth, orgId: identityMembershipOrg.orgId };
   };
 
   const getIdentityUa = async ({ identityId, actorId, actor }: TGetUaDTO) => {
@@ -317,7 +317,7 @@ export const identityUaServiceFactory = ({
       OrgPermissionActions.Read,
       OrgPermissionSubjects.Identity
     );
-    return uaIdentityAuth;
+    return { ...uaIdentityAuth, orgId: identityMembershipOrg.orgId };
   };
 
   const createUaClientSecret = async ({
@@ -375,7 +375,8 @@ export const identityUaServiceFactory = ({
     return {
       clientSecret,
       clientSecretData: identityUaClientSecret,
-      uaAuth: identityUniversalAuth
+      uaAuth: identityUniversalAuth,
+      orgId: identityMembershipOrg.orgId
     };
   };
 
@@ -415,7 +416,7 @@ export const identityUaServiceFactory = ({
       identityUAId: identityUniversalAuth.id,
       isClientSecretRevoked: false
     });
-    return clientSecrets;
+    return { clientSecrets, orgId: identityMembershipOrg.orgId };
   };
 
   const revokeUaClientSecret = async ({
@@ -454,7 +455,7 @@ export const identityUaServiceFactory = ({
     const clientSecret = await identityUaClientSecretDal.updateById(clientSecretId, {
       isClientSecretRevoked: true
     });
-    return clientSecret;
+    return { ...clientSecret, identityId, orgId: identityMembershipOrg.orgId };
   };
 
   return {

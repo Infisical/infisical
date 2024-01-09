@@ -61,7 +61,7 @@ export const secretRotationDalFactory = (db: TDbClient) => {
         childrenMapper: [
           {
             key: "secId",
-            label: "outputs",
+            label: "outputs" as const,
             mapper: ({
               secId,
               outputKey,
@@ -92,7 +92,7 @@ export const secretRotationDalFactory = (db: TDbClient) => {
               }
             })
           }
-        ] as const
+        ]
       });
     } catch (error) {
       throw new DatabaseError({ error, name: "SecretRotationFind" });

@@ -9,6 +9,7 @@ export enum TableName {
   Organization = "organizations",
   OrgMembership = "org_memberships",
   OrgRoles = "org_roles",
+  OrgBot = "org_bots",
   IncidentContact = "incident_contacts",
   UserAction = "user_actions",
   SuperAdmin = "super_admin",
@@ -47,6 +48,8 @@ export enum TableName {
   SarSecretTag = "sa_request_secret_tags",
   SecretRotation = "secret_rotations",
   SecretRotationOutput = "secret_rotation_outputs",
+  SamlConfig = "saml_configs",
+  AuditLog = "audit_logs",
   // junction tables
   JnSecretTag = "secret_tag_junction",
   JnSecretVersionTag = "secret_version_tag_junction"

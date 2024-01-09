@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SecretImportsSchema, SecretsSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -36,6 +37,22 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         actor: req.permission.type,
         ...req.body,
         data: req.body.import
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.CREATE_SECRET_IMPORT,
+          metadata: {
+            secretImportId: secretImport.id,
+            folderId: secretImport.folderId,
+            importFromSecretPath: secretImport.importPath,
+            importFromEnvironment: secretImport.importEnv.slug,
+            importToEnvironment: req.body.environment,
+            importToSecretPath: req.body.path
+          }
+        }
       });
       return { message: "Successfully created secret import", secretImport };
     }
@@ -78,6 +95,22 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         ...req.body,
         data: req.body.import
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.UPDATE_SECRET_IMPORT,
+          metadata: {
+            secretImportId: secretImport.id,
+            folderId: secretImport.folderId,
+            position: secretImport.position,
+            importToEnvironment: req.body.environment,
+            importToSecretPath: req.body.path
+          }
+        }
+      });
+
       return { message: "Successfully updated secret import", secretImport };
     }
   });
@@ -113,6 +146,22 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         id: req.params.secretImportId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.DELETE_SECRET_IMPORT,
+          metadata: {
+            secretImportId: secretImport.id,
+            folderId: secretImport.folderId,
+            importFromEnvironment: secretImport.importEnv.slug,
+            importFromSecretPath: secretImport.importPath,
+            importToEnvironment: req.body.environment,
+            importToSecretPath: req.body.path
+          }
+        }
+      });
       return { message: "Successfully deleted secret import", secretImport };
     }
   });
@@ -145,6 +194,19 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actor: req.permission.type,
         ...req.query
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.query.projectId,
+        event: {
+          type: EventType.GET_SECRET_IMPORTS,
+          metadata: {
+            environment: req.query.environment,
+            folderId: secretImports?.[0]?.folderId,
+            numberOfImports: secretImports.length
+          }
+        }
       });
       return { message: "Successfully fetched secret imports", secretImports };
     }

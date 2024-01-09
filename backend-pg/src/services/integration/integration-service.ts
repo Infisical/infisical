@@ -91,7 +91,7 @@ export const integrationServiceFactory = ({
     });
 
     // TODO(akhilmhdh-pg): audit log
-    return integration;
+    return { integration, integrationAuth };
   };
 
   const updateIntegration = async ({
@@ -150,7 +150,7 @@ export const integrationServiceFactory = ({
     );
 
     const deletedIntegration = await integrationDal.deleteById(id);
-    return deletedIntegration;
+    return { ...integration, ...deletedIntegration };
   };
 
   const listIntegrationByProject = async ({ actor, actorId, projectId }: TProjectPermission) => {
