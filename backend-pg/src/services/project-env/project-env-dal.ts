@@ -26,38 +26,49 @@ export const projectEnvDalFactory = (db: TDbClient) => {
   const findLastEnvPosition = async (projectId: string, tx?: Knex) => {
     const lastPos = await (tx || db)(TableName.Environment)
       .where({ projectId })
-      .max("position")
+      .max({ position: "position" })
       .first();
-    return lastPos?.position || 1;
+    return lastPos?.position || 0;
   };
 
-  const incrementLastPosition = async (
+  const updateAllPosition = async (
     projectId: string,
-    startPos: number,
-    increment = 1,
+    pos: number,
+    targetPos: number,
     tx?: Knex
-  ) =>
-    (tx || db)(TableName.Environment)
-      .where("projectId", projectId)
-      .where("postion", ">=", startPos)
-      .increment("position", increment);
+  ) => {
+    try {
+      if (targetPos === -1) {
+        // this means delete
+        await (tx || db)(TableName.Environment)
+          .where({ projectId })
+          .andWhere("position", ">", pos)
+          .decrement("position", 1);
+        return;
+      }
 
-  const decrementLastPosition = async (
-    projectId: string,
-    startPos: number,
-    decrement = 1,
-    tx?: Knex
-  ) =>
-    (tx || db)(TableName.Environment)
-      .where("projectId", projectId)
-      .where("postion", ">", startPos)
-      .decrement("position", decrement);
+      if (targetPos > pos) {
+        await (tx || db)(TableName.Environment)
+          .where({ projectId })
+          .where("position", "<=", targetPos)
+          .andWhere("position", ">", pos)
+          .decrement("position", 1);
+      } else {
+        await (tx || db)(TableName.Environment)
+          .where({ projectId })
+          .where("position", ">=", targetPos)
+          .andWhere("position", "<", pos)
+          .increment("position", 1);
+      }
+    } catch (error) {
+      throw new DatabaseError({ error, name: "UpdateEnvPos" });
+    }
+  };
 
   return {
     ...projectEnvOrm,
     findBySlugs,
     findLastEnvPosition,
-    decrementLastPosition,
-    incrementLastPosition
+    updateAllPosition
   };
 };

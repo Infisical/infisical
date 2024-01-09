@@ -5,20 +5,20 @@ import {
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
-  TSaRequestSecretsInsert,
-  TSecrets
+  TSaRequestSecretsInsert
 } from "@app/db/schemas";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { groupBy, pick } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TSecretBlindIndexDalFactory } from "@app/services/secret/secret-blind-index-dal";
-import { TSecretDalFactory } from "@app/services/secret/secret-dal";
-import { generateSecretBlindIndexBySalt } from "@app/services/secret/secret-service";
+import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretVersionDalFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretFolderDalFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
+import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
 import { TSarReviewerDalFactory } from "./sar-reviewer-dal";
 import { TSarSecretDalFactory } from "./sar-secret-dal";
 import { TSecretApprovalRequestDalFactory } from "./secret-approval-request-dal";
@@ -38,12 +38,20 @@ import {
 type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretApprovalRequestDal: TSecretApprovalRequestDalFactory;
-  secretDal: TSecretDalFactory;
   sarSecretDal: TSarSecretDalFactory;
   sarReviewerDal: TSarReviewerDalFactory;
-  secretVersionDal: Pick<TSecretVersionDalFactory, "findLatestVersionMany" | "insertMany">;
   folderDal: Pick<TSecretFolderDalFactory, "findBySecretPath">;
   secretBlindIndexDal: Pick<TSecretBlindIndexDalFactory, "findOne">;
+  snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
+  secretVersionDal: Pick<TSecretVersionDalFactory, "findLatestVersionMany">;
+  secretService: Pick<
+    TSecretServiceFactory,
+    | "fnSecretBulkInsert"
+    | "fnSecretBulkUpdate"
+    | "fnSecretBlindIndexCheck"
+    | "fnSecretBulkDelete"
+    | "fnSecretBlindIndexCheckV2"
+  >;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<
@@ -53,12 +61,13 @@ export type TSecretApprovalRequestServiceFactory = ReturnType<
 export const secretApprovalRequestServiceFactory = ({
   secretApprovalRequestDal,
   folderDal,
-  secretDal,
   sarReviewerDal,
   sarSecretDal,
-  secretVersionDal,
   secretBlindIndexDal,
-  permissionService
+  permissionService,
+  snapshotService,
+  secretService,
+  secretVersionDal
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({ projectId, actor, actorId }: TApprovalRequestCountDTO) => {
     const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId);
@@ -194,11 +203,11 @@ export const secretApprovalRequestServiceFactory = ({
       throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
-    const { policy, folderId } = secretApprovalRequest;
+    const { policy, folderId, projectId } = secretApprovalRequest;
     const { membership } = await permissionService.getProjectPermission(
       ActorType.USER,
       actorId,
-      secretApprovalRequest.projectId
+      projectId
     );
     if (
       membership.role !== ProjectMembershipRole.Admin &&
@@ -225,17 +234,11 @@ export const secretApprovalRequestServiceFactory = ({
     const conflicts: Array<{ secretId: string; op: CommitType }> = [];
     let secretCreationCommits = secretApprovalSecrets.filter(({ op }) => op === CommitType.Create);
     if (secretCreationCommits.length) {
-      const conflictedSecrets = await secretDal.findByBlindIndexes(
-        folderId,
-        secretCreationCommits.map(({ secretBlindIndex }) => ({
-          type: SecretType.Shared,
-          blindIndex: secretBlindIndex
-        }))
-      );
-      const conflictGroupByBlindIndex = conflictedSecrets.reduce<Record<string, boolean>>(
-        (prev, curr) => ({ ...prev, [curr.secretBlindIndex || ""]: true }),
-        {}
-      );
+      const { secsGroupedByBlindIndex: conflictGroupByBlindIndex } =
+        await secretService.fnSecretBlindIndexCheckV2({
+          folderId,
+          inputSecrets: secretCreationCommits.map(({ secretBlindIndex }) => ({ secretBlindIndex }))
+        });
       secretCreationCommits
         .filter(({ secretBlindIndex }) => conflictGroupByBlindIndex[secretBlindIndex || ""])
         .forEach((el) => {
@@ -248,22 +251,16 @@ export const secretApprovalRequestServiceFactory = ({
 
     let secretUpdationCommits = secretApprovalSecrets.filter(({ op }) => op === CommitType.Update);
     if (secretUpdationCommits.length) {
-      const conflictedByNewBlindIndex = await secretDal.findByBlindIndexes(
-        folderId,
-        secretUpdationCommits
-          .filter(
-            ({ secretBlindIndex, secret }) => secret && secret.secretBlindIndex !== secretBlindIndex
-          )
-          .map(({ secretBlindIndex }) => ({
-            type: SecretType.Shared,
-            blindIndex: secretBlindIndex
-          }))
-      );
-      const conflictGroupByBlindIndex = conflictedByNewBlindIndex.reduce<Record<string, boolean>>(
-        (prev, curr) =>
-          curr?.secretBlindIndex ? { ...prev, [curr.secretBlindIndex]: true } : prev,
-        {}
-      );
+      const { secsGroupedByBlindIndex: conflictGroupByBlindIndex } =
+        await secretService.fnSecretBlindIndexCheckV2({
+          folderId,
+          inputSecrets: secretUpdationCommits
+            .filter(
+              ({ secretBlindIndex, secret }) =>
+                secret && secret.secretBlindIndex !== secretBlindIndex
+            )
+            .map(({ secretBlindIndex }) => ({ secretBlindIndex }))
+        });
       secretUpdationCommits
         .filter(
           ({ secretBlindIndex, secretId }) =>
@@ -284,122 +281,78 @@ export const secretApprovalRequestServiceFactory = ({
       ({ op }) => op === CommitType.Delete
     );
 
-    const mergeStatus = await secretDal.transaction(async (tx) => {
+    const mergeStatus = await secretApprovalRequestDal.transaction(async (tx) => {
       const newSecrets = secretCreationCommits.length
-        ? await secretDal.insertMany(
-            secretCreationCommits.map(
-              ({
-                secretBlindIndex,
-                metadata,
-                secretKeyIV,
-                secretKeyTag,
-                secretKeyCiphertext,
-                secretValueIV,
-                secretValueTag,
-                secretValueCiphertext,
-                secretCommentIV,
-                secretCommentTag,
-                secretCommentCiphertext,
-                skipMultilineEncoding,
-                secretReminderNote,
-                secretReminderRepeatDays
-              }) => ({
-                secretBlindIndex,
-                metadata,
-                secretKeyIV,
-                secretKeyTag,
-                secretKeyCiphertext,
-                secretValueIV,
-                secretValueTag,
-                secretValueCiphertext,
-                secretCommentIV,
-                secretCommentTag,
-                secretCommentCiphertext,
-                skipMultilineEncoding,
-                secretReminderNote,
-                secretReminderRepeatDays,
-                version: 1,
-                folderId,
-                type: SecretType.Shared,
-                algorithm: SecretEncryptionAlgo.AES_256_GCM,
-                keyEncoding: SecretKeyEncoding.UTF8
-              })
-            ),
-            tx
-          )
+        ? await secretService.fnSecretBulkInsert({
+            tx,
+            folderId,
+            inputSecrets: secretCreationCommits.map((el) => ({
+              ...pick(el, [
+                "secretCommentCiphertext",
+                "secretCommentTag",
+                "secretCommentIV",
+                "secretValueIV",
+                "secretValueTag",
+                "secretValueCiphertext",
+                "secretKeyCiphertext",
+                "secretKeyTag",
+                "secretKeyIV",
+                "metadata",
+                "skipMultilineEncoding",
+                "secretReminderNote",
+                "secretReminderRepeatDays",
+                "version",
+                "algorithm",
+                "keyEncoding",
+                "secretBlindIndex"
+              ]),
+              type: SecretType.Shared
+            }))
+          })
         : [];
       const updatedSecrets = secretUpdationCommits.length
-        ? await secretDal.bulkUpdate(
-            secretUpdationCommits.map(
-              ({
-                version,
-                secretId,
-                secretBlindIndex,
-                metadata,
-                secretKeyIV,
-                secretKeyTag,
-                secretKeyCiphertext,
-                secretValueIV,
-                secretValueTag,
-                secretValueCiphertext,
-                secretCommentIV,
-                secretCommentTag,
-                secretCommentCiphertext,
-                skipMultilineEncoding,
-                secretReminderNote,
-                secretReminderRepeatDays
-              }) => ({
-                folderId,
-                version: (version || 0) + 1,
-                id: secretId as string,
-                type: SecretType.Shared,
-                secretBlindIndex,
-                metadata,
-                secretKeyIV,
-                secretKeyTag,
-                secretKeyCiphertext,
-                secretValueIV,
-                secretValueTag,
-                secretValueCiphertext,
-                secretCommentIV,
-                secretCommentTag,
-                secretCommentCiphertext,
-                skipMultilineEncoding,
-                secretReminderNote,
-                secretReminderRepeatDays
-              })
-            ),
-            tx
-          )
+        ? await secretService.fnSecretBulkUpdate({
+            folderId,
+            projectId,
+            tx,
+            inputSecrets: secretUpdationCommits.map((el) => ({
+              ...pick(el, [
+                "secretCommentCiphertext",
+                "secretCommentTag",
+                "secretCommentIV",
+                "secretValueIV",
+                "secretValueTag",
+                "secretValueCiphertext",
+                "secretKeyCiphertext",
+                "secretKeyTag",
+                "secretKeyIV",
+                "metadata",
+                "skipMultilineEncoding",
+                "secretReminderNote",
+                "secretReminderRepeatDays",
+                "version",
+                "algorithm",
+                "keyEncoding",
+                "secretBlindIndex"
+              ]),
+              version: (el.secret?.version || 0) + 1,
+              id: el.secretId,
+              type: SecretType.Shared
+            }))
+          })
         : [];
       const deletedSecret = secretDeletionCommits.length
-        ? await secretDal.deleteMany(
-            secretDeletionCommits.map(({ secretBlindIndex }) => ({
-              blindIndex: secretBlindIndex,
-              type: SecretType.Shared
-            })),
+        ? await secretService.fnSecretBulkDelete({
+            projectId,
             folderId,
-            actorId,
-            tx
-          )
-        : [];
-      if (newSecrets.length || updatedSecrets.length) {
-        await secretVersionDal.insertMany(
-          newSecrets
-            .map(({ id, updatedAt, createdAt, ...el }) => ({
-              ...el,
-              secretId: id
+            tx,
+            actorId: "",
+            inputSecrets: secretDeletionCommits.map(({ secretBlindIndex }) => ({
+              secretBlindIndex,
+              type: SecretType.Shared
             }))
-            .concat(
-              updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => ({
-                ...el,
-                secretId: id
-              }))
-            ),
-          tx
-        );
-      }
-
+          })
+        : [];
       const updatedSecretApproval = await secretApprovalRequestDal.updateById(
         secretApprovalRequest.id,
         {
@@ -415,6 +368,7 @@ export const secretApprovalRequestServiceFactory = ({
         approval: updatedSecretApproval
       };
     });
+    await snapshotService.performSnapshot(folderId);
     return mergeStatus;
   };
 
@@ -444,42 +398,27 @@ export const secretApprovalRequestServiceFactory = ({
       throw new BadRequestError({ message: "Folder not  found", name: "GenSecretApproval" });
     const folderId = folder.id;
 
-    const blindIndexDoc = await secretBlindIndexDal.findOne({ projectId });
-    if (!blindIndexDoc)
+    const blindIndexCfg = await secretBlindIndexDal.findOne({ projectId });
+    if (!blindIndexCfg)
       throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
 
     const commits: Omit<TSaRequestSecretsInsert, "requestId">[] = [];
     // for created secret approval change
     const createdSecrets = data[CommitType.Create];
     if (createdSecrets && createdSecrets?.length) {
-      const secretBlindIndexToKey: Record<string, string> = {}; // used at audit log point
-      const secretBlindIndexes = await Promise.all(
-        createdSecrets.map(({ secretName }) =>
-          generateSecretBlindIndexBySalt(secretName, blindIndexDoc)
-        )
-      ).then((blindIndexes) =>
-        blindIndexes.reduce<Record<string, string>>((prev, curr, i) => {
-          // eslint-disable-next-line
-          prev[createdSecrets[i].secretName] = curr;
-          secretBlindIndexToKey[curr] = createdSecrets[i].secretName;
-          return prev;
-        }, {})
-      );
-
-      const exists = await secretDal.findByBlindIndexes(
+      const { keyName2BlindIndex } = await secretService.fnSecretBlindIndexCheck({
+        inputSecrets: createdSecrets,
         folderId,
-        createdSecrets.map(({ secretName }) => ({
-          blindIndex: secretBlindIndexes[secretName],
-          type: SecretType.Shared
-        }))
-      );
-      if (exists.length) throw new BadRequestError({ message: "Secret already exist" });
+        isNew: true,
+        blindIndexCfg
+      });
+
       commits.push(
-        ...createdSecrets.map((el) => ({
+        ...createdSecrets.map(({ secretName, ...el }) => ({
           ...el,
           op: CommitType.Create as const,
           version: 0,
-          secretBlindIndex: secretBlindIndexes[el.secretName],
+          secretBlindIndex: keyName2BlindIndex[secretName],
           algorithm: SecretEncryptionAlgo.AES_256_GCM,
           keyEncoding: SecretKeyEncoding.BASE64
         }))
@@ -491,83 +430,49 @@ export const secretApprovalRequestServiceFactory = ({
       // get all blind index
       // Find all those secrets
       // if not throw not found
-      const secretBlindIndexToKey: Record<string, string> = {}; // used at audit log point
-      const secretBlindIndexes = await Promise.all(
-        updatedSecrets.map(({ secretName }) =>
-          generateSecretBlindIndexBySalt(secretName, blindIndexDoc)
-        )
-      ).then((blindIndexes) =>
-        blindIndexes.reduce<Record<string, string>>((prev, curr, i) => {
-          // eslint-disable-next-line
-          prev[updatedSecrets[i].secretName] = curr;
-          secretBlindIndexToKey[curr] = updatedSecrets[i].secretName;
-          return prev;
-        }, {})
-      );
-
-      const secretsToBeUpdated = await secretDal.findByBlindIndexes(
-        folderId,
-        updatedSecrets.map(({ secretName }) => ({
-          blindIndex: secretBlindIndexes[secretName],
-          type: SecretType.Shared
-        }))
-      );
-      if (secretsToBeUpdated.length !== updatedSecrets.length)
-        throw new BadRequestError({ message: "Secret not found" });
+      const { keyName2BlindIndex, secrets: secretsToBeUpdated } =
+        await secretService.fnSecretBlindIndexCheck({
+          inputSecrets: updatedSecrets,
+          folderId,
+          isNew: false,
+          blindIndexCfg
+        });
 
       // now find any secret that needs to update its name
       // same process as above
       const nameUpdatedSecrets = updatedSecrets.filter(({ newSecretName }) =>
         Boolean(newSecretName)
       );
-      const newSecretBlindIndexes = await Promise.all(
-        nameUpdatedSecrets.map(({ newSecretName }) =>
-          generateSecretBlindIndexBySalt(newSecretName as string, blindIndexDoc)
-        )
-      ).then((blindIndexes) =>
-        blindIndexes.reduce<Record<string, string>>((prev, curr, i) => {
-          // eslint-disable-next-line
-          prev[nameUpdatedSecrets[i].secretName] = curr;
-          return prev;
-        }, {})
-      );
-      const secretsWithNewName = await secretDal.findByBlindIndexes(
-        folderId,
-        nameUpdatedSecrets.map(({ newSecretName }) => ({
-          blindIndex: newSecretBlindIndexes[newSecretName as string],
-          type: SecretType.Shared
-        }))
-      );
-      if (secretsWithNewName.length)
-        throw new BadRequestError({ message: "Secret with new name already exist" });
+      const { keyName2BlindIndex: newKeyName2BlindIndex } =
+        await secretService.fnSecretBlindIndexCheck({
+          inputSecrets: nameUpdatedSecrets,
+          folderId,
+          isNew: true,
+          blindIndexCfg
+        });
 
-      const secretsGroupedByBlindIndex = secretsToBeUpdated.reduce<Record<string, TSecrets>>(
-        (prev, curr) => {
-          // eslint-disable-next-line
-          if (curr.secretBlindIndex) prev[curr.secretBlindIndex] = curr;
-          return prev;
-        },
-        {}
-      );
+      const secsGroupedByBlindIndex = groupBy(secretsToBeUpdated, (el) => el.secretBlindIndex);
       const updatedSecretIds = updatedSecrets.map(
-        (el) => secretsGroupedByBlindIndex[secretBlindIndexes[el.secretName]].id
+        (el) => secsGroupedByBlindIndex[keyName2BlindIndex[el.secretName]][0].id
       );
       const latestSecretVersions = await secretVersionDal.findLatestVersionMany(
         folderId,
         updatedSecretIds
       );
       commits.push(
-        ...updatedSecrets.map((el) => {
-          const secretId = secretsGroupedByBlindIndex[secretBlindIndexes[el.secretName]].id;
+        ...updatedSecrets.map(({ newSecretName, secretName, ...el }) => {
+          const secretId = secsGroupedByBlindIndex[keyName2BlindIndex[secretName]][0].id;
           return {
             ...latestSecretVersions[secretId],
+            ...el,
             op: CommitType.Update as const,
             secret: secretId,
             secretVersion: latestSecretVersions[secretId].id,
-            ...el,
             secretBlindIndex:
-              newSecretBlindIndexes?.[el.secretName] || secretBlindIndexes[el.secretName],
-            version: secretsGroupedByBlindIndex[secretBlindIndexes[el.secretName]].version || 1
+              newSecretName && newKeyName2BlindIndex[newSecretName]
+                ? newKeyName2BlindIndex?.[secretName]
+                : keyName2BlindIndex[secretName],
+            version: secsGroupedByBlindIndex[keyName2BlindIndex[secretName]][0].version || 1
           };
         })
       );
@@ -578,39 +483,15 @@ export const secretApprovalRequestServiceFactory = ({
       // get all blind index
       // Find all those secrets
       // if not throw not found
-      const secretBlindIndexToKey: Record<string, string> = {}; // used at audit log point
-      const secretBlindIndexes = await Promise.all(
-        deletedSecrets.map(({ secretName }) =>
-          generateSecretBlindIndexBySalt(secretName, blindIndexDoc)
-        )
-      ).then((blindIndexes) =>
-        blindIndexes.reduce<Record<string, string>>((prev, curr, i) => {
-          // eslint-disable-next-line
-          prev[deletedSecrets[i].secretName] = curr;
-          secretBlindIndexToKey[curr] = deletedSecrets[i].secretName;
-          return prev;
-        }, {})
-      );
-      // not find those secrets. if any of them not found throw an not found error
-      const secretsToBeDeleted = await secretDal.findByBlindIndexes(
+      const { keyName2BlindIndex, secrets } = await secretService.fnSecretBlindIndexCheck({
+        inputSecrets: deletedSecrets,
         folderId,
-        deletedSecrets.map(({ secretName }) => ({
-          blindIndex: secretBlindIndexes[secretName],
-          type: SecretType.Shared
-        }))
-      );
-      if (secretsToBeDeleted.length !== deletedSecrets.length)
-        throw new BadRequestError({ message: "Secret not found" });
-      const secretsGroupedByBlindIndex = secretsToBeDeleted.reduce<Record<string, TSecrets>>(
-        (prev, curr) => {
-          // eslint-disable-next-line
-          if (curr.secretBlindIndex) prev[curr.secretBlindIndex] = curr;
-          return prev;
-        },
-        {}
-      );
+        isNew: false,
+        blindIndexCfg
+      });
+      const secretsGroupedByBlindIndex = groupBy(secrets, (i) => i.secretBlindIndex);
       const deletedSecretIds = deletedSecrets.map(
-        (el) => secretsGroupedByBlindIndex[secretBlindIndexes[el.secretName]].id
+        (el) => secretsGroupedByBlindIndex[keyName2BlindIndex[el.secretName]][0].id
       );
       const latestSecretVersions = await secretVersionDal.findLatestVersionMany(
         folderId,
@@ -618,7 +499,7 @@ export const secretApprovalRequestServiceFactory = ({
       );
       commits.push(
         ...deletedSecrets.map((el) => {
-          const secretId = secretsGroupedByBlindIndex[secretBlindIndexes[el.secretName]].id;
+          const secretId = secretsGroupedByBlindIndex[keyName2BlindIndex[el.secretName]][0].id;
           return {
             op: CommitType.Delete as const,
             ...latestSecretVersions[secretId],

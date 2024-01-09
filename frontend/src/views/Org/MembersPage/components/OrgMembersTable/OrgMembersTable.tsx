@@ -349,8 +349,8 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
               {isLoading && <TableSkeleton columns={5} innerKey="org-members" />}
               {!isLoading &&
                 filterdUser?.map(
-                  ({ user: u, inviteEmail, role, customRole, id: orgMembershipId, status }) => {
-                    const name = u ? `${u.firstName} ${u.lastName}` : "-";
+                  ({ user: u, inviteEmail, role, roleId, id: orgMembershipId, status }) => {
+                    const name = u ? `${u.firstName || "-"} ${u.lastName || ""}` : "-";
                     const email = u?.email || inviteEmail;
                     const userWs = workspaceMemberships?.[u?.id];
 
@@ -368,7 +368,7 @@ export const OrgMembersTable = ({ roles = [], isRolesLoading }: Props) => {
                                 {status === "accepted" && (
                                   <Select
                                     defaultValue={
-                                      role === "custom" ? findRoleFromId(customRole)?.slug : role
+                                      role === "custom" ? findRoleFromId(roleId)?.slug : role
                                     }
                                     isDisabled={userId === u?.id || !isAllowed}
                                     className="w-40 bg-mineshaft-600"

@@ -158,6 +158,7 @@ export const MemberListTab = () => {
     () => members?.find(({ user: u }) => userId === u?.id)?.role === "owner",
     [userId, members]
   );
+  console.log(members);
 
   const findRoleFromId = useCallback(
     (roleId: string) => {
@@ -290,7 +291,7 @@ export const MemberListTab = () => {
               {isLoading && <TableSkeleton columns={4} innerKey="project-members" />}
               {!isLoading &&
                 filterdUsers?.map(
-                  ({ user: u, inviteEmail, id: membershipId, status, customRole, role }) => {
+                  ({ user: u, inviteEmail, id: membershipId, status, roleId, role }) => {
                     const name = u ? `${u.firstName} ${u.lastName}` : "-";
                     const email = u?.email || inviteEmail;
 
@@ -306,9 +307,7 @@ export const MemberListTab = () => {
                             {(isAllowed) => (
                               <>
                                 <Select
-                                  value={
-                                    role === "custom" ? findRoleFromId(customRole)?.slug : role
-                                  }
+                                  value={role === "custom" ? findRoleFromId(roleId)?.slug : role}
                                   isDisabled={userId === u?.id || !isAllowed}
                                   className="w-40 bg-mineshaft-600"
                                   dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"

@@ -16,7 +16,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { useReorderWsEnvironment } from "@app/hooks/api";
+import { useUpdateWsEnvironment } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -37,32 +37,16 @@ type Props = {
 export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace, isLoading } = useWorkspace();
   const { createNotification } = useNotificationContext();
-  const reorderWsEnvironment = useReorderWsEnvironment();
+  const updateEnvironment = useUpdateWsEnvironment();
 
-  const handleReorderEnv = async (shouldMoveUp: boolean, name: string, slug: string) => {
+  const handleReorderEnv = async (id: string, position: number) => {
     try {
       if (!currentWorkspace?.id) return;
 
-      const indexOfEnv = currentWorkspace.environments.findIndex(
-        (env) => env.name === name && env.slug === slug
-      );
-
-      // check that this reordering is possible
-      if (
-        (indexOfEnv === 0 && shouldMoveUp) ||
-        (indexOfEnv === currentWorkspace.environments.length - 1 && !shouldMoveUp)
-      ) {
-        return;
-      }
-
-      const indexToSwap = shouldMoveUp ? indexOfEnv - 1 : indexOfEnv + 1;
-
-      await reorderWsEnvironment.mutateAsync({
+      await updateEnvironment.mutateAsync({
         workspaceId: currentWorkspace.id,
-        environmentSlug: slug,
-        environmentName: name,
-        otherEnvironmentSlug: currentWorkspace.environments[indexToSwap].slug,
-        otherEnvironmentName: currentWorkspace.environments[indexToSwap].name
+        id,
+        position
       });
 
       createNotification({
@@ -104,9 +88,12 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                     {(isAllowed) => (
                       <IconButton
                         className="mr-3 py-2"
-                        onClick={() => {
-                          handleReorderEnv(false, name, slug);
-                        }}
+                        onClick={() =>
+                          handleReorderEnv(
+                            id,
+                            Math.min(currentWorkspace.environments.length, pos + 2)
+                          )
+                        }
                         colorSchema="primary"
                         variant="plain"
                         ariaLabel="update"
@@ -123,9 +110,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                     {(isAllowed) => (
                       <IconButton
                         className="mr-3 py-2"
-                        onClick={() => {
-                          handleReorderEnv(true, name, slug);
-                        }}
+                        onClick={() => handleReorderEnv(id, Math.max(1, pos))}
                         colorSchema="primary"
                         variant="plain"
                         ariaLabel="update"

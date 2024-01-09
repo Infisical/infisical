@@ -9,6 +9,7 @@ export type TUpdateEnvDTO = {
   id: string;
   name?: string;
   slug?: string;
+  position?: number;
 } & TProjectPermission;
 
 export type TDeleteEnvDTO = {

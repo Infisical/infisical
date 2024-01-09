@@ -253,6 +253,7 @@ export const orgServiceFactory = ({
       await orgDal.createMembership({
         inviteEmail: inviteeEmail,
         orgId,
+        userId: user.id,
         role: OrgMembershipRole.Member,
         status: OrgMembershipStatus.Invited
       });

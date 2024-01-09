@@ -1,9 +1,16 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { SecretType, TableName, TSecrets, TSecretsInsert, TSecretsUpdate } from "@app/db/schemas";
+import {
+  SecretsSchema,
+  SecretType,
+  TableName,
+  TSecrets,
+  TSecretsInsert,
+  TSecretsUpdate
+} from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
-import { mergeOneToManyRelation, ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 export type TSecretDalFactory = ReturnType<typeof secretDalFactory>;
 
@@ -90,19 +97,23 @@ export const secretDalFactory = (db: TDbClient) => {
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
         .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"));
-      const formatedSecs = mergeOneToManyRelation(
-        secs,
-        "id",
-        ({ tagColor, tagId, tagName, tagSlug, ...data }) => data,
-        ({ tagSlug: slug, tagName: name, tagId: id, tagColor: color }) => ({
-          id,
-          slug,
-          name,
-          color
-        }),
-        "tags"
-      );
-      return formatedSecs;
+      return sqlNestRelationships({
+        data: secs,
+        key: "id",
+        parentMapper: (el) => SecretsSchema.parse(el),
+        childrenMapper: [
+          {
+            key: "tagId",
+            label: "tags" as const,
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug, tagName: name }) => ({
+              id,
+              color,
+              slug,
+              name
+            })
+          }
+        ]
+      });
     } catch (error) {
       throw new DatabaseError({ error, name: "get all secret" });
     }

@@ -63,7 +63,8 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         slug: z.string().trim().optional(),
-        name: z.string().trim().optional()
+        name: z.string().trim().optional(),
+        position: z.number().optional()
       }),
       response: {
         200: z.object({
@@ -91,8 +92,10 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
           metadata: {
             oldName: old.name,
             oldSlug: old.slug,
-            newName: old.name,
-            newSlug: old.slug
+            oldPos: old.position,
+            newName: environment.name,
+            newSlug: environment.slug,
+            newPos: environment.position
           }
         }
       });

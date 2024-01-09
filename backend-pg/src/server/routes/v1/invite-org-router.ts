@@ -52,7 +52,6 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { user, token } = await server.services.org.verifyUserToOrg({
         orgId: req.body.organizationId,

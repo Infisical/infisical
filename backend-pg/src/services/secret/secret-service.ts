@@ -29,6 +29,7 @@ import {
   TDeleteBulkSecretDTO,
   TDeleteSecretDTO,
   TFnSecretBlindIndexCheck,
+  TFnSecretBlindIndexCheckV2,
   TFnSecretBulkDelete,
   TFnSecretBulkInsert,
   TFnSecretBulkUpdate,
@@ -109,8 +110,8 @@ export const secretServiceFactory = ({
     const newSecretGroupByBlindIndex = groupBy(newSecrets, (item) => item.secretBlindIndex);
     const newSecretTags = inputSecrets.flatMap(({ tags: secretTags = [], secretBlindIndex }) =>
       secretTags.map((tag) => ({
-        [`${TableName.SecretTag}Id`]: tag,
-        [`${TableName.Secret}Id`]: newSecretGroupByBlindIndex[secretBlindIndex][0].id
+        [`${TableName.SecretTag}Id` as const]: tag,
+        [`${TableName.Secret}Id` as const]: newSecretGroupByBlindIndex[secretBlindIndex][0].id
       }))
     );
     if (newSecretTags.length) {
@@ -147,8 +148,8 @@ export const secretServiceFactory = ({
       );
       const newSecretTags = secsUpdatedTag.flatMap(({ tags: secretTags = [], id }) =>
         secretTags.map((tag) => ({
-          [`${TableName.SecretTag}Id`]: tag,
-          [`${TableName.Secret}Id`]: id
+          [`${TableName.SecretTag}Id` as const]: tag,
+          [`${TableName.Secret}Id` as const]: id
         }))
       );
       await secretTagDal.saveTagsToSecret(newSecretTags, tx);
@@ -227,6 +228,29 @@ export const secretServiceFactory = ({
       throw new BadRequestError({ message: "Secret not found" });
 
     return { blindIndex2KeyName, keyName2BlindIndex, secrets };
+  };
+
+  // this is used when secret blind index already exist
+  // mainly for secret approval
+  const fnSecretBlindIndexCheckV2 = async ({
+    inputSecrets,
+    folderId,
+    userId
+  }: TFnSecretBlindIndexCheckV2) => {
+    if (inputSecrets.some(({ type }) => type === SecretType.Personal) && !userId) {
+      throw new BadRequestError({ message: "Missing user id for personal secret" });
+    }
+    const secrets = await secretDal.findByBlindIndexes(
+      folderId,
+      inputSecrets.map(({ secretBlindIndex, type }) => ({
+        blindIndex: secretBlindIndex,
+        type: type || SecretType.Shared
+      })),
+      userId
+    );
+    const secsGroupedByBlindIndex = groupBy(secrets, (i) => i.secretBlindIndex);
+
+    return { secsGroupedByBlindIndex, secrets };
   };
 
   const createSecret = async ({
@@ -540,7 +564,7 @@ export const secretServiceFactory = ({
       fnSecretBulkInsert({
         inputSecrets: inputSecrets.map(({ secretName, ...el }) => ({
           ...el,
-          version:0,
+          version: 0,
           secretBlindIndex: keyName2BlindIndex[secretName],
           type: SecretType.Shared,
           algorithm: SecretEncryptionAlgo.AES_256_GCM,
@@ -717,6 +741,7 @@ export const secretServiceFactory = ({
     fnSecretBulkDelete,
     fnSecretBulkUpdate,
     fnSecretBlindIndexCheck,
-    fnSecretBulkInsert
+    fnSecretBulkInsert,
+    fnSecretBlindIndexCheckV2
   };
 };

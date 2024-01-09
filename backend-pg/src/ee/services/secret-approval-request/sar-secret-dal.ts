@@ -88,6 +88,7 @@ export const sarSecretDalFactory = (db: TDbClient) => {
           secret: el.secretId
             ? {
                 id: el.secretId,
+                version: orgSecVersion,
                 secretBlindIndex: orgSecBlindIndex,
                 secretKeyIV: orgSecKeyIV,
                 secretKeyTag: orgSecKeyTag,

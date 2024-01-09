@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { SecretApprovalRequestsSchema, SecretsSchema, SecretType } from "@app/db/schemas";
+import {
+  SecretApprovalRequestsSchema,
+  SecretsSchema,
+  SecretTagsSchema,
+  SecretType
+} from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CommitType } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -22,7 +27,18 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
+          secrets: SecretsSchema.omit({ secretBlindIndex: true })
+            .merge(
+              z.object({
+                tags: SecretTagsSchema.pick({
+                  id: true,
+                  slug: true,
+                  name: true,
+                  color: true
+                }).array()
+              })
+            )
+            .array()
         })
       }
     },

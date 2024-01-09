@@ -49,7 +49,7 @@ export type OrgUser = {
   role: "owner" | "admin" | "member" | "no-access" | "custom";
   status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];
-  customRole: string;
+  roleId: string;
 };
 
 export type TWorkspaceUser = OrgUser;

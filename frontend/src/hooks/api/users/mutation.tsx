@@ -35,7 +35,7 @@ export const useAddUserToWs = () => {
           workspaceEncryptedNonce: inviteeNonce
         };
       });
-      const { data } = await apiRequest.post(`/api/v2/workspace/${workspaceId}/memberships`, {
+      const { data } = await apiRequest.post(`/api/v1/workspace/${workspaceId}/memberships`, {
         members: newWsMembers
       });
       return data;

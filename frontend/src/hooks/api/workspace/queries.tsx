@@ -14,7 +14,6 @@ import {
   DeleteWorkspaceDTO,
   NameWorkspaceSecretsDTO,
   RenameWorkspaceDTO,
-  ReorderEnvironmentsDTO,
   ToggleAutoCapitalizationDTO,
   UpdateEnvironmentDTO,
   Workspace
@@ -29,8 +28,9 @@ export const workspaceKeys = {
   getWorkspaceAuthorization: (workspaceId: string) => [{ workspaceId }, "workspace-authorizations"],
   getWorkspaceIntegrations: (workspaceId: string) => [{ workspaceId }, "workspace-integrations"],
   getAllUserWorkspace: ["workspaces"] as const,
-  getWorkspaceAuditLogs: (workspaceId: string) => [{ workspaceId }] as const,
-  getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }] as const,
+  getWorkspaceAuditLogs: (workspaceId: string) =>
+    [{ workspaceId }, "workspace-audit-logs"] as const,
+  getWorkspaceUsers: (workspaceId: string) => [{ workspaceId }, "workspace-users"] as const,
   getWorkspaceIdentityMemberships: (workspaceId: string) =>
     [{ workspaceId }, "workspace-identity-memberships"] as const
 };
@@ -234,38 +234,15 @@ export const useCreateWsEnvironment = () => {
   });
 };
 
-export const useReorderWsEnvironment = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<{}, {}, ReorderEnvironmentsDTO>({
-    mutationFn: ({
-      workspaceId,
-      environmentSlug,
-      environmentName,
-      otherEnvironmentSlug,
-      otherEnvironmentName
-    }) => {
-      return apiRequest.patch(`/api/v1/workspace/${workspaceId}/environments`, {
-        environmentSlug,
-        environmentName,
-        otherEnvironmentSlug,
-        otherEnvironmentName
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
-    }
-  });
-};
-
 export const useUpdateWsEnvironment = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, UpdateEnvironmentDTO>({
-    mutationFn: ({ workspaceId, id, name, slug }) => {
+    mutationFn: ({ workspaceId, id, name, slug, position }) => {
       return apiRequest.patch(`/api/v1/workspace/${workspaceId}/environments/${id}`, {
         name,
-        slug
+        slug,
+        position
       });
     },
     onSuccess: () => {
@@ -335,7 +312,7 @@ export const useDeleteUserFromWorkspace = () => {
     }) => {
       const {
         data: { deletedMembership }
-      } = await apiRequest.delete(`/api/v1/${workspaceId}/membership/${membershipId}`);
+      } = await apiRequest.delete(`/api/v1/workspace/${workspaceId}/memberships/${membershipId}`);
       return deletedMembership;
     },
     onSuccess: (_, { workspaceId }) => {
@@ -358,13 +335,16 @@ export const useUpdateUserWorkspaceRole = () => {
     }) => {
       const {
         data: { membership }
-      } = await apiRequest.post(`/api/v1/${workspaceId}/membership/${membershipId}`, {
-        role
-      });
+      } = await apiRequest.patch<{ membership: { projectId: string } }>(
+        `/api/v1/workspace/${workspaceId}/memberships/${membershipId}`,
+        {
+          role
+        }
+      );
       return membership;
     },
     onSuccess: (res) => {
-      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(res.workspace));
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceUsers(res.projectId));
     }
   });
 };

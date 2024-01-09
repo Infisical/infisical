@@ -30,6 +30,7 @@ export const DeleteProjectSection = () => {
     try {
       if (!currentWorkspace?.id) return;
 
+      const orgId = currentOrg?.id;
       await deleteWorkspace.mutateAsync({
         workspaceID: currentWorkspace?.id
       });
@@ -39,7 +40,7 @@ export const DeleteProjectSection = () => {
         type: "success"
       });
 
-      router.push(`/org/${currentOrg?.id}/overview`);
+      router.push(`/org/${orgId}/overview`);
       handlePopUpClose("deleteWorkspace");
     } catch (err) {
       console.error(err);

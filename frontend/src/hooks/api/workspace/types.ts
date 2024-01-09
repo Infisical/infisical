@@ -53,6 +53,7 @@ export type UpdateEnvironmentDTO = {
   id: string;
   name?: string;
   slug?: string;
+  position?: number;
 };
 
 export type DeleteEnvironmentDTO = { workspaceId: string; id: string };

@@ -54,7 +54,7 @@ export default function SignupInvite() {
   const router = useRouter();
   const parsedUrl = queryString.parse(router.asPath.split("?")[1]);
   const token = parsedUrl.token as string;
-  const organizationId = parsedUrl.organizationid as string;
+  const organizationId = parsedUrl.organization_id as string;
   const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
 
   // Verifies if the information that the users entered (name, workspace) is there, and if the password matched the criteria.

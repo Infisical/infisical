@@ -57,7 +57,6 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
   const orgId = currentOrg?.id || "";
 
   const { data: roles, isLoading: isRolesLoading } = useGetOrgRoles(orgId);
-  console.log(roles);
 
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
 
@@ -172,7 +171,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
             {isLoading && <TableSkeleton columns={5} innerKey="org-members" />}
             {!isLoading &&
               filterdUser?.map(
-                ({ user: u, inviteEmail, role, customRole, id: orgMembershipId, status }) => {
+                ({ user: u, inviteEmail, role, roleId, id: orgMembershipId, status }) => {
                   const name = u ? `${u.firstName} ${u.lastName}` : "-";
                   const email = u?.email || inviteEmail;
                   return (
@@ -188,9 +187,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
                             <>
                               {status === "accepted" && (
                                 <Select
-                                  value={
-                                    role === "custom" ? findRoleFromId(customRole)?.slug : role
-                                  }
+                                  value={role === "custom" ? findRoleFromId(roleId)?.slug : role}
                                   isDisabled={userId === u?.id || !isAllowed}
                                   className="w-40 bg-mineshaft-600"
                                   dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"

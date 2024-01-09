@@ -61,7 +61,7 @@ export const identityServiceFactory = ({
   };
 
   const updateIdentity = async ({ id, role, name, actor, actorId }: TUpdateIdentityDTO) => {
-    const identityOrgMembership = await identityOrgMembershipDal.findById(id);
+    const identityOrgMembership = await identityOrgMembershipDal.findOne({ identityId: id });
     if (!identityOrgMembership)
       throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
 
@@ -97,7 +97,9 @@ export const identityServiceFactory = ({
     }
 
     const identity = await identityDal.transaction(async (tx) => {
-      const newIdentity = await identityDal.updateById(id, { name }, tx);
+      const newIdentity = name
+        ? await identityDal.updateById(id, { name }, tx)
+        : await identityDal.findById(id, tx);
       if (role) {
         await identityOrgMembershipDal.update(
           { identityId: id },
@@ -115,7 +117,7 @@ export const identityServiceFactory = ({
   };
 
   const deleteIdentity = async ({ actorId, actor, id }: TDeleteIdentityDTO) => {
-    const identityOrgMembership = await identityOrgMembershipDal.findById(id);
+    const identityOrgMembership = await identityOrgMembershipDal.findOne({ identityId: id });
     if (!identityOrgMembership)
       throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
 

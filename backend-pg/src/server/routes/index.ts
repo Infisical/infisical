@@ -173,16 +173,6 @@ export const registerRoutes = async (
     userDal,
     samlConfigDal
   });
-  const sarService = secretApprovalRequestServiceFactory({
-    permissionService,
-    folderDal,
-    secretDal,
-    sarSecretDal,
-    sarReviewerDal,
-    secretVersionDal,
-    secretBlindIndexDal,
-    secretApprovalRequestDal
-  });
 
   const tokenService = tokenServiceFactory({ tokenDal: authTokenDal });
   const userService = userServiceFactory({ userDal });
@@ -282,6 +272,17 @@ export const registerRoutes = async (
   });
   const projectBotService = projectBotServiceFactory({ permissionService, projectBotDal });
 
+  const sarService = secretApprovalRequestServiceFactory({
+    permissionService,
+    folderDal,
+    sarSecretDal,
+    sarReviewerDal,
+    secretVersionDal,
+    secretBlindIndexDal,
+    secretApprovalRequestDal,
+    secretService,
+    snapshotService
+  });
   const secretRotationQueue = secretRotationQueueFactory({
     secretRotationDal,
     queue: queueService,

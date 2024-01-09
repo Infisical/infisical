@@ -8,7 +8,7 @@ import {
 import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectEnvDalFactory } from "./project-env-dal";
-import { TCreateEnvDTO, TDeleteEnvDTO, TReorderEnvDTO, TUpdateEnvDTO } from "./project-env-types";
+import { TCreateEnvDTO, TDeleteEnvDTO, TUpdateEnvDTO } from "./project-env-types";
 
 type TProjectEnvServiceFactoryDep = {
   projectEnvDal: TProjectEnvDalFactory;
@@ -38,7 +38,7 @@ export const projectEnvServiceFactory = ({
 
     const env = await projectEnvDal.transaction(async (tx) => {
       const lastPos = await projectEnvDal.findLastEnvPosition(projectId, tx);
-      const doc = await projectEnvDal.create({ slug, name, projectId, position: lastPos }, tx);
+      const doc = await projectEnvDal.create({ slug, name, projectId, position: lastPos + 1 }, tx);
       return doc;
     });
     return env;
@@ -50,7 +50,8 @@ export const projectEnvServiceFactory = ({
     actor,
     actorId,
     name,
-    id
+    id,
+    position
   }: TUpdateEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
     ForbiddenError.from(permission).throwUnlessCan(
@@ -71,7 +72,12 @@ export const projectEnvServiceFactory = ({
       }
     }
 
-    const env = await projectEnvDal.updateById(oldEnv.id, { name, slug });
+    const env = await projectEnvDal.transaction(async (tx) => {
+      if (position) {
+        await projectEnvDal.updateAllPosition(projectId, oldEnv.position, position, tx);
+      }
+      return projectEnvDal.updateById(oldEnv.id, { name, slug, position }, tx);
+    });
     return { environment: env, old: oldEnv };
   };
 
@@ -90,36 +96,15 @@ export const projectEnvServiceFactory = ({
           name: "Re-order env"
         });
 
-      await projectEnvDal.decrementLastPosition(projectId, doc.position, 1, tx);
+      await projectEnvDal.updateAllPosition(projectId, doc.position, -1, tx);
       return doc;
     });
-    return env;
-  };
-
-  const reorderEnvironment = async ({ projectId, id, actorId, actor, pos }: TReorderEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      ProjectPermissionSub.Environments
-    );
-
-    const [env] = await projectEnvDal.transaction(async (tx) => {
-      await projectEnvDal.incrementLastPosition(projectId, pos, 1, tx);
-      return projectEnvDal.update({ id, projectId }, { position: pos }, tx);
-    });
-    if (!env)
-      throw new BadRequestError({
-        message: "Env doesn't exist",
-        name: "Re-order env"
-      });
-
     return env;
   };
 
   return {
     createEnvironment,
     updateEnvironment,
-    deleteEnvironment,
-    reorderEnvironment
+    deleteEnvironment
   };
 };

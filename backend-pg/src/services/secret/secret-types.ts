@@ -153,3 +153,10 @@ export type TFnSecretBlindIndexCheck = {
   inputSecrets: Array<{ secretName: string; type?: SecretType }>;
   isNew: boolean;
 };
+
+// when blind index is already present
+export type TFnSecretBlindIndexCheckV2 = {
+  folderId: string;
+  userId?: string;
+  inputSecrets: Array<{ secretBlindIndex: string; type?: SecretType }>;
+};

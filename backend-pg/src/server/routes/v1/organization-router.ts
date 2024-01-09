@@ -4,7 +4,6 @@ import {
   IncidentContactsSchema,
   OrganizationsSchema,
   OrgMembershipsSchema,
-  UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -67,7 +66,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
                 firstName: true,
                 lastName: true,
                 id: true
-              }).merge(UserEncryptionKeysSchema.pick({ publicKey: true }))
+              }).merge(z.object({ publicKey: z.string().nullable() }))
             })
           )
             .omit({ createdAt: true, updatedAt: true })

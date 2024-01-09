@@ -413,6 +413,8 @@ interface UpdateEnvironmentEvent {
     newName: string;
     oldSlug: string;
     newSlug: string;
+    oldPos: number;
+    newPos: number;
   };
 }
 
