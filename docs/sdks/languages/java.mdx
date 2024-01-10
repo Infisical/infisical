@@ -121,7 +121,7 @@ SecretElement[] secrets = client.listSecrets(options);
 
 Retrieve all secrets within the Infisical project and environment that client is connected to
 
-### Methods
+#### Methods
 
 <ParamField query="Parameters" type="object">
     <Expandable title="properties">
@@ -165,7 +165,7 @@ Retrieve a secret from Infisical.
 
 By default, `getSecret()` fetches and returns a shared secret.
 
-### Methods
+#### Methods
 
 <ParamField query="Parameters" type="object" optional>
     <Expandable title="properties">
@@ -203,7 +203,7 @@ CreateSecretResponseSecret newSecret = client.createSecret(createOptions);
 
 Create a new secret in Infisical.
 
-### Methods
+#### Methods
 
 <ParamField query="Parameters" type="object" optional>
     <Expandable title="properties">
@@ -245,7 +245,7 @@ UpdateSecretResponseSecret updatedSecret = client.updateSecret(options);
 
 Update an existing secret in Infisical.
 
-### Methods
+#### Methods
 
 <ParamField query="Parameters" type="object" optional>
     <Expandable title="properties">
@@ -286,7 +286,7 @@ DeleteSecretResponseSecret deletedSecret = client.deleteSecret(options);
 
 Delete a secret in Infisical.
 
-### Methods
+#### Methods
 
 <ParamField query="Parameters" type="object" optional>
     <Expandable title="properties">
@@ -307,3 +307,76 @@ Delete a secret in Infisical.
         </ParamField>
     </Expandable>
 </ParamField>
+
+## Cryptography
+
+### Create a symmetric key
+
+Create a base64-encoded, 256-bit symmetric key to be used for encryption/decryption.
+
+```java
+String key = client.createSymmetricKey();
+```
+
+#### Returns (string)
+`key` (string): A base64-encoded, 256-bit symmetric key, that can be used for encryption/decryption purposes.
+
+### Encrypt symmetric
+```java
+EncryptSymmetricOptions options = new EncryptSymmetricOptions();
+options.setKey(key);
+options.setPlaintext("Infisical is awesome!");
+
+EncryptSymmetricResponse encryptedData = client.encryptSymmetric(options);
+```
+
+#### Methods
+
+<ParamField query="Parameters" type="object" required>
+    <Expandable title="properties">
+        <ParamField query="setPlaintext()" type="string">
+            The plaintext you want to encrypt.
+        </ParamField>
+        <ParamField query="setKey()" type="string" required>
+            The symmetric key to use for encryption.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+#### Returns (object)
+`tag (getTag())` (string): A base64-encoded, 128-bit authentication tag.
+`iv (getIv())` (string): A base64-encoded, 96-bit initialization vector.
+`ciphertext (getCipherText())` (string): A base64-encoded, encrypted ciphertext.
+
+
+### Decrypt symmetric
+```java
+DecryptSymmetricOptions decryptOptions = new DecryptSymmetricOptions();
+decryptOptions.setKey(key);
+decryptOptions.setCiphertext(encryptedData.getCiphertext());
+decryptOptions.setIv(encryptedData.getIv());
+decryptOptions.setTag(encryptedData.getTag());
+
+String decryptedString = client.decryptSymmetric(decryptOptions);
+```
+
+#### Methods
+<ParamField query="Parameters" type="object" required>
+    <Expandable title="properties">
+        <ParamField query="setCiphertext()" type="string">
+            The ciphertext you want to decrypt.
+        </ParamField>
+        <ParamField query="setKey()" type="string" required>
+            The symmetric key to use for encryption.
+        </ParamField>
+        <ParamField query="setIv()" type="string" required>
+            The initialization vector to use for decryption.
+        </ParamField>
+        <ParamField query="setTag()" type="string" required>
+            The authentication tag to use for decryption.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+#### Returns (string)
+`Plaintext` (string): The decrypted plaintext.
