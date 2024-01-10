@@ -305,7 +305,8 @@ export const registerRoutes = async (
     secretBlindIndexDal,
     secretApprovalRequestDal,
     secretService,
-    snapshotService
+    snapshotService,
+    secretQueueService
   });
   const secretRotationQueue = secretRotationQueueFactory({
     secretRotationDal,

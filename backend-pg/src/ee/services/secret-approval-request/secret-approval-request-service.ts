@@ -12,6 +12,7 @@ import { groupBy, pick } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TSecretBlindIndexDalFactory } from "@app/services/secret/secret-blind-index-dal";
+import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretVersionDalFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretFolderDalFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -40,7 +41,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretApprovalRequestDal: TSecretApprovalRequestDalFactory;
   sarSecretDal: TSarSecretDalFactory;
   sarReviewerDal: TSarReviewerDalFactory;
-  folderDal: Pick<TSecretFolderDalFactory, "findBySecretPath">;
+  folderDal: Pick<TSecretFolderDalFactory, "findBySecretPath" | "findById">;
   secretBlindIndexDal: Pick<TSecretBlindIndexDalFactory, "findOne">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretVersionDal: Pick<TSecretVersionDalFactory, "findLatestVersionMany">;
@@ -52,6 +53,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "fnSecretBulkDelete"
     | "fnSecretBlindIndexCheckV2"
   >;
+  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<
@@ -67,7 +69,8 @@ export const secretApprovalRequestServiceFactory = ({
   permissionService,
   snapshotService,
   secretService,
-  secretVersionDal
+  secretVersionDal,
+  secretQueueService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({ projectId, actor, actorId }: TApprovalRequestCountDTO) => {
     const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId);
@@ -369,6 +372,13 @@ export const secretApprovalRequestServiceFactory = ({
       };
     });
     await snapshotService.performSnapshot(folderId);
+    const folder = await folderDal.findById(folderId);
+    // TODO(akhilmhdh-pg):  change query to do secret path from folder
+    await secretQueueService.syncSecrets({
+      projectId,
+      secretPath: "/",
+      environment: folder?.environment.envSlug as string
+    });
     return mergeStatus;
   };
 
