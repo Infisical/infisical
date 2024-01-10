@@ -84,12 +84,12 @@ Import the SDK and create a client instance with your [Machine Identity](/docume
         clientSecret: "YOUR_CLIENT_SECRET",
         logLevel: LogLevel.Error
     });
-    ````
+    ```
 
   </Tab>
 </Tabs>
 
-### Parameters
+#### Parameters
 
 <ParamField query="options" type="object">
     <Expandable title="properties">
@@ -138,7 +138,7 @@ const secrets = await client.listSecrets({
 
 Retrieve all secrets within the Infisical project and environment that client is connected to
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object">
     <Expandable title="properties">
@@ -180,7 +180,7 @@ Retrieve a secret from Infisical.
 
 By default, `getSecret()` fetches and returns a shared secret.
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
     <Expandable title="properties">
@@ -255,7 +255,7 @@ const updatedApiKey = await client.updateSecret({
 
 Update an existing secret in Infisical.
 
-### Parameters
+#### Parameters
 
 <ParamField query="Parameters" type="object" optional>
     <Expandable title="properties">
@@ -315,3 +315,73 @@ Delete a secret in Infisical.
         </ParamField>
     </Expandable>
 </ParamField>
+
+## Cryptography
+
+### Create a symmetric key
+
+Create a base64-encoded, 256-bit symmetric key to be used for encryption/decryption.
+
+```js
+const key = client.createSymmetricKey();
+```
+
+#### Returns (string)
+`key` (string): A base64-encoded, 256-bit symmetric key, that can be used for encryption/decryption purposes.
+
+### Encrypt symmetric
+```js
+const { iv, tag, ciphertext } = await client.encryptSymmetric({
+    key: key,
+    plaintext: "Infisical is awesome!",
+})
+```
+
+#### Parameters
+
+<ParamField query="Parameters" type="object" required>
+    <Expandable title="properties">
+        <ParamField query="plaintext" type="string">
+            The plaintext you want to encrypt.
+        </ParamField>
+        <ParamField query="key" type="string" required>
+            The symmetric key to use for encryption.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+#### Returns (object)
+`tag` (string): A base64-encoded, 128-bit authentication tag.
+`iv` (string): A base64-encoded, 96-bit initialization vector.
+`ciphertext` (string): A base64-encoded, encrypted ciphertext.
+
+### Decrypt symmetric
+```js
+const decryptedString = await client.decryptSymmetric({
+    key: key,
+    iv: iv,
+    tag: tag,
+    ciphertext: ciphertext,
+});
+```
+
+#### Parameters
+<ParamField query="Parameters" type="object" required>
+    <Expandable title="properties">
+        <ParamField query="ciphertext" type="string">
+            The ciphertext you want to decrypt.
+        </ParamField>
+        <ParamField query="key" type="string" required>
+            The symmetric key to use for encryption.
+        </ParamField>
+        <ParamField query="iv" type="string" required>
+            The initialization vector to use for decryption.
+        </ParamField>
+        <ParamField query="tag" type="string" required>
+            The authentication tag to use for decryption.
+        </ParamField>
+    </Expandable>
+</ParamField>
+
+#### Returns (string)
+`plaintext` (string): The decrypted plaintext.
