@@ -5,6 +5,7 @@ import { IntegrationAuthsSchema, SecretApprovalPoliciesSchema } from "@app/db/sc
 // sometimes the return data must be santizied to avoid leaking important values
 // always prefer pick over omit in zod
 export const integrationAuthPubSchema = IntegrationAuthsSchema.pick({
+  id: true,
   projectId: true,
   integration: true,
   teamId: true,

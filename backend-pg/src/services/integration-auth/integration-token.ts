@@ -4,7 +4,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 
-import { Integrations,IntegrationUrls } from "./integration-list";
+import { Integrations, IntegrationUrls } from "./integration-list";
 
 type ExchangeCodeAzureResponse = {
   token_type: string;
@@ -148,7 +148,6 @@ const exchangeCodeHeroku = async ({ code }: { code: string }) => {
       })
     )
   ).data;
-
   accessExpiresAt.setSeconds(accessExpiresAt.getSeconds() + res.expires_in);
 
   return {

@@ -251,7 +251,7 @@ export const integrationAuthServiceFactory = ({
       accessToken = decryptSymmetric128BitHexKeyUTF8({
         ciphertext: integrationAuth.accessCiphertext,
         iv: integrationAuth.accessIV,
-        tag: integrationAuth.accessIV,
+        tag: integrationAuth.accessTag,
         key: botKey
       });
     }

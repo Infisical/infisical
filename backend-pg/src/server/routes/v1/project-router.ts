@@ -291,7 +291,15 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          integrations: IntegrationsSchema.array()
+          integrations: IntegrationsSchema.merge(
+            z.object({
+              environment: z.object({
+                id: z.string(),
+                name: z.string(),
+                slug: z.string()
+              })
+            })
+          ).array()
         })
       }
     },
