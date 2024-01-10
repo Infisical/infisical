@@ -445,7 +445,7 @@ const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
  * Return list of repositories for Github integration
  * @param {Object} obj
  * @param {String} obj.accessToken - access token for Github API
- * @param {String} obj.workspaceSlug - Workspace identifier for fetching BitBucket repositories
+ * @param {String} obj.workspaceSlug - Workspace identifier for fetching Github repositories
  * @returns {Object[]} apps - names of Github sites
  * @returns {String} apps.name - name of Github site
  */
