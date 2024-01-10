@@ -15,7 +15,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("encryptedIssuer");
       t.string("issuerTag");
       t.string("issuerIV");
-      t.string("encryptedCert");
+      t.text("encryptedCert");
       t.string("certIV");
       t.string("certTag");
       t.timestamps(true, true, true);

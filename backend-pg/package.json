@@ -69,6 +69,7 @@
     "@casl/ability": "^6.5.0",
     "@fastify/cookie": "^9.2.0",
     "@fastify/cors": "^8.4.1",
+    "@fastify/formbody": "^7.4.0",
     "@fastify/helmet": "^11.1.1",
     "@fastify/passport": "^2.4.0",
     "@fastify/rate-limit": "^9.0.0",

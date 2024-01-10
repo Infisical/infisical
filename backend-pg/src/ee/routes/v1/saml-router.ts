@@ -1,6 +1,7 @@
 import { Authenticator } from "@fastify/passport";
 import fastifySession from "@fastify/session";
 import { MultiSamlStrategy } from "@node-saml/passport-saml";
+import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { SamlConfigsSchema } from "@app/db/schemas";
@@ -55,13 +56,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               samlConfig.audience = `spn:${ssoConfig.issuer}`;
             }
           }
-          req.ssoConfig = ssoConfig;
+          (req as unknown as FastifyRequest).ssoConfig = ssoConfig;
           done(null, samlConfig);
         }
       },
       async (req, profile, cb) => {
-        console.log(req.ssoConfig);
-        console.log(profile);
         try {
           const serverCfg = server.services.superAdmin.getServerCfg();
           if (!profile) throw new BadRequestError({ message: "Missing profile" });
@@ -75,8 +74,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             lastName: profile.lastName as string,
             isSignupAllowed: Boolean(serverCfg.allowSignUp),
             relayState: (req.body as { RelayState?: string }).RelayState,
-            authProvider: req.ssoConfig.authProvider,
-            orgId: req.ssoConfig.orgId
+            authProvider: (req as unknown as FastifyRequest).ssoConfig?.authProvider as string,
+            orgId: (req as unknown as FastifyRequest).ssoConfig?.orgId as string
           });
           cb(null, { isUserCompleted, providerAuthToken });
         } catch (error) {
@@ -115,7 +114,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     url: "/saml2/:ssoIdentifier",
-    method: "GET",
+    method: "POST",
     schema: {
       params: z.object({
         ssoIdentifier: z.string().trim()

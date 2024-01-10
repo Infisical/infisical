@@ -2,6 +2,7 @@ import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
 import type { FastifyCorsOptions } from "@fastify/cors";
 import cors from "@fastify/cors";
+import fastifyFormBody from "@fastify/formbody";
 import helmet from "@fastify/helmet";
 import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
@@ -51,6 +52,7 @@ export const main = async ({ db, smtp, logger, queue }: TMain) => {
     await server.register(fastifyIp);
 
     await server.register(fastifySwagger);
+    await server.register(fastifyFormBody);
 
     // Rate limiters and security headers
     await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg);

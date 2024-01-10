@@ -113,7 +113,6 @@ export const secretQueueFactory = ({
         }
       });
     });
-    console.log(secrets.filter(({ type }) => type === "personal"));
     secrets.forEach((secret) => {
       const secretKey = decryptSymmetric128BitHexKeyUTF8({
         ciphertext: secret.secretKeyCiphertext,
