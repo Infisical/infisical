@@ -8,6 +8,7 @@ import { AuthData } from "../interfaces/middleware";
 import { z } from "zod";
 import { EventType, UserAgentType } from "../ee/models";
 import { UnauthorizedRequestError } from "../utils/errors";
+import { NO_ACCESS } from "../variables";
 
 /**
  * Validate authenticated clients for workspace with id [workspaceId] based
@@ -59,9 +60,9 @@ export const validateClientForWorkspace = async ({
         requiredPermissions
       });
       return { membership, workspace };
-    case ActorType.SERVICE_V3:
+    case ActorType.IDENTITY:
       throw UnauthorizedRequestError({
-        message: "Failed service token authorization for organization"
+        message: "Failed identity authorization for organization"
       });
   }
 };
@@ -279,6 +280,39 @@ export const ToggleAutoCapitalizationV2 = z.object({
   })
 });
 
+export const AddIdentityToWorkspaceV2 = z.object({
+  params: z.object({
+    workspaceId: z.string().trim(),
+    identityId: z.string().trim()
+  }),
+  body: z.object({
+    role: z.string().trim().min(1).default(NO_ACCESS),
+  })
+});
+
+export const UpdateIdentityWorkspaceRoleV2 = z.object({
+  params: z.object({
+    workspaceId: z.string().trim(),
+    identityId: z.string().trim()
+  }),
+  body: z.object({
+    role: z.string().trim().min(1).default(NO_ACCESS),
+  })
+});
+
+export const DeleteIdentityFromWorkspaceV2 = z.object({
+  params: z.object({
+    workspaceId: z.string().trim(),
+    identityId: z.string().trim()
+  })
+});
+
+export const GetWorkspaceIdentityMembersV2 = z.object({
+  params: z.object({
+    workspaceId: z.string().trim()
+  }),
+});
+
 export const GetWorkspaceBlinkIndexStatusV3 = z.object({
   params: z.object({
     workspaceId: z.string().trim()
@@ -302,11 +336,5 @@ export const NameWorkspaceSecretsV3 = z.object({
         _id: z.string().trim()
       })
       .array()
-  })
-});
-
-export const GetWorkspaceServiceTokenDataV3 = z.object({
-  params: z.object({
-    workspaceId: z.string().trim()
   })
 });

@@ -5,17 +5,16 @@ import {
   faContactCard,
   faMagnifyingGlass,
   faMoneyBill,
+  faServer,
   faSignIn,
   faUserCog,
-  faUsers
-} from "@fortawesome/free-solid-svg-icons";
+  faUsers} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import { Button, FormControl, Input, UpgradePlanModal } from "@app/components/v2";
-import { useOrganization, useSubscription } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { Button, FormControl, Input } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { useCreateRole, useUpdateRole } from "@app/hooks/api";
 import { TRole } from "@app/hooks/api/roles/types";
 
@@ -39,6 +38,12 @@ const SIMPLE_PERMISSION_OPTIONS = [
     subtitle: "Invite, view and remove members from the organization",
     icon: faUsers,
     formName: "member"
+  },
+  {
+    title: "Machine identity management",
+    subtitle: "Create, view, update and remove (machine) identities from the organization",
+    icon: faServer,
+    formName: "identity"
   },
   {
     title: "Billing & usage",
@@ -79,10 +84,7 @@ const SIMPLE_PERMISSION_OPTIONS = [
 ] as const;
 
 export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
-  const { subscription } = useSubscription();
-  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["upgradePlan"] as const);
-
-  const isNonEditable = ["owner", "admin", "member"].includes(role?.slug || "");
+  const isNonEditable = ["owner", "admin", "member", "no-access"].includes(role?.slug || "");
   const isNewRole = !role?.slug;
 
   const { createNotification } = useNotificationContext();
@@ -121,11 +123,6 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
   };
 
   const handleFormSubmit = async (el: TFormSchema) => {
-    if (subscription && !subscription?.rbac) {
-      handlePopUpOpen("upgradePlan");
-      return;
-    }
-
     if (!isNewRole) {
       await handleRoleUpdate(el);
       return;
@@ -229,17 +226,6 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
           </Button>
         </div>
       </form>
-      {subscription && (
-        <UpgradePlanModal
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text={
-            subscription.slug === null
-              ? "You can use RBAC under an Enterprise license"
-              : "You can use RBAC if you switch to Infisical's Team Plan."
-          }
-        />
-      )}
     </div>
   );
 };

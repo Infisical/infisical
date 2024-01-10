@@ -425,24 +425,44 @@ func CallCreateServiceToken(httpClient *resty.Client, request CreateServiceToken
 	return createServiceTokenResponse, nil
 }
 
-func CallServiceTokenV3Refresh(httpClient *resty.Client, request ServiceTokenV3RefreshTokenRequest) (ServiceTokenV3RefreshTokenResponse, error) {
-	var serviceTokenV3RefreshTokenResponse ServiceTokenV3RefreshTokenResponse
+func CallUniversalAuthLogin(httpClient *resty.Client, request UniversalAuthLoginRequest) (UniversalAuthLoginResponse, error) {
+	var universalAuthLoginResponse UniversalAuthLoginResponse
 	response, err := httpClient.
 		R().
-		SetResult(&serviceTokenV3RefreshTokenResponse).
+		SetResult(&universalAuthLoginResponse).
 		SetHeader("User-Agent", USER_AGENT).
 		SetBody(request).
-		Post(fmt.Sprintf("%v/v3/service-token/me/token", config.INFISICAL_URL))
+		Post(fmt.Sprintf("%v/v1/auth/universal-auth/login/", config.INFISICAL_URL))
 
 	if err != nil {
-		return ServiceTokenV3RefreshTokenResponse{}, fmt.Errorf("CallServiceTokenV3Refresh: Unable to complete api request [err=%s]", err)
+		return UniversalAuthLoginResponse{}, fmt.Errorf("CallUniversalAuthLogin: Unable to complete api request [err=%s]", err)
 	}
 
 	if response.IsError() {
-		return ServiceTokenV3RefreshTokenResponse{}, fmt.Errorf("CallServiceTokenV3Refresh: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+		return UniversalAuthLoginResponse{}, fmt.Errorf("CallUniversalAuthLogin: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
 	}
 
-	return serviceTokenV3RefreshTokenResponse, nil
+	return universalAuthLoginResponse, nil
+}
+
+func CallUniversalAuthRefreshAccessToken(httpClient *resty.Client, request UniversalAuthRefreshRequest) (UniversalAuthRefreshResponse, error) {
+	var universalAuthRefreshResponse UniversalAuthRefreshResponse
+	response, err := httpClient.
+		R().
+		SetResult(&universalAuthRefreshResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v1/auth/token/renew", config.INFISICAL_URL))
+
+	if err != nil {
+		return UniversalAuthRefreshResponse{}, fmt.Errorf("CallUniversalAuthRefreshAccessToken: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return UniversalAuthRefreshResponse{}, fmt.Errorf("CallUniversalAuthRefreshAccessToken: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
+	}
+
+	return universalAuthRefreshResponse, nil
 }
 
 func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Request) (GetRawSecretsV3Response, error) {
@@ -454,6 +474,7 @@ func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Reques
 		SetBody(request).
 		SetQueryParam("workspaceId", request.WorkspaceId).
 		SetQueryParam("environment", request.Environment).
+		SetQueryParam("secretPath", request.SecretPath).
 		SetQueryParam("include_imports", "false").
 		Get(fmt.Sprintf("%v/v3/secrets/raw", config.INFISICAL_URL))
 
@@ -461,12 +482,12 @@ func CallGetRawSecretsV3(httpClient *resty.Client, request GetRawSecretsV3Reques
 		return GetRawSecretsV3Response{}, fmt.Errorf("CallGetRawSecretsV3: Unable to complete api request [err=%w]", err)
 	}
 
-	if response.IsError() && strings.Contains(response.String(), "Failed to find bot key") {
+	if response.IsError() && strings.Contains(response.String(), "bot_not_found_error") {
 		return GetRawSecretsV3Response{}, fmt.Errorf("project with id %s is a legacy project type, please navigate to project settings and disable end to end encryption then try again", request.WorkspaceId)
 	}
 
 	if response.IsError() {
-		return GetRawSecretsV3Response{}, fmt.Errorf("CallGetRawSecretsV3: Unsuccessful response [%v %v] [status-code=%v]", response.Request.Method, response.Request.URL, response.StatusCode())
+		return GetRawSecretsV3Response{}, fmt.Errorf("CallGetRawSecretsV3: Unsuccessful response [%v %v] [status-code=%v] [response=%v]", response.Request.Method, response.Request.URL, response.StatusCode(), response.String())
 	}
 
 	return getRawSecretsV3Response, nil

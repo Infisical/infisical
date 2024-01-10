@@ -58,9 +58,9 @@ const validateClientForIntegrationAuth = async ({
       throw UnauthorizedRequestError({
         message: "Failed service token authorization for integration authorization"
       });
-    case ActorType.SERVICE_V3:
+    case ActorType.IDENTITY:
       throw UnauthorizedRequestError({
-        message: "Failed service token authorization for integration authorization"
+        message: "Failed identity authorization for integration authorization"
       });
   }
 };
@@ -195,6 +195,13 @@ export const GetIntegrationAuthNorthflankSecretGroupsV1 = z.object({
 export const GetIntegrationAuthGitHubEnvironmentRepositoriesV1 = z.object({
   params: z.object({
     integrationAuthId: z.string().trim()
+  })
+});
+
+export const DeleteIntegrationAuthsV1 = z.object({
+  query: z.object({
+    integration: z.string().trim(),
+    workspaceId: z.string().trim()
   })
 });
 

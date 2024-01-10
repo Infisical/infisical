@@ -89,7 +89,7 @@ export const SignUpPage = () => {
       console.log(err);
       createNotification({
         type: "error",
-        text: "Faield to create admin"
+        text: "Failed to create admin"
       });
     }
   };
@@ -108,7 +108,7 @@ export const SignUpPage = () => {
       console.log(err);
       createNotification({
         type: "error",
-        text: "Faield to generate backup"
+        text: "Failed to generate backup"
       });
     }
   };

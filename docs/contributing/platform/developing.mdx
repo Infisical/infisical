@@ -1,0 +1,109 @@
+---
+title: 'Local development'
+description: 'This guide will help you set up and run the Infisical platform in local development.'
+---
+
+## Fork and clone the repo
+
+[Fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) the [repository](https://github.com/Infisical/infisical) to your own GitHub account and then [clone](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) it to your local device.
+
+Once, you've done that, create a new branch:
+
+```console
+git checkout -b MY_BRANCH_NAME
+```
+
+## Set up environment variables
+
+
+Start by creating a .env file at the root of the Infisical directory then copy the contents of the file below into the .env file.
+
+<Accordion title=".env file content">
+  ```env 
+    # Keys
+    # Required key for platform encryption/decryption ops
+    ENCRYPTION_KEY=6c1fe4e407b8911c104518103505b218
+
+    # JWT
+    # Required secrets to sign JWT tokens
+    JWT_SIGNUP_SECRET=3679e04ca949f914c03332aaaeba805a
+    JWT_REFRESH_SECRET=5f2f3c8f0159068dc2bbb3a652a716ff
+    JWT_AUTH_SECRET=4be6ba5602e0fa0ac6ac05c3cd4d247f
+    JWT_SERVICE_SECRET=f32f716d70a42c5703f4656015e76200
+
+    # MongoDB
+    # Backend will connect to the MongoDB instance at connection string MONGO_URL which can either be a ref
+    # to the MongoDB container instance or Mongo Cloud
+    # Required
+    MONGO_URL=mongodb://root:example@mongo:27017/?authSource=admin
+
+    # Optional credentials for MongoDB container instance and Mongo-Express
+    MONGO_USERNAME=root
+    MONGO_PASSWORD=example
+
+    # Website URL
+    # Required
+    SITE_URL=http://localhost:8080
+
+    # Mail/SMTP
+    SMTP_HOST='smtp-server'
+    SMTP_PORT='1025'
+    SMTP_NAME='local'
+    SMTP_USERNAME='team@infisical.com'
+    SMTP_PASSWORD=
+  ```
+</Accordion>
+
+<Warning>
+    The pre-populated environment variable values above are meant to be used in development only. They should never be used in production.
+</Warning>
+
+View all available [environment variables](https://infisical.com/docs/self-hosting/configuration/envars) and guidance for each.
+
+## Starting Infisical for development
+
+We use Docker to spin up all required services for Infisical in local development. If you are unfamiliar with Docker, don’t worry, all you have to do is install Docker for your
+machine and run the command below to start up the development server. 
+
+#### Start local server 
+
+```bash
+docker-compose -f docker-compose.dev.yml up --build --force-recreate
+```
+#### Access local server 
+
+Once all the services have spun up, browse to http://localhost:8080. To sign in, you may use the default credentials listed below.
+
+Email: `test@localhost.local`
+Password: `testInfisical1`
+
+#### Shutdown local server 
+
+```bash
+# To stop environment use Control+C (on Mac) CTRL+C (on Win) or
+docker-compose -f docker-compose.dev.yml down
+```
+
+## Starting Infisical docs locally
+
+We use [Mintlify](https://mintlify.com/) for our docs.
+
+#### Install Mintlify CLI.
+
+```bash
+npm i -g mintlify
+```
+
+or
+
+```bash
+yarn global add mintlify
+```
+
+#### Running the docs
+Go to `docs` directory and run `mintlify dev`. This will start up the docs on `localhost:3000`
+
+```bash
+# From the root directory
+cd docs; mintlify dev;
+```

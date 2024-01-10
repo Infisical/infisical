@@ -17,12 +17,12 @@ export const getSecretApprovalRequestCount = async (req: Request, res: Response)
   } = await validateRequest(reqValidator.getSecretApprovalRequestCount, req);
 
   if (!(req.authData.authPayload instanceof User)) return;
-  
+
   const membership = await Membership.findOne({
     user: req.authData.authPayload._id,
     workspace: new Types.ObjectId(workspaceId)
   });
-  
+
   if (!membership) throw UnauthorizedRequestError();
 
   const approvalRequestCount = await SecretApprovalRequest.aggregate([
@@ -73,12 +73,12 @@ export const getSecretApprovalRequests = async (req: Request, res: Response) => 
   } = await validateRequest(reqValidator.getSecretApprovalRequests, req);
 
   if (!(req.authData.authPayload instanceof User)) return;
-  
+
   const membership = await Membership.findOne({
     user: req.authData.authPayload._id,
     workspace: new Types.ObjectId(workspaceId)
   });
-  
+
   if (!membership) throw UnauthorizedRequestError();
 
   const query = {
@@ -168,13 +168,13 @@ export const getSecretApprovalRequestDetails = async (req: Request, res: Respons
     user: req.authData.authPayload._id,
     workspace: secretApprovalRequest.workspace
   });
-  
+
   if (!membership) throw UnauthorizedRequestError();
 
   // allow to fetch only if its admin or is the committer or approver
   if (
     membership.role !== "admin" &&
-    secretApprovalRequest.committer !== membership.id &&
+    !secretApprovalRequest.committer.equals(membership.id) &&
     !secretApprovalRequest.policy.approvers.find(
       (approverId) => approverId.toString() === membership._id.toString()
     )
@@ -215,7 +215,7 @@ export const updateSecretApprovalReviewStatus = async (req: Request, res: Respon
     user: req.authData.authPayload._id,
     workspace: secretApprovalRequest.workspace
   });
-  
+
   if (!membership) throw UnauthorizedRequestError();
 
   if (
@@ -257,7 +257,7 @@ export const mergeSecretApprovalRequest = async (req: Request, res: Response) =>
     user: req.authData.authPayload._id,
     workspace: secretApprovalRequest.workspace
   });
-  
+
   if (!membership) throw UnauthorizedRequestError();
 
   if (
@@ -307,7 +307,7 @@ export const updateSecretApprovalRequestStatus = async (req: Request, res: Respo
     user: req.authData.authPayload._id,
     workspace: secretApprovalRequest.workspace
   });
-  
+
   if (!membership) throw UnauthorizedRequestError();
 
   if (

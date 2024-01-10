@@ -1,5 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AxiosError } from "axios";
 import { z } from "zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -78,12 +79,20 @@ export const CreateSecretImportForm = ({
         type: "success",
         text: "Successfully linked"
       });
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to link secrets"
-      });
+    } catch (err) {
+      console.error(err);
+      const axiosError = err as AxiosError
+      if (axiosError?.response?.status === 401) {
+        createNotification({
+          text: "You do not have access to the selected environment/path",
+          type: "error"
+        });
+      } else {
+        createNotification({
+          type: "error",
+          text: "Failed to link secrets"
+        });
+      }
     }
   };
 

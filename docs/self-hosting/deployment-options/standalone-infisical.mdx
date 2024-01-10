@@ -1,65 +1,49 @@
 ---
 title: "Docker"
-description: "Learn to install Infisical purely on docker"
+description: "Run Infisical with Docker"
 ---
 
-The Infisical standalone version combines all the essential components into a single container, making deployment and management more straightforward than other methods. 
+Prerequisites:
+- Basic knowledge of [Docker](https://www.docker.com/)
+- Have Docker installed on your system. If not, follow the installation guide [here](https://docs.docker.com/get-docker/).
 
-## Prerequisites
+<Steps>
+  <Step title="Pull the Infisical Docker image">
+    Run the following command in your terminal to pull the Infisical Docker image:
+    
+    ```
+    docker pull infisical/infisical:latest
+    ```
+  </Step>
+  <Step title="Start Infisical">
+    2.1. Running Infisical requires a few environment variables to be set.
+    At minimum, Infisical requires that you set the variables `ENCRYPTION_KEY`, `AUTH_SECRET`, `MONGO_URL`, and `REDIS_URL`
+    which you can read more about [here](/self-hosting/configuration/envars).
+    
+    Once you have added the required environment variables to your docker run command, execute it in your terminal to get Infisical up and running.
+    
+    For example:
 
-This guide assumes you have basic knowledge of Docker and have it installed on your system. If you don't have Docker installed, please follow the official installation guide [here](https://docs.docker.com/get-docker/).
+    ```bash
+    docker run -p 80:8080  \
+    -e ENCRYPTION_KEY=f40c9178624764ad85a6830b37ce239a \
+    -e AUTH_SECRET="q6LRi7c717a3DQ8JUxlWYkZpMhG4+RHLoFUVt3Bvo2U=" \
+    -e MONGO_URL="<>" \
+    infisical/infisical:latest
+    ```
+    
+    <Warning>
+      The above environment variable values are only to be used as an example and should not be used in production 
+    </Warning>
+    
+    2.2. Once the container is running, verify the installation by opening your web browser and navigating to `http://localhost:80`.
+  </Step>
+</Steps>
 
-#### System requirements
-To have a functional deployment, we recommended compute with **2GB of RAM** and **1 CPU**.
-However, depending on your usage, you may need to further scale up system resources to meet demand.
-
-## Pull the Infisical Docker image
-
-Open your terminal or command prompt and enter the following command to pull the Infisical Docker image:
-
-```
-docker pull infisical/infisical:latest
-```
-
-## Run with docker 
-To run Infisical, we'll need to configure the required configs listed below.
-Other configs can be found [here](../configuration/envars)
-
-<ParamField query="ENCRYPTION_KEY" type="string" default="none" required>
-  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
-</ParamField>
-
-<ParamField query="AUTH_SECRET" type="string" default="none" required>
-  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
-</ParamField>
-
-<ParamField query="MONGO_URL" type="string" default="none" required>
-  A MongoDB connection string. Can use any MongoDB PaaS such as Mongo Atlas, AWS Document DB, etc. 
-  *TLS based connection string is not yet supported
-</ParamField>
-
-<ParamField query="REDIS_URL" type="string" default="none">
-  Redis connection string. Only required if you plan to use web integrations or secret reminders.
-</ParamField>
-
-
-Once you have added the required environment variables to your docker run command, execute it in your terminal.
-
-```bash
-docker run -p 80:8080  \
--e ENCRYPTION_KEY=f40c9178624764ad85a6830b37ce239a \
--e AUTH_SECRET=5239fea3a4720c0e524f814a540e14a2 \
--e MONGO_URL="<>" \
-infisical/infisical:latest
-```
-
-<Warning>
-  The above environment variable values are only to be used as an example and should not be used in production 
-</Warning>
-
-## Verify the installation:
-Once the container is running, open a web browser and navigate to http://localhost:80. That's it! You have successfully installed the Infisical application using a single Docker image.
-
-<Info>
-Once installation is complete, you will have to create the first account. No default account is provided.
-</Info>
+<AccordionGroup>
+  <Accordion title="What are the system requirements for running Infisical?">
+    To have a functional deployment, we recommended compute with 2GB of RAM and 1 CPU.
+    
+    However, depending on your usage, you may need to further scale up system resources to meet demand.
+  </Accordion>
+</AccordionGroup>

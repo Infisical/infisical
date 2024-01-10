@@ -6,6 +6,7 @@ export {
     useDeleteOrgById,
     useDeleteOrgPmtMethod,
     useDeleteOrgTaxId,
+    useGetIdentityMembershipOrgs,
     useGetOrganizations, 
     useGetOrgBillingDetails,
     useGetOrgInvoices,
@@ -17,4 +18,5 @@ export {
     useGetOrgTaxIds,
     useGetOrgTrialUrl,
     useRenameOrg, 
-    useUpdateOrgBillingDetails} from "./queries";
+    useUpdateOrgBillingDetails
+} from "./queries";

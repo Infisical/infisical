@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { standardRequest } from "../../config/request";
 import { getApps, getTeams, revokeAccess } from "../../integrations";
-import { Bot, IntegrationAuth, Workspace } from "../../models";
+import { Bot, IIntegrationAuth, Integration, IntegrationAuth, Workspace } from "../../models";
 import { EventType } from "../../ee/models";
 import { IntegrationService } from "../../services";
 import { EEAuditLogService } from "../../ee/services";
@@ -131,7 +131,6 @@ export const oAuthExchange = async (req: Request, res: Response) => {
 export const saveIntegrationToken = async (req: Request, res: Response) => {
   // TODO: refactor
   // TODO: check if access token is valid for each integration
-  let integrationAuth;
   const {
     body: { workspaceId, integration, url, accessId, namespace, accessToken, refreshToken }
   } = await validateRequest(reqValidator.SaveIntegrationAccessTokenV1, req);
@@ -153,31 +152,21 @@ export const saveIntegrationToken = async (req: Request, res: Response) => {
 
   if (!bot) throw new Error("Bot must be enabled to save integration access token");
 
-  integrationAuth = await IntegrationAuth.findOneAndUpdate(
-    {
-      workspace: new Types.ObjectId(workspaceId),
-      integration
-    },
-    {
-      workspace: new Types.ObjectId(workspaceId),
-      integration,
-      url,
-      namespace,
-      algorithm: ALGORITHM_AES_256_GCM,
-      keyEncoding: ENCODING_SCHEME_UTF8,
-      ...(integration === INTEGRATION_GCP_SECRET_MANAGER
-        ? {
-            metadata: {
-              authMethod: "serviceAccount"
-            }
+  let integrationAuth = await new IntegrationAuth({
+    workspace: new Types.ObjectId(workspaceId),
+    integration,
+    url,
+    namespace,
+    algorithm: ALGORITHM_AES_256_GCM,
+    keyEncoding: ENCODING_SCHEME_UTF8,
+    ...(integration === INTEGRATION_GCP_SECRET_MANAGER
+      ? {
+          metadata: {
+            authMethod: "serviceAccount"
           }
-        : {})
-    },
-    {
-      new: true,
-      upsert: true
-    }
-  );
+        }
+      : {})
+  }).save();
 
   // encrypt and save integration access details
   if (refreshToken) {
@@ -189,12 +178,12 @@ export const saveIntegrationToken = async (req: Request, res: Response) => {
 
   // encrypt and save integration access details
   if (accessId || accessToken) {
-    integrationAuth = await IntegrationService.setIntegrationAuthAccess({
+    integrationAuth = (await IntegrationService.setIntegrationAuthAccess({
       integrationAuthId: integrationAuth._id.toString(),
       accessId,
       accessToken,
       accessExpiresAt: undefined
-    });
+    })) as IIntegrationAuth;
   }
 
   if (!integrationAuth) throw new Error("Failed to save integration access token");
@@ -1282,12 +1271,63 @@ export const getIntegrationAuthTeamCityBuildConfigs = async (req: Request, res: 
 };
 
 /**
+ * Delete all integration authorizations and integrations for workspace with id [workspaceId]
+ * with integration name [integration]
+ * @param req
+ * @param res
+ * @returns
+ */
+export const deleteIntegrationAuths = async (req: Request, res: Response) => {
+  const {
+    query: { integration, workspaceId }
+  } = await validateRequest(reqValidator.DeleteIntegrationAuthsV1, req);
+
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+  
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.Integrations
+  );
+  
+  const integrationAuths = await IntegrationAuth.deleteMany({
+    integration,
+    workspace: new Types.ObjectId(workspaceId)
+  });
+
+  const integrations = await Integration.deleteMany({
+    integration,
+    workspace: new Types.ObjectId(workspaceId)
+  });
+
+  await EEAuditLogService.createAuditLog(
+    req.authData,
+    {
+      type: EventType.UNAUTHORIZE_INTEGRATION,
+      metadata: {
+        integration
+      }
+    },
+    {
+      workspaceId: new Types.ObjectId(workspaceId)
+    }
+  );
+
+  return res.status(200).send({
+    integrationAuths,
+    integrations
+  });
+}
+
+/**
  * Delete integration authorization with id [integrationAuthId]
  * @param req
  * @param res
  * @returns
  */
-export const deleteIntegrationAuth = async (req: Request, res: Response) => {
+export const deleteIntegrationAuthById = async (req: Request, res: Response) => {
   const {
     params: { integrationAuthId }
   } = await validateRequest(reqValidator.DeleteIntegrationAuthV1, req);

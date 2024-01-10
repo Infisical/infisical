@@ -1,0 +1,15 @@
+infisical:
+  address: "http://localhost:8080"
+auth:
+  type: "universal-auth"
+  config:
+    client-id: "./client-id"
+    client-secret: "./client-secret"
+    remove_client_secret_on_read: false
+sinks:
+  - type: "file"
+    config:
+      path: "access-token"
+templates:
+  - source-path: my-dot-ev-secret-template
+    destination-path: my-dot-env.env

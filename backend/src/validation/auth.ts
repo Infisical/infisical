@@ -84,15 +84,107 @@ export const ResetPasswordV1 = z.object({
   })
 });
 
-export const SendMfaTokenV2 = z.object({
+export const RenewAccessTokenV1 = z.object({
   body: z.object({
-    email: z.string().email().trim()
+    accessToken: z.string().trim(),
+  })
+});
+
+export const LoginUniversalAuthV1 = z.object({
+  body: z.object({
+    clientId: z.string().trim(),
+    clientSecret: z.string().trim()
+  })
+});
+
+export const AddUniversalAuthToIdentityV1 = z.object({
+  params: z.object({
+    identityId: z.string().trim()
+  }),
+  body: z.object({
+    clientSecretTrustedIps: z
+      .object({
+        ipAddress: z.string().trim(),
+      })
+      .array()
+      .min(1)
+      .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
+    accessTokenTrustedIps: z
+      .object({
+        ipAddress: z.string().trim(),
+      })
+      .array()
+      .min(1)
+      .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
+    accessTokenTTL: z.number().int().min(1).refine(value => value !== 0, {
+      message: "accessTokenTTL must have a non zero number",
+    }).default(2592000),
+    accessTokenMaxTTL: z.number().int().refine(value => value !== 0, {
+      message: "accessTokenMaxTTL must have a non zero number",
+    }).default(2592000), // 30 days
+    accessTokenNumUsesLimit: z.number().int().min(0).default(0)
+  })
+});
+
+export const UpdateUniversalAuthToIdentityV1 = z.object({
+  params: z.object({
+    identityId: z.string()
+  }),
+  body: z.object({
+    clientSecretTrustedIps: z
+      .object({
+        ipAddress: z.string().trim()
+      })
+      .array()
+      .min(1)
+      .optional(),
+    accessTokenTrustedIps: z
+      .object({
+        ipAddress: z.string().trim(),
+      })
+      .array()
+      .min(1)
+      .optional(),
+    accessTokenTTL: z.number().int().min(0).optional(),
+    accessTokenNumUsesLimit: z.number().int().min(0).optional(),
+    accessTokenMaxTTL: z.number().int().refine(value => value !== 0, {
+      message: "accessTokenMaxTTL must have a non zero number",
+    }).optional(),
+  }),
+});
+
+export const GetUniversalAuthForIdentityV1 = z.object({
+  params: z.object({
+    identityId: z.string().trim()
+  })
+});
+
+export const CreateUniversalAuthClientSecretV1 = z.object({
+  params: z.object({
+    identityId: z.string()
+  }),
+  body: z.object({
+    description: z.string().trim().default(""),
+    numUsesLimit: z.number().min(0).default(0),
+    ttl: z.number().min(0).default(0),
+  }),
+});
+
+export const GetUniversalAuthClientSecretsV1 = z.object({
+  params: z.object({
+    identityId: z.string()
+  })
+});
+
+export const RevokeUniversalAuthClientSecretV1 = z.object({
+  params: z.object({
+    identityId: z.string(),
+    clientSecretId: z.string()
   })
 });
 
 export const VerifyMfaTokenV2 = z.object({
   body: z.object({
-    email: z.string().email().trim(),
     mfaToken: z.string().trim()
   })
 });

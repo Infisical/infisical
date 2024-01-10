@@ -168,7 +168,7 @@ func GetPlainTextSecretsViaMachineIdentity(accessToken string, workspaceId strin
 		getSecretsRequest.SecretPath = secretsPath
 	}
 
-	rawSecrets, err := api.CallGetRawSecretsV3(httpClient, api.GetRawSecretsV3Request{WorkspaceId: workspaceId, SecretPath: environmentName, Environment: environmentName})
+	rawSecrets, err := api.CallGetRawSecretsV3(httpClient, api.GetRawSecretsV3Request{WorkspaceId: workspaceId, SecretPath: secretsPath, Environment: environmentName})
 	if err != nil {
 		return nil, err
 	}

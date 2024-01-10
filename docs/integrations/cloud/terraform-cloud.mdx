@@ -7,36 +7,37 @@ Prerequisites:
 
 - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
 
-## Navigate to your project's integrations tab
+<Steps>
+  <Step title="Authorize Infisical for Terraform Cloud">
+    Obtain a Terraform Cloud API Token in User Settings > Tokens
 
-![integrations](../../images/integrations.png)
+    ![integrations terraform cloud dashboard](../../images/integrations/terraform/integrations-terraformcloud-dashboard.png)
+    ![integrations terraform cloud tokens](../../images/integrations/terraform/integrations-terraformcloud-tokens.png)
 
-## Enter your Terraform Cloud API Token and Workspace Id
+    Obtain your Terraform Cloud Workspace Id in Projects & Workspaces > Workspace > ID
 
-Obtain a Terraform Cloud API Token in User Settings > Tokens
+    ![integrations terraform cloud projects & workspaces](../../images/integrations/terraform/integrations-terraformcloud-workspaces.png)
+    ![integrations terraform cloud workspace id](../../images/integrations/terraform/integrations-terraformcloud-workspaceid.png)
 
-![integrations terraform cloud dashboard](../../images/integrations/terraform/integrations-terraformcloud-dashboard.png)
-![integrations terraform cloud tokens](../../images/integrations/terraform/integrations-terraformcloud-tokens.png)
+    Navigate to your project's integrations tab in Infisical.
 
-Obtain your Terraform Cloud Workspace Id in Projects & Workspaces > Workspace > ID
+    ![integrations](../../images/integrations.png)
 
-![integrations terraform cloud projects & workspaces](../../images/integrations/terraform/integrations-terraformcloud-workspaces.png)
-![integrations terraform cloud workspace id](../../images/integrations/terraform/integrations-terraformcloud-workspaceid.png)
+    Press on the Terraform Cloud tile and input your Terraform Cloud API Token and Workspace Id to grant Infisical access to your Terraform Cloud account.
 
-Press on the Terraform Cloud tile and input your Terraform Cloud API Token and Workspace Id to grant Infisical access to your Terraform Cloud account.
+    ![integrations terraform cloud authorization](../../images/integrations/terraform/integrations-terraformcloud-auth.png)
 
-![integrations terraform cloud authorization](../../images/integrations/terraform/integrations-terraformcloud-auth.png)
+    <Info>
+      If this is your project's first cloud integration, then you'll have to grant
+      Infisical access to your project's environment variables. Although this step
+      breaks E2EE, it's necessary for Infisical to sync the environment variables to
+      the cloud platform.
+    </Info>
+  </Step>
+  <Step title="Start integration">
+    Select which Infisical environment secrets and Terraform Cloud variable type you want to sync to which Terraform Cloud workspace/project and press create integration to start syncing secrets to Terraform Cloud.
 
-<Info>
-  If this is your project's first cloud integration, then you'll have to grant
-  Infisical access to your project's environment variables. Although this step
-  breaks E2EE, it's necessary for Infisical to sync the environment variables to
-  the cloud platform.
-</Info>
-
-## Start integration
-
-Select which Infisical environment secrets and Terraform Cloud variable type you want to sync to which Terraform Cloud workspace/project and press create integration to start syncing secrets to Terraform Cloud.
-
-![integrations terraform cloud](../../images/integrations/terraform/integrations-terraformcloud-create.png)
-![integrations terraform cloud](../../images/integrations/terraform/integrations-terraformcloud.png)
+    ![integrations terraform cloud](../../images/integrations/terraform/integrations-terraformcloud-create.png)
+    ![integrations terraform cloud](../../images/integrations/terraform/integrations-terraformcloud.png)
+  </Step>
+</Steps>

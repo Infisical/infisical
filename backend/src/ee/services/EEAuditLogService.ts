@@ -3,7 +3,6 @@ import { AuditLog, Event } from "../models";
 import { AuthData } from "../../interfaces/middleware";
 import EELicenseService from "./EELicenseService";
 import { Workspace } from "../../models";
-import { OrganizationNotFoundError } from "../../utils/errors";
 
 interface EventScope {
     workspaceId?: Types.ObjectId;
@@ -14,31 +13,42 @@ type ValidEventScope =
     | Required<Pick<EventScope, "workspaceId">>
     | Required<Pick<EventScope, "organizationId">>
     | Required<EventScope>
+    | Record<string, never>;
 
 export default class EEAuditLogService {
-    static async createAuditLog(authData: AuthData, event: Event, eventScope: ValidEventScope, shouldSave = true) {
+    static async createAuditLog(authData: AuthData, event: Event, eventScope: ValidEventScope = {}, shouldSave = true) {
         
         const MS_IN_DAY = 24 * 60 * 60 * 1000;
         
-        const organizationId = ("organizationId" in eventScope)
-            ? eventScope.organizationId
-            : (await Workspace.findById(eventScope.workspaceId).select("organization").lean())?.organization;
+        let organizationId;
+        if ("organizationId" in eventScope) {
+            organizationId = eventScope.organizationId;
+        } 
         
-        if (!organizationId) throw OrganizationNotFoundError({
-            message: "createAuditLog: Failed to create audit log due to missing organizationId"
-        });
-
-        const ttl = (await EELicenseService.getPlan(organizationId)).auditLogsRetentionDays * MS_IN_DAY;
+        let workspaceId;
+        if ("workspaceId" in eventScope) {
+            workspaceId = eventScope.workspaceId;
+            
+            if (!organizationId) {
+                organizationId = (await Workspace.findById(workspaceId).select("organization").lean())?.organization;
+            }
+        }
+        
+        let expiresAt;
+        if (organizationId) {
+            const ttl = (await EELicenseService.getPlan(organizationId)).auditLogsRetentionDays * MS_IN_DAY;
+            expiresAt = new Date(Date.now() + ttl);
+        }
         
         const auditLog = await new AuditLog({
             actor: authData.actor,
             organization: organizationId,
-            workspace: ("workspaceId" in eventScope) ? eventScope.workspaceId : undefined,
+            workspace: workspaceId,
             ipAddress: authData.ipAddress,
             event,
             userAgent: authData.userAgent,
             userAgentType: authData.userAgentType,
-            expiresAt: new Date(Date.now() + ttl)
+            expiresAt
         });
         
         if (shouldSave) {

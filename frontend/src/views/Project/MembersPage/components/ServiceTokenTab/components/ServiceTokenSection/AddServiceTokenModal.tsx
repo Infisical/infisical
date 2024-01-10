@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { faCheck, faCopy, faPlus, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { AxiosError } from "axios";
 import * as yup from "yup";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
@@ -88,10 +89,12 @@ export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
   } = useForm<FormData>({
     resolver: yupResolver(schema),
     defaultValues: {
-      scopes: [{ 
-        secretPath: "/", 
-        environment: currentWorkspace?.environments?.[0]?.slug 
-      }]
+      scopes: [
+        {
+          secretPath: "/",
+          environment: currentWorkspace?.environments?.[0]?.slug
+        }
+      ]
     }
   });
 
@@ -136,7 +139,7 @@ export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
         plaintext: key,
         key: randomBytes
       });
-      
+
       const { serviceToken } = await createServiceToken.mutateAsync({
         encryptedKey: ciphertext,
         iv,
@@ -158,10 +161,18 @@ export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
       });
     } catch (err) {
       console.error(err);
-      createNotification({
-        text: "Failed to create a service token",
-        type: "error"
-      });
+      const axiosError = err as AxiosError
+      if (axiosError?.response?.status === 401) {
+        createNotification({
+          text: "You do not have access to the selected environment/path",
+          type: "error"
+        });
+      } else {
+        createNotification({
+          text: "Failed to create a service token",
+          type: "error"
+        });
+      }
     }
   };
 
@@ -279,7 +290,7 @@ export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
                     className="w-full"
                   >
                     {apiTokenExpiry.map(({ label, value }) => (
-                      <SelectItem value={String(value || "")} key={label}>
+                      <SelectItem value={String(value)} key={label}>
                         {label}
                       </SelectItem>
                     ))}

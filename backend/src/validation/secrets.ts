@@ -246,7 +246,15 @@ export const GetSecretByNameRawV3 = z.object({
     include_imports: z
       .enum(["true", "false"])
       .default("true")
-      .transform((value) => value === "true")
+      .transform((value) => value === "true"),
+    version: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => value === undefined ? undefined : parseInt(value, 10))
+      .refine((value) => value === undefined || !isNaN(value), {
+        message: "Version must be a number",
+      })
   })
 });
 
@@ -318,7 +326,15 @@ export const GetSecretByNameV3 = z.object({
     include_imports: z
       .enum(["true", "false"])
       .default("true")
-      .transform((value) => value === "true")
+      .transform((value) => value === "true"),
+    version: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => value === undefined ? undefined : parseInt(value, 10))
+      .refine((value) => value === undefined || !isNaN(value), {
+        message: "Version must be a number",
+      })
   }),
   params: z.object({
     secretName: z.string().trim()
@@ -429,6 +445,9 @@ export const UpdateSecretByNameBatchV3 = z.object({
         secretValueCiphertext: z.string().trim(),
         secretValueIV: z.string().trim(),
         secretValueTag: z.string().trim(),
+        secretKeyCiphertext: z.string().trim(),
+        secretKeyIV: z.string().trim(),
+        secretKeyTag: z.string().trim(),
         secretCommentCiphertext: z.string().trim().optional(),
         secretCommentIV: z.string().trim().optional(),
         secretCommentTag: z.string().trim().optional(),

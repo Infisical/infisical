@@ -17,7 +17,7 @@ import { OrganizationNotFoundError } from "../../utils/errors";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
-  getUserOrgPermissions
+  getAuthDataOrgPermissions
 } from "../../ee/services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 import { validateRequest } from "../../helpers/validation";
@@ -152,7 +152,10 @@ export const createWorkspace = async (req: Request, res: Response) => {
     });
   }
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Create,
     OrgPermissionSubjects.Workspace

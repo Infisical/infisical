@@ -4,6 +4,11 @@ import {
   BotKey,
   BotOrg,
   Folder,
+  Identity,
+  IdentityMembership,
+  IdentityMembershipOrg,
+  IdentityUniversalAuth,
+  IdentityUniversalAuthClientSecret,
   IncidentContactOrg,
   Integration,
   IntegrationAuth,
@@ -16,8 +21,6 @@ import {
   SecretImport,
   ServiceToken,
   ServiceTokenData,
-  ServiceTokenDataV3,
-  ServiceTokenDataV3Key,
   Tag,
   Webhook,
   Workspace
@@ -122,6 +125,32 @@ export const deleteOrganization = async ({
   
   await MembershipOrg.deleteMany({
     organization: organization._id
+  });
+
+  const identityIds = await IdentityMembershipOrg.distinct("identity", {
+    organization: organization._id
+  });
+  
+  await IdentityMembershipOrg.deleteMany({
+    organization: organization._id
+  });
+  
+  await Identity.deleteMany({
+    _id: {
+      $in: identityIds
+    }
+  });
+  
+  await IdentityUniversalAuth.deleteMany({
+    identity: {
+      $in: identityIds
+    }
+  });
+
+  await IdentityUniversalAuthClientSecret.deleteMany({
+    identity: {
+      $in: identityIds
+    }
   });
   
   await BotOrg.deleteMany({
@@ -268,13 +297,7 @@ export const deleteOrganization = async ({
     }
   });
 
-  await ServiceTokenDataV3.deleteMany({
-    workspace: {
-      $in: workspaceIds
-    }
-  });
-  
-  await ServiceTokenDataV3Key.deleteMany({
+  await IdentityMembership.deleteMany({
     workspace: {
       $in: workspaceIds
     }

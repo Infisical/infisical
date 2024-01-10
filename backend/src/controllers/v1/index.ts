@@ -1,4 +1,5 @@
 import * as authController from "./authController";
+import * as universalAuthController from "./universalAuthController";
 import * as botController from "./botController";
 import * as integrationAuthController from "./integrationAuthController";
 import * as integrationController from "./integrationController";
@@ -20,6 +21,7 @@ import * as adminController from "./adminController";
 
 export {
   authController,
+  universalAuthController,
   botController,
   integrationAuthController,
   integrationController,

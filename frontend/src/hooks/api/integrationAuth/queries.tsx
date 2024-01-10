@@ -300,6 +300,7 @@ const fetchIntegrationAuthRailwayEnvironments = async ({
   integrationAuthId: string;
   appId: string;
 }) => {
+  if (appId === "none") return [];
   const {
     data: { environments }
   } = await apiRequest.get<{ environments: Environment[] }>(
@@ -321,6 +322,7 @@ const fetchIntegrationAuthRailwayServices = async ({
   integrationAuthId: string;
   appId: string;
 }) => {
+  if (appId === "none") return [];
   const {
     data: { services }
   } = await apiRequest.get<{ services: Service[] }>(
@@ -715,7 +717,22 @@ export const useSaveIntegrationAccessToken = () => {
   });
 };
 
-export const useDeleteIntegrationAuth = () => {
+export const useDeleteIntegrationAuths = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, { integration: string; workspaceId: string }>({
+    mutationFn: ({ integration, workspaceId }) => apiRequest.delete(`/api/v1/integration-auth?${new URLSearchParams({
+      integration,
+      workspaceId
+    })}`),
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(workspaceId));
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(workspaceId));
+    }
+  });
+};
+
+export const useDeleteIntegrationAuth = () => { // not used
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, { id: string; workspaceId: string }>({

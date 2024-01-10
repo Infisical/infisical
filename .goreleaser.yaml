@@ -108,7 +108,7 @@ brews:
       zsh_completion.install "completions/infisical.zsh" => "_infisical"
       fish_completion.install "completions/infisical.fish"
       man1.install "manpages/infisical.1.gz"
-  - name: 'infisical@{{.Version}}'
+  - name: "infisical@{{.Version}}"
     tap:
       owner: Infisical
       name: homebrew-get-cli
@@ -186,12 +186,14 @@ aurs:
       # man pages
       install -Dm644 "./manpages/infisical.1.gz" "${pkgdir}/usr/share/man/man1/infisical.1.gz"
 
-# dockers:
-#   - dockerfile: cli/docker/Dockerfile
-#     goos: linux
-#     goarch: amd64
-#     ids:
-#       - infisical
-#     image_templates:
-#       - "infisical/cli:{{ .Version }}"
-#       - "infisical/cli:latest"
+dockers:
+  - dockerfile: docker/alpine
+    goos: linux
+    goarch: amd64
+    ids:
+      - all-other-builds
+    image_templates:
+      - "infisical/cli:{{ .Version }}"
+      - "infisical/cli:{{ .Major }}.{{ .Minor }}"
+      - "infisical/cli:{{ .Major }}"
+      - "infisical/cli:latest"

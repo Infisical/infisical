@@ -11,7 +11,6 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
-	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -102,7 +101,7 @@ var exportCmd = &cobra.Command{
 
 		fmt.Print(output)
 
-		Telemetry.CaptureEvent("cli-command:export", posthog.NewProperties().Set("secretsCount", len(secrets)).Set("version", util.CLI_VERSION))
+		// Telemetry.CaptureEvent("cli-command:export", posthog.NewProperties().Set("secretsCount", len(secrets)).Set("version", util.CLI_VERSION))
 	},
 }
 

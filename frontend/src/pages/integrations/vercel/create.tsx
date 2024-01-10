@@ -56,7 +56,7 @@ export default function VercelCreateIntegrationPage() {
     appId: targetAppId
   });
 
-  const filteredBranches = branches?.filter((branchName) => branchName !== "main").concat("");
+  const filteredBranches = branches?.filter((branchName) => branchName !== "main").concat();
 
   useEffect(() => {
     if (workspace) {
@@ -125,7 +125,7 @@ export default function VercelCreateIntegrationPage() {
           subTitle="Select which environment or folder in Infisical you want to sync to Vercel's environment variables."
         >
           <div className="flex flex-row items-center">
-            <div className="inline flex items-center">
+            <div className="flex items-center">
               <Image
                 src="/images/integrations/Vercel.png"
                 height={30}

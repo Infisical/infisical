@@ -41,6 +41,7 @@ import {
 } from "@app/hooks/api";
 
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
+import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
 // import { ProjectIndexSecretsSection } from "./components/ProjectIndexSecretsSection";
 import { SecretOverviewFolderRow } from "./components/SecretOverviewFolderRow";
 import { SecretOverviewTableRow } from "./components/SecretOverviewTableRow";
@@ -260,7 +261,7 @@ export const SecretOverviewPage = () => {
 
   return (
     <div className="container mx-auto px-6 text-mineshaft-50 dark:[color-scheme:dark]">
-      {/* <ProjectIndexSecretsSection decryptFileKey={latestFileKey!} /> */}
+      <ProjectIndexSecretsSection decryptFileKey={latestFileKey!} />
       <div className="relative right-5 ml-4">
         <NavHeader pageName={t("dashboard.title")} isProjectRelated />
       </div>
@@ -269,22 +270,39 @@ export const SecretOverviewPage = () => {
         <p className="text-md text-bunker-300">
           Inject your secrets using
           <a
-            className="mx-1 text-primary/80 hover:text-primary"
+            className="ml-1 text-mineshaft-300 underline underline-offset-4 decoration-primary-800 hover:decoration-primary-600 hover:text-mineshaft-100 duration-200"
             href="https://infisical.com/docs/cli/overview"
             target="_blank"
             rel="noopener noreferrer"
           >
             Infisical CLI
-          </a>
-          or
+          </a>,
           <a
-            className="mx-1 text-primary/80 hover:text-primary"
+            className="ml-1 text-mineshaft-300 underline underline-offset-4 decoration-primary-800 hover:decoration-primary-600 hover:text-mineshaft-100 duration-200"
+            href="https://infisical.com/docs/documentation/getting-started/api"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Infisical API
+          </a>
+          ,
+          <a
+            className="ml-1 text-mineshaft-300 underline underline-offset-4 decoration-primary-800 hover:decoration-primary-600 hover:text-mineshaft-100 duration-200"
             href="https://infisical.com/docs/sdks/overview"
             target="_blank"
             rel="noopener noreferrer"
           >
             Infisical SDKs
           </a>
+          , and 
+          <a
+            className="ml-1 text-mineshaft-300 underline underline-offset-4 decoration-primary-800 hover:decoration-primary-600 hover:text-mineshaft-100 duration-200"
+            href="https://infisical.com/docs/documentation/getting-started/introduction"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            more
+          </a>.
         </p>
       </div>
       <div className="mt-8 flex items-center justify-between">
@@ -305,7 +323,7 @@ export const SecretOverviewPage = () => {
             <THead>
               <Tr className="sticky top-0 z-20 border-0">
                 <Th className="sticky left-0 z-20 min-w-[20rem] border-b-0 p-0">
-                  <div className="flex items-center border-b border-r border-mineshaft-600 px-5 pt-4 pb-3.5">
+                  <div className="flex items-center border-b border-r border-mineshaft-600 px-5 pt-3.5 pb-3">
                     Name
                     <IconButton
                       variant="plain"
@@ -325,10 +343,10 @@ export const SecretOverviewPage = () => {
                       className="min-table-row min-w-[11rem] border-b-0 p-0 text-center"
                       key={`secret-overview-${name}-${index + 1}`}
                     >
-                      <div className="flex items-center justify-center border-b border-mineshaft-600 px-5 pt-3.5 pb-3">
+                      <div className="flex items-center justify-center border-b border-mineshaft-600 px-5 pt-3.5 pb-[0.83rem]">
                         <button
                           type="button"
-                          className="font-medium hover:text-mineshaft-100 duration-100 text-sm"
+                          className="text-sm font-medium duration-100 hover:text-mineshaft-100"
                           onClick={() => handleExploreEnvClick(slug)}
                         >
                           {name}
@@ -381,7 +399,7 @@ export const SecretOverviewPage = () => {
                   </Td>
                 </Tr>
               )}
-              {filteredFolderNames.map((folderName, index) => (
+              {!isTableLoading && filteredFolderNames.map((folderName, index) => (
                 <SecretOverviewFolderRow
                   folderName={folderName}
                   isFolderPresentInEnv={isFolderPresentInEnv}
@@ -390,7 +408,7 @@ export const SecretOverviewPage = () => {
                   onClick={handleFolderClick}
                 />
               ))}
-              {userAvailableEnvs?.length > 0 ? (
+              {!isTableLoading && (userAvailableEnvs?.length > 0 ? (
                 filteredSecretNames.map((key, index) => (
                   <SecretOverviewTableRow
                     secretPath={secretPath}
@@ -406,7 +424,7 @@ export const SecretOverviewPage = () => {
                 ))
               ) : (
                 <PermissionDeniedBanner />
-              )}
+              ))}
             </TBody>
             <TFoot>
               <Tr className="sticky bottom-0 z-10 border-0 bg-mineshaft-800">

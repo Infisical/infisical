@@ -76,10 +76,15 @@ export default function RailwayCreateIntegrationPage() {
     }
   }, [targetEnvironments]);
 
-  const filteredServices = targetServices?.concat({
-    name: "",
-    serviceId: ""
-  });
+  useEffect(() => {
+    if (targetServices) {
+      if (targetServices.length > 0) {
+        setTargetServiceId(targetServices[0].serviceId);
+      } else {
+        setTargetServiceId("none");
+      }
+    }
+  }, [targetServices]);
 
   const handleButtonClick = async () => {
     try {
@@ -125,7 +130,7 @@ export default function RailwayCreateIntegrationPage() {
     selectedSourceEnvironment &&
     integrationAuthApps &&
     targetEnvironments &&
-    filteredServices ? (
+    targetServices ? (
     <div className="flex h-full w-full items-center justify-center">
       <Card className="max-w-md rounded-md p-8">
         <CardTitle className="text-center">Railway Integration</CardTitle>
@@ -180,6 +185,7 @@ export default function RailwayCreateIntegrationPage() {
             value={targetEnvironmentId}
             onValueChange={(val) => setTargetEnvironmentId(val)}
             className="w-full border border-mineshaft-500"
+            isDisabled={targetEnvironments.length === 0}
           >
             {targetEnvironments.length > 0 ? (
               targetEnvironments.map((targetEnvironment) => (
@@ -202,15 +208,22 @@ export default function RailwayCreateIntegrationPage() {
             value={targetServiceId}
             onValueChange={(val) => setTargetServiceId(val)}
             className="w-full border border-mineshaft-500"
+            isDisabled={targetServices.length === 0}
           >
-            {filteredServices.map((targetService) => (
-              <SelectItem
-                value={targetService.serviceId as string}
-                key={`target-service-${targetService.serviceId as string}`}
-              >
-                {targetService.name}
+            {targetServices.length > 0 ? (
+              targetServices.map((targetService) => (
+                <SelectItem
+                  value={targetService.serviceId as string}
+                  key={`target-service-${targetService.serviceId as string}`}
+                >
+                  {targetService.name}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem value="none" key="target-service-none">
+                No services found
               </SelectItem>
-            ))}
+            )}
           </Select>
         </FormControl>
         <Button

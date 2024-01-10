@@ -30,7 +30,7 @@ const generateOpenAPISpec = async () => {
         type: "http",
         scheme: "bearer",
         bearerFormat: "JWT",
-        description: "A service token in Infisical"
+        description: "An access token in Infisical"
       },
       apiKeyAuth: {
         type: "apiKey",
@@ -51,6 +51,41 @@ const generateOpenAPISpec = async () => {
         tag: "tag_of_enc_nacl_private_key",
         updatedAt: "2023-01-13T14:16:12.210Z",
         createdAt: "2023-01-13T14:16:12.210Z"
+      },
+      Identity: {
+        _id: "",
+        name: "Machine 1",
+        authMethod: "universal-auth"
+      },
+      IdentityUniversalAuth: {
+        _id: "",
+        identity: "",
+        clientId: "...",
+        clientSecretTrustedIps: [{
+          ipAddress: "0.0.0.0",
+          type: "ipv4",
+          prefix: "0"
+        }],
+        accessTokenTTL: 7200,
+        accessTokenMaxTTL: 2592000,
+        accessTokenNumUsesLimit: 0,
+        accessTokenTrustedIps: [{
+          ipAddress: "0.0.0.0",
+          type: "ipv4",
+          prefix: "0"
+        }]
+      },
+      IdentityUniversalAuthClientSecretData: {
+        _id: "",
+        identityUniversalAuth: "",
+        isClientSecretRevoked: false,
+        description: "",
+        clientSecretPrefix: "abc",
+        clientSecretNumUses: 0,
+        clientSecretNumUsesLimit: 0,
+        clientSecretTTL: 0,
+        createdAt: "2023-01-13T14:16:12.210Z",
+        updatedAt: "2023-01-13T14:16:12.210Z"
       },
       Membership: {
         user: {
@@ -77,6 +112,25 @@ const generateOpenAPISpec = async () => {
         },
         organization: "",
         role: "owner",
+        status: "accepted"
+      },
+      IdentityMembership: {
+        identity: {
+          _id: "",
+          name: "Machine 1",
+          authMethod: "universal-auth"
+        },
+        workspace: "",
+        role: "member"
+      },
+      IdentityMembershipOrg: {
+        identity: {
+          _id: "",
+          name: "Machine 1",
+          authMethod: "universal-auth"
+        },
+        organization: "",
+        role: "member",
         status: "accepted"
       },
       Organization: {

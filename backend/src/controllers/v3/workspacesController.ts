@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { validateRequest } from "../../helpers/validation";
-import { Membership, Secret, ServiceTokenDataV3, User } from "../../models";
+import { Membership, Secret, User } from "../../models";
 import { SecretService } from "../../services";
 import { getAuthDataProjectPermissions } from "../../ee/services/ProjectRoleService";
 import { UnauthorizedRequestError } from "../../utils/errors";
@@ -140,17 +140,3 @@ export const nameWorkspaceSecrets = async (req: Request, res: Response) => {
     message: "Successfully named workspace secrets"
   });
 };
-
-export const getWorkspaceServiceTokenData = async (req: Request, res: Response) => {
-  const {
-    params: { workspaceId }
-  } = await validateRequest(reqValidator.GetWorkspaceServiceTokenDataV3, req);
-  
-  const serviceTokenData = await ServiceTokenDataV3.find({
-    workspace: new Types.ObjectId(workspaceId)
-  }).populate("customRole");
-  
-  return res.status(200).send({
-    serviceTokenData
-  });
-}

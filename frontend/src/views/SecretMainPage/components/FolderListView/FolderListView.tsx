@@ -108,11 +108,11 @@ export const FolderListView = ({
             key={id}
             className="flex group border-b border-mineshaft-600 hover:bg-mineshaft-700 cursor-pointer"
           >
-            <div className="w-12 px-4 py-2 text-yellow-700 flex items-center">
+            <div className="w-11 px-5 py-3 text-yellow-700 flex items-center">
               <FontAwesomeIcon icon={faFolder} />
             </div>
             <div
-              className="flex-grow px-4 py-2 flex items-center"
+              className="flex-grow px-4 py-3 flex items-center"
               role="button"
               tabIndex={0}
               onKeyDown={(evt) => {
@@ -122,7 +122,7 @@ export const FolderListView = ({
             >
               {name}
             </div>
-            <div className="px-3 py-2 flex items-center space-x-4 border-l border-mineshaft-600">
+            <div className="px-3 py-3 flex items-center space-x-4 border-l border-mineshaft-600">
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
                 a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}

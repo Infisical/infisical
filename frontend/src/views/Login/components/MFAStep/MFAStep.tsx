@@ -78,6 +78,7 @@ export const MFAStep = ({
       let isLinkingRequired: undefined | boolean;
       let callbackPort: undefined | string;
       let authMethod: undefined | AuthMethod;
+      let organizationId: undefined | string;
       
       if (providerAuthToken) {
         const decodedToken = jwt_decode(providerAuthToken) as any;
@@ -85,6 +86,7 @@ export const MFAStep = ({
         isLinkingRequired = decodedToken.isLinkingRequired;
         callbackPort = decodedToken.callbackPort;
         authMethod = decodedToken.authMethod;
+        organizationId = decodedToken?.organizationId;
       }
       
       if (mfaCode.length !== 6) {
@@ -142,7 +144,7 @@ export const MFAStep = ({
             });
           }
           
-          await navigateUserToOrg(router);
+          await navigateUserToOrg(router, organizationId);
         } else {
           createNotification({
             text: "Failed to log in",

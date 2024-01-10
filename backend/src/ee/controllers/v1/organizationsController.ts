@@ -8,7 +8,7 @@ import * as reqValidator from "../../../validation/organization";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
-  getUserOrgPermissions
+  getAuthDataOrgPermissions,
 } from "../../services/RoleService";
 import { ForbiddenError } from "@casl/ability";
 import { Organization } from "../../../models";
@@ -20,7 +20,10 @@ export const getOrganizationPlansTable = async (req: Request, res: Response) => 
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgPlansTablev1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Billing
@@ -42,7 +45,10 @@ export const getOrganizationPlan = async (req: Request, res: Response) => {
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgPlanv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Billing
@@ -70,7 +76,10 @@ export const startOrganizationTrial = async (req: Request, res: Response) => {
     body: { success_url }
   } = await validateRequest(reqValidator.StartOrgTrailv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Create,
     OrgPermissionSubjects.Billing
@@ -116,7 +125,10 @@ export const getOrganizationPlanBillingInfo = async (req: Request, res: Response
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgPlanBillingInfov1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Billing
@@ -149,7 +161,10 @@ export const getOrganizationPlanTable = async (req: Request, res: Response) => {
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgPlanTablev1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Billing
@@ -176,7 +191,10 @@ export const getOrganizationBillingDetails = async (req: Request, res: Response)
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgBillingDetailsv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Billing
@@ -204,7 +222,10 @@ export const updateOrganizationBillingDetails = async (req: Request, res: Respon
     body: { name, email }
   } = await validateRequest(reqValidator.UpdateOrgBillingDetailsv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Edit,
     OrgPermissionSubjects.Billing
@@ -238,7 +259,10 @@ export const getOrganizationPmtMethods = async (req: Request, res: Response) => 
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgPmtMethodsv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Billing
@@ -271,7 +295,10 @@ export const addOrganizationPmtMethod = async (req: Request, res: Response) => {
     body: { success_url, cancel_url }
   } = await validateRequest(reqValidator.CreateOrgPmtMethodv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Create,
     OrgPermissionSubjects.Billing
@@ -312,7 +339,10 @@ export const deleteOrganizationPmtMethod = async (req: Request, res: Response) =
     params: { organizationId, pmtMethodId }
   } = await validateRequest(reqValidator.DelOrgPmtMethodv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Delete,
     OrgPermissionSubjects.Billing
@@ -342,7 +372,10 @@ export const getOrganizationTaxIds = async (req: Request, res: Response) => {
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgTaxIdsv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Billing
@@ -375,7 +408,10 @@ export const addOrganizationTaxId = async (req: Request, res: Response) => {
     body: { type, value }
   } = await validateRequest(reqValidator.CreateOrgTaxId, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Create,
     OrgPermissionSubjects.Billing
@@ -412,7 +448,10 @@ export const deleteOrganizationTaxId = async (req: Request, res: Response) => {
     params: { organizationId, taxId }
   } = await validateRequest(reqValidator.DelOrgTaxIdv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Delete,
     OrgPermissionSubjects.Billing
@@ -445,7 +484,10 @@ export const getOrganizationInvoices = async (req: Request, res: Response) => {
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgInvoicesv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Billing
@@ -480,7 +522,10 @@ export const getOrganizationLicenses = async (req: Request, res: Response) => {
     params: { organizationId }
   } = await validateRequest(reqValidator.GetOrgLicencesv1, req);
 
-  const { permission } = await getUserOrgPermissions(req.user._id, organizationId);
+  const { permission } = await getAuthDataOrgPermissions({
+    authData: req.authData,
+    organizationId: new Types.ObjectId(organizationId)
+  });
   ForbiddenError.from(permission).throwUnlessCan(
     OrgPermissionActions.Read,
     OrgPermissionSubjects.Billing

@@ -1,6 +1,15 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Key, Membership, ServiceTokenData, Workspace } from "../../models";
+import {
+  IIdentity,
+  IdentityMembership,
+  IdentityMembershipOrg,
+  Key,
+  Membership,
+  ServiceTokenData,
+  Workspace
+} from "../../models";
+import { IRole, Role } from "../../ee/models";
 import {
   pullSecrets as pull,
   v2PushSecrets as push,
@@ -16,9 +25,13 @@ import * as reqValidator from "../../validation";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  getAuthDataProjectPermissions
+  getAuthDataProjectPermissions,
+  getWorkspaceRolePermissions,
+  isAtLeastAsPrivilegedWorkspace
 } from "../../ee/services/ProjectRoleService";
 import { ForbiddenError } from "@casl/ability";
+import { BadRequestError, ForbiddenRequestError, ResourceNotFoundError } from "../../utils/errors";
+import { ADMIN, CUSTOM, MEMBER, NO_ACCESS, VIEWER } from "../../variables";
 
 interface V2PushSecret {
   type: string; // personal or shared
@@ -169,11 +182,11 @@ export const getWorkspaceKey = async (req: Request, res: Response) => {
         "apiKeyAuth": []
     }]
 
-	#swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
-		"required": true,
-		"type": "string"
-	} 
+  #swagger.parameters['workspaceId'] = {
+    "description": "ID of project",
+    "required": true,
+    "type": "string"
+  } 
 
     #swagger.responses[200] = {
         content: {
@@ -198,7 +211,7 @@ export const getWorkspaceKey = async (req: Request, res: Response) => {
     receiver: req.user._id
   }).populate("sender", "+publicKey");
 
-  if (!key) throw new Error("Failed to find workspace key");
+  if (!key) throw new Error(`getWorkspaceKey: Failed to find workspace key [workspaceId=${workspaceId}] [receiver=${req.user._id}]`);
 
   await EEAuditLogService.createAuditLog(
     req.authData,
@@ -236,33 +249,34 @@ export const getWorkspaceServiceTokenData = async (req: Request, res: Response) 
  */
 export const getWorkspaceMemberships = async (req: Request, res: Response) => {
   /* 
-    #swagger.summary = 'Return project memberships'
-    #swagger.description = 'Return project memberships'
+    #swagger.summary = 'Return project user memberships'
+    #swagger.description = 'Return project user memberships'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
-	#swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
-		"required": true,
-		"type": "string"
-	} 
+  #swagger.parameters['workspaceId'] = {
+    "description": "ID of project",
+    "required": true,
+    "type": "string"
+  } 
 
     #swagger.responses[200] = {
         content: {
             "application/json": {
                 "schema": { 
                     "type": "object",
-					"properties": {
-						"memberships": {
-							"type": "array",
-							"items": {
-								$ref: "#/components/schemas/Membership" 
-							},
-							"description": "Memberships of project"
-						}
-					}
+          "properties": {
+            "memberships": {
+              "type": "array",
+              "items": {
+                $ref: "#/components/schemas/Membership" 
+              },
+              "description": "Memberships of project"
+            }
+          }
                 }
             }           
         }
@@ -299,26 +313,27 @@ export const getWorkspaceMemberships = async (req: Request, res: Response) => {
  */
 export const updateWorkspaceMembership = async (req: Request, res: Response) => {
   /* 
-    #swagger.summary = 'Update project membership'
-    #swagger.description = 'Update project membership'
+    #swagger.summary = 'Update project user membership'
+    #swagger.description = 'Update project user membership'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
-	#swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
-		"required": true,
-		"type": "string"
-	} 
+  #swagger.parameters['workspaceId'] = {
+    "description": "ID of project",
+    "required": true,
+    "type": "string"
+  } 
 
-	#swagger.parameters['membershipId'] = {
-		"description": "ID of project membership to update",
-		"required": true,
-		"type": "string"
-	} 
+  #swagger.parameters['membershipId'] = {
+    "description": "ID of project membership to update",
+    "required": true,
+    "type": "string"
+  } 
 
-	#swagger.requestBody = {
+  #swagger.requestBody = {
       "required": true,
       "content": {
         "application/json": {
@@ -327,7 +342,7 @@ export const updateWorkspaceMembership = async (req: Request, res: Response) => 
             "properties": {
                 "role": {
                     "type": "string",
-                    "description": "Role of membership - either admin or member",
+                    "description": "Role to update to for project membership",
                 }
             }
           }
@@ -339,13 +354,13 @@ export const updateWorkspaceMembership = async (req: Request, res: Response) => 
         content: {
             "application/json": {
                 "schema": { 
-					"type": "object",
-					"properties": {
-						"membership": {
-							$ref: "#/components/schemas/Membership",
-							"description": "Updated membership"
-						}
-					}
+          "type": "object",
+          "properties": {
+            "membership": {
+              $ref: "#/components/schemas/Membership",
+              "description": "Updated membership"
+            }
+          }
                 }
             }           
         }
@@ -389,36 +404,37 @@ export const updateWorkspaceMembership = async (req: Request, res: Response) => 
  */
 export const deleteWorkspaceMembership = async (req: Request, res: Response) => {
   /* 
-    #swagger.summary = 'Delete project membership'
-    #swagger.description = 'Delete project membership'
+    #swagger.summary = 'Delete project user membership'
+    #swagger.description = 'Delete project user membership'
     
     #swagger.security = [{
-        "apiKeyAuth": []
+        "apiKeyAuth": [],
+        "bearerAuth": []
     }]
 
-	#swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
-		"required": true,
-		"type": "string"
-	} 
+  #swagger.parameters['workspaceId'] = {
+    "description": "ID of project",
+    "required": true,
+    "type": "string"
+  } 
 
-	#swagger.parameters['membershipId'] = {
-		"description": "ID of project membership to delete",
-		"required": true,
-		"type": "string"
-	} 
+  #swagger.parameters['membershipId'] = {
+    "description": "ID of project membership to delete",
+    "required": true,
+    "type": "string"
+  } 
 
     #swagger.responses[200] = {
         content: {
             "application/json": {
                 "schema": { 
-					"type": "object",
-					"properties": {
-						"membership": {
-							$ref: "#/components/schemas/Membership",
-							"description": "Deleted membership"
-						}
-					}
+          "type": "object",
+          "properties": {
+            "membership": {
+              $ref: "#/components/schemas/Membership",
+              "description": "Deleted membership"
+            }
+          }
                 }
             }           
         }
@@ -491,3 +507,377 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
     workspace
   });
 };
+
+/**
+ * Add identity with id [identityId] to workspace
+ * with id [workspaceId]
+ * @param req 
+ * @param res 
+ */
+export const addIdentityToWorkspace = async (req: Request, res: Response) => {
+  const {
+    params: { workspaceId, identityId },
+    body: {
+      role
+    }
+  } = await validateRequest(reqValidator.AddIdentityToWorkspaceV2, req);
+
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.Identity
+  );
+
+  let identityMembership = await IdentityMembership.findOne({
+    identity: new Types.ObjectId(identityId),
+    workspace: new Types.ObjectId(workspaceId)
+  });
+
+  if (identityMembership) throw BadRequestError({
+    message: `Identity with id ${identityId} already exists in project with id ${workspaceId}`
+  });
+
+
+  const workspace = await Workspace.findById(workspaceId);
+  if (!workspace) throw ResourceNotFoundError();
+
+  const identityMembershipOrg = await IdentityMembershipOrg.findOne({
+    identity: new Types.ObjectId(identityId),
+    organization: workspace.organization
+  });
+
+  if (!identityMembershipOrg) throw ResourceNotFoundError({
+    message: `Failed to find identity with id ${identityId}`
+  });
+
+  if (!identityMembershipOrg.organization.equals(workspace.organization)) throw BadRequestError({
+    message: "Failed to add identity to project in another organization"
+  });
+
+  const rolePermission = await getWorkspaceRolePermissions(role, workspaceId);
+  const isAsPrivilegedAsIntendedRole = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
+
+  if (!isAsPrivilegedAsIntendedRole) throw ForbiddenRequestError({
+    message: "Failed to add identity to project with more privileged role"
+  });
+
+  let customRole;
+  if (role) {
+    const isCustomRole = ![ADMIN, MEMBER, VIEWER, NO_ACCESS].includes(role);
+    if (isCustomRole) {
+      customRole = await Role.findOne({
+        slug: role,
+        isOrgRole: false,
+        workspace: new Types.ObjectId(workspaceId)
+      });
+
+      if (!customRole) throw BadRequestError({ message: "Role not found" });
+    }
+  }
+
+  identityMembership = await new IdentityMembership({
+    identity: identityMembershipOrg.identity,
+    workspace: new Types.ObjectId(workspaceId),
+    role: customRole ? CUSTOM : role,
+    customRole
+  }).save();
+
+  return res.status(200).send({
+    identityMembership
+  });
+}
+
+/**
+ * Update role of identity with id [identityId] in workspace
+ * with id [workspaceId] to [role]
+ * @param req 
+ * @param res 
+ */
+ export const updateIdentityWorkspaceRole = async (req: Request, res: Response) => {
+   /* 
+    #swagger.summary = 'Update project identity membership'
+    #swagger.description = 'Update project identity membership'
+    
+    #swagger.security = [{
+        "bearerAuth": []
+    }]
+
+	#swagger.parameters['workspaceId'] = {
+		"description": "ID of project",
+		"required": true,
+		"type": "string"
+	} 
+
+	#swagger.parameters['identityId'] = {
+		"description": "ID of identity whose membership to update in project",
+		"required": true,
+		"type": "string"
+	} 
+
+	#swagger.requestBody = {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+                "role": {
+                    "type": "string",
+                    "description": "Role to update to for identity project membership",
+                }
+            }
+          }
+        }
+      }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+          "application/json": {
+            "schema": { 
+              "type": "object",
+              "properties": {
+                "identityMembership": {
+                  $ref: "#/components/schemas/IdentityMembership",
+                  "description": "Updated identity membership"
+                }
+              }
+            }
+          }           
+        }
+    }   
+    */
+  const {
+    params: { workspaceId, identityId },
+    body: {
+      role
+    }
+  } = await validateRequest(reqValidator.UpdateIdentityWorkspaceRoleV2, req);
+
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Edit,
+    ProjectPermissionSub.Identity
+  );
+
+  let identityMembership = await IdentityMembership
+    .findOne({
+      identity: new Types.ObjectId(identityId),
+      workspace: new Types.ObjectId(workspaceId)
+    })
+    .populate<{
+      identity: IIdentity,
+      customRole: IRole
+    }>("identity customRole");
+
+  if (!identityMembership) throw BadRequestError({
+    message: `Identity with id ${identityId} does not exist in project with id ${workspaceId}`
+  });
+
+  const identityRolePermission = await getWorkspaceRolePermissions(
+    identityMembership?.customRole?.slug ?? identityMembership.role,
+    identityMembership.workspace.toString()
+  );
+  const isAsPrivilegedAsIdentity = isAtLeastAsPrivilegedWorkspace(permission, identityRolePermission);
+  if (!isAsPrivilegedAsIdentity) throw ForbiddenRequestError({
+    message: "Failed to update role of more privileged identity"
+  });
+
+  const rolePermission = await getWorkspaceRolePermissions(role, workspaceId);
+  const isAsPrivilegedAsIntendedRole = isAtLeastAsPrivilegedWorkspace(permission, rolePermission);
+
+  if (!isAsPrivilegedAsIntendedRole) throw ForbiddenRequestError({
+    message: "Failed to update identity to a more privileged role"
+  });
+
+  let customRole;
+  if (role) {
+    const isCustomRole = ![ADMIN, MEMBER, VIEWER, NO_ACCESS].includes(role);
+    if (isCustomRole) {
+      customRole = await Role.findOne({
+        slug: role,
+        isOrgRole: false,
+        workspace: new Types.ObjectId(workspaceId)
+      });
+
+      if (!customRole) throw BadRequestError({ message: "Role not found" });
+    }
+  }
+
+  identityMembership = await IdentityMembership.findOneAndUpdate(
+    {
+      identity: identityMembership.identity._id,
+      workspace: new Types.ObjectId(workspaceId),
+    },
+    {
+      role: customRole ? CUSTOM : role,
+      customRole
+    },
+    {
+      new: true
+    }
+  );
+
+  return res.status(200).send({
+    identityMembership
+  });
+}
+
+/**
+ * Delete identity with id [identityId] from workspace
+ * with id [workspaceId]
+ * @param req 
+ * @param res 
+ */
+ export const deleteIdentityFromWorkspace = async (req: Request, res: Response) => {
+   /* 
+    #swagger.summary = 'Delete project identity membership'
+    #swagger.description = 'Delete project identity membership'
+    
+    #swagger.security = [{
+        "bearerAuth": []
+    }]
+
+	#swagger.parameters['workspaceId'] = {
+		"description": "ID of project",
+		"required": true,
+		"type": "string"
+	} 
+
+	#swagger.parameters['identityId'] = {
+		"description": "ID of identity whose membership to delete in project",
+		"required": true,
+		"type": "string"
+	} 
+
+    #swagger.responses[200] = {
+        content: {
+          "application/json": {
+            "schema": { 
+              "type": "object",
+              "properties": {
+                "identityMembership": {
+                  $ref: "#/components/schemas/IdentityMembership",
+                  "description": "Deleted identity membership"
+                }
+              }
+            }
+          }           
+        }
+    }   
+    */
+  const {
+    params: { workspaceId, identityId }
+  } = await validateRequest(reqValidator.DeleteIdentityFromWorkspaceV2, req);
+
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Delete,
+    ProjectPermissionSub.Identity
+  );
+
+  const identityMembership = await IdentityMembership
+    .findOne({
+      identity: new Types.ObjectId(identityId),
+      workspace: new Types.ObjectId(workspaceId)
+    })
+    .populate<{
+      identity: IIdentity,
+      customRole: IRole
+    }>("identity customRole");
+
+  if (!identityMembership) throw ResourceNotFoundError({
+    message: `Identity with id ${identityId} does not exist in project with id ${workspaceId}`
+  });
+
+  const identityRolePermission = await getWorkspaceRolePermissions(
+    identityMembership?.customRole?.slug ?? identityMembership.role,
+    identityMembership.workspace.toString()
+  );
+  const isAsPrivilegedAsIdentity = isAtLeastAsPrivilegedWorkspace(permission, identityRolePermission);
+  if (!isAsPrivilegedAsIdentity) throw ForbiddenRequestError({
+    message: "Failed to remove more privileged identity from project"
+  });
+
+  await IdentityMembership.findByIdAndDelete(identityMembership._id);
+
+  return res.status(200).send({
+    identityMembership
+  });
+}
+
+/**
+ * Return list of identity memberships for workspace with id [workspaceId]
+ * @param req
+ * @param res 
+ * @returns 
+ */
+ export const getWorkspaceIdentityMemberships = async (req: Request, res: Response) => {
+   /*
+    #swagger.summary = 'Return project identity memberships'
+    #swagger.description = 'Return project identity memberships'
+
+    #swagger.security = [{
+        "bearerAuth": []
+    }]
+    
+    #swagger.parameters['workspaceId'] = {
+        "description": "ID of project",
+        "required": true,
+        "type": "string",
+        "in": "path"
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+              "schema": { 
+                "type": "object",
+                "properties": {
+                  "identityMemberships": {
+                    "type": "array",
+                    "items": {
+                      $ref: "#/components/schemas/IdentityMembership" 
+                    },
+                    "description": "Identity memberships of project"
+                  }
+                }
+              }
+            }           
+        }
+    }
+  */
+  const {
+    params: { workspaceId }
+  } = await validateRequest(reqValidator.GetWorkspaceIdentityMembersV2, req);
+
+  const { permission } = await getAuthDataProjectPermissions({
+    authData: req.authData,
+    workspaceId: new Types.ObjectId(workspaceId)
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.Identity
+  );
+
+  const identityMemberships = await IdentityMembership.find({
+    workspace: new Types.ObjectId(workspaceId)
+  }).populate("identity customRole");
+
+  return res.status(200).send({
+    identityMemberships
+  });
+}

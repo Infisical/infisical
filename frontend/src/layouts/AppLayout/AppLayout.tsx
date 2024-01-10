@@ -591,7 +591,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                             isSelected={router.asPath === `/org/${currentOrg?._id}/members`}
                             icon="system-outline-96-groups"
                           >
-                            Members
+                            Access Control
                           </MenuItem>
                         </a>
                       </Link>
@@ -716,6 +716,12 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         </a>
                       </DropdownMenuItem>
                     ))}
+                    {infisicalPlatformVersion && (
+                      <div className="cursor-default mb-2 mt-2 w-full pl-5 duration-200 hover:text-mineshaft-200 text-sm">
+                        <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
+                        Version: {infisicalPlatformVersion}
+                      </div>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
                 {subscription &&
@@ -745,12 +751,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </div>
                     </button>
                   )}
-                {infisicalPlatformVersion && (
-                  <div className="mb-2 w-full pl-5 duration-200 hover:text-mineshaft-200">
-                    <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
-                    Version: {infisicalPlatformVersion}
-                  </div>
-                )}
               </div>
             </nav>
           </aside>

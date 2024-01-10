@@ -10,7 +10,7 @@ export interface IAuditLog {
   event: Event;
   userAgent: string;
   userAgentType: UserAgentType;
-  expiresAt: Date;
+  expiresAt?: Date;
 }
 
 const auditLogSchema = new Schema<IAuditLog>(

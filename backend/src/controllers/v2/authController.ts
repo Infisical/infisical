@@ -204,20 +204,16 @@ export const login2 = async (req: Request, res: Response) => {
  * @param res
  */
 export const sendMfaToken = async (req: Request, res: Response) => {
-  const {
-    body: { email }
-  } = await validateRequest(reqValidator.SendMfaTokenV2, req);
-
   const code = await TokenService.createToken({
     type: TOKEN_EMAIL_MFA,
-    email
+    email: req.user.email
   });
 
   // send MFA code [code] to [email]
   await sendMail({
     template: "emailMfa.handlebars",
     subjectLine: "Infisical MFA code",
-    recipients: [email],
+    recipients: [req.user.email],
     substitutions: {
       code
     }
@@ -236,17 +232,17 @@ export const sendMfaToken = async (req: Request, res: Response) => {
  */
 export const verifyMfaToken = async (req: Request, res: Response) => {
   const {
-    body: { email, mfaToken }
+    body: { mfaToken }
   } = await validateRequest(reqValidator.VerifyMfaTokenV2, req);
 
   await TokenService.validateToken({
     type: TOKEN_EMAIL_MFA,
-    email,
+    email: req.user.email,
     token: mfaToken
   });
 
   const user = await User.findOne({
-    email
+    email: req.user.email
   }).select(
     "+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag +devices"
   );

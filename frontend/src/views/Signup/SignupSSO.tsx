@@ -19,7 +19,7 @@ export const SignupSSO = ({
         email,
         organizationName,
         firstName,
-        lastName
+        lastName,
     } = jwt_decode(providerAuthToken) as any;
 
     const renderView = () => {

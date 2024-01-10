@@ -38,6 +38,7 @@ export interface GetSecretParams {
   type?: "shared" | "personal";
   authData: AuthData;
   include_imports?: boolean;
+  version?: number;
 }
 
 export interface UpdateSecretParams {

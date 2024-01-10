@@ -1,6 +1,5 @@
 import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useRouter } from "next/router";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, Modal, ModalContent } from "@app/components/v2";
@@ -9,7 +8,7 @@ import { withProjectPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteIntegration,
-  useDeleteIntegrationAuth,
+  useDeleteIntegrationAuths,
   useGetCloudIntegrations,
   useGetUserWsKey,
   useGetWorkspaceAuthorizations,
@@ -24,8 +23,7 @@ import { FrameworkIntegrationSection } from "./components/FrameworkIntegrationSe
 import { IntegrationsSection } from "./components/IntegrationsSection";
 import {
   generateBotKey,
-  redirectForProviderAuth,
-  redirectToIntegrationAppConfigScreen
+  redirectForProviderAuth
 } from "./IntegrationPage.utils";
 
 type Props = {
@@ -36,7 +34,6 @@ export const IntegrationsPage = withProjectPermission(
   ({ frameworkIntegrations }: Props) => {
     const { t } = useTranslation();
     const { createNotification } = useNotificationContext();
-    const router = useRouter();
 
     const { currentWorkspace } = useWorkspace();
     const workspaceId = currentWorkspace?._id || "";
@@ -65,6 +62,7 @@ export const IntegrationsPage = withProjectPermission(
         return groupBy;
       }, [])
     );
+
     // mutation
     const {
       data: integrations,
@@ -78,11 +76,11 @@ export const IntegrationsPage = withProjectPermission(
     const { mutateAsync: updateBotActiveStatus, mutate: updateBotActiveStatusSync } =
       useUpdateBotActiveStatus();
     const { mutateAsync: deleteIntegration } = useDeleteIntegration();
-    const {
-      mutateAsync: deleteIntegrationAuth,
+    const { 
+      mutateAsync: deleteIntegrationAuths,
       isSuccess: isDeleteIntegrationAuthSuccess,
-      reset: resetDeleteIntegrationAuth
-    } = useDeleteIntegrationAuth();
+      reset: resetDeleteIntegrationAuths
+    } = useDeleteIntegrationAuths();
 
     const isIntegrationsAuthorizedEmpty = !Object.keys(integrationAuths || {}).length;
     const isIntegrationsEmpty = !integrations?.length;
@@ -103,7 +101,7 @@ export const IntegrationsPage = withProjectPermission(
             botId: bot._id,
             workspaceId
           });
-        resetDeleteIntegrationAuth();
+        resetDeleteIntegrationAuths();
       }
     }, [
       isIntegrationFetching,
@@ -116,7 +114,7 @@ export const IntegrationsPage = withProjectPermission(
     const handleProviderIntegration = async (provider: string) => {
       const selectedCloudIntegration = cloudIntegrations?.find(({ slug }) => provider === slug);
       if (!selectedCloudIntegration) return;
-
+      
       try {
         if (bot && !bot.isActive) {
           const botKey = generateBotKey(bot.publicKey, latestWsKey!);
@@ -127,14 +125,8 @@ export const IntegrationsPage = withProjectPermission(
             botId: bot._id
           });
         }
-        const integrationAuthForProvider = integrationAuths?.[provider];
-        if (!integrationAuthForProvider) {
-          redirectForProviderAuth(selectedCloudIntegration);
-          return;
-        }
 
-        const url = redirectToIntegrationAppConfigScreen(provider, integrationAuthForProvider._id);
-        router.push(url);
+        redirectForProviderAuth(selectedCloudIntegration);
       } catch (error) {
         console.error(error);
       }
@@ -176,9 +168,10 @@ export const IntegrationsPage = withProjectPermission(
     const handleIntegrationAuthRevoke = async (provider: string, cb?: () => void) => {
       const integrationAuthForProvider = integrationAuths?.[provider];
       if (!integrationAuthForProvider) return;
+
       try {
-        await deleteIntegrationAuth({
-          id: integrationAuthForProvider._id,
+        await deleteIntegrationAuths({
+          integration: provider,
           workspaceId
         });
         if (cb) cb();
