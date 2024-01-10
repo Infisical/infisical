@@ -1019,6 +1019,7 @@ export const integrationAuthServiceFactory = ({
     getRailwayEnvironments,
     getNorthFlankSecretGroups,
     getTeamcityBuildConfigs,
-    getBitbucketWorkspaces
+    getBitbucketWorkspaces,
+    getIntegrationAccessToken
   };
 };

@@ -117,13 +117,13 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
     }
   },
   update: async (
-    filter: Partial<Tables[Tname]["base"]>,
+    filter: TFindFilter<Tables[Tname]["base"]>,
     data: Tables[Tname]["update"],
     tx?: Knex
   ) => {
     try {
       const res = await (tx || db)(tableName)
-        .where(filter)
+        .where(buildFindFilter(filter))
         .update(data as any)
         .returning("*");
       return res;
@@ -142,9 +142,12 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
       throw new DatabaseError({ error, name: "Delete by id" });
     }
   },
-  delete: async (filter: Partial<Tables[Tname]["base"]>, tx?: Knex) => {
+  delete: async (filter: TFindFilter<Tables[Tname]["base"]>, tx?: Knex) => {
     try {
-      const res = await (tx || db)(tableName).where(filter).delete().returning("*");
+      const res = await (tx || db)(tableName)
+        .where(buildFindFilter(filter))
+        .delete()
+        .returning("*");
       return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete" });

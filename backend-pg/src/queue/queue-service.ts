@@ -5,12 +5,16 @@ import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 
 export enum QueueName {
   SecretRotation = "secret-rotation",
-  AuditLog = "audit-log"
+  AuditLog = "audit-log",
+  IntegrationSync = "sync-integrations",
+  SecretWebhook = "secret-webhook"
 }
 
 export enum QueueJobs {
   SecretRotation = "secret-rotation-job",
-  AuditLog = "audit-log-job"
+  AuditLog = "audit-log-job",
+  SecWebhook = "secret-webhook-trigger",
+  IntegrationSync = "secret-integration-pull"
 }
 
 export type TQueueJobTypes = {
@@ -21,6 +25,14 @@ export type TQueueJobTypes = {
   [QueueName.AuditLog]: {
     name: QueueJobs.AuditLog;
     payload: TCreateAuditLogDTO;
+  };
+  [QueueName.SecretWebhook]: {
+    name: QueueJobs.SecWebhook;
+    payload: { projectId: string; environment: string; secretPath: string };
+  };
+  [QueueName.IntegrationSync]: {
+    name: QueueJobs.IntegrationSync;
+    payload: { projectId: string; environment: string; secretPath: string };
   };
 };
 

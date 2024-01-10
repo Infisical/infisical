@@ -23,6 +23,7 @@ import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretTagDalFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretBlindIndexDalFactory } from "./secret-blind-index-dal";
 import { TSecretDalFactory } from "./secret-dal";
+import { TSecretQueueFactory } from "./secret-queue";
 import {
   TCreateBulkSecretDTO,
   TCreateSecretDTO,
@@ -49,6 +50,7 @@ type TSecretServiceFactoryDep = {
   secretBlindIndexDal: TSecretBlindIndexDalFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
+  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -77,7 +79,8 @@ export const secretServiceFactory = ({
   folderDal,
   secretBlindIndexDal,
   permissionService,
-  snapshotService
+  snapshotService,
+  secretQueueService
 }: TSecretServiceFactoryDep) => {
   // utility function to get secret blind index data
   const interalGenSecBlindIndexByName = async (projectId: string, secretName: string) => {
@@ -329,6 +332,7 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
+    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
     return { ...secret[0], tags };
   };
@@ -421,7 +425,7 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
-
+    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
     return updatedSecret[0];
   };
@@ -475,6 +479,7 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
+    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
 
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
     return deletedSecret[0];
@@ -576,6 +581,8 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
+    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
+
     return newSecrets;
   };
 
@@ -649,6 +656,8 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
+    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
+
     return secrets;
   };
 
@@ -695,6 +704,8 @@ export const secretServiceFactory = ({
     );
 
     await snapshotService.performSnapshot(folderId);
+    await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
+
     return secretsDeleted;
   };
 

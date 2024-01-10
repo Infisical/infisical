@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TWebhooks } from "@app/db/schemas";
+import { TableName, TWebhooks, TWebhooksUpdate } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -101,5 +101,17 @@ export const webhookDalFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...webhookOrm, findById, findOne, find, findAllWebhooks };
+  const bulkUpdate = async (data: Array<TWebhooksUpdate & { id: string }>, tx?: Knex) => {
+    try {
+      const queries = data.map(({ id, ...el }) =>
+        (tx || db)(TableName.Webhook).where({ id }).update(el)
+      );
+      const docs = await Promise.all(queries);
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "bulk update secret" });
+    }
+  };
+
+  return { ...webhookOrm, findById, findOne, find, findAllWebhooks, bulkUpdate };
 };

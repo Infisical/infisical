@@ -73,7 +73,8 @@ export const secretRotationHttpFn = async (
     url,
     headers,
     data: body,
-    timeout: EXTERNAL_REQUEST_TIMEOUT
+    timeout: EXTERNAL_REQUEST_TIMEOUT,
+    signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT)
   });
 };
 

@@ -67,6 +67,7 @@ import { projectRoleDalFactory } from "@app/services/project-role/project-role-d
 import { projectRoleServiceFactory } from "@app/services/project-role/project-role-service";
 import { secretBlindIndexDalFactory } from "@app/services/secret/secret-blind-index-dal";
 import { secretDalFactory } from "@app/services/secret/secret-dal";
+import { secretQueueFactory } from "@app/services/secret/secret-queue";
 import { secretServiceFactory } from "@app/services/secret/secret-service";
 import { secretVersionDalFactory } from "@app/services/secret/secret-version-dal";
 import { secretFolderDalFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -245,16 +246,12 @@ export const registerRoutes = async (
     folderVersionDal,
     permissionService
   });
-
-  const secretService = secretServiceFactory({
-    folderDal,
-    secretVersionDal,
-    secretBlindIndexDal,
+  const webhookService = webhookServiceFactory({
     permissionService,
-    secretDal,
-    secretTagDal,
-    snapshotService
+    webhookDal,
+    projectEnvDal
   });
+
   const secretTagService = secretTagServiceFactory({ secretTagDal, permissionService });
   const folderService = secretFolderServiceFactory({
     permissionService,
@@ -271,7 +268,34 @@ export const registerRoutes = async (
     secretDal
   });
   const projectBotService = projectBotServiceFactory({ permissionService, projectBotDal });
-
+  const integrationAuthService = integrationAuthServiceFactory({
+    integrationAuthDal,
+    integrationDal,
+    permissionService,
+    projectBotDal,
+    projectBotService
+  });
+  const secretQueueService = secretQueueFactory({
+    queueService,
+    webhookService,
+    secretDal,
+    folderDal,
+    secretImportService,
+    integrationAuthService,
+    projectBotService,
+    integrationDal,
+    secretImportDal
+  });
+  const secretService = secretServiceFactory({
+    folderDal,
+    secretVersionDal,
+    secretBlindIndexDal,
+    permissionService,
+    secretDal,
+    secretTagDal,
+    snapshotService,
+    secretQueueService
+  });
   const sarService = secretApprovalRequestServiceFactory({
     permissionService,
     folderDal,
@@ -302,18 +326,6 @@ export const registerRoutes = async (
     folderDal,
     integrationDal,
     integrationAuthDal
-  });
-  const integrationAuthService = integrationAuthServiceFactory({
-    integrationAuthDal,
-    integrationDal,
-    permissionService,
-    projectBotDal,
-    projectBotService
-  });
-  const webhookService = webhookServiceFactory({
-    permissionService,
-    webhookDal,
-    projectEnvDal
   });
   const serviceTokenService = serviceTokenServiceFactory({
     projectEnvDal,

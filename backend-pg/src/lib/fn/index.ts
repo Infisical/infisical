@@ -3,3 +3,4 @@
 // Code taken to keep in in house and to adjust somethings for our needs
 export * from "./array";
 export * from "./object";
+export * from "./string";

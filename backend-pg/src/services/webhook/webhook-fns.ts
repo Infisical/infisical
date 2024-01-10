@@ -5,6 +5,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { decryptSymmetric, decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 
+const WEBHOOK_TRIGGER_TIMEOUT = 15 * 1000;
 export const triggerWebhookRequest = async (
   { url, encryptedSecretKey, iv, tag, keyEncoding }: TWebhooks,
   data: Record<string, unknown>
@@ -39,10 +40,14 @@ export const triggerWebhookRequest = async (
         .createHmac("sha256", secretKey)
         .update(JSON.stringify(payload))
         .digest("hex");
-      headers["x-infisical-signature"] = `t=${data.timestamp};${webhookSign}`;
+      headers["x-infisical-signature"] = `t=${payload.timestamp};${webhookSign}`;
     }
   }
-  const req = await request.post(url, payload, { headers });
+  const req = await request.post(url, payload, {
+    headers,
+    timeout: WEBHOOK_TRIGGER_TIMEOUT,
+    signal: AbortSignal.timeout(WEBHOOK_TRIGGER_TIMEOUT)
+  });
   return req;
 };
 
