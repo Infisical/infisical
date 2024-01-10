@@ -579,7 +579,9 @@ export const getSecretsHelper = async ({
           event: "secrets pulled",
           distinctId: await TelemetryService.getDistinctId({ authData }),
           properties: {
-            numberOfSecrets: shouldRecordK8Event ? approximateForNoneCapturedEvents : secrets.length,
+            numberOfSecrets: shouldRecordK8Event
+              ? approximateForNoneCapturedEvents
+              : secrets.length,
             environment,
             workspaceId,
             folderId,
@@ -614,7 +616,6 @@ export const getSecretHelper = async ({
   include_imports = true,
   version
 }: GetSecretParams) => {
-  
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId)
@@ -644,7 +645,7 @@ export const getSecretHelper = async ({
       type: type ?? SECRET_PERSONAL,
       version
     }).lean();
-  
+
     if (secretVersion) {
       secret = await new Secret({
         ...secretVersion,
@@ -673,7 +674,7 @@ export const getSecretHelper = async ({
         type: SECRET_SHARED,
         version
       }).lean();
-      
+
       if (secretVersion) {
         secret = await new Secret({
           ...secretVersion,
@@ -682,10 +683,16 @@ export const getSecretHelper = async ({
       }
     }
   }
-  
+
   if (!secret && include_imports) {
     // if still no secret found search in imported secret and retreive
-    secret = await getAnImportedSecret(secretName, workspaceId.toString(), environment, folderId, version);
+    secret = await getAnImportedSecret(
+      secretName,
+      workspaceId.toString(),
+      environment,
+      folderId,
+      version
+    );
   }
 
   if (!secret) throw SecretNotFoundError();
@@ -1180,11 +1187,12 @@ const recursivelyExpandSecret = async (
         const secRefKey = entities[entities.length - 1];
 
         const val = await fetchCrossEnv(secRefEnv, secRefPath, secRefKey);
-        interpolatedValue = interpolatedValue.replaceAll(interpolationSyntax, val);
+        if (val !== undefined) {
+          interpolatedValue = interpolatedValue.replaceAll(interpolationSyntax, val);
+        }
       }
     }
   }
-
   expandedSec[key] = interpolatedValue;
   return interpolatedValue;
 };
