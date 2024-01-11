@@ -1,9 +1,9 @@
-import { ISecret } from "../models";
 import {
   createRecurringSecretReminder,
   deleteRecurringSecretReminder,
   updateRecurringSecretReminder
 } from "../queues/reminders/sendSecretReminders";
+import type { ISecret } from "../models";
 
 type TPartialSecret = Pick<
   ISecret,
@@ -25,10 +25,12 @@ export const createReminder = async (oldSecret: TPartialSecret, newSecret: TPart
 
   if (oldSecret.secretReminderRepeatDays) {
     // This will first delete the existing recurring job, and then create a new one.
+
     await updateRecurringSecretReminder({
       workspaceId,
       secretId,
-      repeatDays: newSecret.secretReminderRepeatDays,
+      newRepeatDays: newSecret.secretReminderRepeatDays,
+      oldRepeatDays: oldSecret.secretReminderRepeatDays,
       note: newSecret.secretReminderNote
     });
   } else {

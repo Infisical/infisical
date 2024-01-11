@@ -1,5 +1,5 @@
-import Queue, { Job } from "bull";
 import { IUser, Membership, Organization, Workspace } from "../../models";
+import Queue, { Job } from "bull";
 import { Types } from "mongoose";
 import { sendMail } from "../../helpers";
 
@@ -8,6 +8,15 @@ type TSendSecretReminders = {
   secretId: string;
   repeatDays: number;
   note: string | undefined | null;
+};
+
+type TUpdateSecretReminder = {
+  oldRepeatDays: number;
+  newRepeatDays: number;
+
+  note: string | undefined | null;
+  secretId: string;
+  workspaceId: string;
 };
 
 type TDeleteSecretReminder = {
@@ -76,8 +85,16 @@ export const deleteRecurringSecretReminder = (jobDetails: TDeleteSecretReminder)
   });
 };
 
-export const updateRecurringSecretReminder = async (jobDetails: TSendSecretReminders) => {
+export const updateRecurringSecretReminder = async (jobDetails: TUpdateSecretReminder) => {
   // We need to delete the potentially existing reminder job first, or the new one won't be created.
-  await deleteRecurringSecretReminder(jobDetails);
-  await createRecurringSecretReminder(jobDetails);
+  await deleteRecurringSecretReminder({
+    repeatDays: jobDetails.oldRepeatDays,
+    secretId: jobDetails.secretId
+  });
+  await createRecurringSecretReminder({
+    repeatDays: jobDetails.newRepeatDays,
+    secretId: jobDetails.secretId,
+    workspaceId: jobDetails.workspaceId,
+    note: jobDetails.note
+  });
 };
