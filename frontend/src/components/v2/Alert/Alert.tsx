@@ -58,7 +58,10 @@ const Alert = forwardRef<
         {typeof icon !== "undefined" ? (
           <>{icon} </>
         ) : (
-          <FontAwesomeIcon className="text-lg" icon={variantIconMap[variant ?? "default"]} />
+          <FontAwesomeIcon
+            className="text-lg text-primary"
+            icon={variantIconMap[variant ?? "default"]}
+          />
         )}
       </div>
       <div className="flex flex-col gap-y-1">

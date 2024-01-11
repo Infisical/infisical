@@ -35,6 +35,8 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
 import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import {
+  Alert,
+  AlertDescription,
   Button,
   Checkbox,
   FormControl,
@@ -70,13 +72,12 @@ const features = [
     link: "https://infisical.com/docs/documentation/getting-started/kubernetes",
     description:
       "Pull secrets into your Kubernetes containers and automatically redeploy upon secret changes."
-  }, 
+  },
   {
     _id: 1,
     name: "Infisical Agent",
     link: "https://infisical.com/docs/infisical-agent/overview",
-    description:
-      "Inject secrets into your apps without modifying any application logic."
+    description: "Inject secrets into your apps without modifying any application logic."
   }
 ];
 
@@ -122,13 +123,13 @@ const CodeItem = ({
 }) => {
   return (
     <>
-      <p className="mb-2 mt-4 text-bunker-300 text-sm leading-normal">{textExplanation}</p>
-      <div className="font-mono text-sm px-3 py-2 bg-bunker rounded-md border border-mineshaft-600 flex flex-row items-center justify-between">
+      <p className="mb-2 mt-4 text-sm leading-normal text-bunker-300">{textExplanation}</p>
+      <div className="flex flex-row items-center justify-between rounded-md border border-mineshaft-600 bg-bunker px-3 py-2 font-mono text-sm">
         <input disabled value={code} id={id} className="w-full bg-transparent text-bunker-200" />
         <button
           type="button"
           onClick={() => copyToClipboard(id, setIsCopied)}
-          className="h-full pl-3.5 pr-2 text-bunker-300 hover:text-primary-200 duration-200"
+          className="h-full pl-3.5 pr-2 text-bunker-300 duration-200 hover:text-primary-200"
         >
           {isCopied ? (
             <FontAwesomeIcon icon={faCheck} className="pr-0.5" />
@@ -150,21 +151,21 @@ const TabsObject = () => {
 
   return (
     <Tabs.Root
-      className="flex flex-col w-full cursor-default border border-mineshaft-600 rounded-md"
+      className="flex w-full cursor-default flex-col rounded-md border border-mineshaft-600"
       defaultValue="tab1"
     >
       <Tabs.List
-        className="shrink-0 flex border-b border-mineshaft-600"
+        className="flex shrink-0 border-b border-mineshaft-600"
         aria-label="Manage your account"
       >
         <Tabs.Trigger
-          className="bg-bunker-700 px-5 h-10 flex-1 flex items-center justify-center text-sm leading-none text-bunker-300 select-none first:rounded-tl-md last:rounded-tr-md data-[state=active]:text-primary data-[state=active]:font-medium data-[state=active]:focus:relative data-[state=active]:border-b data-[state=active]:border-primary outline-none cursor-default"
+          className="flex h-10 flex-1 cursor-default select-none items-center justify-center bg-bunker-700 px-5 text-sm leading-none text-bunker-300 outline-none first:rounded-tl-md last:rounded-tr-md data-[state=active]:border-b data-[state=active]:border-primary data-[state=active]:font-medium data-[state=active]:text-primary data-[state=active]:focus:relative"
           value="tab1"
         >
           MacOS
         </Tabs.Trigger>
         <Tabs.Trigger
-          className="bg-bunker-700 px-5 h-10 flex-1 flex items-center justify-center text-sm leading-none text-bunker-300 select-none first:rounded-tl-md last:rounded-tr-md data-[state=active]:text-primary data-[state=active]:font-medium data-[state=active]:focus:relative data-[state=active]:border-b data-[state=active]:border-primary outline-none cursor-default"
+          className="flex h-10 flex-1 cursor-default select-none items-center justify-center bg-bunker-700 px-5 text-sm leading-none text-bunker-300 outline-none first:rounded-tl-md last:rounded-tr-md data-[state=active]:border-b data-[state=active]:border-primary data-[state=active]:font-medium data-[state=active]:text-primary data-[state=active]:focus:relative"
           value="tab2"
         >
           Windows
@@ -178,14 +179,14 @@ const TabsObject = () => {
         <a
           target="_blank"
           rel="noopener noreferrer"
-          className="bg-bunker-700 hover:text-bunker-100 duration-200 px-5 h-10 flex-1 flex items-center justify-center text-sm leading-none text-bunker-300 select-none first:rounded-tl-md last:rounded-tr-md data-[state=active]:text-primary data-[state=active]:font-medium data-[state=active]:focus:relative data-[state=active]:border-b data-[state=active]:border-primary outline-none cursor-default"
+          className="flex h-10 flex-1 cursor-default select-none items-center justify-center bg-bunker-700 px-5 text-sm leading-none text-bunker-300 outline-none duration-200 first:rounded-tl-md last:rounded-tr-md hover:text-bunker-100 data-[state=active]:border-b data-[state=active]:border-primary data-[state=active]:font-medium data-[state=active]:text-primary data-[state=active]:focus:relative"
           href="https://infisical.com/docs/cli/overview"
         >
           Other Platforms <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="ml-2" />
         </a>
       </Tabs.List>
       <Tabs.Content
-        className="grow p-5 pt-0 bg-bunker-700 rounded-b-md outline-none cursor-default"
+        className="grow cursor-default rounded-b-md bg-bunker-700 p-5 pt-0 outline-none"
         value="tab1"
       >
         <CodeItem
@@ -216,7 +217,7 @@ const TabsObject = () => {
           code="infisical run -- [YOUR USUAL CODE START SCRIPT GOES HERE]"
           id="runCode"
         />
-        <p className="text-bunker-300 text-sm mt-2">
+        <p className="mt-2 text-sm text-bunker-300">
           You can find example of start commands for different frameworks{" "}
           <a
             className="text-primary underline underline-offset-2"
@@ -229,7 +230,7 @@ const TabsObject = () => {
           .{" "}
         </p>
       </Tabs.Content>
-      <Tabs.Content className="grow p-5 pt-0 bg-bunker-700 rounded-b-md outline-none" value="tab2">
+      <Tabs.Content className="grow rounded-b-md bg-bunker-700 p-5 pt-0 outline-none" value="tab2">
         <CodeItem
           isCopied={downloadCodeCopied}
           setIsCopied={setDownloadCodeCopied}
@@ -237,7 +238,7 @@ const TabsObject = () => {
           code="scoop bucket add org https://github.com/Infisical/scoop-infisical.git"
           id="downloadCodeW"
         />
-        <div className="font-mono text-sm px-3 py-2 mt-2 bg-bunker rounded-md border border-mineshaft-600 flex flex-row items-center justify-between">
+        <div className="mt-2 flex flex-row items-center justify-between rounded-md border border-mineshaft-600 bg-bunker px-3 py-2 font-mono text-sm">
           <input
             disabled
             value="scoop install infisical"
@@ -247,7 +248,7 @@ const TabsObject = () => {
           <button
             type="button"
             onClick={() => copyToClipboard("downloadCodeW2", setDownloadCode2Copied)}
-            className="h-full pl-3.5 pr-2 text-bunker-300 hover:text-primary-200 duration-200"
+            className="h-full pl-3.5 pr-2 text-bunker-300 duration-200 hover:text-primary-200"
           >
             {downloadCode2Copied ? (
               <FontAwesomeIcon icon={faCheck} className="pr-0.5" />
@@ -277,7 +278,7 @@ const TabsObject = () => {
           code="infisical run -- [YOUR USUAL CODE START SCRIPT GOES HERE]"
           id="runCodeW"
         />
-        <p className="text-bunker-300 text-sm mt-2">
+        <p className="mt-2 text-sm text-bunker-300">
           You can find example of start commands for different frameworks{" "}
           <a
             className="text-primary underline underline-offset-2"
@@ -586,10 +587,10 @@ const OrganizationPage = withPermission(
         {!serverDetails?.redisConfigured && (
           <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
             <p className="mr-4 mb-4 font-semibold text-white">Announcements</p>
-            <div className="w-full border border-blue-400/70 rounded-md bg-blue-900/70 p-2 text-base text-mineshaft-100 flex items-center">
+            <div className="flex w-full items-center rounded-md border border-blue-400/70 bg-blue-900/70 p-2 text-base text-mineshaft-100">
               <FontAwesomeIcon
                 icon={faExclamationCircle}
-                className="text-2xl mr-4 p-4 text-mineshaft-50"
+                className="mr-4 p-4 text-2xl text-mineshaft-50"
               />
               Attention: Updated versions of Infisical now require Redis for full functionality.
               Learn how to configure it
@@ -597,7 +598,7 @@ const OrganizationPage = withPermission(
                 href="https://infisical.com/docs/self-hosting/configuration/redis"
                 target="_blank"
               >
-                <span className="pl-1 text-white underline underline-offset-2 hover:decoration-blue-400 hover:text-blue-200 duration-100 cursor-pointer">
+                <span className="cursor-pointer pl-1 text-white underline underline-offset-2 duration-100 hover:text-blue-200 hover:decoration-blue-400">
                   here
                 </span>
               </Link>
@@ -606,6 +607,21 @@ const OrganizationPage = withPermission(
           </div>
         )}
         <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
+          <Alert
+            className="mb-4 border-primary-600 bg-bunker-800 text-white"
+            title="Database change: Migrating to PostgreSQL from MongoDB"
+            variant="warning"
+          >
+            <AlertDescription className="mt-2">
+              We will be migrating from MongoDB toPostgreSQL. During this time only read operations
+              are permitted. <br />
+              As a user you don&apos;t have to perform any action.
+              <div className="mt-1">
+                Timeline:
+                <span className="font-medium">20th Jan Sat between 10am EST - 4am EST</span>
+              </div>
+            </AlertDescription>
+          </Alert>
           <p className="mr-4 font-semibold text-white">Projects</p>
           <div className="mt-6 flex w-full flex-row">
             <Input
@@ -701,7 +717,7 @@ const OrganizationPage = withPermission(
         </div>
         <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-6 text-3xl">
           <p className="mr-4 font-semibold text-white">Explore Infisical</p>
-          <div className="mt-4 grid grid-cols-3 w-full gap-4">
+          <div className="mt-4 grid w-full grid-cols-3 gap-4">
             {features.map((feature) => (
               <div
                 key={feature._id}
