@@ -74,6 +74,11 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		sort, err := cmd.Flags().GetBool("sort")
+		if err != nil {
+			util.HandleError(err, "Unable to parse sort")
+		}
+
 		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, WorkspaceId: projectId, SecretsPath: secretsPath})
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
@@ -83,6 +88,10 @@ var exportCmd = &cobra.Command{
 			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
 		} else {
 			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
+		}
+
+		if sort {
+			util.SortSecrets(&secrets)
 		}
 
 		var output string
@@ -115,6 +124,7 @@ func init() {
 	exportCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	exportCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets from")
 	exportCmd.Flags().String("path", "/", "get secrets within a folder path")
+	exportCmd.Flags().Bool("sort", false, "sort exported secrets in alphabetical order")
 }
 
 // Format according to the format flag
