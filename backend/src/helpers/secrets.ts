@@ -48,6 +48,8 @@ import { getFolderByPath, getFolderIdFromServiceToken } from "../services/Folder
 import picomatch from "picomatch";
 import path from "path";
 import { getAnImportedSecret } from "../services/SecretImportService";
+import { deleteReminder } from "./reminder";
+import { logger } from "../utils/logging";
 
 /**
  * Validate scope for service token v2
@@ -1057,6 +1059,30 @@ export const deleteSecretHelper = async ({
     folderId: secret?.folder
   });
 
+  if (secrets.length) {
+    for (const s of secrets) {
+      if (s.secretReminderRepeatDays !== null && s.secretReminderRepeatDays !== undefined) {
+        await deleteReminder({
+          _id: s._id,
+          secretReminderRepeatDays: s.secretReminderRepeatDays
+        }).catch((err) =>
+          logger.error(err, `Failed to delete reminder during secret deletion for ${s._id}`)
+        );
+      }
+    }
+  }
+
+  if (secret) {
+    if (secret.secretReminderRepeatDays !== null && secret.secretReminderRepeatDays !== undefined) {
+      await deleteReminder({
+        _id: secret._id,
+        secretReminderRepeatDays: secret.secretReminderRepeatDays
+      }).catch((err) =>
+        logger.error(err, `Failed to delete reminder during secret deletion for ${secret?._id}`)
+      );
+    }
+  }
+
   const postHogClient = await TelemetryService.getPostHogClient();
 
   if (postHogClient) {
@@ -1675,7 +1701,7 @@ export const deleteSecretBatchHelper = async ({
         ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {})
       }))
     )
-    .select({ secretBlindIndexes: 1 })
+    .select({ secretBlindIndexes: 1, secretReminderRepeatDays: 1 })
     .lean()
     .exec();
 
@@ -1722,6 +1748,17 @@ export const deleteSecretBatchHelper = async ({
     environment,
     folderId
   });
+
+  for (const s of deletedSecrets) {
+    if (s.secretReminderRepeatDays !== null && s.secretReminderRepeatDays !== undefined) {
+      await deleteReminder({
+        _id: s._id,
+        secretReminderRepeatDays: s.secretReminderRepeatDays
+      }).catch((err) =>
+        logger.error(err, `Failed to delete reminder during bulk secret deletion for ${s._id}`)
+      );
+    }
+  }
 
   const postHogClient = await TelemetryService.getPostHogClient();
 
