@@ -99,8 +99,6 @@ func GetWorkSpaceFromFile() (models.WorkspaceConfigFile, error) {
 		return models.WorkspaceConfigFile{}, err
 	}
 
-	fmt.Println("cfgFile", cfgFile)
-
 	configFileAsBytes, err := os.ReadFile(cfgFile)
 	if err != nil {
 		return models.WorkspaceConfigFile{}, err
