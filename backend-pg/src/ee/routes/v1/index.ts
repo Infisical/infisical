@@ -6,6 +6,7 @@ import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-rou
 import { registerSecretApprovalRequestRouter } from "./secret-approval-request-router";
 import { registerSecretRotationProviderRouter } from "./secret-rotation-provider-router";
 import { registerSecretRotationRouter } from "./secret-rotation-router";
+import { registerSecretScanningRouter } from "./secret-scanning-router";
 import { registerSnapshotRouter } from "./snapshot-router";
 
 export const registerV1EERoutes = async (server: FastifyZodProvider) => {
@@ -27,5 +28,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     prefix: "/secret-rotation-providers"
   });
   await server.register(registerSamlRouter, { prefix: "/sso" });
+  await server.register(registerSecretScanningRouter, { prefix: "/secret-scanning" });
   await server.register(registerSecretRotationRouter, { prefix: "/secret-rotations" });
 };

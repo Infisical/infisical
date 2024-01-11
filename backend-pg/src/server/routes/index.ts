@@ -19,6 +19,11 @@ import { secretApprovalRequestServiceFactory } from "@app/ee/services/secret-app
 import { secretRotationDalFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { secretRotationQueueFactory } from "@app/ee/services/secret-rotation/secret-rotation-queue";
 import { secretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
+import { gitAppDalFactory } from "@app/ee/services/secret-scanning/git-app-dal";
+import { gitAppInstallSessionDalFactory } from "@app/ee/services/secret-scanning/git-app-install-session-dal";
+import { secretScanningDalFactory } from "@app/ee/services/secret-scanning/secret-scanning-dal";
+import { secretScanningQueueFactory } from "@app/ee/services/secret-scanning/secret-scanning-queue";
+import { secretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { secretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { snapshotDalFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
 import { snapshotFolderDalFactory } from "@app/ee/services/secret-snapshot/snapshot-folder-dal";
@@ -90,6 +95,7 @@ import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
+import { registerSecretScannerGhApp } from "../plugins/secret-scanner";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
@@ -102,6 +108,8 @@ export const registerRoutes = async (
     queue: queueService
   }: { db: Knex; smtp: TSmtpService; queue: TQueueServiceFactory }
 ) => {
+  server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
+
   // db layers
   const userDal = userDalFactory(db);
   const authDal = authDalFactory(db);
@@ -157,6 +165,10 @@ export const registerRoutes = async (
   const snapshotSecretDal = snapshotSecretDalFactory(db);
   const snapshotFolderDal = snapshotFolderDalFactory(db);
 
+  const gitAppInstallSessionDal = gitAppInstallSessionDalFactory(db);
+  const gitAppOrgDal = gitAppDalFactory(db);
+  const secretScanningDal = secretScanningDalFactory(db);
+
   const permissionService = permissionServiceFactory({ permissionDal, orgRoleDal, projectRoleDal });
   const auditLogQueue = auditLogQueueServiceFactory({ auditLogDal, queueService });
   const auditLogService = auditLogServiceFactory({ auditLogDal, permissionService, auditLogQueue });
@@ -210,6 +222,20 @@ export const registerRoutes = async (
   });
   const apiKeyService = apiKeyServiceFactory({ apiKeyDal });
 
+  const secretScanningQueue = secretScanningQueueFactory({
+    userDal,
+    smtpService,
+    secretScanningDal,
+    queueService,
+    orgMembershipDal: orgDal
+  });
+  const secretScanningService = secretScanningServiceFactory({
+    permissionService,
+    gitAppOrgDal,
+    gitAppInstallSessionDal,
+    secretScanningDal,
+    secretScanningQueue
+  });
   const projectService = projectServiceFactory({
     permissionService,
     projectDal,
@@ -391,7 +417,8 @@ export const registerRoutes = async (
     secretRotation: secretRotationService,
     snapshot: snapshotService,
     saml: samlService,
-    auditLog: auditLogService
+    auditLog: auditLogService,
+    secretScanning: secretScanningService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {
@@ -418,12 +445,12 @@ export const registerRoutes = async (
       }
     },
     handler: () => {
-      const appCfg = getConfig();
+      const cfg = getConfig();
 
       return {
         date: new Date(),
         message: "Ok" as const,
-        emailConfigured: appCfg.isSmtpConfigured,
+        emailConfigured: cfg.isSmtpConfigured,
         inviteOnlySignup: false,
         redisConfigured: false,
         secretScanningConfigured: false
@@ -437,8 +464,8 @@ export const registerRoutes = async (
       await v1Server.register(registerV1EERoutes);
       await v1Server.register(registerV1Routes);
     },
-    { prefix: "/v1" }
+    { prefix: "/api/v1" }
   );
-  await server.register(registerV2Routes, { prefix: "/v2" });
-  await server.register(registerV3Routes, { prefix: "/v3" });
+  await server.register(registerV2Routes, { prefix: "/api/v2" });
+  await server.register(registerV3Routes, { prefix: "/api/v3" });
 };

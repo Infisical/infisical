@@ -53,12 +53,16 @@ export const main = async ({ db, smtp, logger, queue }: TMain) => {
 
     await server.register(fastifySwagger);
     await server.register(fastifyFormBody);
+    // allow empty body on post request
+    // server.addContentTypeParser("application/json", { bodyLimit: 0 }, (_request, _payload, done) =>
+    //   done(null, null)
+    // );
 
     // Rate limiters and security headers
     await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg);
     await server.register(helmet, { contentSecurityPolicy: false });
 
-    await server.register(registerRoutes, { prefix: "/api", smtp, queue, db });
+    await server.register(registerRoutes, { smtp, queue, db });
     await server.ready();
     server.swagger();
     return server;

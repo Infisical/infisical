@@ -2,19 +2,26 @@ import { Job, JobsOptions, Queue, Worker, WorkerListener } from "bullmq";
 import Redis from "ioredis";
 
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import {
+  TScanFullRepoEventPayload,
+  TScanPushEventPayload
+} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 
 export enum QueueName {
   SecretRotation = "secret-rotation",
   AuditLog = "audit-log",
   IntegrationSync = "sync-integrations",
-  SecretWebhook = "secret-webhook"
+  SecretWebhook = "secret-webhook",
+  SecretFullRepoScan = "secret-full-repo-scan",
+  SecretPushEventScan = "secret-push-event-scan"
 }
 
 export enum QueueJobs {
   SecretRotation = "secret-rotation-job",
   AuditLog = "audit-log-job",
   SecWebhook = "secret-webhook-trigger",
-  IntegrationSync = "secret-integration-pull"
+  IntegrationSync = "secret-integration-pull",
+  SecretScan = "secret-scan"
 }
 
 export type TQueueJobTypes = {
@@ -34,6 +41,11 @@ export type TQueueJobTypes = {
     name: QueueJobs.IntegrationSync;
     payload: { projectId: string; environment: string; secretPath: string };
   };
+  [QueueName.SecretFullRepoScan]: {
+    name: QueueJobs.SecretScan;
+    payload: TScanFullRepoEventPayload;
+  };
+  [QueueName.SecretPushEventScan]: { name: QueueJobs.SecretScan; payload: TScanPushEventPayload };
 };
 
 export type TQueueServiceFactory = ReturnType<typeof queueServiceFactory>;

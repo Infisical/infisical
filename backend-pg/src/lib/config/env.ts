@@ -76,9 +76,21 @@ const envSchema = z
     // google
     CLIENT_ID_GITLAB: zpStr(z.string().optional()),
     CLIENT_SECRET_GITLAB: zpStr(z.string().optional()),
-    URL_GITLAB_URL: zpStr(z.string().optional().default(GITLAB_URL))
+    URL_GITLAB_URL: zpStr(z.string().optional().default(GITLAB_URL)),
+    // SECRET-SCANNING
+    SECRET_SCANNING_WEBHOOK_PROXY: zpStr(z.string().optional()),
+    SECRET_SCANNING_WEBHOOK_SECRET: zpStr(z.string().optional()),
+    SECRET_SCANNING_GIT_APP_ID: zpStr(z.string().optional()),
+    SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional())
   })
-  .transform((data) => ({ ...data, isSmtpConfigured: Boolean(data.SMTP_HOST) }));
+  .transform((data) => ({
+    ...data,
+    isSmtpConfigured: Boolean(data.SMTP_HOST),
+    isSecretScanningConfigured:
+      Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
+      Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&
+      Boolean(data.SECRET_SCANNING_WEBHOOK_SECRET)
+  }));
 
 let envCfg: Readonly<z.infer<typeof envSchema>>;
 

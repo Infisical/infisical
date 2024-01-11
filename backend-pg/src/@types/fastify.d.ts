@@ -8,6 +8,7 @@ import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-con
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { TSecretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
+import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
@@ -105,6 +106,7 @@ declare module "fastify" {
       snapshot: TSecretSnapshotServiceFactory;
       saml: TSamlConfigServiceFactory;
       auditLog: TAuditLogServiceFactory;
+      secretScanning: TSecretScanningServiceFactory;
     };
 
     // this is exclusive use for middlewares in which we need to inject data

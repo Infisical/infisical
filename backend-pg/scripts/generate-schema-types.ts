@@ -85,9 +85,7 @@ const main = async () => {
       .whereRaw("table_schema =  current_schema()")
       .select<{ tableName: string }[]>("table_name as tableName")
       .orderBy("table_name")
-  ).filter(
-    (el) => el.tableName !== "infisical_migrations_lock" && el.tableName !== "infisical_migrations"
-  );
+  ).filter((el) => el.tableName.includes("migration"));
 
   console.log("Select a table to generate schema");
   console.table(tables);

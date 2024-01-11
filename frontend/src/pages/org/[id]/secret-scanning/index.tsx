@@ -22,11 +22,11 @@ const SecretScanning = withPermission(
       const linkInstallation = async () => {
         if (
           typeof queryParams.state === "string" &&
-          typeof queryParams.installationid === "string"
+          typeof queryParams.installation_id === "string"
         ) {
           try {
             const isLinked = await linkGitAppInstallationWithOrganization(
-              queryParams.installationid as string,
+              queryParams.installation_id as string,
               queryParams.state as string
             );
             if (isLinked) {
@@ -47,12 +47,12 @@ const SecretScanning = withPermission(
 
       fetchInstallationStatus();
       linkInstallation();
-    }, [queryParams.state, queryParams.installationid]);
+    }, [queryParams.state, queryParams.installation_id]);
 
     const generateNewIntegrationSession = async () => {
       const session = await createNewIntegrationSession(String(localStorage.getItem("orgData.id")));
       router.push(
-        `https://github.com/apps/infisical-radar/installations/new?state=${session.sessionId}`
+        `https://github.com/apps/infisical-test/installations/new?state=${session.sessionId}`
       );
     };
 

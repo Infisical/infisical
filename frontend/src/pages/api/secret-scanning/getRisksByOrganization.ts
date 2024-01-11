@@ -34,7 +34,7 @@ export type IGitRisks = {
     email: string;
   };
   createdAt: string;
-  organization: string;
+  orgId: string;
 };
 
 /**

@@ -50,6 +50,9 @@ export enum TableName {
   SecretRotationOutput = "secret_rotation_outputs",
   SamlConfig = "saml_configs",
   AuditLog = "audit_logs",
+  GitAppInstallSession = "git_app_install_sessions",
+  GitAppOrg = "git_app_org",
+  SecretScanningGitRisk = "secret_scanning_git_risks",
   // junction tables
   JnSecretTag = "secret_tag_junction",
   JnSecretVersionTag = "secret_version_tag_junction"

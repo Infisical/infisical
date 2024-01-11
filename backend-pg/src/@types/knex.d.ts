@@ -16,6 +16,12 @@ import {
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
   TBackupPrivateKeyUpdate,
+  TGitAppInstallSessions,
+  TGitAppInstallSessionsInsert,
+  TGitAppInstallSessionsUpdate,
+  TGitAppOrg,
+  TGitAppOrgInsert,
+  TGitAppOrgUpdate,
   TIdentities,
   TIdentitiesInsert,
   TIdentitiesUpdate,
@@ -113,6 +119,9 @@ import {
   TSecretRotationsInsert,
   TSecretRotationsUpdate,
   TSecrets,
+  TSecretScanningGitRisks,
+  TSecretScanningGitRisksInsert,
+  TSecretScanningGitRisksUpdate,
   TSecretsInsert,
   TSecretSnapshotFolders,
   TSecretSnapshotFoldersInsert,
@@ -373,6 +382,17 @@ declare module "knex/types/tables" {
     >;
     [TableName.OrgBot]: Knex.CompositeTableType<TOrgBots, TOrgBotsInsert, TOrgBotsUpdate>;
     [TableName.AuditLog]: Knex.CompositeTableType<TAuditLogs, TAuditLogsInsert, TAuditLogsUpdate>;
+    [TableName.GitAppInstallSession]: Knex.CompositeTableType<
+      TGitAppInstallSessions,
+      TGitAppInstallSessionsInsert,
+      TGitAppInstallSessionsUpdate
+    >;
+    [TableName.GitAppOrg]: Knex.CompositeTableType<TGitAppOrg, TGitAppOrgInsert, TGitAppOrgUpdate>;
+    [TableName.SecretScanningGitRisk]: Knex.CompositeTableType<
+      TSecretScanningGitRisks,
+      TSecretScanningGitRisksInsert,
+      TSecretScanningGitRisksUpdate
+    >;
     // Junction tables
     [TableName.JnSecretTag]: Knex.CompositeTableType<
       TSecretTagJunction,
