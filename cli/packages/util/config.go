@@ -113,6 +113,28 @@ func GetWorkSpaceFromFile() (models.WorkspaceConfigFile, error) {
 	return workspaceConfigFile, nil
 }
 
+func GetWorkSpaceFromFilePath(configFileDir string) (models.WorkspaceConfigFile, error) {
+	configFilePath := filepath.Join(configFileDir, ".infisical.json")
+
+	_, configFileStatusError := os.Stat(configFilePath)
+	if os.IsNotExist(configFileStatusError) {
+		return models.WorkspaceConfigFile{}, fmt.Errorf("file %s does not exist", configFilePath)
+	}
+
+	configFileAsBytes, err := os.ReadFile(configFilePath)
+	if err != nil {
+		return models.WorkspaceConfigFile{}, err
+	}
+
+	var workspaceConfigFile models.WorkspaceConfigFile
+	err = json.Unmarshal(configFileAsBytes, &workspaceConfigFile)
+	if err != nil {
+		return models.WorkspaceConfigFile{}, err
+	}
+
+	return workspaceConfigFile, nil
+}
+
 // FindWorkspaceConfigFile searches for a .infisical.json file in the current directory and all parent directories.
 func FindWorkspaceConfigFile() (string, error) {
 	dir, err := os.Getwd()

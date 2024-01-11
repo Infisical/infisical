@@ -68,7 +68,7 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports})
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports}, "")
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -80,7 +80,7 @@ var secretsCmd = &cobra.Command{
 		}
 
 		if shouldExpandSecrets {
-			secrets = util.ExpandSecrets(secrets, infisicalToken)
+			secrets = util.ExpandSecrets(secrets, infisicalToken, "")
 		}
 
 		visualize.PrintAllSecretDetails(secrets)
@@ -169,7 +169,7 @@ var secretsSetCmd = &cobra.Command{
 		plainTextEncryptionKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
 		// pull current secrets
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, SecretsPath: secretsPath})
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, SecretsPath: secretsPath}, "")
 		if err != nil {
 			util.HandleError(err, "unable to retrieve secrets")
 		}
@@ -406,7 +406,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse path flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath})
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath}, "")
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
@@ -455,7 +455,7 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath})
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath}, "")
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}

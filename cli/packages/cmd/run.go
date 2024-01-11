@@ -67,6 +67,11 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		projectConfigDir, err := cmd.Flags().GetString("project-config-dir")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		secretOverriding, err := cmd.Flags().GetBool("secret-overriding")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -92,7 +97,7 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports})
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath, IncludeImport: includeImports}, projectConfigDir)
 
 		if err != nil {
 			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
@@ -105,7 +110,7 @@ var runCmd = &cobra.Command{
 		}
 
 		if shouldExpandSecrets {
-			secrets = util.ExpandSecrets(secrets, infisicalToken)
+			secrets = util.ExpandSecrets(secrets, infisicalToken, projectConfigDir)
 		}
 
 		secretsByKey := getSecretsByKeys(secrets)
@@ -198,6 +203,7 @@ func init() {
 	runCmd.Flags().StringP("command", "c", "", "chained commands to execute (e.g. \"npm install && npm run dev; echo ...\")")
 	runCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs ")
 	runCmd.Flags().String("path", "/", "get secrets within a folder path")
+	runCmd.Flags().String("project-config-dir", "", "explicitly set the directory where the .infisical.json resides")
 }
 
 // Will execute a single command and pass in the given secrets into the process

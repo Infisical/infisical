@@ -62,6 +62,16 @@ Inject secrets from Infisical into your application process.
   </Accordion>
 
   ### Flags 
+  
+   <Accordion title="--project-config-dir">
+    Explicitly set the directory where the .infisical.json resides. This is useful for some monorepo setups. 
+
+    ```bash
+    # Example 
+    infisical run --project-config-dir=/some-dir -- printenv
+    ```
+  </Accordion>
+
   <Accordion title="--command">
     Pass secrets into multiple commands at once
 

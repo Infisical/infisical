@@ -220,7 +220,7 @@ func InjectImportedSecret(plainTextWorkspaceKey []byte, secrets []models.SingleE
 	return secrets, nil
 }
 
-func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models.SingleEnvironmentVariable, error) {
+func GetAllEnvironmentVariables(params models.GetAllSecretsParameters, projectConfigFilePath string) ([]models.SingleEnvironmentVariable, error) {
 	var infisicalToken string
 	if params.InfisicalToken == "" {
 		infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
@@ -236,7 +236,13 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 	if infisicalToken == "" {
 		if isConnected {
 			log.Debug().Msg("GetAllEnvironmentVariables: Connected to internet, checking logged in creds")
-			RequireLocalWorkspaceFile()
+
+			if projectConfigFilePath == "" {
+				RequireLocalWorkspaceFile()
+			} else {
+				ValidateWorkspaceFile(projectConfigFilePath)
+			}
+
 			RequireLogin()
 		}
 
@@ -251,13 +257,26 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 			PrintErrorMessageAndExit("Your login session has expired, please run [infisical login] and try again")
 		}
 
-		workspaceFile, err := GetWorkSpaceFromFile()
-		if err != nil {
-			return nil, err
+		var infisicalDotJson models.WorkspaceConfigFile
+
+		if projectConfigFilePath == "" {
+			projectConfig, err := GetWorkSpaceFromFile()
+			if err != nil {
+				return nil, err
+			}
+
+			infisicalDotJson = projectConfig
+		} else {
+			projectConfig, err := GetWorkSpaceFromFilePath(projectConfigFilePath)
+			if err != nil {
+				return nil, err
+			}
+
+			infisicalDotJson = projectConfig
 		}
 
 		if params.WorkspaceId != "" {
-			workspaceFile.WorkspaceId = params.WorkspaceId
+			infisicalDotJson.WorkspaceId = params.WorkspaceId
 		}
 
 		// // Verify environment
@@ -266,18 +285,18 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 		// 	return nil, fmt.Errorf("unable to validate environment name because [err=%s]", err)
 		// }
 
-		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId,
+		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, infisicalDotJson.WorkspaceId,
 			params.Environment, params.TagSlugs, params.SecretsPath, params.IncludeImport)
 		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
 
 		backupSecretsEncryptionKey := []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
 		if errorToReturn == nil {
-			WriteBackupSecrets(workspaceFile.WorkspaceId, params.Environment, backupSecretsEncryptionKey, secretsToReturn)
+			WriteBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, backupSecretsEncryptionKey, secretsToReturn)
 		}
 
 		// only attempt to serve cached secrets if no internet connection and if at least one secret cached
 		if !isConnected {
-			backedSecrets, err := ReadBackupSecrets(workspaceFile.WorkspaceId, params.Environment, backupSecretsEncryptionKey)
+			backedSecrets, err := ReadBackupSecrets(infisicalDotJson.WorkspaceId, params.Environment, backupSecretsEncryptionKey)
 			if len(backedSecrets) > 0 {
 				PrintWarning("Unable to fetch latest secret(s) due to connection error, serving secrets from last successful fetch. For more info, run with --debug")
 				secretsToReturn = backedSecrets
@@ -421,7 +440,7 @@ func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]mod
 	return secretMapByName
 }
 
-func ExpandSecrets(secrets []models.SingleEnvironmentVariable, infisicalToken string) []models.SingleEnvironmentVariable {
+func ExpandSecrets(secrets []models.SingleEnvironmentVariable, infisicalToken string, projectConfigPathDir string) []models.SingleEnvironmentVariable {
 	expandedSecs := make(map[string]string)
 	interpolatedSecs := make(map[string]string)
 	// map[env.secret-path][keyname]Secret
@@ -454,7 +473,7 @@ func ExpandSecrets(secrets []models.SingleEnvironmentVariable, infisicalToken st
 
 			if crossRefSec, ok := crossEnvRefSecs[uniqKey]; !ok {
 				// if not in cross reference cache, fetch it from server
-				refSecs, err := GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: env, InfisicalToken: infisicalToken, SecretsPath: secPath})
+				refSecs, err := GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: env, InfisicalToken: infisicalToken, SecretsPath: secPath}, projectConfigPathDir)
 				if err != nil {
 					HandleError(err, fmt.Sprintf("Could not fetch secrets in environment: %s secret-path: %s", env, secPath), "If you are using a service token to fetch secrets, please ensure it is valid")
 				}
