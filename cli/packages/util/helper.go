@@ -105,6 +105,17 @@ func RequireLocalWorkspaceFile() {
 	}
 }
 
+func ValidateWorkspaceFile(projectConfigFilePath string) {
+	workspaceFilePath, err := GetWorkSpaceFromFilePath(projectConfigFilePath)
+	if err != nil {
+		PrintErrorMessageAndExit(fmt.Sprintf("error reading your project config %v", err))
+	}
+
+	if workspaceFilePath.WorkspaceId == "" {
+		PrintErrorMessageAndExit("Your project id is missing in your local config file. Please add it or run again [infisical init]")
+	}
+}
+
 func GetHashFromStringList(list []string) string {
 	hash := sha256.New()
 
