@@ -1,7 +1,14 @@
 import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, unpackRules } from "@casl/ability/extra";
+import { MongoQuery } from "@ucast/mongo2js";
 
-import { OrgMembershipRole, ProjectMembershipRole, ServiceTokenScopes } from "@app/db/schemas";
+import {
+  OrgMembershipRole,
+  ProjectMembershipRole,
+  ServiceTokenScopes,
+  TIdentityProjectMemberships,
+  TProjectMemberships
+} from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -170,18 +177,31 @@ export const permissionServiceFactory = ({
     const scopes = ServiceTokenScopes.parse(serviceToken.scopes || []);
     return {
       permission: buildServiceTokenProjectPermission(scopes, serviceToken.permissions),
-      member: undefined
+      membership: undefined
     };
   };
 
-  const getProjectPermission = async (type: ActorType, id: string, projectId: string) => {
+  type TProjectPermissionRT<T extends ActorType> = T extends ActorType.SERVICE
+    ? { permission: MongoAbility<ProjectPermissionSet, MongoQuery>; membership: undefined }
+    : {
+        permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
+        membership: (T extends ActorType.USER
+          ? TProjectMemberships
+          : TIdentityProjectMemberships) & { permissions?: unknown };
+      };
+
+  const getProjectPermission = async <T extends ActorType>(
+    type: T,
+    id: string,
+    projectId: string
+  ): Promise<TProjectPermissionRT<T>> => {
     switch (type) {
       case ActorType.USER:
-        return getUserProjectPermission(id, projectId);
+        return getUserProjectPermission(id, projectId) as Promise<TProjectPermissionRT<T>>;
       case ActorType.SERVICE:
-        return getServiceTokenProjectPermission(id, projectId);
+        return getServiceTokenProjectPermission(id, projectId) as Promise<TProjectPermissionRT<T>>;
       case ActorType.IDENTITY:
-        return getIdentityProjectPermission(id, projectId);
+        return getIdentityProjectPermission(id, projectId) as Promise<TProjectPermissionRT<T>>;
       default:
         throw new UnauthorizedError({
           message: "Permission not defined",

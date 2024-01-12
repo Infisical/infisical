@@ -23,7 +23,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { salt, serverPublicKey } = await server.services.password.generateServerPubKey(
-        req.auth.userId,
+        req.permission.id,
         req.body.clientPublicKey
       );
       return { salt, serverPublicKey };
@@ -54,7 +54,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req, res) => {
       const appCfg = getConfig();
-      await server.services.password.changePassword({ ...req.body, userId: req.auth.userId });
+      await server.services.password.changePassword({ ...req.body, userId: req.permission.id });
 
       res.cookie("jid", appCfg.COOKIE_SECRET_SIGN_KEY, {
         httpOnly: true,
@@ -89,7 +89,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const backupPrivateKey = await server.services.password.createBackupPrivateKey({
         ...req.body,
-        userId: req.auth.userId
+        userId: req.permission.id
       });
       if (!backupPrivateKey) throw new Error("Failed to create backup key");
 
@@ -111,7 +111,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const backupPrivateKey = await server.services.password.getBackupPrivateKeyOfUser(
-        req.auth.userId
+        req.permission.id
       );
       if (!backupPrivateKey) throw new Error("Failed to find backup key");
 

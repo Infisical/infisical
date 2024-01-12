@@ -78,7 +78,6 @@ export const permissionDalFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.IdentityProjectMembership))
         .select("permissions")
         .first();
-
       return membership;
     } catch (error) {
       throw new DatabaseError({ error, name: "GetProjectIdentityPermission" });

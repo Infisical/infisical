@@ -26,7 +26,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const user = await server.services.user.toggleUserMfa(req.auth.userId, req.body.isMfaEnabled);
+      const user = await server.services.user.toggleUserMfa(req.permission.id, req.body.isMfaEnabled);
       return { user };
     }
   });
@@ -48,7 +48,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
       const user = await server.services.user.updateUserName(
-        req.auth.userId,
+        req.permission.id,
         req.body.firstName,
         req.body.lastName
       );
@@ -72,7 +72,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
       const user = await server.services.user.updateAuthMethods(
-        req.auth.userId,
+        req.permission.id,
         req.body.authMethods
       );
       return { user };
@@ -91,7 +91,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const organizations = await server.services.org.findAllOrganizationOfUser(req.auth.userId);
+      const organizations = await server.services.org.findAllOrganizationOfUser(req.permission.id);
       return { organizations };
     }
   });
@@ -106,7 +106,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const apiKeys = await server.services.apiKey.getMyApiKeys(req.auth.userId);
+      const apiKeys = await server.services.apiKey.getMyApiKeys(req.permission.id);
       return apiKeys;
     }
   });
@@ -129,7 +129,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const apiKeys = await server.services.apiKey.createApiKey(
-        req.auth.userId,
+        req.permission.id,
         req.body.name,
         req.body.expiresIn
       );
@@ -153,7 +153,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const apiKeyData = await server.services.apiKey.deleteApiKey(
-        req.auth.userId,
+        req.permission.id,
         req.params.apiKeyDataId
       );
       return { apiKeyData };
@@ -170,7 +170,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const sessions = await server.services.authToken.getTokenSessionByUser(req.auth.userId);
+      const sessions = await server.services.authToken.getTokenSessionByUser(req.permission.id);
       return sessions;
     }
   });
@@ -187,7 +187,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      await server.services.authToken.revokeAllMySessions(req.auth.userId);
+      await server.services.authToken.revokeAllMySessions(req.permission.id);
       return {
         message: "Successfully revoked all sessions"
       };
@@ -206,7 +206,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const user = await server.services.user.getMe(req.auth.userId);
+      const user = await server.services.user.getMe(req.permission.id);
       return { user };
     }
   });
@@ -223,7 +223,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const user = await server.services.user.deleteMe(req.auth.userId);
+      const user = await server.services.user.deleteMe(req.permission.id);
       return { user };
     }
   });

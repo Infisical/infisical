@@ -25,7 +25,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       const appCfg = getConfig();
       if (req.auth.authMode === AuthMode.JWT) {
-        await server.services.login.logout(req.auth.userId, req.auth.tokenVersionId);
+        await server.services.login.logout(req.permission.id, req.auth.tokenVersionId);
       }
       res.cookie("jid", "", {
         httpOnly: true,

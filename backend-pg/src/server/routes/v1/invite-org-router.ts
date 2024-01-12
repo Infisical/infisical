@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -22,9 +22,10 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      if (req.auth.actor !== ActorType.USER) return;
       const completeInviteLink = await server.services.org.inviteUserToOrganization({
         orgId: req.body.organizationId,
-        userId: req.auth.userId,
+        userId: req.permission.id,
         inviteeEmail: req.body.inviteeEmail
       });
 

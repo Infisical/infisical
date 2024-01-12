@@ -73,7 +73,14 @@ export const secretApprovalRequestServiceFactory = ({
   secretQueueService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({ projectId, actor, actorId }: TApprovalRequestCountDTO) => {
-    const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    if (actor === ActorType.SERVICE)
+      throw new BadRequestError({ message: "Cannot use service token" });
+
+    const { membership } = await permissionService.getProjectPermission(
+      actor as ActorType.USER,
+      actorId,
+      projectId
+    );
     const count = await secretApprovalRequestDal.findProjectRequestCount(projectId, membership.id);
     return count;
   };
@@ -86,6 +93,9 @@ export const secretApprovalRequestServiceFactory = ({
     environment,
     committer
   }: TListApprovalsDTO) => {
+    if (actor === ActorType.SERVICE)
+      throw new BadRequestError({ message: "Cannot use service token" });
+
     const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId);
     const approvals = await secretApprovalRequestDal.findByProjectId({
       projectId,
@@ -98,6 +108,9 @@ export const secretApprovalRequestServiceFactory = ({
   };
 
   const getSecretApprovalDetails = async ({ actor, actorId, id }: TSecretApprovalDetailsDTO) => {
+    if (actor === ActorType.SERVICE)
+      throw new BadRequestError({ message: "Cannot use service token" });
+
     const secretApprovalRequest = await secretApprovalRequestDal.findById(id);
     if (!secretApprovalRequest)
       throw new BadRequestError({ message: "Secret approval request not found" });
@@ -393,6 +406,9 @@ export const secretApprovalRequestServiceFactory = ({
     secretPath,
     environment
   }: TGenerateSecretApprovalRequestDTO) => {
+    if (actor === ActorType.SERVICE)
+      throw new BadRequestError({ message: "Cannot use service token" });
+
     const { permission, membership } = await permissionService.getProjectPermission(
       actor,
       actorId,

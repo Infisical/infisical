@@ -22,7 +22,7 @@ export const registerSecretScannerGhApp = async (server: FastifyZodProvider) => 
 
     app.on("push", async (context) => {
       const { payload } = context;
-      await server.services.secretScanning.handleRepoPushEvent(payload);
+      await server.services.secretScanning.handleRepoPushEvent(payload as any);
     });
   };
 

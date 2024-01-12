@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 
 import { ForbiddenError } from "@casl/ability";
-import { PushEvent } from "@octokit/webhooks-types";
+import { WebhookEventMap } from "@octokit/webhooks-types";
 import { ProbotOctokit } from "probot";
 
 import {
@@ -146,7 +146,7 @@ export const secretScanningServiceFactory = ({
     return { risk };
   };
 
-  const handleRepoPushEvent = async (payload: PushEvent) => {
+  const handleRepoPushEvent = async (payload: WebhookEventMap["push"]) => {
     const { commits, repository, installation, pusher } = payload;
     if (!commits || !repository || !installation || !pusher) {
       return;

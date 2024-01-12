@@ -22,7 +22,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const organizations = await server.services.org.findAllOrganizationOfUser(req.auth.userId);
+      const organizations = await server.services.org.findAllOrganizationOfUser(req.permission.id);
       return { organizations };
     }
   });
@@ -43,7 +43,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const organization = await server.services.org.findOrganizationById(
-        req.auth.userId,
+        req.permission.id,
         req.params.organizationId
       );
       return { organization };
@@ -77,7 +77,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const users = await server.services.org.findAllOrgMembers(
-        req.auth.userId,
+        req.permission.id,
         req.params.organizationId
       );
       return { users };
@@ -102,7 +102,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const organization = await server.services.org.updateOrgName(
-        req.auth.userId,
+        req.permission.id,
         req.params.organizationId,
         req.body.name
       );
@@ -127,7 +127,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const incidentContactsOrg = await req.server.services.org.findIncidentContacts(
-        req.auth.userId,
+        req.permission.id,
         req.params.organizationId
       );
       return { incidentContactsOrg };
@@ -149,7 +149,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const incidentContactsOrg = await req.server.services.org.createIncidentContact(
-        req.auth.userId,
+        req.permission.id,
         req.params.organizationId,
         req.body.email
       );
@@ -172,7 +172,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const incidentContactsOrg = await req.server.services.org.deleteIncidentContact(
-        req.auth.userId,
+        req.permission.id,
         req.params.organizationId,
         req.params.incidentContactId
       );

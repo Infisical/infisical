@@ -26,8 +26,9 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      
       const role = await server.services.orgRole.createRole(
-        req.auth.userId,
+        req.permission.id,
         req.params.organizationId,
         req.body
       );
@@ -57,8 +58,9 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      
       const role = await server.services.orgRole.updateRole(
-        req.auth.userId,
+        req.permission.id,
         req.params.organizationId,
         req.params.roleId,
         req.body
@@ -83,8 +85,9 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      
       const role = await server.services.orgRole.deleteRole(
-        req.auth.userId,
+        req.permission.id,
         req.params.organizationId,
         req.params.roleId
       );
@@ -111,8 +114,9 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      
       const roles = await server.services.orgRole.listRoles(
-        req.auth.userId,
+        req.permission.id,
         req.params.organizationId
       );
       return { data: { roles } };
@@ -135,8 +139,9 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      
       const { permissions, membership } = await server.services.orgRole.getUserPermission(
-        req.auth.userId,
+        req.permission.id,
         req.params.organizationId
       );
       return { permissions, membership };

@@ -141,8 +141,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      
       const { permissions, membership } = await server.services.projectRole.getUserPermission(
-        req.auth.userId,
+        req.permission.id,
         req.params.projectId
       );
       return { data: { permissions, membership } };

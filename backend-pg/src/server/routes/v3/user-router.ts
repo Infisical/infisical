@@ -17,7 +17,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const apiKeyData = await server.services.apiKey.getMyApiKeys(req.auth.userId);
+      const apiKeyData = await server.services.apiKey.getMyApiKeys(req.permission.id);
       return { apiKeyData };
     }
   });

@@ -22,7 +22,7 @@ export const registerUserActionRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const userAction = await server.services.user.createUserAction(
-        req.auth.userId,
+        req.permission.id,
         req.body.action
       );
       return { userAction, message: "Successfully recorded user action" };
@@ -45,7 +45,7 @@ export const registerUserActionRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const userAction = await server.services.user.getUserAction(
-        req.auth.userId,
+        req.permission.id,
         req.query.action
       );
       return { userAction };

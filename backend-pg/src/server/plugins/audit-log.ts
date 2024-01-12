@@ -44,7 +44,7 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
         type: ActorType.USER,
         metadata: {
           email: req.auth.user.email,
-          userId: req.auth.userId
+          userId: req.permission.id
         }
       };
     } else if (req.auth.actor === ActorType.SERVICE) {
