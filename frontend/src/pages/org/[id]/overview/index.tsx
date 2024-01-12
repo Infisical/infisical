@@ -23,7 +23,9 @@ import {
   faNetworkWired,
   faPlug,
   faPlus,
-  faUserPlus
+  faUserPlus,
+  faWarning,
+  faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -35,8 +37,6 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
 import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import {
-  Alert,
-  AlertDescription,
   Button,
   Checkbox,
   FormControl,
@@ -58,6 +58,7 @@ import {
   fetchOrgUsers,
   useAddUserToWs,
   useCreateWorkspace,
+  useGetUserAction,
   useRegisterUserAction,
   useUploadWsKey
 } from "@app/hooks/api";
@@ -482,6 +483,13 @@ const OrganizationPage = withPermission(
     const { createNotification } = useNotificationContext();
     const addWsUser = useAddUserToWs();
 
+    const { data: updateClosed } = useGetUserAction("jan_2023_db_update_closed");
+
+    const registerUserAction = useRegisterUserAction();
+    const closeUpdate = async () => {
+      await registerUserAction.mutateAsync("jan_2023_db_update_closed");
+    };
+
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "addNewWs",
       "upgradePlan"
@@ -607,21 +615,22 @@ const OrganizationPage = withPermission(
           </div>
         )}
         <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
-          <Alert
-            className="mb-4 border-primary-600 bg-bunker-800 text-white"
-            title="Database change: Migrating to PostgreSQL from MongoDB"
-            variant="warning"
-          >
-            <AlertDescription className="mt-2">
-              We will be migrating from MongoDB toPostgreSQL. During this time only read operations
-              are permitted. <br />
-              As a user you don&apos;t have to perform any action.
-              <div className="mt-1">
-                Timeline:
-                <span className="font-medium">20th Jan Sat between 10am EST - 4am EST</span>
+          <div className={`${
+              !updateClosed ? "block" : "hidden"
+            } mb-4 w-full border rounded-md p-2 text-base border-primary-600 bg-primary/10 text-white flex flex-row items-center`}>
+              <FontAwesomeIcon icon={faWarning} className="text-primary text-4xl p-6"/>
+              <div className="text-sm">
+                <span className="text-lg font-semibold">Scheduled maintenance on January 20th</span>  <br />
+                We&apos;ve planned a database upgrade and need to pause certain functionality for approximately 6 hours on Saturday, January 20th, 10am EST. Read operations will continue to function as normal but nothing will be editable. As a user you don&apos;t have to perform any action – your applications will not be affected.<br />
               </div>
-            </AlertDescription>
-          </Alert>
+              <button
+                type="button"
+                onClick={() => closeUpdate()}
+                className="text-mineshaft-100 duration-200 hover:text-red-400 h-full flex items-start"
+              >
+                <FontAwesomeIcon icon={faXmark} />
+              </button>
+          </div>
           <p className="mr-4 font-semibold text-white">Projects</p>
           <div className="mt-6 flex w-full flex-row">
             <Input
