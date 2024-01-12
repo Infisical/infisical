@@ -11,7 +11,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     method: "POST",
     schema: {
       body: z.object({
-        projectId: z.string().trim(),
+        workspaceId: z.string().trim(),
         environment: z.string().trim(),
         path: z.string().trim().default("/"),
         import: z.object({
@@ -30,18 +30,24 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN
+    ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.createImport({
         actorId: req.permission.id,
         actor: req.permission.type,
         ...req.body,
+        projectId: req.body.workspaceId,
         data: req.body.import
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.body.projectId,
+        projectId: req.body.workspaceId,
         event: {
           type: EventType.CREATE_SECRET_IMPORT,
           metadata: {
@@ -66,7 +72,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         secretImportId: z.string().trim()
       }),
       body: z.object({
-        projectId: z.string().trim(),
+        workspaceId: z.string().trim(),
         environment: z.string().trim(),
         path: z.string().trim().default("/"),
         import: z.object({
@@ -86,19 +92,25 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN
+    ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.updateImport({
         actorId: req.permission.id,
         actor: req.permission.type,
         id: req.params.secretImportId,
         ...req.body,
+        projectId: req.body.workspaceId,
         data: req.body.import
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.body.projectId,
+        projectId: req.body.workspaceId,
         event: {
           type: EventType.UPDATE_SECRET_IMPORT,
           metadata: {
@@ -123,7 +135,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         secretImportId: z.string().trim()
       }),
       body: z.object({
-        projectId: z.string().trim(),
+        workspaceId: z.string().trim(),
         environment: z.string().trim(),
         path: z.string().trim().default("/")
       }),
@@ -138,18 +150,24 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN
+    ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.deleteImport({
         actorId: req.permission.id,
         actor: req.permission.type,
         id: req.params.secretImportId,
-        ...req.body
+        ...req.body,
+        projectId: req.body.workspaceId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.body.projectId,
+        projectId: req.body.workspaceId,
         event: {
           type: EventType.DELETE_SECRET_IMPORT,
           metadata: {
@@ -171,7 +189,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     schema: {
       querystring: z.object({
-        projectId: z.string().trim(),
+        workspaceId: z.string().trim(),
         environment: z.string().trim(),
         path: z.string().trim().default("/")
       }),
@@ -188,17 +206,23 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN
+    ]),
     handler: async (req) => {
       const secretImports = await server.services.secretImport.getImports({
         actorId: req.permission.id,
         actor: req.permission.type,
-        ...req.query
+        ...req.query,
+        projectId: req.query.workspaceId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.query.projectId,
+        projectId: req.query.workspaceId,
         event: {
           type: EventType.GET_SECRET_IMPORTS,
           metadata: {
@@ -217,7 +241,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     schema: {
       querystring: z.object({
-        projectId: z.string().trim(),
+        workspaceId: z.string().trim(),
         environment: z.string().trim(),
         path: z.string().trim().default("/")
       }),
@@ -238,12 +262,18 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN
+    ]),
     handler: async (req) => {
       const importedSecrets = await server.services.secretImport.getSecretsFromImports({
         actorId: req.permission.id,
         actor: req.permission.type,
-        ...req.query
+        ...req.query,
+        projectId: req.query.workspaceId
       });
       return { secrets: importedSecrets };
     }

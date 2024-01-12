@@ -13,7 +13,7 @@ export const ProjectKeysSchema = z.object({
   nonce: z.string(),
   receiverId: z.string().uuid(),
   senderId: z.string().uuid().nullable().optional(),
-  projectId: z.string().uuid(),
+  projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });

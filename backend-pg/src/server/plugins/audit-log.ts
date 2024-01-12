@@ -47,6 +47,22 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
           userId: req.auth.userId
         }
       };
+    } else if (req.auth.actor === ActorType.SERVICE) {
+      payload.actor = {
+        type: ActorType.SERVICE,
+        metadata: {
+          name: req.auth.serviceToken.name,
+          serviceId: req.auth.serviceTokenId
+        }
+      };
+    } else if (req.auth.actor === ActorType.IDENTITY) {
+      payload.actor = {
+        type: ActorType.IDENTITY,
+        metadata: {
+          name: req.auth.identityName,
+          identityId: req.auth.identityId
+        }
+      };
     } else {
       throw new BadRequestError({ message: "Missing logic for other actor" });
     }

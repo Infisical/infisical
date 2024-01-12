@@ -90,7 +90,8 @@ export const projectServiceFactory = ({
         envs.map(({ id }) => ({ name: ROOT_FOLDER_NAME, envId: id, version: 1 })),
         tx
       );
-      return { ...project, environments: envs };
+      // _id for backward compat
+      return { ...project, environments: envs, _id: project.id };
     });
 
     return newProject;

@@ -4,9 +4,9 @@ export class DatabaseError extends Error {
 
   error: unknown;
 
-  constructor({ name, error, message }: { message?: string; name: string; error: unknown }) {
+  constructor({ name, error, message }: { message?: string; name?: string; error: unknown }) {
     super(message || "Failed to execute db ops");
-    this.name = name;
+    this.name = name || "DatabaseError";
     this.error = error;
   }
 }

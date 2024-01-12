@@ -69,19 +69,21 @@ export const extractAuthMode = async ({
     return { authMode: AuthMode.SERVICE_TOKEN, authTokenValue };
   }
 
-    switch (decodedToken.authTokenType) {
-        case AuthTokenType.ACCESS_TOKEN:
-            return { authMode: AuthMode.JWT, authTokenValue };
-        case AuthTokenType.API_KEY:
-            return { authMode: AuthMode.API_KEY_V2, authTokenValue };
-        case AuthTokenType.IDENTITY_ACCESS_TOKEN:
-            return { authMode: AuthMode.IDENTITY_ACCESS_TOKEN, authTokenValue };
-        default:
-            throw UnauthorizedRequestError({
-                message: "Failed to authenticate unknown authentication method"
-            });
-    }
-}
+  const decodedToken = <jwt.AuthnJwtPayload>jwt.verify(authTokenValue, await getAuthSecret());
+
+  switch (decodedToken.authTokenType) {
+    case AuthTokenType.ACCESS_TOKEN:
+      return { authMode: AuthMode.JWT, authTokenValue };
+    case AuthTokenType.API_KEY:
+      return { authMode: AuthMode.API_KEY_V2, authTokenValue };
+    case AuthTokenType.IDENTITY_ACCESS_TOKEN:
+      return { authMode: AuthMode.IDENTITY_ACCESS_TOKEN, authTokenValue };
+    default:
+      throw UnauthorizedRequestError({
+        message: "Failed to authenticate unknown authentication method"
+      });
+  }
+};
 
 export const getAuthData = async ({
   authMode,
@@ -97,118 +99,35 @@ export const getAuthData = async ({
         authTokenValue
       });
 
-    switch (authMode) {
-        case AuthMode.SERVICE_TOKEN: {
-            const serviceTokenData = await validateServiceTokenV2({
-                authTokenValue
-            });
-
-            return {
-                actor: {
-                    type: ActorType.SERVICE,
-                    metadata: {
-                        serviceId: serviceTokenData._id.toString(),
-                        name: serviceTokenData.name
-                    }
-                },
-                authPayload: serviceTokenData,
-                ipAddress,
-                userAgent,
-                userAgentType
-            }
-        }
-        case AuthMode.IDENTITY_ACCESS_TOKEN: {
-            const identity = await validateIdentity({
-                authTokenValue,
-                ipAddress
-            });
-
-            return {
-                actor: {
-                    type: ActorType.IDENTITY,
-                    metadata: {
-                        identityId: identity._id.toString(),
-                        name: identity.name
-                    }
-                },
-                authPayload: identity,
-                ipAddress,
-                userAgent,
-                userAgentType
-            }
-        }
-        case AuthMode.API_KEY: {
-            const user = await validateAPIKey({
-                authTokenValue
-            });
-            
-            return {
-                actor: {
-                    type: ActorType.USER,
-                    metadata: {
-                        userId: user._id.toString(),
-                        email: user.email
-                    }
-                },
-                authPayload: user,
-                ipAddress,
-                userAgent,
-                userAgentType
-            }
-        }
-        case AuthMode.API_KEY_V2: {
-            const user = await validateAPIKeyV2({
-                authTokenValue
-            });
-
-            return {
-                actor: {
-                    type: ActorType.USER,
-                    metadata: {
-                        userId: user._id.toString(),
-                        email: user.email
-                    }
-                },
-                authPayload: user,
-                ipAddress,
-                userAgent,
-                userAgentType
-            }
-        }
-        case AuthMode.JWT: {
-            const user = await validateJWT({
-                authTokenValue
-            });
-            
-            return {
-                actor: {
-                    type: ActorType.USER,
-                    metadata: {
-                        userId: user._id.toString(),
-                        email: user.email
-                    }
-                },
-                authPayload: user,
-                ipAddress,
-                userAgent,
-                userAgentType
-            }
-        }
-    }
-    case AuthMode.SERVICE_ACCESS_TOKEN: {
-      const serviceTokenData = await validateServiceTokenV3({
-        authTokenValue
-      });
-
       return {
         actor: {
-          type: ActorType.SERVICE_V3,
+          type: ActorType.SERVICE,
           metadata: {
             serviceId: serviceTokenData._id.toString(),
             name: serviceTokenData.name
           }
         },
         authPayload: serviceTokenData,
+        ipAddress,
+        userAgent,
+        userAgentType
+      };
+    }
+    case AuthMode.IDENTITY_ACCESS_TOKEN: {
+      const identity = await validateIdentity({
+        authTokenValue,
+        ipAddress
+      });
+
+      return {
+        actor: {
+          type: ActorType.IDENTITY,
+          metadata: {
+            identityId: identity._id.toString(),
+            name: identity.name
+          }
+        },
+        authPayload: identity,
         ipAddress,
         userAgent,
         userAgentType

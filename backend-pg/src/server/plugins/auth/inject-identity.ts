@@ -2,6 +2,7 @@ import { FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import jwt, { JwtPayload } from "jsonwebtoken";
 
+import { TServiceTokens, TUsers } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import {
@@ -10,6 +11,34 @@ import {
   AuthModeJwtTokenPayload,
   AuthTokenType
 } from "@app/services/auth/auth-type";
+import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
+
+export type TAuthMode =
+  | {
+      authMode: AuthMode.JWT;
+      actor: ActorType.USER;
+      userId: string;
+      tokenVersionId: string; // the session id of token used
+      user: TUsers;
+    }
+  | {
+      authMode: AuthMode.API_KEY;
+      actor: ActorType.USER;
+      userId: string;
+      user: TUsers;
+    }
+  | {
+      authMode: AuthMode.SERVICE_TOKEN;
+      serviceToken: TServiceTokens;
+      actor: ActorType.SERVICE;
+      serviceTokenId: string;
+    }
+  | {
+      authMode: AuthMode.IDENTITY_ACCESS_TOKEN;
+      actor: ActorType.IDENTITY;
+      identityId: string;
+      identityName: string;
+    };
 
 const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
   const apiKey = req.headers?.["x-api-key"];
@@ -24,7 +53,7 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
     return {
       authMode: AuthMode.SERVICE_TOKEN,
       token: authTokenValue,
-      actor: ActorType.USER
+      actor: ActorType.SERVICE
     } as const;
   }
 
@@ -37,32 +66,16 @@ const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         actor: ActorType.USER
       } as const;
     case AuthTokenType.API_KEY:
-      return { authMode: AuthMode.API_KEY_V2, token: decodedToken, actor: ActorType.USER } as const;
-    case AuthMode.SERVICE_ACCESS_TOKEN:
+      return { authMode: AuthMode.API_KEY, token: decodedToken, actor: ActorType.USER } as const;
+    case AuthTokenType.IDENTITY_ACCESS_TOKEN:
       return {
-        authMode: AuthMode.SERVICE_ACCESS_TOKEN,
-        token: decodedToken,
-        actor: ActorType.USER
+        authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
+        token: decodedToken as TIdentityAccessTokenJwtPayload,
+        actor: ActorType.IDENTITY
       } as const;
     default:
       return { authMode: null, token: null } as const;
   }
-};
-
-const getJwtIdentity = async (server: FastifyZodProvider, token: AuthModeJwtTokenPayload) => {
-  const session = await server.services.authToken.getUserTokenSessionById(
-    token.tokenVersionId,
-    token.userId
-  );
-
-  if (!session) throw new UnauthorizedError({ name: "Session not found" });
-  if (token.accessVersion !== session.accessVersion)
-    throw new UnauthorizedError({ name: "Stale session" });
-
-  const user = await server.store.user.findById(session.userId);
-  if (!user || !user.isAccepted) throw new UnauthorizedError({ name: "Token user not found" });
-
-  return { user, tokenVersionId: token.tokenVersionId };
 };
 
 export const injectIdentity = fp(async (server: FastifyZodProvider) => {
@@ -71,24 +84,44 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
     const appCfg = getConfig();
     const { authMode, token, actor } = await extractAuth(req, appCfg.JWT_AUTH_SECRET);
     if (!authMode) return;
-    // TODO(akhilmhdh-pg): fill in rest of auth mode logic
+
     switch (authMode) {
       case AuthMode.JWT: {
-        const { user, tokenVersionId } = await getJwtIdentity(
-          server,
-          token as AuthModeJwtTokenPayload
-        );
+        const { user, tokenVersionId } =
+          await server.services.authToken.fnValidateJwtIdentity(token);
         req.auth = { authMode: AuthMode.JWT, user, userId: user.id, tokenVersionId, actor };
         break;
       }
-      case AuthMode.SERVICE_TOKEN:
+      case AuthMode.IDENTITY_ACCESS_TOKEN: {
+        const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(
+          token,
+          req.realIp
+        );
+        req.auth = {
+          authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
+          actor,
+          identityId: identity.identityId,
+          identityName: identity.name
+        };
         break;
-      case AuthMode.SERVICE_ACCESS_TOKEN:
+      }
+      case AuthMode.SERVICE_TOKEN: {
+        const serviceToken = await server.services.serviceToken.fnValidateServiceToken(
+          token as string
+        );
+        req.auth = {
+          authMode: AuthMode.SERVICE_TOKEN as const,
+          serviceToken,
+          serviceTokenId: serviceToken.id,
+          actor
+        };
         break;
-      case AuthMode.API_KEY:
+      }
+      case AuthMode.API_KEY: {
+        const user = await server.services.apiKey.fnValidateApiKey(token as string);
+        req.auth = { authMode: AuthMode.API_KEY as const, userId: user.id, actor, user };
         break;
-      case AuthMode.API_KEY_V2:
-        break;
+      }
       default:
         throw new UnauthorizedError({ name: "Unknown token strategy" });
     }

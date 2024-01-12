@@ -4,7 +4,10 @@ import bcrypt from "bcrypt";
 
 import { TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { UnauthorizedError } from "@app/lib/errors";
 
+import { AuthModeJwtTokenPayload } from "../auth/auth-type";
+import { TUserDalFactory } from "../user/user-dal";
 import { TTokenDalFactory } from "./auth-token-dal";
 import {
   TCreateTokenForUserDTO,
@@ -15,7 +18,7 @@ import {
 
 type TAuthTokenServiceFactoryDep = {
   tokenDal: TTokenDalFactory;
-  // adjust the expiry from env through here
+  userDal: Pick<TUserDalFactory, "findById">;
 };
 export type TAuthTokenServiceFactory = ReturnType<typeof tokenServiceFactory>;
 
@@ -56,7 +59,7 @@ export const getTokenConfig = (tokenType: TokenType) => {
   }
 };
 
-export const tokenServiceFactory = ({ tokenDal }: TAuthTokenServiceFactoryDep) => {
+export const tokenServiceFactory = ({ tokenDal, userDal }: TAuthTokenServiceFactoryDep) => {
   const createTokenForUser = async ({ type, userId, orgId }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
@@ -122,26 +125,43 @@ export const tokenServiceFactory = ({ tokenDal }: TAuthTokenServiceFactoryDep) =
     return session;
   };
 
-  const getUserTokenSessionById = async (id: string, userId: string) =>
-    tokenDal.findOneTokenSession({ id, userId });
-
   const clearTokenSessionById = async (
     userId: string,
     sessionId: string
   ): Promise<TAuthTokenSessions | undefined> =>
     tokenDal.incrementTokenSessionVersion(userId, sessionId);
 
+  const getUserTokenSessionById = async (id: string, userId: string) =>
+    tokenDal.findOneTokenSession({ id, userId });
+
   const getTokenSessionByUser = async (userId: string) => tokenDal.findTokenSessions({ userId });
 
   const revokeAllMySessions = async (userId: string) => tokenDal.deleteTokenSession({ userId });
+
+  // to parse jwt identity in inject identity plugin
+  const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
+    const session = await tokenDal.findOneTokenSession({
+      id: token.tokenVersionId,
+      userId: token.userId
+    });
+    if (!session) throw new UnauthorizedError({ name: "Session not found" });
+    if (token.accessVersion !== session.accessVersion)
+      throw new UnauthorizedError({ name: "Stale session" });
+
+    const user = await userDal.findById(session.userId);
+    if (!user || !user.isAccepted) throw new UnauthorizedError({ name: "Token user not found" });
+
+    return { user, tokenVersionId: token.tokenVersionId };
+  };
 
   return {
     createTokenForUser,
     validateTokenForUser,
     getUserTokenSession,
     clearTokenSessionById,
-    getUserTokenSessionById,
     getTokenSessionByUser,
-    revokeAllMySessions
+    revokeAllMySessions,
+    fnValidateJwtIdentity,
+    getUserTokenSessionById
   };
 };

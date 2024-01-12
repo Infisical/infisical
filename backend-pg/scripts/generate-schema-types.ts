@@ -48,6 +48,7 @@ const getZodDefaultValue = (type: unknown, value: string | number | boolean | Ob
     case "uuid":
       return;
     case "character varying": {
+      if (value === "gen_random_uuid()") return;
       if (typeof value === "string" && value.includes("::")) {
         return `.default(${value.split("::")[0]})`;
       }
@@ -85,7 +86,7 @@ const main = async () => {
       .whereRaw("table_schema =  current_schema()")
       .select<{ tableName: string }[]>("table_name as tableName")
       .orderBy("table_name")
-  ).filter((el) => el.tableName.includes("migration"));
+  ).filter((el) => !el.tableName.includes("_migrations"));
 
   console.log("Select a table to generate schema");
   console.table(tables);

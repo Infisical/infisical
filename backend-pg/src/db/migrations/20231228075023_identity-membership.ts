@@ -25,7 +25,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("role").notNullable();
       t.uuid("roleId");
       t.foreign("roleId").references("id").inTable(TableName.ProjectRoles);
-      t.uuid("projectId").notNullable();
+      t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.uuid("identityId").notNullable();
       t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");

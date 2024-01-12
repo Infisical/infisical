@@ -13,7 +13,7 @@ export const ProjectMembershipsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   userId: z.string().uuid(),
-  projectId: z.string().uuid(),
+  projectId: z.string(),
   roleId: z.string().uuid().nullable().optional(),
 });
 

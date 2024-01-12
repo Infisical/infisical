@@ -25,7 +25,7 @@ const fetchSecretImport = async ({ projectId, environment, path = "/" }: TGetSec
     "/api/v1/secret-imports",
     {
       params: {
-        projectId,
+        workspaceId: projectId,
         environment,
         path
       }
@@ -66,7 +66,7 @@ const fetchImportedSecrets = async (
     "/api/v1/secret-imports/secrets",
     {
       params: {
-        projectId: workspaceId,
+        workspaceId,
         environment,
         path: directory
       }

@@ -103,6 +103,11 @@ export const isValidIpOrCidr = (ip: string): boolean => {
   return false;
 };
 
+export type TIp = {
+  ipAddress: string;
+  type: IPType;
+  prefix: number;
+};
 /**
  * Validates the IP address [ipAddress] against the trusted IPs [trustedIps].
  */
@@ -111,11 +116,7 @@ export const checkIPAgainstBlocklist = ({
   trustedIps
 }: {
   ipAddress: string;
-  trustedIps: {
-    ipAddress: string;
-    type: IPType;
-    prefix: number;
-  }[];
+  trustedIps: TIp[];
 }) => {
   const blockList = new net.BlockList();
 

@@ -9,7 +9,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { ActorType } from "../auth/auth-type";
 import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
@@ -130,10 +130,29 @@ export const serviceTokenServiceFactory = ({
     return tokens;
   };
 
+  const fnValidateServiceToken = async (token: string) => {
+    const [, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>token.split(".", 3);
+    const serviceToken = await serviceTokenDal.findById(TOKEN_IDENTIFIER);
+    if (!serviceToken) throw new UnauthorizedError();
+
+    if (serviceToken.expiresAt && new Date(serviceToken.expiresAt) < new Date()) {
+      await serviceTokenDal.deleteById(serviceToken.id);
+      throw new UnauthorizedError({ message: "failed to authenticate expired service token" });
+    }
+
+    const isMatch = await bcrypt.compare(TOKEN_SECRET, serviceToken.secretHash);
+    if (!isMatch) throw new UnauthorizedError();
+    const updatedToken = await serviceTokenDal.updateById(serviceToken.id, {
+      lastUsed: new Date()
+    });
+    return updatedToken;
+  };
+
   return {
     createServiceToken,
     deleteServiceToken,
     getServiceToken,
-    getProjectServiceTokens
+    getProjectServiceTokens,
+    fnValidateServiceToken
   };
 };

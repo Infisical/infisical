@@ -97,12 +97,17 @@ export const secretFolderServiceFactory = ({
     const env = await projectEnvDal.findOne({ projectId, slug: environment });
     if (!env)
       throw new BadRequestError({ message: "Environment not found", name: "Update folder" });
-    const folder = await folderDal.findOne({ envId: env.id, id, parentId: parentFolder.id });
+    let folder = await folderDal.findOne({ envId: env.id, id, parentId: parentFolder.id });
+    // now folder api accepts id based change
+    // this is for cli and when cli removes this will remove this logic
+    if (!folder) {
+      folder = await folderDal.findOne({ envId: env.id, name: id, parentId: parentFolder.id });
+    }
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
     const newFolder = await folderDal.transaction(async (tx) => {
       const [doc] = await folderDal.update(
-        { envId: env.id, id, parentId: parentFolder.id },
+        { envId: env.id, id: folder.id, parentId: parentFolder.id },
         { name },
         tx
       );

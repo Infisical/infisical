@@ -11,7 +11,7 @@ export const IdentityProjectMembershipsSchema = z.object({
   id: z.string().uuid(),
   role: z.string(),
   roleId: z.string().uuid().nullable().optional(),
-  projectId: z.string().uuid(),
+  projectId: z.string(),
   identityId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),

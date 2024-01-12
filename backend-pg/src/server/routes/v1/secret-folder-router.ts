@@ -11,10 +11,12 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     method: "POST",
     schema: {
       body: z.object({
-        projectId: z.string().trim(),
+        workspaceId: z.string().trim(),
         environment: z.string().trim(),
         name: z.string().trim(),
-        path: z.string().trim().default("/")
+        path: z.string().trim().default("/"),
+        // backward compatiability with cli
+        directory: z.string().trim().default("/")
       }),
       response: {
         200: z.object({
@@ -22,23 +24,31 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN
+    ]),
     handler: async (req) => {
+      const path = req.body.path || req.body.directory;
       const folder = await server.services.folder.createFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
-        ...req.body
+        ...req.body,
+        projectId: req.body.workspaceId,
+        path
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.body.projectId,
+        projectId: req.body.workspaceId,
         event: {
           type: EventType.CREATE_FOLDER,
           metadata: {
             environment: req.body.environment,
             folderId: folder.id,
             folderName: folder.name,
-            folderPath: req.body.path
+            folderPath: path
           }
         }
       });
@@ -51,13 +61,16 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     method: "PATCH",
     schema: {
       params: z.object({
+        // old way this was name
         folderId: z.string()
       }),
       body: z.object({
-        projectId: z.string().trim(),
+        workspaceId: z.string().trim(),
         environment: z.string().trim(),
         name: z.string().trim(),
-        path: z.string().trim().default("/")
+        path: z.string().trim().default("/"),
+        // backward compatiability with cli
+        directory: z.string().trim().default("/")
       }),
       response: {
         200: z.object({
@@ -65,23 +78,31 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN
+    ]),
     handler: async (req) => {
+      const path = req.body.path || req.body.directory;
       const { folder, old } = await server.services.folder.updateFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
         ...req.body,
-        id: req.params.folderId
+        projectId: req.body.workspaceId,
+        id: req.params.folderId,
+        path
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.body.projectId,
+        projectId: req.body.workspaceId,
         event: {
           type: EventType.UPDATE_FOLDER,
           metadata: {
             environment: req.body.environment,
             folderId: folder.id,
-            folderPath: req.body.path,
+            folderPath: path,
             newFolderName: folder.name,
             oldFolderName: old.name
           }
@@ -99,9 +120,11 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         folderId: z.string()
       }),
       body: z.object({
-        projectId: z.string().trim(),
+        workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        path: z.string().trim().default("/")
+        path: z.string().trim().default("/"),
+        // keep this here as cli need directory
+        directory: z.string().trim().default("/")
       }),
       response: {
         200: z.object({
@@ -109,23 +132,31 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN
+    ]),
     handler: async (req) => {
+      const path = req.body.path || req.body.directory;
       const folder = await server.services.folder.deleteFolder({
         actorId: req.permission.id,
         actor: req.permission.type,
         ...req.body,
-        id: req.params.folderId
+        projectId: req.body.workspaceId,
+        id: req.params.folderId,
+        path
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.body.projectId,
+        projectId: req.body.workspaceId,
         event: {
           type: EventType.DELETE_FOLDER,
           metadata: {
             environment: req.body.environment,
             folderId: folder.id,
-            folderPath: req.body.path,
+            folderPath: path,
             folderName: folder.name
           }
         }
@@ -139,9 +170,11 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     method: "GET",
     schema: {
       querystring: z.object({
-        projectId: z.string().trim(),
+        workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        path: z.string().trim().default("/")
+        path: z.string().trim().default("/"),
+        // backward compatiability with cli
+        directory: z.string().trim().default("/")
       }),
       response: {
         200: z.object({
@@ -149,12 +182,20 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN
+    ]),
     handler: async (req) => {
+      const path = req.query.path || req.query.directory;
       const folders = await server.services.folder.getFolders({
         actorId: req.permission.id,
         actor: req.permission.type,
-        ...req.query
+        ...req.query,
+        projectId: req.query.workspaceId,
+        path
       });
       return { folders };
     }

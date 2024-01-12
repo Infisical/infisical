@@ -25,7 +25,7 @@ export async function up(knex: Knex): Promise<void> {
       t.jsonb("metadata");
       t.string("algorithm").notNullable();
       t.string("keyEncoding").notNullable();
-      t.uuid("projectId").notNullable();
+      t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });

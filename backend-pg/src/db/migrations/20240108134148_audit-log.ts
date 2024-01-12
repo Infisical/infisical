@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
       // no trigger needed as this collection is append only
       t.uuid("orgId");
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-      t.uuid("projectId");
+      t.string("projectId");
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
     });
   }

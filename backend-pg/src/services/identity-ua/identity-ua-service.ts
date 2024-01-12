@@ -19,6 +19,7 @@ import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDalFactory } from "../identity/identity-dal";
 import { TIdentityOrgDalFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDalFactory } from "../identity-access-token/identity-access-token-dal";
+import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TIdentityUaClientSecretDalFactory } from "./identity-ua-client-secret-dal";
 import { TIdentityUaDalFactory } from "./identity-ua-dal";
 import {
@@ -123,7 +124,7 @@ export const identityUaServiceFactory = ({
         clientSecretId: validClientSecretInfo.id,
         identityAccessTokenId: identityAccessToken.id,
         authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-      },
+      } as TIdentityAccessTokenJwtPayload,
       appCfg.JWT_AUTH_SECRET,
       {
         expiresIn:

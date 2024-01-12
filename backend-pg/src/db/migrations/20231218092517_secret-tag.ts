@@ -13,7 +13,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
       t.uuid("createdBy");
       t.foreign("createdBy").references("id").inTable(TableName.Users).onDelete("SET NULL");
-      t.uuid("projectId").notNullable();
+      t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
     });
   }

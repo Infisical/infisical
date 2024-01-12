@@ -14,7 +14,7 @@ export const SecretBlindIndexesSchema = z.object({
   saltTag: z.string(),
   algorithm: z.string().default('aes-256-gcm'),
   keyEncoding: z.string().default('utf8'),
-  projectId: z.string().uuid(),
+  projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });

@@ -13,7 +13,7 @@ export async function up(knex: Knex): Promise<void> {
       t.jsonb("permissions").notNullable();
       // does not need update trigger we will do it manually
       t.timestamps(true, true, true);
-      t.uuid("projectId").notNullable();
+      t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
     });
   }
@@ -26,7 +26,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
       t.uuid("userId").notNullable();
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
-      t.uuid("projectId").notNullable();
+      t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       // until role is changed/removed the role should not deleted
       t.uuid("roleId");

@@ -24,7 +24,9 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req, res) => {
       const appCfg = getConfig();
-      await server.services.login.logout(req.auth.userId, req.auth.tokenVersionId);
+      if (req.auth.authMode === AuthMode.JWT) {
+        await server.services.login.logout(req.auth.userId, req.auth.tokenVersionId);
+      }
       res.cookie("jid", "", {
         httpOnly: true,
         path: "/",
@@ -33,6 +35,20 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       });
       return { message: "Successfully logged out" };
     }
+  });
+
+  server.route({
+    url: "/checkAuth",
+    method: "POST",
+    schema: {
+      response: {
+        200: z.object({
+          message: z.literal("Authenticated")
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: () => ({ message: "Authenticated" as const })
   });
 
   server.route({

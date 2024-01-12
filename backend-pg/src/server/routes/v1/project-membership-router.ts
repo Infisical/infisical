@@ -11,8 +11,6 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerProjectMembershipRouter = async (server: FastifyZodProvider) => {
-  // TODO(akhilmhdh-pg): missing  adding multiple user workspace refer v2/membership
-
   server.route({
     url: "/:workspaceId/memberships",
     method: "GET",
@@ -37,7 +35,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const memberships = await server.services.projectMembership.getProjectMemberships({
         actorId: req.permission.id,
@@ -72,7 +70,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const data = await server.services.projectMembership.addUsersToProject({
         actorId: req.permission.id,
@@ -114,7 +112,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.projectMembership.updateProjectMembership({
         actorId: req.permission.id,
@@ -155,7 +153,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.projectMembership.deleteProjectMembership({
         actorId: req.permission.id,

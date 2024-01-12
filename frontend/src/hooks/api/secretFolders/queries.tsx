@@ -24,10 +24,10 @@ export const folderQueryKeys = {
     ["secret-folders", { projectId, environment, path }] as const
 };
 
-const fetchProjectFolders = async (projectId: string, environment: string, path = "/") => {
+const fetchProjectFolders = async (workspaceId: string, environment: string, path = "/") => {
   const { data } = await apiRequest.get<{ folders: TSecretFolder[] }>("/api/v1/folders", {
     params: {
-      projectId,
+      workspaceId,
       environment,
       path
     }
@@ -102,7 +102,10 @@ export const useCreateFolder = () => {
 
   return useMutation<{}, {}, TCreateFolderDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post("/api/v1/folders", dto);
+      const { data } = await apiRequest.post("/api/v1/folders", {
+        ...dto,
+        workspaceId: dto.projectId
+      });
       return data;
     },
     onSuccess: (_, { projectId, environment, path }) => {
@@ -127,7 +130,7 @@ export const useUpdateFolder = () => {
       const { data } = await apiRequest.patch(`/api/v1/folders/${folderId}`, {
         name,
         environment,
-        projectId,
+        workspaceId: projectId,
         path
       });
       return data;
@@ -154,7 +157,7 @@ export const useDeleteFolder = () => {
       const { data } = await apiRequest.delete(`/api/v1/folders/${folderId}`, {
         data: {
           environment,
-          projectId,
+          workspaceId: projectId,
           path
         }
       });

@@ -230,6 +230,33 @@ const buildNoAccessProjectPermission = () => {
   return build({ conditionsMatcher });
 };
 
+export const buildServiceTokenProjectPermission = (
+  scopes: Array<{ secretPath: string; environment: string }>,
+  permission: string[]
+) => {
+  const canWrite = permission.includes("write");
+  const canRead = permission.includes("read");
+  const { can, build } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
+  scopes.forEach(({ secretPath, environment }) => {
+    if (canWrite) {
+      can(ProjectPermissionActions.Edit, ProjectPermissionSub.Secrets, { secretPath, environment });
+      can(ProjectPermissionActions.Create, ProjectPermissionSub.Secrets, {
+        secretPath,
+        environment
+      });
+      can(ProjectPermissionActions.Delete, ProjectPermissionSub.Secrets, {
+        secretPath,
+        environment
+      });
+    }
+    if (canRead) {
+      can(ProjectPermissionActions.Read, ProjectPermissionSub.Secrets, { secretPath, environment });
+    }
+  });
+
+  return build({ conditionsMatcher });
+};
+
 export const projectNoAccessPermissions = buildNoAccessProjectPermission();
 
 /**

@@ -1,11 +1,16 @@
 import jwt, { JwtPayload } from "jsonwebtoken";
 
+import { TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 
 import { AuthTokenType } from "../auth/auth-type";
 import { TIdentityAccessTokenDalFactory } from "./identity-access-token-dal";
-import { TRenewAccessTokenDTO } from "./identity-access-token-types";
+import {
+  TIdentityAccessTokenJwtPayload,
+  TRenewAccessTokenDTO
+} from "./identity-access-token-types";
 
 type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenDal: TIdentityAccessTokenDalFactory;
@@ -18,25 +23,22 @@ export type TIdentityAccessTokenServiceFactory = ReturnType<
 export const identityAccessTokenServiceFactory = ({
   identityAccessTokenDal
 }: TIdentityAccessTokenServiceFactoryDep) => {
-  const renewAccessToken = async ({ accessToken }: TRenewAccessTokenDTO) => {
-    const appCfg = getConfig();
-
-    const decodedToken = jwt.verify(accessToken, appCfg.JWT_AUTH_SECRET) as JwtPayload;
-    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN)
-      throw new UnauthorizedError();
-
-    const identityAccessToken = await identityAccessTokenDal.findOne({
-      id: decodedToken.identityAccessTokenId,
-      isAccessTokenRevoked: false
-    });
-    if (!identityAccessToken) throw new UnauthorizedError();
-
+  const validateAccessTokenExp = async (identityAccessToken: TIdentityAccessTokens) => {
     const {
       accessTokenTTL,
+      accessTokenNumUses,
+      accessTokenNumUsesLimit,
       accessTokenLastRenewedAt,
       accessTokenMaxTTL,
       createdAt: accessTokenCreatedAt
     } = identityAccessToken;
+
+    if (accessTokenNumUses > 0 && accessTokenNumUses >= accessTokenNumUsesLimit) {
+      throw new BadRequestError({
+        message: "Unable to renew because access token number of uses limit reached"
+      });
+    }
+
     // ttl check
     if (accessTokenTTL > 0) {
       const currentDate = new Date();
@@ -81,6 +83,22 @@ export const identityAccessTokenServiceFactory = ({
           message: "Failed to renew MI access token past its Max TTL expiration"
         });
     }
+  };
+
+  const renewAccessToken = async ({ accessToken }: TRenewAccessTokenDTO) => {
+    const appCfg = getConfig();
+
+    const decodedToken = jwt.verify(accessToken, appCfg.JWT_AUTH_SECRET) as JwtPayload;
+    if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN)
+      throw new UnauthorizedError();
+
+    const identityAccessToken = await identityAccessTokenDal.findOne({
+      [`${TableName.IdentityAccessToken}.id` as "id"]: decodedToken.identityAccessTokenId,
+      isAccessTokenRevoked: false
+    });
+    if (!identityAccessToken) throw new UnauthorizedError();
+
+    validateAccessTokenExp(identityAccessToken);
 
     const updatedIdentityAccessToken = await identityAccessTokenDal.updateById(
       identityAccessToken.id,
@@ -92,5 +110,26 @@ export const identityAccessTokenServiceFactory = ({
     return { accessToken, identityAccessToken: updatedIdentityAccessToken };
   };
 
-  return { renewAccessToken };
+  const fnValidateIdentityAccessToken = async (
+    token: TIdentityAccessTokenJwtPayload,
+    ipAddress?: string
+  ) => {
+    const identityAccessToken = await identityAccessTokenDal.findOne({
+      [`${TableName.IdentityAccessToken}.id` as "id"]: token.identityAccessTokenId,
+      isAccessTokenRevoked: false
+    });
+    if (!identityAccessToken) throw new UnauthorizedError();
+
+    if (ipAddress) {
+      checkIPAgainstBlocklist({
+        ipAddress,
+        trustedIps: identityAccessToken?.accessTokenTrustedIps as TIp[]
+      });
+    }
+
+    validateAccessTokenExp(identityAccessToken);
+    return identityAccessToken;
+  };
+
+  return { renewAccessToken, fnValidateIdentityAccessToken };
 };

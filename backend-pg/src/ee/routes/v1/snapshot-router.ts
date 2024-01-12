@@ -30,7 +30,7 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const secretSnapshot = await server.services.snapshot.getSnapshotData({
         actor: req.permission.type,
@@ -54,7 +54,7 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const secretSnapshot = await server.services.snapshot.rollbackSnapshot({
         actor: req.permission.type,

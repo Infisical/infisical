@@ -15,7 +15,7 @@ export const SecretTagsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   createdBy: z.string().uuid().nullable().optional(),
-  projectId: z.string().uuid(),
+  projectId: z.string(),
 });
 
 export type TSecretTags = z.infer<typeof SecretTagsSchema>;

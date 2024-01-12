@@ -27,7 +27,7 @@ export const IntegrationAuthsSchema = z.object({
   metadata: z.unknown().nullable().optional(),
   algorithm: z.string(),
   keyEncoding: z.string(),
-  projectId: z.string().uuid(),
+  projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });

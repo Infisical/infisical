@@ -19,7 +19,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
       // user is old one
       t.string("createdBy").notNullable();
-      t.uuid("projectId").notNullable();
+      t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
     });
   }

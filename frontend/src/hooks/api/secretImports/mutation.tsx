@@ -13,7 +13,7 @@ export const useCreateSecretImport = () => {
       const { data } = await apiRequest.post("/api/v1/secret-imports", {
         import: secretImport,
         environment,
-        projectId,
+        workspaceId: projectId,
         path
       });
       return data;
@@ -38,7 +38,7 @@ export const useUpdateSecretImport = () => {
         import: secretImports,
         environment,
         path,
-        projectId
+        workspaceId: projectId
       });
       return data;
     },
@@ -60,7 +60,7 @@ export const useDeleteSecretImport = () => {
     mutationFn: async ({ id, projectId, path, environment }) => {
       const { data } = await apiRequest.delete(`/api/v1/secret-imports/${id}`, {
         data: {
-          projectId,
+          workspaceId: projectId,
           path,
           environment
         }

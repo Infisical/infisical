@@ -169,7 +169,12 @@ export const registerRoutes = async (
   const gitAppOrgDal = gitAppDalFactory(db);
   const secretScanningDal = secretScanningDalFactory(db);
 
-  const permissionService = permissionServiceFactory({ permissionDal, orgRoleDal, projectRoleDal });
+  const permissionService = permissionServiceFactory({
+    permissionDal,
+    orgRoleDal,
+    projectRoleDal,
+    serviceTokenDal
+  });
   const auditLogQueue = auditLogQueueServiceFactory({ auditLogDal, queueService });
   const auditLogService = auditLogServiceFactory({ auditLogDal, permissionService, auditLogQueue });
   const sapService = secretApprovalPolicyServiceFactory({
@@ -187,7 +192,7 @@ export const registerRoutes = async (
     samlConfigDal
   });
 
-  const tokenService = tokenServiceFactory({ tokenDal: authTokenDal });
+  const tokenService = tokenServiceFactory({ tokenDal: authTokenDal, userDal });
   const userService = userServiceFactory({ userDal });
   const loginService = authLoginServiceFactory({ userDal, smtpService, tokenService });
   const passwordService = authPaswordServiceFactory({
@@ -220,7 +225,7 @@ export const registerRoutes = async (
     authService: loginService,
     serverCfgDal: superAdminDal
   });
-  const apiKeyService = apiKeyServiceFactory({ apiKeyDal });
+  const apiKeyService = apiKeyServiceFactory({ apiKeyDal, userDal });
 
   const secretScanningQueue = secretScanningQueueFactory({
     userDal,
@@ -425,7 +430,7 @@ export const registerRoutes = async (
     user: userDal
   });
 
-  await server.register(injectIdentity);
+  await server.register(injectIdentity, { userDal, serviceTokenDal });
   await server.register(injectPermission);
   await server.register(injectAuditLogInfo);
 

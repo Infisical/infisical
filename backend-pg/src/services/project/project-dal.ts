@@ -1,16 +1,14 @@
 import { TDbClient } from "@app/db";
-import { TableName, TProjects } from "@app/db/schemas";
+import { ProjectsSchema, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { mergeOneToManyRelation, ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 export type TProjectDalFactory = ReturnType<typeof projectDalFactory>;
 
 export const projectDalFactory = (db: TDbClient) => {
   const projectOrm = ormify(db, TableName.Project);
 
-  const findAllProjects = async (
-    userId: string
-  ): Promise<(TProjects & { environments: { id: string; slug: string; name: string }[] })[]> => {
+  const findAllProjects = async (userId: string) => {
     try {
       const workspaces = await db(TableName.ProjectMembership)
         .where({ userId })
@@ -25,34 +23,35 @@ export const projectDalFactory = (db: TDbClient) => {
           `${TableName.Project}.id`
         )
         .select(
-          db.ref("id").withSchema(TableName.Project),
-          db.ref("name").withSchema(TableName.Project),
-          db.ref("autoCapitalization").withSchema(TableName.Project),
-          db.ref("orgId").withSchema(TableName.Project),
-          db.ref("createdAt").withSchema(TableName.Project),
-          db.ref("updatedAt").withSchema(TableName.Project),
+          selectAllTableCols(TableName.Project),
+          db.ref("id").withSchema(TableName.Project).as("_id"),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("name").withSchema(TableName.Environment).as("envName")
         )
         .orderBy("createdAt", "asc", "last");
-      return mergeOneToManyRelation(
-        workspaces,
-        "id",
-        ({ envId, envSlug, envName, ...data }) => data,
-        ({ envName, envSlug, envId }) => ({ id: envId, slug: envSlug, name: envName }),
-        "environments"
-      );
+      return sqlNestRelationships({
+        data: workspaces,
+        key: "id",
+        parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
+        childrenMapper: [
+          {
+            key: "envId",
+            label: "environments" as const,
+            mapper: ({ envId: id, envSlug: slug, envName: name }) => ({
+              id,
+              slug,
+              name
+            })
+          }
+        ]
+      });
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all projects" });
     }
   };
 
-  const findProjectById = async (
-    id: string
-  ): Promise<
-    (TProjects & { environments: { id: string; slug: string; name: string }[] }) | undefined
-  > => {
+  const findProjectById = async (id: string) => {
     try {
       const workspaces = await db(TableName.ProjectMembership)
         .where(`${TableName.Project}.id`, id)
@@ -67,24 +66,28 @@ export const projectDalFactory = (db: TDbClient) => {
           `${TableName.Project}.id`
         )
         .select(
-          db.ref("id").withSchema(TableName.Project),
-          db.ref("name").withSchema(TableName.Project),
-          db.ref("autoCapitalization").withSchema(TableName.Project),
-          db.ref("orgId").withSchema(TableName.Project),
-          db.ref("createdAt").withSchema(TableName.Project),
-          db.ref("updatedAt").withSchema(TableName.Project),
+          selectAllTableCols(TableName.Project),
+          db.ref("id").withSchema(TableName.Project).as("_id"),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("name").withSchema(TableName.Environment).as("envName")
         );
-      const [doc] = mergeOneToManyRelation(
-        workspaces,
-        "id",
-        ({ envId, envSlug, envName, ...data }) => data,
-        ({ envName, envSlug, envId }) => ({ id: envId, slug: envSlug, name: envName }),
-        "environments"
-      );
-      return doc;
+      return sqlNestRelationships({
+        data: workspaces,
+        key: "id",
+        parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
+        childrenMapper: [
+          {
+            key: "envId",
+            label: "environments" as const,
+            mapper: ({ envId, envSlug: slug, envName: name }) => ({
+              id: envId,
+              slug,
+              name
+            })
+          }
+        ]
+      })?.[0];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all projects" });
     }

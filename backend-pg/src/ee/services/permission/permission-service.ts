@@ -1,12 +1,13 @@
 import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { PackRule, unpackRules } from "@casl/ability/extra";
 
-import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { OrgMembershipRole, ProjectMembershipRole, ServiceTokenScopes } from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgRoleDalFactory } from "@app/services/org/org-role-dal";
 import { TProjectRoleDalFactory } from "@app/services/project-role/project-role-dal";
+import { TServiceTokenDalFactory } from "@app/services/service-token/service-token-dal";
 
 import {
   orgAdminPermissions,
@@ -16,6 +17,7 @@ import {
 } from "./org-permission";
 import { TPermissionDalFactory } from "./permission-dal";
 import {
+  buildServiceTokenProjectPermission,
   projectAdminPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions,
@@ -25,6 +27,7 @@ import {
 type TPermissionServiceFactoryDep = {
   orgRoleDal: Pick<TOrgRoleDalFactory, "findOne">;
   projectRoleDal: Pick<TProjectRoleDalFactory, "findOne">;
+  serviceTokenDal: Pick<TServiceTokenDalFactory, "findById">;
   permissionDal: TPermissionDalFactory;
 };
 
@@ -33,7 +36,8 @@ export type TPermissionServiceFactory = ReturnType<typeof permissionServiceFacto
 export const permissionServiceFactory = ({
   permissionDal,
   orgRoleDal,
-  projectRoleDal
+  projectRoleDal,
+  serviceTokenDal
 }: TPermissionServiceFactoryDep) => {
   const buildOrgPermission = (role: string, permission?: unknown) => {
     switch (role) {
@@ -157,10 +161,25 @@ export const permissionServiceFactory = ({
     };
   };
 
+  const getServiceTokenProjectPermission = async (serviceTokenId: string, projectId: string) => {
+    const serviceToken = await serviceTokenDal.findById(serviceTokenId);
+    if (serviceToken.projectId !== projectId)
+      throw new UnauthorizedError({
+        message: "Failed to find service authorization for given project"
+      });
+    const scopes = ServiceTokenScopes.parse(serviceToken.scopes || []);
+    return {
+      permission: buildServiceTokenProjectPermission(scopes, serviceToken.permissions),
+      member: undefined
+    };
+  };
+
   const getProjectPermission = async (type: ActorType, id: string, projectId: string) => {
     switch (type) {
       case ActorType.USER:
         return getUserProjectPermission(id, projectId);
+      case ActorType.SERVICE:
+        return getServiceTokenProjectPermission(id, projectId);
       case ActorType.IDENTITY:
         return getIdentityProjectPermission(id, projectId);
       default:

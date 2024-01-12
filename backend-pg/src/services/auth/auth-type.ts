@@ -23,9 +23,7 @@ export enum AuthTokenType {
 export enum AuthMode {
   JWT = "jwt",
   SERVICE_TOKEN = "serviceToken",
-  SERVICE_ACCESS_TOKEN = "serviceAccessToken",
   API_KEY = "apiKey",
-  API_KEY_V2 = "apiKeyV2",
   IDENTITY_ACCESS_TOKEN = "identityAccessToken"
 }
 

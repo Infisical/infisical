@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
       t.text("encryptedProjectKey");
       t.text("encryptedProjectKeyNonce");
       // one to one relationship
-      t.uuid("projectId").notNullable().unique();
+      t.string("projectId").notNullable().unique();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.uuid("senderId");
       t.foreign("senderId").references("id").inTable(TableName.Users).onDelete("SET NULL");

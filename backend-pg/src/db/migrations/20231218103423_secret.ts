@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
       t.text("saltTag").notNullable();
       t.string("algorithm").notNullable().defaultTo(SecretEncryptionAlgo.AES_256_GCM);
       t.string("keyEncoding").notNullable().defaultTo(SecretKeyEncoding.UTF8);
-      t.uuid("projectId").notNullable().unique();
+      t.string("projectId").notNullable().unique();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });

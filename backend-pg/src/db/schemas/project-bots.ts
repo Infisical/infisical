@@ -19,7 +19,7 @@ export const ProjectBotsSchema = z.object({
   keyEncoding: z.string(),
   encryptedProjectKey: z.string().nullable().optional(),
   encryptedProjectKeyNonce: z.string().nullable().optional(),
-  projectId: z.string().uuid(),
+  projectId: z.string(),
   senderId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),

@@ -10,12 +10,13 @@ import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-ap
 import { TSecretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
 import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
+import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
-import { AuthMode } from "@app/services/auth/auth-signup-type";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { TIdentityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
@@ -36,7 +37,6 @@ import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
-import { TAuthTokenServiceFactory } from "@app/services/token/token-service";
 import { TUserDalFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
@@ -50,13 +50,7 @@ declare module "fastify" {
       user: TUsers;
     };
     // identity injection. depending on which kinda of token the information is filled in auth
-    auth: {
-      authMode: AuthMode.JWT | AuthMode.API_KEY_V2 | AuthMode.API_KEY;
-      actor: ActorType.USER;
-      userId: string;
-      tokenVersionId: string; // the session id of token used
-      user: TUsers;
-    };
+    auth: TAuthMode;
     permission: {
       type: ActorType;
       id: string;

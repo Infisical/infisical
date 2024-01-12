@@ -12,7 +12,7 @@ export const ProjectEnvironmentsSchema = z.object({
   name: z.string(),
   slug: z.string(),
   position: z.number(),
-  projectId: z.string().uuid(),
+  projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
