@@ -121,7 +121,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { user } = useUser();
   const { subscription } = useSubscription();
   const workspaceId = currentWorkspace?._id || "";
-  const { data: updateClosed } = useGetUserAction("september_update_closed");
+  const { data: updateClosed } = useGetUserAction("december_update_closed");
 
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({ workspaceId });
 
@@ -153,7 +153,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const registerUserAction = useRegisterUserAction();
 
   const closeUpdate = async () => {
-    await registerUserAction.mutateAsync("september_update_closed");
+    await registerUserAction.mutateAsync("december_update_closed");
   };
 
   const logout = useLogoutUser();
@@ -646,14 +646,14 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   } relative z-10 mb-6 flex h-64 w-52 flex-col items-center justify-start rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3`}
                 >
                   <div className="text-md mt-2 w-full font-semibold text-mineshaft-100">
-                    Infisical September update
+                    Infisical December update
                   </div>
                   <div className="mt-1 mb-1 w-full text-sm font-normal leading-[1.2rem] text-mineshaft-300">
-                    Improved RBAC, new integrations, dashboard remake, and more!
+                    Infisical Agent, new SDKs, Machine Identities, and more!
                   </div>
                   <div className="mt-2 h-[6.77rem] w-full rounded-md border border-mineshaft-700">
                     <Image
-                      src="/images/infisical-update-september-2023.png"
+                      src="/images/infisical-update-december-2023.png"
                       height={319}
                       width={539}
                       alt="kubernetes image"
@@ -669,7 +669,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       Close
                     </button>
                     <a
-                      href="https://infisical.com/blog/infisical-update-september-2023"
+                      href="https://infisical.com/blog/infisical-update-december-2023"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm font-normal leading-[1.2rem] text-mineshaft-400 duration-200 hover:text-mineshaft-100"
