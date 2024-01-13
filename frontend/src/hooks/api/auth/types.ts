@@ -53,6 +53,16 @@ export type Login2Res = {
   tag?: string;
 }
 
+export type LoginLDAPDTO = {
+  organizationId: string;
+  username: string;
+  password: string;
+}
+
+export type LoginLDAPRes = {
+  nextUrl: string;
+}
+
 export type SRP1DTO = {
   clientPublicKey: string;
 }

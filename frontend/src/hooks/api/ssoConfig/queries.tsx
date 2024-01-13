@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 const ssoConfigKeys = {
-    getSSOConfig: (orgId: string) => [{ orgId }, "organization-saml-sso"] as const,
+  getSSOConfig: (orgId: string) => [{ orgId }, "organization-saml-sso"] as const,
 }
 
 export const useGetSSOConfig = (organizationId: string) => {

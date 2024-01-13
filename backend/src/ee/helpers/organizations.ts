@@ -1,5 +1,6 @@
 import { Types } from "mongoose";
 import {
+    LDAPConfig,
     SSOConfig
 } from "../models";
 import {
@@ -60,5 +61,54 @@ export const getSSOConfigHelper = async ({
         entryPoint,
         issuer,
         cert
+    });
+}
+
+export const getLdapConfigHelper = async ({
+    organizationId
+}: {
+    organizationId: Types.ObjectId;
+}) => {
+    
+    const ldapConfig = await LDAPConfig.findOne({
+        organization: organizationId
+    });
+    
+    if (!ldapConfig) throw new Error("Failed to find organization LDAP data");
+    
+    const key = await BotOrgService.getSymmetricKey(
+        ldapConfig.organization
+    );
+    
+    const bindDN = client.decryptSymmetric(
+        ldapConfig.encryptedBindDN,
+        key,
+        ldapConfig.bindDNIV,
+        ldapConfig.bindDNTag
+    );
+
+    const bindPass = client.decryptSymmetric(
+        ldapConfig.encryptedBindPass,
+        key,
+        ldapConfig.bindPassIV,
+        ldapConfig.bindPassTag
+    );
+
+    const caCert = client.decryptSymmetric(
+        ldapConfig.encryptedCACert,
+        key,
+        ldapConfig.caCertIV,
+        ldapConfig.caCertTag
+    );
+    
+    return ({
+        _id: ldapConfig._id,
+        organization: ldapConfig.organization,
+        isActive: ldapConfig.isActive,
+        url: ldapConfig.url,
+        bindDN,
+        bindPass,
+        searchBase: ldapConfig.searchBase,
+        caCert
     });
 }

@@ -30,6 +30,7 @@ import {
   initializeGitHubStrategy,
   initializeGitLabStrategy,
   initializeGoogleStrategy,
+  initializeLdapStrategy,
   initializeSamlStrategy
 } from "../authn/passport";
 import { logger } from "../logging";
@@ -67,6 +68,7 @@ export const setup = async () => {
   await initializeGitHubStrategy();
   await initializeGitLabStrategy();
   await initializeSamlStrategy();
+  await initializeLdapStrategy();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY

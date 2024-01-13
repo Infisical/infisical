@@ -47,6 +47,7 @@
     "passport-github": "^1.1.0",
     "passport-gitlab2": "^5.0.0",
     "passport-google-oauth20": "^2.0.0",
+    "passport-ldapauth": "^3.0.1",
     "pg": "^8.11.3",
     "pino": "^8.16.1",
     "pino-http": "^8.5.1",

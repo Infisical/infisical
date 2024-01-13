@@ -181,7 +181,11 @@ export const OrgMembersTable = ({
                 filterdUser?.map(
                   ({ user: u, inviteEmail, role, customRole, _id: orgMembershipId, status }) => {
                     const name = u ? `${u.firstName} ${u.lastName}` : "-";
-                    const email = u?.email || inviteEmail;
+                    let email = u?.email || inviteEmail;
+                    if (email.startsWith("ldap-")) {
+                      email = "-";
+                    }
+
                     return (
                       <Tr key={`org-membership-${orgMembershipId}`} className="w-full">
                         <Td>{name}</Td>

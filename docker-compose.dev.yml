@@ -124,12 +124,43 @@ services:
       - "8085:8081"
     networks:
       - infisical-dev
+  
+  openldap: # note: more advanced configuration is available
+    image: osixia/openldap:1.5.0
+    restart: always
+    environment:
+      LDAP_ORGANISATION: Acme
+      LDAP_DOMAIN: acme.com
+      LDAP_ADMIN_PASSWORD: admin
+    ports:
+      - 389:389
+      - 636:636
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+    networks:
+      - infisical-dev
+
+  phpldapadmin: # username: cn=admin,dc=acme,dc=com, pass is admin
+    image: osixia/phpldapadmin:latest
+    restart: always
+    environment:
+      - PHPLDAPADMIN_LDAP_HOSTS=openldap
+      - PHPLDAPADMIN_HTTPS=false
+    ports:
+      - 6433:80
+    depends_on:
+      - openldap
+    networks:
+      - infisical-dev
 
 volumes:
   mongo-data:
     driver: local
   redis_data:
     driver: local
+  ldap_data:
+  ldap_config:
 
 networks:
   infisical-dev:

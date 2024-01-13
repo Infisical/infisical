@@ -3,6 +3,7 @@ export * from "./secretVersion";
 export * from "./folderVersion";
 export * from "./role";
 export * from "./ssoConfig";
+export * from "./ldapConfig";
 export * from "./trustedIp";
 export * from "./auditLog";
 export * from  "./gitRisks";

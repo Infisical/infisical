@@ -42,6 +42,7 @@ import {
   integration as v1IntegrationRouter,
   inviteOrg as v1InviteOrgRouter,
   key as v1KeyRouter,
+  ldap as v1LDAPRouter,
   membershipOrg as v1MembershipOrgRouter,
   membership as v1MembershipRouter,
   organization as v1OrganizationRouter,
@@ -237,6 +238,7 @@ const main = async () => {
   app.use("/api/v1/roles", v1RoleRouter);
   app.use("/api/v1/secret-approvals", v1SecretApprovalPolicyRouter);
   app.use("/api/v1/sso", v1SSORouter);
+  app.use("/api/v1/ldap", v1LDAPRouter);
   app.use("/api/v1/secret-approval-requests", v1SecretApprovalRequestRouter);
 
   // v2 routes (improvements)

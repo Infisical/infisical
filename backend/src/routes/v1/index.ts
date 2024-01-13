@@ -2,6 +2,7 @@ import signup from "./signup";
 import bot from "./bot";
 import auth from "./auth";
 import universalAuth from "./universalAuth";
+import ldap from "./ldap";
 import user from "./user";
 import userAction from "./userAction";
 import organization from "./organization";
@@ -43,5 +44,6 @@ export {
   webhooks,
   secretImps,
   sso,
+  ldap,
   admin
 };

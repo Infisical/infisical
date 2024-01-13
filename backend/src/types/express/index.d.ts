@@ -40,6 +40,7 @@ declare global {
 			requestData: {
 				[key: string]: string
 			};
+			organizationId: string;
 		}
 	}
 }

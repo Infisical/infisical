@@ -101,14 +101,15 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
       salt,
       verifier
     });
-
+    
     if (!user) throw new Error("Failed to complete account for non-existent user"); // ensure user is non-null
 
-    const hasSamlEnabled = user.authMethods.some((authMethod: AuthMethod) =>
-      [AuthMethod.OKTA_SAML, AuthMethod.AZURE_SAML, AuthMethod.JUMPCLOUD_SAML].includes(authMethod)
+    // this might need to consider LDAP
+    const hasOrgAuthMethodEnabled = user.authMethods.some((authMethod: AuthMethod) =>
+      [AuthMethod.OKTA_SAML, AuthMethod.AZURE_SAML, AuthMethod.JUMPCLOUD_SAML, AuthMethod.LDAP].includes(authMethod)
     );
 
-    if (!hasSamlEnabled) {
+    if (!hasOrgAuthMethodEnabled) {
       // TODO: modify this part
       // initialize default organization and workspace
       await initializeDefaultOrg({

@@ -7,7 +7,8 @@ export enum AuthMethod {
   GITLAB = "gitlab",
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
-  JUMPCLOUD_SAML = "jumpcloud-saml"
+  JUMPCLOUD_SAML = "jumpcloud-saml",
+  LDAP = "ldap"
 }
 
 export interface IUser extends Document {
@@ -55,7 +56,7 @@ const userSchema = new Schema<IUser>(
     },
     email: {
       type: String,
-      required: true,
+      required: false,
       unique: true
     },
     firstName: {
