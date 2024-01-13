@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrgMembershipStatus, ProjectMembershipRole } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -34,6 +35,7 @@ type TProjectMembershipServiceFactoryDep = {
   orgDal: Pick<TOrgDalFactory, "findMembership">;
   projectDal: Pick<TProjectDalFactory, "findById">;
   projectKeyDal: Pick<TProjectKeyDalFactory, "findLatestProjectKey" | "delete" | "insertMany">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
@@ -46,7 +48,8 @@ export const projectMembershipServiceFactory = ({
   orgDal,
   userDal,
   projectDal,
-  projectKeyDal
+  projectKeyDal,
+  licenseService
 }: TProjectMembershipServiceFactoryDep) => {
   const getProjectMemberships = async ({ actorId, actor, projectId }: TGetProjectMembershipDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
@@ -120,7 +123,6 @@ export const projectMembershipServiceFactory = ({
       }
     });
 
-    // TODO(akhilmhdh-pg): Audit log
     return { invitee, latestKey };
   };
 
@@ -209,6 +211,14 @@ export const projectMembershipServiceFactory = ({
       const customRole = await projectRoleDal.findOne({ slug: role, projectId });
       if (!customRole)
         throw new BadRequestError({ name: "Update project membership", message: "Role not found" });
+      const project = await projectDal.findById(customRole.projectId);
+      const plan = await licenseService.getPlan(project.orgId);
+      if (!plan?.rbac)
+        throw new BadRequestError({
+          message:
+            "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
+        });
+
       const [membership] = await projectMembershipDal.update(
         { id: membershipId, projectId },
         {

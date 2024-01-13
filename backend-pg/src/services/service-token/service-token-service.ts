@@ -82,7 +82,6 @@ export const serviceTokenServiceFactory = ({
     });
 
     const token = `st.${serviceToken.id.toString()}.${secret}`;
-    // TODO(akhilmhdh-pg): audit log
 
     return { token, serviceToken };
   };

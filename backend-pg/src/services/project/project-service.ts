@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects
@@ -12,6 +13,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { createSecretBlindIndex } from "@app/lib/crypto";
+import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
 import { TProjectMembershipDalFactory } from "../project-membership/project-membership-dal";
@@ -33,6 +35,7 @@ type TProjectServiceFactoryDep = {
   projectMembershipDal: Pick<TProjectMembershipDalFactory, "create">;
   secretBlindIndexDal: Pick<TSecretBlindIndexDalFactory, "create">;
   permissionService: TPermissionServiceFactory;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -43,7 +46,8 @@ export const projectServiceFactory = ({
   folderDal,
   secretBlindIndexDal,
   projectMembershipDal,
-  projectEnvDal
+  projectEnvDal,
+  licenseService
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -57,7 +61,17 @@ export const projectServiceFactory = ({
 
     const appCfg = getConfig();
     const blindIndex = createSecretBlindIndex(appCfg.ROOT_ENCRYPTION_KEY, appCfg.ENCRYPTION_KEY);
-    // TODO(backend-pg): licence server
+
+    const plan = await licenseService.getPlan(orgId);
+    if (plan.workspaceLimit !== null && plan.workspacesUsed >= plan.workspaceLimit) {
+      // case: limit imposed on number of workspaces allowed
+      // case: number of workspaces used exceeds the number of workspaces allowed
+      throw new BadRequestError({
+        message:
+          "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
+      });
+    }
+
     const newProject = projectDal.transaction(async (tx) => {
       const project = await projectDal.create({ name: workspaceName, orgId }, tx);
       // set user as admin member for proeject

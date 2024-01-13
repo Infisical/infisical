@@ -1,3 +1,4 @@
+import { registerLicenseRouter } from "./license-router";
 import { registerOrgRoleRouter } from "./org-role-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
@@ -8,14 +9,17 @@ import { registerSecretRotationProviderRouter } from "./secret-rotation-provider
 import { registerSecretRotationRouter } from "./secret-rotation-router";
 import { registerSecretScanningRouter } from "./secret-scanning-router";
 import { registerSnapshotRouter } from "./snapshot-router";
+import { registerTrustedIpRouter } from "./trusted-ip-router";
 
 export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization
   await server.register(registerOrgRoleRouter, { prefix: "/organization" });
+  await server.register(registerLicenseRouter, { prefix: "/organizations" });
   await server.register(
-    async (projectServer) => {
-      projectServer.register(registerProjectRoleRouter);
-      projectServer.register(registerProjectRouter);
+    async (projectRouter) => {
+      await projectRouter.register(registerProjectRoleRouter);
+      await projectRouter.register(registerProjectRouter);
+      await projectRouter.register(registerTrustedIpRouter);
     },
     { prefix: "/workspace" }
   );

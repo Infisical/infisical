@@ -84,8 +84,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // TODO(akhilmhdh-pg): missing my-workspace list
-
   server.route({
     method: "PATCH",
     url: "/:organizationId/name",
@@ -161,7 +159,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     method: "DELETE",
     url: "/:organizationId/incidentContactOrg/:incidentContactId",
     schema: {
-      // TODO(akhilmhdh-pg): change accept id instead of email
       params: z.object({ organizationId: z.string().trim(), incidentContactId: z.string().trim() }),
       response: {
         200: z.object({

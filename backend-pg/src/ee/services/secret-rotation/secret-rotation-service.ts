@@ -4,8 +4,10 @@ import Ajv from "ajv";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
+import { TProjectDalFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDalFactory } from "@app/services/project-env/project-env-dal";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TSecretRotationDalFactory } from "./secret-rotation-dal";
@@ -22,6 +24,8 @@ import { rotationTemplates } from "./templates";
 
 type TSecretRotationServiceFactoryDep = {
   secretRotationDal: TSecretRotationDalFactory;
+  projectDal: Pick<TProjectDalFactory, "findById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   projectEnvDal: Pick<TProjectEnvDalFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretRotationQueue: TSecretRotationQueueFactory;
@@ -34,7 +38,9 @@ export const secretRotationServiceFactory = ({
   secretRotationDal,
   permissionService,
   projectEnvDal,
-  secretRotationQueue
+  secretRotationQueue,
+  licenseService,
+  projectDal
 }: TSecretRotationServiceFactoryDep) => {
   const getProviderTemplates = async ({ actor, actorId, projectId }: TProjectPermission) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
@@ -67,6 +73,14 @@ export const secretRotationServiceFactory = ({
     );
     const env = await projectEnvDal.findOne({ slug: environment });
     if (!env) throw new BadRequestError({ message: "Environment not found" });
+
+    const project = await projectDal.findById(projectId);
+    const plan = await licenseService.getPlan(project.orgId);
+    if (!plan.secretRotation)
+      throw new BadRequestError({
+        message:
+          "Failed to add secret rotation due to plan restriction. Upgrade plan to add secret rotation."
+      });
 
     const selectedTemplate = rotationTemplates.find(({ name }) => name === provider);
     if (!selectedTemplate) throw new BadRequestError({ message: "Provider not found" });
@@ -148,6 +162,14 @@ export const secretRotationServiceFactory = ({
   const restartById = async ({ actor, actorId, rotationId }: TRestartDTO) => {
     const doc = await secretRotationDal.findById(rotationId);
     if (!doc) throw new BadRequestError({ message: "Rotation not found" });
+
+    const project = await projectDal.findById(doc.projectId);
+    const plan = await licenseService.getPlan(project.orgId);
+    if (!plan.secretRotation)
+      throw new BadRequestError({
+        message:
+          "Failed to add secret rotation due to plan restriction. Upgrade plan to add secret rotation."
+      });
 
     const { permission } = await permissionService.getProjectPermission(
       actor,

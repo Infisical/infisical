@@ -90,7 +90,7 @@ export const integrationServiceFactory = ({
       integration: integrationAuth.integration
     });
 
-    // TODO(akhilmhdh-pg): audit log
+    
     return { integration, integrationAuth };
   };
 

@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -7,19 +8,24 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 
+import { TProjectDalFactory } from "../project/project-dal";
 import { TProjectEnvDalFactory } from "./project-env-dal";
 import { TCreateEnvDTO, TDeleteEnvDTO, TUpdateEnvDTO } from "./project-env-types";
 
 type TProjectEnvServiceFactoryDep = {
   projectEnvDal: TProjectEnvDalFactory;
+  projectDal: Pick<TProjectDalFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TProjectEnvServiceFactory = ReturnType<typeof projectEnvServiceFactory>;
 
 export const projectEnvServiceFactory = ({
   projectEnvDal,
-  permissionService
+  permissionService,
+  licenseService,
+  projectDal
 }: TProjectEnvServiceFactoryDep) => {
   const createEnvironment = async ({ projectId, actorId, actor, name, slug }: TCreateEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
@@ -28,13 +34,24 @@ export const projectEnvServiceFactory = ({
       ProjectPermissionSub.Environments
     );
 
-    // TODO(akhilmhdh-pg): add licence service here
-    const existingEnv = await projectEnvDal.findOne({ slug });
+    const envs = await projectEnvDal.find({ projectId });
+    const existingEnv = envs.find(({ slug: envSlug }) => envSlug === slug);
     if (existingEnv)
       throw new BadRequestError({
         message: "Environment with slug already exist",
         name: "Create envv"
       });
+
+    const project = await projectDal.findById(projectId);
+    const plan = await licenseService.getPlan(project.orgId);
+    if (plan.environmentLimit !== null && envs.length >= plan.environmentLimit) {
+      // case: limit imposed on number of environments allowed
+      // case: number of environments used exceeds the number of environments allowed
+      throw new BadRequestError({
+        message:
+          "Failed to create environment due to environment limit reached. Upgrade plan to create more environments."
+      });
+    }
 
     const env = await projectEnvDal.transaction(async (tx) => {
       const lastPos = await projectEnvDal.findLastEnvPosition(projectId, tx);

@@ -2,11 +2,13 @@ import { ForbiddenError } from "@casl/ability";
 import jwt from "jsonwebtoken";
 
 import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { TSamlConfigDalFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { getConfig } from "@app/lib/config/env";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
 import { generateSymmetricKey, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
@@ -35,9 +37,14 @@ type TOrgServiceFactoryDep = {
   orgRoleDal: TOrgRoleDalFactory;
   userDal: TUserDalFactory;
   incidentContactDal: TIncidentContactsDalFactory;
+  samlConfigDal: Pick<TSamlConfigDalFactory, "findOne">;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
+  licenseService: Pick<
+    TLicenseServiceFactory,
+    "getPlan" | "updateSubscriptionOrgMemberCount" | "generateOrgCustomerId" | "removeOrgCustomer"
+  >;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -50,7 +57,9 @@ export const orgServiceFactory = ({
   permissionService,
   smtpService,
   tokenService,
-  orgBotDal
+  orgBotDal,
+  licenseService,
+  samlConfigDal
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -99,7 +108,7 @@ export const orgServiceFactory = ({
   /*
    * Create organization
    * */
-  const createOrganization = async (userId: string, orgName: string) => {
+  const createOrganization = async (userId: string, userEmail: string, orgName: string) => {
     const { privateKey, publicKey } = generateAsymmetricKeyPair();
     const key = generateSymmetricKey();
     const {
@@ -117,8 +126,9 @@ export const orgServiceFactory = ({
       algorithm: symmetricKeyAlgorithm
     } = infisicalSymmetricEncypt(key);
 
+    const customerId = await licenseService.generateOrgCustomerId(orgName, userEmail);
     const organization = await orgDal.transaction(async (tx) => {
-      const org = await orgDal.create({ name: orgName }, tx);
+      const org = await orgDal.create({ name: orgName, customerId }, tx);
       await orgDal.createMembership(
         {
           userId,
@@ -161,6 +171,9 @@ export const orgServiceFactory = ({
       throw new UnauthorizedError({ name: "Delete org by id", message: "Not an admin" });
 
     const organization = await orgDal.deleteById(orgId);
+    if (organization.customerId) {
+      await licenseService.removeOrgCustomer(organization.customerId);
+    }
     return organization;
   };
   /*
@@ -184,6 +197,14 @@ export const orgServiceFactory = ({
       const customRole = await orgRoleDal.findOne({ slug: role, orgId });
       if (!customRole)
         throw new BadRequestError({ name: "Update membership", message: "Role not found" });
+
+      const plan = await licenseService.getPlan(orgId);
+      if (!plan?.rbac)
+        throw new BadRequestError({
+          message:
+            "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
+        });
+
       const [membership] = await orgDal.updateMembership(
         { id: membershipId, orgId },
         {
@@ -210,7 +231,21 @@ export const orgServiceFactory = ({
       OrgPermissionSubjects.Member
     );
 
-    // TODO(akhilmhdh-pg): SAML SSO check and licence check limit org members
+    const samlCfg = await samlConfigDal.findOne({ orgId });
+    if (samlCfg && samlCfg.isActive) {
+      throw new BadRequestError({
+        message: "Failed to invite member due to SAML SSO configured for organization"
+      });
+    }
+    const plan = await licenseService.getPlan(orgId);
+    if (plan.memberLimit !== null && plan.membersUsed >= plan.memberLimit) {
+      // case: limit imposed on number of members allowed
+      // case: number of members used exceeds the number of members allowed
+      throw new BadRequestError({
+        message:
+          "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
+      });
+    }
     const invitee = await orgDal.transaction(async (tx) => {
       const inviteeUser = await userDal.findUserByEmail(inviteeEmail, tx);
       if (inviteeUser) {
@@ -284,6 +319,7 @@ export const orgServiceFactory = ({
       }
     });
 
+    await licenseService.updateSubscriptionOrgMemberCount(orgId);
     if (!appCfg.isSmtpConfigured) {
       return `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${inviteeEmail}&organization_id=${org?.id}`;
     }
@@ -323,7 +359,7 @@ export const orgServiceFactory = ({
         orgId,
         status: OrgMembershipStatus.Accepted
       });
-      // TODO(akhilmhdh-pg): update org licence subscription
+      await licenseService.updateSubscriptionOrgMemberCount(orgId);
       return { user };
     }
 
@@ -350,6 +386,8 @@ export const orgServiceFactory = ({
     );
 
     const membership = await orgDal.deleteMembershipById(membershipId, orgId);
+
+    await licenseService.updateSubscriptionOrgMemberCount(orgId);
     return membership;
   };
 

@@ -84,7 +84,6 @@ export const webhookServiceFactory = ({
     }
 
     const webhook = await webhookDal.create(insertDoc);
-    // TODO(akhilmhdh-pg): add audit log
     return { ...webhook, projectId, environment: env };
   };
 

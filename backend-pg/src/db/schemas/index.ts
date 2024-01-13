@@ -48,6 +48,7 @@ export * from "./secret-versions";
 export * from "./secrets";
 export * from "./service-tokens";
 export * from "./super-admin";
+export * from "./trusted-ips";
 export * from "./user-actions";
 export * from "./user-encryption-keys";
 export * from "./users";

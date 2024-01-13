@@ -5,6 +5,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects
@@ -13,7 +14,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
-import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { checkIPAgainstBlocklist, extractIPDetails, isValidIpOrCidr,TIp } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDalFactory } from "../identity/identity-dal";
@@ -38,6 +39,7 @@ type TIdentityUaServiceFactoryDep = {
   identityOrgMembershipDal: TIdentityOrgDalFactory;
   identityDal: Pick<TIdentityDalFactory, "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TIdentityUaServiceFactory = ReturnType<typeof identityUaServiceFactory>;
@@ -48,13 +50,17 @@ export const identityUaServiceFactory = ({
   identityAccessTokenDal,
   identityOrgMembershipDal,
   identityDal,
-  permissionService
+  permissionService,
+  licenseService
 }: TIdentityUaServiceFactoryDep) => {
-  const login = async (clientId: string, clientSecret: string) => {
+  const login = async (clientId: string, clientSecret: string, ip: string) => {
     const identityUa = await identityUaDal.findOne({ clientId });
     if (!identityUa) throw new UnauthorizedError();
 
-    // TODO(akhilmhdh-pg): add ip checking
+    checkIPAgainstBlocklist({
+      ipAddress: ip,
+      trustedIps: identityUa.clientSecretTrustedIps as TIp[]
+    });
     const clientSecrtInfo = await identityUaClientSecretDal.find({
       identityUAId: identityUa.id,
       isClientSecretRevoked: false
@@ -166,10 +172,11 @@ export const identityUaServiceFactory = ({
       OrgPermissionActions.Create,
       OrgPermissionSubjects.Identity
     );
+
+    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedClientSecretTrustedIps = clientSecretTrustedIps.map(
       (clientSecretTrustedIp) => {
-        // TODO(akhilmhdh-pg): add licence server here
-        if (/* !plan.ipAllowlisting && */ clientSecretTrustedIp.ipAddress !== "0.0.0.0/0")
+        if (!plan.ipAllowlisting && clientSecretTrustedIp.ipAddress !== "0.0.0.0/0")
           throw new BadRequestError({
             message:
               "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
@@ -182,8 +189,7 @@ export const identityUaServiceFactory = ({
       }
     );
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
-      // TODO(akhilmhdh-pg): add licence server here
-      if (/* !plan.ipAllowlisting && */ accessTokenTrustedIp.ipAddress !== "0.0.0.0/0")
+      if (!plan.ipAllowlisting && accessTokenTrustedIp.ipAddress !== "0.0.0.0/0")
         throw new BadRequestError({
           message:
             "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
@@ -256,10 +262,11 @@ export const identityUaServiceFactory = ({
       OrgPermissionActions.Edit,
       OrgPermissionSubjects.Identity
     );
+
+    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedClientSecretTrustedIps = clientSecretTrustedIps?.map(
       (clientSecretTrustedIp) => {
-        // TODO(akhilmhdh-pg): add licence server here
-        if (/* !plan.ipAllowlisting && */ clientSecretTrustedIp.ipAddress !== "0.0.0.0/0")
+        if (!plan.ipAllowlisting && clientSecretTrustedIp.ipAddress !== "0.0.0.0/0")
           throw new BadRequestError({
             message:
               "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
@@ -272,8 +279,7 @@ export const identityUaServiceFactory = ({
       }
     );
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
-      // TODO(akhilmhdh-pg): add licence server here
-      if (/* !plan.ipAllowlisting && */ accessTokenTrustedIp.ipAddress !== "0.0.0.0/0")
+      if (!plan.ipAllowlisting && accessTokenTrustedIp.ipAddress !== "0.0.0.0/0")
         throw new BadRequestError({
           message:
             "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."

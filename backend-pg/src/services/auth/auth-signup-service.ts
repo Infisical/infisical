@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 
 import { OrgMembershipStatus } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
@@ -22,6 +23,7 @@ type TAuthSignupDep = {
   orgDal: TOrgDalFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
+  licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
 };
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
@@ -31,7 +33,8 @@ export const authSignupServiceFactory = ({
   tokenService,
   smtpService,
   orgService,
-  orgDal
+  orgDal,
+  licenseService
 }: TAuthSignupDep) => {
   // first step of signup. create user and send email
   const beginEmailSignupProcess = async (email: string) => {
@@ -143,12 +146,16 @@ export const authSignupServiceFactory = ({
     );
 
     if (!hasSamlEnabled) {
-      await orgService.createOrganization(user.id, organizationName);
+      await orgService.createOrganization(user.id, user.email, organizationName);
     }
 
-    await orgDal.updateMembership(
+    const updatedMembersips = await orgDal.updateMembership(
       { inviteEmail: email, status: OrgMembershipStatus.Invited },
       { userId: user.id, status: OrgMembershipStatus.Accepted }
+    );
+    const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
+    await Promise.allSettled(
+      uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId))
     );
 
     const tokenSession = await tokenService.getUserTokenSession({
@@ -238,11 +245,16 @@ export const authSignupServiceFactory = ({
         tx
       );
 
-      await orgDal.updateMembership(
+      const updatedMembersips = await orgDal.updateMembership(
         { inviteEmail: email, status: OrgMembershipStatus.Invited },
         { userId: us.id, status: OrgMembershipStatus.Accepted },
         tx
       );
+      const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
+      await Promise.allSettled(
+        uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId))
+      );
+
       return { info: us, key: userEncKey };
     });
 

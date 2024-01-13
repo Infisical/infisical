@@ -88,7 +88,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
-      
+
       const membership = await server.services.org.deleteOrgMembership({
         userId: req.permission.id,
         orgId: req.params.organizationId,
@@ -117,6 +117,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
 
       const organization = await server.services.org.createOrganization(
         req.permission.id,
+        req.auth.user.email,
         req.body.name
       );
       return { organization };

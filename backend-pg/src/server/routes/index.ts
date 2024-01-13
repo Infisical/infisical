@@ -5,6 +5,8 @@ import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { auditLogDalFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
+import { licenseDalFactory } from "@app/ee/services/license/license-dal";
+import { licenseServiceFactory } from "@app/ee/services/license/license-service";
 import { permissionDalFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { samlConfigDalFactory } from "@app/ee/services/saml-config/saml-config-dal";
@@ -28,6 +30,8 @@ import { secretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/s
 import { snapshotDalFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
 import { snapshotFolderDalFactory } from "@app/ee/services/secret-snapshot/snapshot-folder-dal";
 import { snapshotSecretDalFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-dal";
+import { trustedIpDalFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
+import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
 import { apiKeyDalFactory } from "@app/services/api-key/api-key-dal";
@@ -150,6 +154,7 @@ export const registerRoutes = async (
   const identityUaClientSecretDal = identityUaClientSecretDalFactory(db);
 
   const auditLogDal = auditLogDalFactory(db);
+  const trustedIpDal = trustedIpDalFactory(db);
 
   // ee db layer ops
   const permissionDal = permissionDalFactory(db);
@@ -168,6 +173,7 @@ export const registerRoutes = async (
   const gitAppInstallSessionDal = gitAppInstallSessionDalFactory(db);
   const gitAppOrgDal = gitAppDalFactory(db);
   const secretScanningDal = secretScanningDalFactory(db);
+  const licenseDal = licenseDalFactory(db);
 
   const permissionService = permissionServiceFactory({
     permissionDal,
@@ -175,7 +181,19 @@ export const registerRoutes = async (
     projectRoleDal,
     serviceTokenDal
   });
-  const auditLogQueue = auditLogQueueServiceFactory({ auditLogDal, queueService });
+  const licenseService = licenseServiceFactory({ permissionService, orgDal, licenseDal });
+  const trustedIpService = trustedIpServiceFactory({
+    licenseService,
+    projectDal,
+    trustedIpDal,
+    permissionService
+  });
+  const auditLogQueue = auditLogQueueServiceFactory({
+    auditLogDal,
+    queueService,
+    projectDal,
+    licenseService
+  });
   const auditLogService = auditLogServiceFactory({ auditLogDal, permissionService, auditLogQueue });
   const sapService = secretApprovalPolicyServiceFactory({
     projectMembershipDal,
@@ -189,7 +207,8 @@ export const registerRoutes = async (
     orgBotDal,
     orgDal,
     userDal,
-    samlConfigDal
+    samlConfigDal,
+    licenseService
   });
 
   const tokenService = tokenServiceFactory({ tokenDal: authTokenDal, userDal });
@@ -202,6 +221,8 @@ export const registerRoutes = async (
     userDal
   });
   const orgService = orgServiceFactory({
+    licenseService,
+    samlConfigDal,
     orgRoleDal,
     permissionService,
     orgDal,
@@ -217,7 +238,8 @@ export const registerRoutes = async (
     authDal,
     userDal,
     orgDal,
-    orgService
+    orgService,
+    licenseService
   });
   const orgRoleService = orgRoleServiceFactory({ permissionService, orgRoleDal });
   const superAdminService = superAdminServiceFactory({
@@ -247,7 +269,8 @@ export const registerRoutes = async (
     secretBlindIndexDal,
     projectEnvDal,
     projectMembershipDal,
-    folderDal
+    folderDal,
+    licenseService
   });
   const projectMembershipService = projectMembershipServiceFactory({
     projectMembershipDal,
@@ -257,9 +280,15 @@ export const registerRoutes = async (
     userDal,
     smtpService,
     projectKeyDal,
-    projectRoleDal
+    projectRoleDal,
+    licenseService
   });
-  const projectEnvService = projectEnvServiceFactory({ permissionService, projectEnvDal });
+  const projectEnvService = projectEnvServiceFactory({
+    permissionService,
+    projectEnvDal,
+    licenseService,
+    projectDal
+  });
   const projectKeyService = projectKeyServiceFactory({
     permissionService,
     projectKeyDal,
@@ -275,7 +304,8 @@ export const registerRoutes = async (
     snapshotSecretDal,
     secretVersionDal,
     folderVersionDal,
-    permissionService
+    permissionService,
+    licenseService
   });
   const webhookService = webhookServiceFactory({
     permissionService,
@@ -350,7 +380,9 @@ export const registerRoutes = async (
     permissionService,
     projectEnvDal,
     secretRotationDal,
-    secretRotationQueue
+    secretRotationQueue,
+    projectDal,
+    licenseService
   });
 
   const integrationService = integrationServiceFactory({
@@ -383,10 +415,13 @@ export const registerRoutes = async (
     identityDal,
     identityAccessTokenDal,
     identityUaClientSecretDal,
-    identityUaDal
+    identityUaDal,
+    licenseService
   });
 
   await superAdminService.initServerCfg();
+  // setup the communication with license key server
+  await licenseService.init();
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
     login: loginService,
@@ -423,7 +458,9 @@ export const registerRoutes = async (
     snapshot: snapshotService,
     saml: samlService,
     auditLog: auditLogService,
-    secretScanning: secretScanningService
+    secretScanning: secretScanningService,
+    license: licenseService,
+    trustedIp: trustedIpService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {

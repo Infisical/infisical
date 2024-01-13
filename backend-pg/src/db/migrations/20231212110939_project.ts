@@ -6,7 +6,7 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.Project))) {
     await knex.schema.createTable(TableName.Project, (t) => {
-      t.string("id").primary().defaultTo(knex.fn.uuid());
+      t.string("id", 36).primary().defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
       t.boolean("autoCapitalization").defaultTo(true);
       t.uuid("orgId").notNullable();

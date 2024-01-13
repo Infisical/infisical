@@ -1,0 +1,97 @@
+import axios, { AxiosError } from "axios";
+
+import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
+
+import { TFeatureSet } from "./license-types";
+
+export const getDefaultOnPremFeatures = (): TFeatureSet => ({
+  _id: null,
+  slug: null,
+  tier: -1,
+  workspaceLimit: null,
+  workspacesUsed: 0,
+  memberLimit: null,
+  membersUsed: 0,
+  environmentLimit: null,
+  environmentsUsed: 0,
+  secretVersioning: true,
+  pitRecovery: false,
+  ipAllowlisting: false,
+  rbac: false,
+  customRateLimits: false,
+  customAlerts: false,
+  auditLogs: false,
+  auditLogsRetentionDays: 0,
+  samlSSO: false,
+  status: null,
+  trial_end: null,
+  has_used_trial: true,
+  secretApproval: false,
+  secretRotation: true
+});
+
+export const setupLicenceRequestWithStore = (
+  baseURL: string,
+  refreshUrl: string,
+  licenseKey: string
+) => {
+  let token: string;
+  const licenceReq = axios.create({
+    baseURL,
+    timeout: 15 * 1000,
+    signal: AbortSignal.timeout(15 * 1000)
+  });
+
+  const refreshLicence = async () => {
+    const appCfg = getConfig();
+    const {
+      data: { token: authToken }
+    } = await request.post(
+      refreshUrl,
+      {},
+      {
+        baseURL: appCfg.LICENSE_SERVER_URL,
+        headers: {
+          "X-API-KEY": licenseKey
+        }
+      }
+    );
+    token = authToken;
+    return token;
+  };
+
+  licenceReq.interceptors.request.use(
+    (config) => {
+      if (token && config.headers) {
+        // eslint-disable-next-line no-param-reassign
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (err) => Promise.reject(err)
+  );
+
+  licenceReq.interceptors.response.use(
+    (response) => response,
+    async (err) => {
+      const originalRequest = err.config;
+
+      // eslint-disable-next-line
+      if ((err as AxiosError)?.response?.status === 401 && !originalRequest._retry) {
+        // eslint-disable-next-line
+        originalRequest._retry = true;
+
+        // refresh
+        await refreshLicence();
+
+        licenceReq.defaults.headers.common.Authorization = `Bearer ${token}`;
+        return licenceReq(originalRequest);
+      }
+
+      return Promise.reject(err);
+    }
+  );
+
+  return { request: licenceReq, refreshLicence };
+};

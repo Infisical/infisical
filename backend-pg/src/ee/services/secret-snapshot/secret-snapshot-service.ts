@@ -1,12 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { TSecretDalFactory } from "@app/services/secret/secret-dal";
 import { TSecretVersionDalFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretFolderDalFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretFolderVersionDalFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import {
@@ -34,6 +35,7 @@ type TSecretSnapshotServiceFactoryDep = {
     "findById" | "findBySecretPath" | "delete" | "insertMany"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "isValidLicense">;
 };
 
 export type TSecretSnapshotServiceFactory = ReturnType<typeof secretSnapshotServiceFactory>;
@@ -46,7 +48,8 @@ export const secretSnapshotServiceFactory = ({
   snapshotFolderDal,
   folderDal,
   secretDal,
-  permissionService
+  permissionService,
+  licenseService
 }: TSecretSnapshotServiceFactoryDep) => {
   const projectSecretSnapshotCount = async ({
     environment,
@@ -109,6 +112,9 @@ export const secretSnapshotServiceFactory = ({
   };
 
   const performSnapshot = async (folderId: string) => {
+    if (!licenseService.isValidLicense)
+      throw new InternalServerError({ message: "Invalid license" });
+
     const snapshot = await snapshotDal.transaction(async (tx) => {
       const folder = await folderDal.findById(folderId, tx);
       if (!folder) throw new BadRequestError({ message: "Folder not found" });

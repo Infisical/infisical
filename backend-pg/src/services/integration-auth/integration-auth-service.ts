@@ -994,7 +994,6 @@ export const integrationAuthServiceFactory = ({
     });
 
     return delIntegrationAuth;
-    // TODO(akhilmhdh-pg): add audit log
   };
 
   return {

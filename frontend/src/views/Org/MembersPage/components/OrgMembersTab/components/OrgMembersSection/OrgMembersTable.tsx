@@ -172,7 +172,7 @@ export const OrgMembersTable = ({ handlePopUpOpen, setCompleteInviteLink }: Prop
             {!isLoading &&
               filterdUser?.map(
                 ({ user: u, inviteEmail, role, roleId, id: orgMembershipId, status }) => {
-                  const name = u ? `${u.firstName} ${u.lastName}` : "-";
+                  const name = u && u.firstName ? `${u.firstName} ${u.lastName}` : "-";
                   const email = u?.email || inviteEmail;
                   return (
                     <Tr key={`org-membership-${orgMembershipId}`} className="w-full">

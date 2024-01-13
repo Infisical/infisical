@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import {
   TableName,
   TOrganizations,
+  TOrganizationsInsert,
   TOrgMemberships,
   TOrgMembershipsInsert,
   TOrgMembershipsUpdate
@@ -73,11 +74,9 @@ export const orgDalFactory = (db: TDbClient) => {
     }
   };
 
-  const create = async ({ name }: { name: string }, tx?: Knex) => {
+  const create = async (dto: TOrganizationsInsert, tx?: Knex) => {
     try {
-      const [organization] = await (tx || db)(TableName.Organization)
-        .insert({ name })
-        .returning("*");
+      const [organization] = await (tx || db)(TableName.Organization).insert(dto).returning("*");
       return organization;
     } catch (error) {
       throw new DatabaseError({ error, name: "Create organization" });

@@ -83,8 +83,9 @@ const envSchema = z
     SECRET_SCANNING_GIT_APP_ID: zpStr(z.string().optional()),
     SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional()),
     // LICENCE
-    LICENCE_SERVER_URL: zpStr(z.string().optional()),
-    LICENCE_SERVER_KEY: zpStr(z.string().optional())
+    LICENSE_SERVER_URL: zpStr(z.string().optional()),
+    LICENSE_SERVER_KEY: zpStr(z.string().optional()),
+    LICENSE_KEY: zpStr(z.string().optional())
   })
   .transform((data) => ({
     ...data,

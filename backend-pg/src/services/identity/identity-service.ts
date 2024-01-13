@@ -56,7 +56,7 @@ export const identityServiceFactory = ({
       return newIdentity;
     });
 
-    // TODO(akhilmhdh-pg): add audit log here
+
     return identity;
   };
 

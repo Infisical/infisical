@@ -6,7 +6,7 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.ServiceToken))) {
     await knex.schema.createTable(TableName.ServiceToken, (t) => {
-      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.string("id", 36).primary().defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
       t.jsonb("scopes").notNullable();
       t.specificType("permissions", "text[]").notNullable();

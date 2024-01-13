@@ -11,27 +11,45 @@ export type TTokenDalConfig = {};
 
 export type TTokenDalFactory = ReturnType<typeof tokenDalFactory>;
 
-// TODO(akhilmhdh-pg): wrap all with database error
 export const tokenDalFactory = (db: TDbClient) => {
   const authOrm = ormify(db, TableName.AuthTokens);
 
   const findOneTokenSession = async (
     filter: Partial<TAuthTokenSessions>
-  ): Promise<TAuthTokenSessions | undefined> =>
-    db(TableName.AuthTokenSession).where(filter).first();
+  ): Promise<TAuthTokenSessions | undefined> => {
+    try {
+      const doc = await db(TableName.AuthTokenSession).where(filter).first();
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindOneTokenSession" });
+    }
+  };
 
   const deleteTokenForUser = async ({
     userId,
     type,
     orgId
-  }: TDeleteTokenForUserDalDTO): Promise<TAuthTokens[] | undefined> =>
-    db(TableName.AuthTokens).where({ userId, type, orgId }).delete().returning("*");
+  }: TDeleteTokenForUserDalDTO): Promise<TAuthTokens[] | undefined> => {
+    try {
+      const doc = await db(TableName.AuthTokens)
+        .where({ userId, type, orgId })
+        .delete()
+        .returning("*");
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DeleteTokenForUser" });
+    }
+  };
 
   const decrementTriesField = async ({
     userId,
     type
   }: TDeleteTokenForUserDalDTO): Promise<void> => {
-    await db(TableName.AuthTokens).where({ userId, type }).decrement("triesLeft", 1);
+    try {
+      await db(TableName.AuthTokens).where({ userId, type }).decrement("triesLeft", 1);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DecrementTriesField" });
+    }
   };
 
   const findTokenSessions = async (filter: Partial<TAuthTokenSessions>, tx?: Knex) => {
@@ -48,29 +66,37 @@ export const tokenDalFactory = (db: TDbClient) => {
     ip: string,
     userAgent: string
   ): Promise<TAuthTokenSessions | undefined> => {
-    const [session] = await db(TableName.AuthTokenSession)
-      .insert({
-        userId,
-        ip,
-        userAgent,
-        accessVersion: 1,
-        refreshVersion: 1,
-        lastUsed: new Date()
-      })
-      .returning("*");
-    return session;
+    try {
+      const [session] = await db(TableName.AuthTokenSession)
+        .insert({
+          userId,
+          ip,
+          userAgent,
+          accessVersion: 1,
+          refreshVersion: 1,
+          lastUsed: new Date()
+        })
+        .returning("*");
+      return session;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "InsertTokenSession" });
+    }
   };
 
   const incrementTokenSessionVersion = async (
     userId: string,
     sessionId: string
   ): Promise<TAuthTokenSessions | undefined> => {
-    const [session] = await db(TableName.AuthTokenSession)
-      .where({ userId, id: sessionId })
-      .increment("accessVersion", 1)
-      .increment("refreshVersion", 1)
-      .returning("*");
-    return session;
+    try {
+      const [session] = await db(TableName.AuthTokenSession)
+        .where({ userId, id: sessionId })
+        .increment("accessVersion", 1)
+        .increment("refreshVersion", 1)
+        .returning("*");
+      return session;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "IncrementTokenSessionVersion" });
+    }
   };
 
   const deleteTokenSession = async (filter: Partial<TAuthTokenSessions>, tx?: Knex) => {

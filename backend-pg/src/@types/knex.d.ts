@@ -148,6 +148,9 @@ import {
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
+  TTrustedIps,
+  TTrustedIpsInsert,
+  TTrustedIpsUpdate,
   TUserActions,
   TUserActionsInsert,
   TUserActionsUpdate,
@@ -392,6 +395,11 @@ declare module "knex/types/tables" {
       TSecretScanningGitRisks,
       TSecretScanningGitRisksInsert,
       TSecretScanningGitRisksUpdate
+    >;
+    [TableName.TrustedIps]: Knex.CompositeTableType<
+      TTrustedIps,
+      TTrustedIpsInsert,
+      TTrustedIpsUpdate
     >;
     // Junction tables
     [TableName.JnSecretTag]: Knex.CompositeTableType<

@@ -20,6 +20,7 @@ import { TOrgBotDalFactory } from "@app/services/org/org-bot-dal";
 import { TOrgDalFactory } from "@app/services/org/org-dal";
 import { TUserDalFactory } from "@app/services/user/user-dal";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { TSamlConfigDalFactory } from "./saml-config-dal";
@@ -40,6 +41,7 @@ type TSamlConfigServiceFactoryDep = {
   >;
   orgBotDal: Pick<TOrgBotDalFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TSamlConfigServiceFactory = ReturnType<typeof samlConfigServiceFactory>;
@@ -49,7 +51,8 @@ export const samlConfigServiceFactory = ({
   orgBotDal,
   orgDal,
   userDal,
-  permissionService
+  permissionService,
+  licenseService
 }: TSamlConfigServiceFactoryDep) => {
   const createSamlCfg = async ({
     cert,
@@ -67,7 +70,12 @@ export const samlConfigServiceFactory = ({
       OrgPermissionSubjects.Sso
     );
 
-    // TODO(akhilmhdh-pg): licence check
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.samlSSO)
+      throw new BadRequestError({
+        message:
+          "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
+      });
 
     const orgBot = await orgBotDal.findOne({ orgId });
     if (!orgBot)
@@ -123,6 +131,13 @@ export const samlConfigServiceFactory = ({
       OrgPermissionActions.Edit,
       OrgPermissionSubjects.Sso
     );
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.samlSSO)
+      throw new BadRequestError({
+        message:
+          "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
+      });
+
     const updateQuery: TSamlConfigsUpdate = { authProvider, isActive };
     const orgBot = await orgBotDal.findOne({ orgId });
     if (!orgBot)

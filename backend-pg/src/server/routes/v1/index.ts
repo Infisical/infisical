@@ -24,10 +24,10 @@ import { registerWebhookRouter } from "./webhook-router";
 export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });
   await server.register(
-    async (authServer) => {
-      await authServer.register(registerAuthRoutes);
-      await authServer.register(registerIdentityUaRouter);
-      await authServer.register(registerIdentityAccessTokenRouter);
+    async (authRouter) => {
+      await authRouter.register(registerAuthRoutes);
+      await authRouter.register(registerIdentityUaRouter);
+      await authRouter.register(registerIdentityAccessTokenRouter);
     },
     { prefix: "/auth" }
   );
@@ -41,12 +41,12 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSecretFolderRouter, { prefix: "/folders" });
 
   await server.register(
-    async (projectServer) => {
-      await projectServer.register(registerProjectRouter);
-      await projectServer.register(registerProjectEnvRouter);
-      await projectServer.register(registerProjectKeyRouter);
-      await projectServer.register(registerProjectMembershipRouter);
-      await projectServer.register(registerSecretTagRouter);
+    async (projectRouter) => {
+      await projectRouter.register(registerProjectRouter);
+      await projectRouter.register(registerProjectEnvRouter);
+      await projectRouter.register(registerProjectKeyRouter);
+      await projectRouter.register(registerProjectMembershipRouter);
+      await projectRouter.register(registerSecretTagRouter);
     },
     { prefix: "/workspace" }
   );

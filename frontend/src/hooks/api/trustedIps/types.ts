@@ -1,6 +1,6 @@
 export type TrustedIp = {
   id: string;
-  workspace: string;
+  projectId: string;
   ipAddress: string;
   type: "ipv4" | "ipv6";
   isActive: boolean;
