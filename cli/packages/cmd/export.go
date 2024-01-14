@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/Infisical/infisical-merge/packages/models"
@@ -74,7 +75,7 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		sort, err := cmd.Flags().GetBool("sort")
+		sortSecrets, err := cmd.Flags().GetBool("sort")
 		if err != nil {
 			util.HandleError(err, "Unable to parse sort")
 		}
@@ -90,8 +91,10 @@ var exportCmd = &cobra.Command{
 			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
 		}
 
-		if sort {
-			util.SortSecrets(&secrets)
+		if sortSecrets {
+			sort.SliceStable(secrets, func(i, j int) bool {
+				return (secrets)[i].Key < (secrets)[j].Key
+			})
 		}
 
 		var output string

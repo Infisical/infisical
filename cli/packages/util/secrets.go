@@ -8,7 +8,6 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/Infisical/infisical-merge/packages/api"
@@ -765,10 +764,4 @@ func GetPlainTextWorkspaceKey(authenticationToken string, receiverPrivateKey str
 	}
 
 	return crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey), nil
-}
-
-func SortSecrets(secrets *[]models.SingleEnvironmentVariable) {
-	sort.SliceStable(*secrets, func(i, j int) bool {
-		return (*secrets)[i].Key < (*secrets)[j].Key
-	})
 }
