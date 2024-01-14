@@ -118,4 +118,35 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       return { message: "Successfully updated backup private key", backupPrivateKey };
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/password-reset",
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      body: z.object({
+        protectedKey: z.string().trim(),
+        protectedKeyIV: z.string().trim(),
+        protectedKeyTag: z.string().trim(),
+        encryptedPrivateKey: z.string().trim(),
+        encryptedPrivateKeyIV: z.string().trim(),
+        encryptedPrivateKeyTag: z.string().trim(),
+        salt: z.string().trim(),
+        verifier: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      await server.services.password.resetPasswordByBackupKey({
+        ...req.body,
+        userId: req.permission.id
+      });
+
+      return { message: "Successfully updated backup private key" };
+    }
+  });
 };

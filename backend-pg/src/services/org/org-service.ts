@@ -15,7 +15,7 @@ import { generateSymmetricKey, infisicalSymmetricEncypt } from "@app/lib/crypto/
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { isDisposableEmail } from "@app/lib/validator";
 
-import { AuthTokenType } from "../auth/auth-type";
+import { AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
@@ -284,14 +284,24 @@ export const orgServiceFactory = ({
         });
       }
       // not invited before
-      const user = await userDal.create({ email: inviteeEmail, isAccepted: false });
-      await orgDal.createMembership({
-        inviteEmail: inviteeEmail,
-        orgId,
-        userId: user.id,
-        role: OrgMembershipRole.Member,
-        status: OrgMembershipStatus.Invited
-      });
+      const user = await userDal.create(
+        {
+          email: inviteeEmail,
+          isAccepted: false,
+          authMethods: [AuthMethod.EMAIL]
+        },
+        tx
+      );
+      await orgDal.createMembership(
+        {
+          inviteEmail: inviteeEmail,
+          orgId,
+          userId: user.id,
+          role: OrgMembershipRole.Member,
+          status: OrgMembershipStatus.Invited
+        },
+        tx
+      );
       return user;
     });
 

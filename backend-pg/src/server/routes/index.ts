@@ -245,7 +245,8 @@ export const registerRoutes = async (
   const superAdminService = superAdminServiceFactory({
     userDal,
     authService: loginService,
-    serverCfgDal: superAdminDal
+    serverCfgDal: superAdminDal,
+    orgService
   });
   const apiKeyService = apiKeyServiceFactory({ apiKeyDal, userDal });
 

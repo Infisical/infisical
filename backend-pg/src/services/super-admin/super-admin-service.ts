@@ -5,11 +5,14 @@ import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { TUserDalFactory } from "../user/user-dal";
 import { TSuperAdminDalFactory } from "./super-admin-dal";
 import { TAdminSignUpDTO } from "./super-admin-types";
+import { TOrgServiceFactory } from "../org/org-service";
+import { AuthMethod } from "../auth/auth-type";
 
 type TSuperAdminServiceFactoryDep = {
   serverCfgDal: TSuperAdminDalFactory;
   userDal: TUserDalFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
+  orgService: Pick<TOrgServiceFactory, "createOrganization">;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
@@ -17,7 +20,8 @@ export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFacto
 export const superAdminServiceFactory = ({
   serverCfgDal,
   userDal,
-  authService
+  authService,
+  orgService
 }: TSuperAdminServiceFactoryDep) => {
   let serverCfg: TSuperAdmin;
 
@@ -70,7 +74,8 @@ export const superAdminServiceFactory = ({
           lastName,
           email,
           superAdmin: true,
-          isAccepted: true
+          isAccepted: true,
+          authMethods: [AuthMethod.EMAIL]
         },
         tx
       );
@@ -92,6 +97,7 @@ export const superAdminServiceFactory = ({
       );
       return { user: newUser, enc: userEnc };
     });
+    await orgService.createOrganization(userInfo.user.id, userInfo.user.email, "Admin Org");
 
     await updateServerCfg({ initialized: true });
     const token = await authService.generateUserTokens(userInfo.user, ip, userAgent);

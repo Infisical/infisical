@@ -157,19 +157,17 @@ export const authPaswordServiceFactory = ({
   /*
    * Reset password of a user via backup key
    * */
-  const resetPasswordByBackupKey = async (
-    userId: string,
-    {
-      encryptedPrivateKey,
-      protectedKeyTag,
-      protectedKey,
-      protectedKeyIV,
-      salt,
-      verifier,
-      encryptedPrivateKeyIV,
-      encryptedPrivateKeyTag
-    }: TResetPasswordViaBackupKeyDTO
-  ) => {
+  const resetPasswordByBackupKey = async ({
+    encryptedPrivateKey,
+    protectedKeyTag,
+    protectedKey,
+    protectedKeyIV,
+    salt,
+    verifier,
+    encryptedPrivateKeyIV,
+    encryptedPrivateKeyTag,
+    userId
+  }: TResetPasswordViaBackupKeyDTO) => {
     await userDal.updateUserEncryptionByUserId(userId, {
       encryptionVersion: 2,
       protectedKey,
