@@ -24,7 +24,7 @@ export const superAdminServiceFactory = ({
   const initServerCfg = async () => {
     serverCfg = await serverCfgDal.findOne({});
     if (!serverCfg) {
-      const newCfg = await serverCfgDal.create({ initialized: true, allowSignUp: true });
+      const newCfg = await serverCfgDal.create({ initialized: false, allowSignUp: true });
       serverCfg = newCfg;
       return newCfg;
     }
@@ -39,6 +39,7 @@ export const superAdminServiceFactory = ({
 
   const updateServerCfg = async (data: TSuperAdminUpdate) => {
     const cfg = await serverCfgDal.updateById(serverCfg.id, data);
+    serverCfg = cfg;
     return cfg;
   };
 
@@ -59,7 +60,7 @@ export const superAdminServiceFactory = ({
     userAgent
   }: TAdminSignUpDTO) => {
     const existingUser = await userDal.findOne({ email });
-    if (!existingUser)
+    if (existingUser)
       throw new BadRequestError({ name: "Admin sign up", message: "User already exist" });
 
     const userInfo = await userDal.transaction(async (tx) => {
@@ -68,7 +69,8 @@ export const superAdminServiceFactory = ({
           firstName,
           lastName,
           email,
-          superAdmin: true
+          superAdmin: true,
+          isAccepted: true
         },
         tx
       );

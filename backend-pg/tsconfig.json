@@ -1,23 +1,19 @@
 {
+  "ts-node": {
+    // Do not forget to `npm i -D tsconfig-paths`
+    "require": ["tsconfig-paths/register"]
+  },
   "compilerOptions": {
     "target": "esnext",
     "module": "commonjs",
     "allowJs": true,
     "resolveJsonModule": true,
-    "types": [
-      "vitest/globals"
-    ],
-    "typeRoots": [
-      "./node_modules/@types",
-      "./src/@types",
-      "./node_modules"
-    ],
+    "types": ["vitest/globals"],
+    "typeRoots": ["./node_modules/@types", "./src/@types", "./node_modules"],
     "sourceMap": true,
     "outDir": "dist",
     "strict": true,
-    "lib": [
-      "esnext"
-    ],
+    "lib": ["esnext"],
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "experimentalDecorators": true,
@@ -26,23 +22,11 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@app/*": [
-        "./src/*"
-      ],
-      "@lib/*": [
-        "./src/lib/*"
-      ],
-      "@server/*": [
-        "./src/server/*"
-      ]
+      "@app/*": ["./src/*"],
+      "@lib/*": ["./src/lib/*"],
+      "@server/*": ["./src/server/*"]
     }
   },
-  "include": [
-    "src/**/*",
-    "scripts/**/*",
-    "e2e-test/**/*"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["src/**/*", "scripts/**/*", "e2e-test/**/*"],
+  "exclude": ["node_modules"]
 }

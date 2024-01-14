@@ -20,7 +20,8 @@ export default {
       connection: process.env.DB_CONNECTION_URI,
       migrations: {
         directory: path.join(__dirname, "../src/db/migrations"),
-        extension: "ts"
+        extension: "ts",
+        tableName: "infisical_migrations"
       },
       seeds: {
         directory: path.join(__dirname, "../src/db/seeds"),

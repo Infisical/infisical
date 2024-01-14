@@ -472,7 +472,7 @@ export const registerRoutes = async (
   await server.register(injectAuditLogInfo);
 
   server.route({
-    url: "/status",
+    url: "/api/status",
     method: "GET",
     schema: {
       response: {
