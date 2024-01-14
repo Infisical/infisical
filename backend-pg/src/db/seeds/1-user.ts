@@ -1,17 +1,16 @@
-import { Knex } from "knex";
+import crypto from "node:crypto";
+
+import argon2, { argon2id } from "argon2";
 import jsrp from "jsrp";
+import { Knex } from "knex";
 import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
-import argon2, { argon2id } from "argon2";
-import { AuthMethod } from "../../services/auth/auth-type";
-import { TableName } from "../schemas";
-import crypto from "node:crypto";
+
 import { encryptSymmetric } from "@app/lib/crypto";
 
-export const testUser = {
-  email: "test@localhost.local",
-  password: process.env.TEST_USER_PASSWORD || "testInfisical@1"
-};
+import { AuthMethod } from "../../services/auth/auth-type";
+import { TableName } from "../schemas";
+import { seedData1 } from "../seed-data";
 
 export const generateUserSrpKeys = async (password: string) => {
   const pair = nacl.box.keyPair();
@@ -23,7 +22,7 @@ export const generateUserSrpKeys = async (password: string) => {
   // eslint-disable-next-line
   const client = new jsrp.client();
   await new Promise((resolve) => {
-    client.init({ username: testUser.email, password: testUser.password }, () => resolve(null));
+    client.init({ username: seedData1.email, password: seedData1.password }, () => resolve(null));
   });
   const { salt, verifier } = await new Promise<{ salt: string; verifier: string }>(
     (resolve, reject) => {
@@ -85,7 +84,9 @@ export async function seed(knex: Knex): Promise<void> {
   const [user] = await knex(TableName.Users)
     .insert([
       {
-        email: testUser.email,
+        // @ts-ignore to calculate predefined
+        id: seedData1.id,
+        email: seedData1.email,
         superAdmin: true,
         firstName: "test",
         lastName: "",
@@ -98,7 +99,7 @@ export async function seed(knex: Knex): Promise<void> {
     ])
     .returning("*");
 
-  const encKeys = await generateUserSrpKeys(testUser.password);
+  const encKeys = await generateUserSrpKeys(seedData1.password);
   // password: testInfisical@1
   await knex(TableName.UserEncryptionKey).insert([
     {
@@ -115,4 +116,16 @@ export async function seed(knex: Knex): Promise<void> {
       userId: user.id
     }
   ]);
+
+  await knex(TableName.AuthTokenSession).insert({
+    // @ts-ignore
+    id: seedData1.token.id,
+    userId: seedData1.id,
+    ip: "151.196.220.213",
+    userAgent:
+      "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.87 Safari/537.36 RuxitSynthetic/1.0 v3690753611340580436 t8052286838287810618",
+    accessVersion: 1,
+    refreshVersion: 1,
+    lastUsed: new Date()
+  });
 }

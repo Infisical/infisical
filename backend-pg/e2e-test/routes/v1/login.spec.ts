@@ -1,11 +1,11 @@
-import { testUser } from "@app/db/seeds/1-user";
+import { seedData1 } from "@app/db/seed-data";
 import jsrp from "jsrp";
 
 describe("Login V1 Router", async () => {
   // eslint-disable-next-line
   const client = new jsrp.client();
   await new Promise((resolve) => {
-    client.init({ username: testUser.email, password: testUser.password }, () => resolve(null));
+    client.init({ username: seedData1.email, password: seedData1.password }, () => resolve(null));
   });
   let clientProof: string;
 
@@ -32,7 +32,7 @@ describe("Login V1 Router", async () => {
       method: "POST",
       url: "/api/v3/auth/login2",
       body: {
-        email: testUser.email,
+        email: seedData1.email,
         clientProof
       }
     });

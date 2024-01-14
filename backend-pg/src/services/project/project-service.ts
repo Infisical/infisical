@@ -22,7 +22,7 @@ import { ROOT_FOLDER_NAME, TSecretFolderDalFactory } from "../secret-folder/secr
 import { TProjectDalFactory } from "./project-dal";
 import { TCreateProjectDTO, TDeleteProjectDTO, TGetProjectDTO } from "./project-types";
 
-const DEFAULT_PROJECT_ENVS = [
+export const DEFAULT_PROJECT_ENVS = [
   { name: "Development", slug: "dev" },
   { name: "Staging", slug: "staging" },
   { name: "Production", slug: "prod" }

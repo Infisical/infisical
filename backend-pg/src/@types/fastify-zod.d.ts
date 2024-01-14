@@ -19,4 +19,5 @@ declare global {
 
   // used only for testing
   const testServer: FastifyZodProvider;
+  const jwtAuthToken: string;
 }
