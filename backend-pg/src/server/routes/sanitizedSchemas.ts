@@ -27,3 +27,13 @@ export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
     projectId: z.string()
   })
 );
+
+export const secretRawSchema = z.object({
+  id: z.string(),
+  _id: z.string(),
+  version: z.number(),
+  type: z.string(),
+  secretKey: z.string(),
+  secretValue: z.string(),
+  secretComment: z.string().optional()
+});

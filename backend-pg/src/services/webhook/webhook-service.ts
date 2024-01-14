@@ -1,5 +1,4 @@
 import { ForbiddenError } from "@casl/ability";
-import picomatch from "picomatch";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, TWebhooksInsert } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -17,7 +16,6 @@ import { getWebhookPayload, triggerWebhookRequest } from "./webhook-fns";
 import {
   TCreateWebhookDTO,
   TDeleteWebhookDTO,
-  TFnTriggerWebhookDTO,
   TListWebhookDTO,
   TTestWebhookDTO,
   TUpdateWebhookDTO
@@ -170,63 +168,11 @@ export const webhookServiceFactory = ({
     return webhookDal.findAllWebhooks(projectId, environment, secretPath);
   };
 
-  // this is reusable function
-  // used in secret queue to trigger webhook and update status when secrets changes
-  const fnTriggerWebhook = async ({ environment, secretPath, projectId }: TFnTriggerWebhookDTO) => {
-    const webhooks = await webhookDal.findAllWebhooks(projectId, environment);
-    const toBeTriggeredHooks = webhooks.filter(
-      ({ secretPath: hookSecretPath, isDisabled }) =>
-        !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false })
-    );
-    if (!toBeTriggeredHooks.length) return;
-    const webhooksTriggered = await Promise.allSettled(
-      toBeTriggeredHooks.map((hook) =>
-        triggerWebhookRequest(
-          hook,
-          getWebhookPayload("secrets.modified", projectId, environment, secretPath)
-        )
-      )
-    );
-    // filter hooks by status
-    const successWebhooks = webhooksTriggered
-      .filter(({ status }) => status === "fulfilled")
-      .map((_, i) => toBeTriggeredHooks[i].id);
-    const failedWebhooks = webhooksTriggered
-      .filter(({ status }) => status === "rejected")
-      .map((data, i) => ({
-        id: toBeTriggeredHooks[i].id,
-        error: data.status === "rejected" && data.reason.message
-      }));
-
-    await webhookDal.transaction(async (tx) => {
-      const env = await projectEnvDal.findOne({ projectId, slug: environment }, tx);
-      if (!env) throw new BadRequestError({ message: "Env not found" });
-      if (successWebhooks.length) {
-        await webhookDal.update(
-          { envId: env.id, $in: { id: successWebhooks } },
-          { lastStatus: "success", lastRunErrorMessage: null },
-          tx
-        );
-      }
-      if (failedWebhooks.length) {
-        await webhookDal.bulkUpdate(
-          failedWebhooks.map(({ id, error }) => ({
-            id,
-            lastRunErrorMessage: error,
-            lastStatus: "failed"
-          })),
-          tx
-        );
-      }
-    });
-  };
-
   return {
     createWebhook,
     deleteWebhook,
     listWebhooks,
     updateWebhook,
-    testWebhook,
-    fnTriggerWebhook
+    testWebhook
   };
 };

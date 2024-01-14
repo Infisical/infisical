@@ -1,9 +1,15 @@
 import crypto from "node:crypto";
 
+import picomatch from "picomatch";
+
 import { SecretKeyEncoding, TWebhooks } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { decryptSymmetric, decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { BadRequestError } from "@app/lib/errors";
+
+import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
+import { TWebhookDalFactory } from "./webhook-dal";
 
 const WEBHOOK_TRIGGER_TIMEOUT = 15 * 1000;
 export const triggerWebhookRequest = async (
@@ -64,3 +70,67 @@ export const getWebhookPayload = (
     secretPath
   }
 });
+
+export type TFnTriggerWebhookDTO = {
+  projectId: string;
+  secretPath: string;
+  environment: string;
+  webhookDal: Pick<TWebhookDalFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
+  projectEnvDal: Pick<TProjectEnvDalFactory, "findOne">;
+};
+// this is reusable function
+// used in secret queue to trigger webhook and update status when secrets changes
+export const fnTriggerWebhook = async ({
+  environment,
+  secretPath,
+  projectId,
+  webhookDal,
+  projectEnvDal
+}: TFnTriggerWebhookDTO) => {
+  const webhooks = await webhookDal.findAllWebhooks(projectId, environment);
+  const toBeTriggeredHooks = webhooks.filter(
+    ({ secretPath: hookSecretPath, isDisabled }) =>
+      !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false })
+  );
+  if (!toBeTriggeredHooks.length) return;
+  const webhooksTriggered = await Promise.allSettled(
+    toBeTriggeredHooks.map((hook) =>
+      triggerWebhookRequest(
+        hook,
+        getWebhookPayload("secrets.modified", projectId, environment, secretPath)
+      )
+    )
+  );
+  // filter hooks by status
+  const successWebhooks = webhooksTriggered
+    .filter(({ status }) => status === "fulfilled")
+    .map((_, i) => toBeTriggeredHooks[i].id);
+  const failedWebhooks = webhooksTriggered
+    .filter(({ status }) => status === "rejected")
+    .map((data, i) => ({
+      id: toBeTriggeredHooks[i].id,
+      error: data.status === "rejected" && data.reason.message
+    }));
+
+  await webhookDal.transaction(async (tx) => {
+    const env = await projectEnvDal.findOne({ projectId, slug: environment }, tx);
+    if (!env) throw new BadRequestError({ message: "Env not found" });
+    if (successWebhooks.length) {
+      await webhookDal.update(
+        { envId: env.id, $in: { id: successWebhooks } },
+        { lastStatus: "success", lastRunErrorMessage: null },
+        tx
+      );
+    }
+    if (failedWebhooks.length) {
+      await webhookDal.bulkUpdate(
+        failedWebhooks.map(({ id, error }) => ({
+          id,
+          lastRunErrorMessage: error,
+          lastStatus: "failed"
+        })),
+        tx
+      );
+    }
+  });
+};

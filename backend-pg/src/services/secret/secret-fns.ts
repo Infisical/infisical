@@ -1,10 +1,29 @@
 /* eslint-disable no-await-in-loop */
 import path from "path";
 
-import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { SecretKeyEncoding, TSecretBlindIndexes, TSecrets } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
+import { buildSecretBlindIndexFromName, decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 
 import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretDalFactory } from "./secret-dal";
+
+export const generateSecretBlindIndexBySalt = async (
+  secretName: string,
+  secretBlindIndexDoc: TSecretBlindIndexes
+) => {
+  const appCfg = getConfig();
+  const secretBlindIndex = await buildSecretBlindIndexFromName({
+    secretName,
+    keyEncoding: secretBlindIndexDoc.keyEncoding as SecretKeyEncoding,
+    rootEncryptionKey: appCfg.ROOT_ENCRYPTION_KEY,
+    encryptionKey: appCfg.ENCRYPTION_KEY,
+    tag: secretBlindIndexDoc.saltTag,
+    ciphertext: secretBlindIndexDoc.encryptedSaltCipherText,
+    iv: secretBlindIndexDoc.saltIV
+  });
+  return secretBlindIndex;
+};
 
 type TInterpolateSecretArg = {
   projectId: string;
@@ -176,4 +195,42 @@ export const interpolateSecrets = ({
     return secrets;
   };
   return expandSecrets;
+};
+
+export const decryptSecretRaw = (secret: TSecrets, key: string) => {
+  const secretKey = decryptSymmetric128BitHexKeyUTF8({
+    ciphertext: secret.secretKeyCiphertext,
+    iv: secret.secretKeyIV,
+    tag: secret.secretKeyTag,
+    key
+  });
+
+  const secretValue = decryptSymmetric128BitHexKeyUTF8({
+    ciphertext: secret.secretValueCiphertext,
+    iv: secret.secretValueIV,
+    tag: secret.secretValueTag,
+    key
+  });
+
+  let secretComment = "";
+
+  if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
+    secretComment = decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: secret.secretCommentCiphertext,
+      iv: secret.secretCommentIV,
+      tag: secret.secretCommentTag,
+      key
+    });
+  }
+
+  return {
+    secretKey,
+    secretValue,
+    secretComment,
+    version: secret.version,
+    type: secret.type,
+    _id: secret.id,
+    id: secret.id,
+    user: secret.userId
+  };
 };

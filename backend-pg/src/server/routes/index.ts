@@ -338,14 +338,14 @@ export const registerRoutes = async (
   });
   const secretQueueService = secretQueueFactory({
     queueService,
-    webhookService,
     secretDal,
     folderDal,
-    secretImportService,
     integrationAuthService,
     projectBotService,
     integrationDal,
-    secretImportDal
+    secretImportDal,
+    projectEnvDal,
+    webhookDal
   });
   const secretService = secretServiceFactory({
     folderDal,
@@ -355,7 +355,9 @@ export const registerRoutes = async (
     secretDal,
     secretTagDal,
     snapshotService,
-    secretQueueService
+    secretQueueService,
+    secretImportDal,
+    projectBotService
   });
   const sarService = secretApprovalRequestServiceFactory({
     permissionService,

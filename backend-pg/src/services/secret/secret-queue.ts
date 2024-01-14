@@ -8,10 +8,12 @@ import { TIntegrationDalFactory } from "../integration/integration-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
 import { syncIntegrationSecrets } from "../integration-auth/integration-sync-secret";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
+import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
 import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDalFactory } from "../secret-import/secret-import-dal";
-import { TSecretImportServiceFactory } from "../secret-import/secret-import-service";
-import { TWebhookServiceFactory } from "../webhook/webhook-service";
+import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
+import { TWebhookDalFactory } from "../webhook/webhook-dal";
+import { fnTriggerWebhook } from "../webhook/webhook-fns";
 import { TSecretDalFactory } from "./secret-dal";
 import { interpolateSecrets } from "./secret-fns";
 
@@ -19,14 +21,14 @@ export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 
 type TSecretQueueFactoryDep = {
   queueService: TQueueServiceFactory;
-  webhookService: Pick<TWebhookServiceFactory, "fnTriggerWebhook">;
   integrationDal: Pick<TIntegrationDalFactory, "findByProjectIdV2">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   integrationAuthService: Pick<TIntegrationAuthServiceFactory, "getIntegrationAccessToken">;
-  folderDal: Pick<TSecretFolderDalFactory, "findBySecretPath">;
-  secretDal: Pick<TSecretDalFactory, "findByFolderId">;
+  folderDal: Pick<TSecretFolderDalFactory, "findBySecretPath" | "findByManySecretPath">;
+  secretDal: Pick<TSecretDalFactory, "findByFolderId" | "find">;
   secretImportDal: Pick<TSecretImportDalFactory, "find">;
-  secretImportService: Pick<TSecretImportServiceFactory, "fnSecretsFromImports">;
+  webhookDal: Pick<TWebhookDalFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
+  projectEnvDal: Pick<TProjectEnvDalFactory, "findOne">;
 };
 
 export type TGetSecrets = {
@@ -37,14 +39,14 @@ export type TGetSecrets = {
 
 export const secretQueueFactory = ({
   queueService,
-  webhookService,
   integrationDal,
   projectBotService,
   integrationAuthService,
   secretDal,
   secretImportDal,
-  secretImportService,
-  folderDal
+  folderDal,
+  webhookDal,
+  projectEnvDal
 }: TSecretQueueFactoryDep) => {
   const syncSecrets = async (dto: TGetSecrets) => {
     queueService.queue(QueueName.SecretWebhook, QueueJobs.SecWebhook, dto, {
@@ -79,7 +81,11 @@ export const secretQueueFactory = ({
 
     // get imported secrets
     const secretImport = await secretImportDal.find({ folderId: dto.folderId });
-    const importedSecrets = await secretImportService.fnSecretsFromImports(secretImport);
+    const importedSecrets = await fnSecretsFromImports({
+      allowedImports: secretImport,
+      secretDal,
+      folderDal
+    });
     const content: Record<
       string,
       { value: string; comment?: string; skipMultilineEncoding?: boolean }
@@ -217,7 +223,7 @@ export const secretQueueFactory = ({
 
   queueService.start(QueueName.SecretWebhook, async (job) => {
     logger.info("Secret webhook job started", job.data, job.id);
-    await webhookService.fnTriggerWebhook(job.data);
+    await fnTriggerWebhook({ ...job.data, projectEnvDal, webhookDal });
     logger.info("Secret webhook job ended", job.id);
   });
 

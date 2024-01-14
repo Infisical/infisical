@@ -1,18 +1,17 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { SecretType, TSecretImports } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
 
 import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
 import { TSecretDalFactory } from "../secret/secret-dal";
 import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDalFactory } from "./secret-import-dal";
+import { fnSecretsFromImports } from "./secret-import-fns";
 import {
   TCreateSecretImportDTO,
   TDeleteSecretImportDTO,
@@ -176,37 +175,6 @@ export const secretImportServiceFactory = ({
     return secImports;
   };
 
-  const fnSecretsFromImports = async (
-    allowedImports: (Omit<TSecretImports, "importEnv"> & {
-      importEnv: { id: string; slug: string; name: string };
-    })[]
-  ) => {
-    const importedFolders = await folderDal.findByManySecretPath(
-      allowedImports.map(({ importEnv, importPath }) => ({
-        envId: importEnv.id,
-        secretPath: importPath
-      }))
-    );
-    const folderIds = importedFolders.map((el) => el?.id).filter(Boolean) as string[];
-    if (!folderIds.length) {
-      return [];
-    }
-    const importedSecrets = await secretDal.find({
-      $in: { folderId: folderIds },
-      type: SecretType.Shared
-    });
-
-    const importedSecsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
-    return allowedImports.map(({ importPath, importEnv }, i) => ({
-      secretPath: importPath,
-      environment: importEnv,
-      folderId: importedFolders?.[i]?.id,
-      secrets: importedFolders?.[i]?.id
-        ? importedSecsGroupByFolderId[importedFolders?.[i]?.id as string]
-        : []
-    }));
-  };
-
   const getSecretsFromImports = async ({
     path,
     environment,
@@ -234,7 +202,7 @@ export const secretImportServiceFactory = ({
         })
       )
     );
-    return fnSecretsFromImports(allowedImports);
+    return fnSecretsFromImports({ allowedImports, folderDal, secretDal });
   };
 
   return {

@@ -61,6 +61,7 @@ export type TDeleteSecretDTO = {
 export type TGetSecretsDTO = {
   path: string;
   environment: string;
+  includeImports?: boolean;
 } & TProjectPermission;
 
 export type TGetASecretDTO = {
@@ -68,6 +69,7 @@ export type TGetASecretDTO = {
   path: string;
   environment: string;
   type: "shared" | "personal";
+  includeImports?: boolean;
 } & TProjectPermission;
 
 export type TCreateBulkSecretDTO = {
@@ -124,6 +126,46 @@ export type TListSecretVersionDTO = {
   offset?: number;
   limit?: number;
 } & Omit<TProjectPermission, "projectId">;
+
+export type TGetSecretsRawDTO = {
+  path: string;
+  environment: string;
+  includeImports?: boolean;
+} & TProjectPermission;
+
+export type TGetASecretRawDTO = {
+  secretName: string;
+  path: string;
+  environment: string;
+  type: "shared" | "personal";
+  includeImports?: boolean;
+} & TProjectPermission;
+
+export type TCreateSecretRawDTO = TProjectPermission & {
+  secretPath: string;
+  environment: string;
+  secretName: string;
+  secretValue: string;
+  type: SecretType;
+  secretComment?: string;
+  skipMultilineEncoding?: boolean;
+};
+
+export type TUpdateSecretRawDTO = TProjectPermission & {
+  secretPath: string;
+  environment: string;
+  secretName: string;
+  secretValue?: string;
+  type: SecretType;
+  skipMultilineEncoding?: boolean;
+};
+
+export type TDeleteSecretRawDTO = TProjectPermission & {
+  secretPath: string;
+  environment: string;
+  secretName: string;
+  type: SecretType;
+};
 
 export type TFnSecretBulkInsert = {
   folderId: string;

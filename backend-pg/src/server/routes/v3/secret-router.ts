@@ -11,7 +11,308 @@ import { CommitType } from "@app/ee/services/secret-approval-request/secret-appr
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
+import { secretRawSchema } from "../sanitizedSchemas";
+
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    url: "/raw",
+    method: "GET",
+    schema: {
+      querystring: z.object({
+        workspaceId: z.string().trim(),
+        environment: z.string().trim(),
+        secretPath: z.string().trim().default("/"),
+        include_imports: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+      }),
+      response: {
+        200: z.object({
+          secrets: secretRawSchema.array(),
+          imports: z
+            .object({
+              secretPath: z.string(),
+              environment: z.object({
+                id: z.string(),
+                name: z.string(),
+                slug: z.string()
+              }),
+              folderId: z.string().optional(),
+              secrets: secretRawSchema.array()
+            })
+            .array()
+            .optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN
+    ]),
+    handler: async (req) => {
+      const { secrets, imports } = await server.services.secret.getSecretsRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        environment: req.query.environment,
+        projectId: req.query.workspaceId,
+        path: req.query.secretPath,
+        includeImports: req.query.include_imports
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.query.workspaceId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.GET_SECRETS,
+          metadata: {
+            environment: req.query.environment,
+            secretPath: req.query.secretPath,
+            numberOfSecrets: secrets.length
+          }
+        }
+      });
+      return { secrets, imports };
+    }
+  });
+
+  server.route({
+    url: "/raw/:secretName",
+    method: "GET",
+    schema: {
+      params: z.object({
+        secretName: z.string().trim()
+      }),
+      querystring: z.object({
+        workspaceId: z.string().trim(),
+        environment: z.string().trim(),
+        secretPath: z.string().trim().default("/"),
+        type: z.nativeEnum(SecretType).default(SecretType.Shared),
+        include_imports: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+      }),
+      response: {
+        200: z.object({
+          secret: secretRawSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN
+    ]),
+    handler: async (req) => {
+      const secret = await server.services.secret.getASecretRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        environment: req.query.environment,
+        projectId: req.query.workspaceId,
+        path: req.query.secretPath,
+        secretName: req.params.secretName,
+        type: req.query.type,
+        includeImports: req.query.include_imports
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.query.workspaceId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.GET_SECRET,
+          metadata: {
+            environment: req.query.environment,
+            secretPath: req.query.secretPath,
+            secretId: secret.id,
+            secretKey: req.params.secretName,
+            secretVersion: secret.version
+          }
+        }
+      });
+      return { secret };
+    }
+  });
+
+  server.route({
+    url: "/raw/:secretName",
+    method: "POST",
+    schema: {
+      params: z.object({
+        secretName: z.string().trim()
+      }),
+      body: z.object({
+        workspaceId: z.string().trim(),
+        environment: z.string().trim(),
+        secretPath: z.string().trim().default("/"),
+        secretValue: z
+          .string()
+          .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
+        secretComment: z.string().trim().optional().default(""),
+        skipMultilineEncoding: z.boolean().optional(),
+        type: z.nativeEnum(SecretType).default(SecretType.Shared)
+      }),
+      response: {
+        200: z.object({
+          secret: secretRawSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN
+    ]),
+    handler: async (req) => {
+      const secret = await server.services.secret.createSecretRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        environment: req.body.environment,
+        projectId: req.body.workspaceId,
+        secretPath: req.body.secretPath,
+        secretName: req.params.secretName,
+        type: req.body.type,
+        secretValue: req.body.secretValue,
+        skipMultilineEncoding: req.body.skipMultilineEncoding,
+        secretComment: req.body.secretComment
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.body.workspaceId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.CREATE_SECRET,
+          metadata: {
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            secretId: secret.id,
+            secretKey: req.params.secretName,
+            secretVersion: secret.version
+          }
+        }
+      });
+      return { secret };
+    }
+  });
+
+  server.route({
+    url: "/raw/:secretName",
+    method: "PATCH",
+    schema: {
+      params: z.object({
+        secretName: z.string().trim()
+      }),
+      body: z.object({
+        workspaceId: z.string().trim(),
+        environment: z.string().trim(),
+        secretValue: z
+          .string()
+          .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
+        secretPath: z.string().trim().default("/"),
+        skipMultilineEncoding: z.boolean().optional(),
+        type: z.nativeEnum(SecretType).default(SecretType.Shared)
+      }),
+      response: {
+        200: z.object({
+          secret: secretRawSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN
+    ]),
+    handler: async (req) => {
+      const secret = await server.services.secret.updateSecretRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        environment: req.body.environment,
+        projectId: req.body.workspaceId,
+        secretPath: req.body.secretPath,
+        secretName: req.params.secretName,
+        type: req.body.type,
+        secretValue: req.body.secretValue,
+        skipMultilineEncoding: req.body.skipMultilineEncoding
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.body.workspaceId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.UPDATE_SECRET,
+          metadata: {
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            secretId: secret.id,
+            secretKey: req.params.secretName,
+            secretVersion: secret.version
+          }
+        }
+      });
+      return { secret };
+    }
+  });
+
+  server.route({
+    url: "/raw/:secretName",
+    method: "DELETE",
+    schema: {
+      params: z.object({
+        secretName: z.string().trim()
+      }),
+      body: z.object({
+        workspaceId: z.string().trim(),
+        environment: z.string().trim(),
+        secretPath: z.string().trim().default("/"),
+        type: z.nativeEnum(SecretType).default(SecretType.Shared)
+      }),
+      response: {
+        200: z.object({
+          secret: secretRawSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([
+      AuthMode.JWT,
+      AuthMode.API_KEY,
+      AuthMode.SERVICE_TOKEN,
+      AuthMode.IDENTITY_ACCESS_TOKEN
+    ]),
+    handler: async (req) => {
+      const secret = await server.services.secret.deleteSecretRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        environment: req.body.environment,
+        projectId: req.body.workspaceId,
+        secretPath: req.body.secretPath,
+        secretName: req.params.secretName,
+        type: req.body.type
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.body.workspaceId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.DELETE_SECRET,
+          metadata: {
+            environment: req.body.environment,
+            secretPath: req.body.secretPath,
+            secretId: secret.id,
+            secretKey: req.params.secretName,
+            secretVersion: secret.version
+          }
+        }
+      });
+      return { secret };
+    }
+  });
+
   server.route({
     url: "/",
     method: "GET",
@@ -38,7 +339,20 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 }).array()
               })
             )
+            .array(),
+          imports: z
+            .object({
+              secretPath: z.string(),
+              environment: z.object({
+                id: z.string(),
+                name: z.string(),
+                slug: z.string()
+              }),
+              folderId: z.string().optional(),
+              secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
+            })
             .array()
+            .optional()
         })
       }
     },
@@ -49,12 +363,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       AuthMode.IDENTITY_ACCESS_TOKEN
     ]),
     handler: async (req) => {
-      const secrets = await server.services.secret.getSecrets({
+      const { secrets, imports } = await server.services.secret.getSecrets({
         actorId: req.permission.id,
         actor: req.permission.type,
         environment: req.query.environment,
         projectId: req.query.workspaceId,
-        path: req.query.secretPath
+        path: req.query.secretPath,
+        includeImports: req.query.include_imports
       });
 
       await server.services.auditLog.createAuditLog({
@@ -70,7 +385,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { secrets };
+      return { secrets, imports };
     }
   });
 
@@ -111,7 +426,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         projectId: req.query.workspaceId,
         path: req.query.secretPath,
         secretName: req.params.secretName,
-        type: req.query.type
+        type: req.query.type,
+        includeImports: req.query.include_imports
       });
 
       await server.services.auditLog.createAuditLog({

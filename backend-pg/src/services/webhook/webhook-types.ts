@@ -24,9 +24,3 @@ export type TListWebhookDTO = {
   environment?: string;
   secretPath?: string;
 } & TProjectPermission;
-
-export type TFnTriggerWebhookDTO = {
-  projectId: string;
-  secretPath: string;
-  environment: string;
-};
