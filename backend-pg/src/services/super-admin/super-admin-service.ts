@@ -2,11 +2,11 @@ import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
+import { AuthMethod } from "../auth/auth-type";
+import { TOrgServiceFactory } from "../org/org-service";
 import { TUserDalFactory } from "../user/user-dal";
 import { TSuperAdminDalFactory } from "./super-admin-dal";
 import { TAdminSignUpDTO } from "./super-admin-types";
-import { TOrgServiceFactory } from "../org/org-service";
-import { AuthMethod } from "../auth/auth-type";
 
 type TSuperAdminServiceFactoryDep = {
   serverCfgDal: TSuperAdminDalFactory;
