@@ -88,7 +88,9 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
   },
   create: async (data: Tables[Tname]["insert"], tx?: Knex) => {
     try {
-      const [res] = await (tx || db)(tableName).insert(data).returning("*");
+      const [res] = await (tx || db)(tableName)
+        .insert(data as any)
+        .returning("*");
       return res;
     } catch (error) {
       throw new DatabaseError({ error, name: "Create" });

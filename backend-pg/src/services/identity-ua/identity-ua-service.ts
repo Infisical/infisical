@@ -14,7 +14,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
-import { checkIPAgainstBlocklist, extractIPDetails, isValidIpOrCidr,TIp } from "@app/lib/ip";
+import { checkIPAgainstBlocklist, extractIPDetails, isValidIpOrCidr, TIp } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDalFactory } from "../identity/identity-dal";
@@ -176,7 +176,11 @@ export const identityUaServiceFactory = ({
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedClientSecretTrustedIps = clientSecretTrustedIps.map(
       (clientSecretTrustedIp) => {
-        if (!plan.ipAllowlisting && clientSecretTrustedIp.ipAddress !== "0.0.0.0/0")
+        if (
+          !plan.ipAllowlisting &&
+          clientSecretTrustedIp.ipAddress !== "0.0.0.0/0" &&
+          clientSecretTrustedIp.ipAddress !== "::/0"
+        )
           throw new BadRequestError({
             message:
               "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
@@ -189,7 +193,11 @@ export const identityUaServiceFactory = ({
       }
     );
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
-      if (!plan.ipAllowlisting && accessTokenTrustedIp.ipAddress !== "0.0.0.0/0")
+      if (
+        !plan.ipAllowlisting &&
+        accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
+        accessTokenTrustedIp.ipAddress !== "::/0"
+      )
         throw new BadRequestError({
           message:
             "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
@@ -266,7 +274,11 @@ export const identityUaServiceFactory = ({
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
     const reformattedClientSecretTrustedIps = clientSecretTrustedIps?.map(
       (clientSecretTrustedIp) => {
-        if (!plan.ipAllowlisting && clientSecretTrustedIp.ipAddress !== "0.0.0.0/0")
+        if (
+          !plan.ipAllowlisting &&
+          clientSecretTrustedIp.ipAddress !== "0.0.0.0/0" &&
+          clientSecretTrustedIp.ipAddress !== "::/0"
+        )
           throw new BadRequestError({
             message:
               "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."
@@ -279,7 +291,11 @@ export const identityUaServiceFactory = ({
       }
     );
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
-      if (!plan.ipAllowlisting && accessTokenTrustedIp.ipAddress !== "0.0.0.0/0")
+      if (
+        !plan.ipAllowlisting &&
+        accessTokenTrustedIp.ipAddress !== "0.0.0.0/0" &&
+        accessTokenTrustedIp.ipAddress !== "::/0"
+      )
         throw new BadRequestError({
           message:
             "Failed to add IP access range to service token due to plan restriction. Upgrade plan to add IP access range."

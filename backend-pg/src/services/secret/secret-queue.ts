@@ -48,20 +48,8 @@ export const secretQueueFactory = ({
   webhookDal,
   projectEnvDal
 }: TSecretQueueFactoryDep) => {
-  const syncSecrets = async (dto: TGetSecrets) => {
-    queueService.queue(QueueName.SecretWebhook, QueueJobs.SecWebhook, dto, {
-      jobId: `secret-webhook-${dto.environment}-${dto.projectId}-${dto.secretPath}`,
-      removeOnFail: { count: 5 },
-      removeOnComplete: true,
-      delay: 1000,
-      attempts: 5,
-      backoff: {
-        type: "exponential",
-        delay: 3000
-      }
-    });
-
-    queueService.queue(QueueName.IntegrationSync, QueueJobs.IntegrationSync, dto, {
+  const syncIntegrations = async (dto: TGetSecrets) => {
+    await queueService.queue(QueueName.IntegrationSync, QueueJobs.IntegrationSync, dto, {
       attempts: 5,
       delay: 1000,
       backoff: {
@@ -73,6 +61,21 @@ export const secretQueueFactory = ({
         count: 5 // keep the most recent  jobs
       }
     });
+  };
+
+  const syncSecrets = async (dto: TGetSecrets) => {
+    await queueService.queue(QueueName.SecretWebhook, QueueJobs.SecWebhook, dto, {
+      jobId: `secret-webhook-${dto.environment}-${dto.projectId}-${dto.secretPath}`,
+      removeOnFail: { count: 5 },
+      removeOnComplete: true,
+      delay: 1000,
+      attempts: 5,
+      backoff: {
+        type: "exponential",
+        delay: 3000
+      }
+    });
+    await syncIntegrations(dto);
   };
 
   const getIntegrationSecrets = async (dto: TGetSecrets & { folderId: string }, key: string) => {
@@ -226,5 +229,5 @@ export const secretQueueFactory = ({
     await fnTriggerWebhook({ ...job.data, projectEnvDal, webhookDal });
   });
 
-  return { syncSecrets };
+  return { syncSecrets, syncIntegrations };
 };

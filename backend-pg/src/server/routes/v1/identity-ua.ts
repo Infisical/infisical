@@ -81,14 +81,14 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           })
           .array()
           .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }]),
+          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
         accessTokenTrustedIps: z
           .object({
             ipAddress: z.string().trim()
           })
           .array()
           .min(1)
-          .default([{ ipAddress: "0.0.0.0/0" }]),
+          .default([{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]),
         accessTokenTTL: z
           .number()
           .int()

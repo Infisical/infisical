@@ -392,7 +392,8 @@ export const registerRoutes = async (
     permissionService,
     folderDal,
     integrationDal,
-    integrationAuthDal
+    integrationAuthDal,
+    secretQueueService
   });
   const serviceTokenService = serviceTokenServiceFactory({
     projectEnvDal,

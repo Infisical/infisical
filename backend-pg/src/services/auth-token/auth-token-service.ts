@@ -69,7 +69,7 @@ export const tokenServiceFactory = ({ tokenDal, userDal }: TAuthTokenServiceFact
       const newToken = await tokenDal.create(
         {
           tokenHash,
-          expiresAt: tkCfg.expiresAt.toUTCString(),
+          expiresAt: tkCfg.expiresAt,
           type,
           userId,
           orgId,

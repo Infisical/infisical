@@ -16,12 +16,14 @@ import {
   TDeleteIntegrationDTO,
   TUpdateIntegrationDTO
 } from "./integration-types";
+import { TSecretQueueFactory } from "../secret/secret-queue";
 
 type TIntegrationServiceFactoryDep = {
   integrationDal: TIntegrationDalFactory;
   integrationAuthDal: TIntegrationAuthDalFactory;
   folderDal: Pick<TSecretFolderDalFactory, "findBySecretPath">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretQueueService: Pick<TSecretQueueFactory, "syncIntegrations">;
 };
 
 export type TIntegrationServiceFactory = ReturnType<typeof integrationServiceFactory>;
@@ -30,7 +32,8 @@ export const integrationServiceFactory = ({
   integrationDal,
   integrationAuthDal,
   folderDal,
-  permissionService
+  permissionService,
+  secretQueueService
 }: TIntegrationServiceFactoryDep) => {
   const createIntegration = async ({
     app,
@@ -90,7 +93,11 @@ export const integrationServiceFactory = ({
       integration: integrationAuth.integration
     });
 
-    
+    await secretQueueService.syncIntegrations({
+      environment: sourceEnvironment,
+      secretPath,
+      projectId: integrationAuth.projectId
+    });
     return { integration, integrationAuth };
   };
 

@@ -234,13 +234,7 @@ export const integrationAuthServiceFactory = ({
         updateDoc.accessIdCiphertext = accessEncToken.ciphertext;
       }
     }
-    return integrationAuthDal.transaction(async (tx) => {
-      const doc = await integrationAuthDal.findOne({ projectId, integration }, tx);
-      if (!doc) {
-        return integrationAuthDal.create(updateDoc, tx);
-      }
-      return integrationAuthDal.updateById(doc.id, updateDoc, tx);
-    });
+    return integrationAuthDal.create(updateDoc);
   };
 
   // helper function
