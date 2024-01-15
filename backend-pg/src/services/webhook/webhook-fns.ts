@@ -10,6 +10,7 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
 import { TWebhookDalFactory } from "./webhook-dal";
+import { logger } from "@app/lib/logger";
 
 const WEBHOOK_TRIGGER_TIMEOUT = 15 * 1000;
 export const triggerWebhookRequest = async (
@@ -93,6 +94,7 @@ export const fnTriggerWebhook = async ({
       !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false })
   );
   if (!toBeTriggeredHooks.length) return;
+  logger.info("Secret webhook job started", { environment, secretPath, projectId });
   const webhooksTriggered = await Promise.allSettled(
     toBeTriggeredHooks.map((hook) =>
       triggerWebhookRequest(
@@ -133,4 +135,5 @@ export const fnTriggerWebhook = async ({
       );
     }
   });
+  logger.info("Secret webhook job ended", { environment, secretPath, projectId });
 };

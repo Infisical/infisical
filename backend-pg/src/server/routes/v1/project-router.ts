@@ -330,7 +330,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const authorizations = await server.services.integration.listIntegrationByProject({
+      const authorizations = await server.services.integrationAuth.listIntegrationAuthByProjectId({
         actorId: req.permission.id,
         actor: req.permission.type,
         projectId: req.params.workspaceId

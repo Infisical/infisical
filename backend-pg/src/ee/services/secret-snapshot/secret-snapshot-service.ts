@@ -19,6 +19,7 @@ import {
 import { TSnapshotDalFactory } from "./snapshot-dal";
 import { TSnapshotFolderDalFactory } from "./snapshot-folder-dal";
 import { TSnapshotSecretDalFactory } from "./snapshot-secret-dal";
+import { logger } from "@app/lib/logger";
 
 type TSecretSnapshotServiceFactoryDep = {
   snapshotDal: TSnapshotDalFactory;
@@ -112,44 +113,50 @@ export const secretSnapshotServiceFactory = ({
   };
 
   const performSnapshot = async (folderId: string) => {
-    if (!licenseService.isValidLicense)
-      throw new InternalServerError({ message: "Invalid license" });
+    try {
+      if (!licenseService.isValidLicense)
+        throw new InternalServerError({ message: "Invalid license" });
 
-    const snapshot = await snapshotDal.transaction(async (tx) => {
-      const folder = await folderDal.findById(folderId, tx);
-      if (!folder) throw new BadRequestError({ message: "Folder not found" });
+      const snapshot = await snapshotDal.transaction(async (tx) => {
+        const folder = await folderDal.findById(folderId, tx);
+        if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
-      const secretVersions = await secretVersionDal.findLatestVersionByFolderId(folderId, tx);
-      const folderVersions = await folderVersionDal.findLatestVersionByFolderId(folderId, tx);
-      const newSnapshot = await snapshotDal.create(
-        {
-          folderId,
-          envId: folder.environment.envId,
-          parentFolderId: folder.parentId
-        },
-        tx
-      );
-      const snapshotSecrets = await snapshotSecretDal.insertMany(
-        secretVersions.map(({ id }) => ({
-          secretVersionId: id,
-          envId: folder.environment.envId,
-          snapshotId: newSnapshot.id
-        })),
-        tx
-      );
-      const snapshotFolders = await snapshotFolderDal.insertMany(
-        folderVersions.map(({ id }) => ({
-          folderVersionId: id,
-          envId: folder.environment.envId,
-          snapshotId: newSnapshot.id
-        })),
-        tx
-      );
+        const secretVersions = await secretVersionDal.findLatestVersionByFolderId(folderId, tx);
+        const folderVersions = await folderVersionDal.findLatestVersionByFolderId(folderId, tx);
+        const newSnapshot = await snapshotDal.create(
+          {
+            folderId,
+            envId: folder.environment.envId,
+            parentFolderId: folder.parentId
+          },
+          tx
+        );
+        const snapshotSecrets = await snapshotSecretDal.insertMany(
+          secretVersions.map(({ id }) => ({
+            secretVersionId: id,
+            envId: folder.environment.envId,
+            snapshotId: newSnapshot.id
+          })),
+          tx
+        );
+        const snapshotFolders = await snapshotFolderDal.insertMany(
+          folderVersions.map(({ id }) => ({
+            folderVersionId: id,
+            envId: folder.environment.envId,
+            snapshotId: newSnapshot.id
+          })),
+          tx
+        );
 
-      return { ...newSnapshot, secrets: snapshotSecrets, folder: snapshotFolders };
-    });
+        return { ...newSnapshot, secrets: snapshotSecrets, folder: snapshotFolders };
+      });
 
-    return snapshot;
+      return snapshot;
+    } catch (error) {
+      // this to avoid snapshot errors
+      logger.error("Failed to perform snasphot");
+      logger.error(error);
+    }
   };
 
   const rollbackSnapshot = async ({ id: snapshotId, actor, actorId }: TRollbackSnapshotDTO) => {

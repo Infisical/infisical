@@ -102,7 +102,7 @@ export const getIntegrationOptions = async () => {
       isAvailable: true,
       type: "oauth",
       clientId: "",
-      clientSlug: appCfg.CLIENT_ID_VERCEL,
+      clientSlug: appCfg.CLIENT_SLUG_VERCEL,
       docsLink: ""
     },
     {
@@ -120,7 +120,7 @@ export const getIntegrationOptions = async () => {
       image: "GitHub.png",
       isAvailable: true,
       type: "oauth",
-      clientId: appCfg.CLIENT_ID_BITBUCKET,
+      clientId: appCfg.CLIENT_ID_GITHUB,
       docsLink: ""
     },
     {

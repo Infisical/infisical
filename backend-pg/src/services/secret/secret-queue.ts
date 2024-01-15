@@ -159,7 +159,6 @@ export const secretQueueFactory = ({
   };
 
   queueService.start(QueueName.IntegrationSync, async (job) => {
-    logger.info("Secret integration sync started", job.data, job.id);
     const { environment, projectId, secretPath } = job.data;
     const folder = await folderDal.findBySecretPath(projectId, environment, secretPath);
     if (!folder) {
@@ -173,6 +172,8 @@ export const secretQueueFactory = ({
         isActive && isSamePath(secretPath, integrationSecPath)
     );
 
+    if (!integrations.length) return;
+    logger.info("Secret integration sync started", job.data, job.id);
     for (const integration of toBeSyncedIntegrations) {
       const integrationAuth = {
         ...integration.integrationAuth,
@@ -222,9 +223,7 @@ export const secretQueueFactory = ({
   });
 
   queueService.start(QueueName.SecretWebhook, async (job) => {
-    logger.info("Secret webhook job started", job.data, job.id);
     await fnTriggerWebhook({ ...job.data, projectEnvDal, webhookDal });
-    logger.info("Secret webhook job ended", job.id);
   });
 
   return { syncSecrets };

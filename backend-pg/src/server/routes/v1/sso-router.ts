@@ -16,7 +16,6 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   await server.register(fastifySession, { secret: appCfg.COOKIE_SECRET_SIGN_KEY });
   await server.register(passport.initialize());
   await server.register(passport.secureSession());
-
   // passport oauth strategy for Google
   const isGoogleOauthActive = Boolean(
     appCfg.CLIENT_ID_GOOGLE_LOGIN && appCfg.CLIENT_SECRET_GOOGLE_LOGIN
@@ -123,7 +122,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   }
 
   server.route({
-    url: "/sso/redirect/google",
+    url: "/redirect/google",
     method: "GET",
     schema: {
       querystring: z.object({
@@ -144,7 +143,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/sso/google",
+    url: "/google",
     method: "GET",
     preValidation: passport.authenticate("google", {
       session: false,
@@ -169,7 +168,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/sso/redirect/github",
+    url: "/redirect/github",
     method: "GET",
     schema: {
       querystring: z.object({
@@ -189,7 +188,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/sso/github",
+    url: "/github",
     method: "GET",
     preValidation: passport.authenticate("github", {
       session: false,
@@ -214,7 +213,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/sso/redirect/gitlab",
+    url: "/redirect/gitlab",
     method: "GET",
     schema: {
       querystring: z.object({
@@ -234,7 +233,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/sso/gitlab",
+    url: "/gitlab",
     method: "GET",
     preValidation: passport.authenticate("gitlab", {
       session: false,

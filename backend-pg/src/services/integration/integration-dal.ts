@@ -50,7 +50,9 @@ export const integrationDalFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const doc = await integrationFindQuery(tx || db, { id }).first();
+      const doc = await integrationFindQuery(tx || db, {
+        [`${TableName.Integration}.id` as "id"]: id
+      }).first();
       if (!doc) return;
 
       const { envName: name, envSlug: slug, envId, ...el } = doc;

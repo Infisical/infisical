@@ -85,7 +85,11 @@ export const licenseServiceFactory = ({
           logger.info(`Instance type: ${InstanceType.EnterpriseOnPrem}`);
           isValidLicense = true;
         }
+        return;
       }
+      // this means this is self hosted oss version
+      // else it would reach catch statement
+      isValidLicense = true;
     } catch (error) {
       logger.error(error);
     }

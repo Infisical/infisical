@@ -569,7 +569,7 @@ export const secretServiceFactory = ({
         secretDal,
         folderDal
       });
-      for (let i = importedSecrets.length; i >= 0; i -= 1) {
+      for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
         for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {
           if (secretBlindIndex === importedSecrets[i].secrets[j].secretBlindIndex) {
             return importedSecrets[i].secrets[j];
