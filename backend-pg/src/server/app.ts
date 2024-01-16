@@ -16,6 +16,7 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { getConfig } from "@lib/config/env";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
+import { fastifyErrHandler } from "./plugins/error-handler";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
 import { fastifyIp } from "./plugins/ip";
 import { fastifySwagger } from "./plugins/swagger";
@@ -53,6 +54,7 @@ export const main = async ({ db, smtp, logger, queue }: TMain) => {
 
     await server.register(fastifySwagger);
     await server.register(fastifyFormBody);
+    await server.register(fastifyErrHandler);
     // allow empty body on post request
     // server.addContentTypeParser("application/json", { bodyLimit: 0 }, (_request, _payload, done) =>
     //   done(null, null)

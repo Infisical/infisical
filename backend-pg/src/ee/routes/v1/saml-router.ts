@@ -8,6 +8,7 @@ import { SamlConfigsSchema } from "@app/db/schemas";
 import { SamlProviders } from "@app/ee/services/saml-config/saml-config-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -79,6 +80,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           });
           cb(null, { isUserCompleted, providerAuthToken });
         } catch (error) {
+          logger.error(error);
           cb(null, {});
         }
       },
