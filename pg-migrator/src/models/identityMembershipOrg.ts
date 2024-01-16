@@ -1,5 +1,4 @@
 import { Schema, Types, model } from "mongoose";
-import { ADMIN, CUSTOM, MEMBER, NO_ACCESS} from "../variables";
 
 export interface IIdentityMembershipOrg {
   _id: Types.ObjectId;
@@ -13,25 +12,27 @@ const identityMembershipOrgSchema = new Schema<IIdentityMembershipOrg>(
   {
     identity: {
       type: Schema.Types.ObjectId,
-      ref: "Identity"
+      ref: "Identity",
     },
     organization: {
       type: Schema.Types.ObjectId,
-      ref: "Organization"
+      ref: "Organization",
     },
     role: {
       type: String,
-      enum: [ADMIN, MEMBER, NO_ACCESS, CUSTOM],
-      required: true
+      required: true,
     },
     customRole: {
       type: Schema.Types.ObjectId,
-      ref: "Role"
-    }
+      ref: "Role",
+    },
   },
   {
-    timestamps: true
-  }
+    timestamps: true,
+  },
 );
 
-export const IdentityMembershipOrg = model<IIdentityMembershipOrg>("IdentityMembershipOrg", identityMembershipOrgSchema);
+export const IdentityMembershipOrg = model<IIdentityMembershipOrg>(
+  "IdentityMembershipOrg",
+  identityMembershipOrgSchema,
+);

@@ -35,7 +35,7 @@ const tokenDataSchema = new Schema<ITokenData>({
   },
   tokenHash: {
     type: String,
-    select: false,
+    
     required: true,
   },
   triesLeft: {

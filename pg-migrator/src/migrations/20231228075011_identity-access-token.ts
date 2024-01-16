@@ -7,7 +7,6 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.IdentityAccessToken))) {
     await knex.schema.createTable(TableName.IdentityAccessToken, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.string("authType").notNullable();
       t.integer("accessTokenTTL").defaultTo(2592000).notNullable(); // 30 days second
       t.integer("accessTokenMaxTTL").defaultTo(2592000).notNullable();
       t.integer("accessTokenNumUses").defaultTo(0).notNullable();
@@ -21,7 +20,10 @@ export async function up(knex: Knex): Promise<void> {
         .inTable(TableName.IdentityUaClientSecret)
         .onDelete("CASCADE");
       t.uuid("identityId").notNullable();
-      t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
+      t.foreign("identityId")
+        .references("id")
+        .inTable(TableName.Identity)
+        .onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
   }

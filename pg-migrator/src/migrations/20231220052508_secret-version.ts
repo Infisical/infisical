@@ -1,7 +1,16 @@
 import { Knex } from "knex";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding, SecretType, TableName } from "../schemas";
-import { createJunctionTable, createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
+import {
+  SecretEncryptionAlgo,
+  SecretKeyEncoding,
+  SecretType,
+  TableName,
+} from "../schemas";
+import {
+  createJunctionTable,
+  createOnUpdateTrigger,
+  dropOnUpdateTrigger,
+} from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.SecretVersion))) {
@@ -9,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.integer("version").defaultTo(1).notNullable();
       t.string("type").notNullable().defaultTo(SecretType.Shared);
-      t.text("secretBlindIndex").notNullable();
+      t.text("secretBlindIndex");
       t.text("secretKeyCiphertext").notNullable();
       t.text("secretKeyIV").notNullable();
       t.text("secretKeyTag").notNullable();
@@ -22,17 +31,25 @@ export async function up(knex: Knex): Promise<void> {
       t.string("secretReminderNote");
       t.integer("secretReminderRepeatDays");
       t.boolean("skipMultilineEncoding").defaultTo(false);
-      t.string("algorithm").notNullable().defaultTo(SecretEncryptionAlgo.AES_256_GCM);
+      t.string("algorithm")
+        .notNullable()
+        .defaultTo(SecretEncryptionAlgo.AES_256_GCM);
       t.string("keyEncoding").notNullable().defaultTo(SecretKeyEncoding.UTF8);
       t.jsonb("metadata");
       // to avoid orphan rows
       t.uuid("envId");
-      t.foreign("envId").references("id").inTable(TableName.Environment).onDelete("CASCADE");
+      t.foreign("envId")
+        .references("id")
+        .inTable(TableName.Environment)
+        .onDelete("CASCADE");
       t.uuid("secretId").notNullable();
       t.uuid("folderId").notNullable();
       // t.foreign("secretId").references("id").inTable(TableName.Secret).onDelete("SET NULL");
       t.uuid("userId");
-      t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      t.foreign("userId")
+        .references("id")
+        .inTable(TableName.Users)
+        .onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
   }
@@ -42,7 +59,7 @@ export async function up(knex: Knex): Promise<void> {
     knex,
     TableName.JnSecretVersionTag,
     TableName.SecretVersion,
-    TableName.SecretTag
+    TableName.SecretTag,
   );
 }
 

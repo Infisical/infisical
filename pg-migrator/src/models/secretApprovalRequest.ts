@@ -1,25 +1,16 @@
 import { Schema, Types, model } from "mongoose";
-import { customAlphabet } from "nanoid";
-import {
-  ALGORITHM_AES_256_GCM,
-  ENCODING_SCHEME_BASE64,
-  ENCODING_SCHEME_UTF8
-} from "../../variables";
 
 export enum ApprovalStatus {
   PENDING = "pending",
   APPROVED = "approved",
-  REJECTED = "rejected"
+  REJECTED = "rejected",
 }
 
 export enum CommitType {
   DELETE = "delete",
   UPDATE = "update",
-  CREATE = "create"
+  CREATE = "create",
 }
-
-const SLUG_ALPHABETS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-const nanoId = customAlphabet(SLUG_ALPHABETS, 10);
 
 export interface ISecretApprovalSecChange {
   _id: Types.ObjectId;
@@ -50,7 +41,9 @@ export type ISecretCommits<T = Types.ObjectId, J = Types.ObjectId> = Array<
       //  on merge
       secretVersion: J;
       secret: T;
-      newVersion: Partial<Omit<ISecretApprovalSecChange, "_id">> & { _id: Types.ObjectId };
+      newVersion: Partial<Omit<ISecretApprovalSecChange, "_id">> & {
+        _id: Types.ObjectId;
+      };
       op: CommitType.UPDATE;
     }
   | {
@@ -82,58 +75,54 @@ const secretApprovalSecretChangeSchema = new Schema<ISecretApprovalSecChange>({
   version: {
     type: Number,
     default: 1,
-    required: true
+    required: true,
   },
   secretBlindIndex: {
     type: String,
-    select: false
+    
   },
   secretKeyCiphertext: {
     type: String,
-    required: true
+    required: true,
   },
   secretKeyIV: {
     type: String, // symmetric
-    required: true
+    required: true,
   },
   secretKeyTag: {
     type: String, // symmetric
-    required: true
+    required: true,
   },
   secretValueCiphertext: {
     type: String,
-    required: true
+    required: true,
   },
   secretValueIV: {
     type: String, // symmetric
-    required: true
+    required: true,
   },
   secretValueTag: {
     type: String, // symmetric
-    required: true
+    required: true,
   },
   skipMultilineEncoding: {
     type: Boolean,
-    required: false
+    required: false,
   },
   algorithm: {
     // the encryption algorithm used
     type: String,
-    enum: [ALGORITHM_AES_256_GCM],
     required: true,
-    default: ALGORITHM_AES_256_GCM
   },
   keyEncoding: {
     type: String,
-    enum: [ENCODING_SCHEME_UTF8, ENCODING_SCHEME_BASE64],
     required: true,
-    default: ENCODING_SCHEME_UTF8
   },
   tags: {
     ref: "Tag",
     type: [Schema.Types.ObjectId],
-    default: []
-  }
+    default: [],
+  },
 });
 
 const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
@@ -141,20 +130,19 @@ const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
     workspace: {
       type: Schema.Types.ObjectId,
       ref: "Workspace",
-      required: true
+      required: true,
     },
     environment: {
       type: String,
-      required: true
+      required: true,
     },
     folderId: {
       type: String,
       required: true,
-      default: "root"
+      default: "root",
     },
     slug: {
       type: String,
-      default: () => nanoId()
     },
     reviewers: {
       type: [
@@ -162,12 +150,16 @@ const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
           member: {
             // user associated with the personal secret
             type: Schema.Types.ObjectId,
-            ref: "Membership"
+            ref: "Membership",
           },
-          status: { type: String, enum: ApprovalStatus, default: ApprovalStatus.PENDING }
-        }
+          status: {
+            type: String,
+            enum: ApprovalStatus,
+            default: ApprovalStatus.PENDING,
+          },
+        },
       ],
-      default: []
+      default: [],
     },
     policy: { type: Schema.Types.ObjectId, ref: "SecretApprovalPolicy" },
     hasMerged: { type: Boolean, default: false },
@@ -179,25 +171,25 @@ const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
         secret: { type: Types.ObjectId, ref: "Secret" },
         newVersion: secretApprovalSecretChangeSchema,
         secretVersion: { type: Types.ObjectId, ref: "SecretVersion" },
-        op: { type: String, enum: [CommitType], required: true }
-      }
+        op: { type: String, enum: [CommitType], required: true },
+      },
     ],
     conflicts: {
       type: [
         {
           secretId: { type: String, required: true },
-          op: { type: String, enum: [CommitType], required: true }
-        }
+          op: { type: String, enum: [CommitType], required: true },
+        },
       ],
-      default: []
-    }
+      default: [],
+    },
   },
   {
-    timestamps: true
-  }
+    timestamps: true,
+  },
 );
 
 export const SecretApprovalRequest = model<ISecretApprovalRequest>(
   "SecretApprovalRequest",
-  secretApprovalRequestSchema
+  secretApprovalRequestSchema,
 );

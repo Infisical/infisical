@@ -9,43 +9,45 @@ export interface IRole {
   workspace: Types.ObjectId;
   organization: Types.ObjectId;
   isOrgRole: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const roleSchema = new Schema<IRole>(
   {
     name: {
       type: String,
-      required: true
+      required: true,
     },
     organization: {
       type: Schema.Types.ObjectId,
       ref: "Organization",
-      required: true
+      required: true,
     },
     workspace: {
       type: Schema.Types.ObjectId,
-      ref: "Workspace"
+      ref: "Workspace",
     },
     isOrgRole: {
       type: Boolean,
       required: true,
-      select: false
+      
     },
     description: {
-      type: String
+      type: String,
     },
     slug: {
       type: String,
-      required: true
+      required: true,
     },
     permissions: {
       type: Array,
-      required: true
-    }
+      required: true,
+    },
   },
   {
-    timestamps: true
-  }
+    timestamps: true,
+  },
 );
 
 roleSchema.index({ organization: 1, workspace: 1 });

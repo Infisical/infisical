@@ -1,6 +1,8 @@
 import { Schema, Types, model } from "mongoose";
 
 export interface ISecretSnapshot {
+  id: string;
+  _id: string;
   workspace: Types.ObjectId;
   environment: string;
   folderId: string | "root";
@@ -43,10 +45,10 @@ const secretSnapshotSchema = new Schema<ISecretSnapshot>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export const SecretSnapshot = model<ISecretSnapshot>(
   "SecretSnapshot",
-  secretSnapshotSchema
+  secretSnapshotSchema,
 );

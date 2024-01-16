@@ -7,7 +7,7 @@ export enum AuthMethod {
   GITLAB = "gitlab",
   OKTA_SAML = "okta-saml",
   AZURE_SAML = "azure-saml",
-  JUMPCLOUD_SAML = "jumpcloud-saml"
+  JUMPCLOUD_SAML = "jumpcloud-saml",
 }
 
 export interface IUser extends Document {
@@ -34,6 +34,8 @@ export interface IUser extends Document {
     ip: string;
     userAgent: string;
   }[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 const userSchema = new Schema<IUser>(
@@ -41,101 +43,101 @@ const userSchema = new Schema<IUser>(
     authProvider: {
       // TODO field: deprecate
       type: String,
-      enum: AuthMethod
+      enum: AuthMethod,
     },
     authMethods: {
       type: [
         {
           type: String,
-          enum: AuthMethod
-        }
+          enum: AuthMethod,
+        },
       ],
       default: [AuthMethod.EMAIL],
-      required: true
+      required: true,
     },
     email: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
     },
     firstName: {
-      type: String
+      type: String,
     },
     lastName: {
-      type: String
+      type: String,
     },
     encryptionVersion: {
       type: Number,
-      select: false,
-      default: 1 // to resolve backward-compatibility issues
+      
+      default: 1, // to resolve backward-compatibility issues
     },
     protectedKey: {
       // introduced as part of encryption version 2
       type: String,
-      select: false
+      
     },
     protectedKeyIV: {
       // introduced as part of encryption version 2
       type: String,
-      select: false
+      
     },
     protectedKeyTag: {
       // introduced as part of encryption version 2
       type: String,
-      select: false
+      
     },
     publicKey: {
       type: String,
-      select: false
+      
     },
     encryptedPrivateKey: {
       type: String,
-      select: false
+      
     },
     superAdmin: {
-      type: Boolean
+      type: Boolean,
     },
     iv: {
       // iv of [encryptedPrivateKey]
       type: String,
-      select: false
+      
     },
     tag: {
       // tag of [encryptedPrivateKey]
       type: String,
-      select: false
+      
     },
     salt: {
       type: String,
-      select: false
+      
     },
     verifier: {
       type: String,
-      select: false
+      
     },
     isMfaEnabled: {
       type: Boolean,
-      default: false
+      default: false,
     },
     mfaMethods: [
       {
-        type: String
-      }
+        type: String,
+      },
     ],
     devices: {
       type: [
         {
           ip: String,
-          userAgent: String
-        }
+          userAgent: String,
+        },
       ],
       default: [],
-      select: false
-    }
+      
+    },
   },
   {
-    timestamps: true
-  }
+    timestamps: true,
+  },
 );
 
 export const User = model<IUser>("User", userSchema);

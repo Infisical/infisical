@@ -1,5 +1,4 @@
 import { Document, Schema, Types, model } from "mongoose";
-import { ACCEPTED, ADMIN, CUSTOM, INVITED, MEMBER, NO_ACCESS } from "../variables";
 
 export interface IMembershipOrg extends Document {
   _id: Types.ObjectId;
@@ -9,39 +8,42 @@ export interface IMembershipOrg extends Document {
   role: "admin" | "member" | "no-access" | "custom";
   customRole: Types.ObjectId;
   status: "invited" | "accepted";
+  createdAt: string;
+  updatedAt: string;
 }
 
 const membershipOrgSchema = new Schema(
   {
     user: {
       type: Schema.Types.ObjectId,
-      ref: "User"
+      ref: "User",
     },
     inviteEmail: {
-      type: String
+      type: String,
     },
     organization: {
       type: Schema.Types.ObjectId,
-      ref: "Organization"
+      ref: "Organization",
     },
     role: {
       type: String,
-      enum: [ADMIN, MEMBER, NO_ACCESS, CUSTOM],
-      required: true
+      required: true,
     },
     status: {
       type: String,
-      enum: [INVITED, ACCEPTED],
-      required: true
+      required: true,
     },
     customRole: {
       type: Schema.Types.ObjectId,
-      ref: "Role"
-    }
+      ref: "Role",
+    },
   },
   {
-    timestamps: true
-  }
+    timestamps: true,
+  },
 );
 
-export const MembershipOrg = model<IMembershipOrg>("MembershipOrg", membershipOrgSchema);
+export const MembershipOrg = model<IMembershipOrg>(
+  "MembershipOrg",
+  membershipOrgSchema,
+);

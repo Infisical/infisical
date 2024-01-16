@@ -9,7 +9,6 @@ import { TImmutableDBKeys } from "./models";
 
 export const IdentityAccessTokensSchema = z.object({
   id: z.string().uuid(),
-  authType: z.string(),
   accessTokenTTL: z.number().default(2592000),
   accessTokenMaxTTL: z.number().default(2592000),
   accessTokenNumUses: z.number().default(0),
@@ -24,5 +23,10 @@ export const IdentityAccessTokensSchema = z.object({
 });
 
 export type TIdentityAccessTokens = z.infer<typeof IdentityAccessTokensSchema>;
-export type TIdentityAccessTokensInsert = Omit<TIdentityAccessTokens, TImmutableDBKeys>;
-export type TIdentityAccessTokensUpdate = Partial<Omit<TIdentityAccessTokens, TImmutableDBKeys>>;
+export type TIdentityAccessTokensInsert = Omit<
+  TIdentityAccessTokens,
+  TImmutableDBKeys
+>;
+export type TIdentityAccessTokensUpdate = Partial<
+  Omit<TIdentityAccessTokens, TImmutableDBKeys>
+>;

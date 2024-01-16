@@ -28,7 +28,7 @@ const apiKeyDataSchema = new Schema<IAPIKeyData>(
         secretHash: {
             type: String,
             required: true,
-            select: false,
+            
         },
     }, 
     {
