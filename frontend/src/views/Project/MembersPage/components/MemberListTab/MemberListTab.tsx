@@ -121,13 +121,13 @@ export const MemberListTab = () => {
         members: [{ orgMembershipId, userPublicKey: orgUser.user.publicKey }]
       });
       createNotification({
-        text: "Successfully invited user to the organization.",
+        text: "Successfully added user to the project",
         type: "success"
       });
     } catch (error) {
       console.error(error);
       createNotification({
-        text: "Failed to invite user to org",
+        text: "Failed to add user to project",
         type: "error"
       });
     }
@@ -142,13 +142,13 @@ export const MemberListTab = () => {
     try {
       await removeUserFromWorkspace({ workspaceId, membershipId });
       createNotification({
-        text: "Successfully removed user from workspace",
+        text: "Successfully removed user from project",
         type: "success"
       });
     } catch (error) {
       console.error(error);
       createNotification({
-        text: "Failed to remove user from the organization",
+        text: "Failed to remove user from the project",
         type: "error"
       });
     }
