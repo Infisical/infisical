@@ -92,7 +92,7 @@ export const E2EESection = () => {
             <div className="w-max">
               <Checkbox
                 className="data-[state=checked]:bg-primary"
-                id="autoCapitalization"
+                id="end-to-end-encryption"
                 isChecked={!bot.isActive}
                 isDisabled={!isAllowed}
                 onCheckedChange={async () => {
