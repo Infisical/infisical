@@ -52,7 +52,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
         encryptedKey: z.string().trim(),
         iv: z.string().trim(),
         tag: z.string().trim(),
-        expiresIn: z.number(),
+        expiresIn: z.number().nullable(),
         permissions: z.enum(["read", "write"]).array()
       }),
       response: {
