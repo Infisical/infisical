@@ -53,6 +53,7 @@ import {
   useUpdateUserWorkspaceRole,
   useUploadWsKey
 } from "@app/hooks/api";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const addMemberFormSchema = z.object({
   orgMembershipId: z.string().trim()
@@ -158,7 +159,6 @@ export const MemberListTab = () => {
     () => members?.find(({ user: u }) => userId === u?.id)?.role === "owner",
     [userId, members]
   );
-  console.log(members);
 
   const findRoleFromId = useCallback(
     (roleId: string) => {
@@ -171,7 +171,9 @@ export const MemberListTab = () => {
     if (!currentOrg?.id) return;
 
     try {
-      const isCustomRole = !["admin", "member", "viewer"].includes(role);
+      const isCustomRole = !Object.values(ProjectMembershipRole).includes(
+        role as ProjectMembershipRole
+      );
 
       if (isCustomRole && subscription && !subscription?.rbac) {
         handlePopUpOpen("upgradePlan", {

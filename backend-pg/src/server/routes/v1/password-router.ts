@@ -1,8 +1,9 @@
 import { z } from "zod";
 
-import { BackupPrivateKeySchema } from "@app/db/schemas";
+import { BackupPrivateKeySchema, UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { validateSignUpAuthorization } from "@app/services/auth/auth-fns";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerPasswordRouter = async (server: FastifyZodProvider) => {
@@ -68,6 +69,58 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
+    url: "/email/password-reset",
+    schema: {
+      body: z.object({
+        email: z.string().email().trim()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      await server.services.password.sendPasswordResetEmail(req.body.email);
+
+      return {
+        message: "If an account exists with this email, a password reset link has been sent"
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/email/password-reset-verify",
+    schema: {
+      body: z.object({
+        email: z.string().email().trim(),
+        code: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          user: UsersSchema,
+          token: z.string()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { token, user } = await server.services.password.verifyPasswordResetEmail(
+        req.body.email,
+        req.body.code
+      );
+
+      return {
+        message: "Successfully verified email",
+        user,
+        token
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/backup-private-key",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
@@ -87,9 +140,10 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
+      const token = validateSignUpAuthorization(req.headers.authorization as string, "",false)!
       const backupPrivateKey = await server.services.password.createBackupPrivateKey({
         ...req.body,
-        userId: req.permission.id
+        userId: token.userId,
       });
       if (!backupPrivateKey) throw new Error("Failed to create backup key");
 
@@ -100,7 +154,6 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/backup-private-key",
-    onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       response: {
         200: z.object({
@@ -110,8 +163,9 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
+      const token = validateSignUpAuthorization(req.headers.authorization as string, "",false)!
       const backupPrivateKey = await server.services.password.getBackupPrivateKeyOfUser(
-        req.permission.id
+        token.userId
       );
       if (!backupPrivateKey) throw new Error("Failed to find backup key");
 
@@ -121,8 +175,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/email/password-reset",
-    onRequest: verifyAuth([AuthMode.JWT]),
+    url: "/password-reset",
     schema: {
       body: z.object({
         protectedKey: z.string().trim(),
@@ -141,9 +194,10 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
+      const token = validateSignUpAuthorization(req.headers.authorization as string, "",false)!
       await server.services.password.resetPasswordByBackupKey({
         ...req.body,
-        userId: req.permission.id
+        userId: token.userId,
       });
 
       return { message: "Successfully updated backup private key" };

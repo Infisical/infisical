@@ -10,7 +10,13 @@ import {
   TOrgMembershipsUpdate
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, withTransaction } from "@app/lib/knex";
+import {
+  buildFindFilter,
+  selectAllTableCols,
+  TFindFilter,
+  TFindOpt,
+  withTransaction
+} from "@app/lib/knex";
 
 export type TOrgDalFactory = ReturnType<typeof orgDalFactory>;
 
@@ -109,7 +115,7 @@ export const orgDalFactory = (db: TDbClient) => {
 
   // MEMBERSHIP OPERATIONS
   // --------------------
-  const orgMembershipOrm = ormify(db, TableName.OrgMembership);
+  // const orgMembershipOrm = ormify(db, TableName.OrgMembership);
 
   const createMembership = async (data: TOrgMembershipsInsert, tx?: Knex) => {
     try {
@@ -160,6 +166,32 @@ export const orgDalFactory = (db: TDbClient) => {
     }
   };
 
+  const findMembership = async (
+    filter: TFindFilter<TOrgMemberships>,
+    { offset, limit, sort, tx }: TFindOpt<TOrgMemberships> = {}
+  ) => {
+    try {
+      const query = (tx || db)(TableName.OrgMembership)
+        .where(buildFindFilter(filter))
+        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
+        .select(
+          selectAllTableCols(TableName.OrgMembership),
+          db.ref("email").withSchema(TableName.Users)
+        );
+      if (limit) query.limit(limit);
+      if (offset) query.offset(offset);
+      if (sort) {
+        query.orderBy(
+          sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls }))
+        );
+      }
+      const res = await query;
+      return res;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find one" });
+    }
+  };
+
   return withTransaction(db, {
     findAllOrgMembers,
     findOrgById,
@@ -167,7 +199,7 @@ export const orgDalFactory = (db: TDbClient) => {
     create,
     updateById,
     deleteById,
-    findMembership: orgMembershipOrm.find,
+    findMembership,
     createMembership,
     updateMembershipById,
     deleteMembershipById,

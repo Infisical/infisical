@@ -15,7 +15,10 @@ const generalPermissionSchema = z
 export const formSchema = z.object({
   name: z.string().trim(),
   description: z.string().trim().optional(),
-  slug: z.string().trim(),
+  slug: z
+    .string()
+    .trim()
+    .refine((val) => val !== "custom", { message: "Cannot use custom as its a keyword" }),
   permissions: z
     .object({
       workspace: z

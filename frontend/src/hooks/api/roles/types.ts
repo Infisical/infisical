@@ -1,3 +1,11 @@
+export enum ProjectMembershipRole {
+  Admin = "admin",
+  Member = "member",
+  Custom = "custom",
+  Viewer = "viewer",
+  NoAccess = "no-access"
+}
+
 export type TGetProjectRolesDTO = {
   workspaceId?: string;
 };

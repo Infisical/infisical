@@ -31,6 +31,8 @@ export const sapPubSchema = SecretApprovalPoliciesSchema.merge(
 export const secretRawSchema = z.object({
   id: z.string(),
   _id: z.string(),
+  workspace: z.string(),
+  environment: z.string(),
   version: z.number(),
   type: z.string(),
   secretKey: z.string(),

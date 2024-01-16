@@ -21,7 +21,7 @@ export const validateProviderAuthToken = (providerToken: string, email: string) 
   if (decodedToken.email !== email) throw new Error("Invalid auth credentials");
 };
 
-export const validateSignUpAuthorization = async (token: string, userId: string) => {
+export const validateSignUpAuthorization = (token: string, userId: string, validate = true) => {
   const appCfg = getConfig();
   const [AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE] = <[string, string]>token?.split(" ", 2) ?? [
     null,
@@ -45,6 +45,7 @@ export const validateSignUpAuthorization = async (token: string, userId: string)
     AUTH_TOKEN_VALUE,
     appCfg.JWT_AUTH_SECRET
   ) as AuthModeProviderSignUpTokenPayload;
+  if (!validate) return decodedToken;
 
   if (decodedToken.authTokenType !== AuthTokenType.SIGNUP_TOKEN) throw new UnauthorizedError();
   if (decodedToken.userId !== userId) throw new UnauthorizedError();

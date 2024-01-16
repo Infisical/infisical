@@ -167,6 +167,12 @@ export type TDeleteSecretRawDTO = TProjectPermission & {
   type: SecretType;
 };
 
+export type TGetSecretVersionsDTO = Omit<TProjectPermission, "projectId"> & {
+  limit?: number;
+  offset?: number;
+  secretId: string;
+};
+
 export type TFnSecretBulkInsert = {
   folderId: string;
   tx?: Knex;

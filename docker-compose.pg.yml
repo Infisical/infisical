@@ -74,6 +74,16 @@ services:
       - NEXT_PUBLIC_ENV=development
       - INFISICAL_TELEMETRY_ENABLED=false
 
+  smtp-server:
+    container_name: infisical-dev-smtp-server
+    image: lytrax/mailhog:latest # https://github.com/mailhog/MailHog/issues/353#issuecomment-821137362
+    restart: always
+    logging:
+      driver: "none" # disable saving logs
+    ports:
+      - 1025:1025 # SMTP server
+      - 8025:8025 # Web UI
+
 volumes:
   postgres-data:
     driver: local

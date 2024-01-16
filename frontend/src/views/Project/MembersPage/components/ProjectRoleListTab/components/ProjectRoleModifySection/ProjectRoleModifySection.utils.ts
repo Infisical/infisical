@@ -28,7 +28,10 @@ const PERMISSION_ACTIONS = ["read", "create", "edit", "delete"] as const;
 export const formSchema = z.object({
   name: z.string().trim(),
   description: z.string().trim().optional(),
-  slug: z.string().trim(),
+  slug: z
+    .string()
+    .trim()
+    .refine((val) => val !== "custom", { message: "Cannot use custom as its a keyword" }),
   permissions: z
     .object({
       secrets: z.record(multiEnvPermissionSchema).optional(),

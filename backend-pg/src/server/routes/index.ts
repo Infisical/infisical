@@ -251,7 +251,6 @@ export const registerRoutes = async (
   const apiKeyService = apiKeyServiceFactory({ apiKeyDal, userDal });
 
   const secretScanningQueue = secretScanningQueueFactory({
-    userDal,
     smtpService,
     secretScanningDal,
     queueService,

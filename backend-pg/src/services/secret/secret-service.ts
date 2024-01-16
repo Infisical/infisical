@@ -38,6 +38,7 @@ import {
   TGetASecretRawDTO,
   TGetSecretsDTO,
   TGetSecretsRawDTO,
+  TGetSecretVersionsDTO,
   TListSecretVersionDTO,
   TUpdateBulkSecretDTO,
   TUpdateSecretDTO,
@@ -326,7 +327,7 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return { ...secret[0], tags };
+    return { ...secret[0], environment, workspace: projectId, tags };
   };
 
   const updateSecret = async ({
@@ -419,7 +420,7 @@ export const secretServiceFactory = ({
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return updatedSecret[0];
+    return { ...updatedSecret[0], workspace: projectId, environment };
   };
 
   const deleteSecret = async ({
@@ -474,7 +475,7 @@ export const secretServiceFactory = ({
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
 
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return deletedSecret[0];
+    return { ...deletedSecret[0], workspace: projectId, environment };
   };
 
   const getSecrets = async ({
@@ -515,9 +516,12 @@ export const secretServiceFactory = ({
         secretDal,
         folderDal
       });
-      return { secrets, imports: importedSecrets };
+      return {
+        secrets: secrets.map((el) => ({ ...el, workspace: projectId, environment })),
+        imports: importedSecrets
+      };
     }
-    return { secrets };
+    return { secrets: secrets.map((el) => ({ ...el, workspace: projectId, environment })) };
   };
 
   const getASecret = async ({
@@ -572,14 +576,18 @@ export const secretServiceFactory = ({
       for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
         for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {
           if (secretBlindIndex === importedSecrets[i].secrets[j].secretBlindIndex) {
-            return importedSecrets[i].secrets[j];
+            return {
+              ...importedSecrets[i].secrets[j],
+              workspace: projectId,
+              environment: importedSecrets[i].environment.slug
+            };
           }
         }
       }
     }
     if (!secret) throw new BadRequestError({ message: "Secret not found" });
 
-    return secret;
+    return { ...secret, workspace: projectId, environment };
   };
 
   const createManySecret = async ({
@@ -813,7 +821,12 @@ export const secretServiceFactory = ({
       secrets: secrets.map((el) => decryptSecretRaw(el, botKey)),
       imports: (imports || [])?.map(({ secrets: importedSecrets, ...el }) => ({
         ...el,
-        secrets: importedSecrets.map((sec) => decryptSecretRaw(sec, botKey))
+        secrets: importedSecrets.map((sec) =>
+          decryptSecretRaw(
+            { ...sec, environment: el.environment.slug, workspace: projectId },
+            botKey
+          )
+        )
       }))
     };
   };
@@ -953,6 +966,36 @@ export const secretServiceFactory = ({
     return decryptSecretRaw(secret, botKey);
   };
 
+  const getSecretVersions = async ({
+    actorId,
+    actor,
+    limit = 20,
+    offset = 0,
+    secretId
+  }: TGetSecretVersionsDTO) => {
+    const secret = await secretDal.findById(secretId);
+    if (!secret) throw new BadRequestError({ message: "Failed to find secret" });
+
+    const folder = await folderDal.findById(secret.folderId);
+    if (!folder) throw new BadRequestError({ message: "Failed to find secret" });
+
+    const { permission } = await permissionService.getProjectPermission(
+      actor,
+      actorId,
+      folder.projectId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.SecretRollback
+    );
+
+    const secretVersions = await secretVersionDal.find(
+      { secretId },
+      { offset, limit, sort: [["createdAt", "desc"]] }
+    );
+    return secretVersions;
+  };
+
   return {
     createSecret,
     deleteSecret,
@@ -968,6 +1011,7 @@ export const secretServiceFactory = ({
     updateSecretRaw,
     deleteSecretRaw,
     listSecretVersionsBySecretId,
+    getSecretVersions,
     // external services function
     fnSecretBulkDelete,
     fnSecretBulkUpdate,

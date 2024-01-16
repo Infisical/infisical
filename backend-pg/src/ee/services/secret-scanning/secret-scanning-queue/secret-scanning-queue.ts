@@ -6,12 +6,12 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TOrgDalFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
-import { TUserDalFactory } from "@app/services/user/user-dal";
 
 import { TSecretScanningDalFactory } from "../secret-scanning-dal";
 import {
   scanContentAndGetFindings,
-  scanFullRepoContentAndGetFindings} from "./secret-scanning-fns";
+  scanFullRepoContentAndGetFindings
+} from "./secret-scanning-fns";
 import {
   SecretMatch,
   TScanFullRepoEventPayload,
@@ -23,7 +23,6 @@ type TSecretScanningQueueFactoryDep = {
   secretScanningDal: TSecretScanningDalFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgMembershipDal: Pick<TOrgDalFactory, "findMembership">;
-  userDal: Pick<TUserDalFactory, "find">;
 };
 
 export type TSecretScanningQueueFactory = ReturnType<typeof secretScanningQueueFactory>;
@@ -33,7 +32,6 @@ export const secretScanningQueueFactory = ({
   secretScanningDal,
   smtpService,
   orgMembershipDal: orgMemberDal,
-  userDal
 }: TSecretScanningQueueFactoryDep) => {
   const startFullRepoScan = async (payload: TScanFullRepoEventPayload) => {
     await queueService.queue(QueueName.SecretFullRepoScan, QueueJobs.SecretScan, payload, {
@@ -69,12 +67,7 @@ export const secretScanningQueueFactory = ({
       orgId: organizationId,
       role: OrgMembershipRole.Admin
     });
-    const userEmails = await userDal.find({
-      $in: {
-        id: adminsOfWork.map(({ userId }) => userId).filter(Boolean) as string[]
-      }
-    });
-    return userEmails.map((userObject) => userObject.email);
+    return adminsOfWork.map((userObject) => userObject.email);
   };
 
   queueService.start(QueueName.SecretPushEventScan, async (job) => {

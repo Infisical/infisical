@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrgMembershipStatus, ProjectMembershipRole } from "@app/db/schemas";
+import { OrgMembershipStatus, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
@@ -142,7 +142,11 @@ export const projectMembershipServiceFactory = ({
     );
     const orgMembers = await orgDal.findMembership({
       orgId: project.orgId,
-      $in: { id: members.map(({ orgMembershipId }) => orgMembershipId) }
+      $in: {
+        [`${TableName.OrgMembership}.id` as "id"]: members.map(
+          ({ orgMembershipId }) => orgMembershipId
+        )
+      }
     });
     if (orgMembers.length !== members.length)
       throw new BadRequestError({ message: "Some users are not part of org" });
@@ -180,7 +184,7 @@ export const projectMembershipServiceFactory = ({
     await smtpService.sendMail({
       template: SmtpTemplates.WorkspaceInvite,
       subjectLine: "Infisical workspace invitation",
-      recipients: orgMembers.map(({ userId }) => userId).filter(Boolean) as string[],
+      recipients: orgMembers.map(({ email }) => email).filter(Boolean) as string[],
       substitutions: {
         inviterFirstName: sender.firstName,
         inviterEmail: sender.email,

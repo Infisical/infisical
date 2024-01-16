@@ -197,7 +197,10 @@ export const interpolateSecrets = ({
   return expandSecrets;
 };
 
-export const decryptSecretRaw = (secret: TSecrets, key: string) => {
+export const decryptSecretRaw = (
+  secret: TSecrets & { workspace: string; environment: string },
+  key: string
+) => {
   const secretKey = decryptSymmetric128BitHexKeyUTF8({
     ciphertext: secret.secretKeyCiphertext,
     iv: secret.secretKeyIV,
@@ -225,6 +228,8 @@ export const decryptSecretRaw = (secret: TSecrets, key: string) => {
 
   return {
     secretKey,
+    workspace: secret.workspace,
+    environment: secret.environment,
     secretValue,
     secretComment,
     version: secret.version,
