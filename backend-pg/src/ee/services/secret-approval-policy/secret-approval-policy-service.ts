@@ -217,7 +217,7 @@ export const secretApprovalPolicyServiceFactory = ({
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
-      ProjectPermissionSub.SecretApproval
+      ProjectPermissionSub.Secrets
     );
     return getSapPolicy(projectId, environment, secretPath);
   };
