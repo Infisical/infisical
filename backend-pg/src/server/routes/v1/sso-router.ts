@@ -59,7 +59,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
 
   // Passport strategy for Github
   const isGithubOauthActive = Boolean(
-    appCfg.CLIENT_SECRET_GITHUB_LOGIN && appCfg.CLIENT_ID_GITLAB_LOGIN
+    appCfg.CLIENT_SECRET_GITHUB_LOGIN && appCfg.CLIENT_ID_GITHUB_LOGIN
   );
   if (isGithubOauthActive) {
     passport.use(
