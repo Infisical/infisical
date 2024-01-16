@@ -13,6 +13,7 @@ module.exports = {
     tsconfigRootDir: __dirname
   },
   rules: {
+    "@typescript-eslint/no-empty-function": "off",
     "consistent-return": "off", // my style
     "import/order": "off", // for simple-import-order
     "import/prefer-default-export": "off", // why
