@@ -470,8 +470,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         skipMultilineEncoding: z.boolean().optional()
       }),
       params: z.object({
-        secretName: z.string().trim(),
-        test: z.string()
+        secretName: z.string().trim()
       }),
       response: {
         200: z.union([
