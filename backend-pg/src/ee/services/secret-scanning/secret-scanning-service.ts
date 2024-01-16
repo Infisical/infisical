@@ -170,8 +170,8 @@ export const secretScanningServiceFactory = ({
     await secretScanningDal.transaction(async (tx) => {
       if (repositoryIds.length) {
         await Promise.all(
-          Object.keys(repositoryIds).map((key) =>
-            secretScanningDal.delete({ repositoryId: key }, tx)
+          repositoryIds.map((repoId) =>
+            secretScanningDal.delete({ repositoryId: repoId }, tx)
           )
         );
       }
