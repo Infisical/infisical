@@ -294,7 +294,7 @@ export const SecretDetailSidebar = ({
                       a={ProjectPermissionSub.Tags}
                     >
                       {(isAllowed) => (
-                        <DropdownMenuItem>
+                        <DropdownMenuItem asChild>
                           <Button
                             size="xs"
                             className="w-full"

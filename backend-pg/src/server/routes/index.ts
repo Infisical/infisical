@@ -288,7 +288,8 @@ export const registerRoutes = async (
     permissionService,
     projectEnvDal,
     licenseService,
-    projectDal
+    projectDal,
+    folderDal
   });
   const projectKeyService = projectKeyServiceFactory({
     permissionService,

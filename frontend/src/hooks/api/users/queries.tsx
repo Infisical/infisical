@@ -70,7 +70,7 @@ export const fetchUserAction = async (action: string) => {
       action
     }
   });
-  return data.userAction;
+  return data.userAction || "";
 };
 
 export const useRenameUser = () => {

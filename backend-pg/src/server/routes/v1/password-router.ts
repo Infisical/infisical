@@ -121,7 +121,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/password-reset",
+    url: "/email/password-reset",
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       body: z.object({

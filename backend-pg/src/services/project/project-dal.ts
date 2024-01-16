@@ -17,7 +17,7 @@ export const projectDalFactory = (db: TDbClient) => {
           `${TableName.ProjectMembership}.projectId`,
           `${TableName.Project}.id`
         )
-        .join(
+        .leftJoin(
           TableName.Environment,
           `${TableName.Environment}.projectId`,
           `${TableName.Project}.id`

@@ -11,9 +11,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { TProjectDalFactory } from "../project/project-dal";
 import { TProjectEnvDalFactory } from "./project-env-dal";
 import { TCreateEnvDTO, TDeleteEnvDTO, TUpdateEnvDTO } from "./project-env-types";
+import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
 
 type TProjectEnvServiceFactoryDep = {
   projectEnvDal: TProjectEnvDalFactory;
+  folderDal: Pick<TSecretFolderDalFactory, "create">;
   projectDal: Pick<TProjectDalFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -25,7 +27,8 @@ export const projectEnvServiceFactory = ({
   projectEnvDal,
   permissionService,
   licenseService,
-  projectDal
+  projectDal,
+  folderDal
 }: TProjectEnvServiceFactoryDep) => {
   const createEnvironment = async ({ projectId, actorId, actor, name, slug }: TCreateEnvDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
@@ -56,6 +59,7 @@ export const projectEnvServiceFactory = ({
     const env = await projectEnvDal.transaction(async (tx) => {
       const lastPos = await projectEnvDal.findLastEnvPosition(projectId, tx);
       const doc = await projectEnvDal.create({ slug, name, projectId, position: lastPos + 1 }, tx);
+      await folderDal.create({ name: "root", parentId: null, envId: doc.id, version: 1 }, tx);
       return doc;
     });
     return env;

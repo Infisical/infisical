@@ -32,17 +32,17 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       response: {
-        200: z.any()
+        200: z.object({ plan: z.any() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const data = await server.services.license.getOrgPlan({
+      const plan = await server.services.license.getOrgPlan({
         actorId: req.permission.id,
         actor: req.permission.type,
         orgId: req.params.organizationId
       });
-      return data;
+      return { plan };
     }
   });
 
