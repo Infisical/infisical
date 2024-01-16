@@ -198,7 +198,7 @@ const main = async () => {
 
     let postgres_url = process.env.POSTGRES_DB_URL;
     if (!postgres_url) {
-      postgres_url = prompt("Type the mongodb url: ");
+      postgres_url = prompt("Type the postgres url: ");
     }
 
     console.log("Checking postgres connection...");
