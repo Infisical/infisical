@@ -114,6 +114,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             authMethod: AuthMethod.GITLAB,
             callbackPort: req.query.state as string
           });
+          console.log({ isUserCompleted, providerAuthToken });
 
           return cb(null, { isUserCompleted, providerAuthToken });
         }
@@ -152,7 +153,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       // this is due to zod type difference
     }) as any,
     handler: (req, res) => {
-      if (req.passportUser.isCompleted) {
+      if (req.passportUser.isUserCompleted) {
         return res.redirect(
           `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
             req.passportUser.providerAuthToken
@@ -197,7 +198,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       // this is due to zod type difference
     }) as any,
     handler: (req, res) => {
-      if (req.passportUser.isCompleted) {
+      if (req.passportUser.isUserCompleted) {
         return res.redirect(
           `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
             req.passportUser.providerAuthToken
@@ -242,7 +243,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       // this is due to zod type difference
     }) as any,
     handler: (req, res) => {
-      if (req.passportUser.isCompleted) {
+      if (req.passportUser.isUserCompleted) {
         return res.redirect(
           `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
             req.passportUser.providerAuthToken

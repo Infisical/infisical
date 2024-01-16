@@ -15,6 +15,7 @@ import { TUserDalFactory } from "../user/user-dal";
 import { TAuthDalFactory } from "./auth-dal";
 import { TCompleteAccountInviteDTO, TCompleteAccountSignupDTO } from "./auth-signup-type";
 import { AuthMethod, AuthTokenType } from "./auth-type";
+import { validateProviderAuthToken, validateSignUpAuthorization } from "./auth-fns";
 
 type TAuthSignupDep = {
   authDal: TAuthDalFactory;
@@ -98,7 +99,7 @@ export const authSignupServiceFactory = ({
     email,
     firstName,
     lastName,
-    // providerAuthToken,
+    providerAuthToken,
     salt,
     verifier,
     publicKey,
@@ -111,11 +112,18 @@ export const authSignupServiceFactory = ({
     encryptedPrivateKeyIV,
     encryptedPrivateKeyTag,
     ip,
-    userAgent
+    userAgent,
+    authorization
   }: TCompleteAccountSignupDTO) => {
     const user = await userDal.findUserByEmail(email);
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
+    }
+
+    if (providerAuthToken) {
+      validateProviderAuthToken(providerAuthToken, user.email);
+    } else {
+      validateSignUpAuthorization(authorization, user.id);
     }
 
     const updateduser = await authDal.transaction(async (tx) => {

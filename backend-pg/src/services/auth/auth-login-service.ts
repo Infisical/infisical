@@ -16,15 +16,7 @@ import {
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
 import { AuthMethod, AuthTokenType } from "./auth-type";
-
-const isValidProviderAuthToken = (email: string, jwtSecret: string, providerAuthToken?: string) => {
-  if (!providerAuthToken) return false;
-  const decodedToken = jwt.verify(providerAuthToken, jwtSecret) as jwt.JwtPayload;
-
-  if (decodedToken.authTokenType !== AuthTokenType.PROVIDER_TOKEN) return false;
-  if (decodedToken.email !== email) return false;
-  return true;
-};
+import { validateProviderAuthToken } from "./auth-fns";
 
 type TAuthLoginServiceFactoryDep = {
   userDal: TUserDalFactory;
@@ -136,13 +128,10 @@ export const authLoginServiceFactory = ({
     if (!userEnc || (userEnc && !userEnc.isAccepted)) {
       throw new Error("Failed to find  user");
     }
-    const cfg = getConfig();
-    if (
-      !userEnc.authMethods?.includes(AuthMethod.EMAIL) &&
-      !isValidProviderAuthToken(email, cfg.JWT_AUTH_SECRET, providerAuthToken)
-    ) {
-      throw new Error("Invalid authorization request");
+    if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
+      validateProviderAuthToken(providerAuthToken as string, email);
     }
+
     const serverSrpKey = await generateSrpServerKey(userEnc.salt, userEnc.verifier);
     const userEncKeys = await userDal.updateUserEncryptionByUserId(userEnc.userId, {
       clientPublicKey,
@@ -166,11 +155,8 @@ export const authLoginServiceFactory = ({
     if (!userEnc) throw new Error("Failed to find user");
     const cfg = getConfig();
 
-    if (
-      !userEnc.authMethods?.includes(AuthMethod.EMAIL) &&
-      !isValidProviderAuthToken(email, cfg.JWT_AUTH_SECRET, providerAuthToken)
-    ) {
-      throw new Error("Invalid authorization request");
+    if (!userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
+      validateProviderAuthToken(providerAuthToken as string, email);
     }
 
     if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey)
@@ -252,7 +238,6 @@ export const authLoginServiceFactory = ({
     }
     const isLinkingRequired = !user?.authMethods?.includes(authMethod);
     const isUserCompleted = user.isAccepted;
-
     const providerAuthToken = jwt.sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,

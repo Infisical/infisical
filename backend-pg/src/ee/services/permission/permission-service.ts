@@ -28,7 +28,8 @@ import {
   projectAdminPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions,
-  ProjectPermissionSet
+  ProjectPermissionSet,
+  projectViewerPermission
 } from "./project-permission";
 
 type TPermissionServiceFactoryDep = {
@@ -74,6 +75,8 @@ export const permissionServiceFactory = ({
         return projectAdminPermissions;
       case ProjectMembershipRole.Member:
         return projectMemberPermissions;
+      case ProjectMembershipRole.Viewer:
+        return projectViewerPermission;
       case ProjectMembershipRole.NoAccess:
         return projectNoAccessPermissions;
       case ProjectMembershipRole.Custom:

@@ -16,6 +16,7 @@ export type TCompleteAccountSignupDTO = {
   attributionSource?: string | undefined;
   ip: string;
   userAgent: string;
+  authorization: string;
 };
 
 export type TCompleteAccountInviteDTO = {

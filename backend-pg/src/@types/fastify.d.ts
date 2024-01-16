@@ -59,7 +59,7 @@ declare module "fastify" {
     };
     // passport data
     passportUser: {
-      isCompleted: string;
+      isUserCompleted: string;
       providerAuthToken: string;
     };
     auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;

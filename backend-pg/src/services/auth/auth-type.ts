@@ -47,3 +47,13 @@ export type AuthModeRefreshJwtTokenPayload = {
   tokenVersionId: string;
   refreshVersion: number;
 };
+
+export type AuthModeProviderJwtTokenPayload = {
+  authTokenType: AuthTokenType.PROVIDER_TOKEN;
+  email: string;
+};
+
+export type AuthModeProviderSignUpTokenPayload = {
+  authTokenType: AuthTokenType.SIGNUP_TOKEN;
+  userId: string;
+};

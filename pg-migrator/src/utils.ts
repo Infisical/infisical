@@ -6,14 +6,22 @@ export const createJunctionTable = (
   knex: Knex,
   tableName: TableName,
   table1Name: TableName,
-  table2Name: TableName
+  table2Name: TableName,
 ) =>
   knex.schema.createTable(tableName, (table) => {
     table.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
     table.uuid(`${table1Name}Id`).unsigned().notNullable(); // Foreign key for table1
     table.uuid(`${table2Name}Id`).unsigned().notNullable(); // Foreign key for table2
-    table.foreign(`${table1Name}Id`).references("id").inTable(table1Name);
-    table.foreign(`${table2Name}Id`).references("id").inTable(table2Name);
+    table
+      .foreign(`${table1Name}Id`)
+      .references("id")
+      .inTable(table1Name)
+      .onDelete("CASCADE");
+    table
+      .foreign(`${table2Name}Id`)
+      .references("id")
+      .inTable(table2Name)
+      .onDelete("CASCADE");
   });
 
 // one time logic
