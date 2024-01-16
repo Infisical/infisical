@@ -127,7 +127,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       // this is due to zod type difference
     }) as any,
     handler: (req, res) => {
-      if (req.passportUser.isCompleted) {
+      if (req.passportUser.isUserCompleted) {
         return res.redirect(
           `${appCfg.SITE_URL}/login/sso?token=${encodeURIComponent(
             req.passportUser.providerAuthToken

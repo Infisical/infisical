@@ -1,11 +1,13 @@
-import { getConfig } from "@app/lib/config/env";
 import jwt from "jsonwebtoken";
+
+import { getConfig } from "@app/lib/config/env";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+
 import {
   AuthModeProviderJwtTokenPayload,
   AuthModeProviderSignUpTokenPayload,
   AuthTokenType
 } from "./auth-type";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
 export const validateProviderAuthToken = (providerToken: string, email: string) => {
   if (!providerToken) throw new UnauthorizedError();
@@ -15,7 +17,6 @@ export const validateProviderAuthToken = (providerToken: string, email: string) 
     appCfg.JWT_AUTH_SECRET
   ) as AuthModeProviderJwtTokenPayload;
 
-  console.log(decodedToken);
   if (decodedToken.authTokenType !== AuthTokenType.PROVIDER_TOKEN) throw new UnauthorizedError();
   if (decodedToken.email !== email) throw new Error("Invalid auth credentials");
 };

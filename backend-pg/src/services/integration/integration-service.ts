@@ -9,6 +9,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 
 import { TIntegrationAuthDalFactory } from "../integration-auth/integration-auth-dal";
+import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
 import { TIntegrationDalFactory } from "./integration-dal";
 import {
@@ -16,7 +17,6 @@ import {
   TDeleteIntegrationDTO,
   TUpdateIntegrationDTO
 } from "./integration-types";
-import { TSecretQueueFactory } from "../secret/secret-queue";
 
 type TIntegrationServiceFactoryDep = {
   integrationDal: TIntegrationDalFactory;

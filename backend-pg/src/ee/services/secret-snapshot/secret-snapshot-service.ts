@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { TSecretDalFactory } from "@app/services/secret/secret-dal";
 import { TSecretVersionDalFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretFolderDalFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -19,7 +20,6 @@ import {
 import { TSnapshotDalFactory } from "./snapshot-dal";
 import { TSnapshotFolderDalFactory } from "./snapshot-folder-dal";
 import { TSnapshotSecretDalFactory } from "./snapshot-secret-dal";
-import { logger } from "@app/lib/logger";
 
 type TSecretSnapshotServiceFactoryDep = {
   snapshotDal: TSnapshotDalFactory;

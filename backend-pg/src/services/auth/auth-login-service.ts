@@ -9,6 +9,7 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDalFactory } from "../user/user-dal";
+import { validateProviderAuthToken } from "./auth-fns";
 import {
   TLoginClientProofDTO,
   TLoginGenServerPublicKeyDTO,
@@ -16,7 +17,6 @@ import {
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
 import { AuthMethod, AuthTokenType } from "./auth-type";
-import { validateProviderAuthToken } from "./auth-fns";
 
 type TAuthLoginServiceFactoryDep = {
   userDal: TUserDalFactory;

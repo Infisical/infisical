@@ -13,9 +13,9 @@ import { TOrgServiceFactory } from "../org/org-service";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDalFactory } from "../user/user-dal";
 import { TAuthDalFactory } from "./auth-dal";
+import { validateProviderAuthToken, validateSignUpAuthorization } from "./auth-fns";
 import { TCompleteAccountInviteDTO, TCompleteAccountSignupDTO } from "./auth-signup-type";
 import { AuthMethod, AuthTokenType } from "./auth-type";
-import { validateProviderAuthToken, validateSignUpAuthorization } from "./auth-fns";
 
 type TAuthSignupDep = {
   authDal: TAuthDalFactory;

@@ -87,7 +87,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           ...req.body,
           ip: req.realIp,
           userAgent,
-          authorization: req.headers.authorization
+          authorization: req.headers.authorization as string
         });
 
       res.setCookie("jid", refreshToken, {

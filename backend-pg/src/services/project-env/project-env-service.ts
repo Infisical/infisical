@@ -9,9 +9,9 @@ import {
 import { BadRequestError } from "@app/lib/errors";
 
 import { TProjectDalFactory } from "../project/project-dal";
+import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
 import { TProjectEnvDalFactory } from "./project-env-dal";
 import { TCreateEnvDTO, TDeleteEnvDTO, TUpdateEnvDTO } from "./project-env-types";
-import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
 
 type TProjectEnvServiceFactoryDep = {
   projectEnvDal: TProjectEnvDalFactory;

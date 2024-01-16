@@ -7,10 +7,10 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { decryptSymmetric, decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
 import { TWebhookDalFactory } from "./webhook-dal";
-import { logger } from "@app/lib/logger";
 
 const WEBHOOK_TRIGGER_TIMEOUT = 15 * 1000;
 export const triggerWebhookRequest = async (

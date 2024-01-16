@@ -114,7 +114,6 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
             authMethod: AuthMethod.GITLAB,
             callbackPort: req.query.state as string
           });
-          console.log({ isUserCompleted, providerAuthToken });
 
           return cb(null, { isUserCompleted, providerAuthToken });
         }
