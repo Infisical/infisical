@@ -18,6 +18,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
             .object({
               name: z.string(),
               slug: z.string(),
+              clientSlug: z.string().optional(),
               image: z.string(),
               isAvailable: z.boolean().optional(),
               type: z.string(),
@@ -192,7 +193,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
           apps: z
             .object({
               name: z.string(),
-              appId: z.string().optional(),
+              appId: z.coerce.string().optional(),
               owner: z.string().optional()
             })
             .array()
@@ -533,7 +534,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
               type: z.string(),
               is_private: z.boolean(),
               created_on: z.string(),
-              updated_on: z.string()
+              updated_on: z.string().optional()
             })
             .array()
         })

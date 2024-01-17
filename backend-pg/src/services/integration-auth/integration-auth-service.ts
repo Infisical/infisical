@@ -770,7 +770,7 @@ export const integrationAuthServiceFactory = ({
       `;
 
       const variables = {
-        projectId: appId
+        id: appId
       };
 
       const {
