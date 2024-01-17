@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import bcrypt from "bcrypt";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
@@ -51,6 +51,14 @@ export const serviceTokenServiceFactory = ({
       ProjectPermissionActions.Create,
       ProjectPermissionSub.ServiceTokens
     );
+    
+    scopes.forEach(({ environment, secretPath }) => {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Create,
+        subject(ProjectPermissionSub.Secrets, { environment, secretPath: secretPath })
+      );
+    })
+    
     const appCfg = getConfig();
 
     // validates env
