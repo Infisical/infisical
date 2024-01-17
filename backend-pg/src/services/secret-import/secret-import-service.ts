@@ -48,9 +48,17 @@ export const secretImportServiceFactory = ({
     path
   }: TCreateSecretImportDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    
+    // check if user has permission to import into destination  path
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
+    );
+
+    // check if user has permission to import from target path
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      subject(ProjectPermissionSub.Secrets, { environment: data.environment, secretPath: data.path })
     );
 
     const folder = await folderDal.findBySecretPath(projectId, environment, path);
