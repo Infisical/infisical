@@ -1,13 +1,16 @@
+import picomatch from "picomatch";
 import { z } from "zod";
 
 import {
   SecretApprovalRequestsSchema,
   SecretsSchema,
   SecretTagsSchema,
-  SecretType
+  SecretType,
+  ServiceTokenScopes,
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CommitType } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { BadRequestError } from "@app/lib/errors";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
@@ -19,8 +22,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     method: "GET",
     schema: {
       querystring: z.object({
-        workspaceId: z.string().trim(),
-        environment: z.string().trim(),
+        workspaceId: z.string().trim().optional(),
+        environment: z.string().trim().optional(),
         secretPath: z.string().trim().default("/"),
         include_imports: z
           .enum(["true", "false"])
@@ -53,12 +56,26 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       AuthMode.IDENTITY_ACCESS_TOKEN
     ]),
     handler: async (req) => {
+      // just for delivery hero usecase
+      let {secretPath,environment,workspaceId} = req.query;
+      if(req.auth.actor === ActorType.SERVICE){
+        const scope = ServiceTokenScopes.parse(req.auth.serviceToken.scopes);
+        const isSingleScope = scope.length === 1;
+        if(isSingleScope && !picomatch.scan(scope[0].secretPath).isGlob){
+          secretPath = scope[0].secretPath;
+          environment = scope[0].environment;
+          workspaceId = req.auth.serviceToken.projectId;
+        }
+      }
+
+      if(!workspaceId || !environment) throw new BadRequestError({message:"Missing workspace id or environment"})
+
       const { secrets, imports } = await server.services.secret.getSecretsRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
-        environment: req.query.environment,
-        projectId: req.query.workspaceId,
-        path: req.query.secretPath,
+        environment, 
+        projectId: workspaceId as string,
+        path: secretPath,
         includeImports: req.query.include_imports
       });
 
@@ -68,7 +85,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.GET_SECRETS,
           metadata: {
-            environment: req.query.environment,
+            environment,
             secretPath: req.query.secretPath,
             numberOfSecrets: secrets.length
           }
