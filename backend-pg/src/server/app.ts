@@ -34,7 +34,8 @@ export const main = async ({ db, smtp, logger, queue }: TMain) => {
   const appCfg = getConfig();
   const server = fasitfy({
     logger,
-    trustProxy: true
+    trustProxy: true,
+    ignoreTrailingSlash: true,
   }).withTypeProvider<ZodTypeProvider>();
 
   server.setValidatorCompiler(validatorCompiler);
