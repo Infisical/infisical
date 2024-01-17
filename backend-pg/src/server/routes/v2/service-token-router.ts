@@ -16,10 +16,10 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
   server.route({
     url: "/",
     method: "GET",
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.SERVICE_TOKEN]),
     schema: {
       response: {
-        200: sanitizedServiceTokenSchema.merge(z.object({ workspace: z.string() }))
+        200: ServiceTokensSchema.merge(z.object({ workspace: z.string() }))
       }
     },
     handler: async (req) => {
