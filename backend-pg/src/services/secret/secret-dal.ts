@@ -1,14 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  SecretsSchema,
-  SecretType,
-  TableName,
-  TSecrets,
-  TSecretsInsert,
-  TSecretsUpdate
-} from "@app/db/schemas";
+import { SecretsSchema, SecretType, TableName, TSecrets, TSecretsUpdate } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
@@ -36,13 +29,22 @@ export const secretDalFactory = (db: TDbClient) => {
 
   // the idea is to use postgres specific function
   // insert with id this will cause a conflict then merge the data
-  const bulkUpdate = async (data: Array<TSecretsUpdate & { id: string }>, tx?: Knex) => {
+  const bulkUpdate = async (
+    data: Array<{ filter: Partial<TSecrets>; data: TSecretsUpdate }>,
+    tx?: Knex
+  ) => {
     try {
-      const secs = await (tx || db)(TableName.Secret)
-        .insert(data as TSecretsInsert[])
-        .onConflict("id")
-        .merge()
-        .returning("*");
+      const secs = await Promise.all(
+        data.map(async ({ filter, data: updateData }) => {
+          const [doc] = await (tx || db)(TableName.Secret)
+            .where(filter)
+            .update(updateData)
+            .increment("version", 1)
+            .returning("*");
+          if (!doc) throw new BadRequestError({ message: "Failed to update document" });
+          return doc;
+        })
+      );
       return secs;
     } catch (error) {
       throw new DatabaseError({ error, name: "bulk update secret" });

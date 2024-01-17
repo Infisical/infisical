@@ -81,6 +81,7 @@ export const secretApprovalRequestServiceFactory = ({
       actorId,
       projectId
     );
+
     const count = await secretApprovalRequestDal.findProjectRequestCount(projectId, membership.id);
     return count;
   };
@@ -91,7 +92,9 @@ export const secretApprovalRequestServiceFactory = ({
     actor,
     status,
     environment,
-    committer
+    committer,
+    limit,
+    offset
   }: TListApprovalsDTO) => {
     if (actor === ActorType.SERVICE)
       throw new BadRequestError({ message: "Cannot use service token" });
@@ -102,7 +105,9 @@ export const secretApprovalRequestServiceFactory = ({
       committer,
       environment,
       status,
-      membershipId: membership.id
+      membershipId: membership.id,
+      limit,
+      offset
     });
     return approvals;
   };
@@ -332,7 +337,11 @@ export const secretApprovalRequestServiceFactory = ({
             projectId,
             tx,
             inputSecrets: secretUpdationCommits.map((el) => ({
-              ...pick(el, [
+              filter: {
+                id: el.secretId,
+                type: SecretType.Shared
+              },
+              data: pick(el, [
                 "secretCommentCiphertext",
                 "secretCommentTag",
                 "secretCommentIV",
@@ -346,14 +355,8 @@ export const secretApprovalRequestServiceFactory = ({
                 "skipMultilineEncoding",
                 "secretReminderNote",
                 "secretReminderRepeatDays",
-                "version",
-                "algorithm",
-                "keyEncoding",
                 "secretBlindIndex"
-              ]),
-              version: (el.secret?.version || 0) + 1,
-              id: el.secretId,
-              type: SecretType.Shared
+              ])
             }))
           })
         : [];

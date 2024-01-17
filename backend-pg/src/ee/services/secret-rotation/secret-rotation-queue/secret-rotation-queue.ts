@@ -1,10 +1,11 @@
-import { SecretKeyEncoding } from "@app/db/schemas";
+import { SecretKeyEncoding, SecretType } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import {
   encryptSymmetric128BitHexKeyUTF8,
   infisicalSymmetricDecrypt,
   infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
-import { daysToMillisecond } from "@app/lib/dates";
+import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -34,7 +35,7 @@ type TSecretRotationQueueFactoryDep = {
   queue: TQueueServiceFactory;
   secretRotationDal: TSecretRotationDalFactory;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  secretDal: Pick<TSecretDalFactory, "bulkUpdate">;
+  secretDal: Pick<TSecretDalFactory, "bulkUpdate" | "find">;
   secretVersionDal: Pick<TSecretVersionDalFactory, "insertMany" | "findLatestVersionMany">;
 };
 
@@ -58,13 +59,25 @@ export const secretRotationQueueFactory = ({
   secretDal,
   secretVersionDal
 }: TSecretRotationQueueFactoryDep) => {
-  const addToQueue = async (rotationId: string, interval: number) =>
+  const addToQueue = async (rotationId: string, interval: number) => {
+    const appCfg = getConfig();
     queue.queue(
       QueueName.SecretRotation,
       QueueJobs.SecretRotation,
       { rotationId },
-      { jobId: rotationId, repeat: { every: daysToMillisecond(interval), immediately: true } }
+      {
+        jobId: rotationId,
+        repeat: {
+          // on prod it this will be in days, in development this will be second
+          every:
+            appCfg.NODE_ENV === "development"
+              ? secondsToMillis(interval)
+              : daysToMillisecond(interval),
+          immediately: true
+        }
+      }
     );
+  };
 
   const removeFromQueue = async (rotationId: string) =>
     queue.stopRepeatableJob(QueueName.SecretRotation, rotationId);
@@ -127,7 +140,14 @@ export const secretRotationQueueFactory = ({
         }
         // set a random value for new password
         newCredential.internal.rotated_password = alphaNumericNanoId(32);
-        const { username, password, host, database, port, ca } = newCredential.inputs;
+        const {
+          admin_username: username,
+          admin_password: password,
+          host,
+          database,
+          port,
+          ca
+        } = newCredential.inputs;
         const dbFunctionArg = {
           username,
           password,
@@ -149,8 +169,10 @@ export const secretRotationQueueFactory = ({
         await secretRotationDbFn({
           ...dbFunctionArg,
           query: "SELECT NOW()",
-          variables: {}
+          variables: []
         });
+        newCredential.outputs.db_username = newCredential.internal.username;
+        newCredential.outputs.db_password = newCredential.internal.rotated_password;
         // clean up
         if (variables.creds.length === 2) variables.creds.pop();
       }
@@ -172,7 +194,6 @@ export const secretRotationQueueFactory = ({
           }
         }
       }
-
       variables.creds.unshift({
         outputs: newCredential.outputs,
         internal: newCredential.internal
@@ -205,15 +226,14 @@ export const secretRotationQueueFactory = ({
         );
         const updatedSecrets = await secretDal.bulkUpdate(
           encryptedSecrets.map(({ secretId, value }) => ({
-            id: secretId,
-            secretValueCiphertext: value.ciphertext,
-            secretValueIV: value.iv,
-            secretValueTag: value.tag
+            // this secret id is validated when user is inserted
+            filter: { id: secretId, type: SecretType.Shared },
+            data: {
+              secretValueCiphertext: value.ciphertext,
+              secretValueIV: value.iv,
+              secretValueTag: value.tag
+            }
           })),
-          tx
-        );
-        await secretDal.bulkUpdate(
-          updatedSecrets.map(({ id, version }) => ({ id, version: (version || 0) + 1 })),
           tx
         );
         await secretVersionDal.insertMany(
@@ -224,7 +244,9 @@ export const secretRotationQueueFactory = ({
           tx
         );
       });
+      logger.info("Finished logging: rotation id: ", rotationId);
     } catch (error) {
+      logger.error(error);
       if (error instanceof DisableRotationErrors) {
         if (job.id) {
           queue.stopRepeatableJob(QueueName.SecretRotation, job.id);

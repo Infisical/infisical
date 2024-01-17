@@ -1,6 +1,12 @@
 import { Knex } from "knex";
 
-import { SecretType, TSecretBlindIndexes, TSecretsInsert, TSecretsUpdate } from "@app/db/schemas";
+import {
+  SecretType,
+  TSecretBlindIndexes,
+  TSecrets,
+  TSecretsInsert,
+  TSecretsUpdate
+} from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 export type TCreateSecretDTO = {
@@ -182,7 +188,7 @@ export type TFnSecretBulkInsert = {
 export type TFnSecretBulkUpdate = {
   folderId: string;
   projectId: string;
-  inputSecrets: Array<TSecretsUpdate & { tags?: string[]; id: string }>;
+  inputSecrets: { filter: Partial<TSecrets>; data: TSecretsUpdate & { tags?: string[] } }[];
   tx?: Knex;
 };
 

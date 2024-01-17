@@ -381,11 +381,12 @@ export const registerRoutes = async (
   });
   const secretRotationService = secretRotationServiceFactory({
     permissionService,
-    projectEnvDal,
     secretRotationDal,
     secretRotationQueue,
     projectDal,
-    licenseService
+    licenseService,
+    secretDal,
+    folderDal
   });
 
   const integrationService = integrationServiceFactory({

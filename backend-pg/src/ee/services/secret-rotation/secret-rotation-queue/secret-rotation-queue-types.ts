@@ -22,6 +22,6 @@ export type TSecretRotationDbFn = {
   database: string;
   port: number;
   query: string;
-  variables: Record<string, unknown>;
+  variables: unknown[];
   ca?: string;
 };

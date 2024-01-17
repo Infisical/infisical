@@ -38,7 +38,7 @@ services:
     profiles: ["test"]
     image: postgres:14-alpine
     ports:
-      - "5432:5432"
+      - "5430:5432"
     environment:
       POSTGRES_PASSWORD: infisical
       POSTGRES_USER: infisical
@@ -54,6 +54,7 @@ services:
     env_file:
       - .env
     environment:
+      - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
     volumes:
       - ./backend-pg/src:/app/src

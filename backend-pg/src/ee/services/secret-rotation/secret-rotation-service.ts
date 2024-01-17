@@ -1,11 +1,12 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import Ajv from "ajv";
 
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 import { TProjectDalFactory } from "@app/services/project/project-dal";
-import { TProjectEnvDalFactory } from "@app/services/project-env/project-env-dal";
+import { TSecretDalFactory } from "@app/services/secret/secret-dal";
+import { TSecretFolderDalFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
@@ -25,8 +26,9 @@ import { rotationTemplates } from "./templates";
 type TSecretRotationServiceFactoryDep = {
   secretRotationDal: TSecretRotationDalFactory;
   projectDal: Pick<TProjectDalFactory, "findById">;
+  folderDal: Pick<TSecretFolderDalFactory, "findBySecretPath">;
+  secretDal: Pick<TSecretDalFactory, "find">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  projectEnvDal: Pick<TProjectEnvDalFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretRotationQueue: TSecretRotationQueueFactory;
 };
@@ -37,10 +39,11 @@ const ajv = new Ajv({ strict: false });
 export const secretRotationServiceFactory = ({
   secretRotationDal,
   permissionService,
-  projectEnvDal,
   secretRotationQueue,
   licenseService,
-  projectDal
+  projectDal,
+  folderDal,
+  secretDal
 }: TSecretRotationServiceFactoryDep) => {
   const getProviderTemplates = async ({ actor, actorId, projectId }: TProjectPermission) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
@@ -71,8 +74,20 @@ export const secretRotationServiceFactory = ({
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretRotation
     );
-    const env = await projectEnvDal.findOne({ slug: environment });
-    if (!env) throw new BadRequestError({ message: "Environment not found" });
+
+    const folder = await folderDal.findBySecretPath(projectId, environment, secretPath);
+    if (!folder) throw new BadRequestError({ message: "Secret path not found" });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+    );
+
+    const selectedSecrets = await secretDal.find({
+      folderId: folder.id,
+      $in: { id: Object.values(outputs) }
+    });
+    if (selectedSecrets.length !== Object.values(outputs).length)
+      throw new BadRequestError({ message: "Secrets not found" });
 
     const project = await projectDal.findById(projectId);
     const plan = await licenseService.getPlan(project.orgId);
@@ -114,7 +129,7 @@ export const secretRotationServiceFactory = ({
           provider,
           secretPath,
           interval,
-          envId: env.id,
+          envId: folder.envId,
           encryptedDataTag: encData.tag,
           encryptedDataIV: encData.iv,
           encryptedData: encData.ciphertext,
@@ -128,7 +143,7 @@ export const secretRotationServiceFactory = ({
         Object.entries(outputs).map(([key, secretId]) => ({ key, secretId, rotationId: doc.id })),
         tx
       );
-      return { ...doc, outputs: outputSecretMapping, environment: env };
+      return { ...doc, outputs: outputSecretMapping, environment: folder.environment };
     });
     return secretRotation;
   };

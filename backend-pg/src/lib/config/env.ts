@@ -16,7 +16,7 @@ const envSchema = z
     REDIS_URL: zpStr(z.string()),
     HOST: zpStr(z.string().default("localhost")),
     DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database conntection string")),
-    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
     // TODO(akhilmhdh): will be changed to one
     ENCRYPTION_KEY: zpStr(z.string().optional()),

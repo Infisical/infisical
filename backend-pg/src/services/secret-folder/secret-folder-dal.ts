@@ -1,7 +1,12 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TSecretFolders, TSecretFoldersUpdate } from "@app/db/schemas";
+import {
+  TableName,
+  TProjectEnvironments,
+  TSecretFolders,
+  TSecretFoldersUpdate
+} from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -65,19 +70,20 @@ const sqlFindMultipleFolderByEnvPathQuery = (
             .select(selectAllTableCols(TableName.SecretFolder))
             .where((wb) =>
               formatedQuery.map(({ secretPath }) =>
-                wb
-                  .orWhereRaw(
-                    `depth = array_position(ARRAY[${secretPath
-                      .map(() => "?")
-                      .join(",")}]::varchar[], ${TableName.SecretFolder}.name,depth)`,
-                    [...secretPath]
-                  )
+                wb.orWhereRaw(
+                  `depth = array_position(ARRAY[${secretPath
+                    .map(() => "?")
+                    .join(",")}]::varchar[], ${TableName.SecretFolder}.name,depth)`,
+                  [...secretPath]
+                )
               )
             )
             .from(TableName.SecretFolder)
-            .join("parent", (bd)=>
-            bd.on("parent.id", `${TableName.SecretFolder}.parentId`).andOn("parent.envId",`${TableName.SecretFolder}.envId`)
-          )
+            .join("parent", (bd) =>
+              bd
+                .on("parent.id", `${TableName.SecretFolder}.parentId`)
+                .andOn("parent.envId", `${TableName.SecretFolder}.envId`)
+            )
         );
     })
     .select("*")
@@ -146,8 +152,28 @@ const sqlFindFolderByPathQuery = (
             .join("parent", "parent.id", `${TableName.SecretFolder}.parentId`)
         );
     })
-    .select("*")
-    .from<TSecretFolders & { depth: number; path: string }>("parent");
+    .from<TSecretFolders & { depth: number; path: string }>("parent")
+    .leftJoin<TProjectEnvironments>(
+      TableName.Environment,
+      `${TableName.Environment}.id`,
+      "parent.envId"
+    )
+    .select<
+      TSecretFolders & {
+        depth: number;
+        path: string;
+        envId: string;
+        envSlug: string;
+        envName: string;
+        projectId: string;
+      }
+    >(
+      selectAllTableCols("parent" as TableName.SecretFolder),
+      db.ref("id").withSchema(TableName.Environment).as("envId"),
+      db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+      db.ref("name").withSchema(TableName.Environment).as("envName"),
+      db.ref("projectId").withSchema(TableName.Environment)
+    );
 };
 
 export type TSecretFolderDalFactory = ReturnType<typeof secretFolderDalFactory>;
@@ -169,7 +195,9 @@ export const secretFolderDalFactory = (db: TDbClient) => {
       if (folder && folder.path !== path) {
         return;
       }
-      return folder;
+      if (!folder) return;
+      const { envId: id, envName: name, envSlug: slug, ...el } = folder;
+      return { ...el, envId: id, environment: { id, name, slug } };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by secret path" });
     }

@@ -98,7 +98,7 @@ export const secretRotationDbFn = async ({
   const db = knex({
     client,
     connection: {
-      db: database,
+      database,
       port,
       host,
       user: username,
@@ -142,17 +142,17 @@ export const secretRotationHttpSetFn = async (
 
 export const getDbSetQuery = (
   db: TDbProviderClients,
-  variable: { username: string; password: string }
+  variables: { username: string; password: string }
 ) => {
   if (db === TDbProviderClients.Pg) {
     return {
-      query: "ALTER USER :username WITH PASSWORD :password",
-      variable
+      query: `ALTER USER ?? WITH PASSWORD '${variables.password}'`,
+      variables: [variables.username]
     };
   }
   // add more based on client
   return {
-    query: "ALTER USER :username IDENTIFIED BY :password",
-    variable
+    query: `ALTER USER ?? IDENTIFIED BY '${variables.password}'`,
+    variables: [variables.username]
   };
 };

@@ -132,20 +132,25 @@ export const secretServiceFactory = ({
     projectId
   }: TFnSecretBulkUpdate) => {
     const newSecrets = await secretDal.bulkUpdate(
-      inputSecrets.map(({ tags, ...el }) => ({ ...el, folderId })),
+      inputSecrets.map(({ filter, data: { tags, ...data } }) => ({
+        filter: { ...filter, folderId },
+        data
+      })),
       tx
     );
-    const secsUpdatedTag = inputSecrets.filter(({ tags }) => Boolean(tags));
+    const secsUpdatedTag = inputSecrets.flatMap(({ data: { tags } }, i) =>
+      tags?.length ? { tags, secretId: newSecrets[i].id } : []
+    );
     if (secsUpdatedTag.length) {
       await secretTagDal.deleteTagsManySecret(
         projectId,
-        secsUpdatedTag.map(({ id }) => id),
+        secsUpdatedTag.flatMap(({ tags }) => tags),
         tx
       );
-      const newSecretTags = secsUpdatedTag.flatMap(({ tags: secretTags = [], id }) =>
+      const newSecretTags = secsUpdatedTag.flatMap(({ tags: secretTags = [], secretId }) =>
         secretTags.map((tag) => ({
           [`${TableName.SecretTag}Id` as const]: tag,
-          [`${TableName.Secret}Id` as const]: id
+          [`${TableName.Secret}Id` as const]: secretId
         }))
       );
       await secretTagDal.saveTagsToSecret(newSecretTags, tx);
@@ -391,26 +396,27 @@ export const secretServiceFactory = ({
         projectId,
         inputSecrets: [
           {
-            id: secrets[0].id,
-            version: (secrets[0].version || 0) + 1,
-            ...pick(el, [
-              "type",
-              "secretCommentCiphertext",
-              "secretCommentTag",
-              "secretCommentIV",
-              "secretValueIV",
-              "secretValueTag",
-              "secretValueCiphertext",
-              "secretKeyCiphertext",
-              "secretKeyTag",
-              "secretKeyIV",
-              "metadata",
-              "skipMultilineEncoding",
-              "secretReminderNote",
-              "secretReminderRepeatDays",
-              "tags"
-            ]),
-            secretBlindIndex: newSecretNameBlindIndex || keyName2BlindIndex[secretName]
+            filter: { id: secrets[0].id },
+            data: {
+              ...pick(el, [
+                "type",
+                "secretCommentCiphertext",
+                "secretCommentTag",
+                "secretCommentIV",
+                "secretValueIV",
+                "secretValueTag",
+                "secretValueCiphertext",
+                "secretKeyCiphertext",
+                "secretKeyTag",
+                "secretKeyIV",
+                "metadata",
+                "skipMultilineEncoding",
+                "secretReminderNote",
+                "secretReminderRepeatDays",
+                "tags"
+              ]),
+              secretBlindIndex: newSecretNameBlindIndex || keyName2BlindIndex[secretName]
+            }
           }
         ],
         tx
@@ -667,7 +673,7 @@ export const secretServiceFactory = ({
     if (!blindIndexCfg)
       throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
 
-    const { keyName2BlindIndex, secrets: secretsToBeUpdated } = await fnSecretBlindIndexCheck({
+    const { keyName2BlindIndex } = await fnSecretBlindIndexCheck({
       inputSecrets,
       folderId,
       isNew: false,
@@ -684,7 +690,6 @@ export const secretServiceFactory = ({
       blindIndexCfg
     });
 
-    const secsGroupedByBlindIndex = groupBy(secretsToBeUpdated, (el) => el.secretBlindIndex);
     // get all tags
     const tagIds = inputSecrets.flatMap(({ tags = [] }) => tags);
     const tags = tagIds.length ? await secretTagDal.findManyTagsById(projectId, tagIds) : [];
@@ -694,13 +699,10 @@ export const secretServiceFactory = ({
         folderId,
         projectId,
         tx,
-        inputSecrets: inputSecrets.map(({ secretName, newSecretName, ...el }) => {
-          const { version, updatedAt, ...info } =
-            secsGroupedByBlindIndex[keyName2BlindIndex[secretName]][0];
-          return {
+        inputSecrets: inputSecrets.map(({ secretName, newSecretName, ...el }) => ({
+          filter: { secretBlindIndex: keyName2BlindIndex[secretName], type: SecretType.Shared },
+          data: {
             ...el,
-            version: (version || 0) + 1,
-            ...info,
             folderId,
             type: SecretType.Shared,
             secretBlindIndex:
@@ -709,8 +711,8 @@ export const secretServiceFactory = ({
                 : keyName2BlindIndex[secretName],
             algorithm: SecretEncryptionAlgo.AES_256_GCM,
             keyEncoding: SecretKeyEncoding.UTF8
-          };
-        })
+          }
+        }))
       })
     );
 
@@ -806,7 +808,8 @@ export const secretServiceFactory = ({
     includeImports
   }: TGetSecretsRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found" });
+    if (!botKey)
+      throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     const { secrets, imports } = await getSecrets({
       actorId,
@@ -842,7 +845,8 @@ export const secretServiceFactory = ({
     includeImports
   }: TGetASecretRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found" });
+    if (!botKey)
+      throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     const secret = await getASecret({
       actorId,
@@ -870,7 +874,8 @@ export const secretServiceFactory = ({
     skipMultilineEncoding
   }: TCreateSecretRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found" });
+    if (!botKey)
+      throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8(secretName, botKey);
     const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
@@ -914,7 +919,8 @@ export const secretServiceFactory = ({
     skipMultilineEncoding
   }: TUpdateSecretRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found" });
+    if (!botKey)
+      throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8(secretValue || "", botKey);
 
@@ -948,7 +954,8 @@ export const secretServiceFactory = ({
     secretPath
   }: TDeleteSecretRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
-    if (!botKey) throw new BadRequestError({ message: "Project bot not found" });
+    if (!botKey)
+      throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
     const secret = await deleteSecret({
       secretName,
