@@ -19,7 +19,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN]),
     schema: {
       response: {
-        200: sanitizedServiceTokenSchema
+        200: sanitizedServiceTokenSchema.merge(z.object({ workspace: z.string() }))
       }
     },
     handler: async (req) => {
@@ -27,7 +27,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actor: req.permission.type
       });
-      return serviceTokenData;
+      return { ...serviceTokenData, workspace: serviceTokenData.projectId };
     }
   });
 
