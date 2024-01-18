@@ -76,6 +76,7 @@ export type TGetASecretDTO = {
   environment: string;
   type: "shared" | "personal";
   includeImports?: boolean;
+  version?: number;
 } & TProjectPermission;
 
 export type TCreateBulkSecretDTO = {
@@ -145,6 +146,7 @@ export type TGetASecretRawDTO = {
   environment: string;
   type: "shared" | "personal";
   includeImports?: boolean;
+  version?: number;
 } & TProjectPermission;
 
 export type TCreateSecretRawDTO = TProjectPermission & {

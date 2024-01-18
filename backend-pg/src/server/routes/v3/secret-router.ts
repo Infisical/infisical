@@ -71,7 +71,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actor: req.permission.type,
         environment,
-        projectId: workspaceId as string,
+        projectId: workspaceId,
         path: secretPath,
         includeImports: req.query.include_imports
       });
@@ -100,9 +100,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName: z.string().trim()
       }),
       querystring: z.object({
-        workspaceId: z.string().trim(),
-        environment: z.string().trim(),
+        workspaceId: z.string().trim().optional(),
+        environment: z.string().trim().optional(),
         secretPath: z.string().trim().default("/"),
+        version: z.coerce.number().optional(),
         type: z.nativeEnum(SecretType).default(SecretType.Shared),
         include_imports: z
           .enum(["true", "false"])
@@ -122,15 +123,30 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       AuthMode.IDENTITY_ACCESS_TOKEN
     ]),
     handler: async (req) => {
-      const secret = await server.services.secret.getASecretRaw({
+      let { secretPath, environment, workspaceId } = req.query;
+      if (req.auth.actor === ActorType.SERVICE) {
+        const scope = ServiceTokenScopes.parse(req.auth.serviceToken.scopes);
+        const isSingleScope = scope.length === 1;
+        if (isSingleScope && !picomatch.scan(scope[0].secretPath).isGlob) {
+          secretPath = scope[0].secretPath;
+          environment = scope[0].environment;
+          workspaceId = req.auth.serviceToken.projectId;
+        }
+      }
+
+      if (!workspaceId || !environment)
+        throw new BadRequestError({ message: "Missing workspace id or environment" });
+
+      const secret = await server.services.secret.getSecretByNameRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
-        environment: req.query.environment,
-        projectId: req.query.workspaceId,
-        path: req.query.secretPath,
+        environment,
+        projectId: workspaceId,
+        path: secretPath,
         secretName: req.params.secretName,
         type: req.query.type,
-        includeImports: req.query.include_imports
+        includeImports: req.query.include_imports,
+        version: req.query.version
       });
 
       await server.services.auditLog.createAuditLog({
@@ -411,6 +427,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/"),
         type: z.nativeEnum(SecretType).default(SecretType.Shared),
+        version: z.coerce.number().optional(),
         include_imports: z
           .enum(["true", "false"])
           .default("false")
@@ -429,7 +446,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       AuthMode.IDENTITY_ACCESS_TOKEN
     ]),
     handler: async (req) => {
-      const secret = await server.services.secret.getASecret({
+      const secret = await server.services.secret.getSecretByName({
         actorId: req.permission.id,
         actor: req.permission.type,
         environment: req.query.environment,
@@ -437,7 +454,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         path: req.query.secretPath,
         secretName: req.params.secretName,
         type: req.query.type,
-        includeImports: req.query.include_imports
+        includeImports: req.query.include_imports,
+        version: req.query.version
       });
 
       await server.services.auditLog.createAuditLog({

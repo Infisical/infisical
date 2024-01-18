@@ -1,6 +1,12 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { SecretEncryptionAlgo, SecretKeyEncoding, SecretType, TableName } from "@app/db/schemas";
+import {
+  SecretEncryptionAlgo,
+  SecretKeyEncoding,
+  SecretsSchema,
+  SecretType,
+  TableName
+} from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
@@ -530,7 +536,7 @@ export const secretServiceFactory = ({
     return { secrets: secrets.map((el) => ({ ...el, workspace: projectId, environment })) };
   };
 
-  const getASecret = async ({
+  const getSecretByName = async ({
     actorId,
     actor,
     projectId,
@@ -538,6 +544,7 @@ export const secretServiceFactory = ({
     path,
     type,
     secretName,
+    version,
     includeImports
   }: TGetASecretDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
@@ -551,12 +558,21 @@ export const secretServiceFactory = ({
 
     const secretBlindIndex = await interalGenSecBlindIndexByName(projectId, secretName);
 
-    const secret = await secretDal.findOne({
-      folderId,
-      type,
-      userId: type === SecretType.Personal ? actorId : null,
-      secretBlindIndex
-    });
+    const secret = await (typeof version !== undefined
+      ? secretDal.findOne({
+          folderId,
+          type,
+          userId: type === SecretType.Personal ? actorId : null,
+          secretBlindIndex
+        })
+      : secretVersionDal
+          .findOne({
+            folderId,
+            type,
+            userId: type === SecretType.Personal ? actorId : null,
+            secretBlindIndex
+          })
+          .then((el) => SecretsSchema.parse({ ...el, id: el.secretId })));
     // now if secret is not found
     // then search for imported secrets
     // here we consider the import order also thus starting from bottom
@@ -831,7 +847,7 @@ export const secretServiceFactory = ({
     };
   };
 
-  const getASecretRaw = async ({
+  const getSecretByNameRaw = async ({
     type,
     path,
     actor,
@@ -839,13 +855,14 @@ export const secretServiceFactory = ({
     projectId,
     actorId,
     secretName,
-    includeImports
+    includeImports,
+    version
   }: TGetASecretRawDTO) => {
     const botKey = await projectBotService.getBotKey(projectId);
     if (!botKey)
       throw new BadRequestError({ message: "Project bot not found", name: "bot_not_found_error" });
 
-    const secret = await getASecret({
+    const secret = await getSecretByName({
       actorId,
       projectId,
       environment,
@@ -853,7 +870,8 @@ export const secretServiceFactory = ({
       path,
       secretName,
       type,
-      includeImports
+      includeImports,
+      version
     });
     return decryptSecretRaw(secret, botKey);
   };
@@ -1007,10 +1025,10 @@ export const secretServiceFactory = ({
     createManySecret,
     updateManySecret,
     deleteManySecret,
-    getASecret,
+    getSecretByName,
     getSecrets,
     getSecretsRaw,
-    getASecretRaw,
+    getSecretByNameRaw,
     createSecretRaw,
     updateSecretRaw,
     deleteSecretRaw,
