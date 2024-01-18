@@ -250,7 +250,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
           secrets: z
             .object({
               secretPath: z.string(),
-              environment: z.object({
+              environment: z.string(),
+              environmentInfo: z.object({
                 id: z.string(),
                 name: z.string(),
                 slug: z.string()

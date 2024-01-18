@@ -585,7 +585,7 @@ export const secretServiceFactory = ({
             return {
               ...importedSecrets[i].secrets[j],
               workspace: projectId,
-              environment: importedSecrets[i].environment.slug
+              environment: importedSecrets[i].environment
             };
           }
         }
@@ -825,10 +825,7 @@ export const secretServiceFactory = ({
       imports: (imports || [])?.map(({ secrets: importedSecrets, ...el }) => ({
         ...el,
         secrets: importedSecrets.map((sec) =>
-          decryptSecretRaw(
-            { ...sec, environment: el.environment.slug, workspace: projectId },
-            botKey
-          )
+          decryptSecretRaw({ ...sec, environment: el.environment, workspace: projectId }, botKey)
         )
       }))
     };

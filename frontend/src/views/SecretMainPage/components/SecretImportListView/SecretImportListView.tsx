@@ -14,7 +14,6 @@ import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-ki
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { DeleteActionModal } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteSecretImport, useUpdateSecretImport } from "@app/hooks/api";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
@@ -25,7 +24,7 @@ import { SecretImportItem } from "./SecretImportItem";
 const SECRET_IN_DASHBOARD = "Present In Dashboard";
 
 type TImportedSecrets = Array<{
-  environment: WorkspaceEnv;
+  environmentInfo: WorkspaceEnv;
   secretPath: string;
   folderId: string;
   secrets: DecryptedSecret[];
@@ -35,27 +34,22 @@ export const computeImportedSecretRows = (
   importedSecEnv: string,
   importedSecPath: string,
   importSecrets: TImportedSecrets = [],
-  secrets: DecryptedSecret[] = [],
-  environments: { name: string; slug: string }[] = []
+  secrets: DecryptedSecret[] = []
 ) => {
   const importedSecIndex = importSecrets.findIndex(
-    ({ secretPath, environment }) =>
-      secretPath === importedSecPath && importedSecEnv === environment.slug
+    ({ secretPath, environmentInfo }) =>
+      secretPath === importedSecPath && importedSecEnv === environmentInfo.slug
   );
   if (importedSecIndex === -1) return [];
 
   const importedSec = importSecrets[importedSecIndex];
 
   const overridenSec: Record<string, { env: string; secretPath: string }> = {};
-  const envSlug2Name: Record<string, string> = {};
-  environments.forEach((el) => {
-    envSlug2Name[el.slug] = el.name;
-  });
 
   for (let i = importedSecIndex + 1; i < importSecrets.length; i += 1) {
     importSecrets[i].secrets.forEach((el) => {
       overridenSec[el.key] = {
-        env: envSlug2Name?.[importSecrets[i].environment.slug] || "unknown",
+        env: importSecrets[i].environmentInfo.name,
         secretPath: importSecrets[i].secretPath
       };
     });
@@ -96,9 +90,7 @@ export const SecretImportListView = ({
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteSecretImport"
   ] as const);
-  const { currentWorkspace } = useWorkspace();
   const { createNotification } = useNotificationContext();
-  const environments = currentWorkspace?.environments || [];
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
     useSensor(TouchSensor, {}),
@@ -179,8 +171,7 @@ export const SecretImportListView = ({
                   importEnv.slug,
                   importPath,
                   importedSecrets,
-                  secrets,
-                  environments
+                  secrets
                 )}
                 secretPath={secretPath}
                 environment={environment}

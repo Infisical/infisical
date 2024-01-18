@@ -33,7 +33,8 @@ export const fnSecretsFromImports = async ({
   const importedSecsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
   return allowedImports.map(({ importPath, importEnv }, i) => ({
     secretPath: importPath,
-    environment: importEnv,
+    environment: importEnv.slug,
+    environmentInfo: importEnv,
     folderId: importedFolders?.[i]?.id,
     secrets: importedFolders?.[i]?.id
       ? importedSecsGroupByFolderId[importedFolders?.[i]?.id as string]

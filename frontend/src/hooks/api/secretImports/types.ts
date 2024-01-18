@@ -13,7 +13,8 @@ export type TSecretImport = {
 };
 
 export type TImportedSecrets = {
-  environment: WorkspaceEnv;
+  environment: string;
+  environmentInfo: WorkspaceEnv;
   secretPath: string;
   folderId: string;
   secrets: EncryptedSecret[];

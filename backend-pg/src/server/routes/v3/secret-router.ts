@@ -6,7 +6,7 @@ import {
   SecretsSchema,
   SecretTagsSchema,
   SecretType,
-  ServiceTokenScopes,
+  ServiceTokenScopes
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CommitType } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
@@ -36,11 +36,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           imports: z
             .object({
               secretPath: z.string(),
-              environment: z.object({
-                id: z.string(),
-                name: z.string(),
-                slug: z.string()
-              }),
+              environment: z.string(),
               folderId: z.string().optional(),
               secrets: secretRawSchema.array()
             })
@@ -57,23 +53,24 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     ]),
     handler: async (req) => {
       // just for delivery hero usecase
-      let {secretPath,environment,workspaceId} = req.query;
-      if(req.auth.actor === ActorType.SERVICE){
+      let { secretPath, environment, workspaceId } = req.query;
+      if (req.auth.actor === ActorType.SERVICE) {
         const scope = ServiceTokenScopes.parse(req.auth.serviceToken.scopes);
         const isSingleScope = scope.length === 1;
-        if(isSingleScope && !picomatch.scan(scope[0].secretPath).isGlob){
+        if (isSingleScope && !picomatch.scan(scope[0].secretPath).isGlob) {
           secretPath = scope[0].secretPath;
           environment = scope[0].environment;
           workspaceId = req.auth.serviceToken.projectId;
         }
       }
 
-      if(!workspaceId || !environment) throw new BadRequestError({message:"Missing workspace id or environment"})
+      if (!workspaceId || !environment)
+        throw new BadRequestError({ message: "Missing workspace id or environment" });
 
       const { secrets, imports } = await server.services.secret.getSecretsRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
-        environment, 
+        environment,
         projectId: workspaceId as string,
         path: secretPath,
         includeImports: req.query.include_imports
@@ -360,11 +357,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           imports: z
             .object({
               secretPath: z.string(),
-              environment: z.object({
-                id: z.string(),
-                name: z.string(),
-                slug: z.string()
-              }),
+              environment: z.string(),
               folderId: z.string().optional(),
               secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
             })

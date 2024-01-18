@@ -118,6 +118,7 @@ export const useGetImportedSecrets = ({
         return data.map((el) => ({
           environment: el.environment,
           secretPath: el.secretPath,
+          environmentInfo: el.environmentInfo,
           folderId: el.folderId,
           secrets: el.secrets.map((encSecret) => {
             const secretKey = decryptSymmetric({
