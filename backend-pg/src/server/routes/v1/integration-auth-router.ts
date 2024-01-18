@@ -60,6 +60,44 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
+    url: "/",
+    method: "DELETE",
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      querystring: z.object({
+        integration: z.string().trim(),
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          integrationAuth: integrationAuthPubSchema.array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const integrationAuth = await server.services.integrationAuth.deleteIntegrationAuths({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        integration: req.query.integration,
+        projectId: req.query.projectId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.query.projectId,
+        event: {
+          type: EventType.UNAUTHORIZE_INTEGRATION,
+          metadata: {
+            integration: req.query.integration
+          }
+        }
+      });
+
+      return { integrationAuth };
+    }
+  });
+
+  server.route({
     url: "/:integrationAuthId",
     method: "DELETE",
     onRequest: verifyAuth([AuthMode.JWT]),
@@ -74,7 +112,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
-      const integrationAuth = await server.services.integrationAuth.deleteIntegrationAuth({
+      const integrationAuth = await server.services.integrationAuth.deleteIntegrationAuthById({
         actorId: req.permission.id,
         actor: req.permission.type,
         id: req.params.integrationAuthId

@@ -155,7 +155,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.GET_SECRET,
           metadata: {
-            environment: req.query.environment,
+            environment,
             secretPath: req.query.secretPath,
             secretId: secret.id,
             secretKey: req.params.secretName,

@@ -27,7 +27,8 @@ import { TIntegrationAuthDalFactory } from "./integration-auth-dal";
 import {
   TBitbucketWorkspace,
   TChecklyGroups,
-  TDeleteIntegrationAuthDTO,
+  TDeleteIntegrationAuthByIdDTO,
+  TDeleteIntegrationAuthsDTO,
   TGetIntegrationAuthDTO,
   TGetIntegrationAuthTeamCityBuildConfigDTO,
   TIntegrationAuthAppsDTO,
@@ -966,7 +967,27 @@ export const integrationAuthServiceFactory = ({
     return [];
   };
 
-  const deleteIntegrationAuth = async ({ id, actorId, actor }: TDeleteIntegrationAuthDTO) => {
+  const deleteIntegrationAuths = async ({
+    projectId,
+    integration,
+    actor,
+    actorId
+  }: TDeleteIntegrationAuthsDTO) => {
+    const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Delete,
+      ProjectPermissionSub.Integrations
+    );
+
+    const integrations = await integrationAuthDal.delete({ integration, projectId });
+    return integrations;
+  };
+
+  const deleteIntegrationAuthById = async ({
+    id,
+    actorId,
+    actor
+  }: TDeleteIntegrationAuthByIdDTO) => {
     const integrationAuth = await integrationAuthDal.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
@@ -996,7 +1017,8 @@ export const integrationAuthServiceFactory = ({
     getIntegrationAuth,
     oauthExchange,
     saveIntegrationToken,
-    deleteIntegrationAuth,
+    deleteIntegrationAuthById,
+    deleteIntegrationAuths,
     getIntegrationAuthTeams,
     getIntegrationApps,
     getVercelBranches,

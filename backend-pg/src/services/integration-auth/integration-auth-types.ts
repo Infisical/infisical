@@ -19,6 +19,11 @@ export type TSaveIntegrationAccessTokenDTO = {
   refreshToken?: string;
 } & TProjectPermission;
 
+export type TDeleteIntegrationAuthsDTO = TProjectPermission & {
+  integration: string;
+  projectId: string;
+};
+
 export type TIntegrationAuthAppsDTO = {
   id: string;
   teamId?: string;
@@ -76,7 +81,7 @@ export type TIntegrationAuthNorthflankSecretGroupDTO = {
   appId: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TDeleteIntegrationAuthDTO = {
+export type TDeleteIntegrationAuthByIdDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
 
