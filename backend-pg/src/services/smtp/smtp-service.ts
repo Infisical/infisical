@@ -18,6 +18,7 @@ export type TSmtpService = ReturnType<typeof smtpServiceFactory>;
 
 export enum SmtpTemplates {
   EmailVerification = "emailVerification.handlebars",
+  SecretReminder = "secretReminder.handlebars",
   EmailMfa = "emailMfa.handlebars",
   HistoricalSecretList = "historicalSecretLeakIncident.handlebars",
   NewDeviceJoin = "newDevice.handlebars",
