@@ -23,6 +23,7 @@ import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
+import { TSecretReminderServiceFactory } from "../secret-reminder/secret-reminder-service";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretBlindIndexDALFactory } from "./secret-blind-index-dal";
 import { TSecretDALFactory } from "./secret-dal";
@@ -63,6 +64,7 @@ type TSecretServiceFactoryDep = {
   >;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretReminderService: TSecretReminderServiceFactory;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
@@ -78,6 +80,7 @@ export const secretServiceFactory = ({
   folderDAL,
   secretBlindIndexDAL,
   permissionService,
+  secretReminderService,
   snapshotService,
   secretQueueService,
   projectBotService,
@@ -405,6 +408,15 @@ export const secretServiceFactory = ({
       });
       newSecretNameBlindIndex = kN2NewBlindIndex[inputSecret.newSecretName];
     }
+
+    await secretReminderService.handleReminder({
+      newSecret: {
+        id: secrets[0].id,
+        ...inputSecret
+      },
+      oldSecret: secrets[0],
+      projectId
+    });
 
     const tags = inputSecret.tags
       ? await secretTagDAL.findManyTagsById(projectId, inputSecret.tags)
