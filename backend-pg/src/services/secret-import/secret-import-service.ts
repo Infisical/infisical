@@ -48,7 +48,7 @@ export const secretImportServiceFactory = ({
     path
   }: TCreateSecretImportDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    
+
     // check if user has permission to import into destination  path
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
@@ -58,7 +58,10 @@ export const secretImportServiceFactory = ({
     // check if user has permission to import from target path
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.Secrets, { environment: data.environment, secretPath: data.path })
+      subject(ProjectPermissionSub.Secrets, {
+        environment: data.environment,
+        secretPath: data.path
+      })
     );
 
     const folder = await folderDal.findBySecretPath(projectId, environment, path);
@@ -196,7 +199,7 @@ export const secretImportServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
     const folder = await folderDal.findBySecretPath(projectId, environment, path);
-    if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Get imports" });
+    if (!folder) return [];
     // this will already order by position
     // so anything based on this order will also be in right position
     const secretImports = await secretImportDal.find({ folderId: folder.id });

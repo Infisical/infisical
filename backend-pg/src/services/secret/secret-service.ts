@@ -499,7 +499,7 @@ export const secretServiceFactory = ({
     );
 
     const folder = await folderDal.findBySecretPath(projectId, environment, path);
-    if (!folder) throw new BadRequestError({ message: "Folder not  found", name: "Create secret" });
+    if (!folder) return { secrets: [], imports: [] };
     const folderId = folder.id;
 
     const secrets = await secretDal.findByFolderId(folderId, actorId);

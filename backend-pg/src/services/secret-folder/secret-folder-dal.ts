@@ -252,6 +252,27 @@ export const secretFolderDalFactory = (db: TDbClient) => {
     }
   };
 
+  // used in folder creation
+  // even if its the original given /path1/path2
+  // it will stop automatically at /path2
+  const findClosestFolder = async (
+    projectId: string,
+    environment: string,
+    path: string,
+    tx?: Knex
+  ) => {
+    try {
+      const folder = await sqlFindFolderByPathQuery(tx || db, projectId, environment, path)
+        .orderBy("depth", "desc")
+        .first();
+      if (!folder) return;
+      const { envId: id, envName: name, envSlug: slug, ...el } = folder;
+      return { ...el, envId: id, environment: { id, name, slug } };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by secret path" });
+    }
+  };
+
   const findByManySecretPath = async (
     query: Array<{ envId: string; secretPath: string }>,
     tx?: Knex
@@ -329,6 +350,7 @@ export const secretFolderDalFactory = (db: TDbClient) => {
     findBySecretPath,
     findById,
     findByManySecretPath,
-    findSecretPathByFolderIds
+    findSecretPathByFolderIds,
+    findClosestFolder
   };
 };
