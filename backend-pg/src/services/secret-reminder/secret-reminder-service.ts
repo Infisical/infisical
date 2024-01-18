@@ -55,6 +55,7 @@ export const secretReminderServiceFactory = ({
 
   const deleteReminder = async ({ secretId, repeatDays }: TDeleteSecretReminderDTO) => {
     try {
+      logger.info(`[${secretId}] Removing secret reminder from queue.`);
       await secretReminderQueue.removeFromQueue(secretId, repeatDays);
     } catch (err) {
       logger.error(err, "Failed to remove secret reminder from queue.");
