@@ -41,7 +41,10 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretApprovalRequestDal: TSecretApprovalRequestDalFactory;
   sarSecretDal: TSarSecretDalFactory;
   sarReviewerDal: TSarReviewerDalFactory;
-  folderDal: Pick<TSecretFolderDalFactory, "findBySecretPath" | "findById">;
+  folderDal: Pick<
+    TSecretFolderDalFactory,
+    "findBySecretPath" | "findById" | "findSecretPathByFolderIds"
+  >;
   secretBlindIndexDal: Pick<TSecretBlindIndexDalFactory, "findOne">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretVersionDal: Pick<TSecretVersionDalFactory, "findLatestVersionMany">;
@@ -135,7 +138,10 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const secrets = await sarSecretDal.findByRequestId(secretApprovalRequest.id);
-    return { ...secretApprovalRequest, commits: secrets };
+    const secretPath = await folderDal.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
+      secretApprovalRequest.folderId
+    ]);
+    return { ...secretApprovalRequest, secretPath: secretPath?.[0]?.path || "/", commits: secrets };
   };
 
   const reviewApproval = async ({ approvalId, actor, status, actorId }: TReviewRequestDTO) => {

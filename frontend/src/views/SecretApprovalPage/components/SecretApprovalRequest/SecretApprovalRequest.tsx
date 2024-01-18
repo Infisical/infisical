@@ -89,7 +89,7 @@ export const SecretApprovalRequest = () => {
             members={membersGroupById}
             approvalRequestId={selectedApproval?.id || ""}
             onGoBack={handleGoBackSecretRequestDetail}
-            committer={membersGroupById?.[selectedApproval?.committer || ""]}
+            committer={membersGroupById?.[selectedApproval?.committerId || ""]}
           />
         </motion.div>
       ) : (
@@ -195,7 +195,7 @@ export const SecretApprovalRequest = () => {
                   const {
                     id: reqId,
                     commits,
-                    committer,
+                    committerId,
                     createdAt,
                     policy,
                     reviewers,
@@ -225,9 +225,9 @@ export const SecretApprovalRequest = () => {
                       </div>
                       <span className="text-xs text-gray-500">
                         Opened {formatDistance(new Date(createdAt), new Date())} ago by{" "}
-                        {membersGroupById?.[committer]?.user?.firstName}{" "}
-                        {membersGroupById?.[committer]?.user?.lastName} (
-                        {membersGroupById?.[committer]?.user?.email}){" "}
+                        {membersGroupById?.[committerId]?.user?.firstName}{" "}
+                        {membersGroupById?.[committerId]?.user?.lastName} (
+                        {membersGroupById?.[committerId]?.user?.email}){" "}
                         {isApprover && !isReviewed && status === "open" && "- Review required"}
                       </span>
                     </div>

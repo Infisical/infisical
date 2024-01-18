@@ -53,16 +53,17 @@ export const secretApprovalRequestDalFactory = (db: TDbClient) => {
         `${TableName.SarReviewer}.requestId`
       )
       .select(selectAllTableCols(TableName.SecretApprovalRequest))
-      .select(tx.ref("member").withSchema(TableName.SarReviewer).as("reviewerMemberId"))
-      .select(tx.ref("status").withSchema(TableName.SarReviewer).as("reviewerStatus"))
-      .select(tx.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"))
-      .select(tx.ref("name").withSchema(TableName.SecretApprovalPolicy).as("policyName"))
-      .select(tx.ref("projectId").withSchema(TableName.Environment))
       .select(
-        tx.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath")
-      )
-      .select(tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"))
-      .select(tx.ref("approverId").withSchema(TableName.SapApprover));
+        tx.ref("member").withSchema(TableName.SarReviewer).as("reviewerMemberId"),
+        tx.ref("status").withSchema(TableName.SarReviewer).as("reviewerStatus"),
+        tx.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"),
+        tx.ref("name").withSchema(TableName.SecretApprovalPolicy).as("policyName"),
+        tx.ref("projectId").withSchema(TableName.Environment),
+        tx.ref("slug").withSchema(TableName.Environment).as("environment"),
+        tx.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
+        tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
+        tx.ref("approverId").withSchema(TableName.SapApprover)
+      );
 
   const findById = async (id: string, tx?: Knex) => {
     try {
@@ -74,6 +75,7 @@ export const secretApprovalRequestDalFactory = (db: TDbClient) => {
         parentMapper: (el) => ({
           ...SecretApprovalRequestsSchema.parse(el),
           projectId: el.projectId,
+          environment: el.environment,
           policy: {
             id: el.policyId,
             name: el.policyName,
@@ -193,6 +195,11 @@ export const secretApprovalRequestDalFactory = (db: TDbClient) => {
           `${TableName.SecretApprovalRequest}.id`,
           `${TableName.SarReviewer}.requestId`
         )
+        .leftJoin(
+          TableName.SarSecret,
+          `${TableName.SarSecret}.requestId`,
+          `${TableName.SecretApprovalRequest}.id`
+        )
         .where(
           stripUndefinedInWhere({
             projectId,
@@ -207,23 +214,23 @@ export const secretApprovalRequestDalFactory = (db: TDbClient) => {
             .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
         )
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
-        .select(db.ref("projectId").withSchema(TableName.Environment))
-        .select(db.ref("id").withSchema(TableName.SarReviewer).as("reviewerMemberId"))
-        .select(db.ref("status").withSchema(TableName.SarReviewer).as("reviewerStatus"))
-        .select(db.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"))
-        .select(db.ref("name").withSchema(TableName.SecretApprovalPolicy).as("policyName"))
         .select(
+          db.ref("projectId").withSchema(TableName.Environment),
+          db.ref("slug").withSchema(TableName.Environment).as("environment"),
+          db.ref("id").withSchema(TableName.SarReviewer).as("reviewerMemberId"),
+          db.ref("status").withSchema(TableName.SarReviewer).as("reviewerStatus"),
+          db.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"),
+          db.ref("name").withSchema(TableName.SecretApprovalPolicy).as("policyName"),
+          db.ref("op").withSchema(TableName.SarSecret).as("commitOp"),
+          db.ref("secretId").withSchema(TableName.SarSecret).as("commitSecretId"),
+          db.ref("id").withSchema(TableName.SarSecret).as("commitId"),
           db.raw(
             `DENSE_RANK() OVER (partition by ${TableName.Environment}."projectId" ORDER BY ${TableName.SecretApprovalRequest}."id" DESC) as rank`
-          )
+          ),
+          db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
+          db.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
+          db.ref("approverId").withSchema(TableName.SapApprover)
         )
-        .select(
-          db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath")
-        )
-        .select(
-          db.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals")
-        )
-        .select(db.ref("approverId").withSchema(TableName.SapApprover))
         .orderBy("createdAt", "desc");
 
       const docs = await (tx || db)
@@ -232,12 +239,12 @@ export const secretApprovalRequestDalFactory = (db: TDbClient) => {
         .from<Awaited<typeof query>[number]>("w")
         .where("w.rank", ">=", offset)
         .andWhere("w.rank", "<", offset + limit);
-
       const formatedDoc = sqlNestRelationships({
         data: docs,
         key: "id",
         parentMapper: (el) => ({
           ...SecretApprovalRequestsSchema.parse(el),
+          environment: el.environment,
           projectId: el.projectId,
           policy: {
             id: el.policyId,
@@ -253,7 +260,20 @@ export const secretApprovalRequestDalFactory = (db: TDbClient) => {
             mapper: ({ reviewerMemberId: member, reviewerStatus: s }) =>
               member ? { member, status: s } : undefined
           },
-          { key: "approverId", label: "approvers" as const, mapper: ({ approverId }) => approverId }
+          {
+            key: "approverId",
+            label: "approvers" as const,
+            mapper: ({ approverId }) => approverId
+          },
+          {
+            key: "commitId",
+            label: "commits" as const,
+            mapper: ({ commitSecretId: secretId, commitId: id, commitOp: op }) => ({
+              op,
+              id,
+              secretId
+            })
+          }
         ]
       });
       return formatedDoc.map((el) => ({

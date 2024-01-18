@@ -8,6 +8,7 @@ import {
   TSecretFoldersUpdate
 } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export const validateFolderName = (folderName: string) => {
@@ -176,6 +177,54 @@ const sqlFindFolderByPathQuery = (
     );
 };
 
+const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: string[]) =>
+  db
+    .withRecursive("parent", (baseQb) => {
+      // first remember our folders are connected as a link list or known as adjacency list
+      // Thus each node has connection to parent node
+      // we first find the folder given in folder id
+      baseQb
+        .from(TableName.SecretFolder)
+        .select(selectAllTableCols(TableName.SecretFolder))
+        .select({
+          // this is for root condition
+          //  if the given folder id is root folder id then intial path is set as / instead of /root
+          //  if not root folder the path here will be /<folder name>
+          path: db.raw(
+            `CONCAT('/', (CASE WHEN "parentId" is NULL THEN '' ELSE ${TableName.SecretFolder}.name END))`
+          ),
+          child: db.raw("NULL::uuid")
+        })
+        .join(
+          TableName.Environment,
+          `${TableName.SecretFolder}.envId`,
+          `${TableName.Environment}.id`
+        )
+        .where({ projectId })
+        .whereIn(`${TableName.SecretFolder}.id`, folderIds)
+        .union((qb) =>
+          // then we keep going up
+          // until parent id is null
+          qb
+            .select(selectAllTableCols(TableName.SecretFolder))
+            .select({
+              // then we join join this folder name behind previous as we are going from child to parent
+              // the root folder check is used to avoid last / and also root name in folders
+              path: db.raw(
+                `CONCAT( CASE 
+                  WHEN  ${TableName.SecretFolder}."parentId" is NULL THEN '' 
+                  ELSE  CONCAT('/', secret_folders.name) 
+                END, parent.path )`
+              ),
+              child: db.raw("COALESCE(parent.child, parent.id)")
+            })
+            .from(TableName.SecretFolder)
+            .join("parent", "parent.parentId", `${TableName.SecretFolder}.id`)
+        );
+    })
+    .select("*")
+    .from<TSecretFolders & { child: string | null; path: string }>("parent");
+
 export type TSecretFolderDalFactory = ReturnType<typeof secretFolderDalFactory>;
 // never change this. If u do write a migration for it
 export const ROOT_FOLDER_NAME = "root";
@@ -220,6 +269,21 @@ export const secretFolderDalFactory = (db: TDbClient) => {
     }
   };
 
+  // this is used to do an inverse query in folders
+  // that is instances in which for a given folderid find the secret path
+  const findSecretPathByFolderIds = async (projectId: string, folderIds: string[], tx?: Knex) => {
+    try {
+      const folders = await sqlFindSecretPathByFolderId(tx || db, projectId, folderIds);
+      const rootFolders = groupBy(
+        folders.filter(({ parentId }) => parentId === null),
+        (i) => i.child || i.id // root condition then child and parent will null
+      );
+      return folderIds.map((folderId) => rootFolders[folderId]?.[0]);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by secret path" });
+    }
+  };
+
   const update = async (filter: Partial<TSecretFolders>, data: TSecretFoldersUpdate, tx?: Knex) => {
     try {
       const folder = await (tx || db)(TableName.SecretFolder)
@@ -259,5 +323,12 @@ export const secretFolderDalFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...secretFolderOrm, update, findBySecretPath, findById, findByManySecretPath };
+  return {
+    ...secretFolderOrm,
+    update,
+    findBySecretPath,
+    findById,
+    findByManySecretPath,
+    findSecretPathByFolderIds
+  };
 };

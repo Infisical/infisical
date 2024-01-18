@@ -46,7 +46,7 @@ export type TSecretApprovalRequest<J extends unknown = EncryptedSecret> = {
   id: string;
   slug: string;
   createdAt: string;
-  committer: string;
+  committerId: string;
   reviewers: {
     member: string;
     status: ApprovalStatus;
