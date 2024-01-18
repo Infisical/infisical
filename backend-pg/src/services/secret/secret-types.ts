@@ -116,6 +116,8 @@ export type TUpdateBulkSecretDTO = {
     secretCommentIV?: string;
     secretCommentTag?: string;
     skipMultilineEncoding?: boolean;
+    secretReminderRepeatDays?: number | null;
+    secretReminderNote?: string | null;
   }>;
 } & TProjectPermission;
 
@@ -166,6 +168,8 @@ export type TUpdateSecretRawDTO = TProjectPermission & {
   secretValue?: string;
   type: SecretType;
   skipMultilineEncoding?: boolean;
+  secretReminderRepeatDays?: number | null;
+  secretReminderNote?: string | null;
 };
 
 export type TDeleteSecretRawDTO = TProjectPermission & {
