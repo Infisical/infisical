@@ -9,6 +9,7 @@ import {
 
 export enum QueueName {
   SecretRotation = "secret-rotation",
+  SecretReminder = "secret-reminder",
   AuditLog = "audit-log",
   IntegrationSync = "sync-integrations",
   SecretWebhook = "secret-webhook",
@@ -17,6 +18,7 @@ export enum QueueName {
 }
 
 export enum QueueJobs {
+  SecretReminder = "secret-reminder-job",
   SecretRotation = "secret-rotation-job",
   AuditLog = "audit-log-job",
   SecWebhook = "secret-webhook-trigger",
@@ -25,6 +27,16 @@ export enum QueueJobs {
 }
 
 export type TQueueJobTypes = {
+  [QueueName.SecretReminder]: {
+    payload: {
+      projectId: string;
+      secretId: string;
+      repeatDays: number;
+      note: string | undefined | null;
+    };
+    name: QueueJobs.SecretReminder;
+  };
+
   [QueueName.SecretRotation]: {
     payload: { rotationId: string };
     name: QueueJobs.SecretRotation;
