@@ -17,6 +17,7 @@ import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { groupBy, pick } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
@@ -207,6 +208,21 @@ export const secretServiceFactory = ({
       actorId,
       tx
     );
+
+    for (const s of deletedSecrets) {
+      if (s.secretReminderRepeatDays) {
+        // eslint-disable-next-line no-await-in-loop
+        await secretReminderService
+          .deleteReminder({
+            secretId: s.id,
+            repeatDays: s.secretReminderRepeatDays
+          })
+          .catch((err) => {
+            logger.error(err, `Failed to delete secret reminder for secret with ID ${s?.id}`);
+          });
+      }
+    }
+
     return deletedSecrets;
   };
 
