@@ -195,7 +195,7 @@ export const secretRotationServiceFactory = ({
       ProjectPermissionActions.Edit,
       ProjectPermissionSub.SecretRotation
     );
-    await secretRotationQueue.removeFromQueue(doc.id);
+    await secretRotationQueue.removeFromQueue(doc.id, doc.interval);
     await secretRotationQueue.addToQueue(doc.id, doc.interval);
     return doc;
   };
@@ -215,7 +215,7 @@ export const secretRotationServiceFactory = ({
     );
     const deletedDoc = await secretRotationDal.transaction(async (tx) => {
       const strat = await secretRotationDal.deleteById(rotationId, tx);
-      await secretRotationQueue.removeFromQueue(strat.id);
+      await secretRotationQueue.removeFromQueue(strat.id, strat.interval);
       return strat;
     });
     return { ...doc, ...deletedDoc };

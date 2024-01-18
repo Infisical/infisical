@@ -1,4 +1,4 @@
-import { Job, JobsOptions, Queue, Worker, WorkerListener } from "bullmq";
+import { Job, JobsOptions, Queue, RepeatOptions, Worker, WorkerListener } from "bullmq";
 import Redis from "ioredis";
 
 import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
@@ -103,7 +103,17 @@ export const queueServiceFactory = (redisUrl: string) => {
     await q.add(job, data, opts);
   };
 
-  const stopRepeatableJob = async <T extends QueueName>(name: T, jobId: string) => {
+  const stopRepeatableJob = async <T extends QueueName>(
+    name: T,
+    job: TQueueJobTypes[T]["name"],
+    repeatOpt: RepeatOptions,
+    jobId?: string
+  ) => {
+    const q = queueContainer[name];
+    return q.removeRepeatable(job, repeatOpt, jobId);
+  };
+
+  const stopRepeatableJobByJobId = async <T extends QueueName>(name: T, jobId: string) => {
     const q = queueContainer[name];
     const job = await q.getJob(jobId);
     if (!job) return true;
@@ -115,5 +125,5 @@ export const queueServiceFactory = (redisUrl: string) => {
     await Promise.all(Object.values(workerContainer).map((worker) => worker.close()));
   };
 
-  return { start, listen, queue, shutdown, stopRepeatableJob };
+  return { start, listen, queue, shutdown, stopRepeatableJob, stopRepeatableJobByJobId };
 };

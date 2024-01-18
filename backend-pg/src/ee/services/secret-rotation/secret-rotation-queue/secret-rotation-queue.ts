@@ -15,7 +15,11 @@ import { TSecretVersionDalFactory } from "@app/services/secret/secret-version-da
 
 import { TSecretRotationDalFactory } from "../secret-rotation-dal";
 import { rotationTemplates } from "../templates";
-import { TProviderFunctionTypes, TSecretRotationProviderTemplate } from "../templates/types";
+import {
+  TDbProviderClients,
+  TProviderFunctionTypes,
+  TSecretRotationProviderTemplate
+} from "../templates/types";
 import {
   getDbSetQuery,
   secretRotationDbFn,
@@ -79,8 +83,21 @@ export const secretRotationQueueFactory = ({
     );
   };
 
-  const removeFromQueue = async (rotationId: string) =>
-    queue.stopRepeatableJob(QueueName.SecretRotation, rotationId);
+  const removeFromQueue = async (rotationId: string, interval: number) => {
+    const appCfg = getConfig();
+    await queue.stopRepeatableJob(
+      QueueName.SecretRotation,
+      QueueJobs.SecretRotation,
+      {
+        // on prod it this will be in days, in development this will be second
+        every:
+          appCfg.NODE_ENV === "development"
+            ? secondsToMillis(interval)
+            : daysToMillisecond(interval)
+      },
+      rotationId
+    );
+  };
 
   queue.start(QueueName.SecretRotation, async (job) => {
     const { rotationId } = job.data;
@@ -155,7 +172,10 @@ export const secretRotationQueueFactory = ({
           database,
           port,
           ca: ca as string,
-          client: provider.template.client
+          client:
+            provider.template.client === TDbProviderClients.MySql
+              ? "mysql2"
+              : provider.template.client
         } as TSecretRotationDbFn;
         // set function
         await secretRotationDbFn({
@@ -244,12 +264,12 @@ export const secretRotationQueueFactory = ({
           tx
         );
       });
-      logger.info("Finished logging: rotation id: ", rotationId);
+      logger.info("Finished rotating: rotation id: ", rotationId);
     } catch (error) {
       logger.error(error);
       if (error instanceof DisableRotationErrors) {
         if (job.id) {
-          queue.stopRepeatableJob(QueueName.SecretRotation, job.id);
+          queue.stopRepeatableJobByJobId(QueueName.SecretRotation, job.id);
         }
       }
 

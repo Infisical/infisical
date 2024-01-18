@@ -18,6 +18,7 @@ export const mockQueue = (): TQueueServiceFactory => {
     },
     listen: async (name, event) => {
       events[name] = event;
-    }
+    },
+    stopRepeatableJobByJobId: async () => true
   };
 };
