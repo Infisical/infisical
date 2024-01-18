@@ -47,6 +47,19 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findOrgByProjectId = async (projectId: string): Promise<TOrganizations> => {
+    try {
+      const [org] = await db(TableName.Project)
+        .where({ [`${[TableName.Project]}.id`]: projectId })
+        .join(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
+        .select(`${TableName.Organization}.*`);
+
+      return org;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find org by project id" });
+    }
+  };
+
   // special query
   const findAllOrgMembers = async (orgId: string) => {
     try {
@@ -193,6 +206,7 @@ export const orgDALFactory = (db: TDbClient) => {
   };
 
   return withTransaction(db, {
+    findOrgByProjectId,
     findAllOrgMembers,
     findOrgById,
     findAllOrgsByUserId,
