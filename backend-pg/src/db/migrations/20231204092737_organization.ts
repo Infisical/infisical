@@ -10,7 +10,9 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
       t.string("customerId");
+      t.string("slug").notNullable();
       // does not need update trigger we will do it manually
+      t.unique("slug");
       t.timestamps(true, true, true);
     });
     await knex.schema.alterTable(TableName.AuthTokens, (t) => {

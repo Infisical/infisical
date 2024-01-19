@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import slugify from "@sindresorhus/slugify";
 import jwt from "jsonwebtoken";
 
 import { OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
@@ -13,6 +14,7 @@ import { getConfig } from "@app/lib/config/env";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
 import { generateSymmetricKey, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { isDisposableEmail } from "@app/lib/validator";
 
 import { AuthMethod, AuthTokenType } from "../auth/auth-type";
@@ -128,7 +130,11 @@ export const orgServiceFactory = ({
 
     const customerId = await licenseService.generateOrgCustomerId(orgName, userEmail);
     const organization = await orgDAL.transaction(async (tx) => {
-      const org = await orgDAL.create({ name: orgName, customerId }, tx);
+      // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modifiy
+      const org = await orgDAL.create(
+        { name: orgName, customerId, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) },
+        tx
+      );
       await orgDAL.createMembership(
         {
           userId,

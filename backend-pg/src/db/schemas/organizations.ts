@@ -11,8 +11,9 @@ export const OrganizationsSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   customerId: z.string().nullable().optional(),
+  slug: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

@@ -475,10 +475,8 @@ const OrganizationPage = withPermission(
     const router = useRouter();
 
     const { workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
-    const orgWorkspaces =
-      workspaces?.filter((workspace) => workspace.orgId === localStorage.getItem("orgData.id")) ||
-      [];
     const currentOrg = String(router.query.id);
+    const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === currentOrg) || [];
     const { createNotification } = useNotificationContext();
     const addWsUser = useAddUserToWs();
 
@@ -614,21 +612,29 @@ const OrganizationPage = withPermission(
           </div>
         )}
         <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
-          <div className={`${
+          <div
+            className={`${
               !updateClosed ? "block" : "hidden"
-            } mb-4 w-full border rounded-md p-2 text-base border-primary-600 bg-primary/10 text-white flex flex-row items-center`}>
-              <FontAwesomeIcon icon={faWarning} className="text-primary text-4xl p-6"/>
-              <div className="text-sm">
-                <span className="text-lg font-semibold">Scheduled maintenance on January 27th</span>  <br />
-                We&apos;ve planned a database upgrade and need to pause certain functionality for approximately 3 hours on Saturday, January 27th, 10am EST. During these hours, read operations will continue to function normally but no resources will be editable. No action is required on your end — your applications can continue to fetch secrets.<br />
-              </div>
-              <button
-                type="button"
-                onClick={() => closeUpdate()}
-                className="text-mineshaft-100 duration-200 hover:text-red-400 h-full flex items-start"
-              >
-                <FontAwesomeIcon icon={faXmark} />
-              </button>
+            } mb-4 flex w-full flex-row items-center rounded-md border border-primary-600 bg-primary/10 p-2 text-base text-white`}
+          >
+            <FontAwesomeIcon icon={faWarning} className="p-6 text-4xl text-primary" />
+            <div className="text-sm">
+              <span className="text-lg font-semibold">Scheduled maintenance on January 27th</span>{" "}
+              <br />
+              We&apos;ve planned a database upgrade and need to pause certain functionality for
+              approximately 3 hours on Saturday, January 27th, 10am EST. During these hours, read
+              operations will continue to function normally but no resources will be editable. No
+              action is required on your end — your applications can continue to fetch secrets.
+              <br />
+            </div>
+            <button
+              type="button"
+              onClick={() => closeUpdate()}
+              aria-label="close"
+              className="flex h-full items-start text-mineshaft-100 duration-200 hover:text-red-400"
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
           </div>
           <p className="mr-4 font-semibold text-white">Projects</p>
           <div className="mt-6 flex w-full flex-row">

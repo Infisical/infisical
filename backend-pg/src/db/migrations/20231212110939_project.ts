@@ -8,10 +8,12 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.Project, (t) => {
       t.string("id", 36).primary().defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
+      t.string("slug").notNullable();
       t.boolean("autoCapitalization").defaultTo(true);
       t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.timestamps(true, true, true);
+      t.unique(["orgId", "slug"]);
     });
   }
   await createOnUpdateTrigger(knex, TableName.Project);

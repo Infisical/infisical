@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import slugify from "@sindresorhus/slugify";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -14,6 +15,7 @@ import {
 import { getConfig } from "@app/lib/config/env";
 import { createSecretBlindIndex } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
@@ -73,7 +75,10 @@ export const projectServiceFactory = ({
     }
 
     const newProject = projectDAL.transaction(async (tx) => {
-      const project = await projectDAL.create({ name: workspaceName, orgId }, tx);
+      const project = await projectDAL.create(
+        { name: workspaceName, orgId, slug: slugify(`${workspaceName}-${alphaNumericNanoId(4)}`) },
+        tx
+      );
       // set user as admin member for proeject
       await projectMembershipDAL.create(
         {
