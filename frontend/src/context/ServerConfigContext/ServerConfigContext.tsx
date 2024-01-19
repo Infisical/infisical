@@ -1,4 +1,5 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo } from "react";
+import Head from "next/head";
 import { useRouter } from "next/router";
 
 import { ContentLoader } from "@app/components/v2/ContentLoader";
@@ -43,9 +44,23 @@ export const ServerConfigProvider = ({ children }: Props): JSX.Element => {
   if (data?.isMigrationModeOn) {
     return (
       <div className="relative mx-auto flex h-screen w-full flex-col items-center justify-center space-y-8 bg-bunker-800 px-8 text-mineshaft-50 dark:[color-scheme:dark]">
-        <img src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
-        <div className="mt-4 text-center text-xl">
-          Infisical under migration. See you in some time. <br /> All read operations are allowed
+        <Head>
+          <title>Infisical Maintenance Mode</title>
+          <link rel='icon' href='/infisical.ico' />
+        </Head>
+        <img src="/images/maintenance.png" height={175} width={300} alt="maintenance mode" className="w-[40rem]"/>
+        <p className="mx-8 mb-4 flex justify-center bg-gradient-to-tr from-mineshaft-300 to-white bg-clip-text text-4xl font-bold text-transparent md:mx-16">
+          Scheduled Maintenance
+        </p>
+        <div className="mt-2 text-center text-lg text-bunker-300">
+          Infisical is currently in a scheduled maintenance mode. <br /> We appreciate your patience and invite you to check back in a few minutes. <br /> Your applications will keep fetching secrets as usual, without any interruption. <br /> With any questions, please <a
+            className="text-bunker-300 underline underline-offset-4 decoration-primary-800 hover:decoration-primary-600 hover:text-mineshaft-100 duration-200"
+            href="https://infisical.com/slack"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            join our Slack community
+          </a>.
         </div>
       </div>
     );
