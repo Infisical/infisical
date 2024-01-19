@@ -33,8 +33,8 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.SecretApprovalRequest);
 
-  if (!(await knex.schema.hasTable(TableName.SarReviewer))) {
-    await knex.schema.createTable(TableName.SarReviewer, (t) => {
+  if (!(await knex.schema.hasTable(TableName.SecretApprovalRequestReviewer))) {
+    await knex.schema.createTable(TableName.SecretApprovalRequestReviewer, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("member").notNullable();
       t.foreign("member").references("id").inTable(TableName.ProjectMembership).onDelete("CASCADE");
@@ -47,10 +47,10 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
   }
-  await createOnUpdateTrigger(knex, TableName.SarReviewer);
+  await createOnUpdateTrigger(knex, TableName.SecretApprovalRequestReviewer);
 
-  if (!(await knex.schema.hasTable(TableName.SarSecret))) {
-    await knex.schema.createTable(TableName.SarSecret, (t) => {
+  if (!(await knex.schema.hasTable(TableName.SecretApprovalRequestSecret))) {
+    await knex.schema.createTable(TableName.SecretApprovalRequestSecret, (t) => {
       // everything related  to secret
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.integer("version").defaultTo(1);
@@ -87,29 +87,32 @@ export async function up(knex: Knex): Promise<void> {
         .onDelete("SET NULL");
     });
   }
-  await createOnUpdateTrigger(knex, TableName.SarSecret);
+  await createOnUpdateTrigger(knex, TableName.SecretApprovalRequestSecret);
 
-  if (!(await knex.schema.hasTable(TableName.SarSecretTag))) {
-    await knex.schema.createTable(TableName.SarSecretTag, (t) => {
+  if (!(await knex.schema.hasTable(TableName.SecretApprovalRequestSecretTag))) {
+    await knex.schema.createTable(TableName.SecretApprovalRequestSecretTag, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("secretId").notNullable();
-      t.foreign("secretId").references("id").inTable(TableName.SarSecret).onDelete("CASCADE");
+      t.foreign("secretId")
+        .references("id")
+        .inTable(TableName.SecretApprovalRequestSecret)
+        .onDelete("CASCADE");
       t.uuid("tagId").notNullable();
       t.foreign("tagId").references("id").inTable(TableName.SecretTag).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
   }
-  await createOnUpdateTrigger(knex, TableName.SarSecretTag);
+  await createOnUpdateTrigger(knex, TableName.SecretApprovalRequestSecretTag);
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TableName.SarSecretTag);
-  await knex.schema.dropTableIfExists(TableName.SarSecret);
-  await knex.schema.dropTableIfExists(TableName.SarReviewer);
+  await knex.schema.dropTableIfExists(TableName.SecretApprovalRequestSecretTag);
+  await knex.schema.dropTableIfExists(TableName.SecretApprovalRequestSecret);
+  await knex.schema.dropTableIfExists(TableName.SecretApprovalRequestReviewer);
   await knex.schema.dropTableIfExists(TableName.SecretApprovalRequest);
 
-  await dropOnUpdateTrigger(knex, TableName.SarSecretTag);
-  await dropOnUpdateTrigger(knex, TableName.SarSecret);
-  await dropOnUpdateTrigger(knex, TableName.SarReviewer);
+  await dropOnUpdateTrigger(knex, TableName.SecretApprovalRequestSecretTag);
+  await dropOnUpdateTrigger(knex, TableName.SecretApprovalRequestSecret);
+  await dropOnUpdateTrigger(knex, TableName.SecretApprovalRequestReviewer);
   await dropOnUpdateTrigger(knex, TableName.SecretApprovalRequest);
 }

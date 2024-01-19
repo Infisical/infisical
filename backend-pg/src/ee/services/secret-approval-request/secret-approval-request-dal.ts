@@ -43,26 +43,26 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         `${TableName.SecretApprovalPolicy}.id`
       )
       .join(
-        TableName.SapApprover,
+        TableName.SecretApprovalPolicyApprover,
         `${TableName.SecretApprovalPolicy}.id`,
-        `${TableName.SapApprover}.policyId`
+        `${TableName.SecretApprovalPolicyApprover}.policyId`
       )
       .leftJoin(
-        TableName.SarReviewer,
+        TableName.SecretApprovalRequestReviewer,
         `${TableName.SecretApprovalRequest}.id`,
-        `${TableName.SarReviewer}.requestId`
+        `${TableName.SecretApprovalRequestReviewer}.requestId`
       )
       .select(selectAllTableCols(TableName.SecretApprovalRequest))
       .select(
-        tx.ref("member").withSchema(TableName.SarReviewer).as("reviewerMemberId"),
-        tx.ref("status").withSchema(TableName.SarReviewer).as("reviewerStatus"),
+        tx.ref("member").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerMemberId"),
+        tx.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
         tx.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"),
         tx.ref("name").withSchema(TableName.SecretApprovalPolicy).as("policyName"),
         tx.ref("projectId").withSchema(TableName.Environment),
         tx.ref("slug").withSchema(TableName.Environment).as("environment"),
         tx.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
         tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
-        tx.ref("approverId").withSchema(TableName.SapApprover)
+        tx.ref("approverId").withSchema(TableName.SecretApprovalPolicyApprover)
       );
 
   const findById = async (id: string, tx?: Knex) => {
@@ -120,14 +120,14 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               `${TableName.Environment}.id`
             )
             .join(
-              TableName.SapApprover,
+              TableName.SecretApprovalPolicyApprover,
               `${TableName.SecretApprovalRequest}.policyId`,
-              `${TableName.SapApprover}.policyId`
+              `${TableName.SecretApprovalPolicyApprover}.policyId`
             )
             .where({ projectId })
             .andWhere((bd) =>
               bd
-                .where(`${TableName.SapApprover}.approverId`, membershipId)
+                .where(`${TableName.SecretApprovalPolicyApprover}.approverId`, membershipId)
                 .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
             )
             .select("status", `${TableName.SecretApprovalRequest}.id`)
@@ -186,18 +186,18 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           `${TableName.SecretApprovalPolicy}.id`
         )
         .join(
-          TableName.SapApprover,
+          TableName.SecretApprovalPolicyApprover,
           `${TableName.SecretApprovalPolicy}.id`,
-          `${TableName.SapApprover}.policyId`
+          `${TableName.SecretApprovalPolicyApprover}.policyId`
         )
         .leftJoin(
-          TableName.SarReviewer,
+          TableName.SecretApprovalRequestReviewer,
           `${TableName.SecretApprovalRequest}.id`,
-          `${TableName.SarReviewer}.requestId`
+          `${TableName.SecretApprovalRequestReviewer}.requestId`
         )
         .leftJoin(
-          TableName.SarSecret,
-          `${TableName.SarSecret}.requestId`,
+          TableName.SecretApprovalRequestSecret,
+          `${TableName.SecretApprovalRequestSecret}.requestId`,
           `${TableName.SecretApprovalRequest}.id`
         )
         .where(
@@ -210,26 +210,26 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         )
         .andWhere((bd) =>
           bd
-            .where(`${TableName.SapApprover}.approverId`, membershipId)
+            .where(`${TableName.SecretApprovalPolicyApprover}.approverId`, membershipId)
             .orWhere(`${TableName.SecretApprovalRequest}.committerId`, membershipId)
         )
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
         .select(
           db.ref("projectId").withSchema(TableName.Environment),
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
-          db.ref("id").withSchema(TableName.SarReviewer).as("reviewerMemberId"),
-          db.ref("status").withSchema(TableName.SarReviewer).as("reviewerStatus"),
+          db.ref("id").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerMemberId"),
+          db.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
           db.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"),
           db.ref("name").withSchema(TableName.SecretApprovalPolicy).as("policyName"),
-          db.ref("op").withSchema(TableName.SarSecret).as("commitOp"),
-          db.ref("secretId").withSchema(TableName.SarSecret).as("commitSecretId"),
-          db.ref("id").withSchema(TableName.SarSecret).as("commitId"),
+          db.ref("op").withSchema(TableName.SecretApprovalRequestSecret).as("commitOp"),
+          db.ref("secretId").withSchema(TableName.SecretApprovalRequestSecret).as("commitSecretId"),
+          db.ref("id").withSchema(TableName.SecretApprovalRequestSecret).as("commitId"),
           db.raw(
             `DENSE_RANK() OVER (partition by ${TableName.Environment}."projectId" ORDER BY ${TableName.SecretApprovalRequest}."id" DESC) as rank`
           ),
           db.ref("secretPath").withSchema(TableName.SecretApprovalPolicy).as("policySecretPath"),
           db.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
-          db.ref("approverId").withSchema(TableName.SapApprover)
+          db.ref("approverId").withSchema(TableName.SecretApprovalPolicyApprover)
         )
         .orderBy("createdAt", "desc");
 

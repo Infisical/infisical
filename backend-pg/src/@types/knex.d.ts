@@ -324,7 +324,7 @@ declare module "knex/types/tables" {
       TSecretApprovalPoliciesInsert,
       TSecretApprovalPoliciesUpdate
     >;
-    [TableName.SapApprover]: Knex.CompositeTableType<
+    [TableName.SecretApprovalPolicyApprover]: Knex.CompositeTableType<
       TSapApprovers,
       TSapApproversInsert,
       TSapApproversUpdate
@@ -334,17 +334,17 @@ declare module "knex/types/tables" {
       TSecretApprovalRequestsInsert,
       TSecretApprovalRequestsUpdate
     >;
-    [TableName.SarReviewer]: Knex.CompositeTableType<
+    [TableName.SecretApprovalRequestReviewer]: Knex.CompositeTableType<
       TSarReviewers,
       TSarReviewersInsert,
       TSarReviewersUpdate
     >;
-    [TableName.SarSecret]: Knex.CompositeTableType<
+    [TableName.SecretApprovalRequestSecret]: Knex.CompositeTableType<
       TSaRequestSecrets,
       TSaRequestSecretsInsert,
       TSaRequestSecretsUpdate
     >;
-    [TableName.SarSecretTag]: Knex.CompositeTableType<
+    [TableName.SecretApprovalRequestSecretTag]: Knex.CompositeTableType<
       TSaRequestSecretTags,
       TSaRequestSecretTagsInsert,
       TSaRequestSecretTagsUpdate

@@ -11,7 +11,7 @@ import { containsGlobPatterns } from "@app/lib/picomatch";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 
-import { TSapApproverDALFactory } from "./sap-approver-dal";
+import { TSecretApprovalPolicyApproverDALFactory } from "./secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "./secret-approval-policy-dal";
 import {
   TCreateSapDTO,
@@ -30,7 +30,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretApprovalPolicyDAL: TSecretApprovalPolicyDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  sapApproverDAL: TSapApproverDALFactory;
+  secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
 };
 
@@ -41,11 +41,11 @@ export type TSecretApprovalPolicyServiceFactory = ReturnType<
 export const secretApprovalPolicyServiceFactory = ({
   secretApprovalPolicyDAL,
   permissionService,
-  sapApproverDAL,
+  secretApprovalPolicyApproverDAL,
   projectEnvDAL,
   projectMembershipDAL
 }: TSecretApprovalPolicyServiceFactoryDep) => {
-  const createSap = async ({
+  const createSecretApprovalPolicy = async ({
     name,
     actor,
     actorId,
@@ -83,7 +83,7 @@ export const secretApprovalPolicyServiceFactory = ({
         },
         tx
       );
-      await sapApproverDAL.insertMany(
+      await secretApprovalPolicyApproverDAL.insertMany(
         secretApprovers.map(({ id }) => ({
           approverId: id,
           policyId: doc.id
@@ -95,7 +95,7 @@ export const secretApprovalPolicyServiceFactory = ({
     return { ...secretApproval, environment: env, projectId };
   };
 
-  const updateSap = async ({
+  const updateSecretApprovalPolicy = async ({
     approvers,
     secretPath,
     name,
@@ -140,8 +140,8 @@ export const secretApprovalPolicyServiceFactory = ({
           throw new BadRequestError({ message: "Approver not found in project" });
         if (doc.approvals > secretApprovers.length)
           throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
-        await sapApproverDAL.delete({ policyId: doc.id }, tx);
-        await sapApproverDAL.insertMany(
+        await secretApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
+        await secretApprovalPolicyApproverDAL.insertMany(
           secretApprovers.map(({ id }) => ({
             approverId: id,
             policyId: doc.id
@@ -158,7 +158,7 @@ export const secretApprovalPolicyServiceFactory = ({
     };
   };
 
-  const deleteSap = async ({ secretPolicyId, actor, actorId }: TDeleteSapDTO) => {
+  const deleteSecretApprovalPolicy = async ({ secretPolicyId, actor, actorId }: TDeleteSapDTO) => {
     const sapPolicy = await secretApprovalPolicyDAL.findById(secretPolicyId);
     if (!sapPolicy) throw new BadRequestError({ message: "Secret approval policy not found" });
 
@@ -176,7 +176,7 @@ export const secretApprovalPolicyServiceFactory = ({
     return sapPolicy;
   };
 
-  const getSapByProjectId = async ({ actorId, actor, projectId }: TListSapDTO) => {
+  const getSecretApprovalPolicyByProjectId = async ({ actorId, actor, projectId }: TListSapDTO) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Read,
@@ -187,7 +187,11 @@ export const secretApprovalPolicyServiceFactory = ({
     return sapPolicies;
   };
 
-  const getSapPolicy = async (projectId: string, environment: string, secretPath: string) => {
+  const getSecretApprovalPolicy = async (
+    projectId: string,
+    environment: string,
+    secretPath: string
+  ) => {
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
     if (!env) throw new BadRequestError({ message: "Environment not found" });
 
@@ -207,7 +211,7 @@ export const secretApprovalPolicyServiceFactory = ({
     return finalPolicy;
   };
 
-  const getSapOfFolder = async ({
+  const getSecretApprovalPolicyOfFolder = async ({
     projectId,
     actor,
     actorId,
@@ -219,15 +223,15 @@ export const secretApprovalPolicyServiceFactory = ({
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { secretPath, environment })
     );
-    return getSapPolicy(projectId, environment, secretPath);
+    return getSecretApprovalPolicy(projectId, environment, secretPath);
   };
 
   return {
-    createSap,
-    updateSap,
-    deleteSap,
-    getSapPolicy,
-    getSapByProjectId,
-    getSapOfFolder
+    createSecretApprovalPolicy,
+    updateSecretApprovalPolicy,
+    deleteSecretApprovalPolicy,
+    getSecretApprovalPolicy,
+    getSecretApprovalPolicyByProjectId,
+    getSecretApprovalPolicyOfFolder
   };
 };

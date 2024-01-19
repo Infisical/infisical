@@ -5,7 +5,7 @@ import {
   SecretEncryptionAlgo,
   SecretKeyEncoding,
   SecretType,
-  TSaRequestSecretsInsert
+  TSecretApprovalRequestsSecretsInsert
 } from "@app/db/schemas";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { groupBy, pick } from "@app/lib/fn";
@@ -20,9 +20,9 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
-import { TSarReviewerDALFactory } from "./sar-reviewer-dal";
-import { TSarSecretDALFactory } from "./sar-secret-dal";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
+import { TSecretApprovalRequestReviewerDALFactory } from "./secret-approval-request-reviewer-dal";
+import { TSecretApprovalRequestSecretDALFactory } from "./secret-approval-request-secret-dal";
 import {
   ApprovalStatus,
   CommitType,
@@ -39,8 +39,8 @@ import {
 type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretApprovalRequestDAL: TSecretApprovalRequestDALFactory;
-  sarSecretDAL: TSarSecretDALFactory;
-  sarReviewerDAL: TSarReviewerDALFactory;
+  sarSecretDAL: TSecretApprovalRequestSecretDALFactory;
+  sarReviewerDAL: TSecretApprovalRequestReviewerDALFactory;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findBySecretPath" | "findById" | "findSecretPathByFolderIds"
@@ -437,7 +437,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (!blindIndexCfg)
       throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
 
-    const commits: Omit<TSaRequestSecretsInsert, "requestId">[] = [];
+    const commits: Omit<TSecretApprovalRequestsSecretsInsert, "requestId">[] = [];
     // for created secret approval change
     const createdSecrets = data[CommitType.Create];
     if (createdSecrets && createdSecrets?.length) {

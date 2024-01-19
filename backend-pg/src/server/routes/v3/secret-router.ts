@@ -536,7 +536,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         skipMultilineEncoding
       } = req.body;
       if (req.body.type !== SecretType.Personal && req.permission.type === ActorType.USER) {
-        const policy = await server.services.secretApprovalPolicy.getSapOfFolder({
+        const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
           secretPath,
@@ -696,7 +696,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       } = req.body;
 
       if (req.body.type !== SecretType.Personal && req.permission.type === ActorType.USER) {
-        const policy = await server.services.secretApprovalPolicy.getSapOfFolder({
+        const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
           secretPath,
@@ -825,7 +825,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { secretPath, type, workspaceId: projectId, secretId, environment } = req.body;
       if (req.body.type !== SecretType.Personal && req.permission.type === ActorType.USER) {
-        const policy = await server.services.secretApprovalPolicy.getSapOfFolder({
+        const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
           secretPath,
@@ -942,7 +942,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
-        const policy = await server.services.secretApprovalPolicy.getSapOfFolder({
+        const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
           secretPath,
@@ -1055,7 +1055,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
-        const policy = await server.services.secretApprovalPolicy.getSapOfFolder({
+        const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
           secretPath,
@@ -1156,7 +1156,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { environment, workspaceId: projectId, secretPath, secrets: inputSecrets } = req.body;
       if (req.permission.type === ActorType.USER) {
-        const policy = await server.services.secretApprovalPolicy.getSapOfFolder({
+        const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
           actorId: req.permission.id,
           actor: req.permission.type,
           secretPath,

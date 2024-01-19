@@ -31,7 +31,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalPolicy.createSap({
+      const approval = await server.services.secretApprovalPolicy.createSecretApprovalPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
         projectId: req.body.workspaceId,
@@ -68,7 +68,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalPolicy.updateSap({
+      const approval = await server.services.secretApprovalPolicy.updateSecretApprovalPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
         ...req.body,
@@ -93,7 +93,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const approval = await server.services.secretApprovalPolicy.deleteSap({
+      const approval = await server.services.secretApprovalPolicy.deleteSecretApprovalPolicy({
         actor: req.permission.type,
         actorId: req.permission.id,
         secretPolicyId: req.params.sapId
@@ -117,7 +117,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const approvals = await server.services.secretApprovalPolicy.getSapByProjectId({
+      const approvals = await server.services.secretApprovalPolicy.getSecretApprovalPolicyByProjectId({
         actor: req.permission.type,
         actorId: req.permission.id,
         projectId: req.query.workspaceId
@@ -143,7 +143,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const policy = await server.services.secretApprovalPolicy.getSapOfFolder({
+      const policy = await server.services.secretApprovalPolicy.getSecretApprovalPolicyOfFolder({
         actor: req.permission.type,
         actorId: req.permission.id,
         projectId: req.query.workspaceId,

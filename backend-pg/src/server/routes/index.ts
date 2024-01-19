@@ -11,12 +11,12 @@ import { permissionDALFactory } from "@app/ee/services/permission/permission-dal
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
-import { sapApproverDALFactory } from "@app/ee/services/secret-approval-policy/sap-approver-dal";
+import { secretApprovalPolicyApproverDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
 import { secretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { secretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { sarReviewerDALFactory } from "@app/ee/services/secret-approval-request/sar-reviewer-dal";
-import { sarSecretDALFactory } from "@app/ee/services/secret-approval-request/sar-secret-dal";
 import { secretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
+import { secretApprovalRequestReviewerDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-reviewer-dal";
+import { secretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { secretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { secretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { secretRotationQueueFactory } from "@app/ee/services/secret-rotation/secret-rotation-queue";
@@ -159,11 +159,11 @@ export const registerRoutes = async (
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
   const samlConfigDAL = samlConfigDALFactory(db);
-  const sapApproverDAL = sapApproverDALFactory(db);
+  const sapApproverDAL = secretApprovalPolicyApproverDALFactory(db);
   const secretApprovalPolicyDAL = secretApprovalPolicyDALFactory(db);
   const secretApprovalRequestDAL = secretApprovalRequestDALFactory(db);
-  const sarReviewerDAL = sarReviewerDALFactory(db);
-  const sarSecretDAL = sarSecretDALFactory(db);
+  const sarReviewerDAL = secretApprovalRequestReviewerDALFactory(db);
+  const sarSecretDAL = secretApprovalRequestSecretDALFactory(db);
 
   const secretRotationDAL = secretRotationDALFactory(db);
   const snapshotDAL = snapshotDALFactory(db);
@@ -198,7 +198,7 @@ export const registerRoutes = async (
   const sapService = secretApprovalPolicyServiceFactory({
     projectMembershipDAL,
     projectEnvDAL,
-    sapApproverDAL,
+    secretApprovalPolicyApproverDAL: sapApproverDAL,
     permissionService,
     secretApprovalPolicyDAL
   });

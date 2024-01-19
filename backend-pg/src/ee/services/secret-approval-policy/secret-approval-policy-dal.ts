@@ -1,14 +1,15 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName,TSecretApprovalPolicies } from "@app/db/schemas";
+import { TableName, TSecretApprovalPolicies } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import {
   buildFindFilter,
   mergeOneToManyRelation,
   ormify,
   selectAllTableCols,
-  TFindFilter} from "@app/lib/knex";
+  TFindFilter
+} from "@app/lib/knex";
 
 export type TSecretApprovalPolicyDALFactory = ReturnType<typeof secretApprovalPolicyDALFactory>;
 
@@ -24,11 +25,11 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
         `${TableName.Environment}.id`
       )
       .join(
-        TableName.SapApprover,
+        TableName.SecretApprovalPolicyApprover,
         `${TableName.SecretApprovalPolicy}.id`,
-        `${TableName.SapApprover}.policyId`
+        `${TableName.SecretApprovalPolicyApprover}.policyId`
       )
-      .select(tx.ref("approverId").withSchema(TableName.SapApprover))
+      .select(tx.ref("approverId").withSchema(TableName.SecretApprovalPolicyApprover))
       .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))
       .select(tx.ref("slug").withSchema(TableName.Environment).as("envSlug"))
       .select(tx.ref("id").withSchema(TableName.Environment).as("envId"))

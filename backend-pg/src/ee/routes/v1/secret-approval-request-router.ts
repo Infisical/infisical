@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import {
-  SaRequestSecretsSchema,
-  SarReviewersSchema,
+  SecretApprovalRequestsReviewersSchema,
   SecretApprovalRequestsSchema,
+  SecretApprovalRequestsSecretsSchema,
   SecretsSchema,
   SecretVersionsSchema
 } from "@app/db/schemas";
@@ -113,7 +113,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
               reviewers: z.object({ member: z.string(), status: z.string() }).array(),
               approvers: z.string().array(),
               secretPath: z.string(),
-              commits: SaRequestSecretsSchema.omit({ secretBlindIndex: true })
+              commits: SecretApprovalRequestsSecretsSchema.omit({ secretBlindIndex: true })
                 .merge(
                   z.object({
                     secret: SecretsSchema.pick({
@@ -197,7 +197,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       }),
       response: {
         200: z.object({
-          review: SarReviewersSchema
+          review: SecretApprovalRequestsReviewersSchema
         })
       }
     },

@@ -5,22 +5,26 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-export type TSarSecretDALFactory = ReturnType<typeof sarSecretDALFactory>;
+export type TSecretApprovalRequestSecretDALFactory = ReturnType<typeof secretApprovalRequestSecretDALFactory>;
 
-export const sarSecretDALFactory = (db: TDbClient) => {
-  const sarSecretOrm = ormify(db, TableName.SarSecret);
+export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
+  const sarSecretOrm = ormify(db, TableName.SecretApprovalRequestSecret);
 
   const findByRequestId = async (requestId: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db)(TableName.SarSecret)
+      const doc = await (tx || db)(TableName.SecretApprovalRequestSecret)
         .where({ requestId })
-        .leftJoin(TableName.Secret, `${TableName.SarSecret}.secretId`, `${TableName.Secret}.id`)
+        .leftJoin(
+          TableName.Secret,
+          `${TableName.SecretApprovalRequestSecret}.secretId`,
+          `${TableName.Secret}.id`
+        )
         .leftJoin(
           TableName.SecretVersion,
           `${TableName.SecretVersion}.id`,
-          `${TableName.SarSecret}.secretVersion`
+          `${TableName.SecretApprovalRequestSecret}.secretVersion`
         )
-        .select(selectAllTableCols(TableName.SarSecret))
+        .select(selectAllTableCols(TableName.SecretApprovalRequestSecret))
         .select(
           db.ref("secretBlindIndex").withSchema(TableName.Secret).as("orgSecBlindIndex"),
           db.ref("version").withSchema(TableName.Secret).as("orgSecVersion"),

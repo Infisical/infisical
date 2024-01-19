@@ -42,7 +42,8 @@ export const superAdminServiceFactory = ({
 
   const updateServerCfg = async (data: TSuperAdminUpdate) => {
     const cfg = await serverCfgDAL.updateById(serverCfg.id, data);
-    serverCfg = Object.freeze(cfg);
+    serverCfg = cfg;
+    Object.freeze(serverCfg);
     return cfg;
   };
 
