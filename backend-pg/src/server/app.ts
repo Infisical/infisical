@@ -35,7 +35,7 @@ export const main = async ({ db, smtp, logger, queue }: TMain) => {
   const server = fasitfy({
     logger,
     trustProxy: true,
-    ignoreTrailingSlash: true,
+    ignoreTrailingSlash: true
   }).withTypeProvider<ZodTypeProvider>();
 
   server.setValidatorCompiler(validatorCompiler);
@@ -56,13 +56,11 @@ export const main = async ({ db, smtp, logger, queue }: TMain) => {
     await server.register(fastifySwagger);
     await server.register(fastifyFormBody);
     await server.register(fastifyErrHandler);
-    // allow empty body on post request
-    // server.addContentTypeParser("application/json", { bodyLimit: 0 }, (_request, _payload, done) =>
-    //   done(null, null)
-    // );
 
     // Rate limiters and security headers
-    await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg);
+    if (appCfg.NODE_ENV === "production") {
+      await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg());
+    }
     await server.register(helmet, { contentSecurityPolicy: false });
 
     await server.register(registerRoutes, { smtp, queue, db });

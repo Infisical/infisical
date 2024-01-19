@@ -90,6 +90,8 @@ const envSchema = z
   .transform((data) => ({
     ...data,
     isSmtpConfigured: Boolean(data.SMTP_HOST),
+    isRedisConfigured: Boolean(data.REDIS_URL),
+    isDevelopmentMode: data.NODE_ENV === "development",
     isSecretScanningConfigured:
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&

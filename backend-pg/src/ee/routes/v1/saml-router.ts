@@ -11,6 +11,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 type TSAMLConfig = {
   callbackUrl: string;
@@ -63,7 +64,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       },
       async (req, profile, cb) => {
         try {
-          const serverCfg = server.services.superAdmin.getServerCfg();
+          const serverCfg = getServerCfg();
           if (!profile) throw new BadRequestError({ message: "Missing profile" });
           const { email, firstName } = profile;
           if (!email || !firstName)

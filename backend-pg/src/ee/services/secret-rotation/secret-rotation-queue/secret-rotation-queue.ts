@@ -208,9 +208,7 @@ export const secretRotationQueueFactory = ({
           const deleteCycleCred = variables.creds.pop();
           if (deleteCycleCred && provider.template.functions.remove) {
             const deleteCycleVar = { inputs: variables.inputs, ...deleteCycleCred };
-            if (provider.template.type === TProviderFunctionTypes.HTTP) {
-              await secretRotationHttpFn(provider.template.functions.remove, deleteCycleVar);
-            }
+            await secretRotationHttpFn(provider.template.functions.remove, deleteCycleVar);
           }
         }
       }

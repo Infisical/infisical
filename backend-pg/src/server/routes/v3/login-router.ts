@@ -1,11 +1,15 @@
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { authRateLimit } from "@app/server/config/rateLimiter";
 
 export const registerLoginRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/login1",
+    config: {
+      rateLimit: authRateLimit
+    },
     schema: {
       body: z.object({
         email: z.string().email().trim(),
@@ -33,6 +37,9 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/login2",
+    config: {
+      rateLimit: authRateLimit
+    },
     schema: {
       body: z.object({
         email: z.string().email().trim(),

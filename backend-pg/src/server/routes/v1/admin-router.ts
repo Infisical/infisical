@@ -6,6 +6,7 @@ import { UnauthorizedError } from "@app/lib/errors";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 export const registerAdminRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -19,7 +20,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: () => {
-      const config = server.services.superAdmin.getServerCfg();
+      const config = getServerCfg();
       return { config };
     }
   });
@@ -76,7 +77,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const appCfg = getConfig();
-      const serverCfg = server.services.superAdmin.getServerCfg();
+      const serverCfg = getServerCfg();
       if (serverCfg.initialized)
         throw new UnauthorizedError({ name: "Admin sign up", message: "Admin has been created" });
       const { user, token } = await server.services.superAdmin.adminSignUp({

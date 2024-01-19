@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { authRateLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import {
   AuthMode,
@@ -14,6 +15,9 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
   server.route({
     url: "/logout",
     method: "POST",
+    config:{
+      rateLimit:authRateLimit
+    },
     schema: {
       response: {
         200: z.object({

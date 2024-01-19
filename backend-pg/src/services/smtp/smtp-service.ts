@@ -36,7 +36,7 @@ export enum SmtpHost {
   Office365 = "smtp.office365.com"
 }
 
-const getTlsOption = (host?: SmtpHost | string, secure?: boolean) => {
+export const getTlsOption = (host?: SmtpHost | string, secure?: boolean) => {
   if (!secure) return { secure: false };
   if (!host) return { secure: true };
 

@@ -17,14 +17,19 @@ type TSuperAdminServiceFactoryDep = {
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
 
+let serverCfg: Readonly<TSuperAdmin>;
+export const getServerCfg = () => {
+  if (!serverCfg)
+    throw new BadRequestError({ name: "Get server cfg", message: "Server cfg not initialized" });
+  return serverCfg;
+};
+
 export const superAdminServiceFactory = ({
   serverCfgDal,
   userDal,
   authService,
   orgService
 }: TSuperAdminServiceFactoryDep) => {
-  let serverCfg: TSuperAdmin;
-
   const initServerCfg = async () => {
     serverCfg = await serverCfgDal.findOne({});
     if (!serverCfg) {
@@ -35,15 +40,9 @@ export const superAdminServiceFactory = ({
     return serverCfg;
   };
 
-  const getServerCfg = () => {
-    if (!serverCfg)
-      throw new BadRequestError({ name: "Get server cfg", message: "Server cfg not initialized" });
-    return serverCfg;
-  };
-
   const updateServerCfg = async (data: TSuperAdminUpdate) => {
     const cfg = await serverCfgDal.updateById(serverCfg.id, data);
-    serverCfg = cfg;
+    serverCfg = Object.freeze(cfg);
     return cfg;
   };
 
@@ -107,7 +106,6 @@ export const superAdminServiceFactory = ({
 
   return {
     initServerCfg,
-    getServerCfg,
     updateServerCfg,
     adminSignUp
   };

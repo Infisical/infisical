@@ -2,11 +2,15 @@ import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { authRateLimit } from "@app/server/config/rateLimiter";
 
 export const registerSignupRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/email/signup",
     method: "POST",
+    config: {
+      rateLimit: authRateLimit
+    },
     schema: {
       body: z.object({
         email: z.string().email().trim()
@@ -26,6 +30,9 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/email/verify",
     method: "POST",
+    config: {
+      rateLimit: authRateLimit
+    },
     schema: {
       body: z.object({
         email: z.string().email().trim(),
@@ -51,6 +58,9 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/complete-account/signup",
     method: "POST",
+    config: {
+      rateLimit: authRateLimit
+    },
     schema: {
       body: z.object({
         email: z.string().email().trim(),
@@ -105,6 +115,9 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/complete-account/invite",
     method: "POST",
+    config: {
+      rateLimit: authRateLimit
+    },
     schema: {
       body: z.object({
         email: z.string().email().trim(),

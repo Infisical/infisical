@@ -106,7 +106,6 @@ declare module "fastify" {
       license: TLicenseServiceFactory;
       trustedIp: TTrustedIpServiceFactory;
     };
-
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer
     store: {
