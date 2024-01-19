@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SecretSnapshotsSchema, SecretVersionsSchema } from "@app/db/schemas";
+import { SecretSnapshotsSchema, SecretTagsSchema, SecretVersionsSchema } from "@app/db/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -22,7 +22,18 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
               slug: z.string(),
               name: z.string()
             }),
-            secretVersions: SecretVersionsSchema.omit({ secretBlindIndex: true }).array(),
+            secretVersions: SecretVersionsSchema.omit({ secretBlindIndex: true })
+              .merge(
+                z.object({
+                  tags: SecretTagsSchema.pick({
+                    id: true,
+                    slug: true,
+                    name: true,
+                    color: true
+                  }).array()
+                })
+              )
+              .array(),
             folderVersion: z.object({ id: z.string(), name: z.string() }).array(),
             createdAt: z.date(),
             updatedAt: z.date()

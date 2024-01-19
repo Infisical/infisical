@@ -40,14 +40,14 @@ export async function up(knex: Knex): Promise<void> {
   // many to many relation between tags
   await createJunctionTable(
     knex,
-    TableName.JnSecretVersionTag,
+    TableName.SecretVersionTag,
     TableName.SecretVersion,
     TableName.SecretTag
   );
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TableName.JnSecretVersionTag);
+  await knex.schema.dropTableIfExists(TableName.SecretVersionTag);
   await knex.schema.dropTableIfExists(TableName.SecretVersion);
   await dropOnUpdateTrigger(knex, TableName.SecretVersion);
 }

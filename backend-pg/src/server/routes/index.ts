@@ -79,6 +79,7 @@ import { secretDALFactory } from "@app/services/secret/secret-dal";
 import { secretQueueFactory } from "@app/services/secret/secret-queue";
 import { secretServiceFactory } from "@app/services/secret/secret-service";
 import { secretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { secretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
@@ -138,6 +139,7 @@ export const registerRoutes = async (
   const folderVersionDAL = secretFolderVersionDALFactory(db);
   const secretImportDAL = secretImportDALFactory(db);
   const secretVersionDAL = secretVersionDALFactory(db);
+  const secretVersionTagDAL = secretVersionTagDALFactory(db);
   const secretBlindIndexDAL = secretBlindIndexDALFactory(db);
 
   const integrationDAL = integrationDALFactory(db);
@@ -351,6 +353,7 @@ export const registerRoutes = async (
   const secretService = secretServiceFactory({
     folderDAL,
     secretVersionDAL,
+    secretVersionTagDAL,
     secretBlindIndexDAL,
     permissionService,
     secretDAL,

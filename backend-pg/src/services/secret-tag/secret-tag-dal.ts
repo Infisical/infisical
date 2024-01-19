@@ -29,7 +29,7 @@ export const secretTagDALFactory = (db: TDbClient) => {
           `${TableName.SecretTag}.id`
         )
         .where("projectId", projectId)
-        .whereIn("secretsId", secretIds)
+        .whereIn(`${TableName.Secret}Id`, secretIds)
         .delete()
         .returning("*");
       return tags;

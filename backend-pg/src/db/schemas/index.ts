@@ -44,6 +44,7 @@ export * from "./secret-snapshot-secrets";
 export * from "./secret-snapshots";
 export * from "./secret-tag-junction";
 export * from "./secret-tags";
+export * from "./secret-version-tag-junction";
 export * from "./secret-versions";
 export * from "./secrets";
 export * from "./service-tokens";

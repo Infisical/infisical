@@ -68,6 +68,16 @@ export const snapshotDALFactory = (db: TDbClient) => {
           `${TableName.SecretVersion}.id`
         )
         .leftJoin(
+          TableName.SecretVersionTag,
+          `${TableName.SecretVersionTag}.${TableName.SecretVersion}Id`,
+          `${TableName.SecretVersion}.id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretVersionTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .leftJoin(
           TableName.SnapshotFolder,
           `${TableName.SnapshotFolder}.snapshotId`,
           `${TableName.Snapshot}.id`
@@ -87,7 +97,12 @@ export const snapshotDALFactory = (db: TDbClient) => {
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
           db.ref("projectId").withSchema(TableName.Environment),
           db.ref("name").withSchema(TableName.SecretFolderVersion).as("folderVerName"),
-          db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("folderVerId")
+          db.ref("folderId").withSchema(TableName.SecretFolderVersion).as("folderVerId"),
+          db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
+          db.ref("id").withSchema(TableName.SecretVersionTag).as("tagVersionId"),
+          db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
+          db.ref("name").withSchema(TableName.SecretTag).as("tagName")
         );
       return sqlNestRelationships({
         data,
@@ -111,7 +126,20 @@ export const snapshotDALFactory = (db: TDbClient) => {
           {
             key: "id",
             label: "secretVersions" as const,
-            mapper: (el) => SecretVersionsSchema.parse(el)
+            mapper: (el) => SecretVersionsSchema.parse(el),
+            childrenMapper: [
+              {
+                key: "tagVersionId",
+                label: "tags" as const,
+                mapper: ({
+                  tagId: id,
+                  tagName: name,
+                  tagSlug: slug,
+                  tagColor: color,
+                  tagVersionId: vId
+                }) => ({ id, name, slug, color, vId })
+              }
+            ]
           },
           {
             key: "folderVerId",

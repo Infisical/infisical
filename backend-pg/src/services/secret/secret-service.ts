@@ -51,6 +51,7 @@ import {
   TUpdateSecretRawDTO
 } from "./secret-types";
 import { TSecretVersionDALFactory } from "./secret-version-dal";
+import { TSecretVersionTagDALFactory } from "./secret-version-tag-dal";
 
 type TSecretServiceFactoryDep = {
   secretDAL: TSecretDALFactory;
@@ -66,6 +67,7 @@ type TSecretServiceFactoryDep = {
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find">;
+  secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -79,7 +81,8 @@ export const secretServiceFactory = ({
   snapshotService,
   secretQueueService,
   projectBotService,
-  secretImportDAL
+  secretImportDAL,
+  secretVersionTagDAL
 }: TSecretServiceFactoryDep) => {
   // utility function to get secret blind index data
   const interalGenSecBlindIndexByName = async (projectId: string, secretName: string) => {
@@ -116,10 +119,7 @@ export const secretServiceFactory = ({
         [`${TableName.Secret}Id` as const]: newSecretGroupByBlindIndex[secretBlindIndex][0].id
       }))
     );
-    if (newSecretTags.length) {
-      await secretTagDAL.saveTagsToSecret(newSecretTags, tx);
-    }
-    await secretVersionDAL.insertMany(
+    const secretVersions = await secretVersionDAL.insertMany(
       inputSecrets.map(({ tags, ...el }) => ({
         ...el,
         folderId,
@@ -127,6 +127,15 @@ export const secretServiceFactory = ({
       })),
       tx
     );
+    if (newSecretTags.length) {
+      const secTags = await secretTagDAL.saveTagsToSecret(newSecretTags, tx);
+      const secVersionsGroupBySecId = groupBy(secretVersions, (i) => i.secretId);
+      const newSecretVersionTags = secTags.flatMap(({ secretsId, secret_tagsId }) => ({
+        [`${TableName.SecretVersion}Id` as const]: secVersionsGroupBySecId[secretsId][0].id,
+        [`${TableName.SecretTag}Id` as const]: secret_tagsId
+      }));
+      await secretVersionTagDAL.insertMany(newSecretVersionTags, tx);
+    }
 
     return newSecrets;
   };
@@ -144,13 +153,20 @@ export const secretServiceFactory = ({
       })),
       tx
     );
+    const secretVersions = await secretVersionDAL.insertMany(
+      newSecrets.map(({ id, createdAt, updatedAt, ...el }) => ({
+        ...el,
+        secretId: id
+      })),
+      tx
+    );
     const secsUpdatedTag = inputSecrets.flatMap(({ data: { tags } }, i) =>
-      tags?.length ? { tags, secretId: newSecrets[i].id } : []
+      tags !== undefined ? { tags, secretId: newSecrets[i].id } : []
     );
     if (secsUpdatedTag.length) {
       await secretTagDAL.deleteTagsManySecret(
         projectId,
-        secsUpdatedTag.flatMap(({ tags }) => tags),
+        secsUpdatedTag.map(({ secretId }) => secretId),
         tx
       );
       const newSecretTags = secsUpdatedTag.flatMap(({ tags: secretTags = [], secretId }) =>
@@ -159,15 +175,16 @@ export const secretServiceFactory = ({
           [`${TableName.Secret}Id` as const]: secretId
         }))
       );
-      await secretTagDAL.saveTagsToSecret(newSecretTags, tx);
+      if (newSecretTags.length) {
+        const secTags = await secretTagDAL.saveTagsToSecret(newSecretTags, tx);
+        const secVersionsGroupBySecId = groupBy(secretVersions, (i) => i.secretId);
+        const newSecretVersionTags = secTags.flatMap(({ secretsId, secret_tagsId }) => ({
+          [`${TableName.SecretVersion}Id` as const]: secVersionsGroupBySecId[secretsId][0].id,
+          [`${TableName.SecretTag}Id` as const]: secret_tagsId
+        }));
+        await secretVersionTagDAL.insertMany(newSecretVersionTags, tx);
+      }
     }
-    await secretVersionDAL.insertMany(
-      newSecrets.map(({ id, createdAt, updatedAt, ...el }) => ({
-        ...el,
-        secretId: id
-      })),
-      tx
-    );
 
     return newSecrets;
   };

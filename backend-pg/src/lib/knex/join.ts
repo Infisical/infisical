@@ -45,10 +45,57 @@ export type TChildMapper<T extends {}, U extends string = string, R extends unkn
   key: keyof T;
   label: U;
   mapper: (arg: T) => R;
+  childrenMapper?: TChildMapper<T, U, R>[];
 };
 
 type MappedRecord<T extends TChildMapper<any>> = {
-  [K in T["label"]]: Exclude<ReturnType<Extract<T, { label: K }>["mapper"]>, null | undefined>[];
+  [K in T["label"]]: Array<
+    Exclude<ReturnType<Extract<T, { label: K }>["mapper"]>, null | undefined> &
+      (Extract<T, { label: K }>["childrenMapper"] extends Array<infer TChild>
+        ? TChild extends TChildMapper<any>
+          ? MappedRecord<TChild>
+          : {}
+        : {})
+  >;
+};
+
+const sqlChildMapper = <
+  T extends Record<string, any> = {},
+  P extends Record<string, any> = {},
+  C extends TChildMapper<T>[] = TChildMapper<T>[]
+>(
+  doc: T,
+  docsByPk: P,
+  lookupTable: Set<string>,
+  pk: keyof P,
+  prefix: string,
+  childrenMapper: C
+) => {
+  if (!docsByPk) return;
+  type Cm = MappedRecord<(typeof childrenMapper)[number]>;
+  childrenMapper.forEach(({ label, mapper, key: childPk, childrenMapper: nestedMappers }) => {
+    // eslint-disable-next-line
+    if (!docsByPk?.[pk as keyof P]?.[label]) docsByPk[pk as keyof P][label as keyof Cm] = [] as any;
+
+    if (doc?.[childPk] !== null && typeof doc?.[childPk] !== "undefined") {
+      const ck = `${prefix}-${label}-${doc[childPk]}`;
+      if (!lookupTable.has(ck)) {
+        const val = mapper(doc);
+        if (typeof val !== "undefined" && val !== null) docsByPk[pk as keyof P][label].push(val);
+        lookupTable.add(ck);
+      }
+      if (nestedMappers) {
+        sqlChildMapper(
+          doc,
+          docsByPk[pk][label as keyof P],
+          lookupTable,
+          docsByPk[pk][label as keyof P].length - 1,
+          ck,
+          nestedMappers
+        );
+      }
+    }
+  });
 };
 
 export const sqlNestRelationships = <
@@ -61,31 +108,21 @@ export const sqlNestRelationships = <
   parentMapper,
   childrenMapper
 }: TSqlPackRelationships<T, P, C>) => {
-  const parentLookup = new Set<string>();
-  const childLookUp = new Set<string>();
+  const lookupTable = new Set<string>();
   const recordsOrder: string[] = [];
 
   type Cm = MappedRecord<(typeof childrenMapper)[number]>;
 
   const recordsGroupedByPk: Record<string, P & Cm> = {};
-  data.forEach((el) => {
-    const pk = el[key];
-    if (!parentLookup.has(pk)) {
-      recordsGroupedByPk[pk] = parentMapper(el) as P & Cm;
+  data.forEach((doc) => {
+    const pk = doc[key];
+    if (!lookupTable.has(pk)) {
+      recordsGroupedByPk[pk] = parentMapper(doc) as P & Cm;
       recordsOrder.push(pk);
-      parentLookup.add(pk);
+      lookupTable.add(pk);
     }
-    childrenMapper.forEach(({ label, mapper, key: cKey }) => {
-      if (!recordsGroupedByPk[pk][label]) recordsGroupedByPk[pk][label as keyof Cm] = [] as any;
-      if (el[cKey] !== null && typeof el[cKey] !== "undefined") {
-        const ck = `${pk}-${label}-${el[cKey]}`;
-        if (!childLookUp.has(ck)) {
-          const val = mapper(el);
-          if (typeof val !== "undefined" && val !== null) recordsGroupedByPk[pk][label].push(val);
-          childLookUp.add(ck);
-        }
-      }
-    });
+
+    sqlChildMapper(doc, recordsGroupedByPk, lookupTable, pk, "", childrenMapper);
   });
   return recordsOrder.map((pkId) => recordsGroupedByPk[pkId]);
 };

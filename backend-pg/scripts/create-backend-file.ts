@@ -27,8 +27,8 @@ if (componentType === 1) {
     .split("-")
     .map((el, index) => (index === 0 ? el : `${el[0].toUpperCase()}${el.slice(1)}`))
     .join("");
-  const dalTypeName = `T${pascalCase}DalFactory`;
-  const dalName = `${camelCase}DalFactory`;
+  const dalTypeName = `T${pascalCase}DALFactory`;
+  const dalName = `${camelCase}DALFactory`;
   const serviceTypeName = `T${pascalCase}ServiceFactory`;
   const serviceName = `${camelCase}ServiceFactory`;
 
@@ -53,12 +53,12 @@ export const ${dalName} = (db: TDbClient) => {
     `import { ${dalTypeName} } from "./${componentName}-dal";
 
 type ${serviceTypeName}Dep = {
-  ${camelCase}Dal: ${dalTypeName};
+  ${camelCase}DAL: ${dalTypeName};
 };
 
 export type ${serviceTypeName} = ReturnType<typeof ${serviceName}>;
 
-export const ${serviceName} = ({ ${camelCase}Dal }: ${serviceTypeName}Dep) => {
+export const ${serviceName} = ({ ${camelCase}DAL }: ${serviceTypeName}Dep) => {
   return {};
 };
 `
@@ -75,8 +75,8 @@ export const ${serviceName} = ({ ${camelCase}Dal }: ${serviceTypeName}Dep) => {
     .split("-")
     .map((el, index) => (index === 0 ? el : `${el[0].toUpperCase()}${el.slice(1)}`))
     .join("");
-  const dalTypeName = `T${pascalCase}DalFactory`;
-  const dalName = `${camelCase}DalFactory`;
+  const dalTypeName = `T${pascalCase}DALFactory`;
+  const dalName = `${camelCase}DALFactory`;
 
   writeFileSync(
     path.join(__dirname, "../src/services", componentPath, `${componentName}-dal.ts`),

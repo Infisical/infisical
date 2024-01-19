@@ -143,6 +143,9 @@ import {
   TSecretVersions,
   TSecretVersionsInsert,
   TSecretVersionsUpdate,
+  TSecretVersionTagJunction,
+  TSecretVersionTagJunctionInsert,
+  TSecretVersionTagJunctionUpdate,
   TServiceTokens,
   TServiceTokensInsert,
   TServiceTokensUpdate,
@@ -163,8 +166,7 @@ import {
   TUsersUpdate,
   TWebhooks,
   TWebhooksInsert,
-  TWebhooksUpdate
-} from "@app/db/schemas";
+  TWebhooksUpdate} from "@app/db/schemas";
 
 declare module "knex/types/tables" {
   interface Tables {
@@ -402,6 +404,11 @@ declare module "knex/types/tables" {
       TSecretTagJunction,
       TSecretTagJunctionInsert,
       TSecretTagJunctionUpdate
+    >;
+    [TableName.SecretVersionTag]: Knex.CompositeTableType<
+      TSecretVersionTagJunction,
+      TSecretVersionTagJunctionInsert,
+      TSecretVersionTagJunctionUpdate
     >;
   }
 }

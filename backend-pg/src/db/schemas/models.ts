@@ -54,9 +54,9 @@ export enum TableName {
   GitAppOrg = "git_app_org",
   SecretScanningGitRisk = "secret_scanning_git_risks",
   TrustedIps = "trusted_ips",
-  // junction tables
+  // junction tables with tags
   JnSecretTag = "secret_tag_junction",
-  JnSecretVersionTag = "secret_version_tag_junction"
+  SecretVersionTag = "secret_version_tag_junction"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt";
