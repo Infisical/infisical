@@ -4,9 +4,9 @@ import { TDbClient } from "@app/db";
 import { TableName, TBackupPrivateKey } from "@app/db/schemas";
 import { withTransaction } from "@app/lib/knex";
 
-export type TAuthDalFactory = ReturnType<typeof authDalFactory>;
+export type TAuthDALFactory = ReturnType<typeof authDALFactory>;
 
-export const authDalFactory = (db: TDbClient) => {
+export const authDALFactory = (db: TDbClient) => {
   const getBackupPrivateKeyByUserId = async (userId: string) =>
     db(TableName.BackupPrivateKey).where({ userId }).first("*");
 

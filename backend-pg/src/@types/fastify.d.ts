@@ -39,7 +39,7 @@ import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
-import { TUserDalFactory } from "@app/services/user/user-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 
@@ -109,7 +109,7 @@ declare module "fastify" {
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer
     store: {
-      user: Pick<TUserDalFactory, "findById">;
+      user: Pick<TUserDALFactory, "findById">;
     };
   }
 }

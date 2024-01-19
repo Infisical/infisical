@@ -12,8 +12,8 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { ActorType } from "../auth/auth-type";
-import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
-import { TServiceTokenDalFactory } from "./service-token-dal";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TServiceTokenDALFactory } from "./service-token-dal";
 import {
   TCreateServiceTokenDTO,
   TDeleteServiceTokenDTO,
@@ -22,17 +22,17 @@ import {
 } from "./service-token-types";
 
 type TServiceTokenServiceFactoryDep = {
-  serviceTokenDal: TServiceTokenDalFactory;
+  serviceTokenDAL: TServiceTokenDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  projectEnvDal: Pick<TProjectEnvDalFactory, "findBySlugs">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findBySlugs">;
 };
 
 export type TServiceTokenServiceFactory = ReturnType<typeof serviceTokenServiceFactory>;
 
 export const serviceTokenServiceFactory = ({
-  serviceTokenDal,
+  serviceTokenDAL,
   permissionService,
-  projectEnvDal
+  projectEnvDAL
 }: TServiceTokenServiceFactoryDep) => {
   const createServiceToken = async ({
     iv,
@@ -63,7 +63,7 @@ export const serviceTokenServiceFactory = ({
 
     // validates env
     const scopeEnvs = [...new Set(scopes.map(({ environment }) => environment))];
-    const inputEnvs = await projectEnvDal.findBySlugs(projectId, scopeEnvs);
+    const inputEnvs = await projectEnvDAL.findBySlugs(projectId, scopeEnvs);
     if (inputEnvs.length !== scopeEnvs.length)
       throw new BadRequestError({ message: "Environment not found" });
 
@@ -76,7 +76,7 @@ export const serviceTokenServiceFactory = ({
     }
     const createdBy = actorId;
 
-    const serviceToken = await serviceTokenDal.create({
+    const serviceToken = await serviceTokenDAL.create({
       name,
       createdBy,
       encryptedKey,
@@ -95,7 +95,7 @@ export const serviceTokenServiceFactory = ({
   };
 
   const deleteServiceToken = async ({ actorId, actor, id }: TDeleteServiceTokenDTO) => {
-    const serviceToken = await serviceTokenDal.findById(id);
+    const serviceToken = await serviceTokenDAL.findById(id);
     if (!serviceToken) throw new BadRequestError({ message: "Token not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -108,7 +108,7 @@ export const serviceTokenServiceFactory = ({
       ProjectPermissionSub.ServiceTokens
     );
 
-    const deletedServiceToken = await serviceTokenDal.deleteById(id);
+    const deletedServiceToken = await serviceTokenDAL.deleteById(id);
     return deletedServiceToken;
   };
 
@@ -116,7 +116,7 @@ export const serviceTokenServiceFactory = ({
     if (actor !== ActorType.SERVICE)
       throw new BadRequestError({ message: "Service token not found" });
 
-    const serviceToken = await serviceTokenDal.findById(actorId);
+    const serviceToken = await serviceTokenDAL.findById(actorId);
     if (!serviceToken) throw new BadRequestError({ message: "Token not found" });
 
     return serviceToken;
@@ -133,23 +133,23 @@ export const serviceTokenServiceFactory = ({
       ProjectPermissionSub.ServiceTokens
     );
 
-    const tokens = await serviceTokenDal.find({ projectId });
+    const tokens = await serviceTokenDAL.find({ projectId });
     return tokens;
   };
 
   const fnValidateServiceToken = async (token: string) => {
     const [, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>token.split(".", 3);
-    const serviceToken = await serviceTokenDal.findById(TOKEN_IDENTIFIER);
+    const serviceToken = await serviceTokenDAL.findById(TOKEN_IDENTIFIER);
     if (!serviceToken) throw new UnauthorizedError();
 
     if (serviceToken.expiresAt && new Date(serviceToken.expiresAt) < new Date()) {
-      await serviceTokenDal.deleteById(serviceToken.id);
+      await serviceTokenDAL.deleteById(serviceToken.id);
       throw new UnauthorizedError({ message: "failed to authenticate expired service token" });
     }
 
     const isMatch = await bcrypt.compare(TOKEN_SECRET, serviceToken.secretHash);
     if (!isMatch) throw new UnauthorizedError();
-    const updatedToken = await serviceTokenDal.updateById(serviceToken.id, {
+    const updatedToken = await serviceTokenDAL.updateById(serviceToken.id, {
       lastUsed: new Date()
     });
     return updatedToken;

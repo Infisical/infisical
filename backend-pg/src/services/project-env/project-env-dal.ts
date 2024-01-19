@@ -5,9 +5,9 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-export type TProjectEnvDalFactory = ReturnType<typeof projectEnvDalFactory>;
+export type TProjectEnvDALFactory = ReturnType<typeof projectEnvDALFactory>;
 
-export const projectEnvDalFactory = (db: TDbClient) => {
+export const projectEnvDALFactory = (db: TDbClient) => {
   const projectEnvOrm = ormify(db, TableName.Environment);
 
   const findBySlugs = async (projectId: string, env: string[], tx?: Knex) => {

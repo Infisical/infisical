@@ -12,9 +12,9 @@ import {
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-export type TUserDalFactory = ReturnType<typeof userDalFactory>;
+export type TUserDALFactory = ReturnType<typeof userDALFactory>;
 
-export const userDalFactory = (db: TDbClient) => {
+export const userDALFactory = (db: TDbClient) => {
   const userOrm = ormify(db, TableName.Users);
   const findUserByEmail = async (email: string, tx?: Knex) => userOrm.findOne({ email }, tx);
 

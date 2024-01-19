@@ -5,13 +5,13 @@ import { TableName, TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-import { TDeleteTokenForUserDalDTO } from "./auth-token-types";
+import { TDeleteTokenForUserDALDTO } from "./auth-token-types";
 
-export type TTokenDalConfig = {};
+export type TTokenDALConfig = {};
 
-export type TTokenDalFactory = ReturnType<typeof tokenDalFactory>;
+export type TTokenDALFactory = ReturnType<typeof tokenDALFactory>;
 
-export const tokenDalFactory = (db: TDbClient) => {
+export const tokenDALFactory = (db: TDbClient) => {
   const authOrm = ormify(db, TableName.AuthTokens);
 
   const findOneTokenSession = async (
@@ -29,7 +29,7 @@ export const tokenDalFactory = (db: TDbClient) => {
     userId,
     type,
     orgId
-  }: TDeleteTokenForUserDalDTO): Promise<TAuthTokens[] | undefined> => {
+  }: TDeleteTokenForUserDALDTO): Promise<TAuthTokens[] | undefined> => {
     try {
       const doc = await db(TableName.AuthTokens)
         .where({ userId, type, orgId })
@@ -44,7 +44,7 @@ export const tokenDalFactory = (db: TDbClient) => {
   const decrementTriesField = async ({
     userId,
     type
-  }: TDeleteTokenForUserDalDTO): Promise<void> => {
+  }: TDeleteTokenForUserDALDTO): Promise<void> => {
     try {
       await db(TableName.AuthTokens).where({ userId, type }).decrement("triesLeft", 1);
     } catch (error) {

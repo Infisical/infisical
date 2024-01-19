@@ -3,28 +3,28 @@ import { ForbiddenError } from "@casl/ability";
 import { BadRequestError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { TProjectPermission } from "@app/lib/types";
-import { TProjectDalFactory } from "@app/services/project/project-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
-import { TTrustedIpDalFactory } from "./trusted-ip-dal";
+import { TTrustedIpDALFactory } from "./trusted-ip-dal";
 import { TCreateIpDTO, TDeleteIpDTO, TUpdateIpDTO } from "./trusted-ip-types";
 
 type TTrustedIpServiceFactoryDep = {
-  trustedIpDal: TTrustedIpDalFactory;
+  trustedIpDAL: TTrustedIpDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  projectDal: Pick<TProjectDalFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TTrustedIpServiceFactory = ReturnType<typeof trustedIpServiceFactory>;
 
 export const trustedIpServiceFactory = ({
-  trustedIpDal,
+  trustedIpDAL,
   permissionService,
   licenseService,
-  projectDal
+  projectDAL
 }: TTrustedIpServiceFactoryDep) => {
   const listIpsByProjectId = async ({ projectId, actor, actorId }: TProjectPermission) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
@@ -32,7 +32,7 @@ export const trustedIpServiceFactory = ({
       ProjectPermissionActions.Read,
       ProjectPermissionSub.IpAllowList
     );
-    const trustedIps = await trustedIpDal.find({
+    const trustedIps = await trustedIpDAL.find({
       projectId
     });
     return trustedIps;
@@ -52,7 +52,7 @@ export const trustedIpServiceFactory = ({
       ProjectPermissionSub.IpAllowList
     );
 
-    const project = await projectDal.findById(projectId);
+    const project = await projectDAL.findById(projectId);
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.ipAllowlisting)
       throw new BadRequestError({
@@ -67,7 +67,7 @@ export const trustedIpServiceFactory = ({
       });
 
     const { ipAddress, type, prefix } = extractIPDetails(ip);
-    const trustedIp = await trustedIpDal.create({
+    const trustedIp = await trustedIpDAL.create({
       projectId,
       ipAddress,
       type,
@@ -93,7 +93,7 @@ export const trustedIpServiceFactory = ({
       ProjectPermissionSub.IpAllowList
     );
 
-    const project = await projectDal.findById(projectId);
+    const project = await projectDAL.findById(projectId);
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.ipAllowlisting)
       throw new BadRequestError({
@@ -108,7 +108,7 @@ export const trustedIpServiceFactory = ({
       });
 
     const { ipAddress, type, prefix } = extractIPDetails(ip);
-    const [trustedIp] = await trustedIpDal.update(
+    const [trustedIp] = await trustedIpDAL.update(
       { projectId, id: trustedIpId },
       {
         projectId,
@@ -129,7 +129,7 @@ export const trustedIpServiceFactory = ({
       ProjectPermissionSub.IpAllowList
     );
 
-    const project = await projectDal.findById(projectId);
+    const project = await projectDAL.findById(projectId);
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.ipAllowlisting)
       throw new BadRequestError({
@@ -137,7 +137,7 @@ export const trustedIpServiceFactory = ({
           "Failed to add IP access range due to plan restriction. Upgrade plan to add IP access range."
       });
 
-    const [trustedIp] = await trustedIpDal.delete({ projectId, id: trustedIpId });
+    const [trustedIp] = await trustedIpDAL.delete({ projectId, id: trustedIpId });
 
     return { trustedIp, project }; // for audit log
   };

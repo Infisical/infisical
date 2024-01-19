@@ -18,18 +18,18 @@ import {
 import { BadRequestError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 
-import { TProjectBotDalFactory } from "./project-bot-dal";
+import { TProjectBotDALFactory } from "./project-bot-dal";
 import { TSetActiveStateDTO } from "./project-bot-types";
 
 type TProjectBotServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  projectBotDal: TProjectBotDalFactory;
+  projectBotDAL: TProjectBotDALFactory;
 };
 
 export type TProjectBotServiceFactory = ReturnType<typeof projectBotServiceFactory>;
 
 export const projectBotServiceFactory = ({
-  projectBotDal,
+  projectBotDAL,
   permissionService
 }: TProjectBotServiceFactoryDep) => {
   const getBotKey = async (projectId: string) => {
@@ -37,7 +37,7 @@ export const projectBotServiceFactory = ({
     const encryptionKey = appCfg.ENCRYPTION_KEY;
     const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
 
-    const bot = await projectBotDal.findOne({ projectId });
+    const bot = await projectBotDAL.findOne({ projectId });
     if (!bot) throw new BadRequestError({ message: "failed to find bot key" });
     if (!bot.isActive) throw new BadRequestError({ message: "Bot is not active" });
     if (!bot.encryptedProjectKeyNonce || !bot.encryptedProjectKey)
@@ -85,14 +85,14 @@ export const projectBotServiceFactory = ({
     );
     const appCfg = getConfig();
 
-    const bot = await projectBotDal.transaction(async (tx) => {
-      const doc = await projectBotDal.findOne({ projectId }, tx);
+    const bot = await projectBotDAL.transaction(async (tx) => {
+      const doc = await projectBotDAL.findOne({ projectId }, tx);
       if (doc) return doc;
 
       const { publicKey, privateKey } = generateAsymmetricKeyPair();
       if (appCfg.ROOT_ENCRYPTION_KEY) {
         const { iv, tag, ciphertext } = encryptSymmetric(privateKey, appCfg.ROOT_ENCRYPTION_KEY);
-        return projectBotDal.create(
+        return projectBotDAL.create(
           {
             name: "Infisical Bot",
             projectId,
@@ -112,7 +112,7 @@ export const projectBotServiceFactory = ({
           privateKey,
           appCfg.ENCRYPTION_KEY
         );
-        return projectBotDal.create(
+        return projectBotDAL.create(
           {
             name: "Infisical Bot",
             projectId,
@@ -139,7 +139,7 @@ export const projectBotServiceFactory = ({
     actorId,
     isActive
   }: TSetActiveStateDTO) => {
-    const bot = await projectBotDal.findById(botId);
+    const bot = await projectBotDAL.findById(botId);
     if (!bot) throw new BadRequestError({ message: "Bot not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -156,7 +156,7 @@ export const projectBotServiceFactory = ({
       if (!botKey?.nonce || !botKey?.encryptedKey) {
         throw new BadRequestError({ message: "Failed to set bot active - missing bot key" });
       }
-      const doc = await projectBotDal.updateById(botId, {
+      const doc = await projectBotDAL.updateById(botId, {
         isActive: true,
         encryptedProjectKey: botKey.encryptedKey,
         encryptedProjectKeyNonce: botKey.nonce,
@@ -166,7 +166,7 @@ export const projectBotServiceFactory = ({
       return doc;
     }
 
-    const doc = await projectBotDal.updateById(botId, {
+    const doc = await projectBotDAL.updateById(botId, {
       isActive: false,
       encryptedProjectKey: null,
       encryptedProjectKeyNonce: null

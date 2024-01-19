@@ -4,7 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { ormify, stripUndefinedInWhere } from "@app/lib/knex";
 
-export type TAuditLogDalFactory = ReturnType<typeof auditLogDalFactory>;
+export type TAuditLogDALFactory = ReturnType<typeof auditLogDALFactory>;
 
 type TFindQuery = {
   actor?: string;
@@ -18,7 +18,7 @@ type TFindQuery = {
   offset?: number;
 };
 
-export const auditLogDalFactory = (db: TDbClient) => {
+export const auditLogDALFactory = (db: TDbClient) => {
   const auditLogOrm = ormify(db, TableName.AuditLog);
 
   const find = async (

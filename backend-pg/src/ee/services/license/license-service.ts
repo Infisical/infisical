@@ -4,12 +4,12 @@ import NodeCache from "node-cache";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TOrgDalFactory } from "@app/services/org/org-dal";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { getDefaultOnPremFeatures, setupLicenceRequestWithStore } from "./licence-fns";
-import { TLicenseDalFactory } from "./license-dal";
+import { TLicenseDALFactory } from "./license-dal";
 import {
   InstanceType,
   TAddOrgPmtMethodDTO,
@@ -29,9 +29,9 @@ import {
 } from "./license-types";
 
 type TLicenseServiceFactoryDep = {
-  orgDal: Pick<TOrgDalFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseDal: TLicenseDalFactory;
+  licenseDAL: TLicenseDALFactory;
 };
 
 export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
@@ -41,9 +41,9 @@ const LICENSE_SERVER_ON_PREM_LOGIN = "/api/auth/v1/licence-login";
 
 const FEATURE_CACHE_KEY = (orgId: string, projectId?: string) => `${orgId}-${projectId || ""}`;
 export const licenseServiceFactory = ({
-  orgDal,
+  orgDAL,
   permissionService,
-  licenseDal
+  licenseDAL
 }: TLicenseServiceFactoryDep) => {
   let isValidLicense = false;
   let instanceType = InstanceType.OnPrem;
@@ -101,7 +101,7 @@ export const licenseServiceFactory = ({
         const cachedPlan = featureStore.get<TFeatureSet>(FEATURE_CACHE_KEY(orgId, projectId));
         if (cachedPlan) return cachedPlan;
 
-        const org = await orgDal.findOrgById(orgId);
+        const org = await orgDAL.findOrgById(orgId);
         if (!org) throw new BadRequestError({ message: "Org not found" });
         const {
           data: { currentPlan }
@@ -152,10 +152,10 @@ export const licenseServiceFactory = ({
 
   const updateSubscriptionOrgMemberCount = async (orgId: string) => {
     if (instanceType === InstanceType.Cloud) {
-      const org = await orgDal.findOrgById(orgId);
+      const org = await orgDAL.findOrgById(orgId);
       if (!org) throw new BadRequestError({ message: "Org not found" });
 
-      const count = await licenseDal.countOfOrgMembers(orgId);
+      const count = await licenseDAL.countOfOrgMembers(orgId);
       if (org?.customerId) {
         await licenseServerCloudApi.request.patch(
           `/api/license-server/v1/customers/${org.customerId}/cloud-plan`,
@@ -166,7 +166,7 @@ export const licenseServiceFactory = ({
       }
       featureStore.del(orgId);
     } else if (instanceType === InstanceType.EnterpriseOnPrem) {
-      const usedSeats = await licenseDal.countOfOrgMembers(null);
+      const usedSeats = await licenseDAL.countOfOrgMembers(null);
       await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, { usedSeats });
     }
     await refreshPlan(orgId);
@@ -211,7 +211,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDal.findOrgById(orgId);
+    const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new BadRequestError({
         message: "Failed to find organization"
@@ -235,7 +235,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDal.findOrgById(orgId);
+    const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new BadRequestError({
         message: "Failed to find organization"
@@ -255,7 +255,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDal.findOrgById(orgId);
+    const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new BadRequestError({
         message: "Failed to find organization"
@@ -274,7 +274,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDal.findOrgById(orgId);
+    const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new BadRequestError({
         message: "Failed to find organization"
@@ -300,7 +300,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDal.findOrgById(orgId);
+    const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new BadRequestError({
         message: "Failed to find organization"
@@ -323,7 +323,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDal.findOrgById(orgId);
+    const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new BadRequestError({
         message: "Failed to find organization"
@@ -351,7 +351,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDal.findOrgById(orgId);
+    const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new BadRequestError({
         message: "Failed to find organization"
@@ -376,7 +376,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDal.findOrgById(orgId);
+    const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new BadRequestError({
         message: "Failed to find organization"
@@ -396,7 +396,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDal.findOrgById(orgId);
+    const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new BadRequestError({
         message: "Failed to find organization"
@@ -417,7 +417,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDal.findOrgById(orgId);
+    const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new BadRequestError({
         message: "Failed to find organization"
@@ -441,7 +441,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDal.findOrgById(orgId);
+    const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new BadRequestError({
         message: "Failed to find organization"
@@ -461,7 +461,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDal.findOrgById(orgId);
+    const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new BadRequestError({
         message: "Failed to find organization"
@@ -483,7 +483,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDal.findOrgById(orgId);
+    const organization = await orgDAL.findOrgById(orgId);
     if (!organization) {
       throw new BadRequestError({
         message: "Failed to find organization"

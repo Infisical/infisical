@@ -8,7 +8,7 @@ import {
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { TSamlConfigDalFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { getConfig } from "@app/lib/config/env";
 import { generateAsymmetricKeyPair } from "@app/lib/crypto";
 import { generateSymmetricKey, infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
@@ -19,11 +19,11 @@ import { AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { TUserDalFactory } from "../user/user-dal";
-import { TIncidentContactsDalFactory } from "./incident-contacts-dal";
-import { TOrgBotDalFactory } from "./org-bot-dal";
-import { TOrgDalFactory } from "./org-dal";
-import { TOrgRoleDalFactory } from "./org-role-dal";
+import { TUserDALFactory } from "../user/user-dal";
+import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
+import { TOrgBotDALFactory } from "./org-bot-dal";
+import { TOrgDALFactory } from "./org-dal";
+import { TOrgRoleDALFactory } from "./org-role-dal";
 import {
   TDeleteOrgMembershipDTO,
   TInviteUserToOrgDTO,
@@ -32,12 +32,12 @@ import {
 } from "./org-types";
 
 type TOrgServiceFactoryDep = {
-  orgDal: TOrgDalFactory;
-  orgBotDal: TOrgBotDalFactory;
-  orgRoleDal: TOrgRoleDalFactory;
-  userDal: TUserDalFactory;
-  incidentContactDal: TIncidentContactsDalFactory;
-  samlConfigDal: Pick<TSamlConfigDalFactory, "findOne">;
+  orgDAL: TOrgDALFactory;
+  orgBotDAL: TOrgBotDALFactory;
+  orgRoleDAL: TOrgRoleDALFactory;
+  userDAL: TUserDALFactory;
+  incidentContactDAL: TIncidentContactsDALFactory;
+  samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
@@ -50,23 +50,23 @@ type TOrgServiceFactoryDep = {
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
 
 export const orgServiceFactory = ({
-  orgDal,
-  userDal,
-  orgRoleDal,
-  incidentContactDal,
+  orgDAL,
+  userDAL,
+  orgRoleDAL,
+  incidentContactDAL,
   permissionService,
   smtpService,
   tokenService,
-  orgBotDal,
+  orgBotDAL,
   licenseService,
-  samlConfigDal
+  samlConfigDAL
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
    * */
   const findOrganizationById = async (userId: string, orgId: string) => {
     await permissionService.getUserOrgPermission(userId, orgId);
-    const org = await orgDal.findOrgById(orgId);
+    const org = await orgDAL.findOrgById(orgId);
     if (!org)
       throw new BadRequestError({ name: "Org not found", message: "Organization not found" });
     return org;
@@ -75,7 +75,7 @@ export const orgServiceFactory = ({
    * Get all organization a user part of
    * */
   const findAllOrganizationOfUser = async (userId: string) => {
-    const orgs = await orgDal.findAllOrgsByUserId(userId);
+    const orgs = await orgDAL.findAllOrgsByUserId(userId);
     return orgs;
   };
   /*
@@ -88,7 +88,7 @@ export const orgServiceFactory = ({
       OrgPermissionSubjects.Member
     );
 
-    const members = await orgDal.findAllOrgMembers(orgId);
+    const members = await orgDAL.findAllOrgMembers(orgId);
     return members;
   };
   /*
@@ -100,7 +100,7 @@ export const orgServiceFactory = ({
       OrgPermissionActions.Edit,
       OrgPermissionSubjects.Settings
     );
-    const org = await orgDal.updateById(orgId, { name });
+    const org = await orgDAL.updateById(orgId, { name });
     if (!org)
       throw new BadRequestError({ name: "Org not found", message: "Organization not found" });
     return org;
@@ -127,9 +127,9 @@ export const orgServiceFactory = ({
     } = infisicalSymmetricEncypt(key);
 
     const customerId = await licenseService.generateOrgCustomerId(orgName, userEmail);
-    const organization = await orgDal.transaction(async (tx) => {
-      const org = await orgDal.create({ name: orgName, customerId }, tx);
-      await orgDal.createMembership(
+    const organization = await orgDAL.transaction(async (tx) => {
+      const org = await orgDAL.create({ name: orgName, customerId }, tx);
+      await orgDAL.createMembership(
         {
           userId,
           orgId: org.id,
@@ -138,7 +138,7 @@ export const orgServiceFactory = ({
         },
         tx
       );
-      await orgBotDal.create(
+      await orgBotDAL.create(
         {
           name: org.name,
           publicKey,
@@ -170,7 +170,7 @@ export const orgServiceFactory = ({
     if (membership.role !== OrgMembershipRole.Admin)
       throw new UnauthorizedError({ name: "Delete org by id", message: "Not an admin" });
 
-    const organization = await orgDal.deleteById(orgId);
+    const organization = await orgDAL.deleteById(orgId);
     if (organization.customerId) {
       await licenseService.removeOrgCustomer(organization.customerId);
     }
@@ -194,7 +194,7 @@ export const orgServiceFactory = ({
 
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
     if (isCustomRole) {
-      const customRole = await orgRoleDal.findOne({ slug: role, orgId });
+      const customRole = await orgRoleDAL.findOne({ slug: role, orgId });
       if (!customRole)
         throw new BadRequestError({ name: "Update membership", message: "Role not found" });
 
@@ -205,7 +205,7 @@ export const orgServiceFactory = ({
             "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
         });
 
-      const [membership] = await orgDal.updateMembership(
+      const [membership] = await orgDAL.updateMembership(
         { id: membershipId, orgId },
         {
           role: OrgMembershipRole.Custom,
@@ -215,7 +215,7 @@ export const orgServiceFactory = ({
       return membership;
     }
 
-    const [membership] = await orgDal.updateMembership(
+    const [membership] = await orgDAL.updateMembership(
       { id: membershipId, orgId },
       { role, roleId: null }
     );
@@ -231,7 +231,7 @@ export const orgServiceFactory = ({
       OrgPermissionSubjects.Member
     );
 
-    const samlCfg = await samlConfigDal.findOne({ orgId });
+    const samlCfg = await samlConfigDAL.findOne({ orgId });
     if (samlCfg && samlCfg.isActive) {
       throw new BadRequestError({
         message: "Failed to invite member due to SAML SSO configured for organization"
@@ -246,12 +246,12 @@ export const orgServiceFactory = ({
           "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
       });
     }
-    const invitee = await orgDal.transaction(async (tx) => {
-      const inviteeUser = await userDal.findUserByEmail(inviteeEmail, tx);
+    const invitee = await orgDAL.transaction(async (tx) => {
+      const inviteeUser = await userDAL.findUserByEmail(inviteeEmail, tx);
       if (inviteeUser) {
         // if user already exist means its already part of infisical
         // Thus the signup flow is not needed anymore
-        const [inviteeMembership] = await orgDal.findMembership(
+        const [inviteeMembership] = await orgDAL.findMembership(
           { orgId, userId: inviteeUser.id },
           { tx }
         );
@@ -263,7 +263,7 @@ export const orgServiceFactory = ({
         }
 
         if (!inviteeMembership) {
-          await orgDal.createMembership(
+          await orgDAL.createMembership(
             {
               userId: inviteeUser.id,
               inviteEmail: inviteeEmail,
@@ -284,7 +284,7 @@ export const orgServiceFactory = ({
         });
       }
       // not invited before
-      const user = await userDal.create(
+      const user = await userDAL.create(
         {
           email: inviteeEmail,
           isAccepted: false,
@@ -292,7 +292,7 @@ export const orgServiceFactory = ({
         },
         tx
       );
-      await orgDal.createMembership(
+      await orgDAL.createMembership(
         {
           inviteEmail: inviteeEmail,
           orgId,
@@ -311,8 +311,8 @@ export const orgServiceFactory = ({
       orgId
     });
 
-    const org = await orgDal.findOrgById(orgId);
-    const user = await userDal.findById(userId);
+    const org = await orgDAL.findOrgById(orgId);
+    const user = await userDAL.findById(userId);
     const appCfg = getConfig();
     await smtpService.sendMail({
       template: SmtpTemplates.OrgInvite,
@@ -340,11 +340,11 @@ export const orgServiceFactory = ({
    * magic link and issue a temporary signup token for user to complete setting up their account
    */
   const verifyUserToOrg = async ({ orgId, email, code }: TVerifyUserToOrgDTO) => {
-    const user = await userDal.findUserByEmail(email);
+    const user = await userDAL.findUserByEmail(email);
     if (!user) {
       throw new BadRequestError({ message: "Invalid request", name: "Verify user to org" });
     }
-    const [orgMembership] = await orgDal.findMembership({
+    const [orgMembership] = await orgDAL.findMembership({
       userId: user.id,
       status: OrgMembershipStatus.Invited,
       orgId
@@ -365,7 +365,7 @@ export const orgServiceFactory = ({
     if (user.isAccepted) {
       // this means user has already completed signup process
       // isAccepted is set true when keys are exchanged
-      await orgDal.updateMembershipById(orgMembership.id, {
+      await orgDAL.updateMembershipById(orgMembership.id, {
         orgId,
         status: OrgMembershipStatus.Accepted
       });
@@ -395,7 +395,7 @@ export const orgServiceFactory = ({
       OrgPermissionSubjects.Member
     );
 
-    const membership = await orgDal.deleteMembershipById(membershipId, orgId);
+    const membership = await orgDAL.deleteMembershipById(membershipId, orgId);
 
     await licenseService.updateSubscriptionOrgMemberCount(orgId);
     return membership;
@@ -410,7 +410,7 @@ export const orgServiceFactory = ({
       OrgPermissionActions.Read,
       OrgPermissionSubjects.IncidentAccount
     );
-    const incidentContacts = await incidentContactDal.findByOrgId(orgId);
+    const incidentContacts = await incidentContactDAL.findByOrgId(orgId);
     return incidentContacts;
   };
 
@@ -420,7 +420,7 @@ export const orgServiceFactory = ({
       OrgPermissionActions.Create,
       OrgPermissionSubjects.IncidentAccount
     );
-    const doesIncidentContactExist = await incidentContactDal.findOne(orgId, { email });
+    const doesIncidentContactExist = await incidentContactDAL.findOne(orgId, { email });
     if (doesIncidentContactExist) {
       throw new BadRequestError({
         message: "Incident contact already exist",
@@ -428,7 +428,7 @@ export const orgServiceFactory = ({
       });
     }
 
-    const incidentContact = await incidentContactDal.create(orgId, email);
+    const incidentContact = await incidentContactDAL.create(orgId, email);
     return incidentContact;
   };
 
@@ -439,7 +439,7 @@ export const orgServiceFactory = ({
       OrgPermissionSubjects.IncidentAccount
     );
 
-    const incidentContact = await incidentContactDal.deleteById(id, orgId);
+    const incidentContact = await incidentContactDAL.deleteById(id, orgId);
     return incidentContact;
   };
 

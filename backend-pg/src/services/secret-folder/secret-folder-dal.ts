@@ -225,10 +225,10 @@ const sqlFindSecretPathByFolderId = (db: Knex, projectId: string, folderIds: str
     .select("*")
     .from<TSecretFolders & { child: string | null; path: string }>("parent");
 
-export type TSecretFolderDalFactory = ReturnType<typeof secretFolderDalFactory>;
+export type TSecretFolderDALFactory = ReturnType<typeof secretFolderDALFactory>;
 // never change this. If u do write a migration for it
 export const ROOT_FOLDER_NAME = "root";
-export const secretFolderDalFactory = (db: TDbClient) => {
+export const secretFolderDALFactory = (db: TDbClient) => {
   const secretFolderOrm = ormify(db, TableName.SecretFolder);
 
   const findBySecretPath = async (

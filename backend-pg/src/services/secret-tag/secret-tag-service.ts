@@ -7,18 +7,18 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 
-import { TSecretTagDalFactory } from "./secret-tag-dal";
+import { TSecretTagDALFactory } from "./secret-tag-dal";
 import { TCreateTagDTO, TDeleteTagDTO, TListProjectTagsDTO } from "./secret-tag-types";
 
 type TSecretTagServiceFactoryDep = {
-  secretTagDal: TSecretTagDalFactory;
+  secretTagDAL: TSecretTagDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 export type TSecretTagServiceFactory = ReturnType<typeof secretTagServiceFactory>;
 
 export const secretTagServiceFactory = ({
-  secretTagDal,
+  secretTagDAL,
   permissionService
 }: TSecretTagServiceFactoryDep) => {
   const createTag = async ({ name, slug, actor, color, actorId, projectId }: TCreateTagDTO) => {
@@ -28,10 +28,10 @@ export const secretTagServiceFactory = ({
       ProjectPermissionSub.Tags
     );
 
-    const existingTag = await secretTagDal.findOne({ slug });
+    const existingTag = await secretTagDAL.findOne({ slug });
     if (existingTag) throw new BadRequestError({ message: "Tag already exist" });
 
-    const newTag = await secretTagDal.create({
+    const newTag = await secretTagDAL.create({
       projectId,
       name,
       slug,
@@ -42,7 +42,7 @@ export const secretTagServiceFactory = ({
   };
 
   const deleteTag = async ({ actorId, actor, id }: TDeleteTagDTO) => {
-    const tag = await secretTagDal.findById(id);
+    const tag = await secretTagDAL.findById(id);
     if (!tag) throw new BadRequestError({ message: "Tag doesn't exist" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -55,7 +55,7 @@ export const secretTagServiceFactory = ({
       ProjectPermissionSub.Tags
     );
 
-    const deletedTag = await secretTagDal.deleteById(tag.id);
+    const deletedTag = await secretTagDAL.deleteById(tag.id);
     return deletedTag;
   };
 
@@ -66,7 +66,7 @@ export const secretTagServiceFactory = ({
       ProjectPermissionSub.Tags
     );
 
-    const tags = await secretTagDal.find({ projectId });
+    const tags = await secretTagDAL.find({ projectId });
     return tags;
   };
 

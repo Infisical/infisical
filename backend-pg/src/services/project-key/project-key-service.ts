@@ -7,21 +7,21 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 
-import { TProjectMembershipDalFactory } from "../project-membership/project-membership-dal";
-import { TProjectKeyDalFactory } from "./project-key-dal";
+import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TProjectKeyDALFactory } from "./project-key-dal";
 import { TGetLatestProjectKeyDTO, TUploadProjectKeyDTO } from "./project-key-types";
 
 type TProjectKeyServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
-  projectKeyDal: TProjectKeyDalFactory;
-  projectMembershipDal: TProjectMembershipDalFactory;
+  projectKeyDAL: TProjectKeyDALFactory;
+  projectMembershipDAL: TProjectMembershipDALFactory;
 };
 
 export type TProjectKeyServiceFactory = ReturnType<typeof projectKeyServiceFactory>;
 
 export const projectKeyServiceFactory = ({
-  projectKeyDal,
-  projectMembershipDal,
+  projectKeyDAL,
+  projectMembershipDAL,
   permissionService
 }: TProjectKeyServiceFactoryDep) => {
   const uploadProjectKeys = async ({
@@ -38,7 +38,7 @@ export const projectKeyServiceFactory = ({
       ProjectPermissionSub.Member
     );
 
-    const receiverMembership = await projectMembershipDal.findOne({
+    const receiverMembership = await projectMembershipDAL.findOne({
       userId: receiverId,
       projectId
     });
@@ -48,12 +48,12 @@ export const projectKeyServiceFactory = ({
         name: "Upload project keys"
       });
 
-    await projectKeyDal.create({ projectId, receiverId, encryptedKey, nonce, senderId: actorId });
+    await projectKeyDAL.create({ projectId, receiverId, encryptedKey, nonce, senderId: actorId });
   };
 
   const getLatestProjectKey = async ({ actorId, projectId, actor }: TGetLatestProjectKeyDTO) => {
     await permissionService.getProjectPermission(actor, actorId, projectId);
-    const latestKey = await projectKeyDal.findLatestProjectKey(actorId, projectId);
+    const latestKey = await projectKeyDAL.findLatestProjectKey(actorId, projectId);
     return latestKey;
   };
 
@@ -63,7 +63,7 @@ export const projectKeyServiceFactory = ({
       ProjectPermissionActions.Read,
       ProjectPermissionSub.Member
     );
-    return projectKeyDal.findAllProjectUserPubKeys(projectId);
+    return projectKeyDAL.findAllProjectUserPubKeys(projectId);
   };
 
   return {

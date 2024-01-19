@@ -19,11 +19,11 @@ import {
 import { BadRequestError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 
-import { TIntegrationDalFactory } from "../integration/integration-dal";
-import { TProjectBotDalFactory } from "../project-bot/project-bot-dal";
+import { TIntegrationDALFactory } from "../integration/integration-dal";
+import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { getApps } from "./integration-app-list";
-import { TIntegrationAuthDalFactory } from "./integration-auth-dal";
+import { TIntegrationAuthDALFactory } from "./integration-auth-dal";
 import {
   TBitbucketWorkspace,
   TChecklyGroups,
@@ -54,10 +54,10 @@ import { getTeams } from "./integration-team";
 import { exchangeCode, exchangeRefresh } from "./integration-token";
 
 type TIntegrationAuthServiceFactoryDep = {
-  integrationAuthDal: TIntegrationAuthDalFactory;
-  integrationDal: Pick<TIntegrationDalFactory, "delete">;
+  integrationAuthDAL: TIntegrationAuthDALFactory;
+  integrationDAL: Pick<TIntegrationDALFactory, "delete">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  projectBotDal: Pick<TProjectBotDalFactory, "findOne">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
@@ -65,9 +65,9 @@ export type TIntegrationAuthServiceFactory = ReturnType<typeof integrationAuthSe
 
 export const integrationAuthServiceFactory = ({
   permissionService,
-  integrationAuthDal,
-  integrationDal,
-  projectBotDal,
+  integrationAuthDAL,
+  integrationDAL,
+  projectBotDAL,
   projectBotService
 }: TIntegrationAuthServiceFactoryDep) => {
   const listIntegrationAuthByProjectId = async ({
@@ -80,12 +80,12 @@ export const integrationAuthServiceFactory = ({
       ProjectPermissionActions.Read,
       ProjectPermissionSub.Integrations
     );
-    const authorizations = await integrationAuthDal.find({ projectId });
+    const authorizations = await integrationAuthDAL.find({ projectId });
     return authorizations;
   };
 
   const getIntegrationAuth = async ({ actor, id, actorId }: TGetIntegrationAuthDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -117,7 +117,7 @@ export const integrationAuthServiceFactory = ({
       ProjectPermissionSub.Integrations
     );
 
-    const bot = await projectBotDal.findOne({ isActive: true, projectId });
+    const bot = await projectBotDAL.findOne({ isActive: true, projectId });
     if (!bot)
       throw new BadRequestError({ message: "Bot must be enabled for oauth2 code token exchange" });
 
@@ -154,12 +154,12 @@ export const integrationAuthServiceFactory = ({
       updateDoc.accessTag = accessEncToken.tag;
       updateDoc.accessCiphertext = accessEncToken.ciphertext;
     }
-    return integrationAuthDal.transaction(async (tx) => {
-      const doc = await integrationAuthDal.findOne({ projectId, integration }, tx);
+    return integrationAuthDAL.transaction(async (tx) => {
+      const doc = await integrationAuthDAL.findOne({ projectId, integration }, tx);
       if (!doc) {
-        return integrationAuthDal.create(updateDoc, tx);
+        return integrationAuthDAL.create(updateDoc, tx);
       }
-      return integrationAuthDal.updateById(doc.id, updateDoc, tx);
+      return integrationAuthDAL.updateById(doc.id, updateDoc, tx);
     });
   };
 
@@ -183,7 +183,7 @@ export const integrationAuthServiceFactory = ({
       ProjectPermissionSub.Integrations
     );
 
-    const bot = await projectBotDal.findOne({ isActive: true, projectId });
+    const bot = await projectBotDAL.findOne({ isActive: true, projectId });
     if (!bot)
       throw new BadRequestError({ message: "Bot must be enabled for oauth2 code token exchange" });
 
@@ -235,7 +235,7 @@ export const integrationAuthServiceFactory = ({
         updateDoc.accessIdCiphertext = accessEncToken.ciphertext;
       }
     }
-    return integrationAuthDal.create(updateDoc);
+    return integrationAuthDAL.create(updateDoc);
   };
 
   // helper function
@@ -274,7 +274,7 @@ export const integrationAuthServiceFactory = ({
         const refreshEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.refreshToken, botKey);
         const accessEncToken = encryptSymmetric128BitHexKeyUTF8(tokenDetails.accessToken, botKey);
         accessToken = tokenDetails.accessToken;
-        await integrationAuthDal.updateById(integrationAuth.id, {
+        await integrationAuthDAL.updateById(integrationAuth.id, {
           refreshIV: refreshEncToken.iv,
           refreshTag: refreshEncToken.tag,
           refreshCiphertext: refreshEncToken.ciphertext,
@@ -309,7 +309,7 @@ export const integrationAuthServiceFactory = ({
     id,
     workspaceSlug
   }: TIntegrationAuthAppsDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -336,7 +336,7 @@ export const integrationAuthServiceFactory = ({
   };
 
   const getIntegrationAuthTeams = async ({ actor, actorId, id }: TIntegrationAuthTeamsDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -365,7 +365,7 @@ export const integrationAuthServiceFactory = ({
     actor,
     actorId
   }: TIntegrationAuthVercelBranchesDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -405,7 +405,7 @@ export const integrationAuthServiceFactory = ({
     id,
     accountId
   }: TIntegrationAuthChecklyGroupsDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -436,7 +436,7 @@ export const integrationAuthServiceFactory = ({
   };
 
   const getQoveryOrgs = async ({ actorId, actor, id }: TIntegrationAuthQoveryOrgsDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -469,7 +469,7 @@ export const integrationAuthServiceFactory = ({
     id,
     orgId
   }: TIntegrationAuthQoveryProjectDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -504,7 +504,7 @@ export const integrationAuthServiceFactory = ({
     actor,
     actorId
   }: TIntegrationAuthQoveryEnvironmentsDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -544,7 +544,7 @@ export const integrationAuthServiceFactory = ({
     actorId,
     environmentId
   }: TIntegrationAuthQoveryScopesDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -583,7 +583,7 @@ export const integrationAuthServiceFactory = ({
     actorId,
     environmentId
   }: TIntegrationAuthQoveryScopesDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -622,7 +622,7 @@ export const integrationAuthServiceFactory = ({
     actorId,
     environmentId
   }: TIntegrationAuthQoveryScopesDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -661,7 +661,7 @@ export const integrationAuthServiceFactory = ({
     actorId,
     appId
   }: TIntegrationAuthRailwayEnvDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -727,7 +727,7 @@ export const integrationAuthServiceFactory = ({
     actorId,
     appId
   }: TIntegrationAuthRailwayServicesDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -811,7 +811,7 @@ export const integrationAuthServiceFactory = ({
     actor,
     id
   }: TIntegrationAuthBitbucketWorkspaceDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -862,7 +862,7 @@ export const integrationAuthServiceFactory = ({
     actorId,
     appId
   }: TIntegrationAuthNorthflankSecretGroupDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -929,7 +929,7 @@ export const integrationAuthServiceFactory = ({
     actorId,
     actor
   }: TGetIntegrationAuthTeamCityBuildConfigDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -979,7 +979,7 @@ export const integrationAuthServiceFactory = ({
       ProjectPermissionSub.Integrations
     );
 
-    const integrations = await integrationAuthDal.delete({ integration, projectId });
+    const integrations = await integrationAuthDAL.delete({ integration, projectId });
     return integrations;
   };
 
@@ -988,7 +988,7 @@ export const integrationAuthServiceFactory = ({
     actorId,
     actor
   }: TDeleteIntegrationAuthByIdDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(id);
+    const integrationAuth = await integrationAuthDAL.findById(id);
     if (!integrationAuth) throw new BadRequestError({ message: "Failed to find integration" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -1001,10 +1001,10 @@ export const integrationAuthServiceFactory = ({
       ProjectPermissionSub.Integrations
     );
 
-    const delIntegrationAuth = await integrationAuthDal.transaction(async (tx) => {
-      const doc = await integrationAuthDal.deleteById(integrationAuth.id, tx);
+    const delIntegrationAuth = await integrationAuthDAL.transaction(async (tx) => {
+      const doc = await integrationAuthDAL.deleteById(integrationAuth.id, tx);
       if (!doc) throw new BadRequestError({ message: "Faled to find integration" });
-      await integrationDal.delete({ integrationAuthId: doc.id }, tx);
+      await integrationDAL.delete({ integrationAuthId: doc.id }, tx);
       return doc;
     });
 

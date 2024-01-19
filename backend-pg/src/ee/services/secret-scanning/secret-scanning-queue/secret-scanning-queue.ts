@@ -4,10 +4,10 @@ import { OrgMembershipRole } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { TOrgDalFactory } from "@app/services/org/org-dal";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { TSecretScanningDalFactory } from "../secret-scanning-dal";
+import { TSecretScanningDALFactory } from "../secret-scanning-dal";
 import {
   scanContentAndGetFindings,
   scanFullRepoContentAndGetFindings
@@ -20,18 +20,18 @@ import {
 
 type TSecretScanningQueueFactoryDep = {
   queueService: TQueueServiceFactory;
-  secretScanningDal: TSecretScanningDalFactory;
+  secretScanningDAL: TSecretScanningDALFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
-  orgMembershipDal: Pick<TOrgDalFactory, "findMembership">;
+  orgMembershipDAL: Pick<TOrgDALFactory, "findMembership">;
 };
 
 export type TSecretScanningQueueFactory = ReturnType<typeof secretScanningQueueFactory>;
 
 export const secretScanningQueueFactory = ({
   queueService,
-  secretScanningDal,
+  secretScanningDAL,
   smtpService,
-  orgMembershipDal: orgMemberDal,
+  orgMembershipDAL: orgMemberDAL,
 }: TSecretScanningQueueFactoryDep) => {
   const startFullRepoScan = async (payload: TScanFullRepoEventPayload) => {
     await queueService.queue(QueueName.SecretFullRepoScan, QueueJobs.SecretScan, payload, {
@@ -63,7 +63,7 @@ export const secretScanningQueueFactory = ({
 
   const getOrgAdminEmails = async (organizationId: string) => {
     // get emails of admins
-    const adminsOfWork = await orgMemberDal.findMembership({
+    const adminsOfWork = await orgMemberDAL.findMembership({
       orgId: organizationId,
       role: OrgMembershipRole.Admin
     });
@@ -112,9 +112,9 @@ export const secretScanningQueueFactory = ({
         }
       }
     }
-    await secretScanningDal.transaction(async (tx) => {
+    await secretScanningDAL.transaction(async (tx) => {
       if (!Object.keys(allFindingsByFingerprint).length) return;
-      secretScanningDal.upsert(
+      secretScanningDAL.upsert(
         Object.keys(allFindingsByFingerprint).map((key) => ({
           installationId,
           email: allFindingsByFingerprint[key].Email,
@@ -178,10 +178,10 @@ export const secretScanningQueueFactory = ({
       installationId,
       repository.fullName
     );
-    await secretScanningDal.transaction(async (tx) => {
+    await secretScanningDAL.transaction(async (tx) => {
       if (!findings.length) return;
       // eslint-disable-next-line
-      await secretScanningDal.upsert(
+      await secretScanningDAL.upsert(
         findings.map((finding) => ({
           installationId,
           email: finding.Email,

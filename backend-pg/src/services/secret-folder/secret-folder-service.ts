@@ -11,32 +11,32 @@ import {
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { BadRequestError } from "@app/lib/errors";
 
-import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
-import { TSecretFolderDalFactory } from "./secret-folder-dal";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import {
   TCreateFolderDTO,
   TDeleteFolderDTO,
   TGetFolderDTO,
   TUpdateFolderDTO
 } from "./secret-folder-types";
-import { TSecretFolderVersionDalFactory } from "./secret-folder-version-dal";
+import { TSecretFolderVersionDALFactory } from "./secret-folder-version-dal";
 
 type TSecretFolderServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
-  folderDal: TSecretFolderDalFactory;
-  projectEnvDal: Pick<TProjectEnvDalFactory, "findOne">;
-  folderVersionDal: TSecretFolderVersionDalFactory;
+  folderDAL: TSecretFolderDALFactory;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  folderVersionDAL: TSecretFolderVersionDALFactory;
 };
 
 export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceFactory>;
 
 export const secretFolderServiceFactory = ({
-  folderDal,
+  folderDAL,
   snapshotService,
   permissionService,
-  projectEnvDal,
-  folderVersionDal
+  projectEnvDAL,
+  folderVersionDAL
 }: TSecretFolderServiceFactoryDep) => {
   const createFolder = async ({
     projectId,
@@ -52,17 +52,17 @@ export const secretFolderServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
 
-    const env = await projectEnvDal.findOne({ projectId, slug: environment });
+    const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env)
       throw new BadRequestError({ message: "Environment not found", name: "Create folder" });
 
-    const folder = await folderDal.transaction(async (tx) => {
+    const folder = await folderDAL.transaction(async (tx) => {
       // the logic is simple we need to avoid creating same folder in same path multiple times
       // that is this request must be idempotent
       // so we do a tricky move. we try to find the to be created folder path if that is exactly match return that
       // else we get some path before that then we will start creating remaining folder
       const pathWithFolder = path.join(secretPath, name);
-      const parentFolder = await folderDal.findClosestFolder(
+      const parentFolder = await folderDAL.findClosestFolder(
         projectId,
         environment,
         pathWithFolder,
@@ -102,8 +102,8 @@ export const secretFolderServiceFactory = ({
                   }
           );
           parentFolderId = newFolders.at(-1)?.id as string;
-          const docs = await folderDal.insertMany(newFolders, tx);
-          await folderVersionDal.insertMany(
+          const docs = await folderDAL.insertMany(newFolders, tx);
+          await folderVersionDAL.insertMany(
             docs.map((doc) => ({
               name: doc.name,
               envId: doc.envId,
@@ -115,11 +115,11 @@ export const secretFolderServiceFactory = ({
         }
       }
 
-      const doc = await folderDal.create(
+      const doc = await folderDAL.create(
         { name, envId: env.id, version: 1, parentId: parentFolderId },
         tx
       );
-      await folderVersionDal.create(
+      await folderVersionDAL.create(
         {
           name: doc.name,
           envId: doc.envId,
@@ -150,27 +150,27 @@ export const secretFolderServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
 
-    const parentFolder = await folderDal.findBySecretPath(projectId, environment, secretPath);
+    const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
 
-    const env = await projectEnvDal.findOne({ projectId, slug: environment });
+    const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env)
       throw new BadRequestError({ message: "Environment not found", name: "Update folder" });
-    let folder = await folderDal.findOne({ envId: env.id, id, parentId: parentFolder.id });
+    let folder = await folderDAL.findOne({ envId: env.id, id, parentId: parentFolder.id });
     // now folder api accepts id based change
     // this is for cli and when cli removes this will remove this logic
     if (!folder) {
-      folder = await folderDal.findOne({ envId: env.id, name: id, parentId: parentFolder.id });
+      folder = await folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id });
     }
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
-    const newFolder = await folderDal.transaction(async (tx) => {
-      const [doc] = await folderDal.update(
+    const newFolder = await folderDAL.transaction(async (tx) => {
+      const [doc] = await folderDAL.update(
         { envId: env.id, id: folder.id, parentId: parentFolder.id },
         { name },
         tx
       );
-      await folderVersionDal.create(
+      await folderVersionDAL.create(
         {
           name: doc.name,
           envId: doc.envId,
@@ -201,15 +201,15 @@ export const secretFolderServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
 
-    const env = await projectEnvDal.findOne({ projectId, slug: environment });
+    const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env)
       throw new BadRequestError({ message: "Environment not found", name: "Create folder" });
 
-    const folder = await folderDal.transaction(async (tx) => {
-      const parentFolder = await folderDal.findBySecretPath(projectId, environment, secretPath, tx);
+    const folder = await folderDAL.transaction(async (tx) => {
+      const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, tx);
       if (!parentFolder) throw new BadRequestError({ message: "Secret path not found" });
 
-      const [doc] = await folderDal.delete({ envId: env.id, id, parentId: parentFolder.id }, tx);
+      const [doc] = await folderDAL.delete({ envId: env.id, id, parentId: parentFolder.id }, tx);
       if (!doc) throw new BadRequestError({ message: "Folder not found", name: "Delete folder" });
       return doc;
     });
@@ -229,13 +229,13 @@ export const secretFolderServiceFactory = ({
     // permission to check does user has access
     await permissionService.getProjectPermission(actor, actorId, projectId);
 
-    const env = await projectEnvDal.findOne({ projectId, slug: environment });
+    const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new BadRequestError({ message: "Environment not found", name: "get folders" });
 
-    const parentFolder = await folderDal.findBySecretPath(projectId, environment, secretPath);
+    const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!parentFolder) return [];
 
-    const folders = await folderDal.find({ envId: env.id, parentId: parentFolder.id });
+    const folders = await folderDAL.find({ envId: env.id, parentId: parentFolder.id });
     return folders;
   };
 

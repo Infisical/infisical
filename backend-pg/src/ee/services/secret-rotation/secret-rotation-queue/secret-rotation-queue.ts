@@ -10,10 +10,10 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
-import { TSecretDalFactory } from "@app/services/secret/secret-dal";
-import { TSecretVersionDalFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretDALFactory } from "@app/services/secret/secret-dal";
+import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 
-import { TSecretRotationDalFactory } from "../secret-rotation-dal";
+import { TSecretRotationDALFactory } from "../secret-rotation-dal";
 import { rotationTemplates } from "../templates";
 import {
   TDbProviderClients,
@@ -37,10 +37,10 @@ export type TSecretRotationQueueFactory = ReturnType<typeof secretRotationQueueF
 
 type TSecretRotationQueueFactoryDep = {
   queue: TQueueServiceFactory;
-  secretRotationDal: TSecretRotationDalFactory;
+  secretRotationDAL: TSecretRotationDALFactory;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
-  secretDal: Pick<TSecretDalFactory, "bulkUpdate" | "find">;
-  secretVersionDal: Pick<TSecretVersionDalFactory, "insertMany" | "findLatestVersionMany">;
+  secretDAL: Pick<TSecretDALFactory, "bulkUpdate" | "find">;
+  secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany" | "findLatestVersionMany">;
 };
 
 // These error should stop the repeatable job and ask user to reconfigure rotation
@@ -58,10 +58,10 @@ export class DisableRotationErrors extends Error {
 
 export const secretRotationQueueFactory = ({
   queue,
-  secretRotationDal,
+  secretRotationDAL,
   projectBotService,
-  secretDal,
-  secretVersionDal
+  secretDAL,
+  secretVersionDAL
 }: TSecretRotationQueueFactoryDep) => {
   const addToQueue = async (rotationId: string, interval: number) => {
     const appCfg = getConfig();
@@ -102,7 +102,7 @@ export const secretRotationQueueFactory = ({
   queue.start(QueueName.SecretRotation, async (job) => {
     const { rotationId } = job.data;
     logger.info(`secretRotationQueue.process: [rotationDocument=${rotationId}]`);
-    const secretRotation = await secretRotationDal.findById(rotationId);
+    const secretRotation = await secretRotationDAL.findById(rotationId);
     const rotationProvider = rotationTemplates.find(
       ({ name }) => name === secretRotation?.provider
     );
@@ -111,7 +111,7 @@ export const secretRotationQueueFactory = ({
       if (!rotationProvider || !secretRotation)
         throw new DisableRotationErrors({ message: "Provider not found" });
 
-      const rotationOutputs = await secretRotationDal.findRotationOutputsByRotationId(rotationId);
+      const rotationOutputs = await secretRotationDAL.findRotationOutputsByRotationId(rotationId);
       if (!rotationOutputs.length)
         throw new DisableRotationErrors({ message: "Secrets not found" });
 
@@ -227,8 +227,8 @@ export const secretRotationQueueFactory = ({
           key
         )
       }));
-      await secretRotationDal.transaction(async (tx) => {
-        await secretRotationDal.updateById(
+      await secretRotationDAL.transaction(async (tx) => {
+        await secretRotationDAL.updateById(
           rotationId,
           {
             encryptedData: encVarData.ciphertext,
@@ -242,7 +242,7 @@ export const secretRotationQueueFactory = ({
           },
           tx
         );
-        const updatedSecrets = await secretDal.bulkUpdate(
+        const updatedSecrets = await secretDAL.bulkUpdate(
           encryptedSecrets.map(({ secretId, value }) => ({
             // this secret id is validated when user is inserted
             filter: { id: secretId, type: SecretType.Shared },
@@ -254,7 +254,7 @@ export const secretRotationQueueFactory = ({
           })),
           tx
         );
-        await secretVersionDal.insertMany(
+        await secretVersionDAL.insertMany(
           updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => ({
             ...el,
             secretId: id
@@ -271,7 +271,7 @@ export const secretRotationQueueFactory = ({
         }
       }
 
-      await secretRotationDal.updateById(rotationId, {
+      await secretRotationDAL.updateById(rotationId, {
         status: "failed",
         statusMessage: (error as Error).message.slice(0, 500),
         lastRotatedAt: new Date()

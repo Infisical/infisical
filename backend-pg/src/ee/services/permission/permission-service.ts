@@ -12,9 +12,9 @@ import {
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TOrgRoleDalFactory } from "@app/services/org/org-role-dal";
-import { TProjectRoleDalFactory } from "@app/services/project-role/project-role-dal";
-import { TServiceTokenDalFactory } from "@app/services/service-token/service-token-dal";
+import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
+import { TProjectRoleDALFactory } from "@app/services/project-role/project-role-dal";
+import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 
 import {
   orgAdminPermissions,
@@ -22,7 +22,7 @@ import {
   orgNoAccessPermissions,
   OrgPermissionSet
 } from "./org-permission";
-import { TPermissionDalFactory } from "./permission-dal";
+import { TPermissionDALFactory } from "./permission-dal";
 import {
   buildServiceTokenProjectPermission,
   projectAdminPermissions,
@@ -33,19 +33,19 @@ import {
 } from "./project-permission";
 
 type TPermissionServiceFactoryDep = {
-  orgRoleDal: Pick<TOrgRoleDalFactory, "findOne">;
-  projectRoleDal: Pick<TProjectRoleDalFactory, "findOne">;
-  serviceTokenDal: Pick<TServiceTokenDalFactory, "findById">;
-  permissionDal: TPermissionDalFactory;
+  orgRoleDAL: Pick<TOrgRoleDALFactory, "findOne">;
+  projectRoleDAL: Pick<TProjectRoleDALFactory, "findOne">;
+  serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
+  permissionDAL: TPermissionDALFactory;
 };
 
 export type TPermissionServiceFactory = ReturnType<typeof permissionServiceFactory>;
 
 export const permissionServiceFactory = ({
-  permissionDal,
-  orgRoleDal,
-  projectRoleDal,
-  serviceTokenDal
+  permissionDAL,
+  orgRoleDAL,
+  projectRoleDAL,
+  serviceTokenDAL
 }: TPermissionServiceFactoryDep) => {
   const buildOrgPermission = (role: string, permission?: unknown) => {
     switch (role) {
@@ -100,7 +100,7 @@ export const permissionServiceFactory = ({
    * Get user permission in an organization
    * */
   const getUserOrgPermission = async (userId: string, orgId: string) => {
-    const membership = await permissionDal.getOrgPermission(userId, orgId);
+    const membership = await permissionDAL.getOrgPermission(userId, orgId);
     if (!membership) throw new UnauthorizedError({ name: "User not in org" });
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
@@ -109,7 +109,7 @@ export const permissionServiceFactory = ({
   };
 
   const getIdentityOrgPermission = async (identityId: string, orgId: string) => {
-    const membership = await permissionDal.getOrgIdentityPermission(identityId, orgId);
+    const membership = await permissionDAL.getOrgIdentityPermission(identityId, orgId);
     if (!membership) throw new UnauthorizedError({ name: "Identity not in org" });
     if (membership.role === OrgMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
@@ -136,7 +136,7 @@ export const permissionServiceFactory = ({
   const getOrgPermissionByRole = async (role: string, orgId: string) => {
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
     if (isCustomRole) {
-      const orgRole = await orgRoleDal.findOne({ slug: role, orgId });
+      const orgRole = await orgRoleDAL.findOne({ slug: role, orgId });
       if (!orgRole) throw new BadRequestError({ message: "Role not found" });
       return {
         permission: buildOrgPermission(OrgMembershipRole.Custom, orgRole.permissions),
@@ -148,7 +148,7 @@ export const permissionServiceFactory = ({
 
   // user permission for a project in an organization
   const getUserProjectPermission = async (userId: string, projectId: string) => {
-    const membership = await permissionDal.getProjectPermission(userId, projectId);
+    const membership = await permissionDAL.getProjectPermission(userId, projectId);
     if (!membership) throw new UnauthorizedError({ name: "User not in org" });
     if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
@@ -160,7 +160,7 @@ export const permissionServiceFactory = ({
   };
 
   const getIdentityProjectPermission = async (identityId: string, projectId: string) => {
-    const membership = await permissionDal.getProjectIdentityPermission(identityId, projectId);
+    const membership = await permissionDAL.getProjectIdentityPermission(identityId, projectId);
     if (!membership) throw new UnauthorizedError({ name: "Identity not in org" });
     if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
@@ -172,7 +172,7 @@ export const permissionServiceFactory = ({
   };
 
   const getServiceTokenProjectPermission = async (serviceTokenId: string, projectId: string) => {
-    const serviceToken = await serviceTokenDal.findById(serviceTokenId);
+    const serviceToken = await serviceTokenDAL.findById(serviceTokenId);
     if (serviceToken.projectId !== projectId)
       throw new UnauthorizedError({
         message: "Failed to find service authorization for given project"
@@ -218,7 +218,7 @@ export const permissionServiceFactory = ({
       role as ProjectMembershipRole
     );
     if (isCustomRole) {
-      const projectRole = await projectRoleDal.findOne({ slug: role, projectId });
+      const projectRole = await projectRoleDAL.findOne({ slug: role, projectId });
       if (!projectRole) throw new BadRequestError({ message: "Role not found" });
       return {
         permission: buildProjectPermission(ProjectMembershipRole.Custom, projectRole.permissions),

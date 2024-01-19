@@ -3,9 +3,9 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols } from "@app/lib/knex";
 
-export type TPermissionDalFactory = ReturnType<typeof permissionDalFactory>;
+export type TPermissionDALFactory = ReturnType<typeof permissionDALFactory>;
 
-export const permissionDalFactory = (db: TDbClient) => {
+export const permissionDALFactory = (db: TDbClient) => {
   const getOrgPermission = async (userId: string, orgId: string) => {
     try {
       const membership = await db(TableName.OrgMembership)

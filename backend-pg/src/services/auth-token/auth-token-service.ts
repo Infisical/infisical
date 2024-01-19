@@ -7,8 +7,8 @@ import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 
 import { AuthModeJwtTokenPayload } from "../auth/auth-type";
-import { TUserDalFactory } from "../user/user-dal";
-import { TTokenDalFactory } from "./auth-token-dal";
+import { TUserDALFactory } from "../user/user-dal";
+import { TTokenDALFactory } from "./auth-token-dal";
 import {
   TCreateTokenForUserDTO,
   TIssueAuthTokenDTO,
@@ -17,8 +17,8 @@ import {
 } from "./auth-token-types";
 
 type TAuthTokenServiceFactoryDep = {
-  tokenDal: TTokenDalFactory;
-  userDal: Pick<TUserDalFactory, "findById">;
+  tokenDAL: TTokenDALFactory;
+  userDAL: Pick<TUserDALFactory, "findById">;
 };
 export type TAuthTokenServiceFactory = ReturnType<typeof tokenServiceFactory>;
 
@@ -59,14 +59,14 @@ export const getTokenConfig = (tokenType: TokenType) => {
   }
 };
 
-export const tokenServiceFactory = ({ tokenDal, userDal }: TAuthTokenServiceFactoryDep) => {
+export const tokenServiceFactory = ({ tokenDAL, userDAL }: TAuthTokenServiceFactoryDep) => {
   const createTokenForUser = async ({ type, userId, orgId }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
     const tokenHash = await bcrypt.hash(token, appCfg.SALT_ROUNDS);
-    await tokenDal.transaction(async (tx) => {
-      await tokenDal.delete({ userId, type, orgId: orgId || null }, tx);
-      const newToken = await tokenDal.create(
+    await tokenDAL.transaction(async (tx) => {
+      await tokenDAL.delete({ userId, type, orgId: orgId || null }, tx);
+      const newToken = await tokenDAL.create(
         {
           tokenHash,
           expiresAt: tkCfg.expiresAt,
@@ -89,11 +89,11 @@ export const tokenServiceFactory = ({ tokenDal, userDal }: TAuthTokenServiceFact
     code,
     orgId
   }: TValidateTokenForUserDTO): Promise<TAuthTokens | undefined> => {
-    const token = await tokenDal.findOne({ type, userId, orgId: orgId || null });
+    const token = await tokenDAL.findOne({ type, userId, orgId: orgId || null });
     // validate token
     if (!token) throw new Error("Failed to find token");
     if (token?.expiresAt && new Date(token.expiresAt) < new Date()) {
-      await tokenDal.delete({ type, userId, orgId });
+      await tokenDAL.delete({ type, userId, orgId });
       throw new Error("Token expired. Please try again");
     }
 
@@ -101,15 +101,15 @@ export const tokenServiceFactory = ({ tokenDal, userDal }: TAuthTokenServiceFact
     if (!isValidToken) {
       if (token?.triesLeft) {
         if (token.triesLeft === 1) {
-          await tokenDal.deleteTokenForUser({ type, userId, orgId: orgId || null });
+          await tokenDAL.deleteTokenForUser({ type, userId, orgId: orgId || null });
         } else {
-          await tokenDal.decrementTriesField({ type, userId, orgId: orgId || null });
+          await tokenDAL.decrementTriesField({ type, userId, orgId: orgId || null });
         }
       }
       throw new Error("Invalid token");
     }
 
-    const deletedToken = await tokenDal.delete({ type, userId, orgId: orgId || null });
+    const deletedToken = await tokenDAL.delete({ type, userId, orgId: orgId || null });
     return deletedToken?.[0];
   };
 
@@ -118,9 +118,9 @@ export const tokenServiceFactory = ({ tokenDal, userDal }: TAuthTokenServiceFact
     ip,
     userAgent
   }: TIssueAuthTokenDTO): Promise<TAuthTokenSessions | undefined> => {
-    let session = await tokenDal.findOneTokenSession({ userId, ip, userAgent });
+    let session = await tokenDAL.findOneTokenSession({ userId, ip, userAgent });
     if (!session) {
-      session = await tokenDal.insertTokenSession(userId, ip, userAgent);
+      session = await tokenDAL.insertTokenSession(userId, ip, userAgent);
     }
     return session;
   };
@@ -129,18 +129,18 @@ export const tokenServiceFactory = ({ tokenDal, userDal }: TAuthTokenServiceFact
     userId: string,
     sessionId: string
   ): Promise<TAuthTokenSessions | undefined> =>
-    tokenDal.incrementTokenSessionVersion(userId, sessionId);
+    tokenDAL.incrementTokenSessionVersion(userId, sessionId);
 
   const getUserTokenSessionById = async (id: string, userId: string) =>
-    tokenDal.findOneTokenSession({ id, userId });
+    tokenDAL.findOneTokenSession({ id, userId });
 
-  const getTokenSessionByUser = async (userId: string) => tokenDal.findTokenSessions({ userId });
+  const getTokenSessionByUser = async (userId: string) => tokenDAL.findTokenSessions({ userId });
 
-  const revokeAllMySessions = async (userId: string) => tokenDal.deleteTokenSession({ userId });
+  const revokeAllMySessions = async (userId: string) => tokenDAL.deleteTokenSession({ userId });
 
   // to parse jwt identity in inject identity plugin
   const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
-    const session = await tokenDal.findOneTokenSession({
+    const session = await tokenDAL.findOneTokenSession({
       id: token.tokenVersionId,
       userId: token.userId
     });
@@ -148,7 +148,7 @@ export const tokenServiceFactory = ({ tokenDal, userDal }: TAuthTokenServiceFact
     if (token.accessVersion !== session.accessVersion)
       throw new UnauthorizedError({ name: "Stale session" });
 
-    const user = await userDal.findById(session.userId);
+    const user = await userDAL.findById(session.userId);
     if (!user || !user.isAccepted) throw new UnauthorizedError({ name: "Token user not found" });
 
     return { user, tokenVersionId: token.tokenVersionId };

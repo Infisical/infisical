@@ -11,21 +11,21 @@ import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { TOrgPermission } from "@app/lib/types";
 
 import { ActorType } from "../auth/auth-type";
-import { TIdentityDalFactory } from "./identity-dal";
-import { TIdentityOrgDalFactory } from "./identity-org-dal";
+import { TIdentityDALFactory } from "./identity-dal";
+import { TIdentityOrgDALFactory } from "./identity-org-dal";
 import { TCreateIdentityDTO, TDeleteIdentityDTO, TUpdateIdentityDTO } from "./identity-types";
 
 type TIdentityServiceFactoryDep = {
-  identityDal: TIdentityDalFactory;
-  identityOrgMembershipDal: TIdentityOrgDalFactory;
+  identityDAL: TIdentityDALFactory;
+  identityOrgMembershipDAL: TIdentityOrgDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
 
 export const identityServiceFactory = ({
-  identityDal,
-  identityOrgMembershipDal,
+  identityDAL,
+  identityOrgMembershipDAL,
   permissionService
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({ name, role, actor, orgId, actorId }: TCreateIdentityDTO) => {
@@ -42,9 +42,9 @@ export const identityServiceFactory = ({
     if (!hasRequiredPriviledges)
       throw new BadRequestError({ message: "Failed to create a more privileged identity" });
 
-    const identity = await identityDal.transaction(async (tx) => {
-      const newIdentity = await identityDal.create({ name }, tx);
-      await identityOrgMembershipDal.create(
+    const identity = await identityDAL.transaction(async (tx) => {
+      const newIdentity = await identityDAL.create({ name }, tx);
+      await identityOrgMembershipDAL.create(
         {
           identityId: newIdentity.id,
           orgId,
@@ -61,7 +61,7 @@ export const identityServiceFactory = ({
   };
 
   const updateIdentity = async ({ id, role, name, actor, actorId }: TUpdateIdentityDTO) => {
-    const identityOrgMembership = await identityOrgMembershipDal.findOne({ identityId: id });
+    const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
     if (!identityOrgMembership)
       throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
 
@@ -96,12 +96,12 @@ export const identityServiceFactory = ({
       if (isCustomRole) customRole = customOrgRole;
     }
 
-    const identity = await identityDal.transaction(async (tx) => {
+    const identity = await identityDAL.transaction(async (tx) => {
       const newIdentity = name
-        ? await identityDal.updateById(id, { name }, tx)
-        : await identityDal.findById(id, tx);
+        ? await identityDAL.updateById(id, { name }, tx)
+        : await identityDAL.findById(id, tx);
       if (role) {
-        await identityOrgMembershipDal.update(
+        await identityOrgMembershipDAL.update(
           { identityId: id },
           {
             role: customRole ? OrgMembershipRole.Custom : role,
@@ -117,7 +117,7 @@ export const identityServiceFactory = ({
   };
 
   const deleteIdentity = async ({ actorId, actor, id }: TDeleteIdentityDTO) => {
-    const identityOrgMembership = await identityOrgMembershipDal.findOne({ identityId: id });
+    const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
     if (!identityOrgMembership)
       throw new BadRequestError({ message: `Failed to find identity with id ${id}` });
 
@@ -139,7 +139,7 @@ export const identityServiceFactory = ({
     if (!hasRequiredPriviledges)
       throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
 
-    const deletedIdentity = await identityDal.deleteById(id);
+    const deletedIdentity = await identityDAL.deleteById(id);
     return { ...deletedIdentity, orgId: identityOrgMembership.orgId };
   };
 
@@ -150,7 +150,7 @@ export const identityServiceFactory = ({
       OrgPermissionSubjects.Identity
     );
 
-    const identityMemberhips = await identityOrgMembershipDal.findByOrgId(orgId);
+    const identityMemberhips = await identityOrgMembershipDAL.findByOrgId(orgId);
     return identityMemberhips;
   };
 

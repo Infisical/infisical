@@ -5,9 +5,9 @@ import { TableName, TWebhooks, TWebhooksUpdate } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-export type TWebhookDalFactory = ReturnType<typeof webhookDalFactory>;
+export type TWebhookDALFactory = ReturnType<typeof webhookDALFactory>;
 
-export const webhookDalFactory = (db: TDbClient) => {
+export const webhookDALFactory = (db: TDbClient) => {
   const webhookOrm = ormify(db, TableName.Webhook);
 
   const webhookFindQuery = (tx: Knex, filter: Partial<TWebhooks>) =>

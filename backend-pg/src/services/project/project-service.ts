@@ -15,11 +15,11 @@ import { getConfig } from "@app/lib/config/env";
 import { createSecretBlindIndex } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 
-import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
-import { TProjectMembershipDalFactory } from "../project-membership/project-membership-dal";
-import { TSecretBlindIndexDalFactory } from "../secret/secret-blind-index-dal";
-import { ROOT_FOLDER_NAME, TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
-import { TProjectDalFactory } from "./project-dal";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TSecretBlindIndexDALFactory } from "../secret/secret-blind-index-dal";
+import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TProjectDALFactory } from "./project-dal";
 import { TCreateProjectDTO, TDeleteProjectDTO, TGetProjectDTO } from "./project-types";
 
 export const DEFAULT_PROJECT_ENVS = [
@@ -29,11 +29,11 @@ export const DEFAULT_PROJECT_ENVS = [
 ];
 
 type TProjectServiceFactoryDep = {
-  projectDal: TProjectDalFactory;
-  folderDal: Pick<TSecretFolderDalFactory, "insertMany">;
-  projectEnvDal: Pick<TProjectEnvDalFactory, "insertMany">;
-  projectMembershipDal: Pick<TProjectMembershipDalFactory, "create">;
-  secretBlindIndexDal: Pick<TSecretBlindIndexDalFactory, "create">;
+  projectDAL: TProjectDALFactory;
+  folderDAL: Pick<TSecretFolderDALFactory, "insertMany">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create">;
+  secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "create">;
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -41,12 +41,12 @@ type TProjectServiceFactoryDep = {
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 
 export const projectServiceFactory = ({
-  projectDal,
+  projectDAL,
   permissionService,
-  folderDal,
-  secretBlindIndexDal,
-  projectMembershipDal,
-  projectEnvDal,
+  folderDAL,
+  secretBlindIndexDAL,
+  projectMembershipDAL,
+  projectEnvDAL,
   licenseService
 }: TProjectServiceFactoryDep) => {
   /*
@@ -72,10 +72,10 @@ export const projectServiceFactory = ({
       });
     }
 
-    const newProject = projectDal.transaction(async (tx) => {
-      const project = await projectDal.create({ name: workspaceName, orgId }, tx);
+    const newProject = projectDAL.transaction(async (tx) => {
+      const project = await projectDAL.create({ name: workspaceName, orgId }, tx);
       // set user as admin member for proeject
-      await projectMembershipDal.create(
+      await projectMembershipDAL.create(
         {
           userId: actorId,
           role: ProjectMembershipRole.Admin,
@@ -84,7 +84,7 @@ export const projectServiceFactory = ({
         tx
       );
       // generate the blind index for project
-      await secretBlindIndexDal.create(
+      await secretBlindIndexDAL.create(
         {
           projectId: project.id,
           keyEncoding: blindIndex.keyEncoding,
@@ -96,11 +96,11 @@ export const projectServiceFactory = ({
         tx
       );
       // set default environments and root folder for provided environments
-      const envs = await projectEnvDal.insertMany(
+      const envs = await projectEnvDAL.insertMany(
         DEFAULT_PROJECT_ENVS.map((el, i) => ({ ...el, projectId: project.id, position: i + 1 })),
         tx
       );
-      await folderDal.insertMany(
+      await folderDAL.insertMany(
         envs.map(({ id }) => ({ name: ROOT_FOLDER_NAME, envId: id, version: 1 })),
         tx
       );
@@ -119,18 +119,18 @@ export const projectServiceFactory = ({
     );
 
     // TODO(backend-pg): licence server
-    const deletedProject = await projectDal.deleteById(projectId);
+    const deletedProject = await projectDAL.deleteById(projectId);
     return deletedProject;
   };
 
   const getProjects = async (actorId: string) => {
-    const workspaces = await projectDal.findAllProjects(actorId);
+    const workspaces = await projectDAL.findAllProjects(actorId);
     return workspaces;
   };
 
   const getAProject = async ({ actorId, projectId, actor }: TGetProjectDTO) => {
     await permissionService.getProjectPermission(actor, actorId, projectId);
-    return projectDal.findProjectById(projectId);
+    return projectDAL.findProjectById(projectId);
   };
 
   const toggleAutoCapitalization = async ({
@@ -145,7 +145,7 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.Settings
     );
 
-    const updatedProject = await projectDal.updateById(projectId, { autoCapitalization });
+    const updatedProject = await projectDAL.updateById(projectId, { autoCapitalization });
     return updatedProject;
   };
 
@@ -161,7 +161,7 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.Settings
     );
 
-    const updatedProject = await projectDal.updateById(projectId, { name });
+    const updatedProject = await projectDAL.updateById(projectId, { name });
     return updatedProject;
   };
 

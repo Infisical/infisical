@@ -3,9 +3,9 @@ import { TableName, TProjectKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-export type TProjectKeyDalFactory = ReturnType<typeof projectKeyDalFactory>;
+export type TProjectKeyDALFactory = ReturnType<typeof projectKeyDALFactory>;
 
-export const projectKeyDalFactory = (db: TDbClient) => {
+export const projectKeyDALFactory = (db: TDbClient) => {
   const projectKeyOrm = ormify(db, TableName.ProjectKeys);
 
   const findLatestProjectKey = async (

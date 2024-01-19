@@ -5,9 +5,9 @@ import { SecretsSchema, SecretType, TableName, TSecrets, TSecretsUpdate } from "
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
-export type TSecretDalFactory = ReturnType<typeof secretDalFactory>;
+export type TSecretDALFactory = ReturnType<typeof secretDALFactory>;
 
-export const secretDalFactory = (db: TDbClient) => {
+export const secretDALFactory = (db: TDbClient) => {
   const secretOrm = ormify(db, TableName.Secret);
 
   const update = async (

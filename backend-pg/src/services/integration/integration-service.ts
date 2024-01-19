@@ -8,10 +8,10 @@ import {
 import { BadRequestError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 
-import { TIntegrationAuthDalFactory } from "../integration-auth/integration-auth-dal";
+import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
-import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
-import { TIntegrationDalFactory } from "./integration-dal";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TIntegrationDALFactory } from "./integration-dal";
 import {
   TCreateIntegrationDTO,
   TDeleteIntegrationDTO,
@@ -19,9 +19,9 @@ import {
 } from "./integration-types";
 
 type TIntegrationServiceFactoryDep = {
-  integrationDal: TIntegrationDalFactory;
-  integrationAuthDal: TIntegrationAuthDalFactory;
-  folderDal: Pick<TSecretFolderDalFactory, "findBySecretPath">;
+  integrationDAL: TIntegrationDALFactory;
+  integrationAuthDAL: TIntegrationAuthDALFactory;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncIntegrations">;
 };
@@ -29,9 +29,9 @@ type TIntegrationServiceFactoryDep = {
 export type TIntegrationServiceFactory = ReturnType<typeof integrationServiceFactory>;
 
 export const integrationServiceFactory = ({
-  integrationDal,
-  integrationAuthDal,
-  folderDal,
+  integrationDAL,
+  integrationAuthDAL,
+  folderDAL,
   permissionService,
   secretQueueService
 }: TIntegrationServiceFactoryDep) => {
@@ -54,7 +54,7 @@ export const integrationServiceFactory = ({
     targetEnvironment,
     targetEnvironmentId
   }: TCreateIntegrationDTO) => {
-    const integrationAuth = await integrationAuthDal.findById(integrationAuthId);
+    const integrationAuth = await integrationAuthDAL.findById(integrationAuthId);
     if (!integrationAuth) throw new BadRequestError({ message: "Integration auth not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -67,14 +67,14 @@ export const integrationServiceFactory = ({
       ProjectPermissionSub.Integrations
     );
 
-    const folder = await folderDal.findBySecretPath(
+    const folder = await folderDAL.findBySecretPath(
       integrationAuth.projectId,
       sourceEnvironment,
       secretPath
     );
     if (!folder) throw new BadRequestError({ message: "Folder path not found" });
 
-    const integration = await integrationDal.create({
+    const integration = await integrationDAL.create({
       envId: folder.envId,
       secretPath,
       isActive,
@@ -113,7 +113,7 @@ export const integrationServiceFactory = ({
     environment,
     secretPath
   }: TUpdateIntegrationDTO) => {
-    const integration = await integrationDal.findById(id);
+    const integration = await integrationDAL.findById(id);
     if (!integration) throw new BadRequestError({ message: "Integration auth not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -126,10 +126,10 @@ export const integrationServiceFactory = ({
       ProjectPermissionSub.Integrations
     );
 
-    const folder = await folderDal.findBySecretPath(integration.projectId, environment, secretPath);
+    const folder = await folderDAL.findBySecretPath(integration.projectId, environment, secretPath);
     if (!folder) throw new BadRequestError({ message: "Folder path not found" });
 
-    const updatedIntegration = await integrationDal.updateById(id, {
+    const updatedIntegration = await integrationDAL.updateById(id, {
       envId: folder.envId,
       isActive,
       app,
@@ -143,7 +143,7 @@ export const integrationServiceFactory = ({
   };
 
   const deleteIntegration = async ({ actorId, id, actor }: TDeleteIntegrationDTO) => {
-    const integration = await integrationDal.findById(id);
+    const integration = await integrationDAL.findById(id);
     if (!integration) throw new BadRequestError({ message: "Integration auth not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -156,7 +156,7 @@ export const integrationServiceFactory = ({
       ProjectPermissionSub.Integrations
     );
 
-    const deletedIntegration = await integrationDal.deleteById(id);
+    const deletedIntegration = await integrationDAL.deleteById(id);
     return { ...integration, ...deletedIntegration };
   };
 
@@ -167,7 +167,7 @@ export const integrationServiceFactory = ({
       ProjectPermissionSub.Integrations
     );
 
-    const integrations = await integrationDal.findByProjectId(projectId);
+    const integrations = await integrationDAL.findByProjectId(projectId);
     return integrations;
   };
 

@@ -7,10 +7,10 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 
-import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
-import { TSecretDalFactory } from "../secret/secret-dal";
-import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
-import { TSecretImportDalFactory } from "./secret-import-dal";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TSecretDALFactory } from "../secret/secret-dal";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretImportDALFactory } from "./secret-import-dal";
 import { fnSecretsFromImports } from "./secret-import-fns";
 import {
   TCreateSecretImportDTO,
@@ -21,10 +21,10 @@ import {
 } from "./secret-import-types";
 
 type TSecretImportServiceFactoryDep = {
-  secretImportDal: TSecretImportDalFactory;
-  folderDal: TSecretFolderDalFactory;
-  secretDal: Pick<TSecretDalFactory, "find">;
-  projectEnvDal: TProjectEnvDalFactory;
+  secretImportDAL: TSecretImportDALFactory;
+  folderDAL: TSecretFolderDALFactory;
+  secretDAL: Pick<TSecretDALFactory, "find">;
+  projectEnvDAL: TProjectEnvDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
@@ -33,11 +33,11 @@ const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not 
 export type TSecretImportServiceFactory = ReturnType<typeof secretImportServiceFactory>;
 
 export const secretImportServiceFactory = ({
-  secretImportDal,
-  projectEnvDal,
+  secretImportDAL,
+  projectEnvDAL,
   permissionService,
-  folderDal,
-  secretDal
+  folderDAL,
+  secretDAL
 }: TSecretImportServiceFactoryDep) => {
   const createImport = async ({
     environment,
@@ -64,17 +64,17 @@ export const secretImportServiceFactory = ({
       })
     );
 
-    const folder = await folderDal.findBySecretPath(projectId, environment, path);
+    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Create import" });
 
     // TODO(akhilmhdh-pg): updated permission check add here
-    const [importEnv] = await projectEnvDal.findBySlugs(projectId, [data.environment]);
+    const [importEnv] = await projectEnvDAL.findBySlugs(projectId, [data.environment]);
     if (!importEnv)
       throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
 
-    const secImport = await secretImportDal.transaction(async (tx) => {
-      const lastPos = await secretImportDal.findLastImportPosition(folder.id, tx);
-      return secretImportDal.create(
+    const secImport = await secretImportDAL.transaction(async (tx) => {
+      const lastPos = await secretImportDAL.findLastImportPosition(folder.id, tx);
+      return secretImportDAL.create(
         {
           folderId: folder.id,
           position: lastPos + 1,
@@ -103,25 +103,25 @@ export const secretImportServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
-    const folder = await folderDal.findBySecretPath(projectId, environment, path);
+    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Update import" });
 
-    const secImpDoc = await secretImportDal.findOne({ folderId: folder.id, id });
+    const secImpDoc = await secretImportDAL.findOne({ folderId: folder.id, id });
     if (!secImpDoc) throw ERR_SEC_IMP_NOT_FOUND;
 
     const importedEnv = data.environment // this is get env information of new one or old one
-      ? (await projectEnvDal.findBySlugs(projectId, [data.environment]))?.[0]
-      : await projectEnvDal.findById(secImpDoc.importEnv);
+      ? (await projectEnvDAL.findBySlugs(projectId, [data.environment]))?.[0]
+      : await projectEnvDAL.findById(secImpDoc.importEnv);
     if (!importedEnv)
       throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
 
-    const updatedSecImport = await secretImportDal.transaction(async (tx) => {
-      const secImp = await secretImportDal.findOne({ folderId: folder.id, id });
+    const updatedSecImport = await secretImportDAL.transaction(async (tx) => {
+      const secImp = await secretImportDAL.findOne({ folderId: folder.id, id });
       if (!secImp) throw ERR_SEC_IMP_NOT_FOUND;
       if (data.position) {
-        await secretImportDal.updateAllPosition(folder.id, secImp.position, data.position, tx);
+        await secretImportDAL.updateAllPosition(folder.id, secImp.position, data.position, tx);
       }
-      const [doc] = await secretImportDal.update(
+      const [doc] = await secretImportDAL.update(
         { id, folderId: folder.id },
         {
           position: data?.position,
@@ -149,16 +149,16 @@ export const secretImportServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
-    const folder = await folderDal.findBySecretPath(projectId, environment, path);
+    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Delete import" });
 
-    const secImport = await secretImportDal.transaction(async (tx) => {
-      const [doc] = await secretImportDal.delete({ folderId: folder.id, id }, tx);
+    const secImport = await secretImportDAL.transaction(async (tx) => {
+      const [doc] = await secretImportDAL.delete({ folderId: folder.id, id }, tx);
       if (!doc)
         throw new BadRequestError({ name: "Sec imp del", message: "Secret import doc not found" });
-      await secretImportDal.updateAllPosition(folder.id, doc.position, -1, tx);
+      await secretImportDAL.updateAllPosition(folder.id, doc.position, -1, tx);
 
-      const importEnv = await projectEnvDal.findById(doc.importEnv);
+      const importEnv = await projectEnvDAL.findById(doc.importEnv);
       if (!importEnv)
         throw new BadRequestError({ error: "Imported env not found", name: "Create import" });
       return { ...doc, importEnv };
@@ -179,10 +179,10 @@ export const secretImportServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
 
-    const folder = await folderDal.findBySecretPath(projectId, environment, path);
+    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found", name: "Get imports" });
 
-    const secImports = await secretImportDal.find({ folderId: folder.id });
+    const secImports = await secretImportDAL.find({ folderId: folder.id });
     return secImports;
   };
 
@@ -198,11 +198,11 @@ export const secretImportServiceFactory = ({
       ProjectPermissionActions.Read,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath: path })
     );
-    const folder = await folderDal.findBySecretPath(projectId, environment, path);
+    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) return [];
     // this will already order by position
     // so anything based on this order will also be in right position
-    const secretImports = await secretImportDal.find({ folderId: folder.id });
+    const secretImports = await secretImportDAL.find({ folderId: folder.id });
 
     const allowedImports = secretImports.filter(({ importEnv, importPath }) =>
       permission.can(
@@ -213,7 +213,7 @@ export const secretImportServiceFactory = ({
         })
       )
     );
-    return fnSecretsFromImports({ allowedImports, folderDal, secretDal });
+    return fnSecretsFromImports({ allowedImports, folderDAL, secretDAL });
   };
 
   return {

@@ -2,9 +2,9 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { ormify } from "@app/lib/knex";
 
-export type TSapApproverDalFactory = ReturnType<typeof sapApproverDalFactory>;
+export type TSapApproverDALFactory = ReturnType<typeof sapApproverDALFactory>;
 
-export const sapApproverDalFactory = (db: TDbClient) => {
+export const sapApproverDALFactory = (db: TDbClient) => {
   const sapApproverOrm = ormify(db, TableName.SapApprover);
   return sapApproverOrm;
 };

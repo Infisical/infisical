@@ -5,9 +5,9 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-export type TSecretTagDalFactory = ReturnType<typeof secretTagDalFactory>;
+export type TSecretTagDALFactory = ReturnType<typeof secretTagDALFactory>;
 
-export const secretTagDalFactory = (db: TDbClient) => {
+export const secretTagDALFactory = (db: TDbClient) => {
   const secretTagOrm = ormify(db, TableName.SecretTag);
   const secretJnTagOrm = ormify(db, TableName.JnSecretTag);
 

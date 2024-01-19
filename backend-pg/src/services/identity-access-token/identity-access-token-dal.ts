@@ -5,9 +5,9 @@ import { TableName,TIdentityAccessTokens } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-export type TIdentityAccessTokenDalFactory = ReturnType<typeof identityAccessTokenDalFactory>;
+export type TIdentityAccessTokenDALFactory = ReturnType<typeof identityAccessTokenDALFactory>;
 
-export const identityAccessTokenDalFactory = (db: TDbClient) => {
+export const identityAccessTokenDALFactory = (db: TDbClient) => {
   const identityAccessTokenOrm = ormify(db, TableName.IdentityAccessToken);
 
   const findOne = async (filter: Partial<TIdentityAccessTokens>, tx?: Knex) => {

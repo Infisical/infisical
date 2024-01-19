@@ -10,8 +10,8 @@ import { getConfig } from "@app/lib/config/env";
 import { encryptSymmetric, encryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 
-import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
-import { TWebhookDalFactory } from "./webhook-dal";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TWebhookDALFactory } from "./webhook-dal";
 import { getWebhookPayload, triggerWebhookRequest } from "./webhook-fns";
 import {
   TCreateWebhookDTO,
@@ -22,16 +22,16 @@ import {
 } from "./webhook-types";
 
 type TWebhookServiceFactoryDep = {
-  webhookDal: TWebhookDalFactory;
-  projectEnvDal: TProjectEnvDalFactory;
+  webhookDAL: TWebhookDALFactory;
+  projectEnvDAL: TProjectEnvDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
 export type TWebhookServiceFactory = ReturnType<typeof webhookServiceFactory>;
 
 export const webhookServiceFactory = ({
-  webhookDal,
-  projectEnvDal,
+  webhookDAL,
+  projectEnvDAL,
   permissionService
 }: TWebhookServiceFactoryDep) => {
   const createWebhook = async ({
@@ -48,7 +48,7 @@ export const webhookServiceFactory = ({
       ProjectPermissionActions.Create,
       ProjectPermissionSub.Webhooks
     );
-    const env = await projectEnvDal.findOne({ projectId, slug: environment });
+    const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new BadRequestError({ message: "Env not found" });
 
     const insertDoc: TWebhooksInsert = {
@@ -81,12 +81,12 @@ export const webhookServiceFactory = ({
       }
     }
 
-    const webhook = await webhookDal.create(insertDoc);
+    const webhook = await webhookDAL.create(insertDoc);
     return { ...webhook, projectId, environment: env };
   };
 
   const updateWebhook = async ({ actorId, actor, id, isDisabled }: TUpdateWebhookDTO) => {
-    const webhook = await webhookDal.findById(id);
+    const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new BadRequestError({ message: "Webhook not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -99,12 +99,12 @@ export const webhookServiceFactory = ({
       ProjectPermissionSub.Webhooks
     );
 
-    const updatedWebhook = await webhookDal.updateById(id, { isDisabled });
+    const updatedWebhook = await webhookDAL.updateById(id, { isDisabled });
     return { ...webhook, ...updatedWebhook };
   };
 
   const deleteWebhook = async ({ id, actor, actorId }: TDeleteWebhookDTO) => {
-    const webhook = await webhookDal.findById(id);
+    const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new BadRequestError({ message: "Webhook not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -117,12 +117,12 @@ export const webhookServiceFactory = ({
       ProjectPermissionSub.Webhooks
     );
 
-    const deletedWebhook = await webhookDal.deleteById(id);
+    const deletedWebhook = await webhookDAL.deleteById(id);
     return { ...webhook, ...deletedWebhook };
   };
 
   const testWebhook = async ({ id, actor, actorId }: TTestWebhookDTO) => {
-    const webhook = await webhookDal.findById(id);
+    const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new BadRequestError({ message: "Webhook not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -145,7 +145,7 @@ export const webhookServiceFactory = ({
       webhookError = (err as Error).message;
     }
     const isSuccess = !webhookError;
-    const updatedWebhook = await webhookDal.updateById(webhook.id, {
+    const updatedWebhook = await webhookDAL.updateById(webhook.id, {
       lastStatus: isSuccess ? "success" : "failed",
       lastRunErrorMessage: isSuccess ? null : webhookError
     });
@@ -165,7 +165,7 @@ export const webhookServiceFactory = ({
       ProjectPermissionSub.Webhooks
     );
 
-    return webhookDal.findAllWebhooks(projectId, environment, secretPath);
+    return webhookDAL.findAllWebhooks(projectId, environment, secretPath);
   };
 
   return {

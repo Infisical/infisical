@@ -6,21 +6,21 @@ import { TApiKeys } from "@app/db/schemas/api-keys";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
-import { TUserDalFactory } from "../user/user-dal";
-import { TApiKeyDalFactory } from "./api-key-dal";
+import { TUserDALFactory } from "../user/user-dal";
+import { TApiKeyDALFactory } from "./api-key-dal";
 
 type TApiKeyServiceFactoryDep = {
-  apiKeyDal: TApiKeyDalFactory;
-  userDal: Pick<TUserDalFactory, "findById">;
+  apiKeyDAL: TApiKeyDALFactory;
+  userDAL: Pick<TUserDALFactory, "findById">;
 };
 
 export type TApiKeyServiceFactory = ReturnType<typeof apiKeyServiceFactory>;
 
 const formatApiKey = ({ secretHash, ...data }: TApiKeys) => data;
 
-export const apiKeyServiceFactory = ({ apiKeyDal, userDal }: TApiKeyServiceFactoryDep) => {
+export const apiKeyServiceFactory = ({ apiKeyDAL, userDAL }: TApiKeyServiceFactoryDep) => {
   const getMyApiKeys = async (userId: string) => {
-    const apiKeys = await apiKeyDal.find({ userId });
+    const apiKeys = await apiKeyDAL.find({ userId });
     return apiKeys.map((key) => formatApiKey(key));
   };
 
@@ -31,7 +31,7 @@ export const apiKeyServiceFactory = ({ apiKeyDal, userDal }: TApiKeyServiceFacto
     const expiresAt = new Date();
     expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
 
-    const apiKeyData = await apiKeyDal.create({
+    const apiKeyData = await apiKeyDAL.create({
       userId,
       name,
       expiresAt,
@@ -44,7 +44,7 @@ export const apiKeyServiceFactory = ({ apiKeyDal, userDal }: TApiKeyServiceFacto
   };
 
   const deleteApiKey = async (userId: string, apiKeyId: string) => {
-    const [apiKeyData] = await apiKeyDal.delete({ id: apiKeyId, userId });
+    const [apiKeyData] = await apiKeyDAL.delete({ id: apiKeyId, userId });
     if (!apiKeyData)
       throw new BadRequestError({ message: "Failed to find api key", name: "delete api key" });
     return formatApiKey(apiKeyData);
@@ -52,18 +52,18 @@ export const apiKeyServiceFactory = ({ apiKeyDal, userDal }: TApiKeyServiceFacto
 
   const fnValidateApiKey = async (token: string) => {
     const [, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>token.split(".", 3);
-    const apiKey = await apiKeyDal.findById(TOKEN_IDENTIFIER);
+    const apiKey = await apiKeyDAL.findById(TOKEN_IDENTIFIER);
     if (!apiKey) throw new UnauthorizedError();
 
     if (apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date()) {
-      await apiKeyDal.deleteById(apiKey.id);
+      await apiKeyDAL.deleteById(apiKey.id);
       throw new UnauthorizedError();
     }
 
     const isMatch = await bcrypt.compare(TOKEN_SECRET, apiKey.secretHash);
     if (!isMatch) throw new UnauthorizedError();
-    await apiKeyDal.updateById(apiKey.id, { lastUsed: new Date() });
-    const user = await userDal.findById(apiKey.userId);
+    await apiKeyDAL.updateById(apiKey.id, { lastUsed: new Date() });
+    const user = await userDAL.findById(apiKey.userId);
     return user;
   };
 

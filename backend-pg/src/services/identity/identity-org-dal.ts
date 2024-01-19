@@ -5,9 +5,9 @@ import { TableName, TIdentityOrgMemberships } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-export type TIdentityOrgDalFactory = ReturnType<typeof identityOrgDalFactory>;
+export type TIdentityOrgDALFactory = ReturnType<typeof identityOrgDALFactory>;
 
-export const identityOrgDalFactory = (db: TDbClient) => {
+export const identityOrgDALFactory = (db: TDbClient) => {
   const identityOrgOrm = ormify(db, TableName.IdentityOrgMembership);
 
   const findOne = async (filter: Partial<TIdentityOrgMemberships>, tx?: Knex) => {

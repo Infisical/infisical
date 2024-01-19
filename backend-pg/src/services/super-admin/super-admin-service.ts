@@ -4,13 +4,13 @@ import { BadRequestError } from "@app/lib/errors";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { AuthMethod } from "../auth/auth-type";
 import { TOrgServiceFactory } from "../org/org-service";
-import { TUserDalFactory } from "../user/user-dal";
-import { TSuperAdminDalFactory } from "./super-admin-dal";
+import { TUserDALFactory } from "../user/user-dal";
+import { TSuperAdminDALFactory } from "./super-admin-dal";
 import { TAdminSignUpDTO } from "./super-admin-types";
 
 type TSuperAdminServiceFactoryDep = {
-  serverCfgDal: TSuperAdminDalFactory;
-  userDal: TUserDalFactory;
+  serverCfgDAL: TSuperAdminDALFactory;
+  userDAL: TUserDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
 };
@@ -25,15 +25,15 @@ export const getServerCfg = () => {
 };
 
 export const superAdminServiceFactory = ({
-  serverCfgDal,
-  userDal,
+  serverCfgDAL,
+  userDAL,
   authService,
   orgService
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
-    serverCfg = await serverCfgDal.findOne({});
+    serverCfg = await serverCfgDAL.findOne({});
     if (!serverCfg) {
-      const newCfg = await serverCfgDal.create({ initialized: false, allowSignUp: true });
+      const newCfg = await serverCfgDAL.create({ initialized: false, allowSignUp: true });
       serverCfg = newCfg;
       return newCfg;
     }
@@ -41,7 +41,7 @@ export const superAdminServiceFactory = ({
   };
 
   const updateServerCfg = async (data: TSuperAdminUpdate) => {
-    const cfg = await serverCfgDal.updateById(serverCfg.id, data);
+    const cfg = await serverCfgDAL.updateById(serverCfg.id, data);
     serverCfg = Object.freeze(cfg);
     return cfg;
   };
@@ -62,12 +62,12 @@ export const superAdminServiceFactory = ({
     ip,
     userAgent
   }: TAdminSignUpDTO) => {
-    const existingUser = await userDal.findOne({ email });
+    const existingUser = await userDAL.findOne({ email });
     if (existingUser)
       throw new BadRequestError({ name: "Admin sign up", message: "User already exist" });
 
-    const userInfo = await userDal.transaction(async (tx) => {
-      const newUser = await userDal.create(
+    const userInfo = await userDAL.transaction(async (tx) => {
+      const newUser = await userDAL.create(
         {
           firstName,
           lastName,
@@ -78,7 +78,7 @@ export const superAdminServiceFactory = ({
         },
         tx
       );
-      const userEnc = await userDal.createUserEncryption(
+      const userEnc = await userDAL.createUserEncryption(
         {
           salt,
           encryptionVersion: 2,

@@ -5,9 +5,9 @@ import { TableName,TSecretImports } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-export type TSecretImportDalFactory = ReturnType<typeof secretImportDalFactory>;
+export type TSecretImportDALFactory = ReturnType<typeof secretImportDALFactory>;
 
-export const secretImportDalFactory = (db: TDbClient) => {
+export const secretImportDALFactory = (db: TDbClient) => {
   const secretImportOrm = ormify(db, TableName.SecretImport);
 
   // we are using postion based sorting as its a small list

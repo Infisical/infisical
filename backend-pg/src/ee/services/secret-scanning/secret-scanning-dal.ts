@@ -5,9 +5,9 @@ import { TableName,TSecretScanningGitRisksInsert } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-export type TSecretScanningDalFactory = ReturnType<typeof secretScanningDalFactory>;
+export type TSecretScanningDALFactory = ReturnType<typeof secretScanningDALFactory>;
 
-export const secretScanningDalFactory = (db: TDbClient) => {
+export const secretScanningDALFactory = (db: TDbClient) => {
   const gitRiskOrm = ormify(db, TableName.SecretScanningGitRisk);
 
   const upsert = async (data: TSecretScanningGitRisksInsert[], tx?: Knex) => {

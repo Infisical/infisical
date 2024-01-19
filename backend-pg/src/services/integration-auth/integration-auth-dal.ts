@@ -2,9 +2,9 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { ormify } from "@app/lib/knex";
 
-export type TIntegrationAuthDalFactory = ReturnType<typeof integrationAuthDalFactory>;
+export type TIntegrationAuthDALFactory = ReturnType<typeof integrationAuthDALFactory>;
 
-export const integrationAuthDalFactory = (db: TDbClient) => {
+export const integrationAuthDALFactory = (db: TDbClient) => {
   const integrationAuthOrm = ormify(db, TableName.IntegrationAuth);
   return integrationAuthOrm;
 };

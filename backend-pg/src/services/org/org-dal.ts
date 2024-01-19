@@ -18,9 +18,9 @@ import {
   withTransaction
 } from "@app/lib/knex";
 
-export type TOrgDalFactory = ReturnType<typeof orgDalFactory>;
+export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;
 
-export const orgDalFactory = (db: TDbClient) => {
+export const orgDALFactory = (db: TDbClient) => {
   const findOrgById = async (orgId: string) => {
     try {
       const org = await db(TableName.Organization).where({ id: orgId }).first();

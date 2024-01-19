@@ -3,9 +3,9 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-export type TProjectMembershipDalFactory = ReturnType<typeof projectMembershipDalFactory>;
+export type TProjectMembershipDALFactory = ReturnType<typeof projectMembershipDALFactory>;
 
-export const projectMembershipDalFactory = (db: TDbClient) => {
+export const projectMembershipDALFactory = (db: TDbClient) => {
   const projectMemberOrm = ormify(db, TableName.ProjectMembership);
 
   // special query

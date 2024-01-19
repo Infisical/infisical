@@ -23,7 +23,7 @@ export type TValidateTokenForUserDTO = {
   orgId?: string;
 };
 
-export type TUpsertTokenForUserDalDTO = {
+export type TUpsertTokenForUserDALDTO = {
   type: TokenType;
   expiresAt: Date;
   userId: string;
@@ -31,12 +31,12 @@ export type TUpsertTokenForUserDalDTO = {
   triesLeft?: number;
 };
 
-export type TGetTokenForUserDalDTO = {
+export type TGetTokenForUserDALDTO = {
   userId: string;
   type: TokenType;
 };
 
-export type TDeleteTokenForUserDalDTO = {
+export type TDeleteTokenForUserDALDTO = {
   userId: string;
   type: TokenType;
   orgId: string | null;

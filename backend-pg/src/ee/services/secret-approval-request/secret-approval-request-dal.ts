@@ -13,7 +13,7 @@ import {
 
 import { RequestState } from "./secret-approval-request-types";
 
-export type TSecretApprovalRequestDalFactory = ReturnType<typeof secretApprovalRequestDalFactory>;
+export type TSecretApprovalRequestDALFactory = ReturnType<typeof secretApprovalRequestDALFactory>;
 
 type TFindQueryFilter = {
   projectId: string;
@@ -25,7 +25,7 @@ type TFindQueryFilter = {
   offset?: number;
 };
 
-export const secretApprovalRequestDalFactory = (db: TDbClient) => {
+export const secretApprovalRequestDALFactory = (db: TDbClient) => {
   const secretApprovalRequestOrm = ormify(db, TableName.SecretApprovalRequest);
 
   const findQuery = (filter: TFindFilter<TSecretApprovalRequests>, tx: Knex) =>

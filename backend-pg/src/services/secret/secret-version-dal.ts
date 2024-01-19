@@ -5,9 +5,9 @@ import { TableName, TSecretVersions } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-export type TSecretVersionDalFactory = ReturnType<typeof secretVersionDalFactory>;
+export type TSecretVersionDALFactory = ReturnType<typeof secretVersionDALFactory>;
 
-export const secretVersionDalFactory = (db: TDbClient) => {
+export const secretVersionDALFactory = (db: TDbClient) => {
   const secretVersionOrm = ormify(db, TableName.SecretVersion);
 
   // This will fetch all latest secret versions from a folder

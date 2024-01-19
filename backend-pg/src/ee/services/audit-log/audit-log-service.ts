@@ -4,12 +4,12 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
-import { TAuditLogDalFactory } from "./audit-log-dal";
+import { TAuditLogDALFactory } from "./audit-log-dal";
 import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
 import { EventType, TCreateAuditLogDTO, TListProjectAuditLogDTO } from "./audit-log-types";
 
 type TAuditLogServiceFactoryDep = {
-  auditLogDal: TAuditLogDalFactory;
+  auditLogDAL: TAuditLogDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   auditLogQueue: TAuditLogQueueServiceFactory;
 };
@@ -17,7 +17,7 @@ type TAuditLogServiceFactoryDep = {
 export type TAuditLogServiceFactory = ReturnType<typeof auditLogServiceFactory>;
 
 export const auditLogServiceFactory = ({
-  auditLogDal,
+  auditLogDAL,
   auditLogQueue,
   permissionService
 }: TAuditLogServiceFactoryDep) => {
@@ -38,7 +38,7 @@ export const auditLogServiceFactory = ({
       ProjectPermissionActions.Read,
       ProjectPermissionSub.AuditLogs
     );
-    const auditLogs = await auditLogDal.find({
+    const auditLogs = await auditLogDAL.find({
       startDate,
       endDate,
       limit,

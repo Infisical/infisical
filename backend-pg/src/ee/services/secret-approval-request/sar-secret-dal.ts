@@ -5,9 +5,9 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-export type TSarSecretDalFactory = ReturnType<typeof sarSecretDalFactory>;
+export type TSarSecretDALFactory = ReturnType<typeof sarSecretDALFactory>;
 
-export const sarSecretDalFactory = (db: TDbClient) => {
+export const sarSecretDALFactory = (db: TDbClient) => {
   const sarSecretOrm = ormify(db, TableName.SarSecret);
 
   const findByRequestId = async (requestId: string, tx?: Knex) => {

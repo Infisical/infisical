@@ -10,9 +10,9 @@ import { isAtLeastAsPrivileged } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 
 import { ActorType } from "../auth/auth-type";
-import { TIdentityOrgDalFactory } from "../identity/identity-org-dal";
-import { TProjectDalFactory } from "../project/project-dal";
-import { TIdentityProjectDalFactory } from "./identity-project-dal";
+import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
+import { TProjectDALFactory } from "../project/project-dal";
+import { TIdentityProjectDALFactory } from "./identity-project-dal";
 import {
   TCreateProjectIdentityDTO,
   TDeleteProjectIdentityDTO,
@@ -21,9 +21,9 @@ import {
 } from "./identity-project-types";
 
 type TIdentityProjectServiceFactoryDep = {
-  identityProjectDal: TIdentityProjectDalFactory;
-  projectDal: Pick<TProjectDalFactory, "findById">;
-  identityOrgMembershipDal: Pick<TIdentityOrgDalFactory, "findOne">;
+  identityProjectDAL: TIdentityProjectDALFactory;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getProjectPermission" | "getProjectPermissionByRole"
@@ -33,10 +33,10 @@ type TIdentityProjectServiceFactoryDep = {
 export type TIdentityProjectServiceFactory = ReturnType<typeof identityProjectServiceFactory>;
 
 export const identityProjectServiceFactory = ({
-  identityProjectDal,
+  identityProjectDAL,
   permissionService,
-  identityOrgMembershipDal,
-  projectDal
+  identityOrgMembershipDAL,
+  projectDAL
 }: TIdentityProjectServiceFactoryDep) => {
   const createProjectIdentity = async ({
     identityId,
@@ -51,14 +51,14 @@ export const identityProjectServiceFactory = ({
       ProjectPermissionSub.Identity
     );
 
-    const existingIdentity = await identityProjectDal.findOne({ identityId, projectId });
+    const existingIdentity = await identityProjectDAL.findOne({ identityId, projectId });
     if (existingIdentity)
       throw new BadRequestError({
         message: `Identity with id ${identityId} already exists in project with id ${projectId}`
       });
 
-    const project = await projectDal.findById(projectId);
-    const identityOrgMembership = await identityOrgMembershipDal.findOne({
+    const project = await projectDAL.findById(projectId);
+    const identityOrgMembership = await identityOrgMembershipDAL.findOne({
       identityId,
       orgId: project.orgId
     });
@@ -76,7 +76,7 @@ export const identityProjectServiceFactory = ({
       });
     const isCustomRole = Boolean(customRole);
 
-    const projectIdentity = await identityProjectDal.create({
+    const projectIdentity = await identityProjectDAL.create({
       identityId,
       projectId: project.id,
       role: isCustomRole ? ProjectMembershipRole.Custom : role,
@@ -98,7 +98,7 @@ export const identityProjectServiceFactory = ({
       ProjectPermissionSub.Identity
     );
 
-    const projectIdentity = await identityProjectDal.findOne({ identityId, projectId });
+    const projectIdentity = await identityProjectDAL.findOne({ identityId, projectId });
     if (!projectIdentity)
       throw new BadRequestError({
         message: `Identity with id ${identityId} doesn't exists in project with id ${projectId}`
@@ -125,7 +125,7 @@ export const identityProjectServiceFactory = ({
       if (isCustomRole) customRole = customOrgRole;
     }
 
-    const [updatedProjectIdentity] = await identityProjectDal.update(
+    const [updatedProjectIdentity] = await identityProjectDAL.update(
       { projectId, identityId: projectIdentity.identityId },
       {
         role: customRole ? ProjectMembershipRole.Custom : role,
@@ -141,7 +141,7 @@ export const identityProjectServiceFactory = ({
     actor,
     projectId
   }: TDeleteProjectIdentityDTO) => {
-    const identityProjectMembership = await identityProjectDal.findOne({ identityId, projectId });
+    const identityProjectMembership = await identityProjectDAL.findOne({ identityId, projectId });
     if (!identityProjectMembership)
       throw new BadRequestError({ message: `Failed to find identity with id ${identityId}` });
 
@@ -163,7 +163,7 @@ export const identityProjectServiceFactory = ({
     if (!hasRequiredPriviledges)
       throw new ForbiddenRequestError({ message: "Failed to delete more privileged identity" });
 
-    const [deletedIdentity] = await identityProjectDal.delete({ identityId });
+    const [deletedIdentity] = await identityProjectDAL.delete({ identityId });
     return deletedIdentity;
   };
 
@@ -174,7 +174,7 @@ export const identityProjectServiceFactory = ({
       ProjectPermissionSub.Identity
     );
 
-    const identityMemberhips = await identityProjectDal.findByProjectId(projectId);
+    const identityMemberhips = await identityProjectDAL.findByProjectId(projectId);
     return identityMemberhips;
   };
 

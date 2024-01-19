@@ -1,23 +1,23 @@
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { TProjectDalFactory } from "@app/services/project/project-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { TAuditLogDalFactory } from "./audit-log-dal";
+import { TAuditLogDALFactory } from "./audit-log-dal";
 import { TCreateAuditLogDTO } from "./audit-log-types";
 
 type TAuditLogQueueServiceFactoryDep = {
-  auditLogDal: TAuditLogDalFactory;
+  auditLogDAL: TAuditLogDALFactory;
   queueService: TQueueServiceFactory;
-  projectDal: Pick<TProjectDalFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TAuditLogQueueServiceFactory = ReturnType<typeof auditLogQueueServiceFactory>;
 
 export const auditLogQueueServiceFactory = ({
-  auditLogDal,
+  auditLogDAL,
   queueService,
-  projectDal,
+  projectDAL,
   licenseService
 }: TAuditLogQueueServiceFactoryDep) => {
   const pushToLog = async (data: TCreateAuditLogDTO) => {
@@ -37,13 +37,13 @@ export const auditLogQueueServiceFactory = ({
     if (!orgId) {
       // it will never be undefined for both org and project id
       // TODO(akhilmhdh): use caching here in dal to avoid db calls
-      const project = await projectDal.findById(projectId as string);
+      const project = await projectDAL.findById(projectId as string);
       orgId = project.orgId;
     }
 
     const plan = await licenseService.getPlan(orgId);
     const ttl = plan.auditLogsRetentionDays * MS_IN_DAY;
-    await auditLogDal.create({
+    await auditLogDAL.create({
       actor: actor.type,
       actorMetadata: actor.metadata,
       userAgent,

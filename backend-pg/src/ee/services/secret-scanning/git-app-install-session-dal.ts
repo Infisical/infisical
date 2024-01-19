@@ -5,9 +5,9 @@ import { TableName,TGitAppInstallSessionsInsert } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-export type TGitAppInstallSessionDalFactory = ReturnType<typeof gitAppInstallSessionDalFactory>;
+export type TGitAppInstallSessionDALFactory = ReturnType<typeof gitAppInstallSessionDALFactory>;
 
-export const gitAppInstallSessionDalFactory = (db: TDbClient) => {
+export const gitAppInstallSessionDALFactory = (db: TDbClient) => {
   const gitAppInstallSessionOrm = ormify(db, TableName.GitAppInstallSession);
 
   const upsert = async (data: TGitAppInstallSessionsInsert, tx?: Knex) => {

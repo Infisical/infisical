@@ -8,7 +8,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { TUserDalFactory } from "../user/user-dal";
+import { TUserDALFactory } from "../user/user-dal";
 import { validateProviderAuthToken } from "./auth-fns";
 import {
   TLoginClientProofDTO,
@@ -19,14 +19,14 @@ import {
 import { AuthMethod, AuthTokenType } from "./auth-type";
 
 type TAuthLoginServiceFactoryDep = {
-  userDal: TUserDalFactory;
+  userDAL: TUserDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
 export const authLoginServiceFactory = ({
-  userDal,
+  userDAL,
   tokenService,
   smtpService
 }: TAuthLoginServiceFactoryDep) => {
@@ -43,7 +43,7 @@ export const authLoginServiceFactory = ({
 
     if (!isDeviceSeen) {
       const newDeviceList = devices.concat([{ ip, userAgent }]);
-      await userDal.updateById(user.id, { devices: JSON.stringify(newDeviceList) });
+      await userDAL.updateById(user.id, { devices: JSON.stringify(newDeviceList) });
       await smtpService.sendMail({
         template: SmtpTemplates.NewDeviceJoin,
         subjectLine: "Successful login from new device",
@@ -124,7 +124,7 @@ export const authLoginServiceFactory = ({
     providerAuthToken,
     clientPublicKey
   }: TLoginGenServerPublicKeyDTO) => {
-    const userEnc = await userDal.findUserEncKeyByEmail(email);
+    const userEnc = await userDAL.findUserEncKeyByEmail(email);
     if (!userEnc || (userEnc && !userEnc.isAccepted)) {
       throw new Error("Failed to find  user");
     }
@@ -133,7 +133,7 @@ export const authLoginServiceFactory = ({
     }
 
     const serverSrpKey = await generateSrpServerKey(userEnc.salt, userEnc.verifier);
-    const userEncKeys = await userDal.updateUserEncryptionByUserId(userEnc.userId, {
+    const userEncKeys = await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
       clientPublicKey,
       serverPrivateKey: serverSrpKey.privateKey
     });
@@ -151,7 +151,7 @@ export const authLoginServiceFactory = ({
     ip,
     userAgent
   }: TLoginClientProofDTO) => {
-    const userEnc = await userDal.findUserEncKeyByEmail(email);
+    const userEnc = await userDAL.findUserEncKeyByEmail(email);
     if (!userEnc) throw new Error("Failed to find user");
     const cfg = getConfig();
 
@@ -170,7 +170,7 @@ export const authLoginServiceFactory = ({
     );
     if (!isValidClientProof) throw new Error("Failed to authenticate. Try again?");
 
-    await userDal.updateUserEncryptionByUserId(userEnc.userId, {
+    await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
       serverPrivateKey: null,
       clientPublicKey: null
     });
@@ -195,7 +195,7 @@ export const authLoginServiceFactory = ({
    * saved in frontend
    */
   const resendMfaToken = async (userId: string) => {
-    const user = await userDal.findById(userId);
+    const user = await userDAL.findById(userId);
     if (!user) return;
     await sendUserMfaCode(user.id, user.email);
   };
@@ -210,7 +210,7 @@ export const authLoginServiceFactory = ({
       userId,
       code: mfaToken
     });
-    const userEnc = await userDal.findUserEncKeyByUserId(userId);
+    const userEnc = await userDAL.findUserEncKeyByUserId(userId);
     if (!userEnc) throw new Error("Failed to authenticate user");
 
     const token = await generateUserTokens({ ...userEnc, id: userEnc.userId }, ip, userAgent);
@@ -227,14 +227,14 @@ export const authLoginServiceFactory = ({
     callbackPort,
     isSignupAllowed
   }: TOauthLoginDTO) => {
-    let user = await userDal.findUserByEmail(email);
+    let user = await userDAL.findUserByEmail(email);
     const appCfg = getConfig();
     const isOauthSignUpDisabled = !isSignupAllowed && !user;
     if (isOauthSignUpDisabled)
       throw new BadRequestError({ message: "User signup disabled", name: "Oauth 2 login" });
 
     if (!user) {
-      user = await userDal.create({ email, firstName, lastName, authMethods: [authMethod] });
+      user = await userDAL.create({ email, firstName, lastName, authMethods: [authMethod] });
     }
     const isLinkingRequired = !user?.authMethods?.includes(authMethod);
     const isUserCompleted = user.isAccepted;

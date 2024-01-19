@@ -3,9 +3,9 @@ import { ProjectsSchema, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
-export type TProjectDalFactory = ReturnType<typeof projectDalFactory>;
+export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
 
-export const projectDalFactory = (db: TDbClient) => {
+export const projectDALFactory = (db: TDbClient) => {
   const projectOrm = ormify(db, TableName.Project);
 
   const findAllProjects = async (userId: string) => {

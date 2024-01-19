@@ -6,14 +6,14 @@ import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 
 import { AuthTokenType } from "../auth/auth-type";
-import { TIdentityAccessTokenDalFactory } from "./identity-access-token-dal";
+import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
 import {
   TIdentityAccessTokenJwtPayload,
   TRenewAccessTokenDTO
 } from "./identity-access-token-types";
 
 type TIdentityAccessTokenServiceFactoryDep = {
-  identityAccessTokenDal: TIdentityAccessTokenDalFactory;
+  identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
 };
 
 export type TIdentityAccessTokenServiceFactory = ReturnType<
@@ -21,7 +21,7 @@ export type TIdentityAccessTokenServiceFactory = ReturnType<
 >;
 
 export const identityAccessTokenServiceFactory = ({
-  identityAccessTokenDal
+  identityAccessTokenDAL
 }: TIdentityAccessTokenServiceFactoryDep) => {
   const validateAccessTokenExp = async (identityAccessToken: TIdentityAccessTokens) => {
     const {
@@ -92,7 +92,7 @@ export const identityAccessTokenServiceFactory = ({
     if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN)
       throw new UnauthorizedError();
 
-    const identityAccessToken = await identityAccessTokenDal.findOne({
+    const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: decodedToken.identityAccessTokenId,
       isAccessTokenRevoked: false
     });
@@ -100,7 +100,7 @@ export const identityAccessTokenServiceFactory = ({
 
     validateAccessTokenExp(identityAccessToken);
 
-    const updatedIdentityAccessToken = await identityAccessTokenDal.updateById(
+    const updatedIdentityAccessToken = await identityAccessTokenDAL.updateById(
       identityAccessToken.id,
       {
         accessTokenLastRenewedAt: new Date()
@@ -114,7 +114,7 @@ export const identityAccessTokenServiceFactory = ({
     token: TIdentityAccessTokenJwtPayload,
     ipAddress?: string
   ) => {
-    const identityAccessToken = await identityAccessTokenDal.findOne({
+    const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: token.identityAccessTokenId,
       isAccessTokenRevoked: false
     });

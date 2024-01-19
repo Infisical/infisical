@@ -10,9 +10,9 @@ import {
   selectAllTableCols,
   TFindFilter} from "@app/lib/knex";
 
-export type TSecretApprovalPolicyDalFactory = ReturnType<typeof secretApprovalPolicyDalFactory>;
+export type TSecretApprovalPolicyDALFactory = ReturnType<typeof secretApprovalPolicyDALFactory>;
 
-export const secretApprovalPolicyDalFactory = (db: TDbClient) => {
+export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
   const secretApprovalPolicyOrm = ormify(db, TableName.SecretApprovalPolicy);
 
   const sapFindQuery = (tx: Knex, filter: TFindFilter<TSecretApprovalPolicies>) =>

@@ -3,10 +3,10 @@ import { ForbiddenError } from "@casl/ability";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { TSecretDalFactory } from "@app/services/secret/secret-dal";
-import { TSecretVersionDalFactory } from "@app/services/secret/secret-version-dal";
-import { TSecretFolderDalFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { TSecretFolderVersionDalFactory } from "@app/services/secret-folder/secret-folder-version-dal";
+import { TSecretDALFactory } from "@app/services/secret/secret-dal";
+import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
@@ -17,22 +17,22 @@ import {
   TProjectSnapshotListDTO,
   TRollbackSnapshotDTO
 } from "./secret-snapshot-types";
-import { TSnapshotDalFactory } from "./snapshot-dal";
-import { TSnapshotFolderDalFactory } from "./snapshot-folder-dal";
-import { TSnapshotSecretDalFactory } from "./snapshot-secret-dal";
+import { TSnapshotDALFactory } from "./snapshot-dal";
+import { TSnapshotFolderDALFactory } from "./snapshot-folder-dal";
+import { TSnapshotSecretDALFactory } from "./snapshot-secret-dal";
 
 type TSecretSnapshotServiceFactoryDep = {
-  snapshotDal: TSnapshotDalFactory;
-  snapshotSecretDal: TSnapshotSecretDalFactory;
-  snapshotFolderDal: TSnapshotFolderDalFactory;
-  secretVersionDal: Pick<TSecretVersionDalFactory, "insertMany" | "findLatestVersionByFolderId">;
-  folderVersionDal: Pick<
-    TSecretFolderVersionDalFactory,
+  snapshotDAL: TSnapshotDALFactory;
+  snapshotSecretDAL: TSnapshotSecretDALFactory;
+  snapshotFolderDAL: TSnapshotFolderDALFactory;
+  secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany" | "findLatestVersionByFolderId">;
+  folderVersionDAL: Pick<
+    TSecretFolderVersionDALFactory,
     "findLatestVersionByFolderId" | "insertMany"
   >;
-  secretDal: Pick<TSecretDalFactory, "delete" | "insertMany">;
-  folderDal: Pick<
-    TSecretFolderDalFactory,
+  secretDAL: Pick<TSecretDALFactory, "delete" | "insertMany">;
+  folderDAL: Pick<
+    TSecretFolderDALFactory,
     "findById" | "findBySecretPath" | "delete" | "insertMany"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -42,13 +42,13 @@ type TSecretSnapshotServiceFactoryDep = {
 export type TSecretSnapshotServiceFactory = ReturnType<typeof secretSnapshotServiceFactory>;
 
 export const secretSnapshotServiceFactory = ({
-  snapshotDal,
-  folderVersionDal,
-  secretVersionDal,
-  snapshotSecretDal,
-  snapshotFolderDal,
-  folderDal,
-  secretDal,
+  snapshotDAL,
+  folderVersionDAL,
+  secretVersionDAL,
+  snapshotSecretDAL,
+  snapshotFolderDAL,
+  folderDAL,
+  secretDAL,
   permissionService,
   licenseService
 }: TSecretSnapshotServiceFactoryDep) => {
@@ -65,10 +65,10 @@ export const secretSnapshotServiceFactory = ({
       ProjectPermissionSub.SecretRollback
     );
 
-    const folder = await folderDal.findBySecretPath(projectId, environment, path);
+    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
-    const count = await snapshotDal.countOfSnapshotsByFolderId(folder.id);
+    const count = await snapshotDAL.countOfSnapshotsByFolderId(folder.id);
     return count;
   };
 
@@ -87,10 +87,10 @@ export const secretSnapshotServiceFactory = ({
       ProjectPermissionSub.SecretRollback
     );
 
-    const folder = await folderDal.findBySecretPath(projectId, environment, path);
+    const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
-    const snapshots = await snapshotDal.find(
+    const snapshots = await snapshotDAL.find(
       { folderId: folder.id },
       { limit, offset, sort: [["createdAt", "desc"]] }
     );
@@ -98,7 +98,7 @@ export const secretSnapshotServiceFactory = ({
   };
 
   const getSnapshotData = async ({ actorId, actor, id }: TGetSnapshotDataDTO) => {
-    const snapshot = await snapshotDal.findSecretSnapshotDataById(id);
+    const snapshot = await snapshotDAL.findSecretSnapshotDataById(id);
     if (!snapshot) throw new BadRequestError({ message: "Snapshot not found" });
     const { permission } = await permissionService.getProjectPermission(
       actor,
@@ -117,13 +117,13 @@ export const secretSnapshotServiceFactory = ({
       if (!licenseService.isValidLicense)
         throw new InternalServerError({ message: "Invalid license" });
 
-      const snapshot = await snapshotDal.transaction(async (tx) => {
-        const folder = await folderDal.findById(folderId, tx);
+      const snapshot = await snapshotDAL.transaction(async (tx) => {
+        const folder = await folderDAL.findById(folderId, tx);
         if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
-        const secretVersions = await secretVersionDal.findLatestVersionByFolderId(folderId, tx);
-        const folderVersions = await folderVersionDal.findLatestVersionByFolderId(folderId, tx);
-        const newSnapshot = await snapshotDal.create(
+        const secretVersions = await secretVersionDAL.findLatestVersionByFolderId(folderId, tx);
+        const folderVersions = await folderVersionDAL.findLatestVersionByFolderId(folderId, tx);
+        const newSnapshot = await snapshotDAL.create(
           {
             folderId,
             envId: folder.environment.envId,
@@ -131,7 +131,7 @@ export const secretSnapshotServiceFactory = ({
           },
           tx
         );
-        const snapshotSecrets = await snapshotSecretDal.insertMany(
+        const snapshotSecrets = await snapshotSecretDAL.insertMany(
           secretVersions.map(({ id }) => ({
             secretVersionId: id,
             envId: folder.environment.envId,
@@ -139,7 +139,7 @@ export const secretSnapshotServiceFactory = ({
           })),
           tx
         );
-        const snapshotFolders = await snapshotFolderDal.insertMany(
+        const snapshotFolders = await snapshotFolderDAL.insertMany(
           folderVersions.map(({ id }) => ({
             folderVersionId: id,
             envId: folder.environment.envId,
@@ -160,7 +160,7 @@ export const secretSnapshotServiceFactory = ({
   };
 
   const rollbackSnapshot = async ({ id: snapshotId, actor, actorId }: TRollbackSnapshotDTO) => {
-    const snapshot = await snapshotDal.findById(snapshotId);
+    const snapshot = await snapshotDAL.findById(snapshotId);
     if (!snapshot) throw new BadRequestError({ message: "Snapshot not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -173,19 +173,19 @@ export const secretSnapshotServiceFactory = ({
       ProjectPermissionSub.SecretRollback
     );
 
-    const rollback = await snapshotDal.transaction(async (tx) => {
-      const rollbackSnaps = await snapshotDal.findRecursivelySnapshots(snapshot.id, tx);
+    const rollback = await snapshotDAL.transaction(async (tx) => {
+      const rollbackSnaps = await snapshotDAL.findRecursivelySnapshots(snapshot.id, tx);
       // this will remove all secrets in current folder
-      const deletedTopLevelSecs = await secretDal.delete({ folderId: snapshot.folderId }, tx);
+      const deletedTopLevelSecs = await secretDAL.delete({ folderId: snapshot.folderId }, tx);
       const deletedTopLevelSecsGroupById = groupBy(deletedTopLevelSecs, (item) => item.id);
       // this will remove all secrets and folders on child
       // due to sql foreign key and link list connection removing the folders removes everything below too
-      const deletedFolders = await folderDal.delete({ parentId: snapshot.folderId }, tx);
+      const deletedFolders = await folderDAL.delete({ parentId: snapshot.folderId }, tx);
       const deletedTopLevelFolders = groupBy(
         deletedFolders.filter(({ parentId }) => parentId === snapshot.folderId),
         (item) => item.id
       );
-      const folders = await folderDal.insertMany(
+      const folders = await folderDAL.insertMany(
         rollbackSnaps.flatMap(({ folderVersion, folderId }) =>
           folderVersion.map(({ name, id, latestFolderVersion }) => ({
             envId: snapshot.envId,
@@ -197,7 +197,7 @@ export const secretSnapshotServiceFactory = ({
         ),
         tx
       );
-      const secrets = await secretDal.insertMany(
+      const secrets = await secretDAL.insertMany(
         rollbackSnaps.flatMap(({ secretVersions, folderId }) =>
           secretVersions.map(
             ({
@@ -219,7 +219,7 @@ export const secretSnapshotServiceFactory = ({
         ),
         tx
       );
-      const folderVersions = await folderVersionDal.insertMany(
+      const folderVersions = await folderVersionDAL.insertMany(
         folders.map(({ version, name, id, envId }) => ({
           name,
           version,
@@ -228,11 +228,11 @@ export const secretSnapshotServiceFactory = ({
         })),
         tx
       );
-      const secretVersions = await secretVersionDal.insertMany(
+      const secretVersions = await secretVersionDAL.insertMany(
         secrets.map(({ id, updatedAt, createdAt, ...el }) => ({ ...el, secretId: id })),
         tx
       );
-      const newSnapshot = await snapshotDal.create(
+      const newSnapshot = await snapshotDAL.create(
         {
           folderId: snapshot.folderId,
           envId: snapshot.envId,
@@ -240,7 +240,7 @@ export const secretSnapshotServiceFactory = ({
         },
         tx
       );
-      const snapshotSecrets = await snapshotSecretDal.insertMany(
+      const snapshotSecrets = await snapshotSecretDAL.insertMany(
         secretVersions
           .filter(({ secretId }) => Boolean(deletedTopLevelSecsGroupById?.[secretId]))
           .map(({ id }) => ({
@@ -250,7 +250,7 @@ export const secretSnapshotServiceFactory = ({
           })),
         tx
       );
-      const snapshotFolders = await snapshotFolderDal.insertMany(
+      const snapshotFolders = await snapshotFolderDAL.insertMany(
         folderVersions
           .filter(({ folderId }) => Boolean(deletedTopLevelFolders?.[folderId]))
           .map(({ id }) => ({

@@ -11,18 +11,18 @@ import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { groupBy, pick } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TSecretBlindIndexDalFactory } from "@app/services/secret/secret-blind-index-dal";
+import { TSecretBlindIndexDALFactory } from "@app/services/secret/secret-blind-index-dal";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
-import { TSecretVersionDalFactory } from "@app/services/secret/secret-version-dal";
-import { TSecretFolderDalFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
-import { TSarReviewerDalFactory } from "./sar-reviewer-dal";
-import { TSarSecretDalFactory } from "./sar-secret-dal";
-import { TSecretApprovalRequestDalFactory } from "./secret-approval-request-dal";
+import { TSarReviewerDALFactory } from "./sar-reviewer-dal";
+import { TSarSecretDALFactory } from "./sar-secret-dal";
+import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
 import {
   ApprovalStatus,
   CommitType,
@@ -38,16 +38,16 @@ import {
 
 type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  secretApprovalRequestDal: TSecretApprovalRequestDalFactory;
-  sarSecretDal: TSarSecretDalFactory;
-  sarReviewerDal: TSarReviewerDalFactory;
-  folderDal: Pick<
-    TSecretFolderDalFactory,
+  secretApprovalRequestDAL: TSecretApprovalRequestDALFactory;
+  sarSecretDAL: TSarSecretDALFactory;
+  sarReviewerDAL: TSarReviewerDALFactory;
+  folderDAL: Pick<
+    TSecretFolderDALFactory,
     "findBySecretPath" | "findById" | "findSecretPathByFolderIds"
   >;
-  secretBlindIndexDal: Pick<TSecretBlindIndexDalFactory, "findOne">;
+  secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
-  secretVersionDal: Pick<TSecretVersionDalFactory, "findLatestVersionMany">;
+  secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany">;
   secretService: Pick<
     TSecretServiceFactory,
     | "fnSecretBulkInsert"
@@ -64,15 +64,15 @@ export type TSecretApprovalRequestServiceFactory = ReturnType<
 >;
 
 export const secretApprovalRequestServiceFactory = ({
-  secretApprovalRequestDal,
-  folderDal,
-  sarReviewerDal,
-  sarSecretDal,
-  secretBlindIndexDal,
+  secretApprovalRequestDAL,
+  folderDAL,
+  sarReviewerDAL,
+  sarSecretDAL,
+  secretBlindIndexDAL,
   permissionService,
   snapshotService,
   secretService,
-  secretVersionDal,
+  secretVersionDAL,
   secretQueueService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({ projectId, actor, actorId }: TApprovalRequestCountDTO) => {
@@ -85,7 +85,7 @@ export const secretApprovalRequestServiceFactory = ({
       projectId
     );
 
-    const count = await secretApprovalRequestDal.findProjectRequestCount(projectId, membership.id);
+    const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, membership.id);
     return count;
   };
 
@@ -103,7 +103,7 @@ export const secretApprovalRequestServiceFactory = ({
       throw new BadRequestError({ message: "Cannot use service token" });
 
     const { membership } = await permissionService.getProjectPermission(actor, actorId, projectId);
-    const approvals = await secretApprovalRequestDal.findByProjectId({
+    const approvals = await secretApprovalRequestDAL.findByProjectId({
       projectId,
       committer,
       environment,
@@ -119,7 +119,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor === ActorType.SERVICE)
       throw new BadRequestError({ message: "Cannot use service token" });
 
-    const secretApprovalRequest = await secretApprovalRequestDal.findById(id);
+    const secretApprovalRequest = await secretApprovalRequestDAL.findById(id);
     if (!secretApprovalRequest)
       throw new BadRequestError({ message: "Secret approval request not found" });
 
@@ -137,15 +137,15 @@ export const secretApprovalRequestServiceFactory = ({
       throw new UnauthorizedError({ message: "User has no access" });
     }
 
-    const secrets = await sarSecretDal.findByRequestId(secretApprovalRequest.id);
-    const secretPath = await folderDal.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
+    const secrets = await sarSecretDAL.findByRequestId(secretApprovalRequest.id);
+    const secretPath = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
       secretApprovalRequest.folderId
     ]);
     return { ...secretApprovalRequest, secretPath: secretPath?.[0]?.path || "/", commits: secrets };
   };
 
   const reviewApproval = async ({ approvalId, actor, status, actorId }: TReviewRequestDTO) => {
-    const secretApprovalRequest = await secretApprovalRequestDal.findById(approvalId);
+    const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest)
       throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
@@ -163,8 +163,8 @@ export const secretApprovalRequestServiceFactory = ({
     ) {
       throw new UnauthorizedError({ message: "User has no access" });
     }
-    const reviewStatus = await sarReviewerDal.transaction(async (tx) => {
-      const review = await sarReviewerDal.findOne(
+    const reviewStatus = await sarReviewerDAL.transaction(async (tx) => {
+      const review = await sarReviewerDAL.findOne(
         {
           requestId: secretApprovalRequest.id,
           member: membership.id
@@ -172,7 +172,7 @@ export const secretApprovalRequestServiceFactory = ({
         tx
       );
       if (!review) {
-        return sarReviewerDal.create(
+        return sarReviewerDAL.create(
           {
             status,
             requestId: secretApprovalRequest.id,
@@ -181,13 +181,13 @@ export const secretApprovalRequestServiceFactory = ({
           tx
         );
       }
-      return sarReviewerDal.updateById(review.id, { status }, tx);
+      return sarReviewerDAL.updateById(review.id, { status }, tx);
     });
     return reviewStatus;
   };
 
   const updateApprovalStatus = async ({ actorId, status, approvalId, actor }: TStatusChangeDTO) => {
-    const secretApprovalRequest = await secretApprovalRequestDal.findById(approvalId);
+    const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest)
       throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
@@ -213,7 +213,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (secretApprovalRequest.status === RequestState.Open && status === RequestState.Open)
       throw new BadRequestError({ message: "Approval request is already open" });
 
-    const updatedRequest = await secretApprovalRequestDal.updateById(secretApprovalRequest.id, {
+    const updatedRequest = await secretApprovalRequestDAL.updateById(secretApprovalRequest.id, {
       status,
       statusChangeBy: membership.id
     });
@@ -225,7 +225,7 @@ export const secretApprovalRequestServiceFactory = ({
     actor,
     actorId
   }: TMergeSecretApprovalRequestDTO) => {
-    const secretApprovalRequest = await secretApprovalRequestDal.findById(approvalId);
+    const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest)
       throw new BadRequestError({ message: "Secret approval request not found" });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
@@ -255,7 +255,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     if (!hasMinApproval)
       throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
-    const secretApprovalSecrets = await sarSecretDal.findByRequestId(secretApprovalRequest.id);
+    const secretApprovalSecrets = await sarSecretDAL.findByRequestId(secretApprovalRequest.id);
     if (!secretApprovalSecrets) throw new BadRequestError({ message: "No secrets found" });
 
     const conflicts: Array<{ secretId: string; op: CommitType }> = [];
@@ -308,7 +308,7 @@ export const secretApprovalRequestServiceFactory = ({
       ({ op }) => op === CommitType.Delete
     );
 
-    const mergeStatus = await secretApprovalRequestDal.transaction(async (tx) => {
+    const mergeStatus = await secretApprovalRequestDAL.transaction(async (tx) => {
       const newSecrets = secretCreationCommits.length
         ? await secretService.fnSecretBulkInsert({
             tx,
@@ -378,7 +378,7 @@ export const secretApprovalRequestServiceFactory = ({
             }))
           })
         : [];
-      const updatedSecretApproval = await secretApprovalRequestDal.updateById(
+      const updatedSecretApproval = await secretApprovalRequestDAL.updateById(
         secretApprovalRequest.id,
         {
           conflicts: JSON.stringify(conflicts),
@@ -394,7 +394,7 @@ export const secretApprovalRequestServiceFactory = ({
       };
     });
     await snapshotService.performSnapshot(folderId);
-    const folder = await folderDal.findById(folderId);
+    const folder = await folderDAL.findById(folderId);
     // TODO(akhilmhdh-pg):  change query to do secret path from folder
     await secretQueueService.syncSecrets({
       projectId,
@@ -428,12 +428,12 @@ export const secretApprovalRequestServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
 
-    const folder = await folderDal.findBySecretPath(projectId, environment, secretPath);
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
       throw new BadRequestError({ message: "Folder not  found", name: "GenSecretApproval" });
     const folderId = folder.id;
 
-    const blindIndexCfg = await secretBlindIndexDal.findOne({ projectId });
+    const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
     if (!blindIndexCfg)
       throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
 
@@ -490,7 +490,7 @@ export const secretApprovalRequestServiceFactory = ({
       const updatedSecretIds = updatedSecrets.map(
         (el) => secsGroupedByBlindIndex[keyName2BlindIndex[el.secretName]][0].id
       );
-      const latestSecretVersions = await secretVersionDal.findLatestVersionMany(
+      const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
         folderId,
         updatedSecretIds
       );
@@ -528,7 +528,7 @@ export const secretApprovalRequestServiceFactory = ({
       const deletedSecretIds = deletedSecrets.map(
         (el) => secretsGroupedByBlindIndex[keyName2BlindIndex[el.secretName]][0].id
       );
-      const latestSecretVersions = await secretVersionDal.findLatestVersionMany(
+      const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
         folderId,
         deletedSecretIds
       );
@@ -546,8 +546,8 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     if (!commits.length) throw new BadRequestError({ message: "Empty commits" });
-    const secretApprovalRequest = await secretApprovalRequestDal.transaction(async (tx) => {
-      const doc = await secretApprovalRequestDal.create(
+    const secretApprovalRequest = await secretApprovalRequestDAL.transaction(async (tx) => {
+      const doc = await secretApprovalRequestDAL.create(
         {
           folderId,
           slug: alphaNumericNanoId(),
@@ -558,7 +558,7 @@ export const secretApprovalRequestServiceFactory = ({
         },
         tx
       );
-      const approvalCommits = await sarSecretDal.insertMany(
+      const approvalCommits = await sarSecretDAL.insertMany(
         commits.map(
           ({
             version,

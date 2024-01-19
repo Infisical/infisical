@@ -2,98 +2,98 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { registerV1EERoutes } from "@app/ee/routes/v1";
-import { auditLogDalFactory } from "@app/ee/services/audit-log/audit-log-dal";
+import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
-import { licenseDalFactory } from "@app/ee/services/license/license-dal";
+import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
-import { permissionDalFactory } from "@app/ee/services/permission/permission-dal";
+import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { samlConfigDalFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
-import { sapApproverDalFactory } from "@app/ee/services/secret-approval-policy/sap-approver-dal";
-import { secretApprovalPolicyDalFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
+import { sapApproverDALFactory } from "@app/ee/services/secret-approval-policy/sap-approver-dal";
+import { secretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { secretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { sarReviewerDalFactory } from "@app/ee/services/secret-approval-request/sar-reviewer-dal";
-import { sarSecretDalFactory } from "@app/ee/services/secret-approval-request/sar-secret-dal";
-import { secretApprovalRequestDalFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
+import { sarReviewerDALFactory } from "@app/ee/services/secret-approval-request/sar-reviewer-dal";
+import { sarSecretDALFactory } from "@app/ee/services/secret-approval-request/sar-secret-dal";
+import { secretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { secretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
-import { secretRotationDalFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
+import { secretRotationDALFactory } from "@app/ee/services/secret-rotation/secret-rotation-dal";
 import { secretRotationQueueFactory } from "@app/ee/services/secret-rotation/secret-rotation-queue";
 import { secretRotationServiceFactory } from "@app/ee/services/secret-rotation/secret-rotation-service";
-import { gitAppDalFactory } from "@app/ee/services/secret-scanning/git-app-dal";
-import { gitAppInstallSessionDalFactory } from "@app/ee/services/secret-scanning/git-app-install-session-dal";
-import { secretScanningDalFactory } from "@app/ee/services/secret-scanning/secret-scanning-dal";
+import { gitAppDALFactory } from "@app/ee/services/secret-scanning/git-app-dal";
+import { gitAppInstallSessionDALFactory } from "@app/ee/services/secret-scanning/git-app-install-session-dal";
+import { secretScanningDALFactory } from "@app/ee/services/secret-scanning/secret-scanning-dal";
 import { secretScanningQueueFactory } from "@app/ee/services/secret-scanning/secret-scanning-queue";
 import { secretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { secretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
-import { snapshotDalFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
-import { snapshotFolderDalFactory } from "@app/ee/services/secret-snapshot/snapshot-folder-dal";
-import { snapshotSecretDalFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-dal";
-import { trustedIpDalFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
+import { snapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
+import { snapshotFolderDALFactory } from "@app/ee/services/secret-snapshot/snapshot-folder-dal";
+import { snapshotSecretDALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-dal";
+import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { getConfig } from "@app/lib/config/env";
 import { TQueueServiceFactory } from "@app/queue";
-import { apiKeyDalFactory } from "@app/services/api-key/api-key-dal";
+import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
-import { authDalFactory } from "@app/services/auth/auth-dal";
+import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
-import { tokenDalFactory } from "@app/services/auth-token/auth-token-dal";
+import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
-import { identityDalFactory } from "@app/services/identity/identity-dal";
-import { identityOrgDalFactory } from "@app/services/identity/identity-org-dal";
+import { identityDALFactory } from "@app/services/identity/identity-dal";
+import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { identityServiceFactory } from "@app/services/identity/identity-service";
-import { identityAccessTokenDalFactory } from "@app/services/identity-access-token/identity-access-token-dal";
+import { identityAccessTokenDALFactory } from "@app/services/identity-access-token/identity-access-token-dal";
 import { identityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
-import { identityProjectDalFactory } from "@app/services/identity-project/identity-project-dal";
+import { identityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { identityProjectServiceFactory } from "@app/services/identity-project/identity-project-service";
-import { identityUaClientSecretDalFactory } from "@app/services/identity-ua/identity-ua-client-secret-dal";
-import { identityUaDalFactory } from "@app/services/identity-ua/identity-ua-dal";
+import { identityUaClientSecretDALFactory } from "@app/services/identity-ua/identity-ua-client-secret-dal";
+import { identityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { identityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
-import { integrationDalFactory } from "@app/services/integration/integration-dal";
+import { integrationDALFactory } from "@app/services/integration/integration-dal";
 import { integrationServiceFactory } from "@app/services/integration/integration-service";
-import { integrationAuthDalFactory } from "@app/services/integration-auth/integration-auth-dal";
+import { integrationAuthDALFactory } from "@app/services/integration-auth/integration-auth-dal";
 import { integrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
-import { incidentContactDalFactory } from "@app/services/org/incident-contacts-dal";
-import { orgBotDalFactory } from "@app/services/org/org-bot-dal";
-import { orgDalFactory } from "@app/services/org/org-dal";
-import { orgRoleDalFactory } from "@app/services/org/org-role-dal";
+import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
+import { orgBotDALFactory } from "@app/services/org/org-bot-dal";
+import { orgDALFactory } from "@app/services/org/org-dal";
+import { orgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { orgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
-import { projectDalFactory } from "@app/services/project/project-dal";
+import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectServiceFactory } from "@app/services/project/project-service";
-import { projectBotDalFactory } from "@app/services/project-bot/project-bot-dal";
+import { projectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { projectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
-import { projectEnvDalFactory } from "@app/services/project-env/project-env-dal";
+import { projectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { projectEnvServiceFactory } from "@app/services/project-env/project-env-service";
-import { projectKeyDalFactory } from "@app/services/project-key/project-key-dal";
+import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { projectKeyServiceFactory } from "@app/services/project-key/project-key-service";
-import { projectMembershipDalFactory } from "@app/services/project-membership/project-membership-dal";
+import { projectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { projectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
-import { projectRoleDalFactory } from "@app/services/project-role/project-role-dal";
+import { projectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { projectRoleServiceFactory } from "@app/services/project-role/project-role-service";
-import { secretBlindIndexDalFactory } from "@app/services/secret/secret-blind-index-dal";
-import { secretDalFactory } from "@app/services/secret/secret-dal";
+import { secretBlindIndexDALFactory } from "@app/services/secret/secret-blind-index-dal";
+import { secretDALFactory } from "@app/services/secret/secret-dal";
 import { secretQueueFactory } from "@app/services/secret/secret-queue";
 import { secretServiceFactory } from "@app/services/secret/secret-service";
-import { secretVersionDalFactory } from "@app/services/secret/secret-version-dal";
-import { secretFolderDalFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { secretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
-import { secretFolderVersionDalFactory } from "@app/services/secret-folder/secret-folder-version-dal";
-import { secretImportDalFactory } from "@app/services/secret-import/secret-import-dal";
+import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
+import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
-import { secretTagDalFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
-import { serviceTokenDalFactory } from "@app/services/service-token/service-token-dal";
+import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
-import { superAdminDalFactory } from "@app/services/super-admin/super-admin-dal";
+import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
-import { userDalFactory } from "@app/services/user/user-dal";
+import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
-import { webhookDalFactory } from "@app/services/webhook/webhook-dal";
+import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 
 import { injectAuditLogInfo } from "../plugins/audit-log";
@@ -115,312 +115,312 @@ export const registerRoutes = async (
   server.register(registerSecretScannerGhApp, { prefix: "/ss-webhook" });
 
   // db layers
-  const userDal = userDalFactory(db);
-  const authDal = authDalFactory(db);
-  const authTokenDal = tokenDalFactory(db);
-  const orgDal = orgDalFactory(db);
-  const orgBotDal = orgBotDalFactory(db);
-  const incidentContactDal = incidentContactDalFactory(db);
-  const orgRoleDal = orgRoleDalFactory(db);
-  const superAdminDal = superAdminDalFactory(db);
-  const apiKeyDal = apiKeyDalFactory(db);
+  const userDAL = userDALFactory(db);
+  const authDAL = authDALFactory(db);
+  const authTokenDAL = tokenDALFactory(db);
+  const orgDAL = orgDALFactory(db);
+  const orgBotDAL = orgBotDALFactory(db);
+  const incidentContactDAL = incidentContactDALFactory(db);
+  const orgRoleDAL = orgRoleDALFactory(db);
+  const superAdminDAL = superAdminDALFactory(db);
+  const apiKeyDAL = apiKeyDALFactory(db);
 
-  const projectDal = projectDalFactory(db);
-  const projectMembershipDal = projectMembershipDalFactory(db);
-  const projectRoleDal = projectRoleDalFactory(db);
-  const projectEnvDal = projectEnvDalFactory(db);
-  const projectKeyDal = projectKeyDalFactory(db);
-  const projectBotDal = projectBotDalFactory(db);
+  const projectDAL = projectDALFactory(db);
+  const projectMembershipDAL = projectMembershipDALFactory(db);
+  const projectRoleDAL = projectRoleDALFactory(db);
+  const projectEnvDAL = projectEnvDALFactory(db);
+  const projectKeyDAL = projectKeyDALFactory(db);
+  const projectBotDAL = projectBotDALFactory(db);
 
-  const secretDal = secretDalFactory(db);
-  const secretTagDal = secretTagDalFactory(db);
-  const folderDal = secretFolderDalFactory(db);
-  const folderVersionDal = secretFolderVersionDalFactory(db);
-  const secretImportDal = secretImportDalFactory(db);
-  const secretVersionDal = secretVersionDalFactory(db);
-  const secretBlindIndexDal = secretBlindIndexDalFactory(db);
+  const secretDAL = secretDALFactory(db);
+  const secretTagDAL = secretTagDALFactory(db);
+  const folderDAL = secretFolderDALFactory(db);
+  const folderVersionDAL = secretFolderVersionDALFactory(db);
+  const secretImportDAL = secretImportDALFactory(db);
+  const secretVersionDAL = secretVersionDALFactory(db);
+  const secretBlindIndexDAL = secretBlindIndexDALFactory(db);
 
-  const integrationDal = integrationDalFactory(db);
-  const integrationAuthDal = integrationAuthDalFactory(db);
-  const webhookDal = webhookDalFactory(db);
-  const serviceTokenDal = serviceTokenDalFactory(db);
+  const integrationDAL = integrationDALFactory(db);
+  const integrationAuthDAL = integrationAuthDALFactory(db);
+  const webhookDAL = webhookDALFactory(db);
+  const serviceTokenDAL = serviceTokenDALFactory(db);
 
-  const identityDal = identityDalFactory(db);
-  const identityAccessTokenDal = identityAccessTokenDalFactory(db);
-  const identityOrgMembershipDal = identityOrgDalFactory(db);
-  const identityProjectDal = identityProjectDalFactory(db);
+  const identityDAL = identityDALFactory(db);
+  const identityAccessTokenDAL = identityAccessTokenDALFactory(db);
+  const identityOrgMembershipDAL = identityOrgDALFactory(db);
+  const identityProjectDAL = identityProjectDALFactory(db);
 
-  const identityUaDal = identityUaDalFactory(db);
-  const identityUaClientSecretDal = identityUaClientSecretDalFactory(db);
+  const identityUaDAL = identityUaDALFactory(db);
+  const identityUaClientSecretDAL = identityUaClientSecretDALFactory(db);
 
-  const auditLogDal = auditLogDalFactory(db);
-  const trustedIpDal = trustedIpDalFactory(db);
+  const auditLogDAL = auditLogDALFactory(db);
+  const trustedIpDAL = trustedIpDALFactory(db);
 
   // ee db layer ops
-  const permissionDal = permissionDalFactory(db);
-  const samlConfigDal = samlConfigDalFactory(db);
-  const sapApproverDal = sapApproverDalFactory(db);
-  const secretApprovalPolicyDal = secretApprovalPolicyDalFactory(db);
-  const secretApprovalRequestDal = secretApprovalRequestDalFactory(db);
-  const sarReviewerDal = sarReviewerDalFactory(db);
-  const sarSecretDal = sarSecretDalFactory(db);
+  const permissionDAL = permissionDALFactory(db);
+  const samlConfigDAL = samlConfigDALFactory(db);
+  const sapApproverDAL = sapApproverDALFactory(db);
+  const secretApprovalPolicyDAL = secretApprovalPolicyDALFactory(db);
+  const secretApprovalRequestDAL = secretApprovalRequestDALFactory(db);
+  const sarReviewerDAL = sarReviewerDALFactory(db);
+  const sarSecretDAL = sarSecretDALFactory(db);
 
-  const secretRotationDal = secretRotationDalFactory(db);
-  const snapshotDal = snapshotDalFactory(db);
-  const snapshotSecretDal = snapshotSecretDalFactory(db);
-  const snapshotFolderDal = snapshotFolderDalFactory(db);
+  const secretRotationDAL = secretRotationDALFactory(db);
+  const snapshotDAL = snapshotDALFactory(db);
+  const snapshotSecretDAL = snapshotSecretDALFactory(db);
+  const snapshotFolderDAL = snapshotFolderDALFactory(db);
 
-  const gitAppInstallSessionDal = gitAppInstallSessionDalFactory(db);
-  const gitAppOrgDal = gitAppDalFactory(db);
-  const secretScanningDal = secretScanningDalFactory(db);
-  const licenseDal = licenseDalFactory(db);
+  const gitAppInstallSessionDAL = gitAppInstallSessionDALFactory(db);
+  const gitAppOrgDAL = gitAppDALFactory(db);
+  const secretScanningDAL = secretScanningDALFactory(db);
+  const licenseDAL = licenseDALFactory(db);
 
   const permissionService = permissionServiceFactory({
-    permissionDal,
-    orgRoleDal,
-    projectRoleDal,
-    serviceTokenDal
+    permissionDAL,
+    orgRoleDAL,
+    projectRoleDAL,
+    serviceTokenDAL
   });
-  const licenseService = licenseServiceFactory({ permissionService, orgDal, licenseDal });
+  const licenseService = licenseServiceFactory({ permissionService, orgDAL, licenseDAL });
   const trustedIpService = trustedIpServiceFactory({
     licenseService,
-    projectDal,
-    trustedIpDal,
+    projectDAL,
+    trustedIpDAL,
     permissionService
   });
   const auditLogQueue = auditLogQueueServiceFactory({
-    auditLogDal,
+    auditLogDAL,
     queueService,
-    projectDal,
+    projectDAL,
     licenseService
   });
-  const auditLogService = auditLogServiceFactory({ auditLogDal, permissionService, auditLogQueue });
+  const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
   const sapService = secretApprovalPolicyServiceFactory({
-    projectMembershipDal,
-    projectEnvDal,
-    sapApproverDal,
+    projectMembershipDAL,
+    projectEnvDAL,
+    sapApproverDAL,
     permissionService,
-    secretApprovalPolicyDal
+    secretApprovalPolicyDAL
   });
   const samlService = samlConfigServiceFactory({
     permissionService,
-    orgBotDal,
-    orgDal,
-    userDal,
-    samlConfigDal,
+    orgBotDAL,
+    orgDAL,
+    userDAL,
+    samlConfigDAL,
     licenseService
   });
 
-  const tokenService = tokenServiceFactory({ tokenDal: authTokenDal, userDal });
-  const userService = userServiceFactory({ userDal });
-  const loginService = authLoginServiceFactory({ userDal, smtpService, tokenService });
+  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
+  const userService = userServiceFactory({ userDAL });
+  const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService });
   const passwordService = authPaswordServiceFactory({
     tokenService,
     smtpService,
-    authDal,
-    userDal
+    authDAL,
+    userDAL
   });
   const orgService = orgServiceFactory({
     licenseService,
-    samlConfigDal,
-    orgRoleDal,
+    samlConfigDAL,
+    orgRoleDAL,
     permissionService,
-    orgDal,
-    incidentContactDal,
+    orgDAL,
+    incidentContactDAL,
     tokenService,
     smtpService,
-    userDal,
-    orgBotDal
+    userDAL,
+    orgBotDAL
   });
   const signupService = authSignupServiceFactory({
     tokenService,
     smtpService,
-    authDal,
-    userDal,
-    orgDal,
+    authDAL,
+    userDAL,
+    orgDAL,
     orgService,
     licenseService
   });
-  const orgRoleService = orgRoleServiceFactory({ permissionService, orgRoleDal });
+  const orgRoleService = orgRoleServiceFactory({ permissionService, orgRoleDAL });
   const superAdminService = superAdminServiceFactory({
-    userDal,
+    userDAL,
     authService: loginService,
-    serverCfgDal: superAdminDal,
+    serverCfgDAL: superAdminDAL,
     orgService
   });
-  const apiKeyService = apiKeyServiceFactory({ apiKeyDal, userDal });
+  const apiKeyService = apiKeyServiceFactory({ apiKeyDAL, userDAL });
 
   const secretScanningQueue = secretScanningQueueFactory({
     smtpService,
-    secretScanningDal,
+    secretScanningDAL,
     queueService,
-    orgMembershipDal: orgDal
+    orgMembershipDAL: orgDAL
   });
   const secretScanningService = secretScanningServiceFactory({
     permissionService,
-    gitAppOrgDal,
-    gitAppInstallSessionDal,
-    secretScanningDal,
+    gitAppOrgDAL,
+    gitAppInstallSessionDAL,
+    secretScanningDAL,
     secretScanningQueue
   });
   const projectService = projectServiceFactory({
     permissionService,
-    projectDal,
-    secretBlindIndexDal,
-    projectEnvDal,
-    projectMembershipDal,
-    folderDal,
+    projectDAL,
+    secretBlindIndexDAL,
+    projectEnvDAL,
+    projectMembershipDAL,
+    folderDAL,
     licenseService
   });
   const projectMembershipService = projectMembershipServiceFactory({
-    projectMembershipDal,
-    projectDal,
+    projectMembershipDAL,
+    projectDAL,
     permissionService,
-    orgDal,
-    userDal,
+    orgDAL,
+    userDAL,
     smtpService,
-    projectKeyDal,
-    projectRoleDal,
+    projectKeyDAL,
+    projectRoleDAL,
     licenseService
   });
   const projectEnvService = projectEnvServiceFactory({
     permissionService,
-    projectEnvDal,
+    projectEnvDAL,
     licenseService,
-    projectDal,
-    folderDal
+    projectDAL,
+    folderDAL
   });
   const projectKeyService = projectKeyServiceFactory({
     permissionService,
-    projectKeyDal,
-    projectMembershipDal
+    projectKeyDAL,
+    projectMembershipDAL
   });
-  const projectRoleService = projectRoleServiceFactory({ permissionService, projectRoleDal });
+  const projectRoleService = projectRoleServiceFactory({ permissionService, projectRoleDAL });
 
   const snapshotService = secretSnapshotServiceFactory({
-    folderDal,
-    secretDal,
-    snapshotDal,
-    snapshotFolderDal,
-    snapshotSecretDal,
-    secretVersionDal,
-    folderVersionDal,
+    folderDAL,
+    secretDAL,
+    snapshotDAL,
+    snapshotFolderDAL,
+    snapshotSecretDAL,
+    secretVersionDAL,
+    folderVersionDAL,
     permissionService,
     licenseService
   });
   const webhookService = webhookServiceFactory({
     permissionService,
-    webhookDal,
-    projectEnvDal
+    webhookDAL,
+    projectEnvDAL
   });
 
-  const secretTagService = secretTagServiceFactory({ secretTagDal, permissionService });
+  const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService });
   const folderService = secretFolderServiceFactory({
     permissionService,
-    folderDal,
-    folderVersionDal,
-    projectEnvDal,
+    folderDAL,
+    folderVersionDAL,
+    projectEnvDAL,
     snapshotService
   });
   const secretImportService = secretImportServiceFactory({
-    projectEnvDal,
-    folderDal,
+    projectEnvDAL,
+    folderDAL,
     permissionService,
-    secretImportDal,
-    secretDal
+    secretImportDAL,
+    secretDAL
   });
-  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDal });
+  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL });
   const integrationAuthService = integrationAuthServiceFactory({
-    integrationAuthDal,
-    integrationDal,
+    integrationAuthDAL,
+    integrationDAL,
     permissionService,
-    projectBotDal,
+    projectBotDAL,
     projectBotService
   });
   const secretQueueService = secretQueueFactory({
     queueService,
-    secretDal,
-    folderDal,
+    secretDAL,
+    folderDAL,
     integrationAuthService,
     projectBotService,
-    integrationDal,
-    secretImportDal,
-    projectEnvDal,
-    webhookDal
+    integrationDAL,
+    secretImportDAL,
+    projectEnvDAL,
+    webhookDAL
   });
   const secretService = secretServiceFactory({
-    folderDal,
-    secretVersionDal,
-    secretBlindIndexDal,
+    folderDAL,
+    secretVersionDAL,
+    secretBlindIndexDAL,
     permissionService,
-    secretDal,
-    secretTagDal,
+    secretDAL,
+    secretTagDAL,
     snapshotService,
     secretQueueService,
-    secretImportDal,
+    secretImportDAL,
     projectBotService
   });
   const sarService = secretApprovalRequestServiceFactory({
     permissionService,
-    folderDal,
-    sarSecretDal,
-    sarReviewerDal,
-    secretVersionDal,
-    secretBlindIndexDal,
-    secretApprovalRequestDal,
+    folderDAL,
+    sarSecretDAL,
+    sarReviewerDAL,
+    secretVersionDAL,
+    secretBlindIndexDAL,
+    secretApprovalRequestDAL,
     secretService,
     snapshotService,
     secretQueueService
   });
   const secretRotationQueue = secretRotationQueueFactory({
-    secretRotationDal,
+    secretRotationDAL,
     queue: queueService,
-    secretDal,
-    secretVersionDal,
+    secretDAL,
+    secretVersionDAL,
     projectBotService
   });
   const secretRotationService = secretRotationServiceFactory({
     permissionService,
-    secretRotationDal,
+    secretRotationDAL,
     secretRotationQueue,
-    projectDal,
+    projectDAL,
     licenseService,
-    secretDal,
-    folderDal
+    secretDAL,
+    folderDAL
   });
 
   const integrationService = integrationServiceFactory({
     permissionService,
-    folderDal,
-    integrationDal,
-    integrationAuthDal,
+    folderDAL,
+    integrationDAL,
+    integrationAuthDAL,
     secretQueueService
   });
   const serviceTokenService = serviceTokenServiceFactory({
-    projectEnvDal,
-    serviceTokenDal,
+    projectEnvDAL,
+    serviceTokenDAL,
     permissionService
   });
 
   const identityService = identityServiceFactory({
     permissionService,
-    identityDal,
-    identityOrgMembershipDal
+    identityDAL,
+    identityOrgMembershipDAL
   });
-  const identityAccessTokenService = identityAccessTokenServiceFactory({ identityAccessTokenDal });
+  const identityAccessTokenService = identityAccessTokenServiceFactory({ identityAccessTokenDAL });
   const identityProjectService = identityProjectServiceFactory({
     permissionService,
-    projectDal,
-    identityProjectDal,
-    identityOrgMembershipDal
+    projectDAL,
+    identityProjectDAL,
+    identityOrgMembershipDAL
   });
   const identityUaService = identityUaServiceFactory({
-    identityOrgMembershipDal,
+    identityOrgMembershipDAL,
     permissionService,
-    identityDal,
-    identityAccessTokenDal,
-    identityUaClientSecretDal,
-    identityUaDal,
+    identityDAL,
+    identityAccessTokenDAL,
+    identityUaClientSecretDAL,
+    identityUaDAL,
     licenseService
   });
 
@@ -469,10 +469,10 @@ export const registerRoutes = async (
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {
-    user: userDal
+    user: userDAL
   });
 
-  await server.register(injectIdentity, { userDal, serviceTokenDal });
+  await server.register(injectIdentity, { userDAL, serviceTokenDAL });
   await server.register(injectPermission);
   await server.register(injectAuditLogInfo);
 

@@ -1,21 +1,21 @@
 import { SecretType, TSecretImports } from "@app/db/schemas";
 import { groupBy } from "@app/lib/fn";
 
-import { TSecretDalFactory } from "../secret/secret-dal";
-import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretDALFactory } from "../secret/secret-dal";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 
 export const fnSecretsFromImports = async ({
   allowedImports,
-  folderDal,
-  secretDal
+  folderDAL,
+  secretDAL
 }: {
   allowedImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string };
   })[];
-  folderDal: Pick<TSecretFolderDalFactory, "findByManySecretPath">;
-  secretDal: Pick<TSecretDalFactory, "find">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">;
+  secretDAL: Pick<TSecretDALFactory, "find">;
 }) => {
-  const importedFolders = await folderDal.findByManySecretPath(
+  const importedFolders = await folderDAL.findByManySecretPath(
     allowedImports.map(({ importEnv, importPath }) => ({
       envId: importEnv.id,
       secretPath: importPath
@@ -25,7 +25,7 @@ export const fnSecretsFromImports = async ({
   if (!folderIds.length) {
     return [];
   }
-  const importedSecrets = await secretDal.find({
+  const importedSecrets = await secretDAL.find({
     $in: { folderId: folderIds },
     type: SecretType.Shared
   });

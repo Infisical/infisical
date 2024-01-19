@@ -5,9 +5,9 @@ import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-export type TIdentityProjectDalFactory = ReturnType<typeof identityProjectDalFactory>;
+export type TIdentityProjectDALFactory = ReturnType<typeof identityProjectDALFactory>;
 
-export const identityProjectDalFactory = (db: TDbClient) => {
+export const identityProjectDALFactory = (db: TDbClient) => {
   const identityProjectOrm = ormify(db, TableName.IdentityProjectMembership);
 
   const findByProjectId = async (projectId: string, tx?: Knex) => {

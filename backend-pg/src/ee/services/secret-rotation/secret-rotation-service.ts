@@ -4,14 +4,14 @@ import Ajv from "ajv";
 import { infisicalSymmetricEncypt } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
-import { TProjectDalFactory } from "@app/services/project/project-dal";
-import { TSecretDalFactory } from "@app/services/secret/secret-dal";
-import { TSecretFolderDalFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TSecretDALFactory } from "@app/services/secret/secret-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
-import { TSecretRotationDalFactory } from "./secret-rotation-dal";
+import { TSecretRotationDALFactory } from "./secret-rotation-dal";
 import { TSecretRotationQueueFactory } from "./secret-rotation-queue";
 import { TSecretRotationEncData } from "./secret-rotation-queue/secret-rotation-queue-types";
 import {
@@ -24,10 +24,10 @@ import {
 import { rotationTemplates } from "./templates";
 
 type TSecretRotationServiceFactoryDep = {
-  secretRotationDal: TSecretRotationDalFactory;
-  projectDal: Pick<TProjectDalFactory, "findById">;
-  folderDal: Pick<TSecretFolderDalFactory, "findBySecretPath">;
-  secretDal: Pick<TSecretDalFactory, "find">;
+  secretRotationDAL: TSecretRotationDALFactory;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  secretDAL: Pick<TSecretDALFactory, "find">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretRotationQueue: TSecretRotationQueueFactory;
@@ -37,13 +37,13 @@ export type TSecretRotationServiceFactory = ReturnType<typeof secretRotationServ
 
 const ajv = new Ajv({ strict: false });
 export const secretRotationServiceFactory = ({
-  secretRotationDal,
+  secretRotationDAL,
   permissionService,
   secretRotationQueue,
   licenseService,
-  projectDal,
-  folderDal,
-  secretDal
+  projectDAL,
+  folderDAL,
+  secretDAL
 }: TSecretRotationServiceFactoryDep) => {
   const getProviderTemplates = async ({ actor, actorId, projectId }: TProjectPermission) => {
     const { permission } = await permissionService.getProjectPermission(actor, actorId, projectId);
@@ -75,21 +75,21 @@ export const secretRotationServiceFactory = ({
       ProjectPermissionSub.SecretRotation
     );
 
-    const folder = await folderDal.findBySecretPath(projectId, environment, secretPath);
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) throw new BadRequestError({ message: "Secret path not found" });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Edit,
       subject(ProjectPermissionSub.Secrets, { environment, secretPath })
     );
 
-    const selectedSecrets = await secretDal.find({
+    const selectedSecrets = await secretDAL.find({
       folderId: folder.id,
       $in: { id: Object.values(outputs) }
     });
     if (selectedSecrets.length !== Object.values(outputs).length)
       throw new BadRequestError({ message: "Secrets not found" });
 
-    const project = await projectDal.findById(projectId);
+    const project = await projectDAL.findById(projectId);
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -123,8 +123,8 @@ export const secretRotationServiceFactory = ({
       creds: []
     };
     const encData = infisicalSymmetricEncypt(JSON.stringify(unencryptedData));
-    const secretRotation = secretRotationDal.transaction(async (tx) => {
-      const doc = await secretRotationDal.create(
+    const secretRotation = secretRotationDAL.transaction(async (tx) => {
+      const doc = await secretRotationDAL.create(
         {
           provider,
           secretPath,
@@ -139,7 +139,7 @@ export const secretRotationServiceFactory = ({
         tx
       );
       await secretRotationQueue.addToQueue(doc.id, doc.interval);
-      const outputSecretMapping = await secretRotationDal.secretOutputInsertMany(
+      const outputSecretMapping = await secretRotationDAL.secretOutputInsertMany(
         Object.entries(outputs).map(([key, secretId]) => ({ key, secretId, rotationId: doc.id })),
         tx
       );
@@ -149,7 +149,7 @@ export const secretRotationServiceFactory = ({
   };
 
   const getById = async ({ rotationId, actor, actorId }: TGetByIdDTO) => {
-    const [doc] = await secretRotationDal.find({ id: rotationId });
+    const [doc] = await secretRotationDAL.find({ id: rotationId });
     if (!doc) throw new BadRequestError({ message: "Rotation not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -170,15 +170,15 @@ export const secretRotationServiceFactory = ({
       ProjectPermissionActions.Read,
       ProjectPermissionSub.SecretRotation
     );
-    const doc = await secretRotationDal.find({ projectId });
+    const doc = await secretRotationDAL.find({ projectId });
     return doc;
   };
 
   const restartById = async ({ actor, actorId, rotationId }: TRestartDTO) => {
-    const doc = await secretRotationDal.findById(rotationId);
+    const doc = await secretRotationDAL.findById(rotationId);
     if (!doc) throw new BadRequestError({ message: "Rotation not found" });
 
-    const project = await projectDal.findById(doc.projectId);
+    const project = await projectDAL.findById(doc.projectId);
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -201,7 +201,7 @@ export const secretRotationServiceFactory = ({
   };
 
   const deleteById = async ({ actor, actorId, rotationId }: TDeleteDTO) => {
-    const doc = await secretRotationDal.findById(rotationId);
+    const doc = await secretRotationDAL.findById(rotationId);
     if (!doc) throw new BadRequestError({ message: "Rotation not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -213,8 +213,8 @@ export const secretRotationServiceFactory = ({
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SecretRotation
     );
-    const deletedDoc = await secretRotationDal.transaction(async (tx) => {
-      const strat = await secretRotationDal.deleteById(rotationId, tx);
+    const deletedDoc = await secretRotationDAL.transaction(async (tx) => {
+      const strat = await secretRotationDAL.deleteById(rotationId, tx);
       await secretRotationQueue.removeFromQueue(strat.id, strat.interval);
       return strat;
     });

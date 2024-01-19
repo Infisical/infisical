@@ -5,9 +5,9 @@ import { TableName, TIntegrations } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-export type TIntegrationDalFactory = ReturnType<typeof integrationDalFactory>;
+export type TIntegrationDALFactory = ReturnType<typeof integrationDALFactory>;
 
-export const integrationDalFactory = (db: TDbClient) => {
+export const integrationDALFactory = (db: TDbClient) => {
   const integrationOrm = ormify(db, TableName.Integration);
 
   const integrationFindQuery = (tx: Knex, filter: Partial<TIntegrations>) =>

@@ -5,9 +5,9 @@ import { TableName, TProjectBots } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
-export type TProjectBotDalFactory = ReturnType<typeof projectBotDalFactory>;
+export type TProjectBotDALFactory = ReturnType<typeof projectBotDALFactory>;
 
-export const projectBotDalFactory = (db: TDbClient) => {
+export const projectBotDALFactory = (db: TDbClient) => {
   const projectBotOrm = ormify(db, TableName.ProjectBot);
 
   const findOne = async (filter: Partial<TProjectBots>, tx?: Knex) => {

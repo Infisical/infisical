@@ -2,9 +2,9 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { ormify } from "@app/lib/knex";
 
-export type TSarReviewerDalFactory = ReturnType<typeof sarReviewerDalFactory>;
+export type TSarReviewerDALFactory = ReturnType<typeof sarReviewerDALFactory>;
 
-export const sarReviewerDalFactory = (db: TDbClient) => {
+export const sarReviewerDALFactory = (db: TDbClient) => {
   const sarReviewerOrm = ormify(db, TableName.SarReviewer);
   return sarReviewerOrm;
 };

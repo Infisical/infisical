@@ -11,17 +11,17 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { BadRequestError } from "@app/lib/errors";
 
-import { TOrgRoleDalFactory } from "./org-role-dal";
+import { TOrgRoleDALFactory } from "./org-role-dal";
 
 type TOrgRoleServiceFactoryDep = {
-  orgRoleDal: TOrgRoleDalFactory;
+  orgRoleDAL: TOrgRoleDALFactory;
   permissionService: TPermissionServiceFactory;
 };
 
 export type TOrgRoleServiceFactory = ReturnType<typeof orgRoleServiceFactory>;
 
 export const orgRoleServiceFactory = ({
-  orgRoleDal,
+  orgRoleDAL,
   permissionService
 }: TOrgRoleServiceFactoryDep) => {
   const createRole = async (
@@ -34,9 +34,9 @@ export const orgRoleServiceFactory = ({
       OrgPermissionActions.Create,
       OrgPermissionSubjects.Role
     );
-    const existingRole = await orgRoleDal.findOne({ slug: data.slug, orgId });
+    const existingRole = await orgRoleDAL.findOne({ slug: data.slug, orgId });
     if (existingRole) throw new BadRequestError({ name: "Create Role", message: "Duplicate role" });
-    const role = await orgRoleDal.create({
+    const role = await orgRoleDAL.create({
       ...data,
       orgId,
       permissions: JSON.stringify(data.permissions)
@@ -56,11 +56,11 @@ export const orgRoleServiceFactory = ({
       OrgPermissionSubjects.Role
     );
     if (data?.slug) {
-      const existingRole = await orgRoleDal.findOne({ slug: data.slug, orgId });
+      const existingRole = await orgRoleDAL.findOne({ slug: data.slug, orgId });
       if (existingRole && existingRole.id !== roleId)
         throw new BadRequestError({ name: "Update Role", message: "Duplicate role" });
     }
-    const [updatedRole] = await orgRoleDal.update(
+    const [updatedRole] = await orgRoleDAL.update(
       { id: roleId, orgId },
       { ...data, permissions: data.permissions ? JSON.stringify(data.permissions) : undefined }
     );
@@ -74,7 +74,7 @@ export const orgRoleServiceFactory = ({
       OrgPermissionActions.Delete,
       OrgPermissionSubjects.Role
     );
-    const [deletedRole] = await orgRoleDal.delete({ id: roleId, orgId });
+    const [deletedRole] = await orgRoleDAL.delete({ id: roleId, orgId });
     if (!deleteRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
 
     return deletedRole;
@@ -86,7 +86,7 @@ export const orgRoleServiceFactory = ({
       OrgPermissionActions.Read,
       OrgPermissionSubjects.Role
     );
-    const customRoles = await orgRoleDal.find({ orgId });
+    const customRoles = await orgRoleDAL.find({ orgId });
     const roles = [
       {
         id: "b11b49a9-09a9-4443-916a-4246f9ff2c69", // dummy userid

@@ -5,9 +5,9 @@ import { TableName,TGitAppOrgInsert } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-export type TGitAppDalFactory = ReturnType<typeof gitAppDalFactory>;
+export type TGitAppDALFactory = ReturnType<typeof gitAppDALFactory>;
 
-export const gitAppDalFactory = (db: TDbClient) => {
+export const gitAppDALFactory = (db: TDbClient) => {
   const gitAppOrm = ormify(db, TableName.GitAppOrg);
 
   const upsert = async (data: TGitAppOrgInsert, tx?: Knex) => {

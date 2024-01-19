@@ -14,10 +14,10 @@ import {
 import { BadRequestError } from "@app/lib/errors";
 
 import { ActorType } from "../auth/auth-type";
-import { TProjectRoleDalFactory } from "./project-role-dal";
+import { TProjectRoleDALFactory } from "./project-role-dal";
 
 type TProjectRoleServiceFactoryDep = {
-  projectRoleDal: TProjectRoleDalFactory;
+  projectRoleDAL: TProjectRoleDALFactory;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getProjectPermission" | "getUserProjectPermission"
@@ -27,7 +27,7 @@ type TProjectRoleServiceFactoryDep = {
 export type TProjectRoleServiceFactory = ReturnType<typeof projectRoleServiceFactory>;
 
 export const projectRoleServiceFactory = ({
-  projectRoleDal,
+  projectRoleDAL,
   permissionService
 }: TProjectRoleServiceFactoryDep) => {
   const createRole = async (
@@ -41,9 +41,9 @@ export const projectRoleServiceFactory = ({
       ProjectPermissionActions.Create,
       ProjectPermissionSub.Role
     );
-    const existingRole = await projectRoleDal.findOne({ slug: data.slug, projectId });
+    const existingRole = await projectRoleDAL.findOne({ slug: data.slug, projectId });
     if (existingRole) throw new BadRequestError({ name: "Create Role", message: "Duplicate role" });
-    const role = await projectRoleDal.create({
+    const role = await projectRoleDAL.create({
       ...data,
       projectId,
       permissions: JSON.stringify(data.permissions)
@@ -64,11 +64,11 @@ export const projectRoleServiceFactory = ({
       ProjectPermissionSub.Role
     );
     if (data?.slug) {
-      const existingRole = await projectRoleDal.findOne({ slug: data.slug, projectId });
+      const existingRole = await projectRoleDAL.findOne({ slug: data.slug, projectId });
       if (existingRole && existingRole.id !== roleId)
         throw new BadRequestError({ name: "Update Role", message: "Duplicate role" });
     }
-    const [updatedRole] = await projectRoleDal.update(
+    const [updatedRole] = await projectRoleDAL.update(
       { id: roleId, projectId },
       { ...data, permissions: data.permissions ? JSON.stringify(data.permissions) : undefined }
     );
@@ -87,7 +87,7 @@ export const projectRoleServiceFactory = ({
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.Role
     );
-    const [deletedRole] = await projectRoleDal.delete({ id: roleId, projectId });
+    const [deletedRole] = await projectRoleDAL.delete({ id: roleId, projectId });
     if (!deleteRole) throw new BadRequestError({ message: "Role not found", name: "Update role" });
 
     return deletedRole;
@@ -99,7 +99,7 @@ export const projectRoleServiceFactory = ({
       ProjectPermissionActions.Read,
       ProjectPermissionSub.Role
     );
-    const customRoles = await projectRoleDal.find({ projectId });
+    const customRoles = await projectRoleDAL.find({ projectId });
     const roles = [
       {
         id: "b11b49a9-09a9-4443-916a-4246f9ff2c69", // dummy userid

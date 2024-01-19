@@ -5,8 +5,8 @@ import { SecretKeyEncoding, TSecretBlindIndexes, TSecrets } from "@app/db/schema
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
 
-import { TSecretFolderDalFactory } from "../secret-folder/secret-folder-dal";
-import { TSecretDalFactory } from "./secret-dal";
+import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretDALFactory } from "./secret-dal";
 
 export const generateSecretBlindIndexBySalt = async (
   secretName: string,
@@ -28,15 +28,15 @@ export const generateSecretBlindIndexBySalt = async (
 type TInterpolateSecretArg = {
   projectId: string;
   secretEncKey: string;
-  secretDal: Pick<TSecretDalFactory, "findByFolderId">;
-  folderDal: Pick<TSecretFolderDalFactory, "findBySecretPath">;
+  secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
 };
 
 export const interpolateSecrets = ({
   projectId,
   secretEncKey,
-  secretDal,
-  folderDal
+  secretDAL,
+  folderDAL
 }: TInterpolateSecretArg) => {
   const fetchSecretsCrossEnv = () => {
     const fetchCache: Record<string, Record<string, string>> = {};
@@ -49,9 +49,9 @@ export const interpolateSecrets = ({
         return fetchCache[uniqKey][secRefKey];
       }
 
-      const folder = await folderDal.findBySecretPath(projectId, secRefEnv, secRefPathUrl);
+      const folder = await folderDAL.findBySecretPath(projectId, secRefEnv, secRefPathUrl);
       if (!folder) return "";
-      const secrets = await secretDal.findByFolderId(folder.id);
+      const secrets = await secretDAL.findByFolderId(folder.id);
 
       const decryptedSec = secrets.reduce<Record<string, string>>((prev, secret) => {
         const secretKey = decryptSymmetric128BitHexKeyUTF8({

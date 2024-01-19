@@ -9,8 +9,8 @@ import { decryptSymmetric, decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/cry
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { TProjectEnvDalFactory } from "../project-env/project-env-dal";
-import { TWebhookDalFactory } from "./webhook-dal";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TWebhookDALFactory } from "./webhook-dal";
 
 const WEBHOOK_TRIGGER_TIMEOUT = 15 * 1000;
 export const triggerWebhookRequest = async (
@@ -76,8 +76,8 @@ export type TFnTriggerWebhookDTO = {
   projectId: string;
   secretPath: string;
   environment: string;
-  webhookDal: Pick<TWebhookDalFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
-  projectEnvDal: Pick<TProjectEnvDalFactory, "findOne">;
+  webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
 };
 // this is reusable function
 // used in secret queue to trigger webhook and update status when secrets changes
@@ -85,10 +85,10 @@ export const fnTriggerWebhook = async ({
   environment,
   secretPath,
   projectId,
-  webhookDal,
-  projectEnvDal
+  webhookDAL,
+  projectEnvDAL
 }: TFnTriggerWebhookDTO) => {
-  const webhooks = await webhookDal.findAllWebhooks(projectId, environment);
+  const webhooks = await webhookDAL.findAllWebhooks(projectId, environment);
   const toBeTriggeredHooks = webhooks.filter(
     ({ secretPath: hookSecretPath, isDisabled }) =>
       !isDisabled && picomatch.isMatch(secretPath, hookSecretPath, { strictSlashes: false })
@@ -114,18 +114,18 @@ export const fnTriggerWebhook = async ({
       error: data.status === "rejected" && data.reason.message
     }));
 
-  await webhookDal.transaction(async (tx) => {
-    const env = await projectEnvDal.findOne({ projectId, slug: environment }, tx);
+  await webhookDAL.transaction(async (tx) => {
+    const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
     if (!env) throw new BadRequestError({ message: "Env not found" });
     if (successWebhooks.length) {
-      await webhookDal.update(
+      await webhookDAL.update(
         { envId: env.id, $in: { id: successWebhooks } },
         { lastStatus: "success", lastRunErrorMessage: null },
         tx
       );
     }
     if (failedWebhooks.length) {
-      await webhookDal.bulkUpdate(
+      await webhookDAL.bulkUpdate(
         failedWebhooks.map(({ id, error }) => ({
           id,
           lastRunErrorMessage: error,

@@ -12,9 +12,9 @@ import {
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
-export type TSnapshotDalFactory = ReturnType<typeof snapshotDalFactory>;
+export type TSnapshotDALFactory = ReturnType<typeof snapshotDALFactory>;
 
-export const snapshotDalFactory = (db: TDbClient) => {
+export const snapshotDALFactory = (db: TDbClient) => {
   const secretSnapshotOrm = ormify(db, TableName.Snapshot);
 
   const findById = async (id: string, tx?: Knex) => {

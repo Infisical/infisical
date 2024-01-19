@@ -8,11 +8,11 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 import { containsGlobPatterns } from "@app/lib/picomatch";
-import { TProjectEnvDalFactory } from "@app/services/project-env/project-env-dal";
-import { TProjectMembershipDalFactory } from "@app/services/project-membership/project-membership-dal";
+import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 
-import { TSapApproverDalFactory } from "./sap-approver-dal";
-import { TSecretApprovalPolicyDalFactory } from "./secret-approval-policy-dal";
+import { TSapApproverDALFactory } from "./sap-approver-dal";
+import { TSecretApprovalPolicyDALFactory } from "./secret-approval-policy-dal";
 import {
   TCreateSapDTO,
   TDeleteSapDTO,
@@ -28,10 +28,10 @@ const getPolicyScore = (policy: { secretPath?: string | null }) =>
 
 type TSecretApprovalPolicyServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  secretApprovalPolicyDal: TSecretApprovalPolicyDalFactory;
-  projectEnvDal: Pick<TProjectEnvDalFactory, "findOne">;
-  sapApproverDal: TSapApproverDalFactory;
-  projectMembershipDal: Pick<TProjectMembershipDalFactory, "find">;
+  secretApprovalPolicyDAL: TSecretApprovalPolicyDALFactory;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  sapApproverDAL: TSapApproverDALFactory;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
 };
 
 export type TSecretApprovalPolicyServiceFactory = ReturnType<
@@ -39,11 +39,11 @@ export type TSecretApprovalPolicyServiceFactory = ReturnType<
 >;
 
 export const secretApprovalPolicyServiceFactory = ({
-  secretApprovalPolicyDal,
+  secretApprovalPolicyDAL,
   permissionService,
-  sapApproverDal,
-  projectEnvDal,
-  projectMembershipDal
+  sapApproverDAL,
+  projectEnvDAL,
+  projectMembershipDAL
 }: TSecretApprovalPolicyServiceFactoryDep) => {
   const createSap = async ({
     name,
@@ -63,18 +63,18 @@ export const secretApprovalPolicyServiceFactory = ({
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretApproval
     );
-    const env = await projectEnvDal.findOne({ slug: environment, projectId });
+    const env = await projectEnvDAL.findOne({ slug: environment, projectId });
     if (!env) throw new BadRequestError({ message: "Environment not found" });
 
-    const secretApprovers = await projectMembershipDal.find({
+    const secretApprovers = await projectMembershipDAL.find({
       projectId,
       $in: { id: approvers }
     });
     if (secretApprovers.length !== approvers.length)
       throw new BadRequestError({ message: "Approver not found in project" });
 
-    const secretApproval = await secretApprovalPolicyDal.transaction(async (tx) => {
-      const doc = await secretApprovalPolicyDal.create(
+    const secretApproval = await secretApprovalPolicyDAL.transaction(async (tx) => {
+      const doc = await secretApprovalPolicyDAL.create(
         {
           envId: env.id,
           approvals,
@@ -83,7 +83,7 @@ export const secretApprovalPolicyServiceFactory = ({
         },
         tx
       );
-      await sapApproverDal.insertMany(
+      await sapApproverDAL.insertMany(
         secretApprovers.map(({ id }) => ({
           approverId: id,
           policyId: doc.id
@@ -104,7 +104,7 @@ export const secretApprovalPolicyServiceFactory = ({
     approvals,
     secretPolicyId
   }: TUpdateSapDTO) => {
-    const secretApprovalPolicy = await secretApprovalPolicyDal.findById(secretPolicyId);
+    const secretApprovalPolicy = await secretApprovalPolicyDAL.findById(secretPolicyId);
     if (!secretApprovalPolicy)
       throw new BadRequestError({ message: "Secret approval policy not found" });
 
@@ -118,8 +118,8 @@ export const secretApprovalPolicyServiceFactory = ({
       ProjectPermissionSub.SecretApproval
     );
 
-    const updatedSap = await secretApprovalPolicyDal.transaction(async (tx) => {
-      const doc = await secretApprovalPolicyDal.updateById(
+    const updatedSap = await secretApprovalPolicyDAL.transaction(async (tx) => {
+      const doc = await secretApprovalPolicyDAL.updateById(
         secretApprovalPolicy.id,
         {
           approvals,
@@ -129,7 +129,7 @@ export const secretApprovalPolicyServiceFactory = ({
         tx
       );
       if (approvers) {
-        const secretApprovers = await projectMembershipDal.find(
+        const secretApprovers = await projectMembershipDAL.find(
           {
             projectId: secretApprovalPolicy.projectId,
             $in: { id: approvers }
@@ -140,8 +140,8 @@ export const secretApprovalPolicyServiceFactory = ({
           throw new BadRequestError({ message: "Approver not found in project" });
         if (doc.approvals > secretApprovers.length)
           throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
-        await sapApproverDal.delete({ policyId: doc.id }, tx);
-        await sapApproverDal.insertMany(
+        await sapApproverDAL.delete({ policyId: doc.id }, tx);
+        await sapApproverDAL.insertMany(
           secretApprovers.map(({ id }) => ({
             approverId: id,
             policyId: doc.id
@@ -159,7 +159,7 @@ export const secretApprovalPolicyServiceFactory = ({
   };
 
   const deleteSap = async ({ secretPolicyId, actor, actorId }: TDeleteSapDTO) => {
-    const sapPolicy = await secretApprovalPolicyDal.findById(secretPolicyId);
+    const sapPolicy = await secretApprovalPolicyDAL.findById(secretPolicyId);
     if (!sapPolicy) throw new BadRequestError({ message: "Secret approval policy not found" });
 
     const { permission } = await permissionService.getProjectPermission(
@@ -172,7 +172,7 @@ export const secretApprovalPolicyServiceFactory = ({
       ProjectPermissionSub.SecretApproval
     );
 
-    await secretApprovalPolicyDal.deleteById(secretPolicyId);
+    await secretApprovalPolicyDAL.deleteById(secretPolicyId);
     return sapPolicy;
   };
 
@@ -183,15 +183,15 @@ export const secretApprovalPolicyServiceFactory = ({
       ProjectPermissionSub.SecretApproval
     );
 
-    const sapPolicies = await secretApprovalPolicyDal.find({ projectId });
+    const sapPolicies = await secretApprovalPolicyDAL.find({ projectId });
     return sapPolicies;
   };
 
   const getSapPolicy = async (projectId: string, environment: string, secretPath: string) => {
-    const env = await projectEnvDal.findOne({ slug: environment, projectId });
+    const env = await projectEnvDAL.findOne({ slug: environment, projectId });
     if (!env) throw new BadRequestError({ message: "Environment not found" });
 
-    const policies = await secretApprovalPolicyDal.find({ envId: env.id });
+    const policies = await secretApprovalPolicyDAL.find({ envId: env.id });
     if (!policies.length) return;
     // this will filter policies either without scoped to secret path or the one that matches with secret path
     const policiesFilteredByPath = policies.filter(

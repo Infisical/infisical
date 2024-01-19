@@ -5,9 +5,9 @@ import { SecretRotationsSchema, TableName, TSecretRotations } from "@app/db/sche
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships, TFindFilter } from "@app/lib/knex";
 
-export type TSecretRotationDalFactory = ReturnType<typeof secretRotationDalFactory>;
+export type TSecretRotationDALFactory = ReturnType<typeof secretRotationDALFactory>;
 
-export const secretRotationDalFactory = (db: TDbClient) => {
+export const secretRotationDALFactory = (db: TDbClient) => {
   const secretRotationOrm = ormify(db, TableName.SecretRotation);
   const secretRotationOutputOrm = ormify(db, TableName.SecretRotationOutput);
 

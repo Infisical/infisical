@@ -12,9 +12,9 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 
-import { TGitAppDalFactory } from "./git-app-dal";
-import { TGitAppInstallSessionDalFactory } from "./git-app-install-session-dal";
-import { TSecretScanningDalFactory } from "./secret-scanning-dal";
+import { TGitAppDALFactory } from "./git-app-dal";
+import { TGitAppInstallSessionDALFactory } from "./git-app-install-session-dal";
+import { TSecretScanningDALFactory } from "./secret-scanning-dal";
 import { TSecretScanningQueueFactory } from "./secret-scanning-queue";
 import {
   SecretScanningRiskStatus,
@@ -27,18 +27,18 @@ import {
 
 type TSecretScanningServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  secretScanningDal: TSecretScanningDalFactory;
-  gitAppInstallSessionDal: TGitAppInstallSessionDalFactory;
-  gitAppOrgDal: TGitAppDalFactory;
+  secretScanningDAL: TSecretScanningDALFactory;
+  gitAppInstallSessionDAL: TGitAppInstallSessionDALFactory;
+  gitAppOrgDAL: TGitAppDALFactory;
   secretScanningQueue: TSecretScanningQueueFactory;
 };
 
 export type TSecretScanningServiceFactory = ReturnType<typeof secretScanningServiceFactory>;
 
 export const secretScanningServiceFactory = ({
-  secretScanningDal,
-  gitAppOrgDal,
-  gitAppInstallSessionDal,
+  secretScanningDAL,
+  gitAppOrgDAL,
+  gitAppInstallSessionDAL,
   permissionService,
   secretScanningQueue
 }: TSecretScanningServiceFactoryDep) => {
@@ -50,7 +50,7 @@ export const secretScanningServiceFactory = ({
     );
 
     const sessionId = crypto.randomBytes(16).toString("hex");
-    await gitAppInstallSessionDal.upsert({ orgId, sessionId, userId: actorId });
+    await gitAppInstallSessionDAL.upsert({ orgId, sessionId, userId: actorId });
     return { sessionId };
   };
 
@@ -60,7 +60,7 @@ export const secretScanningServiceFactory = ({
     installationId,
     actor
   }: TLinkInstallSessionDTO) => {
-    const session = await gitAppInstallSessionDal.findOne({ sessionId });
+    const session = await gitAppInstallSessionDAL.findOne({ sessionId });
     if (!session) throw new UnauthorizedError({ message: "Session not found" });
 
     const { permission } = await permissionService.getOrgPermission(actor, actorId, session.orgId);
@@ -68,9 +68,9 @@ export const secretScanningServiceFactory = ({
       OrgPermissionActions.Create,
       OrgPermissionSubjects.SecretScanning
     );
-    const installatedApp = await gitAppOrgDal.transaction(async (tx) => {
-      await gitAppInstallSessionDal.deleteById(session.id, tx);
-      return gitAppOrgDal.upsert({ orgId: session.orgId, installationId, userId: actorId }, tx);
+    const installatedApp = await gitAppOrgDAL.transaction(async (tx) => {
+      await gitAppInstallSessionDAL.deleteById(session.id, tx);
+      return gitAppOrgDAL.upsert({ orgId: session.orgId, installationId, userId: actorId }, tx);
     });
 
     const appCfg = getConfig();
@@ -104,7 +104,7 @@ export const secretScanningServiceFactory = ({
       OrgPermissionSubjects.SecretScanning
     );
 
-    const appInstallation = await gitAppOrgDal.findOne({ orgId });
+    const appInstallation = await gitAppOrgDAL.findOne({ orgId });
     return Boolean(appInstallation);
   };
 
@@ -114,7 +114,7 @@ export const secretScanningServiceFactory = ({
       OrgPermissionActions.Read,
       OrgPermissionSubjects.SecretScanning
     );
-    const risks = await secretScanningDal.find({ orgId }, { sort: [["createdAt", "desc"]] });
+    const risks = await secretScanningDAL.find({ orgId }, { sort: [["createdAt", "desc"]] });
     return { risks };
   };
 
@@ -139,7 +139,7 @@ export const secretScanningServiceFactory = ({
       ].includes(status)
     );
 
-    const risk = await secretScanningDal.updateById(riskId, {
+    const risk = await secretScanningDAL.updateById(riskId, {
       status,
       isResolved: isRiskResolved
     });
@@ -152,7 +152,7 @@ export const secretScanningServiceFactory = ({
       return;
     }
 
-    const installationLink = await gitAppOrgDal.findOne({
+    const installationLink = await gitAppOrgDAL.findOne({
       installationId: String(installation.id)
     });
     if (!installationLink) return;
@@ -167,15 +167,15 @@ export const secretScanningServiceFactory = ({
   };
 
   const handleRepoDeleteEvent = async (installationId: string, repositoryIds: string[]) => {
-    await secretScanningDal.transaction(async (tx) => {
+    await secretScanningDAL.transaction(async (tx) => {
       if (repositoryIds.length) {
         await Promise.all(
           repositoryIds.map((repoId) =>
-            secretScanningDal.delete({ repositoryId: repoId }, tx)
+            secretScanningDAL.delete({ repositoryId: repoId }, tx)
           )
         );
       }
-      await gitAppOrgDal.delete({ installationId }, tx);
+      await gitAppOrgDAL.delete({ installationId }, tx);
     });
   };
 

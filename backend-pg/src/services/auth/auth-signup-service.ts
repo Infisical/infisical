@@ -8,20 +8,20 @@ import { isDisposableEmail } from "@app/lib/validator";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
-import { TOrgDalFactory } from "../org/org-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { TUserDalFactory } from "../user/user-dal";
-import { TAuthDalFactory } from "./auth-dal";
+import { TUserDALFactory } from "../user/user-dal";
+import { TAuthDALFactory } from "./auth-dal";
 import { validateProviderAuthToken, validateSignUpAuthorization } from "./auth-fns";
 import { TCompleteAccountInviteDTO, TCompleteAccountSignupDTO } from "./auth-signup-type";
 import { AuthMethod, AuthTokenType } from "./auth-type";
 
 type TAuthSignupDep = {
-  authDal: TAuthDalFactory;
-  userDal: TUserDalFactory;
+  authDAL: TAuthDALFactory;
+  userDAL: TUserDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
-  orgDal: TOrgDalFactory;
+  orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
@@ -29,12 +29,12 @@ type TAuthSignupDep = {
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
 export const authSignupServiceFactory = ({
-  authDal,
-  userDal,
+  authDAL,
+  userDAL,
   tokenService,
   smtpService,
   orgService,
-  orgDal,
+  orgDAL,
   licenseService
 }: TAuthSignupDep) => {
   // first step of signup. create user and send email
@@ -44,13 +44,13 @@ export const authSignupServiceFactory = ({
       throw new Error("Provided a disposable email");
     }
 
-    let user = await userDal.findUserByEmail(email);
+    let user = await userDAL.findUserByEmail(email);
     if (user && user.isAccepted) {
       // TODO(akhilmhdh-pg): copy as old one. this needs to be changed due to security issues
       throw new Error("Failed to send verification code for complete account");
     }
     if (!user) {
-      user = await userDal.create({ authMethods: [AuthMethod.EMAIL], email });
+      user = await userDAL.create({ authMethods: [AuthMethod.EMAIL], email });
     }
     if (!user) throw new Error("Failed to create user");
 
@@ -70,7 +70,7 @@ export const authSignupServiceFactory = ({
   };
 
   const verifyEmailSignup = async (email: string, code: string) => {
-    const user = await userDal.findUserByEmail(email);
+    const user = await userDAL.findUserByEmail(email);
     if (!user || (user && user.isAccepted)) {
       // TODO(akhilmhdh): copy as old one. this needs to be changed due to security issues
       throw new Error("Failed to send verification code for complete account");
@@ -115,7 +115,7 @@ export const authSignupServiceFactory = ({
     userAgent,
     authorization
   }: TCompleteAccountSignupDTO) => {
-    const user = await userDal.findUserByEmail(email);
+    const user = await userDAL.findUserByEmail(email);
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
     }
@@ -126,10 +126,10 @@ export const authSignupServiceFactory = ({
       validateSignUpAuthorization(authorization, user.id);
     }
 
-    const updateduser = await authDal.transaction(async (tx) => {
-      const us = await userDal.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
+    const updateduser = await authDAL.transaction(async (tx) => {
+      const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
-      const userEncKey = await userDal.upsertUserEncryptionKey(
+      const userEncKey = await userDAL.upsertUserEncryptionKey(
         us.id,
         {
           salt,
@@ -157,7 +157,7 @@ export const authSignupServiceFactory = ({
       await orgService.createOrganization(user.id, user.email, organizationName);
     }
 
-    const updatedMembersips = await orgDal.updateMembership(
+    const updatedMembersips = await orgDAL.updateMembership(
       { inviteEmail: email, status: OrgMembershipStatus.Invited },
       { userId: user.id, status: OrgMembershipStatus.Accepted }
     );
@@ -218,12 +218,12 @@ export const authSignupServiceFactory = ({
     encryptedPrivateKeyIV,
     encryptedPrivateKeyTag
   }: TCompleteAccountInviteDTO) => {
-    const user = await userDal.findUserByEmail(email);
+    const user = await userDAL.findUserByEmail(email);
     if (!user || (user && user.isAccepted)) {
       throw new Error("Failed to complete account for complete user");
     }
 
-    const [orgMembership] = await orgDal.findMembership({
+    const [orgMembership] = await orgDAL.findMembership({
       inviteEmail: email,
       status: OrgMembershipStatus.Invited
     });
@@ -233,10 +233,10 @@ export const authSignupServiceFactory = ({
         name: "complete account invite"
       });
 
-    const updateduser = await authDal.transaction(async (tx) => {
-      const us = await userDal.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
+    const updateduser = await authDAL.transaction(async (tx) => {
+      const us = await userDAL.updateById(user.id, { firstName, lastName, isAccepted: true }, tx);
       if (!us) throw new Error("User not found");
-      const userEncKey = await userDal.upsertUserEncryptionKey(
+      const userEncKey = await userDAL.upsertUserEncryptionKey(
         us.id,
         {
           salt,
@@ -253,7 +253,7 @@ export const authSignupServiceFactory = ({
         tx
       );
 
-      const updatedMembersips = await orgDal.updateMembership(
+      const updatedMembersips = await orgDAL.updateMembership(
         { inviteEmail: email, status: OrgMembershipStatus.Invited },
         { userId: us.id, status: OrgMembershipStatus.Accepted },
         tx

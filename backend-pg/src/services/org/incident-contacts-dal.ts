@@ -2,9 +2,9 @@ import { TDbClient } from "@app/db";
 import { TableName, TIncidentContacts } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
-export type TIncidentContactsDalFactory = ReturnType<typeof incidentContactDalFactory>;
+export type TIncidentContactsDALFactory = ReturnType<typeof incidentContactDALFactory>;
 
-export const incidentContactDalFactory = (db: TDbClient) => {
+export const incidentContactDALFactory = (db: TDbClient) => {
   const create = async (orgId: string, email: string) => {
     try {
       const [incidentContact] = await db(TableName.IncidentContact)

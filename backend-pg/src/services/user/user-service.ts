@@ -1,17 +1,17 @@
 import { BadRequestError } from "@app/lib/errors";
 
 import { AuthMethod } from "../auth/auth-type";
-import { TUserDalFactory } from "./user-dal";
+import { TUserDALFactory } from "./user-dal";
 
 type TUserServiceFactoryDep = {
-  userDal: TUserDalFactory;
+  userDAL: TUserDALFactory;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
 
-export const userServiceFactory = ({ userDal }: TUserServiceFactoryDep) => {
+export const userServiceFactory = ({ userDAL }: TUserServiceFactoryDep) => {
   const toggleUserMfa = async (userId: string, isMfaEnabled: boolean) => {
-    const updatedUser = await userDal.updateById(userId, {
+    const updatedUser = await userDAL.updateById(userId, {
       isMfaEnabled,
       mfaMethods: isMfaEnabled ? ["email"] : []
     });
@@ -19,7 +19,7 @@ export const userServiceFactory = ({ userDal }: TUserServiceFactoryDep) => {
   };
 
   const updateUserName = async (userId: string, firstName: string, lastName: string) => {
-    const updatedUser = await userDal.updateById(userId, {
+    const updatedUser = await userDAL.updateById(userId, {
       firstName,
       lastName
     });
@@ -27,7 +27,7 @@ export const userServiceFactory = ({ userDal }: TUserServiceFactoryDep) => {
   };
 
   const updateAuthMethods = async (userId: string, authMethods: AuthMethod[]) => {
-    const user = await userDal.findById(userId);
+    const user = await userDAL.findById(userId);
     if (!user) throw new BadRequestError({ name: "Update auth methods" });
 
     const hasSamlEnabled = user?.authMethods?.some((method) =>
@@ -41,34 +41,34 @@ export const userServiceFactory = ({ userDal }: TUserServiceFactoryDep) => {
         message: "Failed to update auth methods due to SAML SSO "
       });
 
-    const updatedUser = await userDal.updateById(userId, { authMethods });
+    const updatedUser = await userDAL.updateById(userId, { authMethods });
     return updatedUser;
   };
 
   const getMe = async (userId: string) => {
-    const user = await userDal.findUserEncKeyByUserId(userId);
+    const user = await userDAL.findUserEncKeyByUserId(userId);
     if (!user) throw new BadRequestError({ message: "user not found", name: "Get Me" });
     return user;
   };
 
   const deleteMe = async (userId: string) => {
-    const user = await userDal.deleteById(userId);
+    const user = await userDAL.deleteById(userId);
     return user;
   };
 
   // user actions operations
   const createUserAction = async (userId: string, action: string) => {
-    const userAction = await userDal.transaction(async (tx) => {
-      const existingAction = await userDal.findOneUserAction({ action, userId }, tx);
+    const userAction = await userDAL.transaction(async (tx) => {
+      const existingAction = await userDAL.findOneUserAction({ action, userId }, tx);
       if (existingAction) return existingAction;
-      return userDal.createUserAction({ action, userId }, tx);
+      return userDAL.createUserAction({ action, userId }, tx);
     });
 
     return userAction;
   };
 
   const getUserAction = async (userId: string, action: string) => {
-    const userAction = await userDal.findOneUserAction({ action, userId });
+    const userAction = await userDAL.findOneUserAction({ action, userId });
     return userAction;
   };
 

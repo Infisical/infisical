@@ -4,9 +4,9 @@ import { TDbClient } from "@app/db";
 import { OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
-export type TLicenseDalFactory = ReturnType<typeof licenseDalFactory>;
+export type TLicenseDALFactory = ReturnType<typeof licenseDALFactory>;
 
-export const licenseDalFactory = (db: TDbClient) => {
+export const licenseDALFactory = (db: TDbClient) => {
   const countOfOrgMembers = async (orgId: string | null, tx?: Knex) => {
     try {
       const doc = await (tx || db)(TableName.OrgMembership)
