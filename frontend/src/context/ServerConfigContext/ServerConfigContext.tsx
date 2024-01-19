@@ -27,7 +27,7 @@ export const ServerConfigProvider = ({ children }: Props): JSX.Element => {
   }, [data]);
 
   useEffect(() => {
-    if (!isLoading && data && !data.initialized) {
+    if (!isLoading && data && !data.initialized && !data.isMigrationModeOn) {
       router.push("/admin/signup");
     }
   }, [isLoading, data]);
@@ -36,6 +36,17 @@ export const ServerConfigProvider = ({ children }: Props): JSX.Element => {
     return (
       <div className="bg-bunker-800">
         <ContentLoader text="Loading configurations" />
+      </div>
+    );
+  }
+
+  if (data?.isMigrationModeOn) {
+    return (
+      <div className="relative mx-auto flex h-screen w-full flex-col items-center justify-center space-y-8 bg-bunker-800 px-8 text-mineshaft-50 dark:[color-scheme:dark]">
+        <img src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
+        <div className="mt-4 text-center text-xl">
+          Infisical under migration. See you in some time. <br /> All read operations are allowed
+        </div>
       </div>
     );
   }

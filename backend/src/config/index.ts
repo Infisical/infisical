@@ -6,6 +6,9 @@ export const client = new InfisicalClient({
   token: process.env.INFISICAL_TOKEN!
 });
 
+export const getIsMigrationMode = async () =>
+  (await client.getSecret("MIGRATION_MODE")).secretValue === "true";
+
 export const getPort = async () => (await client.getSecret("PORT")).secretValue || 4000;
 export const getEncryptionKey = async () => {
   const secretValue = (await client.getSecret("ENCRYPTION_KEY")).secretValue;

@@ -83,6 +83,7 @@ import { healthCheck } from "./routes/status";
 import { RouteNotFoundError } from "./utils/errors";
 import { requestErrorHandler } from "./middleware/requestErrorHandler";
 import {
+  getIsMigrationMode,
   getMongoURL,
   getNodeEnv,
   getPort,
@@ -107,8 +108,8 @@ const main = async () => {
 
   const port = await getPort();
 
-  // initializing the database connection + redis 
-  await initRedis()
+  // initializing the database connection + redis
+  await initRedis();
   await DatabaseService.initDatabase(await getMongoURL());
   const serverCfg = await serverConfigInit();
   await setup();
@@ -197,6 +198,18 @@ const main = async () => {
 
     handler = nextApp.getRequestHandler();
   }
+
+  app.use((req, _res, next) => {
+    getIsMigrationMode()
+      .then((el) => {
+        if (el && req.method !== "GET") {
+          next(new Error("Migration mode"));
+        } else {
+          next();
+        }
+      })
+      .catch(next);
+  });
 
   // (EE) routes
   app.use("/api/v1/identities", v1IdentitiesRouter);
