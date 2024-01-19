@@ -66,6 +66,9 @@ enum SecretKeyEncoding {
 const kdb = new Level<string, any>("./db", { valueEncoding: "json" });
 const getFolderVersionKey = (folderId: string, version: number) =>
   `${folderId}:${version}`;
+
+const projectKv = kdb.sublevel(TableName.Project);
+
 /**
  * Sorts an array of items into groups. The return value is a map where the keys are
  * the group ids the given getGroupId function produced and the value is an array of
@@ -124,9 +127,7 @@ const migrateCollection = async <
   console.log("Total batches", Math.ceil(totalMongoCount / 1000));
   let batch = 1;
 
-  for await (const doc of mongooseCollection
-    .find(filter || {})
-    .cursor({ batchSize: 100 })) {
+  for await (const doc of mongooseCollection.find(filter || {}).cursor({ batchSize: 100 })) {
     mongooseDoc.push(doc);
     const preProcessedData = await preProcessing(
       doc.toObject({ virtuals: true }),
@@ -156,8 +157,8 @@ const migrateCollection = async <
         await postPgProcessing?.(mongooseDoc, newUserIds);
       }
       batch += 1;
-      mongooseDoc.slice(0, mongooseDoc.length);
-      pgDoc.slice(0, pgDoc.length);
+      mongooseDoc.splice(0, mongooseDoc.length);
+      pgDoc.splice(0, pgDoc.length);
     }
   }
   if (mongooseDoc.length) {
@@ -176,8 +177,8 @@ const migrateCollection = async <
       await postPgProcessing?.(mongooseDoc, newUserIds);
     }
     batch += 1;
-    mongooseDoc.slice(0, mongooseDoc.length);
-    pgDoc.slice(0, pgDoc.length);
+    mongooseDoc.splice(0, mongooseDoc.length);
+    pgDoc.splice(0, pgDoc.length);
   }
 
   console.log("Finished migration of ", mongooseCollection.modelName);
@@ -216,7 +217,7 @@ const main = async () => {
 
     console.log("Starting rolling back to latest, comment this out later");
     await db.migrate.rollback({}, true);
-    kdb.clear();
+    await kdb.clear();
     console.log("Rolling back completed");
 
     console.log("Executing migration");
@@ -229,9 +230,13 @@ const main = async () => {
       mongooseCollection: User,
       postgresTableName: TableName.Users,
       returnKeys: ["id", "email"],
-      preProcessing: (doc) => {
+      preProcessing: async (doc) => {
         const id = uuidV4();
+        const userKeyExists = await userKv.get(id).catch(()=> null)
+        if (!userKeyExists) return 
+
         userKv.put(doc.id, id);
+
         return {
           id,
           firstName: doc.firstName,
@@ -256,7 +261,8 @@ const main = async () => {
       preProcessing: async (doc) => {
         const id = uuidV4();
         if (!doc.publicKey || !doc.encryptedPrivateKey || !doc.iv) return;
-        const userId = await userKv.get(doc.id.toString());
+        const userId = await userKv.get(doc.id.toString()).catch(() => null);
+        if (!userId) return;
 
         return {
           id,
@@ -287,7 +293,9 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const userId = await userKv.get(doc.user.toString());
+
+        const userId = await userKv.get(doc.user.toString()).catch(() => null);
+        if (!userId) return 
 
         return {
           id,
@@ -333,7 +341,10 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const orgId = await orgKv.get(doc.organization.toString());
+
+        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+        if (!orgId) return;
+
         await orgRoleKv.put(doc._id.toString(), id);
         return {
           id,
@@ -357,8 +368,13 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const orgId = await orgKv.get(doc.organization.toString());
-        const userId = doc?.user ? await userKv.get(doc.user.toString()) : null;
+        
+        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+        if (!orgId) return;
+
+        const userId = doc?.user ? await userKv.get(doc.user.toString()).catch(() => null) : null;
+        if (!userId) return;
+
         const roleId = doc.customRole
           ? await orgRoleKv.get(doc.customRole.toString())
           : null;
@@ -384,7 +400,10 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const orgId = await orgKv.get(doc.organization.toString());
+        
+        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+        if (!orgId) return;
+        
         return {
           id,
           email: doc.email,
@@ -402,7 +421,10 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const userId = await userKv.get(doc.user.toString());
+        
+        const userId = await userKv.get(doc.user.toString()).catch(() => null);
+        if (!userId) return 
+
         return {
           id,
           userId,
@@ -437,7 +459,10 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const userId = await userKv.get(doc.user.toString());
+        
+        const userId = await userKv.get(doc.user.toString()).catch(() => null);
+        if (!userId) return 
+
         // expired tokens can be removed
         if (new Date(doc.expiresAt) < new Date()) return;
         return {
@@ -459,12 +484,17 @@ const main = async () => {
       postgresTableName: TableName.Project,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
-        const orgId = await orgKv.get(doc.organization.toString());
+        
+        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null ) : null;
+        if (!orgId) return;
+        
+        await projectKv.put(doc._id.toString(),doc._id.toString());
+
         // expired tokens can be removed
         // cannot use this uuid for the org id
         return {
           id: doc._id.toString(),
-          name: doc.name,
+          name: doc.name.slice(0, 60),
           orgId,
           autoCapitalization: doc.autoCapitalization,
           createdAt: new Date(),
@@ -493,8 +523,15 @@ const main = async () => {
       postgresTableName: TableName.Environment,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
+        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null ) : null;
+        if (!orgId) return;
+
+        const projectKvRes = await projectKv.get(doc._id.toString()).catch(() => null);
+        if (!projectKvRes) return 
+
         // to we scope environments into each project then map each slug with respective id
         const envKv = envPKv.sublevel(doc._id.toString());
+        
         // expired tokens can be removed
         // cannot use this uuid for the org id
         return doc.environments.map((env, index) => {
@@ -519,11 +556,16 @@ const main = async () => {
       mongooseCollection: Workspace,
       postgresTableName: TableName.SecretFolder,
       returnKeys: ["id"],
-      preProcessing: async (doc) =>
-        Promise.all(
+      preProcessing: async (doc) => {
+        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null ) : null;
+        if (!orgId) return;
+
+        return Promise.all(
           doc.environments.map(async (env) => {
+
             const id = uuidV4();
             const envId = await getEnvId(doc._id.toString(), env.slug);
+
             const folderKv = getFolderKv(doc._id.toString(), env.slug);
             await folderKv.put("root", id);
             return {
@@ -535,7 +577,8 @@ const main = async () => {
               updatedAt: new Date(),
             };
           }),
-        ),
+        )
+      }
     });
 
     await migrateCollection({
@@ -547,8 +590,11 @@ const main = async () => {
         // expired tokens can be removed
         // cannot use this uuid for the org id
         const id = uuidV4();
-        const senderId = (await userKv.get(doc.sender.toString())) || null;
-        const receiverId = await userKv.get(doc.receiver.toString());
+        
+        const senderId = (await userKv.get(doc.sender.toString()).catch(() => null)) || null;
+        if (!senderId) return;
+        
+        const receiverId = await userKv.get(doc.receiver.toString()).catch(() => null);
         if (!receiverId) return;
 
         return {
@@ -598,7 +644,10 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const userId = await userKv.get(doc.user.toString());
+        
+        const userId = await userKv.get(doc.user.toString()).catch(() => null);
+        if (!userId) return
+        
         const roleId = doc.customRole
           ? await projectRoleKv.get(doc.customRole.toString())
           : null;
@@ -729,7 +778,9 @@ const main = async () => {
       preProcessing: async (doc) => {
         const id = uuidV4();
         await tagKv.put(doc._id.toString(), id);
-        const createdBy = await userKv.get(doc.user.toString());
+        
+        const createdBy = await userKv.get(doc.user.toString()).catch(() => null);
+        if (!createdBy) return;
 
         return {
           id,
@@ -776,7 +827,9 @@ const main = async () => {
         const folderKv = getFolderKv(doc.workspace.toString(), doc.environment);
         const folderId = await folderKv.get(doc.folder || "root");
 
-        const userId = doc.user ? await userKv.get(doc.user.toString()) : null;
+        const userId = doc.user ? await userKv.get(doc.user.toString()).catch(() => null) : null;
+        if (!userId) return 
+        
         const id = uuidV4();
         await secKv.put(doc._id.toString(), id);
 
@@ -843,7 +896,9 @@ const main = async () => {
 
         const envId = await getEnvId(doc.workspace.toString(), doc.environment);
         const folderId = await folderKv.get(doc.folder || "root");
-        const userId = doc.user ? await userKv.get(doc.user.toString()) : null;
+        
+        const userId = doc.user ? await userKv.get(doc.user.toString()).catch(() => null) : null;
+        if (!userId) return
 
         const id = uuidV4();
         await secVerKv.put(doc._id.toString(), id);
@@ -884,9 +939,13 @@ const main = async () => {
         const botKey = await BotKey.findOne({
           workspace: doc.workspace,
         }).lean();
+
         const senderId = botKey?.sender
-          ? await userKv.get(botKey.sender.toString())
+          ? await userKv.get(botKey.sender.toString()).catch(() => null)
           : null;
+
+        if (!senderId) return
+
         return {
           id,
           algorithm: doc.algorithm,
@@ -987,7 +1046,10 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const userId = await userKv.get(doc.user.toString());
+        
+        const userId = await userKv.get(doc.user.toString()).catch(() => null);
+        if (!userId) return;
+
         return {
           id,
           projectId: doc.workspace.toString(),
@@ -1150,7 +1212,10 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const orgId = await orgKv.get(doc.organization.toString());
+        
+        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+        if (!orgId) return;
+
         const identityId = await identityKv.get(doc.identity.toString());
         const roleId = doc.customRole
           ? await orgRoleKv.get(doc.customRole.toString())
@@ -1310,7 +1375,9 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const orgId = await orgKv.get(doc.organization.toString());
+        
+        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+        if (!orgId) return;
 
         return {
           id,
@@ -1339,7 +1406,8 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const orgId = await orgKv.get(doc.organization.toString());
+        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+        if (!orgId) return;
 
         return {
           id,
@@ -1369,8 +1437,12 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const orgId = await orgKv.get(doc.organization.toString());
-        const userId = await userKv.get(doc.user.toString());
+        
+        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+        if (!orgId) return;
+
+        const userId = await userKv.get(doc.user.toString()).catch(() => null);
+        if (!userId) return;
 
         return {
           id,
@@ -1390,8 +1462,12 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const orgId = await orgKv.get(doc.organizationId);
-        const userId = await userKv.get(doc.user.toString());
+        
+        const orgId = doc?.organizationId.toString() ? await orgKv.get(doc.organizationId.toString()).catch(() => null) : null;
+        if (!orgId) return;
+
+        const userId = await userKv.get(doc.user.toString()).catch(() => null);
+        if (!userId) return;
 
         return {
           id,
@@ -1411,7 +1487,9 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const orgId = await orgKv.get(doc.organization.toString());
+
+        const orgId = doc?.organization.toString() ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+        if (!orgId) return;
 
         return {
           id,
