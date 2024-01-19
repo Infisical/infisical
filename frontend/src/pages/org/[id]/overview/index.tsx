@@ -483,11 +483,11 @@ const OrganizationPage = withPermission(
     const { createNotification } = useNotificationContext();
     const addWsUser = useAddUserToWs();
 
-    const { data: updateClosed } = useGetUserAction("jan_2023_db_update_closed");
+    const { data: updateClosed } = useGetUserAction("jan_2024_db_update_closed");
 
     const registerUserAction = useRegisterUserAction();
     const closeUpdate = async () => {
-      await registerUserAction.mutateAsync("jan_2023_db_update_closed");
+      await registerUserAction.mutateAsync("jan_2024_db_update_closed");
     };
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -620,8 +620,8 @@ const OrganizationPage = withPermission(
             } mb-4 w-full border rounded-md p-2 text-base border-primary-600 bg-primary/10 text-white flex flex-row items-center`}>
               <FontAwesomeIcon icon={faWarning} className="text-primary text-4xl p-6"/>
               <div className="text-sm">
-                <span className="text-lg font-semibold">Scheduled maintenance on January 20th</span>  <br />
-                We&apos;ve planned a database upgrade and need to pause certain functionality for approximately 6 hours on Saturday, January 20th, 10am EST. Read operations will continue to function as normal but nothing will be editable. As a user you don&apos;t have to perform any action – your applications will not be affected.<br />
+                <span className="text-lg font-semibold">Scheduled maintenance on January 27th</span>  <br />
+                We&apos;ve planned a database upgrade and need to pause certain functionality for approximately 3 hours on Saturday, January 27th, 10am EST. During these hours, read operations will continue to function normally but no resources will be editable. No action is required on your end — your applications can continue to fetch secrets.<br />
               </div>
               <button
                 type="button"
