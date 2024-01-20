@@ -164,17 +164,19 @@ export const secretServiceFactory = ({
       tags !== undefined ? { tags, secretId: newSecrets[i].id } : []
     );
     if (secsUpdatedTag.length) {
-      await secretTagDAL.deleteTagsManySecret(
+      const delTags = await secretTagDAL.deleteTagsManySecret(
         projectId,
         secsUpdatedTag.map(({ secretId }) => secretId),
         tx
       );
+      console.log(delTags);
       const newSecretTags = secsUpdatedTag.flatMap(({ tags: secretTags = [], secretId }) =>
         secretTags.map((tag) => ({
           [`${TableName.SecretTag}Id` as const]: tag,
           [`${TableName.Secret}Id` as const]: secretId
         }))
       );
+      console.log(newSecretTags);
       if (newSecretTags.length) {
         const secTags = await secretTagDAL.saveTagsToSecret(newSecretTags, tx);
         const secVersionsGroupBySecId = groupBy(secretVersions, (i) => i.secretId);

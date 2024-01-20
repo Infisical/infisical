@@ -1,12 +1,15 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { TableName, TSecretTagJunctionInsert } from "@app/db/schemas";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
+import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service";
@@ -31,6 +34,8 @@ type TSecretSnapshotServiceFactoryDep = {
     "findLatestVersionByFolderId" | "insertMany"
   >;
   secretDAL: Pick<TSecretDALFactory, "delete" | "insertMany">;
+  secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecret">;
+  secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findById" | "findBySecretPath" | "delete" | "insertMany"
@@ -50,7 +55,9 @@ export const secretSnapshotServiceFactory = ({
   folderDAL,
   secretDAL,
   permissionService,
-  licenseService
+  licenseService,
+  secretTagDAL,
+  secretVersionTagDAL
 }: TSecretSnapshotServiceFactoryDep) => {
   const projectSecretSnapshotCount = async ({
     environment,
@@ -190,7 +197,11 @@ export const secretSnapshotServiceFactory = ({
           folderVersion.map(({ name, id, latestFolderVersion }) => ({
             envId: snapshot.envId,
             id,
-            version: latestFolderVersion + 1,
+            // this means don't bump up the version if not root folder
+            // because below ones can be same version as nothing changed
+            version: deletedTopLevelFolders[folderId]
+              ? latestFolderVersion + 1
+              : latestFolderVersion,
             name,
             parentId: folderId
           }))
@@ -208,17 +219,33 @@ export const secretSnapshotServiceFactory = ({
               secretId,
               envId,
               id,
+              tags,
               ...el
             }) => ({
               ...el,
               id: secretId,
-              version: latestSecretVersion + 1,
+              version: deletedTopLevelSecsGroupById[secretId]
+                ? latestSecretVersion + 1
+                : latestSecretVersion,
               folderId
             })
           )
         ),
         tx
       );
+      const secretTagsToBeInsert: TSecretTagJunctionInsert[] = [];
+      const secretVerTagToBeInsert: Record<string, string[]> = {};
+      rollbackSnaps.forEach(({ secretVersions }) => {
+        secretVersions.forEach((secVer) => {
+          secVer.tags.forEach((tag) => {
+            secretTagsToBeInsert.push({ secretsId: secVer.secretId, secret_tagsId: tag.id });
+            if (!secretVerTagToBeInsert?.[secVer.secretId])
+              secretVerTagToBeInsert[secVer.secretId] = [];
+            secretVerTagToBeInsert[secVer.secretId].push(tag.id);
+          });
+        });
+      });
+      await secretTagDAL.saveTagsToSecret(secretTagsToBeInsert, tx);
       const folderVersions = await folderVersionDAL.insertMany(
         folders.map(({ version, name, id, envId }) => ({
           name,
@@ -230,6 +257,17 @@ export const secretSnapshotServiceFactory = ({
       );
       const secretVersions = await secretVersionDAL.insertMany(
         secrets.map(({ id, updatedAt, createdAt, ...el }) => ({ ...el, secretId: id })),
+        tx
+      );
+      await secretVersionTagDAL.insertMany(
+        secretVersions.flatMap(({ secretId, id }) =>
+          secretVerTagToBeInsert?.[secretId]?.length
+            ? secretVerTagToBeInsert[secretId].map((tagId) => ({
+                [`${TableName.SecretTag}Id` as const]: tagId,
+                [`${TableName.SecretVersion}Id` as const]: id
+              }))
+            : []
+        ),
         tx
       );
       const newSnapshot = await snapshotDAL.create(

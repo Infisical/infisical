@@ -97,7 +97,6 @@ export const SnapshotView = ({
       {}
     );
     const diffView: Array<TDiffView<DecryptedSecret>> = [];
-    console.log({ rollingSecrets, secrets });
     rollingSecrets.forEach((rollSecret) => {
       const { id } = rollSecret;
       const doesExist = Boolean(secretGroupById?.[id]);
@@ -119,7 +118,7 @@ export const SnapshotView = ({
     });
     return diffView;
   }, [secrets, rollingSecrets]);
-  console.log(secretDiffView);
+
   const handleClickRollback = async () => {
     if (!snapshotData?.id) {
       createNotification({

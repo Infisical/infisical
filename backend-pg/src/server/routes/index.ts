@@ -300,6 +300,8 @@ export const registerRoutes = async (
   const projectRoleService = projectRoleServiceFactory({ permissionService, projectRoleDAL });
 
   const snapshotService = secretSnapshotServiceFactory({
+    permissionService,
+    licenseService,
     folderDAL,
     secretDAL,
     snapshotDAL,
@@ -307,8 +309,8 @@ export const registerRoutes = async (
     snapshotSecretDAL,
     secretVersionDAL,
     folderVersionDAL,
-    permissionService,
-    licenseService
+    secretTagDAL,
+    secretVersionTagDAL
   });
   const webhookService = webhookServiceFactory({
     permissionService,

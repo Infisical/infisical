@@ -122,7 +122,7 @@ export const sqlNestRelationships = <
       lookupTable.add(pk);
     }
 
-    sqlChildMapper(doc, recordsGroupedByPk, lookupTable, pk, "", childrenMapper);
+    sqlChildMapper(doc, recordsGroupedByPk, lookupTable, pk, pk, childrenMapper);
   });
   return recordsOrder.map((pkId) => recordsGroupedByPk[pkId]);
 };

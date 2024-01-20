@@ -325,7 +325,7 @@ export const SecretItem = memo(
                         return (
                           <DropdownMenuItem
                             onClick={() => handleTagSelect(tag)}
-                            key={tagId}
+                            key={`${secret.id}-${tagId}`}
                             icon={isTagSelected && <FontAwesomeIcon icon={faCheckCircle} />}
                             iconPos="right"
                           >
@@ -339,7 +339,7 @@ export const SecretItem = memo(
                           </DropdownMenuItem>
                         );
                       })}
-                      <DropdownMenuItem className="px-1.5">
+                      <DropdownMenuItem className="px-1.5" asChild>
                         <Button
                           size="xs"
                           className="w-full"

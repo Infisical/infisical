@@ -99,7 +99,8 @@ export const secretDALFactory = (db: TDbClient) => {
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
         .select(db.ref("name").withSchema(TableName.SecretTag).as("tagName"));
-      return sqlNestRelationships({
+      console.log(JSON.stringify(secs, null, 4));
+      const data = sqlNestRelationships({
         data: secs,
         key: "id",
         parentMapper: (el) => SecretsSchema.parse(el),
@@ -116,6 +117,8 @@ export const secretDALFactory = (db: TDbClient) => {
           }
         ]
       });
+      console.log(JSON.stringify(data, null, 4));
+      return data;
     } catch (error) {
       throw new DatabaseError({ error, name: "get all secret" });
     }
