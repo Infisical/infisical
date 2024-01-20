@@ -1,19 +1,35 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { SecretApprovalRequestsSecretsSchema, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
-export type TSecretApprovalRequestSecretDALFactory = ReturnType<typeof secretApprovalRequestSecretDALFactory>;
+export type TSecretApprovalRequestSecretDALFactory = ReturnType<
+  typeof secretApprovalRequestSecretDALFactory
+>;
 
 export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
-  const sarSecretOrm = ormify(db, TableName.SecretApprovalRequestSecret);
+  const secretApprovalRequestSecretOrm = ormify(db, TableName.SecretApprovalRequestSecret);
+  const secretApprovalRequestSecretTagOrm = ormify(db, TableName.SecretApprovalRequestSecretTag);
 
   const findByRequestId = async (requestId: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db)(TableName.SecretApprovalRequestSecret)
+      const doc = await (tx || db)({
+        secVerTag: TableName.SecretTag
+      })
+        .from(TableName.SecretApprovalRequestSecret)
         .where({ requestId })
+        .leftJoin(
+          TableName.SecretApprovalRequestSecretTag,
+          `${TableName.SecretApprovalRequestSecret}.id`,
+          `${TableName.SecretApprovalRequestSecretTag}.secretId`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretApprovalRequestSecretTag}.tagId`,
+          `${TableName.SecretTag}.id`
+        )
         .leftJoin(
           TableName.Secret,
           `${TableName.SecretApprovalRequestSecret}.secretId`,
@@ -24,7 +40,30 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           `${TableName.SecretVersion}.id`,
           `${TableName.SecretApprovalRequestSecret}.secretVersion`
         )
+        .leftJoin(
+          TableName.SecretVersionTag,
+          `${TableName.SecretVersionTag}.${TableName.SecretVersion}Id`,
+          `${TableName.SecretVersion}.id`
+        )
+        .leftJoin(
+          db.ref(TableName.SecretTag).as("secVerTag"),
+          `${TableName.SecretVersionTag}.${TableName.SecretTag}Id`,
+          db.ref("id").withSchema("secVerTag")
+        )
         .select(selectAllTableCols(TableName.SecretApprovalRequestSecret))
+        .select({
+          secVerTagId: "secVerTag.id",
+          secVerTagColor: "secVerTag.color",
+          secVerTagSlug: "secVerTag.slug",
+          secVerTagName: "secVerTag.name"
+        })
+        .select(
+          db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
+          db.ref("id").withSchema(TableName.SecretApprovalRequestSecretTag).as("tagJnId"),
+          db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"),
+          db.ref("name").withSchema(TableName.SecretTag).as("tagName")
+        )
         .select(
           db.ref("secretBlindIndex").withSchema(TableName.Secret).as("orgSecBlindIndex"),
           db.ref("version").withSchema(TableName.Secret).as("orgSecVersion"),
@@ -42,7 +81,6 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
             .as("orgSecCommentCiphertext")
         )
         .select(
-          // db.ref("secretBlindIndex").withSchema(TableName.Secret).as("orgSecBlindInex"),
           db.ref("version").withSchema(TableName.SecretVersion).as("secVerVersion"),
           db.ref("secretKeyIV").withSchema(TableName.SecretVersion).as("secVerKeyIV"),
           db.ref("secretKeyTag").withSchema(TableName.SecretVersion).as("secVerKeyTag"),
@@ -63,67 +101,119 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
             .withSchema(TableName.SecretVersion)
             .as("secVerCommentCiphertext")
         );
-      return doc.map(
-        ({
-          orgSecKeyIV,
-          orgSecKeyTag,
-          orgSecValueIV,
-          orgSecVersion,
-          orgSecValueTag,
-          orgSecCommentIV,
-          orgSecBlindIndex,
-          orgSecCommentTag,
-          orgSecKeyCiphertext,
-          orgSecValueCiphertext,
-          orgSecCommentCiphertext,
-          secVerCommentIV,
-          secVerCommentCiphertext,
-          secVerCommentTag,
-          secVerValueCiphertext,
-          secVerKeyIV,
-          secVerKeyTag,
-          secVerValueIV,
-          secVerVersion,
-          secVerValueTag,
-          secVerKeyCiphertext,
-          ...el
-        }) => ({
-          ...el,
-          secret: el.secretId
-            ? {
-                id: el.secretId,
-                version: orgSecVersion,
-                secretBlindIndex: orgSecBlindIndex,
-                secretKeyIV: orgSecKeyIV,
-                secretKeyTag: orgSecKeyTag,
-                secretKeyCiphertext: orgSecKeyCiphertext,
-                secretValueIV: orgSecValueIV,
-                secretValueTag: orgSecValueTag,
-                secretValueCiphertext: orgSecValueCiphertext,
-                secretCommentIV: orgSecCommentIV,
-                secretCommentTag: orgSecCommentTag,
-                secretCommentCiphertext: orgSecCommentCiphertext
+      const formatedDoc = sqlNestRelationships({
+        data: doc,
+        key: "id",
+        parentMapper: (data) =>
+          SecretApprovalRequestsSecretsSchema.omit({ secretVersion: true }).parse(data),
+        childrenMapper: [
+          {
+            key: "tagJnId",
+            label: "tags" as const,
+            mapper: ({ tagId: id, tagName: name, tagSlug: slug, tagColor: color }) => ({
+              id,
+              name,
+              slug,
+              color
+            })
+          },
+          {
+            key: "secretId",
+            label: "secret" as const,
+            mapper: ({
+              orgSecKeyIV,
+              orgSecKeyTag,
+              orgSecValueIV,
+              orgSecVersion,
+              orgSecValueTag,
+              orgSecCommentIV,
+              orgSecBlindIndex,
+              orgSecCommentTag,
+              orgSecKeyCiphertext,
+              orgSecValueCiphertext,
+              orgSecCommentCiphertext,
+              secretId
+            }) =>
+              secretId
+                ? {
+                    id: secretId,
+                    version: orgSecVersion,
+                    secretBlindIndex: orgSecBlindIndex,
+                    secretKeyIV: orgSecKeyIV,
+                    secretKeyTag: orgSecKeyTag,
+                    secretKeyCiphertext: orgSecKeyCiphertext,
+                    secretValueIV: orgSecValueIV,
+                    secretValueTag: orgSecValueTag,
+                    secretValueCiphertext: orgSecValueCiphertext,
+                    secretCommentIV: orgSecCommentIV,
+                    secretCommentTag: orgSecCommentTag,
+                    secretCommentCiphertext: orgSecCommentCiphertext
+                  }
+                : undefined
+          },
+          {
+            key: "secretVersion",
+            label: "secretVersion" as const,
+            mapper: ({
+              secVerCommentIV,
+              secVerCommentCiphertext,
+              secVerCommentTag,
+              secVerValueCiphertext,
+              secVerKeyIV,
+              secVerKeyTag,
+              secVerValueIV,
+              secretVersion,
+              secVerValueTag,
+              secVerKeyCiphertext,
+              secVerVersion
+            }) =>
+              secretVersion
+                ? {
+                    version: secVerVersion,
+                    id: secretVersion,
+                    secretKeyIV: secVerKeyIV,
+                    secretKeyTag: secVerKeyTag,
+                    secretKeyCiphertext: secVerKeyCiphertext,
+                    secretValueIV: secVerValueIV,
+                    secretValueTag: secVerValueTag,
+                    secretValueCiphertext: secVerValueCiphertext,
+                    secretCommentIV: secVerCommentIV,
+                    secretCommentTag: secVerCommentTag,
+                    secretCommentCiphertext: secVerCommentCiphertext
+                  }
+                : undefined,
+            childrenMapper: [
+              {
+                key: "secVerTagId",
+                label: "tags" as const,
+                mapper: ({
+                  secVerTagId: id,
+                  secVerTagName: name,
+                  secVerTagSlug: slug,
+                  secVerTagColor: color
+                }) => ({
+                  id,
+                  name,
+                  slug,
+                  color
+                })
               }
-            : undefined,
-          secretVersion: el.secretVersion
-            ? {
-                id: el.secretVersion,
-                secretKeyIV: secVerKeyIV,
-                secretKeyTag: secVerKeyTag,
-                secretKeyCiphertext: secVerKeyCiphertext,
-                secretValueIV: secVerValueIV,
-                secretValueTag: secVerValueTag,
-                secretValueCiphertext: secVerValueCiphertext,
-                secretCommentIV: secVerCommentIV,
-                secretCommentTag: secVerCommentTag,
-                secretCommentCiphertext: secVerCommentCiphertext
-              }
-            : undefined
-        })
-      );
+            ]
+          }
+        ]
+      });
+      return formatedDoc?.map(({ secret, secretVersion, ...el }) => ({
+        ...el,
+        secret: secret?.[0],
+        secretVersion: secretVersion?.[0]
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByRequestId" });
     }
   };
-  return { ...sarSecretOrm, findByRequestId };
+  return {
+    ...secretApprovalRequestSecretOrm,
+    findByRequestId,
+    insertApprovalSecretTags: secretApprovalRequestSecretTagOrm.insertMany
+  };
 };

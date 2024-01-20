@@ -368,8 +368,9 @@ export const registerRoutes = async (
   const sarService = secretApprovalRequestServiceFactory({
     permissionService,
     folderDAL,
-    sarSecretDAL,
-    sarReviewerDAL,
+    secretTagDAL,
+    secretApprovalRequestSecretDAL: sarSecretDAL,
+    secretApprovalRequestReviewerDAL: sarReviewerDAL,
     secretVersionDAL,
     secretBlindIndexDAL,
     secretApprovalRequestDAL,

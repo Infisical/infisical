@@ -83,23 +83,23 @@ import {
   TSamlConfigs,
   TSamlConfigsInsert,
   TSamlConfigsUpdate,
-  TSapApprovers,
-  TSapApproversInsert,
-  TSapApproversUpdate,
-  TSaRequestSecrets,
-  TSaRequestSecretsInsert,
-  TSaRequestSecretsUpdate,
-  TSaRequestSecretTags,
-  TSaRequestSecretTagsInsert,
-  TSaRequestSecretTagsUpdate,
-  TSarReviewers,
-  TSarReviewersInsert,
-  TSarReviewersUpdate,
   TSecretApprovalPolicies,
+  TSecretApprovalPoliciesApprovers,
+  TSecretApprovalPoliciesApproversInsert,
+  TSecretApprovalPoliciesApproversUpdate,
   TSecretApprovalPoliciesInsert,
   TSecretApprovalPoliciesUpdate,
   TSecretApprovalRequests,
+  TSecretApprovalRequestSecretTags,
+  TSecretApprovalRequestSecretTagsInsert,
+  TSecretApprovalRequestSecretTagsUpdate,
   TSecretApprovalRequestsInsert,
+  TSecretApprovalRequestsReviewers,
+  TSecretApprovalRequestsReviewersInsert,
+  TSecretApprovalRequestsReviewersUpdate,
+  TSecretApprovalRequestsSecrets,
+  TSecretApprovalRequestsSecretsInsert,
+  TSecretApprovalRequestsSecretsUpdate,
   TSecretApprovalRequestsUpdate,
   TSecretBlindIndexes,
   TSecretBlindIndexesInsert,
@@ -166,7 +166,8 @@ import {
   TUsersUpdate,
   TWebhooks,
   TWebhooksInsert,
-  TWebhooksUpdate} from "@app/db/schemas";
+  TWebhooksUpdate
+} from "@app/db/schemas";
 
 declare module "knex/types/tables" {
   interface Tables {
@@ -327,9 +328,9 @@ declare module "knex/types/tables" {
       TSecretApprovalPoliciesUpdate
     >;
     [TableName.SecretApprovalPolicyApprover]: Knex.CompositeTableType<
-      TSapApprovers,
-      TSapApproversInsert,
-      TSapApproversUpdate
+      TSecretApprovalPoliciesApprovers,
+      TSecretApprovalPoliciesApproversInsert,
+      TSecretApprovalPoliciesApproversUpdate
     >;
     [TableName.SecretApprovalRequest]: Knex.CompositeTableType<
       TSecretApprovalRequests,
@@ -337,19 +338,19 @@ declare module "knex/types/tables" {
       TSecretApprovalRequestsUpdate
     >;
     [TableName.SecretApprovalRequestReviewer]: Knex.CompositeTableType<
-      TSarReviewers,
-      TSarReviewersInsert,
-      TSarReviewersUpdate
+      TSecretApprovalRequestsReviewers,
+      TSecretApprovalRequestsReviewersInsert,
+      TSecretApprovalRequestsReviewersUpdate
     >;
     [TableName.SecretApprovalRequestSecret]: Knex.CompositeTableType<
-      TSaRequestSecrets,
-      TSaRequestSecretsInsert,
-      TSaRequestSecretsUpdate
+      TSecretApprovalRequestsSecrets,
+      TSecretApprovalRequestsSecretsInsert,
+      TSecretApprovalRequestsSecretsUpdate
     >;
     [TableName.SecretApprovalRequestSecretTag]: Knex.CompositeTableType<
-      TSaRequestSecretTags,
-      TSaRequestSecretTagsInsert,
-      TSaRequestSecretTagsUpdate
+      TSecretApprovalRequestSecretTags,
+      TSecretApprovalRequestSecretTagsInsert,
+      TSecretApprovalRequestSecretTagsUpdate
     >;
     [TableName.SecretRotation]: Knex.CompositeTableType<
       TSecretRotations,

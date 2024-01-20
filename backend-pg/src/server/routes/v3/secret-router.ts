@@ -726,7 +726,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                     skipMultilineEncoding,
                     secretKeyTag,
                     secretKeyCiphertext,
-                    secretKeyIV
+                    secretKeyIV,
+                    tagIds: tags
                   }
                 ]
               }

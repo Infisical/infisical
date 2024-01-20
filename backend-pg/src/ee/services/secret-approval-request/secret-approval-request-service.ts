@@ -8,7 +8,7 @@ import {
   TSecretApprovalRequestsSecretsInsert
 } from "@app/db/schemas";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
-import { groupBy, pick } from "@app/lib/fn";
+import { groupBy, pick, unique } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret/secret-blind-index-dal";
@@ -16,6 +16,7 @@ import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service";
 import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
@@ -39,12 +40,13 @@ import {
 type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretApprovalRequestDAL: TSecretApprovalRequestDALFactory;
-  sarSecretDAL: TSecretApprovalRequestSecretDALFactory;
-  sarReviewerDAL: TSecretApprovalRequestReviewerDALFactory;
+  secretApprovalRequestSecretDAL: TSecretApprovalRequestSecretDALFactory;
+  secretApprovalRequestReviewerDAL: TSecretApprovalRequestReviewerDALFactory;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findBySecretPath" | "findById" | "findSecretPathByFolderIds"
   >;
+  secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById">;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany">;
@@ -66,8 +68,9 @@ export type TSecretApprovalRequestServiceFactory = ReturnType<
 export const secretApprovalRequestServiceFactory = ({
   secretApprovalRequestDAL,
   folderDAL,
-  sarReviewerDAL,
-  sarSecretDAL,
+  secretTagDAL,
+  secretApprovalRequestReviewerDAL,
+  secretApprovalRequestSecretDAL,
   secretBlindIndexDAL,
   permissionService,
   snapshotService,
@@ -137,7 +140,7 @@ export const secretApprovalRequestServiceFactory = ({
       throw new UnauthorizedError({ message: "User has no access" });
     }
 
-    const secrets = await sarSecretDAL.findByRequestId(secretApprovalRequest.id);
+    const secrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
     const secretPath = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
       secretApprovalRequest.folderId
     ]);
@@ -163,8 +166,8 @@ export const secretApprovalRequestServiceFactory = ({
     ) {
       throw new UnauthorizedError({ message: "User has no access" });
     }
-    const reviewStatus = await sarReviewerDAL.transaction(async (tx) => {
-      const review = await sarReviewerDAL.findOne(
+    const reviewStatus = await secretApprovalRequestReviewerDAL.transaction(async (tx) => {
+      const review = await secretApprovalRequestReviewerDAL.findOne(
         {
           requestId: secretApprovalRequest.id,
           member: membership.id
@@ -172,7 +175,7 @@ export const secretApprovalRequestServiceFactory = ({
         tx
       );
       if (!review) {
-        return sarReviewerDAL.create(
+        return secretApprovalRequestReviewerDAL.create(
           {
             status,
             requestId: secretApprovalRequest.id,
@@ -181,7 +184,7 @@ export const secretApprovalRequestServiceFactory = ({
           tx
         );
       }
-      return sarReviewerDAL.updateById(review.id, { status }, tx);
+      return secretApprovalRequestReviewerDAL.updateById(review.id, { status }, tx);
     });
     return reviewStatus;
   };
@@ -255,7 +258,9 @@ export const secretApprovalRequestServiceFactory = ({
 
     if (!hasMinApproval)
       throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
-    const secretApprovalSecrets = await sarSecretDAL.findByRequestId(secretApprovalRequest.id);
+    const secretApprovalSecrets = await secretApprovalRequestSecretDAL.findByRequestId(
+      secretApprovalRequest.id
+    );
     if (!secretApprovalSecrets) throw new BadRequestError({ message: "No secrets found" });
 
     const conflicts: Array<{ secretId: string; op: CommitType }> = [];
@@ -328,11 +333,12 @@ export const secretApprovalRequestServiceFactory = ({
                 "skipMultilineEncoding",
                 "secretReminderNote",
                 "secretReminderRepeatDays",
-                "version",
                 "algorithm",
                 "keyEncoding",
                 "secretBlindIndex"
               ]),
+              tags: el?.tags.map(({ id }) => id),
+              version: 1,
               type: SecretType.Shared
             }))
           })
@@ -344,25 +350,28 @@ export const secretApprovalRequestServiceFactory = ({
             tx,
             inputSecrets: secretUpdationCommits.map((el) => ({
               filter: {
-                id: el.secretId,
+                id: el.secretId as string, // this null check is already checked at top on conflict strategy
                 type: SecretType.Shared
               },
-              data: pick(el, [
-                "secretCommentCiphertext",
-                "secretCommentTag",
-                "secretCommentIV",
-                "secretValueIV",
-                "secretValueTag",
-                "secretValueCiphertext",
-                "secretKeyCiphertext",
-                "secretKeyTag",
-                "secretKeyIV",
-                "metadata",
-                "skipMultilineEncoding",
-                "secretReminderNote",
-                "secretReminderRepeatDays",
-                "secretBlindIndex"
-              ])
+              data: {
+                tags: el?.tags.map(({ id }) => id),
+                ...pick(el, [
+                  "secretCommentCiphertext",
+                  "secretCommentTag",
+                  "secretCommentIV",
+                  "secretValueIV",
+                  "secretValueTag",
+                  "secretValueCiphertext",
+                  "secretKeyCiphertext",
+                  "secretKeyTag",
+                  "secretKeyIV",
+                  "metadata",
+                  "skipMultilineEncoding",
+                  "secretReminderNote",
+                  "secretReminderRepeatDays",
+                  "secretBlindIndex"
+                ])
+              }
             }))
           })
         : [];
@@ -438,6 +447,7 @@ export const secretApprovalRequestServiceFactory = ({
       throw new BadRequestError({ message: "Blind index not found", name: "Update secret" });
 
     const commits: Omit<TSecretApprovalRequestsSecretsInsert, "requestId">[] = [];
+    const commitTagIds: Record<string, string[]> = {};
     // for created secret approval change
     const createdSecrets = data[CommitType.Create];
     if (createdSecrets && createdSecrets?.length) {
@@ -452,12 +462,15 @@ export const secretApprovalRequestServiceFactory = ({
         ...createdSecrets.map(({ secretName, ...el }) => ({
           ...el,
           op: CommitType.Create as const,
-          version: 0,
+          version: 1,
           secretBlindIndex: keyName2BlindIndex[secretName],
           algorithm: SecretEncryptionAlgo.AES_256_GCM,
           keyEncoding: SecretKeyEncoding.BASE64
         }))
       );
+      createdSecrets.forEach(({ tagIds, secretName }) => {
+        if (tagIds?.length) commitTagIds[keyName2BlindIndex[secretName]] = tagIds;
+      });
     }
     // not secret approval for update operations
     const updatedSecrets = data[CommitType.Update];
@@ -495,18 +508,21 @@ export const secretApprovalRequestServiceFactory = ({
         updatedSecretIds
       );
       commits.push(
-        ...updatedSecrets.map(({ newSecretName, secretName, ...el }) => {
+        ...updatedSecrets.map(({ newSecretName, secretName, tagIds, ...el }) => {
           const secretId = secsGroupedByBlindIndex[keyName2BlindIndex[secretName]][0].id;
+          const secretBlindIndex =
+            newSecretName && newKeyName2BlindIndex[newSecretName]
+              ? newKeyName2BlindIndex?.[secretName]
+              : keyName2BlindIndex[secretName];
+          // add tags
+          if (tagIds?.length) commitTagIds[keyName2BlindIndex[secretName]] = tagIds;
           return {
             ...latestSecretVersions[secretId],
             ...el,
             op: CommitType.Update as const,
             secret: secretId,
             secretVersion: latestSecretVersions[secretId].id,
-            secretBlindIndex:
-              newSecretName && newKeyName2BlindIndex[newSecretName]
-                ? newKeyName2BlindIndex?.[secretName]
-                : keyName2BlindIndex[secretName],
+            secretBlindIndex,
             version: secsGroupedByBlindIndex[keyName2BlindIndex[secretName]][0].version || 1
           };
         })
@@ -546,6 +562,11 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     if (!commits.length) throw new BadRequestError({ message: "Empty commits" });
+
+    const tagIds = unique(Object.values(commitTagIds).flat());
+    const tags = tagIds.length ? await secretTagDAL.findManyTagsById(projectId, tagIds) : [];
+    if (tagIds.length !== tags.length) throw new BadRequestError({ message: "Tag not found" });
+
     const secretApprovalRequest = await secretApprovalRequestDAL.transaction(async (tx) => {
       const doc = await secretApprovalRequestDAL.create(
         {
@@ -558,7 +579,7 @@ export const secretApprovalRequestServiceFactory = ({
         },
         tx
       );
-      const approvalCommits = await sarSecretDAL.insertMany(
+      const approvalCommits = await secretApprovalRequestSecretDAL.insertMany(
         commits.map(
           ({
             version,
@@ -607,6 +628,20 @@ export const secretApprovalRequestServiceFactory = ({
         ),
         tx
       );
+      const commitsGroupByBlindIndex = groupBy(approvalCommits, (i) => i.secretBlindIndex);
+      if (tagIds.length) {
+        await secretApprovalRequestSecretDAL.insertApprovalSecretTags(
+          Object.keys(commitTagIds).flatMap((blindIndex) =>
+            commitTagIds[blindIndex]
+              ? commitTagIds[blindIndex].map((tagId) => ({
+                  secretId: commitsGroupByBlindIndex[blindIndex][0].id,
+                  tagId
+                }))
+              : []
+          ),
+          tx
+        );
+      }
       return { ...doc, commits: approvalCommits };
     });
     return secretApprovalRequest;

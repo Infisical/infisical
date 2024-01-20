@@ -72,6 +72,7 @@ const sqlChildMapper = <
   childrenMapper: C
 ) => {
   if (!docsByPk) return;
+
   type Cm = MappedRecord<(typeof childrenMapper)[number]>;
   childrenMapper.forEach(({ label, mapper, key: childPk, childrenMapper: nestedMappers }) => {
     // eslint-disable-next-line
@@ -79,12 +80,12 @@ const sqlChildMapper = <
 
     if (doc?.[childPk] !== null && typeof doc?.[childPk] !== "undefined") {
       const ck = `${prefix}-${label}-${doc[childPk]}`;
+      const val = mapper(doc);
       if (!lookupTable.has(ck)) {
-        const val = mapper(doc);
         if (typeof val !== "undefined" && val !== null) docsByPk[pk as keyof P][label].push(val);
         lookupTable.add(ck);
       }
-      if (nestedMappers) {
+      if (nestedMappers && val) {
         sqlChildMapper(
           doc,
           docsByPk[pk][label as keyof P],

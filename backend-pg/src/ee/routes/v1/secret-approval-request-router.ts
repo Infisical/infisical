@@ -5,6 +5,7 @@ import {
   SecretApprovalRequestsSchema,
   SecretApprovalRequestsSecretsSchema,
   SecretsSchema,
+  SecretTagsSchema,
   SecretVersionsSchema
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -87,77 +88,6 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         projectId: req.query.workspaceId
       });
       return { approvals };
-    }
-  });
-
-  server.route({
-    url: "/:id",
-    method: "GET",
-    schema: {
-      params: z.object({
-        id: z.string()
-      }),
-      response: {
-        200: z.object({
-          approval: SecretApprovalRequestsSchema.merge(
-            z.object({
-              // secretPath: z.string(),
-              policy: z.object({
-                id: z.string(),
-                name: z.string(),
-                approvals: z.number(),
-                approvers: z.string().array(),
-                secretPath: z.string().optional().nullable()
-              }),
-              environment: z.string(),
-              reviewers: z.object({ member: z.string(), status: z.string() }).array(),
-              approvers: z.string().array(),
-              secretPath: z.string(),
-              commits: SecretApprovalRequestsSecretsSchema.omit({ secretBlindIndex: true })
-                .merge(
-                  z.object({
-                    secret: SecretsSchema.pick({
-                      id: true,
-                      secretKeyIV: true,
-                      secretKeyTag: true,
-                      secretKeyCiphertext: true,
-                      secretValueIV: true,
-                      secretValueTag: true,
-                      secretValueCiphertext: true,
-                      secretCommentIV: true,
-                      secretCommentTag: true,
-                      secretCommentCiphertext: true
-                    })
-                      .optional()
-                      .nullable(),
-                    secretVersion: SecretVersionsSchema.pick({
-                      id: true,
-                      secretKeyIV: true,
-                      secretKeyTag: true,
-                      secretKeyCiphertext: true,
-                      secretValueIV: true,
-                      secretValueTag: true,
-                      secretValueCiphertext: true,
-                      secretCommentIV: true,
-                      secretCommentTag: true,
-                      secretCommentCiphertext: true
-                    }).optional()
-                  })
-                )
-                .array()
-            })
-          )
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const approval = await server.services.secretApprovalRequest.getSecretApprovalDetails({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        id: req.params.id
-      });
-      return { approval };
     }
   });
 
@@ -254,6 +184,94 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         }
       });
 
+      return { approval };
+    }
+  });
+
+  const tagSchema = SecretTagsSchema.pick({
+    id: true,
+    slug: true,
+    name: true,
+    color: true
+  })
+    .array()
+    .optional();
+  server.route({
+    url: "/:id",
+    method: "GET",
+    schema: {
+      params: z.object({
+        id: z.string()
+      }),
+      response: {
+        200: z.object({
+          approval: SecretApprovalRequestsSchema.merge(
+            z.object({
+              // secretPath: z.string(),
+              policy: z.object({
+                id: z.string(),
+                name: z.string(),
+                approvals: z.number(),
+                approvers: z.string().array(),
+                secretPath: z.string().optional().nullable()
+              }),
+              environment: z.string(),
+              reviewers: z.object({ member: z.string(), status: z.string() }).array(),
+              approvers: z.string().array(),
+              secretPath: z.string(),
+              commits: SecretApprovalRequestsSecretsSchema.omit({ secretBlindIndex: true })
+                .merge(
+                  z.object({
+                    tags: tagSchema,
+                    secret: SecretsSchema.pick({
+                      id: true,
+                      version: true,
+                      secretKeyIV: true,
+                      secretKeyTag: true,
+                      secretKeyCiphertext: true,
+                      secretValueIV: true,
+                      secretValueTag: true,
+                      secretValueCiphertext: true,
+                      secretCommentIV: true,
+                      secretCommentTag: true,
+                      secretCommentCiphertext: true
+                    })
+                      .optional()
+                      .nullable(),
+                    secretVersion: SecretVersionsSchema.pick({
+                      id: true,
+                      version: true,
+                      secretKeyIV: true,
+                      secretKeyTag: true,
+                      secretKeyCiphertext: true,
+                      secretValueIV: true,
+                      secretValueTag: true,
+                      secretValueCiphertext: true,
+                      secretCommentIV: true,
+                      secretCommentTag: true,
+                      secretCommentCiphertext: true
+                    })
+                      .merge(
+                        z.object({
+                          tags: tagSchema
+                        })
+                      )
+                      .optional()
+                  })
+                )
+                .array()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const approval = await server.services.secretApprovalRequest.getSecretApprovalDetails({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        id: req.params.id
+      });
       return { approval };
     }
   });
