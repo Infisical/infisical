@@ -134,13 +134,11 @@ const migrateCollection = async <
   if (migrationCheckPointsKvRes) {
     console.log(`Skipping Postgres table '${postgresTableName}' because of check point`)
     return
-  } else {
-    await db(postgresTableName).del()
-    console.log(`Dropped table named '${postgresTableName}' to start fresh from this point on`)
   }
-
-  // clear table to start fresh from this check point
-
+  //  else {
+  //   await db(postgresTableName).del()
+  //   console.log(`Dropped table named '${postgresTableName}' to start fresh from this point on`)
+  // }
   
   const mongooseDoc: T[] = [];
   const pgDoc: Tables[K]["base"][] = []; // pre processed data ready to be inserted into PSQL
@@ -246,7 +244,7 @@ const main = async () => {
       await migrationCheckPointsKv.clear()
 
       console.log("Starting rolling back to latest, comment this out later");
-      // await db.migrate.rollback({}, true);
+      await db.migrate.rollback({}, true);
       await kdb.clear();
       console.log("Rolling back completed");
 
@@ -1489,11 +1487,11 @@ const main = async () => {
       postgresTableName: TableName.SapApprover,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
-        const id = uuidV4();
         const policyId = await sapKv.get(doc._id.toString());
 
         return Promise.all(
           doc.approvers.map(async (membId) => {
+            const id = uuidV4();
             const approverId = await projectMembKv.get(membId.toString());
             return {
               id,
@@ -1572,6 +1570,7 @@ const main = async () => {
       },
     });
 
+    const ssoConfigKv = kdb.sublevel(TableName.SamlConfig)
     await migrateCollection({
       db,
       mongooseCollection: SSOConfig,
@@ -1579,9 +1578,15 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        
         const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
         if (!orgId) return;
+
+        // case: when a org has two SSO configs, one with encryptedEntryPoint defined should be taken. Others skipped 
+        if (!doc.encryptedEntryPoint){
+          return
+        }
+
+        await ssoConfigKv.put(orgId.toString(), "true")
 
         return {
           id,
@@ -1603,6 +1608,7 @@ const main = async () => {
       },
     });
 
+    const botOrgsProcessed = kdb.sublevel(TableName.OrgBot)
     await migrateCollection({
       db,
       mongooseCollection: BotOrg,
@@ -1610,8 +1616,22 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
+
         const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
         if (!orgId) return;
+
+        // case: race condition where there are multiple org bots, we only take one
+        const botOrgsProcessedRes = await botOrgsProcessed.get(orgId).catch(() => null)
+        if (botOrgsProcessedRes) {
+          return
+        }
+
+        const ssoConfigRes = await ssoConfigKv.get(orgId).catch(()=> null)
+        if (!ssoConfigRes) {
+          return
+        }
+
+        await botOrgsProcessed.put(orgId, "true")
 
         return {
           id,
@@ -1653,8 +1673,8 @@ const main = async () => {
           orgId,
           userId,
           sessionId: doc.sessionId,
-          createdAt: new Date((doc as any).createdAt),
-          updatedAt: new Date((doc as any).updatedAt),
+          createdAt: (doc as any)?.createdAt ? new Date((doc as any).createdAt) : new Date(),
+          updatedAt: (doc as any)?.updatedAt ? new Date((doc as any).updatedAt) : new Date(),
         };
       },
     });
@@ -1678,8 +1698,8 @@ const main = async () => {
           orgId,
           userId,
           installationId: doc.installationId,
-          createdAt: new Date((doc as any).createdAt),
-          updatedAt: new Date((doc as any).updatedAt),
+          createdAt: (doc as any)?.createdAt ? new Date((doc as any).createdAt) : new Date(),
+          updatedAt: (doc as any)?.updatedAt ? new Date((doc as any).updatedAt) : new Date(),
         };
       },
     });
@@ -1714,11 +1734,11 @@ const main = async () => {
           riskOwner: doc.riskOwner,
           startLine: doc.startLine,
           isResolved: doc.isResolved,
-          pusherName: doc.pusher.name,
+          pusherName: doc.pusher?.name,
           description: doc.description,
           fingerprint: doc.fingerprint,
           fingerPrintWithoutCommitId: doc.fingerPrintWithoutCommitId,
-          pusherEmail: doc.pusher.email,
+          pusherEmail: doc.pusher?.email,
           startColumn: doc.startColumn,
           symlinkFile: doc.symlinkFile,
           repositoryId: doc.repositoryId,
@@ -1769,8 +1789,22 @@ const main = async () => {
         const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
         if (!projectKvRes) return
 
-        const envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const envKv = envPKv.sublevel(doc.workspace.toString());
+
+        // case: env was deleted but still links snapshot, so we don't need it
+        if (!await envKv.get(truncateAndSlugify(doc.environment)).catch(() => null)) {
+          return
+        }
+
         const folderKv = getFolderKv(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+
+        if (await checkIfFolderIsDangling(doc.workspace.toString(), truncateAndSlugify(doc.environment), doc.folderId)){
+          return 
+        }
+
+
+        const envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        // const folderKv = getFolderKv(doc.workspace.toString(), truncateAndSlugify(doc.environment));
         const folderId = await folderKv.get(doc.folderId).catch(async () => {
           // this folder may not exist now in tree then create a new id and assign it
           const newId = uuidV4();
@@ -1800,12 +1834,24 @@ const main = async () => {
         const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
         if (!projectKvRes) return
 
+
+        const envKv = envPKv.sublevel(doc.workspace.toString());
+
+        // case: env was deleted but still links snapshot, so we don't need it
+        if (!await envKv.get(truncateAndSlugify(doc.environment)).catch(() => null)) {
+          return
+        }
+
         const envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
 
         return Promise.all(
           doc.secretVersions.map(async (secVer) => {
             const id = uuidV4();
-            const secretVersionId = await secVerKv.get(secVer.toString());
+            
+            // case: for secret versions that have been discarded, skip creating a snapshot for it
+            const secretVersionId = await secVerKv.get(secVer.toString()).catch(() => null);
+            if (!secretVersionId) return 
+
             return {
               id,
               envId,
@@ -1814,7 +1860,7 @@ const main = async () => {
               createdAt: (doc as any).createdAt,
               updatedAt: (doc as any).updatedAt,
             };
-          }),
+          }).filter(Boolean),
         );
       },
     });
@@ -1828,12 +1874,25 @@ const main = async () => {
       preProcessing: async (doc) => {
         const snapshotId = await snapKv.get(doc._id.toString());
 
+        if (!doc.folderVersion) return
+
         const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
         if (!projectKvRes) return
 
-        const envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        // case: we forgot to clean up secrets that belong to deleted env slugs
+        const isEnvFound = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment)).catch(() => null)
+        if (!isEnvFound) return
+        
         const folderKv = getFolderKv(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+
+        if (await checkIfFolderIsDangling(doc.workspace.toString(), truncateAndSlugify(doc.environment), doc.folderId)){
+          return 
+        }
+
+        const envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        
         const folderVersion = await FolderVersion.findById(doc.folderVersion);
+
         if (!folderVersion) return;
 
         return Promise.all(
@@ -1855,6 +1914,7 @@ const main = async () => {
       },
     });
 
+
     const sarKv = kdb.sublevel(TableName.SecretApprovalRequest);
     await migrateCollection({
       db,
@@ -1863,18 +1923,38 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        await sarKv.put(doc._id.toString(), id);
-        const policyId = await sapKv.get(doc.policy.toString());
+
+        // case: when the policy has been deleted, the request should also be deleted 
+        const policyId = await sapKv.get(doc.policy.toString()).catch(() => null);
+        if (!policyId) return 
 
         const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
         if (!projectKvRes) return
+
+        // case: we forgot to clean up secrets that belong to deleted env slugs
+        const isEnvFound = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment)).catch(() => null)
+        if (!isEnvFound) return
         
         const folderKv = getFolderKv(doc.workspace.toString(), truncateAndSlugify(doc.environment));
-        const folderId = await folderKv.get(doc.folderId);
 
-        const committerId = await projectMembKv.get(doc.committer.toString());
+        if (await checkIfFolderIsDangling(doc.workspace.toString(), truncateAndSlugify(doc.environment), doc.folderId)){
+          return 
+        }
+
+        // Case: if folder id doesn't exist and the root of the folder also doesn't exist, THEN put the secret at the ROOT
+        const folderId = await folderKv.get(doc.folderId || "root").catch(async () => {
+          console.log(`${TableName.SecretApprovalRequest}: secret location unknown, moving secret to root of env_slug/project`)
+          return await folderKv.get("root")
+        });
+
+        // case: when the committer has been removed from Infisical, we should delete all of their requests (past and preset). 
+        const committerId = await projectMembKv.get(doc.committer.toString()).catch(() => null);
+        if (!committerId) return 
+
+        await sarKv.put(doc._id.toString(), id);
+
         const statusChangeBy = doc.statusChangeBy
-          ? await projectMembKv.get(doc.statusChangeBy.toString())
+          ? await projectMembKv.get(doc.statusChangeBy.toString()).catch(() => null)
           : null;
         return {
           id,
@@ -1902,7 +1982,8 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const requestId = await sarKv.get(doc._id.toString());
+        const requestId = await sarKv.get(doc._id.toString()).catch(() => null);
+        if (!requestId) return
 
         return Promise.all(
           doc.reviewers.map(async ({ status, member }) => {

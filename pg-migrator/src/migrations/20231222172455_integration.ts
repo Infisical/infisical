@@ -12,13 +12,13 @@ export async function up(knex: Knex): Promise<void> {
       t.string("url"); // for self hosted
       t.string("namespace"); // hashicorp specific
       t.string("accountId"); // netlify
-      t.string("refreshCiphertext");
+      t.text("refreshCiphertext");
       t.string("refreshIV");
       t.string("refreshTag");
       t.string("accessIdCiphertext");
       t.string("accessIdIV");
       t.string("accessIdTag");
-      t.string("accessCiphertext");
+      t.text("accessCiphertext");
       t.string("accessIV");
       t.string("accessTag");
       t.datetime("accessExpiresAt");

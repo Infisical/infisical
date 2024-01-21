@@ -8,9 +8,9 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.IdentityUniversalAuth, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("clientId").notNullable();
-      t.integer("accessTokenTTL").defaultTo(7200).notNullable();
-      t.integer("accessTokenMaxTTL").defaultTo(7200).notNullable();
-      t.integer("accessTokenNumUsesLimit").defaultTo(0).notNullable();
+      t.bigint("accessTokenTTL").defaultTo(7200).notNullable();
+      t.bigint("accessTokenMaxTTL").defaultTo(7200).notNullable();
+      t.bigint("accessTokenNumUsesLimit").defaultTo(0).notNullable();
       t.jsonb("clientSecretTrustedIps").notNullable();
       t.jsonb("accessTokenTrustedIps").notNullable();
       t.timestamps(true, true, true);
@@ -25,9 +25,9 @@ export async function up(knex: Knex): Promise<void> {
       t.string("clientSecretPrefix").notNullable();
       t.string("clientSecretHash").notNullable();
       t.datetime("clientSecretLastUsedAt");
-      t.integer("clientSecretNumUses").defaultTo(0).notNullable();
-      t.integer("clientSecretNumUsesLimit").defaultTo(0).notNullable();
-      t.integer("clientSecretTTL").defaultTo(0).notNullable();
+      t.bigint("clientSecretNumUses").defaultTo(0).notNullable();
+      t.bigint("clientSecretNumUsesLimit").defaultTo(0).notNullable();
+      t.bigint("clientSecretTTL").defaultTo(0).notNullable();
       t.boolean("isClientSecretRevoked").defaultTo(false).notNullable();
       t.timestamps(true, true, true);
       t.uuid("identityUAId").notNullable();
