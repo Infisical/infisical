@@ -85,9 +85,9 @@ import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-f
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
-import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretReminderServiceFactory } from "@app/services/secret-reminder";
 import { secretReminderQueueFactory } from "@app/services/secret-reminder/secret-reminder-queue";
+import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
@@ -373,7 +373,6 @@ export const registerRoutes = async (
     secretVersionTagDAL,
     secretBlindIndexDAL,
     secretReminderService,
-    secretBlindIndexDal: secretBlindIndexDAL,
     permissionService,
     secretDAL,
     secretTagDAL,
