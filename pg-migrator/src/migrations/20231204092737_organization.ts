@@ -9,13 +9,17 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.Organization, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
+      t.string("slug").notNullable();
       t.string("customerId");
       // does not need update trigger we will do it manually
       t.timestamps(true, true, true);
     });
     await knex.schema.alterTable(TableName.AuthTokens, (t) => {
       t.uuid("orgId");
-      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+      t.foreign("orgId")
+        .references("id")
+        .inTable(TableName.Organization)
+        .onDelete("CASCADE");
     });
   }
   // this is a one time function

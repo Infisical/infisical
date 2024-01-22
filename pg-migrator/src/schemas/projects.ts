@@ -10,6 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const ProjectsSchema = z.object({
   id: z.string(),
   name: z.string(),
+  slug: z.string(),
   autoCapitalization: z.boolean().default(true).nullable().optional(),
   orgId: z.string().uuid(),
   createdAt: z.date(),

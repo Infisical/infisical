@@ -35,6 +35,8 @@ const getZodPrimitiveType = (type: string) => {
       return "z.date()";
     case "integer":
       return "z.number()";
+    case "bigint":
+      return "z.number()";
     case "text":
       return "z.string()";
     default:
@@ -69,6 +71,10 @@ const getZodDefaultValue = (type: unknown, value: string | number | boolean | Ob
     case "integer": {
       if ((value as string).includes("nextval")) return;
       return `.default(${value})`;
+    }
+    case "bigint": {
+      if ((value as string).includes("nextval")) return;
+      return `.default(${parseInt((value as string).split("::")[0].slice(1, -1), 10)})`;
     }
     case "text":
       if (typeof value === "string" && value.includes("::")) {

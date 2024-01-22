@@ -10,6 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const OrganizationsSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
+  slug: z.string(),
   customerId: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -17,4 +18,6 @@ export const OrganizationsSchema = z.object({
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;
 export type TOrganizationsInsert = Omit<TOrganizations, TImmutableDBKeys>;
-export type TOrganizationsUpdate = Partial<Omit<TOrganizations, TImmutableDBKeys>>;
+export type TOrganizationsUpdate = Partial<
+  Omit<TOrganizations, TImmutableDBKeys>
+>;

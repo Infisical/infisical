@@ -5,7 +5,7 @@ import knex, { Knex } from "knex";
 import path from "path";
 import { Level } from "level";
 import { packRules } from "@casl/ability/extra";
-import slugify from '@sindresorhus/slugify';
+import slugify from "@sindresorhus/slugify";
 
 import {
   APIKeyData,
@@ -55,6 +55,12 @@ import { ServerConfig } from "./models/serverConfig";
 import { flattenFolders } from "./folder";
 import { SecretRotation } from "./models/secretRotation";
 
+import { customAlphabet } from "nanoid";
+
+const SLUG_ALPHABETS =
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+export const alphaNumericNanoId = customAlphabet(SLUG_ALPHABETS, 10);
+
 enum SecretEncryptionAlgo {
   AES_256_GCM = "aes-256-gcm",
 }
@@ -75,9 +81,9 @@ const projectKv = kdb.sublevel(TableName.Project);
 
 const migrationCheckPointsKv = kdb.sublevel("CHECK-POINTS");
 
-export const truncateAndSlugify = (slug: string) : string => {
-  return slugify(slug.slice(0, ENV_SLUG_LENGTH))
-}
+export const truncateAndSlugify = (slug: string): string => {
+  return slugify(slug.slice(0, ENV_SLUG_LENGTH));
+};
 
 /**
  * Sorts an array of items into groups. The return value is a map where the keys are
@@ -128,30 +134,42 @@ const migrateCollection = async <
   mongooseCollection: Model<T>;
   filter?: Record<string, any>;
 }) => {
-
-  // check ones that have already been migrated 
-  const migrationCheckPointsKvRes = await migrationCheckPointsKv.get(postgresTableName).catch(() => null)
+  // check ones that have already been migrated
+  const migrationCheckPointsKvRes = await migrationCheckPointsKv
+    .get(postgresTableName)
+    .catch(() => null);
   if (migrationCheckPointsKvRes) {
-    console.log(`Skipping Postgres table '${postgresTableName}' because of check point`)
-    return
+    console.log(
+      `Skipping Postgres table '${postgresTableName}' because of check point`,
+    );
+    return;
   }
   //  else {
   //   await db(postgresTableName).del()
   //   console.log(`Dropped table named '${postgresTableName}' to start fresh from this point on`)
   // }
-  
+
   const mongooseDoc: T[] = [];
   const pgDoc: Tables[K]["base"][] = []; // pre processed data ready to be inserted into PSQL
 
-  console.log("Starting migration of ", mongooseCollection.modelName, " Postgres table name:",  postgresTableName);
+  console.log(
+    "Starting migration of ",
+    mongooseCollection.modelName,
+    " Postgres table name:",
+    postgresTableName,
+  );
   const totalMongoCount = await mongooseCollection.countDocuments();
   console.log("Total documents", totalMongoCount);
   console.log("Total batches", Math.ceil(totalMongoCount / 1000));
   let batch = 1;
 
-  for await (const doc of mongooseCollection.find(filter || {}).cursor({ batchSize: 100 })) {
+  for await (const doc of mongooseCollection
+    .find(filter || {})
+    .cursor({ batchSize: 100 })) {
     mongooseDoc.push(doc);
-    const preProcessedData = await preProcessing(doc.toObject({ virtuals: true }));
+    const preProcessedData = await preProcessing(
+      doc.toObject({ virtuals: true }),
+    );
     if (preProcessedData) {
       if (Array.isArray(preProcessedData)) {
         pgDoc.push(
@@ -201,16 +219,21 @@ const migrateCollection = async <
     pgDoc.splice(0, pgDoc.length);
   }
 
-  migrationCheckPointsKv.put(postgresTableName, "done")
+  migrationCheckPointsKv.put(postgresTableName, "done");
 
-  console.log("Finished migration of ", mongooseCollection.modelName, " Postgres table name:",  postgresTableName);
+  console.log(
+    "Finished migration of ",
+    mongooseCollection.modelName,
+    " Postgres table name:",
+    postgresTableName,
+  );
 };
 
 const main = async () => {
   try {
     dotenv.config();
 
-    process.env.START_FRESH = "true"; 
+    process.env.START_FRESH = "true";
 
     const prompt = promptSync({ sigint: true });
 
@@ -241,7 +264,7 @@ const main = async () => {
     await db.raw("select 1+1 as result");
 
     if (process.env.START_FRESH === "true") {
-      await migrationCheckPointsKv.clear()
+      await migrationCheckPointsKv.clear();
 
       console.log("Starting rolling back to latest, comment this out later");
       await db.migrate.rollback({}, true);
@@ -251,7 +274,7 @@ const main = async () => {
       console.log("Executing migration");
       await db.migrate.latest();
       console.log("Completed migration");
-    } 
+    }
 
     const userKv = kdb.sublevel(TableName.Users);
     await migrateCollection({
@@ -322,7 +345,7 @@ const main = async () => {
         const id = uuidV4();
 
         const userId = await userKv.get(doc.user.toString()).catch(() => null);
-        if (!userId) return 
+        if (!userId) return;
 
         return {
           id,
@@ -352,6 +375,7 @@ const main = async () => {
         return {
           id,
           name: doc.name,
+          slug: slugify(`${doc.name}-${alphaNumericNanoId(4)}`),
           customerId: doc.customerId,
           createdAt: new Date(doc.createdAt),
           updatedAt: new Date(doc.updatedAt),
@@ -369,7 +393,9 @@ const main = async () => {
       preProcessing: async (doc) => {
         const id = uuidV4();
 
-        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+        const orgId = doc?.organization
+          ? await orgKv.get(doc.organization.toString()).catch(() => null)
+          : null;
         if (!orgId) return;
 
         await orgRoleKv.put(doc._id.toString(), id);
@@ -395,11 +421,15 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        
-        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+
+        const orgId = doc?.organization
+          ? await orgKv.get(doc.organization.toString()).catch(() => null)
+          : null;
         if (!orgId) return;
 
-        const userId = doc?.user ? await userKv.get(doc.user.toString()).catch(() => null) : null;
+        const userId = doc?.user
+          ? await userKv.get(doc.user.toString()).catch(() => null)
+          : null;
         if (!userId) return;
 
         const roleId = doc.customRole
@@ -427,10 +457,12 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        
-        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+
+        const orgId = doc?.organization
+          ? await orgKv.get(doc.organization.toString()).catch(() => null)
+          : null;
         if (!orgId) return;
-        
+
         return {
           id,
           email: doc.email,
@@ -448,9 +480,9 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        
+
         const userId = await userKv.get(doc.user.toString()).catch(() => null);
-        if (!userId) return 
+        if (!userId) return;
 
         return {
           id,
@@ -486,9 +518,9 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        
+
         const userId = await userKv.get(doc.user.toString()).catch(() => null);
-        if (!userId) return 
+        if (!userId) return;
 
         // expired tokens can be removed
         if (new Date(doc.expiresAt) < new Date()) return;
@@ -511,17 +543,19 @@ const main = async () => {
       postgresTableName: TableName.Project,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
-        
-        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null ) : null;
+        const orgId = doc?.organization
+          ? await orgKv.get(doc.organization.toString()).catch(() => null)
+          : null;
         if (!orgId) return;
-        
-        await projectKv.put(doc._id.toString(),doc._id.toString());
+
+        await projectKv.put(doc._id.toString(), doc._id.toString());
 
         // expired tokens can be removed
         // cannot use this uuid for the org id
         return {
           id: doc._id.toString(),
           name: doc.name.slice(0, 60),
+          slug: slugify(`${doc.name.slice(0, 60)}-${alphaNumericNanoId(4)}`),
           orgId,
           autoCapitalization: doc.autoCapitalization,
           createdAt: new Date(),
@@ -544,11 +578,15 @@ const main = async () => {
       return envKv.sublevel(environment);
     };
 
-    const checkIfFolderIsDangling = async (projectId: string, env_slug: string, folderId: string) => {
+    const checkIfFolderIsDangling = async (
+      projectId: string,
+      env_slug: string,
+      folderId: string,
+    ) => {
       const kv = getFolderKv(projectId, truncateAndSlugify(env_slug));
-      const result = await kv.get(`${folderId}:dead`).catch(() => null)
-      return Boolean(result)
-    }
+      const result = await kv.get(`${folderId}:dead`).catch(() => null);
+      return Boolean(result);
+    };
 
     await migrateCollection({
       db,
@@ -556,30 +594,36 @@ const main = async () => {
       postgresTableName: TableName.Environment,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
-        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null ) : null;
+        const orgId = doc?.organization
+          ? await orgKv.get(doc.organization.toString()).catch(() => null)
+          : null;
         if (!orgId) return;
 
-        const projectKvRes = await projectKv.get(doc._id.toString()).catch(() => null);
-        if (!projectKvRes) return 
+        const projectKvRes = await projectKv
+          .get(doc._id.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         // to we scope environments into each project then map each slug with respective id
         const envKv = envPKv.sublevel(doc._id.toString());
-        
+
         // expired tokens can be removed
         // cannot use this uuid for the org id
-        return Promise.all(doc.environments.map(async (env, index) => {
-          const id = uuidV4();
-          await envKv.put(truncateAndSlugify(env.slug), id);
-          return {
-            id,
-            name: env.name,
-            slug: truncateAndSlugify(env.slug),
-            position: index + 1,
-            projectId: doc._id.toString(),
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
-        }));
+        return Promise.all(
+          doc.environments.map(async (env, index) => {
+            const id = uuidV4();
+            await envKv.put(truncateAndSlugify(env.slug), id);
+            return {
+              id,
+              name: env.name,
+              slug: truncateAndSlugify(env.slug),
+              position: index + 1,
+              projectId: doc._id.toString(),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+          }),
+        );
       },
     });
 
@@ -590,16 +634,23 @@ const main = async () => {
       postgresTableName: TableName.SecretFolder,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
-        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null ) : null;
+        const orgId = doc?.organization
+          ? await orgKv.get(doc.organization.toString()).catch(() => null)
+          : null;
         if (!orgId) return;
 
         return Promise.all(
           doc.environments.map(async (env) => {
-
             const id = uuidV4();
-            const envId = await getEnvId(doc._id.toString(), truncateAndSlugify(env.slug));
+            const envId = await getEnvId(
+              doc._id.toString(),
+              truncateAndSlugify(env.slug),
+            );
 
-            const folderKv = getFolderKv(doc._id.toString(), truncateAndSlugify(env.slug));
+            const folderKv = getFolderKv(
+              doc._id.toString(),
+              truncateAndSlugify(env.slug),
+            );
             await folderKv.put("root", id);
             return {
               id,
@@ -610,8 +661,8 @@ const main = async () => {
               updatedAt: new Date(),
             };
           }),
-        )
-      }
+        );
+      },
     });
 
     await migrateCollection({
@@ -623,15 +674,21 @@ const main = async () => {
         // expired tokens can be removed
         // cannot use this uuid for the org id
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null);
-        if(!projectKvRes) return ;
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         const id = uuidV4();
-        
-        const senderId = (await userKv.get(doc.sender.toString()).catch(() => null));
+
+        const senderId = await userKv
+          .get(doc.sender.toString())
+          .catch(() => null);
         if (!senderId) return;
-        
-        const receiverId = await userKv.get(doc.receiver.toString()).catch(() => null);
+
+        const receiverId = await userKv
+          .get(doc.receiver.toString())
+          .catch(() => null);
         if (!receiverId) return;
 
         return {
@@ -658,8 +715,10 @@ const main = async () => {
       preProcessing: async (doc) => {
         const id = uuidV4();
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         await projectRoleKv.put(doc._id.toString(), id);
         return {
@@ -685,13 +744,15 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
-        
+
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
+
         const userId = await userKv.get(doc.user.toString()).catch(() => null);
-        if (!userId) return
-        
+        if (!userId) return;
+
         const roleId = doc.customRole
           ? await projectRoleKv.get(doc.customRole.toString())
           : null;
@@ -715,15 +776,23 @@ const main = async () => {
       postgresTableName: TableName.SecretFolder,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
-        const folderKv = getFolderKv(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const folderKv = getFolderKv(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
 
-        const envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const envId = await getEnvId(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
         const folders = flattenFolders(doc.nodes);
 
-        if (!folders) return
+        if (!folders) return;
 
         const pgFolder = await Promise.all(
           folders
@@ -758,18 +827,26 @@ const main = async () => {
       postgresTableName: TableName.SecretFolderVersion,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
-        const folderKv = getFolderKv(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const folderKv = getFolderKv(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
 
-        // looping through env, we can come across envs that do not exist in the present state. 
-        // This is because some folder snap shots were taken when that env slug exists but the same env slug was later deleted 
-        let envId: string
+        // looping through env, we can come across envs that do not exist in the present state.
+        // This is because some folder snap shots were taken when that env slug exists but the same env slug was later deleted
+        let envId: string;
         try {
-          envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
-        }catch(e){
-          return
+          envId = await getEnvId(
+            doc.workspace.toString(),
+            truncateAndSlugify(doc.environment),
+          );
+        } catch (e) {
+          return;
         }
 
         const rootFolders = (doc?.nodes?.children || []).map(
@@ -784,18 +861,18 @@ const main = async () => {
           rootFolders.map(async (folder) => {
             const { name, version } = folder;
             const id = uuidV4();
-            
+
             await folderKv.put(getFolderVersionKey(folder.id, version), id);
 
-            // we are looking for each folder in folder versions and some we might not see 
-            // because folderKv is ony keeps track of folders that are present in dashboard. So those we don't find, we'll add to same kv but add prefix `dead`. 
-            // This way, we can handle dead ones we encounter in the future 
+            // we are looking for each folder in folder versions and some we might not see
+            // because folderKv is ony keeps track of folders that are present in dashboard. So those we don't find, we'll add to same kv but add prefix `dead`.
+            // This way, we can handle dead ones we encounter in the future
             const folderId = await folderKv.get(folder.id).catch(async () => {
               const newFolderId = uuidV4();
-              await folderKv.put(`${folder.id}:dead`, id) // we are adding dead folders that are not present in dashboard
-              return newFolderId
+              await folderKv.put(`${folder.id}:dead`, id); // we are adding dead folders that are not present in dashboard
+              return newFolderId;
             });
-            
+
             return {
               name,
               version,
@@ -818,40 +895,55 @@ const main = async () => {
       postgresTableName: TableName.SecretImport,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         const envKv = envPKv.sublevel(doc.workspace.toString());
 
-        const folderKv = getFolderKv(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const folderKv = getFolderKv(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
 
-        if (await checkIfFolderIsDangling(doc.workspace.toString(), truncateAndSlugify(doc.environment), doc.folderId)){
-          return 
+        if (
+          await checkIfFolderIsDangling(
+            doc.workspace.toString(),
+            truncateAndSlugify(doc.environment),
+            doc.folderId,
+          )
+        ) {
+          return;
         }
 
         // case: when import is created for a given folder and later the folder is deleted AND the import with that folder ref is not deleted THEN this folder won't exist?? :(
         const folderId = await folderKv.get(doc.folderId).catch(() => null);
 
-        if (!folderId) return 
+        if (!folderId) return;
 
         return Promise.all(
-          doc.imports.map(async ({ environment, secretPath }, index) => {
-            const id = uuidV4();
-            // case: when import is created but later the env slug is deleted HOWEVER the import with that env slug was not deleted :(
-            const importEnv = await envKv.get(truncateAndSlugify(environment)).catch(() => null);
-            if (!importEnv) return 
+          doc.imports
+            .map(async ({ environment, secretPath }, index) => {
+              const id = uuidV4();
+              // case: when import is created but later the env slug is deleted HOWEVER the import with that env slug was not deleted :(
+              const importEnv = await envKv
+                .get(truncateAndSlugify(environment))
+                .catch(() => null);
+              if (!importEnv) return;
 
-            return {
-              id,
-              folderId,
-              position: index + 1,
-              version: 1,
-              createdAt: new Date((doc as any).createdAt),
-              updatedAt: new Date((doc as any).updatedAt),
-              importEnv,
-              importPath: secretPath,
-            };
-          }).filter(Boolean)
+              return {
+                id,
+                folderId,
+                position: index + 1,
+                version: 1,
+                createdAt: new Date((doc as any).createdAt),
+                updatedAt: new Date((doc as any).updatedAt),
+                importEnv,
+                importPath: secretPath,
+              };
+            })
+            .filter(Boolean),
         );
       },
     });
@@ -868,13 +960,17 @@ const main = async () => {
 
         // skip tags that have slugs that are empty
         if (doc.slug.length < 1) {
-          return
+          return;
         }
-        
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
 
-        const createdBy = await userKv.get(doc.user.toString()).catch(() => null);
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
+
+        const createdBy = await userKv
+          .get(doc.user.toString())
+          .catch(() => null);
         if (!createdBy) return;
 
         return {
@@ -898,8 +994,10 @@ const main = async () => {
       preProcessing: async (doc) => {
         const id = uuidV4();
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         return {
           id,
@@ -924,31 +1022,49 @@ const main = async () => {
       preProcessing: async (doc) => {
         // when env slug is empty
         if (doc.environment.length < 1) {
-          return
+          return;
         }
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         // case: we forgot to clean up secrets that belong to deleted env slugs
-        const isEnvFound = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment)).catch(() => null)
-        if (!isEnvFound) return
-        
-        const folderKv = getFolderKv(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const isEnvFound = await getEnvId(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        ).catch(() => null);
+        if (!isEnvFound) return;
 
-        if (await checkIfFolderIsDangling(doc.workspace.toString(), truncateAndSlugify(doc.environment), doc.folder as string)){
-          return 
+        const folderKv = getFolderKv(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
+
+        if (
+          await checkIfFolderIsDangling(
+            doc.workspace.toString(),
+            truncateAndSlugify(doc.environment),
+            doc.folder as string,
+          )
+        ) {
+          return;
         }
 
         // Case: if folder id doesn't exist and the root of the folder also doesn;t exist, THEN put the secret at the ROOT
         const folderId = await folderKv.get(doc.folder || "root").catch(() => {
-          console.log("secret location unknown, moving secret to root of env_slug/project")
-          return "root"
+          console.log(
+            "secret location unknown, moving secret to root of env_slug/project",
+          );
+          return "root";
         });
 
-        const userId = doc.user ? await userKv.get(doc.user.toString()).catch(() => null) : null;
-        if (!userId) return 
-        
+        const userId = doc.user
+          ? await userKv.get(doc.user.toString()).catch(() => null)
+          : null;
+        if (!userId) return;
+
         const id = uuidV4();
         await secKv.put(doc._id.toString(), id);
 
@@ -991,19 +1107,32 @@ const main = async () => {
           (doc.tags || [])?.map(async (tagId) => {
             const id = uuidV4();
 
-            const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-            if (!projectKvRes) return
+            const projectKvRes = await projectKv
+              .get(doc.workspace.toString())
+              .catch(() => null);
+            if (!projectKvRes) return;
 
             // case: we forgot to clean up secrets that belong to deleted env slugs
-            const isEnvFound = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment)).catch(() => null)
-            if (!isEnvFound) return
-            
-            if (await checkIfFolderIsDangling(doc.workspace.toString(), truncateAndSlugify(doc.environment), doc.folder as string)){
-              return 
+            const isEnvFound = await getEnvId(
+              doc.workspace.toString(),
+              truncateAndSlugify(doc.environment),
+            ).catch(() => null);
+            if (!isEnvFound) return;
+
+            if (
+              await checkIfFolderIsDangling(
+                doc.workspace.toString(),
+                truncateAndSlugify(doc.environment),
+                doc.folder as string,
+              )
+            ) {
+              return;
             }
 
-            const userId = doc.user ? await userKv.get(doc.user.toString()).catch(() => null) : null;
-            if (!userId) return 
+            const userId = doc.user
+              ? await userKv.get(doc.user.toString()).catch(() => null)
+              : null;
+            if (!userId) return;
 
             const secretId = await secKv.get(doc._id.toString()).catch((e) => {
               throw e;
@@ -1030,43 +1159,67 @@ const main = async () => {
       postgresTableName: TableName.SecretVersion,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
-
         // when env slug is empty
         if (doc.environment.length < 1) {
-          return
+          return;
         }
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         // case: we forgot to clean up secrets that belong to deleted env slugs
-        const isEnvFound = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment)).catch(() => null)
-        if (!isEnvFound) return
-        
-        const folderKv = getFolderKv(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const isEnvFound = await getEnvId(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        ).catch(() => null);
+        if (!isEnvFound) return;
 
-        if (await checkIfFolderIsDangling(doc.workspace.toString(), truncateAndSlugify(doc.environment), doc.folder as string)){
-          return 
+        const folderKv = getFolderKv(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
+
+        if (
+          await checkIfFolderIsDangling(
+            doc.workspace.toString(),
+            truncateAndSlugify(doc.environment),
+            doc.folder as string,
+          )
+        ) {
+          return;
         }
 
         // Case: if folder id doesn't exist and the root of the folder also doesn;t exist, THEN put the secret at the ROOT
-        const folderId = await folderKv.get(doc.folder || "root").catch(async () => {
-          console.log("secret location unknown, moving secret to root of env_slug/project")
-          return await folderKv.get("root")
-        });
+        const folderId = await folderKv
+          .get(doc.folder || "root")
+          .catch(async () => {
+            console.log(
+              "secret location unknown, moving secret to root of env_slug/project",
+            );
+            return await folderKv.get("root");
+          });
 
-        const envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
- 
-        const userId = doc.user ? await userKv.get(doc.user.toString()).catch(() => null) : null;
-        if (!userId) return
+        const envId = await getEnvId(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
+
+        const userId = doc.user
+          ? await userKv.get(doc.user.toString()).catch(() => null)
+          : null;
+        if (!userId) return;
 
         const id = uuidV4();
         await secVerKv.put(doc._id.toString(), id);
-        const secretId = await secKv.get(doc.secret.toString()).catch(async (e) =>{
-          const newId = uuidV4();
-          await secKv.put(`${doc.secret.toString()}:dead`, newId)
-          return newId;
-        });
+        const secretId = await secKv
+          .get(doc.secret.toString())
+          .catch(async (e) => {
+            const newId = uuidV4();
+            await secKv.put(`${doc.secret.toString()}:dead`, newId);
+            return newId;
+          });
 
         // comment and reminder are not saved in secret version of mongo
         return {
@@ -1101,25 +1254,26 @@ const main = async () => {
       preProcessing: async (doc) => {
         const id = uuidV4();
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         await projectBotKv.put(doc._id.toString(), id);
 
         // case: skip bots that are inactive (skipped specifically because 6388653a200193a667c7e3f3 has two records, one active one not)
         let botKey = await BotKey.findOne({
           workspace: doc.workspace,
-          $or: [
-            { isActive: true },
-            { isActive: false }
-          ]
-        }).sort({ isActive: -1 }).lean();
+          $or: [{ isActive: true }, { isActive: false }],
+        })
+          .sort({ isActive: -1 })
+          .lean();
 
         const senderId = botKey?.sender
           ? await userKv.get(botKey.sender.toString()).catch(() => null)
           : null;
 
-        if (!senderId) return
+        if (!senderId) return;
 
         return {
           id,
@@ -1151,8 +1305,10 @@ const main = async () => {
         const id = uuidV4();
         await integrationAuthKv.put(doc._id.toString(), id);
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         return {
           id,
@@ -1189,10 +1345,15 @@ const main = async () => {
       preProcessing: async (doc) => {
         const id = uuidV4();
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
-        const envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const envId = await getEnvId(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
         const integrationAuthId = await integrationAuthKv.get(
           doc.integrationAuth.toString(),
         );
@@ -1229,9 +1390,11 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         const userId = await userKv.get(doc.user.toString()).catch(() => null);
         if (!userId) return;
@@ -1263,10 +1426,15 @@ const main = async () => {
       preProcessing: async (doc) => {
         const id = uuidV4();
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
-        const envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const envId = await getEnvId(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
         return {
           id,
           iv: doc.iv,
@@ -1402,8 +1570,10 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        
-        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+
+        const orgId = doc?.organization
+          ? await orgKv.get(doc.organization.toString()).catch(() => null)
+          : null;
         if (!orgId) return;
 
         const identityId = await identityKv.get(doc.identity.toString());
@@ -1431,8 +1601,10 @@ const main = async () => {
       preProcessing: async (doc) => {
         const id = uuidV4();
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         const identityId = await identityKv.get(doc.identity.toString());
         const roleId = doc.customRole
@@ -1460,10 +1632,15 @@ const main = async () => {
       preProcessing: async (doc) => {
         const id = uuidV4();
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
-        const envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const envId = await getEnvId(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
         await sapKv.put(doc._id.toString(), id);
 
         return {
@@ -1484,7 +1661,7 @@ const main = async () => {
     await migrateCollection({
       db,
       mongooseCollection: SecretApprovalPolicy,
-      postgresTableName: TableName.SapApprover,
+      postgresTableName: TableName.SecretApprovalPolicyApprover,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const policyId = await sapKv.get(doc._id.toString());
@@ -1515,10 +1692,15 @@ const main = async () => {
         const id = uuidV4();
         await secRotationKv.put(doc._id.toString(), id);
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
-        const envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const envId = await getEnvId(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
 
         return {
           id,
@@ -1570,7 +1752,7 @@ const main = async () => {
       },
     });
 
-    const ssoConfigKv = kdb.sublevel(TableName.SamlConfig)
+    const ssoConfigKv = kdb.sublevel(TableName.SamlConfig);
     await migrateCollection({
       db,
       mongooseCollection: SSOConfig,
@@ -1578,15 +1760,17 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+        const orgId = doc?.organization
+          ? await orgKv.get(doc.organization.toString()).catch(() => null)
+          : null;
         if (!orgId) return;
 
-        // case: when a org has two SSO configs, one with encryptedEntryPoint defined should be taken. Others skipped 
-        if (!doc.encryptedEntryPoint){
-          return
+        // case: when a org has two SSO configs, one with encryptedEntryPoint defined should be taken. Others skipped
+        if (!doc.encryptedEntryPoint) {
+          return;
         }
 
-        await ssoConfigKv.put(orgId.toString(), "true")
+        await ssoConfigKv.put(orgId.toString(), "true");
 
         return {
           id,
@@ -1608,7 +1792,7 @@ const main = async () => {
       },
     });
 
-    const botOrgsProcessed = kdb.sublevel(TableName.OrgBot)
+    const botOrgsProcessed = kdb.sublevel(TableName.OrgBot);
     await migrateCollection({
       db,
       mongooseCollection: BotOrg,
@@ -1617,21 +1801,25 @@ const main = async () => {
       preProcessing: async (doc) => {
         const id = uuidV4();
 
-        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+        const orgId = doc?.organization
+          ? await orgKv.get(doc.organization.toString()).catch(() => null)
+          : null;
         if (!orgId) return;
 
         // case: race condition where there are multiple org bots, we only take one
-        const botOrgsProcessedRes = await botOrgsProcessed.get(orgId).catch(() => null)
+        const botOrgsProcessedRes = await botOrgsProcessed
+          .get(orgId)
+          .catch(() => null);
         if (botOrgsProcessedRes) {
-          return
+          return;
         }
 
-        const ssoConfigRes = await ssoConfigKv.get(orgId).catch(()=> null)
+        const ssoConfigRes = await ssoConfigKv.get(orgId).catch(() => null);
         if (!ssoConfigRes) {
-          return
+          return;
         }
 
-        await botOrgsProcessed.put(orgId, "true")
+        await botOrgsProcessed.put(orgId, "true");
 
         return {
           id,
@@ -1661,8 +1849,10 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        
-        const orgId = doc?.organization ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+
+        const orgId = doc?.organization
+          ? await orgKv.get(doc.organization.toString()).catch(() => null)
+          : null;
         if (!orgId) return;
 
         const userId = await userKv.get(doc.user.toString()).catch(() => null);
@@ -1673,8 +1863,12 @@ const main = async () => {
           orgId,
           userId,
           sessionId: doc.sessionId,
-          createdAt: (doc as any)?.createdAt ? new Date((doc as any).createdAt) : new Date(),
-          updatedAt: (doc as any)?.updatedAt ? new Date((doc as any).updatedAt) : new Date(),
+          createdAt: (doc as any)?.createdAt
+            ? new Date((doc as any).createdAt)
+            : new Date(),
+          updatedAt: (doc as any)?.updatedAt
+            ? new Date((doc as any).updatedAt)
+            : new Date(),
         };
       },
     });
@@ -1686,8 +1880,10 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
-        
-        const orgId = doc?.organizationId.toString() ? await orgKv.get(doc.organizationId.toString()).catch(() => null) : null;
+
+        const orgId = doc?.organizationId.toString()
+          ? await orgKv.get(doc.organizationId.toString()).catch(() => null)
+          : null;
         if (!orgId) return;
 
         const userId = await userKv.get(doc.user.toString()).catch(() => null);
@@ -1698,8 +1894,12 @@ const main = async () => {
           orgId,
           userId,
           installationId: doc.installationId,
-          createdAt: (doc as any)?.createdAt ? new Date((doc as any).createdAt) : new Date(),
-          updatedAt: (doc as any)?.updatedAt ? new Date((doc as any).updatedAt) : new Date(),
+          createdAt: (doc as any)?.createdAt
+            ? new Date((doc as any).createdAt)
+            : new Date(),
+          updatedAt: (doc as any)?.updatedAt
+            ? new Date((doc as any).updatedAt)
+            : new Date(),
         };
       },
     });
@@ -1712,7 +1912,9 @@ const main = async () => {
       preProcessing: async (doc) => {
         const id = uuidV4();
 
-        const orgId = doc?.organization.toString() ? await orgKv.get(doc.organization.toString()).catch(() => null) : null;
+        const orgId = doc?.organization.toString()
+          ? await orgKv.get(doc.organization.toString()).catch(() => null)
+          : null;
         if (!orgId) return;
 
         return {
@@ -1759,8 +1961,10 @@ const main = async () => {
       preProcessing: async (doc) => {
         const id = uuidV4();
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         return {
           id,
@@ -1786,24 +1990,41 @@ const main = async () => {
         const id = uuidV4();
         await snapKv.put(doc._id.toString(), id);
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         const envKv = envPKv.sublevel(doc.workspace.toString());
 
         // case: env was deleted but still links snapshot, so we don't need it
-        if (!await envKv.get(truncateAndSlugify(doc.environment)).catch(() => null)) {
-          return
+        if (
+          !(await envKv
+            .get(truncateAndSlugify(doc.environment))
+            .catch(() => null))
+        ) {
+          return;
         }
 
-        const folderKv = getFolderKv(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const folderKv = getFolderKv(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
 
-        if (await checkIfFolderIsDangling(doc.workspace.toString(), truncateAndSlugify(doc.environment), doc.folderId)){
-          return 
+        if (
+          await checkIfFolderIsDangling(
+            doc.workspace.toString(),
+            truncateAndSlugify(doc.environment),
+            doc.folderId,
+          )
+        ) {
+          return;
         }
 
-
-        const envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const envId = await getEnvId(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
         // const folderKv = getFolderKv(doc.workspace.toString(), truncateAndSlugify(doc.environment));
         const folderId = await folderKv.get(doc.folderId).catch(async () => {
           // this folder may not exist now in tree then create a new id and assign it
@@ -1831,36 +2052,48 @@ const main = async () => {
       preProcessing: async (doc) => {
         const snapshotId = await snapKv.get(doc._id.toString());
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
-
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         const envKv = envPKv.sublevel(doc.workspace.toString());
 
         // case: env was deleted but still links snapshot, so we don't need it
-        if (!await envKv.get(truncateAndSlugify(doc.environment)).catch(() => null)) {
-          return
+        if (
+          !(await envKv
+            .get(truncateAndSlugify(doc.environment))
+            .catch(() => null))
+        ) {
+          return;
         }
 
-        const envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const envId = await getEnvId(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
 
         return Promise.all(
-          doc.secretVersions.map(async (secVer) => {
-            const id = uuidV4();
-            
-            // case: for secret versions that have been discarded, skip creating a snapshot for it
-            const secretVersionId = await secVerKv.get(secVer.toString()).catch(() => null);
-            if (!secretVersionId) return 
+          doc.secretVersions
+            .map(async (secVer) => {
+              const id = uuidV4();
 
-            return {
-              id,
-              envId,
-              snapshotId,
-              secretVersionId,
-              createdAt: (doc as any).createdAt,
-              updatedAt: (doc as any).updatedAt,
-            };
-          }).filter(Boolean),
+              // case: for secret versions that have been discarded, skip creating a snapshot for it
+              const secretVersionId = await secVerKv
+                .get(secVer.toString())
+                .catch(() => null);
+              if (!secretVersionId) return;
+
+              return {
+                id,
+                envId,
+                snapshotId,
+                secretVersionId,
+                createdAt: (doc as any).createdAt,
+                updatedAt: (doc as any).updatedAt,
+              };
+            })
+            .filter(Boolean),
         );
       },
     });
@@ -1874,23 +2107,40 @@ const main = async () => {
       preProcessing: async (doc) => {
         const snapshotId = await snapKv.get(doc._id.toString());
 
-        if (!doc.folderVersion) return
+        if (!doc.folderVersion) return;
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         // case: we forgot to clean up secrets that belong to deleted env slugs
-        const isEnvFound = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment)).catch(() => null)
-        if (!isEnvFound) return
-        
-        const folderKv = getFolderKv(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const isEnvFound = await getEnvId(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        ).catch(() => null);
+        if (!isEnvFound) return;
 
-        if (await checkIfFolderIsDangling(doc.workspace.toString(), truncateAndSlugify(doc.environment), doc.folderId)){
-          return 
+        const folderKv = getFolderKv(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
+
+        if (
+          await checkIfFolderIsDangling(
+            doc.workspace.toString(),
+            truncateAndSlugify(doc.environment),
+            doc.folderId,
+          )
+        ) {
+          return;
         }
 
-        const envId = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment));
-        
+        const envId = await getEnvId(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
+
         const folderVersion = await FolderVersion.findById(doc.folderVersion);
 
         if (!folderVersion) return;
@@ -1914,7 +2164,6 @@ const main = async () => {
       },
     });
 
-
     const sarKv = kdb.sublevel(TableName.SecretApprovalRequest);
     await migrateCollection({
       db,
@@ -1924,37 +2173,61 @@ const main = async () => {
       preProcessing: async (doc) => {
         const id = uuidV4();
 
-        // case: when the policy has been deleted, the request should also be deleted 
-        const policyId = await sapKv.get(doc.policy.toString()).catch(() => null);
-        if (!policyId) return 
+        // case: when the policy has been deleted, the request should also be deleted
+        const policyId = await sapKv
+          .get(doc.policy.toString())
+          .catch(() => null);
+        if (!policyId) return;
 
-        const projectKvRes = await projectKv.get(doc.workspace.toString()).catch(() => null)
-        if (!projectKvRes) return
+        const projectKvRes = await projectKv
+          .get(doc.workspace.toString())
+          .catch(() => null);
+        if (!projectKvRes) return;
 
         // case: we forgot to clean up secrets that belong to deleted env slugs
-        const isEnvFound = await getEnvId(doc.workspace.toString(), truncateAndSlugify(doc.environment)).catch(() => null)
-        if (!isEnvFound) return
-        
-        const folderKv = getFolderKv(doc.workspace.toString(), truncateAndSlugify(doc.environment));
+        const isEnvFound = await getEnvId(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        ).catch(() => null);
+        if (!isEnvFound) return;
 
-        if (await checkIfFolderIsDangling(doc.workspace.toString(), truncateAndSlugify(doc.environment), doc.folderId)){
-          return 
+        const folderKv = getFolderKv(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
+
+        if (
+          await checkIfFolderIsDangling(
+            doc.workspace.toString(),
+            truncateAndSlugify(doc.environment),
+            doc.folderId,
+          )
+        ) {
+          return;
         }
 
         // Case: if folder id doesn't exist and the root of the folder also doesn't exist, THEN put the secret at the ROOT
-        const folderId = await folderKv.get(doc.folderId || "root").catch(async () => {
-          console.log(`${TableName.SecretApprovalRequest}: secret location unknown, moving secret to root of env_slug/project`)
-          return await folderKv.get("root")
-        });
+        const folderId = await folderKv
+          .get(doc.folderId || "root")
+          .catch(async () => {
+            console.log(
+              `${TableName.SecretApprovalRequest}: secret location unknown, moving secret to root of env_slug/project`,
+            );
+            return await folderKv.get("root");
+          });
 
-        // case: when the committer has been removed from Infisical, we should delete all of their requests (past and preset). 
-        const committerId = await projectMembKv.get(doc.committer.toString()).catch(() => null);
-        if (!committerId) return 
+        // case: when the committer has been removed from Infisical, we should delete all of their requests (past and preset).
+        const committerId = await projectMembKv
+          .get(doc.committer.toString())
+          .catch(() => null);
+        if (!committerId) return;
 
         await sarKv.put(doc._id.toString(), id);
 
         const statusChangeBy = doc.statusChangeBy
-          ? await projectMembKv.get(doc.statusChangeBy.toString()).catch(() => null)
+          ? await projectMembKv
+              .get(doc.statusChangeBy.toString())
+              .catch(() => null)
           : null;
         return {
           id,
@@ -1978,12 +2251,12 @@ const main = async () => {
     await migrateCollection({
       db,
       mongooseCollection: SecretApprovalRequest,
-      postgresTableName: TableName.SarReviewer,
+      postgresTableName: TableName.SecretApprovalRequestReviewer,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
         const requestId = await sarKv.get(doc._id.toString()).catch(() => null);
-        if (!requestId) return
+        if (!requestId) return;
 
         return Promise.all(
           doc.reviewers.map(async ({ status, member }) => {

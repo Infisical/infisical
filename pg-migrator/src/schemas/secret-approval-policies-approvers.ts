@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const SapApproversSchema = z.object({
+export const SecretApprovalPoliciesApproversSchema = z.object({
   id: z.string().uuid(),
   approverId: z.string().uuid(),
   policyId: z.string().uuid(),
@@ -15,6 +15,6 @@ export const SapApproversSchema = z.object({
   updatedAt: z.date(),
 });
 
-export type TSapApprovers = z.infer<typeof SapApproversSchema>;
-export type TSapApproversInsert = Omit<TSapApprovers, TImmutableDBKeys>;
-export type TSapApproversUpdate = Partial<Omit<TSapApprovers, TImmutableDBKeys>>;
+export type TSecretApprovalPoliciesApprovers = z.infer<typeof SecretApprovalPoliciesApproversSchema>;
+export type TSecretApprovalPoliciesApproversInsert = Omit<TSecretApprovalPoliciesApprovers, TImmutableDBKeys>;
+export type TSecretApprovalPoliciesApproversUpdate = Partial<Omit<TSecretApprovalPoliciesApprovers, TImmutableDBKeys>>;

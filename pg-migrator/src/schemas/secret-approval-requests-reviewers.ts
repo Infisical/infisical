@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const SarReviewersSchema = z.object({
+export const SecretApprovalRequestsReviewersSchema = z.object({
   id: z.string().uuid(),
   member: z.string().uuid(),
   status: z.string(),
@@ -16,6 +16,6 @@ export const SarReviewersSchema = z.object({
   updatedAt: z.date(),
 });
 
-export type TSarReviewers = z.infer<typeof SarReviewersSchema>;
-export type TSarReviewersInsert = Omit<TSarReviewers, TImmutableDBKeys>;
-export type TSarReviewersUpdate = Partial<Omit<TSarReviewers, TImmutableDBKeys>>;
+export type TSecretApprovalRequestsReviewers = z.infer<typeof SecretApprovalRequestsReviewersSchema>;
+export type TSecretApprovalRequestsReviewersInsert = Omit<TSecretApprovalRequestsReviewers, TImmutableDBKeys>;
+export type TSecretApprovalRequestsReviewersUpdate = Partial<Omit<TSecretApprovalRequestsReviewers, TImmutableDBKeys>>;

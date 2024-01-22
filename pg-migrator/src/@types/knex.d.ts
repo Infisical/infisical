@@ -12,6 +12,7 @@ import {
   TAuthTokenSessions,
   TAuthTokenSessionsInsert,
   TAuthTokenSessionsUpdate,
+  TAuthTokensInsert,
   TAuthTokensUpdate,
   TBackupPrivateKey,
   TBackupPrivateKeyInsert,
@@ -82,23 +83,23 @@ import {
   TSamlConfigs,
   TSamlConfigsInsert,
   TSamlConfigsUpdate,
-  TSapApprovers,
-  TSapApproversInsert,
-  TSapApproversUpdate,
-  TSaRequestSecrets,
-  TSaRequestSecretsInsert,
-  TSaRequestSecretsUpdate,
-  TSaRequestSecretTags,
-  TSaRequestSecretTagsInsert,
-  TSaRequestSecretTagsUpdate,
-  TSarReviewers,
-  TSarReviewersInsert,
-  TSarReviewersUpdate,
   TSecretApprovalPolicies,
+  TSecretApprovalPoliciesApprovers,
+  TSecretApprovalPoliciesApproversInsert,
+  TSecretApprovalPoliciesApproversUpdate,
   TSecretApprovalPoliciesInsert,
   TSecretApprovalPoliciesUpdate,
   TSecretApprovalRequests,
+  TSecretApprovalRequestSecretTags,
+  TSecretApprovalRequestSecretTagsInsert,
+  TSecretApprovalRequestSecretTagsUpdate,
   TSecretApprovalRequestsInsert,
+  TSecretApprovalRequestsReviewers,
+  TSecretApprovalRequestsReviewersInsert,
+  TSecretApprovalRequestsReviewersUpdate,
+  TSecretApprovalRequestsSecrets,
+  TSecretApprovalRequestsSecretsInsert,
+  TSecretApprovalRequestsSecretsUpdate,
   TSecretApprovalRequestsUpdate,
   TSecretBlindIndexes,
   TSecretBlindIndexesInsert,
@@ -142,6 +143,9 @@ import {
   TSecretVersions,
   TSecretVersionsInsert,
   TSecretVersionsUpdate,
+  TSecretVersionTagJunction,
+  TSecretVersionTagJunctionInsert,
+  TSecretVersionTagJunctionUpdate,
   TServiceTokens,
   TServiceTokensInsert,
   TServiceTokensUpdate,
@@ -163,7 +167,6 @@ import {
   TWebhooks,
   TWebhooksInsert,
   TWebhooksUpdate,
-  TAuthTokensInsert,
 } from "../schemas";
 
 declare module "knex/types/tables" {
@@ -348,30 +351,30 @@ declare module "knex/types/tables" {
       TSecretApprovalPoliciesInsert,
       TSecretApprovalPoliciesUpdate
     >;
-    [TableName.SapApprover]: Knex.CompositeTableType<
-      TSapApprovers,
-      TSapApproversInsert,
-      TSapApproversUpdate
+    [TableName.SecretApprovalPolicyApprover]: Knex.CompositeTableType<
+      TSecretApprovalPoliciesApprovers,
+      TSecretApprovalPoliciesApproversInsert,
+      TSecretApprovalPoliciesApproversUpdate
     >;
     [TableName.SecretApprovalRequest]: Knex.CompositeTableType<
       TSecretApprovalRequests,
       TSecretApprovalRequestsInsert,
       TSecretApprovalRequestsUpdate
     >;
-    [TableName.SarReviewer]: Knex.CompositeTableType<
-      TSarReviewers,
-      TSarReviewersInsert,
-      TSarReviewersUpdate
+    [TableName.SecretApprovalRequestReviewer]: Knex.CompositeTableType<
+      TSecretApprovalRequestsReviewers,
+      TSecretApprovalRequestsReviewersInsert,
+      TSecretApprovalRequestsReviewersUpdate
     >;
-    [TableName.SarSecret]: Knex.CompositeTableType<
-      TSaRequestSecrets,
-      TSaRequestSecretsInsert,
-      TSaRequestSecretsUpdate
+    [TableName.SecretApprovalRequestSecret]: Knex.CompositeTableType<
+      TSecretApprovalRequestsSecrets,
+      TSecretApprovalRequestsSecretsInsert,
+      TSecretApprovalRequestsSecretsUpdate
     >;
-    [TableName.SarSecretTag]: Knex.CompositeTableType<
-      TSaRequestSecretTags,
-      TSaRequestSecretTagsInsert,
-      TSaRequestSecretTagsUpdate
+    [TableName.SecretApprovalRequestSecretTag]: Knex.CompositeTableType<
+      TSecretApprovalRequestSecretTags,
+      TSecretApprovalRequestSecretTagsInsert,
+      TSecretApprovalRequestSecretTagsUpdate
     >;
     [TableName.SecretRotation]: Knex.CompositeTableType<
       TSecretRotations,
@@ -438,6 +441,11 @@ declare module "knex/types/tables" {
       TSecretTagJunction,
       TSecretTagJunctionInsert,
       TSecretTagJunctionUpdate
+    >;
+    [TableName.SecretVersionTag]: Knex.CompositeTableType<
+      TSecretVersionTagJunction,
+      TSecretVersionTagJunctionInsert,
+      TSecretVersionTagJunctionUpdate
     >;
   }
 }

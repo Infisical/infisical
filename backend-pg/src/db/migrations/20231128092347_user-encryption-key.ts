@@ -10,9 +10,9 @@ export async function up(knex: Knex): Promise<void> {
       t.text("clientPublicKey");
       t.text("serverPrivateKey");
       t.integer("encryptionVersion").defaultTo(2);
-      t.text("protectedKey").notNullable();
-      t.text("protectedKeyIV").notNullable();
-      t.text("protectedKeyTag").notNullable();
+      t.text("protectedKey");
+      t.text("protectedKeyIV");
+      t.text("protectedKeyTag");
       t.text("publicKey").notNullable();
       t.text("encryptedPrivateKey").notNullable();
       t.text("iv").notNullable();

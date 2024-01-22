@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const SaRequestSecretsSchema = z.object({
+export const SecretApprovalRequestsSecretsSchema = z.object({
   id: z.string().uuid(),
   version: z.number().default(1).nullable().optional(),
   secretBlindIndex: z.string(),
@@ -34,6 +34,6 @@ export const SaRequestSecretsSchema = z.object({
   secretVersion: z.string().uuid().nullable().optional(),
 });
 
-export type TSaRequestSecrets = z.infer<typeof SaRequestSecretsSchema>;
-export type TSaRequestSecretsInsert = Omit<TSaRequestSecrets, TImmutableDBKeys>;
-export type TSaRequestSecretsUpdate = Partial<Omit<TSaRequestSecrets, TImmutableDBKeys>>;
+export type TSecretApprovalRequestsSecrets = z.infer<typeof SecretApprovalRequestsSecretsSchema>;
+export type TSecretApprovalRequestsSecretsInsert = Omit<TSecretApprovalRequestsSecrets, TImmutableDBKeys>;
+export type TSecretApprovalRequestsSecretsUpdate = Partial<Omit<TSecretApprovalRequestsSecrets, TImmutableDBKeys>>;
