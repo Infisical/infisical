@@ -22,7 +22,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("statusChangeBy")
         .references("id")
         .inTable(TableName.ProjectMembership)
-        .onDelete("CASCADE");
+        .onDelete("SET NULL");
       t.uuid("committerId").notNullable();
       t.foreign("committerId")
         .references("id")

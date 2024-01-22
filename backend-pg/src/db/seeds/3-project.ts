@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TableName } from "../schemas";
+import { OrgMembershipRole, TableName } from "../schemas";
 import { seedData1 } from "../seed-data";
 
 export const DEFAULT_PROJECT_ENVS = [
@@ -19,10 +19,22 @@ export async function seed(knex: Knex): Promise<void> {
     .insert({
       name: seedData1.project.name,
       orgId: seedData1.organization.id,
+      slug: "first-project",
       // @ts-ignore pre calc id
       id: seedData1.project.id
     })
     .returning("*");
+
+  await knex(TableName.ProjectKeys).insert({
+    projectId: project.id,
+    senderId: seedData1.id
+  });
+
+  await knex(TableName.ProjectMembership).insert({
+    projectId: project.id,
+    role: OrgMembershipRole.Admin,
+    userId: seedData1.id
+  });
   const envs = await knex(TableName.Environment)
     .insert(
       DEFAULT_PROJECT_ENVS.map(({ name, slug }, index) => ({

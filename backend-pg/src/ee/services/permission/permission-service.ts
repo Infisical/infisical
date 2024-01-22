@@ -149,7 +149,7 @@ export const permissionServiceFactory = ({
   // user permission for a project in an organization
   const getUserProjectPermission = async (userId: string, projectId: string) => {
     const membership = await permissionDAL.getProjectPermission(userId, projectId);
-    if (!membership) throw new UnauthorizedError({ name: "User not in org" });
+    if (!membership) throw new UnauthorizedError({ name: "User not in project" });
     if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
@@ -161,7 +161,7 @@ export const permissionServiceFactory = ({
 
   const getIdentityProjectPermission = async (identityId: string, projectId: string) => {
     const membership = await permissionDAL.getProjectIdentityPermission(identityId, projectId);
-    if (!membership) throw new UnauthorizedError({ name: "Identity not in org" });
+    if (!membership) throw new UnauthorizedError({ name: "Identity not in project" });
     if (membership.role === ProjectMembershipRole.Custom && !membership.permissions) {
       throw new BadRequestError({ name: "Custom permission not found" });
     }
@@ -208,7 +208,7 @@ export const permissionServiceFactory = ({
       default:
         throw new UnauthorizedError({
           message: "Permission not defined",
-          name: "Get org permission"
+          name: "Get project permission"
         });
     }
   };

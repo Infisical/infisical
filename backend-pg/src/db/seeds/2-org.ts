@@ -17,6 +17,7 @@ export async function seed(knex: Knex): Promise<void> {
         // @ts-ignore because we need that id for api calls
         id: seedData1.organization.id,
         name: "infisical",
+        slug: "infisical",
         customerId: null
       }
     ])

@@ -84,22 +84,17 @@ export const secretFolderServiceFactory = ({
           .filter(Boolean);
         if (missingSegment.length) {
           const newFolders: Array<TSecretFoldersInsert & { id: string }> = missingSegment.map(
-            (segment, i) =>
-              i === 0
-                ? {
-                    name: segment,
-                    parentId: parentFolder.id,
-                    id: uuidv4(),
-                    envId: env.id,
-                    version: 1
-                  }
-                : {
-                    name: segment,
-                    parentId: newFolders[i - 1].id,
-                    id: uuidv4(),
-                    envId: env.id,
-                    version: 1
-                  }
+            (segment) => {
+              const newFolder = {
+                name: segment,
+                parentId: parentFolderId,
+                id: uuidv4(),
+                envId: env.id,
+                version: 1
+              };
+              parentFolderId = newFolder.id;
+              return newFolder;
+            }
           );
           parentFolderId = newFolders.at(-1)?.id as string;
           const docs = await folderDAL.insertMany(newFolders, tx);
@@ -156,12 +151,12 @@ export const secretFolderServiceFactory = ({
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env)
       throw new BadRequestError({ message: "Environment not found", name: "Update folder" });
-    let folder = await folderDAL.findOne({ envId: env.id, id, parentId: parentFolder.id });
-    // now folder api accepts id based change
-    // this is for cli and when cli removes this will remove this logic
-    if (!folder) {
-      folder = await folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id });
-    }
+    const folder = await folderDAL
+      .findOne({ envId: env.id, id, parentId: parentFolder.id })
+      // now folder api accepts id based change
+      // this is for cli backward compatiability and when cli removes this, we will remove this logic
+      .catch(() => folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id }));
+
     if (!folder) throw new BadRequestError({ message: "Folder not found" });
 
     const newFolder = await folderDAL.transaction(async (tx) => {
