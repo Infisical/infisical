@@ -10,11 +10,15 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-auth-service";
 import { syncIntegrationSecrets } from "../integration-auth/integration-sync-secret";
+import { TOrgDALFactory } from "../org/org-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
+import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TWebhookDALFactory } from "../webhook/webhook-dal";
 import { fnTriggerWebhook } from "../webhook/webhook-fns";
 import { TSecretDALFactory } from "./secret-dal";
@@ -37,6 +41,10 @@ type TSecretQueueFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "find">;
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
+  smtpService: TSmtpService;
+  orgDAL: Pick<TOrgDALFactory, "findOrgByProjectId">;
 };
 
 export type TGetSecrets = {
@@ -54,7 +62,11 @@ export const secretQueueFactory = ({
   secretImportDAL,
   folderDAL,
   webhookDAL,
-  projectEnvDAL
+  projectEnvDAL,
+  orgDAL,
+  smtpService,
+  projectDAL,
+  projectMembershipDAL
 }: TSecretQueueFactoryDep) => {
   const syncIntegrations = async (dto: TGetSecrets) => {
     await queueService.queue(QueueName.IntegrationSync, QueueJobs.IntegrationSync, dto, {
@@ -124,6 +136,8 @@ export const secretQueueFactory = ({
         });
       }
 
+      console.log("Secret reminder thingies:)!");
+      console.log(queueService);
       // If the secret already has a reminder, we should remove the existing one first.
       if (oldSecret.secretReminderRepeatDays) {
         await removeSecretReminder({
@@ -148,7 +162,8 @@ export const secretQueueFactory = ({
             every:
               appCfg.NODE_ENV === "development"
                 ? secondsToMillis(newSecret.secretReminderRepeatDays)
-                : daysToMillisecond(newSecret.secretReminderRepeatDays)
+                : daysToMillisecond(newSecret.secretReminderRepeatDays),
+            immediately: true
           }
         }
       );
@@ -329,6 +344,49 @@ export const secretQueueFactory = ({
     }
 
     logger.info("Secret integration sync ended", job.id);
+  });
+
+  queueService.start(QueueName.SecretReminder, async ({ data }) => {
+    logger.info(`secretReminderQueue.process: [secretDocument=${data.secretId}]`);
+
+    const { projectId } = data;
+
+    const organization = await orgDAL.findOrgByProjectId(projectId);
+    const project = await projectDAL.findById(projectId);
+
+    if (!organization) {
+      logger.info(
+        `secretReminderQueue.process: [secretDocument=${data.secretId}] no organization found`
+      );
+      return;
+    }
+
+    if (!project) {
+      logger.info(
+        `secretReminderQueue.process: [secretDocument=${data.secretId}] no project found`
+      );
+      return;
+    }
+
+    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
+
+    if (!projectMembers || !projectMembers.length) {
+      logger.info(
+        `secretReminderQueue.process: [secretDocument=${data.secretId}] no project members found`
+      );
+      return;
+    }
+
+    await smtpService.sendMail({
+      template: SmtpTemplates.SecretReminder,
+      subjectLine: "Infisical secret reminder",
+      recipients: [...projectMembers.map((m) => m.user.email)],
+      substitutions: {
+        reminderNote: data.note, // May not be present.
+        projectName: project.name,
+        organizationName: organization.name
+      }
+    });
   });
 
   queueService.listen(QueueName.IntegrationSync, "failed", (job, err) => {

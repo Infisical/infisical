@@ -350,7 +350,11 @@ export const registerRoutes = async (
     integrationDAL,
     secretImportDAL,
     projectEnvDAL,
-    webhookDAL
+    webhookDAL,
+    orgDAL,
+    projectMembershipDAL,
+    smtpService,
+    projectDAL
   });
 
   const secretService = secretServiceFactory({
