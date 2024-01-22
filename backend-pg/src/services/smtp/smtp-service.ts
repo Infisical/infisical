@@ -53,9 +53,7 @@ export const getTlsOption = (host?: SmtpHost | string, secure?: boolean) => {
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {
   const smtp = createTransport({
     ...cfg,
-    ...getTlsOption(cfg.host, cfg.secure),
-    secure: false,
-    port: 587
+    ...getTlsOption(cfg.host, cfg.secure)
   });
   const isSmtpOn = Boolean(cfg.host);
 
@@ -65,7 +63,6 @@ export const smtpServiceFactory = (cfg: TSmtpConfig) => {
     const htmlToSend = temp(substitutions);
     if (isSmtpOn) {
       await smtp.sendMail({
-        from: "network@gameserve.co",
         to: recipients.join(", "),
         subject: subjectLine,
         html: htmlToSend
