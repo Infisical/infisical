@@ -17,8 +17,8 @@ export async function up(knex: Knex): Promise<void> {
   }
   await createOnUpdateTrigger(knex, TableName.SecretApprovalPolicy);
 
-  if (!(await knex.schema.hasTable(TableName.SapApprover))) {
-    await knex.schema.createTable(TableName.SapApprover, (t) => {
+  if (!(await knex.schema.hasTable(TableName.SecretApprovalPolicyApprover))) {
+    await knex.schema.createTable(TableName.SecretApprovalPolicyApprover, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("approverId").notNullable();
       t.foreign("approverId")
@@ -34,12 +34,12 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  await createOnUpdateTrigger(knex, TableName.SapApprover);
+  await createOnUpdateTrigger(knex, TableName.SecretApprovalPolicyApprover);
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TableName.SapApprover);
+  await knex.schema.dropTableIfExists(TableName.SecretApprovalPolicyApprover);
   await knex.schema.dropTableIfExists(TableName.SecretApprovalPolicy);
-  await dropOnUpdateTrigger(knex, TableName.SapApprover);
+  await dropOnUpdateTrigger(knex, TableName.SecretApprovalPolicyApprover);
   await dropOnUpdateTrigger(knex, TableName.SecretApprovalPolicy);
 }
