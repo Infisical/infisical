@@ -24,7 +24,6 @@ import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
-import { TSecretReminderServiceFactory } from "../secret-reminder/secret-reminder-service";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretBlindIndexDALFactory } from "./secret-blind-index-dal";
 import { TSecretDALFactory } from "./secret-dal";
@@ -65,9 +64,11 @@ type TSecretServiceFactoryDep = {
   >;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  secretReminderService: TSecretReminderServiceFactory;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
-  secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
+  secretQueueService: Pick<
+    TSecretQueueFactory,
+    "syncSecrets" | "handleSecretReminder" | "removeSecretReminder"
+  >;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretImportDAL: Pick<TSecretImportDALFactory, "find">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
@@ -81,7 +82,6 @@ export const secretServiceFactory = ({
   folderDAL,
   secretBlindIndexDAL,
   permissionService,
-  secretReminderService,
   snapshotService,
   secretQueueService,
   projectBotService,
@@ -212,8 +212,8 @@ export const secretServiceFactory = ({
     for (const s of deletedSecrets) {
       if (s.secretReminderRepeatDays) {
         // eslint-disable-next-line no-await-in-loop
-        await secretReminderService
-          .deleteReminder({
+        await secretQueueService
+          .removeSecretReminder({
             secretId: s.id,
             repeatDays: s.secretReminderRepeatDays
           })
@@ -425,7 +425,7 @@ export const secretServiceFactory = ({
       newSecretNameBlindIndex = kN2NewBlindIndex[inputSecret.newSecretName];
     }
 
-    await secretReminderService.handleReminder({
+    await secretQueueService.handleSecretReminder({
       newSecret: {
         id: secrets[0].id,
         ...inputSecret

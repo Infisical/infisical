@@ -85,8 +85,6 @@ import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-f
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
 import { secretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { secretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
-import { secretReminderServiceFactory } from "@app/services/secret-reminder";
-import { secretReminderQueueFactory } from "@app/services/secret-reminder/secret-reminder-queue";
 import { secretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { secretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
@@ -355,24 +353,11 @@ export const registerRoutes = async (
     webhookDAL
   });
 
-  const secretReminderQueue = secretReminderQueueFactory({
-    queue: queueService,
-    orgDal: orgDAL,
-    projectDal: projectDAL,
-    projectMembershipDal: projectMembershipDAL,
-    smtpService
-  });
-
-  const secretReminderService = secretReminderServiceFactory({
-    secretReminderQueue
-  });
-
   const secretService = secretServiceFactory({
     folderDAL,
     secretVersionDAL,
     secretVersionTagDAL,
     secretBlindIndexDAL,
-    secretReminderService,
     permissionService,
     secretDAL,
     secretTagDAL,
@@ -483,7 +468,6 @@ export const registerRoutes = async (
     secretApprovalPolicy: sapService,
     secretApprovalRequest: sarService,
     secretRotation: secretRotationService,
-    secretReminder: secretReminderService,
     snapshot: snapshotService,
     saml: samlService,
     auditLog: auditLogService,

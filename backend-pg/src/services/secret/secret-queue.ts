@@ -1,5 +1,8 @@
 /* eslint-disable no-await-in-loop */
+import { getConfig } from "@app/lib/config/env";
 import { decryptSymmetric128BitHexKeyUTF8 } from "@app/lib/crypto";
+import { daysToMillisecond, secondsToMillis } from "@app/lib/dates";
+import { BadRequestError } from "@app/lib/errors";
 import { isSamePath } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -16,6 +19,11 @@ import { TWebhookDALFactory } from "../webhook/webhook-dal";
 import { fnTriggerWebhook } from "../webhook/webhook-fns";
 import { TSecretDALFactory } from "./secret-dal";
 import { interpolateSecrets } from "./secret-fns";
+import {
+  TCreateSecretReminderDTO,
+  THandleReminderDTO,
+  TRemoveSecretReminderDTO
+} from "./secret-types";
 
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 
@@ -76,6 +84,108 @@ export const secretQueueFactory = ({
       }
     });
     await syncIntegrations(dto);
+  };
+
+  const removeSecretReminder = async (dto: TRemoveSecretReminderDTO) => {
+    const appCfg = getConfig();
+    await queueService.stopRepeatableJob(
+      QueueName.SecretReminder,
+      QueueJobs.SecretReminder,
+      {
+        // on prod it this will be in days, in development this will be second
+        every:
+          appCfg.NODE_ENV === "development"
+            ? secondsToMillis(dto.repeatDays)
+            : daysToMillisecond(dto.repeatDays)
+      },
+      `reminder-${dto.secretId}`
+    );
+  };
+
+  const addSecretReminder = async ({
+    oldSecret,
+    newSecret,
+    projectId
+  }: TCreateSecretReminderDTO) => {
+    try {
+      const appCfg = getConfig();
+
+      if (oldSecret.id !== newSecret.id) {
+        throw new BadRequestError({
+          name: "SecretReminderIdMismatch",
+          message: "Existing secret didn't match the updated secret ID."
+        });
+      }
+
+      if (!newSecret.secretReminderRepeatDays) {
+        throw new BadRequestError({
+          name: "SecretReminderRepeatDaysMissing",
+          message: "Secret reminder repeat days is missing."
+        });
+      }
+
+      // If the secret already has a reminder, we should remove the existing one first.
+      if (oldSecret.secretReminderRepeatDays) {
+        await removeSecretReminder({
+          repeatDays: oldSecret.secretReminderRepeatDays,
+          secretId: oldSecret.id
+        });
+      }
+
+      await queueService.queue(
+        QueueName.SecretReminder,
+        QueueJobs.SecretReminder,
+        {
+          note: newSecret.secretReminderNote,
+          projectId,
+          repeatDays: newSecret.secretReminderRepeatDays,
+          secretId: newSecret.id
+        },
+        {
+          jobId: `reminder-${newSecret.id}`,
+          repeat: {
+            // on prod it this will be in days, in development this will be second
+            every:
+              appCfg.NODE_ENV === "development"
+                ? secondsToMillis(newSecret.secretReminderRepeatDays)
+                : daysToMillisecond(newSecret.secretReminderRepeatDays)
+          }
+        }
+      );
+    } catch (err) {
+      logger.error(err, "Failed to create secret reminder.");
+      throw new BadRequestError({
+        name: "SecretReminderCreateFailed",
+        message: "Failed to create secret reminder."
+      });
+    }
+  };
+
+  const handleSecretReminder = async ({ newSecret, oldSecret, projectId }: THandleReminderDTO) => {
+    const { secretReminderRepeatDays, secretReminderNote } = newSecret;
+
+    if (newSecret.type !== "personal" && secretReminderRepeatDays !== undefined) {
+      if (
+        (secretReminderRepeatDays &&
+          oldSecret.secretReminderRepeatDays !== secretReminderRepeatDays) ||
+        (secretReminderNote && oldSecret.secretReminderNote !== secretReminderNote)
+      ) {
+        await addSecretReminder({
+          oldSecret,
+          newSecret,
+          projectId
+        });
+      } else if (
+        secretReminderRepeatDays === null &&
+        secretReminderNote === null &&
+        oldSecret.secretReminderRepeatDays
+      ) {
+        await removeSecretReminder({
+          secretId: oldSecret.id,
+          repeatDays: oldSecret.secretReminderRepeatDays
+        });
+      }
+    }
   };
 
   const getIntegrationSecrets = async (dto: TGetSecrets & { folderId: string }, key: string) => {
@@ -229,5 +339,11 @@ export const secretQueueFactory = ({
     await fnTriggerWebhook({ ...job.data, projectEnvDAL, webhookDAL });
   });
 
-  return { syncSecrets, syncIntegrations };
+  return {
+    syncSecrets,
+    syncIntegrations,
+    addSecretReminder,
+    removeSecretReminder,
+    handleSecretReminder
+  };
 };
