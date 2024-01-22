@@ -25,10 +25,10 @@ export async function seed(knex: Knex): Promise<void> {
     })
     .returning("*");
 
-  await knex(TableName.ProjectKeys).insert({
-    projectId: project.id,
-    senderId: seedData1.id
-  });
+  // await knex(TableName.ProjectKeys).insert({
+  //   projectId: project.id,
+  //   senderId: seedData1.id
+  // });
 
   await knex(TableName.ProjectMembership).insert({
     projectId: project.id,

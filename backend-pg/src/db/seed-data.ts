@@ -130,11 +130,11 @@ export const buildUserProjectKey = async (privateKey: string, publickey: string)
   return { nonce, ciphertext };
 };
 
-export const getUserProjectKey = async (privateKey: string) => {
-  const key = decryptAsymmetric({
-    ciphertext: decryptFileKey.encryptedKey,
-    nonce: decryptFileKey.nonce,
-    publicKey: decryptFileKey.sender.publicKey,
-    privateKey: PRIVATE_KEY
-  });
-};
+// export const getUserProjectKey = async (privateKey: string) => {
+//   const key = decryptAsymmetric({
+//     ciphertext: decryptFileKey.encryptedKey,
+//     nonce: decryptFileKey.nonce,
+//     publicKey: decryptFileKey.sender.publicKey,
+//     privateKey: PRIVATE_KEY
+//   });
+// };
