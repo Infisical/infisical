@@ -76,10 +76,10 @@ export const initializeSamlStrategy = async () => {
           
           if (!organization) return done(OrganizationNotFoundError());
           
-          const email = profile.email;
+          const email = profile?.email ?? profile?.emailAddress // emailRippling is added because in Rippling the field `email` reserved
           const firstName = profile.firstName;
           const lastName = profile.lastName;
-    
+          
           let user = await User.findOne({
             email
           }).select("+publicKey");
