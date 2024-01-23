@@ -7,7 +7,6 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.IdentityAccessToken))) {
     await knex.schema.createTable(TableName.IdentityAccessToken, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.string("authType").notNullable();
       t.bigInteger("accessTokenTTL").defaultTo(2592000).notNullable(); // 30 days second
       t.bigInteger("accessTokenMaxTTL").defaultTo(2592000).notNullable();
       t.bigInteger("accessTokenNumUses").defaultTo(0).notNullable();
