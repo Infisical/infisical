@@ -54,7 +54,7 @@ export async function up(knex: Knex): Promise<void> {
       // everything related  to secret
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.integer("version").defaultTo(1);
-      t.text("secretBlindIndex").notNullable();
+      t.text("secretBlindIndex");
       t.text("secretKeyCiphertext").notNullable();
       t.text("secretKeyIV").notNullable();
       t.text("secretKeyTag").notNullable();

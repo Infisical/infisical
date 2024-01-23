@@ -9,7 +9,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.integer("version").defaultTo(1).notNullable();
       t.string("type").notNullable().defaultTo(SecretType.Shared);
-      t.text("secretBlindIndex").notNullable();
+      t.text("secretBlindIndex");
       t.text("secretKeyCiphertext").notNullable();
       t.text("secretKeyIV").notNullable();
       t.text("secretKeyTag").notNullable();

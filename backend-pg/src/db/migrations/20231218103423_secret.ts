@@ -27,7 +27,7 @@ export async function up(knex: Knex): Promise<void> {
       // t.text("secretKeyHash").notNullable();
       // t.text("secretValueHash");
       // t.text("secretCommentHash");
-      t.text("secretBlindIndex").notNullable();
+      t.text("secretBlindIndex");
       t.text("secretKeyCiphertext").notNullable();
       t.text("secretKeyIV").notNullable();
       t.text("secretKeyTag").notNullable();
