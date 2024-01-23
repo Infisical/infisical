@@ -32,6 +32,10 @@ From local development to production, Infisical SDKs provide the easiest way for
         
         Note: The exact parameter name may differ depending on the language.
     </Accordion>
+    <Accordion title="What if a request for a secret fails?">
+        The SDK caches every secret and falls back to the cached value if a request fails. If no cached
+        value ever-existed, the SDK falls back to whatever value is on the process environment.
+    </Accordion>
     <Accordion title="Can I attach the environment variables to my process environment?">
         Yes you can! The client SDK provides a method to attach the secrets to your process environment. When using the `listSecrets()` method, you
         can pass a `attachToProcessEnv` parameter, which tells the SDK to attach all the found secrets to your process environment.
