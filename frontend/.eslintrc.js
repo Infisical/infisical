@@ -38,6 +38,7 @@ module.exports = {
     "react/jsx-props-no-spreading": "off", // switched off for component building
     // TODO: This rule will be switched ON after complete revamp of frontend
     "@typescript-eslint/no-explicit-any": "off",
+    "jsx-a11y/control-has-associated-label": "off",
     "no-console": "off",
     "arrow-body-style": "off",
     "no-underscore-dangle": [

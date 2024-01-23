@@ -85,13 +85,18 @@ const envSchema = z
     // LICENCE
     LICENSE_SERVER_URL: zpStr(z.string().optional()),
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
-    LICENSE_KEY: zpStr(z.string().optional())
+    LICENSE_KEY: zpStr(z.string().optional()),
+    STANDALONE_MODE: z
+      .enum(["true", "false"])
+      .transform((val) => val === "true")
+      .optional()
   })
   .transform((data) => ({
     ...data,
     isSmtpConfigured: Boolean(data.SMTP_HOST),
     isRedisConfigured: Boolean(data.REDIS_URL),
     isDevelopmentMode: data.NODE_ENV === "development",
+    isProductionMode: data.NODE_ENV === "production",
     isSecretScanningConfigured:
       Boolean(data.SECRET_SCANNING_GIT_APP_ID) &&
       Boolean(data.SECRET_SCANNING_PRIVATE_KEY) &&

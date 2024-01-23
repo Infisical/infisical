@@ -1,3 +1,6 @@
+/* eslint-disable import/extensions */
+import path from "node:path";
+
 import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
 import type { FastifyCorsOptions } from "@fastify/cors";
@@ -17,6 +20,7 @@ import { getConfig } from "@lib/config/env";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
 import { fastifyErrHandler } from "./plugins/error-handler";
+import { registerExternalNextjs } from "./plugins/external-nextjs";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./plugins/fastify-zod";
 import { fastifyIp } from "./plugins/ip";
 import { fastifySwagger } from "./plugins/swagger";
@@ -48,7 +52,7 @@ export const main = async ({ db, smtp, logger, queue }: TMain) => {
 
     await server.register<FastifyCorsOptions>(cors, {
       credentials: true,
-      origin: true
+      origin: appCfg.SITE_URL
     });
     // pull ip based on various proxy headers
     await server.register(fastifyIp);
@@ -58,12 +62,21 @@ export const main = async ({ db, smtp, logger, queue }: TMain) => {
     await server.register(fastifyErrHandler);
 
     // Rate limiters and security headers
-    if (appCfg.NODE_ENV === "production") {
+    if (appCfg.isProductionMode) {
       await server.register<FastifyRateLimitOptions>(ratelimiter, globalRateLimiterCfg());
     }
     await server.register(helmet, { contentSecurityPolicy: false });
 
     await server.register(registerRoutes, { smtp, queue, db });
+
+    if (appCfg.isProductionMode) {
+      await server.register(registerExternalNextjs, {
+        standaloneMode: appCfg.STANDALONE_MODE,
+        dir: path.join(__dirname, "../"),
+        port: appCfg.PORT
+      });
+    }
+
     await server.ready();
     server.swagger();
     return server;
