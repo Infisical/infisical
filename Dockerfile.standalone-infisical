@@ -2,7 +2,7 @@ ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 
-FROM  node:16-alpine AS base
+FROM  node:20-alpine AS base
 
 FROM base AS frontend-dependencies
 
