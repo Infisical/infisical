@@ -106,7 +106,7 @@ export const projectRoleServiceFactory = ({
         projectId,
         name: "Admin",
         slug: ProjectMembershipRole.Admin,
-        description: "Complete administration access over the organization",
+        description: "Complete administration access over the project",
         permissions: packRules(projectAdminPermissions.rules),
         createdAt: new Date(),
         updatedAt: new Date()
@@ -116,7 +116,7 @@ export const projectRoleServiceFactory = ({
         projectId,
         name: "Developer",
         slug: ProjectMembershipRole.Member,
-        description: "Non-administrative role in an organization",
+        description: "Non-administrative role in an project",
         permissions: packRules(projectMemberPermissions.rules),
         createdAt: new Date(),
         updatedAt: new Date()
@@ -126,7 +126,7 @@ export const projectRoleServiceFactory = ({
         projectId,
         name: "Viewer",
         slug: ProjectMembershipRole.Viewer,
-        description: "Non-administrative role in an organization",
+        description: "Non-administrative role in an project",
         permissions: packRules(projectViewerPermission.rules),
         createdAt: new Date(),
         updatedAt: new Date()
@@ -136,7 +136,7 @@ export const projectRoleServiceFactory = ({
         projectId,
         name: "No Access",
         slug: "no-access",
-        description: "No access to any resources in the organization",
+        description: "No access to any resources in the project",
         permissions: packRules(projectNoAccessPermissions.rules),
         createdAt: new Date(),
         updatedAt: new Date()
