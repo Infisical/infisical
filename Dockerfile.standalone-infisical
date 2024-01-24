@@ -14,6 +14,8 @@ WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json frontend/next.config.js ./
 
 # Install dependencies
+RUN npm config set fetch-retry-mintimeout 20000
+RUN npm config set fetch-retry-maxtimeout 120000
 RUN npm ci --only-production --ignore-scripts
 
 # Rebuild the source code only when needed
@@ -69,10 +71,14 @@ RUN addgroup --system --gid 1001 nodejs \
 WORKDIR /app
 
 COPY backend-pg/package*.json ./
+RUN npm config set fetch-retry-mintimeout 20000
+RUN npm config set fetch-retry-maxtimeout 120000
 RUN npm ci --only-production
 
 COPY /backend-pg .
 COPY --chown=non-root-user:nodejs standalone-entrypoint.sh standalone-entrypoint.sh
+RUN npm config set fetch-retry-mintimeout 20000
+RUN npm config set fetch-retry-maxtimeout 120000
 RUN npm i -D tsconfig-paths
 RUN npm run build
 
@@ -82,6 +88,8 @@ FROM base AS backend-runner
 WORKDIR /app
 
 COPY backend-pg/package*.json ./
+RUN npm config set fetch-retry-mintimeout 20000
+RUN npm config set fetch-retry-maxtimeout 120000
 RUN npm ci --only-production
 
 COPY --from=backend-build /app .
