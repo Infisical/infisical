@@ -1,0 +1,78 @@
+name: Release standalone postgres version
+on:
+  push:
+    tags:
+      - "infisical/v*.*.*-postgres"
+
+jobs:
+  infisical-standalone:
+    name: Build infisical standalone image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract version from tag
+        id: extract_version
+        run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical/}"
+      - name: ☁️ Checkout source
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: 📦 Install dependencies to test all dependencies
+        run: npm ci --only-production
+        working-directory: backend
+      - uses: paulhatch/semantic-version@v5.0.2
+        id: version
+        with:
+          # The prefix to use to identify tags
+          tag_prefix: "infisical-standalone/v"
+          # A string which, if present in a git commit, indicates that a change represents a
+          # major (breaking) change, supports regular expressions wrapped with '/'
+          major_pattern: "(MAJOR)"
+          # Same as above except indicating a minor change, supports regular expressions wrapped with '/'
+          minor_pattern: "(MINOR)"
+          # A string to determine the format of the version output
+          version_format: "${major}.${minor}.${patch}-prerelease${increment}"
+          # Optional path to check for changes. If any changes are detected in the path the
+          # 'changed' output will true. Enter multiple paths separated by spaces.
+          change_path: "backend,frontend"
+          # Prevents pre-v1.0.0 version from automatically incrementing the major version.
+          # If enabled, when the major version is 0, major releases will be treated as minor and minor as patch. Note that the version_type output is unchanged.
+          enable_prerelease_mode: true
+      # - name: 🧪 Run tests
+      #   run: npm run test:ci
+      #   working-directory: backend
+      - name: version output
+        run: |
+          echo "Output Value: ${{ steps.version.outputs.major }}"
+          echo "Output Value: ${{ steps.version.outputs.minor }}"
+          echo "Output Value: ${{ steps.version.outputs.patch }}"
+          echo "Output Value: ${{ steps.version.outputs.version }}"
+          echo "Output Value: ${{ steps.version.outputs.version_type }}"
+          echo "Output Value: ${{ steps.version.outputs.increment }}"
+      - name: Save commit hashes for tag
+        id: commit
+        uses: pr-mpt/actions-commit-hash@v2
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: 🐋 Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Depot CLI
+        uses: docker/setup-action@v1
+      - name: 📦 Build backend and export to Docker
+        uses: docker/build-push-action@v1
+        with:
+          # project: 64mmf0n610
+          # token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          push: true
+          context: .
+          tags: |
+            akhilmhdh/destruction:latest
+            akhilmhdh/destruction:${{ steps.commit.outputs.short }}
+            akhilmhdh/destruction:${{ steps.extract_version.outputs.version }}
+          platforms: linux/amd64,linux/arm64
+          file: Dockerfile.standalone-infisical
+          build-args: |
+            POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+            INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
