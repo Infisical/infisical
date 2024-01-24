@@ -78,6 +78,26 @@ const getFolderVersionKey = (folderId: string, version: number) =>
   `${folderId}:${version}`;
 
 const projectKv = kdb.sublevel(TableName.Project);
+const envPKv = kdb.sublevel(TableName.Environment);
+
+export const getEnvId = (workspace: string, environment: string) => {
+  const envKv = envPKv.sublevel(workspace);
+  return envKv.get(environment);
+};
+export const getFolderKv = (workspace: string, environment: string) => {
+  const envKv = envPKv.sublevel(workspace);
+  return envKv.sublevel(environment);
+};
+
+const checkIfFolderIsDangling = async (
+  projectId: string,
+  env_slug: string,
+  folderId: string,
+) => {
+  const kv = getFolderKv(projectId, truncateAndSlugify(env_slug));
+  const result = await kv.get(`${folderId}:dead`).catch(() => null);
+  return Boolean(result);
+};
 
 const migrationCheckPointsKv = kdb.sublevel("CHECK-POINTS");
 
@@ -104,7 +124,7 @@ export const groupBy = <T, Key extends string | number | symbol>(
     {} as Record<Key, T[]>,
   );
 
-const migrateCollection = async <
+export const migrateCollection = async <
   T extends {},
   K extends keyof Tables,
   R extends (keyof Tables[K]["base"])[] = [],
@@ -567,26 +587,6 @@ const main = async () => {
     console.log(
       "Migrating environments from Mongo Project -> Pg Environment Table",
     );
-    const envPKv = kdb.sublevel(TableName.Environment);
-
-    const getEnvId = (workspace: string, environment: string) => {
-      const envKv = envPKv.sublevel(workspace);
-      return envKv.get(environment);
-    };
-    const getFolderKv = (workspace: string, environment: string) => {
-      const envKv = envPKv.sublevel(workspace);
-      return envKv.sublevel(environment);
-    };
-
-    const checkIfFolderIsDangling = async (
-      projectId: string,
-      env_slug: string,
-      folderId: string,
-    ) => {
-      const kv = getFolderKv(projectId, truncateAndSlugify(env_slug));
-      const result = await kv.get(`${folderId}:dead`).catch(() => null);
-      return Boolean(result);
-    };
 
     await migrateCollection({
       db,
@@ -665,6 +665,7 @@ const main = async () => {
       },
     });
 
+    const projectKeyKv = kdb.sublevel(TableName.ProjectKeys);
     await migrateCollection({
       db,
       mongooseCollection: Key,
@@ -680,6 +681,7 @@ const main = async () => {
         if (!projectKvRes) return;
 
         const id = uuidV4();
+        await projectKeyKv.put(doc._id.toString(), id);
 
         const senderId = await userKv
           .get(doc.sender.toString())
@@ -889,6 +891,7 @@ const main = async () => {
       },
     });
 
+    const secretImportKv = kdb.sublevel(TableName.SecretImport);
     await migrateCollection({
       db,
       mongooseCollection: SecretImport,
@@ -1337,6 +1340,7 @@ const main = async () => {
       },
     });
 
+    const integrationKv = kdb.sublevel(TableName.Integration);
     await migrateCollection({
       db,
       mongooseCollection: Integration,
@@ -1357,6 +1361,7 @@ const main = async () => {
         const integrationAuthId = await integrationAuthKv.get(
           doc.integrationAuth.toString(),
         );
+        await integrationKv.put(doc._id.toString(), id);
 
         return {
           id,
@@ -1418,6 +1423,7 @@ const main = async () => {
       },
     });
 
+    const webhookKv = kdb.sublevel(TableName.Webhook);
     await migrateCollection({
       db,
       mongooseCollection: Webhook,
@@ -1435,6 +1441,7 @@ const main = async () => {
           doc.workspace.toString(),
           truncateAndSlugify(doc.environment),
         );
+        await webhookKv.put(doc._id.toString(), id);
         return {
           id,
           iv: doc.iv,
@@ -1533,6 +1540,7 @@ const main = async () => {
       },
     });
 
+    const identityAccessTokenKv = kdb.sublevel(TableName.IdentityAccessToken);
     await migrateCollection({
       db,
       mongooseCollection: IdentityAccessToken,
@@ -1540,6 +1548,7 @@ const main = async () => {
       returnKeys: ["id"],
       preProcessing: async (doc) => {
         const id = uuidV4();
+        await identityAccessTokenKv.put(doc._id.toString(), id);
         const identityUAClientSecretId = doc?.identityUniversalAuthClientSecret
           ? await identityUaClientSecKv.get(
               doc.identityUniversalAuthClientSecret.toString(),
@@ -1953,6 +1962,7 @@ const main = async () => {
       },
     });
 
+    const trustedIpKv = kdb.sublevel(TableName.TrustedIps);
     await migrateCollection({
       db,
       mongooseCollection: TrustedIP,
@@ -1965,6 +1975,7 @@ const main = async () => {
           .get(doc.workspace.toString())
           .catch(() => null);
         if (!projectKvRes) return;
+        await trustedIpKv.put(doc._id.toString(), id);
 
         return {
           id,

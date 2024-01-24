@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "migration": "tsx src/index.ts",
-    "rollback": "tsx src/rollback.ts"
+    "rollback": "tsx src/rollback.ts",
+    "migrate:audit-log": "tsx src/audit-log-migrator.ts"
   },
   "author": "",
   "license": "ISC",

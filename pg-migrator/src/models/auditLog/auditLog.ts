@@ -19,52 +19,52 @@ const auditLogSchema = new Schema<IAuditLog>(
       type: {
         type: String,
         enum: ActorType,
-        required: true
+        required: true,
       },
       metadata: {
-        type: Schema.Types.Mixed
-      }
+        type: Schema.Types.Mixed,
+      },
     },
     organization: {
       type: Schema.Types.ObjectId,
-      required: false
+      required: false,
     },
     workspace: {
       type: Schema.Types.ObjectId,
       required: false,
-      index: true
+      index: true,
     },
     ipAddress: {
       type: String,
-      required: true
+      required: true,
     },
     event: {
       type: {
         type: String,
         enum: EventType,
-        required: true
+        required: true,
       },
       metadata: {
-        type: Schema.Types.Mixed
-      }
+        type: Schema.Types.Mixed,
+      },
     },
     userAgent: {
       type: String,
-      required: true
+      required: true,
     },
     userAgentType: {
       type: String,
       enum: UserAgentType,
-      required: true
+      required: true,
     },
     expiresAt: {
       type: Date,
-      expires: 0
-    }
+      expires: 0,
+    },
   },
   {
-    timestamps: true
-  }
+    timestamps: true,
+  },
 );
 
 export const AuditLog = model<IAuditLog>("AuditLog", auditLogSchema);
