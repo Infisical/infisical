@@ -19,7 +19,7 @@ export type NameWorkspaceSecretsDTO = {
   workspaceId: string;
   secretsToUpdate: {
     secretName: string;
-    id: string;
+    secretId: string;
   }[];
 };
 

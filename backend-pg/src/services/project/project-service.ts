@@ -19,7 +19,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
-import { TSecretBlindIndexDALFactory } from "../secret/secret-blind-index-dal";
+import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TProjectDALFactory } from "./project-dal";
 import { TCreateProjectDTO, TDeleteProjectDTO, TGetProjectDTO } from "./project-types";

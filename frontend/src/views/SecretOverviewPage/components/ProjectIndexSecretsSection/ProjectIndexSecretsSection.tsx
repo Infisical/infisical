@@ -47,7 +47,7 @@ export const ProjectIndexSecretsSection = ({ decryptFileKey }: Props) => {
 
         return {
           secretName,
-          id: encryptedSecret.id
+          secretId: encryptedSecret.id
         };
       });
       await nameWorkspaceSecrets.mutateAsync({

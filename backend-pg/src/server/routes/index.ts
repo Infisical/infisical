@@ -74,12 +74,13 @@ import { projectMembershipDALFactory } from "@app/services/project-membership/pr
 import { projectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
 import { projectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { projectRoleServiceFactory } from "@app/services/project-role/project-role-service";
-import { secretBlindIndexDALFactory } from "@app/services/secret/secret-blind-index-dal";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
 import { secretQueueFactory } from "@app/services/secret/secret-queue";
 import { secretServiceFactory } from "@app/services/secret/secret-service";
 import { secretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { secretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
+import { secretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
+import { secretBlindIndexServiceFactory } from "@app/services/secret-blind-index/secret-blind-index-service";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { secretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 import { secretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
@@ -356,7 +357,11 @@ export const registerRoutes = async (
     smtpService,
     projectDAL
   });
-
+  const secretBlindIndexService = secretBlindIndexServiceFactory({
+    permissionService,
+    secretDAL,
+    secretBlindIndexDAL
+  });
   const secretService = secretServiceFactory({
     folderDAL,
     secretVersionDAL,
@@ -477,7 +482,8 @@ export const registerRoutes = async (
     auditLog: auditLogService,
     secretScanning: secretScanningService,
     license: licenseService,
-    trustedIp: trustedIpService
+    trustedIp: trustedIpService,
+    secretBlindIndex: secretBlindIndexService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {

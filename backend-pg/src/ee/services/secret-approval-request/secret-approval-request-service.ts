@@ -11,10 +11,10 @@ import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { groupBy, pick, unique } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TSecretBlindIndexDALFactory } from "@app/services/secret/secret-blind-index-dal";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 

@@ -21,11 +21,11 @@ import { logger } from "@app/lib/logger";
 
 import { ActorType } from "../auth/auth-type";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
+import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
-import { TSecretBlindIndexDALFactory } from "./secret-blind-index-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import { decryptSecretRaw, generateSecretBlindIndexBySalt } from "./secret-fns";
 import { TSecretQueueFactory } from "./secret-queue";
