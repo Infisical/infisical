@@ -35,7 +35,7 @@ export const secretBlindIndexServiceFactory = ({
     }
 
     const secretCount = await secretBlindIndexDAL.countOfSecretsWithNullSecretBlindIndex(projectId);
-    return secretCount;
+    return Number(secretCount);
   };
 
   const getProjectSecrets = async ({ projectId, actorId, actor }: TGetProjectSecretsDTO) => {
