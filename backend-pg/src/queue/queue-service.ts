@@ -113,9 +113,6 @@ export const queueServiceFactory = (redisUrl: string) => {
   ) => {
     const q = queueContainer[name];
 
-    console.log("name", name);
-    console.log("query", q);
-
     await q.add(job, data, opts);
   };
 
