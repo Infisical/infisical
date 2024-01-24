@@ -188,7 +188,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
       );
       if (!backupPrivateKey) throw new Error("Failed to find backup key");
 
-      return { message: "Successfully updated backup private key", backupPrivateKey };
+      return { message: "Successfully fetched backup private key", backupPrivateKey };
     }
   });
 
