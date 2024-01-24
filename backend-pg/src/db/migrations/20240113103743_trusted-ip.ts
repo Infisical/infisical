@@ -13,7 +13,7 @@ export async function up(knex: Knex): Promise<void> {
       t.boolean("isActive").defaultTo(true);
       t.string("comment");
       t.string("projectId").notNullable();
-      t.foreign("projectId").references("id").inTable(TableName.Project);
+      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.timestamps(true, true, true);
     });
   }
