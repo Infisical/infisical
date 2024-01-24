@@ -26,6 +26,9 @@ export const flattenFolders = (folders: TFolderSchema) => {
     name: string;
     version: number;
   }[] = [];
+  
+  if(!folders) return []
+
   folderBfsTraversal(folders, ({ name, version, parentId, id }) => {
     flattened.push({ name, version, parentId, id });
   });

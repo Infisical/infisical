@@ -156,18 +156,15 @@ export const migrateCollection = async <
 }) => {
   // check ones that have already been migrated
   const migrationCheckPointsKvRes = await migrationCheckPointsKv
-    .get(postgresTableName)
+    .get(`${postgresTableName}-${mongooseCollection.modelName}`)
     .catch(() => null);
+
   if (migrationCheckPointsKvRes) {
     console.log(
       `Skipping Postgres table '${postgresTableName}' because of check point`,
     );
     return;
   }
-  //  else {
-  //   await db(postgresTableName).del()
-  //   console.log(`Dropped table named '${postgresTableName}' to start fresh from this point on`)
-  // }
 
   const mongooseDoc: T[] = [];
   const pgDoc: Tables[K]["base"][] = []; // pre processed data ready to be inserted into PSQL
@@ -183,9 +180,7 @@ export const migrateCollection = async <
   console.log("Total batches", Math.ceil(totalMongoCount / 1000));
   let batch = 1;
 
-  for await (const doc of mongooseCollection
-    .find(filter || {})
-    .cursor({ batchSize: 100 })) {
+  for await (const doc of mongooseCollection.find(filter || {}).cursor({ batchSize: 100 })) {
     mongooseDoc.push(doc);
     const preProcessedData = await preProcessing(
       doc.toObject({ virtuals: true }),
@@ -239,7 +234,7 @@ export const migrateCollection = async <
     pgDoc.splice(0, pgDoc.length);
   }
 
-  migrationCheckPointsKv.put(postgresTableName, "done");
+  migrationCheckPointsKv.put(`${postgresTableName}-${mongooseCollection.modelName}`, "done");
 
   console.log(
     "Finished migration of ",
@@ -254,7 +249,6 @@ const main = async () => {
     dotenv.config();
 
     process.env.START_FRESH = "true";
-
     const prompt = promptSync({ sigint: true });
 
     let mongodb_url = process.env.MONGO_DB_URL;
@@ -288,7 +282,7 @@ const main = async () => {
 
       console.log("Starting rolling back to latest, comment this out later");
       await db.migrate.rollback({}, true);
-      await kdb.clear();
+      await kdb.clear();      
       console.log("Rolling back completed");
 
       console.log("Executing migration");
@@ -587,6 +581,26 @@ const main = async () => {
     console.log(
       "Migrating environments from Mongo Project -> Pg Environment Table",
     );
+    const envPKv = kdb.sublevel(TableName.Environment);
+
+    const getEnvId = async (workspace: string, environment: string) => {
+      const envKv = envPKv.sublevel(workspace);
+      return envKv.get(environment)
+    };
+    const getFolderKv = (workspace: string, environment: string) => {
+      const envKv = envPKv.sublevel(workspace);
+      return envKv.sublevel(environment);
+    };
+
+    const checkIfFolderIsDangling = async (
+      projectId: string,
+      env_slug: string,
+      folderId: string,
+    ) => {
+      const kv = getFolderKv(projectId, truncateAndSlugify(env_slug));
+      const result = await kv.get(`${folderId}:dead`).catch(() => null);
+      return Boolean(result);
+    };
 
     await migrateCollection({
       db,
@@ -639,29 +653,41 @@ const main = async () => {
           : null;
         if (!orgId) return;
 
-        return Promise.all(
-          doc.environments.map(async (env) => {
-            const id = uuidV4();
-            const envId = await getEnvId(
+      let results = [];
+      for (const env of doc.environments) {
+          const id = uuidV4();
+      
+          // case: we forgot to clean up folders that belong to deleted env slugs
+          const isEnvFound = await getEnvId(
+            doc._id.toString(),
+            truncateAndSlugify(env.slug),
+          ).catch(() => null);
+      
+          if (!isEnvFound) continue;
+      
+          const envId = await getEnvId(
               doc._id.toString(),
               truncateAndSlugify(env.slug),
-            );
-
-            const folderKv = getFolderKv(
+          );
+      
+          const folderKv = getFolderKv(
               doc._id.toString(),
               truncateAndSlugify(env.slug),
-            );
-            await folderKv.put("root", id);
-            return {
+          );
+      
+          await folderKv.put("root", id);
+          results.push({
               id,
               name: "root",
               envId,
               version: 1,
               createdAt: new Date(),
               updatedAt: new Date(),
-            };
-          }),
-        );
+          });
+      }
+      
+      return results;
+
       },
     });
 
@@ -788,36 +814,41 @@ const main = async () => {
           truncateAndSlugify(doc.environment),
         );
 
+        // case: we forgot to clean up folders that belong to deleted env slugs
+        const isEnvFound = await getEnvId(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        ).catch(() => null);
+
+        if (!isEnvFound) return;
+
         const envId = await getEnvId(
           doc.workspace.toString(),
           truncateAndSlugify(doc.environment),
         );
-        const folders = flattenFolders(doc.nodes);
 
+        const folders = flattenFolders(doc.nodes);
         if (!folders) return;
 
-        const pgFolder = await Promise.all(
-          folders
-            // already has been created
-            .filter(({ id }) => id !== "root")
-            .map(async (folder) => {
-              const { name, version } = folder;
-              const id = uuidV4();
-              await folderKv.put(folder.id, id);
-              const parentId = folder.parentId
-                ? await folderKv.get(folder.parentId)
-                : null;
-              return {
-                name,
-                version,
-                id,
-                parentId,
-                envId,
-                createdAt: (doc as any).createdAt,
-                updatedAt: (doc as any).updatedAt,
-              };
-            }),
-        );
+        const pgFolder = [];
+        for (const folder of folders) {
+          if (folder.id !== "root") {
+            const { name, version } = folder;
+            const id = uuidV4();
+            await folderKv.put(folder.id, id);  
+            const parentId = folder?.parentId ? await folderKv.get(folder?.parentId).catch((e) => {console.log("parent folder not found==>", folder); throw e;}) : null;
+      
+            pgFolder.push({
+              name,
+              version,
+              id,
+              parentId,
+              envId,
+              createdAt: (doc as any).createdAt,
+              updatedAt: (doc as any).updatedAt,
+            });
+          }
+        }
 
         return pgFolder;
       },
@@ -843,6 +874,12 @@ const main = async () => {
         // This is because some folder snap shots were taken when that env slug exists but the same env slug was later deleted
         let envId: string;
         try {
+          const isEnvFound = await getEnvId(
+            doc.workspace.toString(),
+            truncateAndSlugify(doc.environment),
+          ).catch(() => null);
+          if (!isEnvFound) return;
+          
           envId = await getEnvId(
             doc.workspace.toString(),
             truncateAndSlugify(doc.environment),
@@ -1040,11 +1077,6 @@ const main = async () => {
         ).catch(() => null);
         if (!isEnvFound) return;
 
-        const folderKv = getFolderKv(
-          doc.workspace.toString(),
-          truncateAndSlugify(doc.environment),
-        );
-
         if (
           await checkIfFolderIsDangling(
             doc.workspace.toString(),
@@ -1055,18 +1087,24 @@ const main = async () => {
           return;
         }
 
-        // Case: if folder id doesn't exist and the root of the folder also doesn;t exist, THEN put the secret at the ROOT
-        const folderId = await folderKv.get(doc.folder || "root").catch(() => {
-          console.log(
-            "secret location unknown, moving secret to root of env_slug/project",
-          );
-          return "root";
-        });
+        const folderKv = getFolderKv(
+          doc.workspace.toString(),
+          truncateAndSlugify(doc.environment),
+        );
 
+        // Case: if folder id doesn't exist and the root of the folder also doesn;t exist, THEN put the secret at the ROOT
+        // case: after deleting a folder, we don't clean up the secrets that link to that folder
+        const folderId = await folderKv.get(doc.folder || "root").catch(() => null);
+        
+        // case: when environments are renamed, there used to be a TIMEE when the related folder's slugs weren't updated with it... :( 
+        if (!folderId) return
+
+        // issue with personal 
         const userId = doc.user
           ? await userKv.get(doc.user.toString()).catch(() => null)
           : null;
-        if (!userId) return;
+
+        if ( doc.type === "personal" && !userId) return;
 
         const id = uuidV4();
         await secKv.put(doc._id.toString(), id);
@@ -1132,10 +1170,10 @@ const main = async () => {
               return;
             }
 
-            const userId = doc.user
-              ? await userKv.get(doc.user.toString()).catch(() => null)
-              : null;
-            if (!userId) return;
+            // const userId = doc.user
+            //   ? await userKv.get(doc.user.toString()).catch(() => null)
+            //   : null;
+            // if (!userId) return;
 
             const secretId = await secKv.get(doc._id.toString()).catch((e) => {
               throw e;
@@ -1212,7 +1250,7 @@ const main = async () => {
         const userId = doc.user
           ? await userKv.get(doc.user.toString()).catch(() => null)
           : null;
-        if (!userId) return;
+        if (!userId && doc.type === "personal") return;
 
         const id = uuidV4();
         await secVerKv.put(doc._id.toString(), id);
