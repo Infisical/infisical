@@ -592,16 +592,6 @@ const main = async () => {
       return envKv.sublevel(environment);
     };
 
-    const checkIfFolderIsDangling = async (
-      projectId: string,
-      env_slug: string,
-      folderId: string,
-    ) => {
-      const kv = getFolderKv(projectId, truncateAndSlugify(env_slug));
-      const result = await kv.get(`${folderId}:dead`).catch(() => null);
-      return Boolean(result);
-    };
-
     await migrateCollection({
       db,
       mongooseCollection: Workspace,
@@ -1300,15 +1290,25 @@ const main = async () => {
           .catch(() => null);
         if (!projectKvRes) return;
 
-        await projectBotKv.put(doc._id.toString(), id);
+        // if we try to process two bots for the same workspace, then skip
+        if (await projectBotKv.get(doc.workspace.toString()).catch(() => null)){
+          return
+        }
+
+        await projectBotKv.put(doc.workspace.toString(), id);
 
         // case: skip bots that are inactive (skipped specifically because 6388653a200193a667c7e3f3 has two records, one active one not)
-        let botKey = await BotKey.findOne({
+        let bot = await Bot.findOne({
           workspace: doc.workspace,
           $or: [{ isActive: true }, { isActive: false }],
         })
           .sort({ isActive: -1 })
           .lean();
+        
+        // case: when no bots are found for this project, skip  
+        if (!bot) return 
+
+        const botKey = await BotKey.findOne({bot: bot?._id})
 
         const senderId = botKey?.sender
           ? await userKv.get(botKey.sender.toString()).catch(() => null)
@@ -1318,20 +1318,20 @@ const main = async () => {
 
         return {
           id,
-          algorithm: doc.algorithm,
-          keyEncoding: doc.keyEncoding,
-          projectId: doc.workspace.toString(),
-          name: doc.name,
-          iv: doc.iv,
-          tag: doc.tag,
+          algorithm: bot.algorithm,
+          keyEncoding: bot.keyEncoding,
+          projectId: bot.workspace.toString(),
+          name: bot.name,
+          iv: bot.iv,
+          tag: bot.tag,
           senderId,
-          isActive: doc.isActive,
-          publicKey: doc.publicKey,
+          isActive: bot.isActive,
+          publicKey: bot.publicKey,
           encryptedProjectKey: botKey?.encryptedKey || null,
           encryptedProjectKeyNonce: botKey?.nonce || null,
-          encryptedPrivateKey: doc.encryptedPrivateKey,
-          createdAt: new Date((doc as any).createdAt),
-          updatedAt: new Date((doc as any).updatedAt),
+          encryptedPrivateKey: bot.encryptedPrivateKey,
+          createdAt: new Date((bot as any).createdAt),
+          updatedAt: new Date((bot as any).updatedAt),
         };
       },
     });
