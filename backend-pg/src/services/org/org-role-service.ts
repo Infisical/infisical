@@ -5,6 +5,7 @@ import { TOrgRolesInsert, TOrgRolesUpdate } from "@app/db/schemas";
 import {
   orgAdminPermissions,
   orgMemberPermissions,
+  orgNoAccessPermissions,
   OrgPermissionActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
@@ -105,6 +106,16 @@ export const orgRoleServiceFactory = ({
         slug: "member",
         description: "Non-administrative role in an organization",
         permissions: packRules(orgMemberPermissions.rules),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: "b10d49a9-09a9-4443-916a-4246f9ff2c72", // dummy user for zod validation in response
+        orgId,
+        name: "No Access",
+        slug: "no-access",
+        description: "No access to any resources in the organization",
+        permissions: packRules(orgNoAccessPermissions.rules),
         createdAt: new Date(),
         updatedAt: new Date()
       },
