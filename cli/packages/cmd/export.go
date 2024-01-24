@@ -87,16 +87,12 @@ var exportCmd = &cobra.Command{
 
 		var output string
 		if shouldExpandSecrets {
-			substitutions := util.ExpandSecrets(secrets, infisicalToken, "")
-			output, err = formatEnvs(substitutions, format)
-			if err != nil {
-				util.HandleError(err)
-			}
-		} else {
-			output, err = formatEnvs(secrets, format)
-			if err != nil {
-				util.HandleError(err)
-			}
+			secrets = util.ExpandSecrets(secrets, infisicalToken, "")
+		}
+		secrets = util.FilterSecretsByTag(secrets, tagSlugs)
+		output, err = formatEnvs(secrets, format)
+		if err != nil {
+			util.HandleError(err)
 		}
 
 		fmt.Print(output)
