@@ -51,10 +51,7 @@ export const getTlsOption = (host?: SmtpHost | string, secure?: boolean) => {
 };
 
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {
-  const smtp = createTransport({
-    ...cfg,
-    ...getTlsOption(cfg.host, cfg.secure)
-  });
+  const smtp = createTransport({ ...cfg, ...getTlsOption(cfg.host, cfg.secure) });
   const isSmtpOn = Boolean(cfg.host);
 
   const sendMail = async ({ substitutions, recipients, template, subjectLine }: TSmtpSendMail) => {
@@ -63,6 +60,7 @@ export const smtpServiceFactory = (cfg: TSmtpConfig) => {
     const htmlToSend = temp(substitutions);
     if (isSmtpOn) {
       await smtp.sendMail({
+        from: cfg.from,
         to: recipients.join(", "),
         subject: subjectLine,
         html: htmlToSend
