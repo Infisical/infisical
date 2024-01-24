@@ -19,27 +19,6 @@ jobs:
       - name: 📦 Install dependencies to test all dependencies
         run: npm ci --only-production
         working-directory: backend
-      - uses: paulhatch/semantic-version@v5.0.2
-        id: version
-        with:
-          # The prefix to use to identify tags
-          tag_prefix: "infisical-standalone/v"
-          # A string which, if present in a git commit, indicates that a change represents a
-          # major (breaking) change, supports regular expressions wrapped with '/'
-          major_pattern: "(MAJOR)"
-          # Same as above except indicating a minor change, supports regular expressions wrapped with '/'
-          minor_pattern: "(MINOR)"
-          # A string to determine the format of the version output
-          version_format: "${major}.${minor}.${patch}-prerelease${increment}"
-          # Optional path to check for changes. If any changes are detected in the path the
-          # 'changed' output will true. Enter multiple paths separated by spaces.
-          change_path: "backend,frontend"
-          # Prevents pre-v1.0.0 version from automatically incrementing the major version.
-          # If enabled, when the major version is 0, major releases will be treated as minor and minor as patch. Note that the version_type output is unchanged.
-          enable_prerelease_mode: true
-      # - name: 🧪 Run tests
-      #   run: npm run test:ci
-      #   working-directory: backend
       - name: version output
         run: |
           echo "Output Value: ${{ steps.version.outputs.major }}"
@@ -61,7 +40,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: 📦 Build backend and export to Docker
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v1
         with:
           # project: 64mmf0n610
           # token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
