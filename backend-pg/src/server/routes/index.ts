@@ -93,6 +93,7 @@ import { serviceTokenServiceFactory } from "@app/services/service-token/service-
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
+import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
@@ -214,6 +215,7 @@ export const registerRoutes = async (
     licenseService
   });
 
+  const telemetryService = telemetryServiceFactory();
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL });
   const userService = userServiceFactory({ userDAL });
   const loginService = authLoginServiceFactory({ userDAL, smtpService, tokenService });
@@ -254,6 +256,7 @@ export const registerRoutes = async (
   const apiKeyService = apiKeyServiceFactory({ apiKeyDAL, userDAL });
 
   const secretScanningQueue = secretScanningQueueFactory({
+    telemetryService,
     smtpService,
     secretScanningDAL,
     queueService,
@@ -389,6 +392,7 @@ export const registerRoutes = async (
     secretQueueService
   });
   const secretRotationQueue = secretRotationQueueFactory({
+    telemetryService,
     secretRotationDAL,
     queue: queueService,
     secretDAL,
@@ -483,7 +487,8 @@ export const registerRoutes = async (
     secretScanning: secretScanningService,
     license: licenseService,
     trustedIp: trustedIpService,
-    secretBlindIndex: secretBlindIndexService
+    secretBlindIndex: secretBlindIndexService,
+    telemetry: telemetryService
   });
 
   server.decorate<FastifyZodProvider["store"]>("store", {

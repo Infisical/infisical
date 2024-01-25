@@ -27,6 +27,6 @@
       "@server/*": ["./src/server/*"]
     }
   },
-  "include": ["src/**/*", "scripts/**/*", "e2e-test/**/*", ".eslintrc.js"],
+  "include": ["src/**/*", "scripts/**/*", "e2e-test/**/*"],
   "exclude": ["node_modules"]
 }

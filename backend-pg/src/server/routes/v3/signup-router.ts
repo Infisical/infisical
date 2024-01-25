@@ -3,6 +3,7 @@ import { z } from "zod";
 import { UsersSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { authRateLimit } from "@app/server/config/rateLimiter";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSignupRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -100,13 +101,27 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           authorization: req.headers.authorization as string
         });
 
+      server.services.telemetry.sendLoopsEvent(
+        user.email,
+        user.firstName || "",
+        user.lastName || ""
+      );
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.UserSignedUp,
+        distinctId: user.email,
+        properties: {
+          email: user.email,
+          attributionSource: req.body.attributionSource
+        }
+      });
+
       res.setCookie("jid", refreshToken, {
         httpOnly: true,
         path: "/",
         sameSite: "strict",
         secure: appCfg.HTTPS_ENABLED
       });
-      // TODO(akhilmhdh-pg): add telemetry service
 
       return { message: "Successfully set up account", user, token: accessToken };
     }

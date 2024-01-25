@@ -1,2 +1,3 @@
 vitest-environment-infisical.ts
 vitest.config.ts
+.eslintrc.js

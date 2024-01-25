@@ -112,6 +112,7 @@
     "pg": "^8.11.3",
     "picomatch": "^3.0.1",
     "pino": "^8.16.2",
+    "posthog-node": "^3.6.0",
     "probot": "^12.3.3",
     "smee-client": "^2.0.0",
     "tweetnacl": "^1.0.3",

@@ -7,6 +7,7 @@ import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerAdminRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -84,6 +85,16 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         ...req.body,
         ip: req.realIp,
         userAgent: req.headers["user-agent"] || ""
+      });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.AdminInit,
+        distinctId: user.user.email,
+        properties: {
+          email: user.user.email,
+          lastName: user.user.lastName || "",
+          firstName: user.user.firstName || ""
+        }
       });
 
       res.setCookie("jid", token.refresh, {

@@ -1,3 +1,4 @@
+import { FastifyRequest } from "fastify";
 import picomatch from "picomatch";
 import { z } from "zod";
 
@@ -13,8 +14,22 @@ import { CommitType } from "@app/ee/services/secret-approval-request/secret-appr
 import { BadRequestError } from "@app/lib/errors";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { secretRawSchema } from "../sanitizedSchemas";
+
+const getDistinctId = (req: FastifyRequest) => {
+  if (req.auth.actor === ActorType.USER) {
+    return req.auth.user.email;
+  }
+  if (req.auth.actor === ActorType.IDENTITY) {
+    return `identity-${req.auth.identityId}`;
+  }
+  if (req.auth.actor === ActorType.SERVICE) {
+    return `service-token-${req.auth.serviceToken.id}`;
+  }
+  return "unknown-auth-data";
+};
 
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -86,6 +101,18 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretPath: req.query.secretPath,
             numberOfSecrets: secrets.length
           }
+        }
+      });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretPulled,
+        distinctId: getDistinctId(req),
+        properties: {
+          numberOfSecrets: secrets.length,
+          workspaceId,
+          environment,
+          secretPath: req.query.secretPath,
+          ...req.auditLogInfo
         }
       });
       return { secrets, imports };
@@ -163,6 +190,18 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretPulled,
+        distinctId: getDistinctId(req),
+        properties: {
+          numberOfSecrets: 1,
+          workspaceId,
+          environment,
+          secretPath: req.query.secretPath,
+          ...req.auditLogInfo
+        }
+      });
       return { secret };
     }
   });
@@ -217,7 +256,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.CREATE_SECRET,
           metadata: {
-            environment: req.body.environment,
+     environment: req.body.environment,
             secretPath: req.body.secretPath,
             secretId: secret.id,
             secretKey: req.params.secretName,
@@ -225,6 +264,20 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretCreated,
+        distinctId: getDistinctId(req),
+        properties: {
+          numberOfSecrets: 1,
+          workspaceId: req.body.workspaceId,
+          environment: req.body.environment,
+          secretPath: req.body.secretPath,
+
+          ...req.auditLogInfo
+        }
+      });
+
       return { secret };
     }
   });
@@ -285,6 +338,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretUpdated,
+        distinctId: getDistinctId(req),
+        properties: {
+          numberOfSecrets: 1,
+          workspaceId: req.body.workspaceId,
+          environment: req.body.environment,
+          secretPath: req.body.secretPath,
+
+          ...req.auditLogInfo
+        }
+      });
       return { secret };
     }
   });
@@ -339,6 +405,20 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretDeleted,
+        distinctId: getDistinctId(req),
+        properties: {
+          numberOfSecrets: 1,
+          workspaceId: req.body.workspaceId,
+          environment: req.body.environment,
+          secretPath: req.body.secretPath,
+
+          ...req.auditLogInfo
+        }
+      });
+
       return { secret };
     }
   });
@@ -411,6 +491,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretPulled,
+        distinctId: getDistinctId(req),
+        properties: {
+          numberOfSecrets: secrets.length,
+          workspaceId: req.query.workspaceId,
+          environment: req.query.environment,
+          secretPath: req.query.secretPath,
+
+          ...req.auditLogInfo
+        }
+      });
+
       return { secrets, imports };
     }
   });
@@ -470,6 +563,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretKey: req.params.secretName,
             secretVersion: secret.version
           }
+        }
+      });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretPulled,
+        distinctId: getDistinctId(req),
+        properties: {
+          numberOfSecrets: 1,
+          workspaceId: req.query.workspaceId,
+          environment: req.query.environment,
+          secretPath: req.query.secretPath,
+
+          ...req.auditLogInfo
         }
       });
       return { secret };
@@ -583,6 +689,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               }
             }
           });
+
           return { approval };
         }
       }
@@ -621,6 +728,20 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretCreated,
+        distinctId: getDistinctId(req),
+        properties: {
+          numberOfSecrets: 1,
+          workspaceId: req.body.workspaceId,
+          environment: req.body.environment,
+          secretPath: req.body.secretPath,
+
+          ...req.auditLogInfo
+        }
+      });
+
       return { secret };
     }
   });
@@ -788,6 +909,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretUpdated,
+        distinctId: getDistinctId(req),
+        properties: {
+          numberOfSecrets: 1,
+          workspaceId: req.body.workspaceId,
+          environment: req.body.environment,
+          secretPath: req.body.secretPath,
+
+          ...req.auditLogInfo
+        }
+      });
       return { secret };
     }
   });
@@ -890,6 +1024,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretKey: req.params.secretName,
             secretVersion: secret.version
           }
+        }
+      });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretDeleted,
+        distinctId: getDistinctId(req),
+        properties: {
+          numberOfSecrets: 1,
+          workspaceId: req.body.workspaceId,
+          environment: req.body.environment,
+          secretPath: req.body.secretPath,
+
+          ...req.auditLogInfo
         }
       });
       return { secret };
@@ -1005,6 +1152,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretCreated,
+        distinctId: getDistinctId(req),
+        properties: {
+          numberOfSecrets: secrets.length,
+          workspaceId: req.body.workspaceId,
+          environment: req.body.environment,
+          secretPath: req.body.secretPath,
+
+          ...req.auditLogInfo
+        }
+      });
       return { secrets };
     }
   });
@@ -1117,6 +1277,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretUpdated,
+        distinctId: getDistinctId(req),
+        properties: {
+          numberOfSecrets: secrets.length,
+          workspaceId: req.body.workspaceId,
+          environment: req.body.environment,
+          secretPath: req.body.secretPath,
+
+          ...req.auditLogInfo
+        }
+      });
       return { secrets };
     }
   });
@@ -1215,6 +1388,19 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               secretVersion: secret.version
             }))
           }
+        }
+      });
+
+      server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.SecretDeleted,
+        distinctId: getDistinctId(req),
+        properties: {
+          numberOfSecrets: secrets.length,
+          workspaceId: req.body.workspaceId,
+          environment: req.body.environment,
+          secretPath: req.body.secretPath,
+
+          ...req.auditLogInfo
         }
       });
       return { secrets };

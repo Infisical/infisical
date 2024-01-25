@@ -6,6 +6,8 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TSecretScanningDALFactory } from "../secret-scanning-dal";
 import {
@@ -23,6 +25,7 @@ type TSecretScanningQueueFactoryDep = {
   secretScanningDAL: TSecretScanningDALFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgMembershipDAL: Pick<TOrgDALFactory, "findMembership">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TSecretScanningQueueFactory = ReturnType<typeof secretScanningQueueFactory>;
@@ -31,7 +34,8 @@ export const secretScanningQueueFactory = ({
   queueService,
   secretScanningDAL,
   smtpService,
-  orgMembershipDAL: orgMemberDAL,
+  telemetryService,
+  orgMembershipDAL: orgMemberDAL
 }: TSecretScanningQueueFactoryDep) => {
   const startFullRepoScan = async (payload: TScanFullRepoEventPayload) => {
     await queueService.queue(QueueName.SecretFullRepoScan, QueueJobs.SecretScan, payload, {
@@ -160,6 +164,14 @@ export const secretScanningQueueFactory = ({
         }
       });
     }
+
+    telemetryService.sendPostHogEvents({
+      event: PostHogEventTypes.SecretScannerPush,
+      distinctId: repository.fullName,
+      properties: {
+        numberOfRisks: Object.keys(allFindingsByFingerprint).length
+      }
+    });
   });
 
   queueService.start(QueueName.SecretFullRepoScan, async (job) => {
@@ -220,6 +232,14 @@ export const secretScanningQueueFactory = ({
         }
       });
     }
+
+    telemetryService.sendPostHogEvents({
+      event: PostHogEventTypes.SecretScannerFull,
+      distinctId: repository.fullName,
+      properties: {
+        numberOfRisks: findings.length
+      }
+    });
   });
 
   queueService.listen(QueueName.SecretPushEventScan, "failed", (job, err) => {

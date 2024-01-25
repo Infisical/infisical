@@ -12,6 +12,8 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TSecretRotationDALFactory } from "../secret-rotation-dal";
 import { rotationTemplates } from "../templates";
@@ -41,6 +43,7 @@ type TSecretRotationQueueFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretDAL: Pick<TSecretDALFactory, "bulkUpdate" | "find">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "insertMany" | "findLatestVersionMany">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 // These error should stop the repeatable job and ask user to reconfigure rotation
@@ -61,7 +64,8 @@ export const secretRotationQueueFactory = ({
   secretRotationDAL,
   projectBotService,
   secretDAL,
-  secretVersionDAL
+  secretVersionDAL,
+  telemetryService
 }: TSecretRotationQueueFactoryDep) => {
   const addToQueue = async (rotationId: string, interval: number) => {
     const appCfg = getConfig();
@@ -262,6 +266,18 @@ export const secretRotationQueueFactory = ({
           tx
         );
       });
+
+      telemetryService.sendPostHogEvents({
+        event: PostHogEventTypes.SecretRotated,
+        distinctId: "",
+        properties: {
+          numberOfSecrets: encryptedSecrets.length,
+          environment: secretRotation.environment.slug,
+          folderId: "",
+          workspaceId: secretRotation.projectId
+        }
+      });
+
       logger.info("Finished rotating: rotation id: ", rotationId);
     } catch (error) {
       logger.error(error);
