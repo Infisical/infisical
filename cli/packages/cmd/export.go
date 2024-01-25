@@ -74,6 +74,13 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		if !cmd.Flags().Changed("path") {
+			workspaceMappedPath := util.GetPathFromWorkspaceFile()
+			if workspaceMappedPath != "" {
+				secretsPath = workspaceMappedPath
+			}
+		}
+
 		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, WorkspaceId: projectId, SecretsPath: secretsPath}, "")
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")

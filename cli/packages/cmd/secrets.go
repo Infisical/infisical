@@ -48,6 +48,13 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		if !cmd.Flags().Changed("path") {
+			workspaceMappedPath := util.GetPathFromWorkspaceFile()
+			if workspaceMappedPath != "" {
+				secretsPath = workspaceMappedPath
+			}
+		}
+
 		shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
 		if err != nil {
 			util.HandleError(err)
@@ -126,6 +133,13 @@ var secretsSetCmd = &cobra.Command{
 		secretsPath, err := cmd.Flags().GetString("path")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
+		}
+
+		if !cmd.Flags().Changed("path") {
+			workspaceMappedPath := util.GetPathFromWorkspaceFile()
+			if workspaceMappedPath != "" {
+				secretsPath = workspaceMappedPath
+			}
 		}
 
 		workspaceFile, err := util.GetWorkSpaceFromFile()
@@ -338,6 +352,13 @@ var secretsDeleteCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		if !cmd.Flags().Changed("path") {
+			workspaceMappedPath := util.GetPathFromWorkspaceFile()
+			if workspaceMappedPath != "" {
+				secretsPath = workspaceMappedPath
+			}
+		}
+
 		secretType, err := cmd.Flags().GetString("type")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
@@ -403,7 +424,14 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 
 	secretsPath, err := cmd.Flags().GetString("path")
 	if err != nil {
-		util.HandleError(err, "Unable to parse path flag")
+		util.HandleError(err, "Unable to parse flag")
+	}
+
+	if !cmd.Flags().Changed("path") {
+		workspaceMappedPath := util.GetPathFromWorkspaceFile()
+		if workspaceMappedPath != "" {
+			secretsPath = workspaceMappedPath
+		}
 	}
 
 	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath}, "")
@@ -443,6 +471,13 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 	secretsPath, err := cmd.Flags().GetString("path")
 	if err != nil {
 		util.HandleError(err, "Unable to parse flag")
+	}
+
+	if !cmd.Flags().Changed("path") {
+		workspaceMappedPath := util.GetPathFromWorkspaceFile()
+		if workspaceMappedPath != "" {
+			secretsPath = workspaceMappedPath
+		}
 	}
 
 	infisicalToken, err := cmd.Flags().GetString("token")

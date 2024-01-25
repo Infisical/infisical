@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -710,6 +711,47 @@ func DeleteBackupSecrets() error {
 	fullPathToSecretsBackupFolder := fmt.Sprintf("%s/%s", fullConfigFileDirPath, secrets_backup_folder_name)
 
 	return os.RemoveAll(fullPathToSecretsBackupFolder)
+}
+
+func GetPathFromWorkspaceFile() string {
+	workspaceFile, err := GetWorkSpaceFromFile()
+	if err != nil {
+		log.Debug().Msgf("getPathFromWorkspaceFile(workspaceConfig): [err=%s]", err)
+		return ""
+	}
+
+	if !workspaceFile.DirectoryToPathMapping {
+		return ""
+	}
+
+	// We've confirmed we can load the workspace config
+	// so getting the filepath and containing directory really
+	// shouldn't fail.
+	cfgFile, err := FindWorkspaceConfigFile()
+	if err != nil {
+		log.Debug().Msgf("getPathFromWorkspaceFile(workspaceConfigPath): [err=%s]", err)
+		return ""
+	}
+	workspaceDirectory := filepath.Dir(cfgFile)
+
+	// Get Execution Path
+	localPath, err := os.Getwd()
+	if err != nil {
+		log.Debug().Msgf("getPathFromWorkspaceFile(getExecutionPath): [err=%s]", err)
+		return ""
+	}
+
+	path, err := filepath.Rel(workspaceDirectory, localPath)
+	if err != nil {
+		log.Debug().Msgf("getPathFromWorkspaceFile(getRelativePathFromWorkspace): [err=%s]", err)
+		return ""
+	}
+
+	if path == "." {
+		return ""
+	}
+
+	return path
 }
 
 func GetEnvFromWorkspaceFile() string {
