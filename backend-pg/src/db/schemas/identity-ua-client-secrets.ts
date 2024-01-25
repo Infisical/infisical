@@ -13,17 +13,15 @@ export const IdentityUaClientSecretsSchema = z.object({
   clientSecretPrefix: z.string(),
   clientSecretHash: z.string(),
   clientSecretLastUsedAt: z.date().nullable().optional(),
-  clientSecretNumUses: z.number().default(0),
-  clientSecretNumUsesLimit: z.number().default(0),
-  clientSecretTTL: z.number().default(0),
+  clientSecretNumUses: z.coerce.number().default(0),
+  clientSecretNumUsesLimit: z.coerce.number().default(0),
+  clientSecretTTL: z.coerce.number().default(0),
   isClientSecretRevoked: z.boolean().default(false),
   createdAt: z.date(),
   updatedAt: z.date(),
-  identityUAId: z.string().uuid()
+  identityUAId: z.string().uuid(),
 });
 
 export type TIdentityUaClientSecrets = z.infer<typeof IdentityUaClientSecretsSchema>;
 export type TIdentityUaClientSecretsInsert = Omit<TIdentityUaClientSecrets, TImmutableDBKeys>;
-export type TIdentityUaClientSecretsUpdate = Partial<
-  Omit<TIdentityUaClientSecrets, TImmutableDBKeys>
->;
+export type TIdentityUaClientSecretsUpdate = Partial<Omit<TIdentityUaClientSecrets, TImmutableDBKeys>>;

@@ -36,7 +36,7 @@ const getZodPrimitiveType = (type: string) => {
     case "integer":
       return "z.number()";
     case "bigint":
-      return "z.number()";
+      return "z.coerce.number()";
     case "text":
       return "z.string()";
     default:

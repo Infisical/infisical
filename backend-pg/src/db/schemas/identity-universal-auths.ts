@@ -10,9 +10,9 @@ import { TImmutableDBKeys } from "./models";
 export const IdentityUniversalAuthsSchema = z.object({
   id: z.string().uuid(),
   clientId: z.string(),
-  accessTokenTTL: z.number().default(7200),
-  accessTokenMaxTTL: z.number().default(7200),
-  accessTokenNumUsesLimit: z.number().default(0),
+  accessTokenTTL: z.coerce.number().default(7200),
+  accessTokenMaxTTL: z.coerce.number().default(7200),
+  accessTokenNumUsesLimit: z.coerce.number().default(0),
   clientSecretTrustedIps: z.unknown(),
   accessTokenTrustedIps: z.unknown(),
   createdAt: z.date(),

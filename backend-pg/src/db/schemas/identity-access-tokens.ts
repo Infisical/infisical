@@ -9,11 +9,10 @@ import { TImmutableDBKeys } from "./models";
 
 export const IdentityAccessTokensSchema = z.object({
   id: z.string().uuid(),
-  authType: z.string(),
-  accessTokenTTL: z.number().default(2592000),
-  accessTokenMaxTTL: z.number().default(2592000),
-  accessTokenNumUses: z.number().default(0),
-  accessTokenNumUsesLimit: z.number().default(0),
+  accessTokenTTL: z.coerce.number().default(2592000),
+  accessTokenMaxTTL: z.coerce.number().default(2592000),
+  accessTokenNumUses: z.coerce.number().default(0),
+  accessTokenNumUsesLimit: z.coerce.number().default(0),
   accessTokenLastUsedAt: z.date().nullable().optional(),
   accessTokenLastRenewedAt: z.date().nullable().optional(),
   isAccessTokenRevoked: z.boolean().default(false),

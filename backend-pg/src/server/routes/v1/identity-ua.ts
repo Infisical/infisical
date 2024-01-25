@@ -31,8 +31,8 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           accessToken: z.string(),
-          expiresIn: z.number(),
-          accessTokenMaxTTL: z.number(),
+          expiresIn: z.coerce.number(),
+          accessTokenMaxTTL: z.coerce.number(),
           tokenType: z.literal("Bearer")
         })
       }
@@ -241,6 +241,8 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      console.log("HELLOoooo====+", typeof(identityUniversalAuth.accessTokenNumUsesLimit), identityUniversalAuth)
 
       return { identityUniversalAuth };
     }
