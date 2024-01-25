@@ -112,5 +112,5 @@ export enum SecretType {
 }
 
 export enum IdentityAuthMethod {
-  Univeral = "universal"
+  Univeral = "universal-auth"
 }

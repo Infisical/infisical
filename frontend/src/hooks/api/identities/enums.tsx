@@ -1,3 +1,3 @@
 export enum IdentityAuthMethod {
-  UNIVERSAL_AUTH = "universal"
+  UNIVERSAL_AUTH = "universal-auth"
 }

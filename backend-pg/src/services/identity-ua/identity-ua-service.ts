@@ -110,7 +110,6 @@ export const identityUaServiceFactory = ({
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityUa.identityId,
-          authType: IdentityAuthMethod.Univeral,
           isAccessTokenRevoked: false,
           identityUAClientSecretId: uaClientSecretDoc.id,
           accessTokenTTL: identityUa.accessTokenTTL,
