@@ -1432,8 +1432,6 @@ const main = async () => {
       postgresTableName: TableName.ServiceToken,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
-        const id = uuidV4();
-
         const projectKvRes = await projectKv
           .get(doc.workspace.toString())
           .catch(() => null);
@@ -1443,7 +1441,7 @@ const main = async () => {
         if (!userId) return;
 
         return {
-          id,
+          id: doc._id.toString(),
           projectId: doc.workspace.toString(),
           name: doc.name,
           createdBy: userId,

@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import { SecretsSchema, SecretType, TableName, TSecrets, TSecretsUpdate } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { validate as uuidValidate } from 'uuid';
 
 export type TSecretDALFactory = ReturnType<typeof secretDALFactory>;
 
@@ -79,6 +80,11 @@ export const secretDALFactory = (db: TDbClient) => {
 
   const findByFolderId = async (folderId: string, userId?: string, tx?: Knex) => {
     try {
+      // check if not uui then userId id is null (corner case because service token's ID is not UUI in effort to keep backwards compatibility from mongo)
+      if (userId && !uuidValidate(userId)) {
+        userId = undefined
+      }
+
       const secs = await (tx || db)(TableName.Secret)
         .where({ folderId })
         .where((bd) => {
