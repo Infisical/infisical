@@ -50,7 +50,7 @@ export default {
           tokenVersionId: seedData1.token.id,
           accessVersion: 1
         },
-        cfg.JWT_AUTH_SECRET,
+        cfg.AUTH_SECRET,
         { expiresIn: cfg.JWT_AUTH_LIFETIME }
       );
     } catch (error) {
