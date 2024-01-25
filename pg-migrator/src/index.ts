@@ -2350,6 +2350,7 @@ const main = async () => {
     //   },
     // });
 
+    console.log("MIGRATION SCRIPT COMPLETED SUCCESSFULLY")
     process.exit(1);
   } catch (error) {
     console.error(error);
