@@ -6,7 +6,7 @@ on:
 
 jobs:
   infisical-standalone:
-    name: Build infisical standalone image
+    name: Build infisical standalone image postgres
     runs-on: ubuntu-latest
     steps:
       - name: Extract version from tag
