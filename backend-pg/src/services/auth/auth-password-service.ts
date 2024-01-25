@@ -148,7 +148,7 @@ export const authPaswordServiceFactory = ({
         authTokenType: AuthTokenType.SIGNUP_TOKEN,
         userId: user.id
       },
-      cfg.JWT_AUTH_SECRET,
+      cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_SIGNUP_LIFETIME }
     );
 

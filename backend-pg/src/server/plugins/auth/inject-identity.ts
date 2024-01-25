@@ -82,7 +82,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
   server.decorateRequest("auth", null);
   server.addHook("onRequest", async (req) => {
     const appCfg = getConfig();
-    const { authMode, token, actor } = await extractAuth(req, appCfg.JWT_AUTH_SECRET);
+    const { authMode, token, actor } = await extractAuth(req, appCfg.AUTH_SECRET);
     if (!authMode) return;
 
     switch (authMode) {

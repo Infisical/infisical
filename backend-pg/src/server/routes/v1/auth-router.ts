@@ -76,7 +76,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
 
       const decodedToken = jwt.verify(
         refreshToken,
-        appCfg.JWT_AUTH_SECRET
+        appCfg.AUTH_SECRET
       ) as AuthModeRefreshJwtTokenPayload;
       if (decodedToken.authTokenType !== AuthTokenType.REFRESH_TOKEN)
         throw new UnauthorizedError({ message: "Invalid token", name: "Auth token route" });
@@ -98,7 +98,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
           tokenVersionId: tokenVersion.id,
           accessVersion: tokenVersion.accessVersion
         },
-        appCfg.JWT_AUTH_SECRET,
+        appCfg.AUTH_SECRET,
         { expiresIn: appCfg.JWT_AUTH_LIFETIME }
       );
 

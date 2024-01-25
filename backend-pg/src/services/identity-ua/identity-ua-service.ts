@@ -131,7 +131,7 @@ export const identityUaServiceFactory = ({
         identityAccessTokenId: identityAccessToken.id,
         authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
       } as TIdentityAccessTokenJwtPayload,
-      appCfg.JWT_AUTH_SECRET,
+      appCfg.AUTH_SECRET,
       {
         expiresIn:
           identityAccessToken.accessTokenMaxTTL === 0

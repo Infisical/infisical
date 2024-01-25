@@ -88,7 +88,7 @@ export const authSignupServiceFactory = ({
         authTokenType: AuthTokenType.SIGNUP_TOKEN,
         userId: user.id.toString()
       },
-      appCfg.JWT_AUTH_SECRET,
+      appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_SIGNUP_LIFETIME }
     );
 
@@ -181,7 +181,7 @@ export const authSignupServiceFactory = ({
         tokenVersionId: tokenSession.id,
         accessVersion: tokenSession.accessVersion
       },
-      appCfg.JWT_AUTH_SECRET,
+      appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_AUTH_LIFETIME }
     );
 
@@ -192,7 +192,7 @@ export const authSignupServiceFactory = ({
         tokenVersionId: tokenSession.id,
         refreshVersion: tokenSession.refreshVersion
       },
-      appCfg.JWT_AUTH_SECRET,
+      appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_REFRESH_LIFETIME }
     );
 
@@ -281,7 +281,7 @@ export const authSignupServiceFactory = ({
         tokenVersionId: tokenSession.id,
         accessVersion: tokenSession.accessVersion
       },
-      appCfg.JWT_AUTH_SECRET,
+      appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_SIGNUP_LIFETIME }
     );
 
@@ -292,7 +292,7 @@ export const authSignupServiceFactory = ({
         tokenVersionId: tokenSession.id,
         refreshVersion: tokenSession.refreshVersion
       },
-      appCfg.JWT_AUTH_SECRET,
+      appCfg.AUTH_SECRET,
       { expiresIn: appCfg.JWT_SIGNUP_LIFETIME }
     );
 

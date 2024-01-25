@@ -385,7 +385,7 @@ export const orgServiceFactory = ({
         authTokenType: AuthTokenType.SIGNUP_TOKEN,
         userId: user.id
       },
-      appCfg.JWT_AUTH_SECRET,
+      appCfg.AUTH_SECRET,
       {
         expiresIn: appCfg.JWT_SIGNUP_LIFETIME
       }

@@ -14,11 +14,12 @@ const logLevelToSeverityLookup: Record<string, string> = {
 
 // eslint-disable-next-line import/no-mutable-exports
 export let logger: Readonly<Logger>;
-// akhilmhdh: why this instead of putting it in config right
-// reason is to avoid a cyclical condition
-// config needs logger to output error when invalid environment is provided
-// logger needs config  to get aws or other transport cred
-// this would make logger independent package
+// akhilmhdh: 
+// The logger is not placed in the main app config to avoid a circular dependency. 
+// The config requires the logger to display errors when an invalid environment is supplied. 
+// On the other hand, the logger needs the config to obtain credentials for AWS or other transports. 
+// By keeping the logger separate, it becomes an independent package.
+
 const loggerConfig = z.object({
   AWS_CLOUDWATCH_LOG_GROUP_NAME: z.string().default("infisical-log-stream"),
   AWS_CLOUDWATCH_LOG_REGION: z.string().default("us-east-1"),

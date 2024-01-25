@@ -98,7 +98,7 @@ export const authLoginServiceFactory = ({
         tokenVersionId: tokenSession.id,
         accessVersion: tokenSession.accessVersion
       },
-      cfg.JWT_AUTH_SECRET,
+      cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_AUTH_LIFETIME }
     );
 
@@ -109,7 +109,7 @@ export const authLoginServiceFactory = ({
         tokenVersionId: tokenSession.id,
         refreshVersion: tokenSession.refreshVersion
       },
-      cfg.JWT_AUTH_SECRET,
+      cfg.AUTH_SECRET,
       { expiresIn: cfg.JWT_REFRESH_LIFETIME }
     );
 
@@ -178,7 +178,7 @@ export const authLoginServiceFactory = ({
     if (userEnc.isMfaEnabled) {
       const mfaToken = jwt.sign(
         { authTokenType: AuthTokenType.MFA_TOKEN, userId: userEnc.userId },
-        cfg.JWT_AUTH_SECRET,
+        cfg.AUTH_SECRET,
         { expiresIn: cfg.JWT_MFA_LIFETIME }
       );
       await sendUserMfaCode(userEnc.userId, userEnc.email);
@@ -254,7 +254,7 @@ export const authLoginServiceFactory = ({
             }
           : {})
       },
-      appCfg.JWT_AUTH_SECRET,
+      appCfg.AUTH_SECRET,
       {
         expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
       }

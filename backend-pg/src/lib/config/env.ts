@@ -36,7 +36,7 @@ const envSchema = z
       .default("#5VihU%rbXHcHwWwCot5L3vyPsx$7dWYw^iGk!EJg2bC*f$PD$%KCqx^R@#^LSEf"),
     SITE_URL: zpStr(z.string().optional()),
     // jwt options
-    JWT_AUTH_SECRET: zpStr(z.string()),
+    AUTH_SECRET: zpStr(z.string()).default(process.env.JWT_AUTH_SECRET), // for those still using old JWT_AUTH_SECRET
     JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),
     JWT_SIGNUP_LIFETIME: zpStr(z.string().default("15m")),
     JWT_REFRESH_LIFETIME: zpStr(z.string().default("90d")),
@@ -49,7 +49,7 @@ const envSchema = z
     CLIENT_SECRET_GITHUB_LOGIN: zpStr(z.string().optional()),
     CLIENT_ID_GITLAB_LOGIN: zpStr(z.string().optional()),
     CLIENT_SECRET_GITLAB_LOGIN: zpStr(z.string().optional()),
-    CLIENT_GITLAB_LOGIN_URL: zpStr(z.string().optional().default(GITLAB_URL)),
+    CLIENT_GITLAB_LOGIN_URL: zpStr(z.string().optional().default(process.env.URL_GITLAB_LOGIN ?? GITLAB_URL)), // fallback since URL_GITLAB_LOGIN has been renamed
     // integration client secrets
     // heroku
     CLIENT_ID_HEROKU: zpStr(z.string().optional()),
@@ -73,7 +73,7 @@ const envSchema = z
     // azure
     CLIENT_ID_AZURE: zpStr(z.string().optional()),
     CLIENT_SECRET_AZURE: zpStr(z.string().optional()),
-    // google
+    // gitlab
     CLIENT_ID_GITLAB: zpStr(z.string().optional()),
     CLIENT_SECRET_GITLAB: zpStr(z.string().optional()),
     URL_GITLAB_URL: zpStr(z.string().optional().default(GITLAB_URL)),
@@ -114,6 +114,7 @@ export const initEnvConfig = (logger: Logger) => {
     logger.error(parsedEnv.error.issues);
     process.exit(-1);
   }
+  
   envCfg = Object.freeze(parsedEnv.data);
   return envCfg;
 };

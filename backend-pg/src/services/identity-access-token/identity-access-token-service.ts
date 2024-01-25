@@ -88,7 +88,7 @@ export const identityAccessTokenServiceFactory = ({
   const renewAccessToken = async ({ accessToken }: TRenewAccessTokenDTO) => {
     const appCfg = getConfig();
 
-    const decodedToken = jwt.verify(accessToken, appCfg.JWT_AUTH_SECRET) as JwtPayload;
+    const decodedToken = jwt.verify(accessToken, appCfg.AUTH_SECRET) as JwtPayload;
     if (decodedToken.authTokenType !== AuthTokenType.IDENTITY_ACCESS_TOKEN)
       throw new UnauthorizedError();
 

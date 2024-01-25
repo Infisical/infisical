@@ -14,7 +14,7 @@ export const validateProviderAuthToken = (providerToken: string, email: string) 
   const appCfg = getConfig();
   const decodedToken = jwt.verify(
     providerToken,
-    appCfg.JWT_AUTH_SECRET
+    appCfg.AUTH_SECRET
   ) as AuthModeProviderJwtTokenPayload;
 
   if (decodedToken.authTokenType !== AuthTokenType.PROVIDER_TOKEN) throw new UnauthorizedError();
@@ -43,7 +43,7 @@ export const validateSignUpAuthorization = (token: string, userId: string, valid
 
   const decodedToken = jwt.verify(
     AUTH_TOKEN_VALUE,
-    appCfg.JWT_AUTH_SECRET
+    appCfg.AUTH_SECRET
   ) as AuthModeProviderSignUpTokenPayload;
   if (!validate) return decodedToken;
 
