@@ -39,8 +39,8 @@ export const setupLicenceRequestWithStore = (
   let token: string;
   const licenceReq = axios.create({
     baseURL,
-    timeout: 15 * 1000,
-    signal: AbortSignal.timeout(15 * 1000)
+    timeout: 45 * 1000,
+    signal: AbortSignal.timeout(45 * 1000)
   });
 
   const refreshLicence = async () => {
