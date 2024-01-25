@@ -91,11 +91,12 @@ export const licenseServiceFactory = ({
       // else it would reach catch statement
       isValidLicense = true;
     } catch (error) {
-      logger.error(error);
+      logger.error(`init-license: encountered an error when init license [error=${error}]`);
     }
   };
 
   const getPlan = async (orgId: string, projectId?: string) => {
+    logger.info(`getPlan: attempting to fetch plan for [orgId=${orgId}] [projectId=${projectId}]`);
     try {
       if (instanceType === InstanceType.Cloud) {
         const cachedPlan = featureStore.get<TFeatureSet>(FEATURE_CACHE_KEY(orgId, projectId));
@@ -117,7 +118,7 @@ export const licenseServiceFactory = ({
         return currentPlan;
       }
     } catch (error) {
-      logger.error(error);
+      logger.error(`getPlan: encountered an error when fetching pan [orgId=${orgId}] [projectId=${projectId}] [error=${error}]`);
       return onPremFeatures;
     }
     return onPremFeatures;
