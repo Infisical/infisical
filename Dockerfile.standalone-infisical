@@ -108,6 +108,7 @@ COPY --from=backend-runner /app/dist/services/smtp/templates /backend-pg/dist/te
 
 COPY --from=frontend-runner /app ./backend-pg/frontend-build
 
+
 ENV PORT 8080
 ENV HOST=0.0.0.0
 ENV HTTPS_ENABLED false 
@@ -122,6 +123,7 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \
   CMD node healthcheck.js
 
 EXPOSE 8080
+EXPOSE 443
 
 USER non-root-user
 
