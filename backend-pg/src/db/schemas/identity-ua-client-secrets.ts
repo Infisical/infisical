@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityUaClientSecretsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string(),
   description: z.string(),
   clientSecretPrefix: z.string(),
   clientSecretHash: z.string(),

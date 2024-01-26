@@ -14,7 +14,7 @@ export async function up(knex: Knex): Promise<void> {
       t.datetime("accessTokenLastUsedAt");
       t.datetime("accessTokenLastRenewedAt");
       t.boolean("isAccessTokenRevoked").defaultTo(false).notNullable();
-      t.uuid("identityUAClientSecretId");
+      t.string("identityUAClientSecretId");
       t.foreign("identityUAClientSecretId")
         .references("id")
         .inTable(TableName.IdentityUaClientSecret)

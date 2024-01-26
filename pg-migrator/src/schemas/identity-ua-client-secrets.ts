@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const IdentityUaClientSecretsSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string(),
   description: z.string(),
   clientSecretPrefix: z.string(),
   clientSecretHash: z.string(),
@@ -22,6 +22,13 @@ export const IdentityUaClientSecretsSchema = z.object({
   identityUAId: z.string().uuid(),
 });
 
-export type TIdentityUaClientSecrets = z.infer<typeof IdentityUaClientSecretsSchema>;
-export type TIdentityUaClientSecretsInsert = Omit<TIdentityUaClientSecrets, TImmutableDBKeys>;
-export type TIdentityUaClientSecretsUpdate = Partial<Omit<TIdentityUaClientSecrets, TImmutableDBKeys>>;
+export type TIdentityUaClientSecrets = z.infer<
+  typeof IdentityUaClientSecretsSchema
+>;
+export type TIdentityUaClientSecretsInsert = Omit<
+  TIdentityUaClientSecrets,
+  TImmutableDBKeys
+>;
+export type TIdentityUaClientSecretsUpdate = Partial<
+  Omit<TIdentityUaClientSecrets, TImmutableDBKeys>
+>;

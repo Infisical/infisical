@@ -20,7 +20,7 @@ export async function up(knex: Knex): Promise<void> {
   }
   if (!(await knex.schema.hasTable(TableName.IdentityUaClientSecret))) {
     await knex.schema.createTable(TableName.IdentityUaClientSecret, (t) => {
-      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.string("id", 36).primary().defaultTo(knex.fn.uuid());
       t.string("description").notNullable();
       t.string("clientSecretPrefix").notNullable();
       t.string("clientSecretHash").notNullable();

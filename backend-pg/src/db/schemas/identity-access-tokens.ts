@@ -16,7 +16,7 @@ export const IdentityAccessTokensSchema = z.object({
   accessTokenLastUsedAt: z.date().nullable().optional(),
   accessTokenLastRenewedAt: z.date().nullable().optional(),
   isAccessTokenRevoked: z.boolean().default(false),
-  identityUAClientSecretId: z.string().uuid().nullable().optional(),
+  identityUAClientSecretId: z.string().nullable().optional(),
   identityId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
