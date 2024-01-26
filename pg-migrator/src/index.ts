@@ -13,6 +13,7 @@ import {
   Bot,
   BotKey,
   BotOrg,
+  CommitType,
   Folder,
   FolderVersion,
   GitAppInstallationSession,
@@ -175,7 +176,11 @@ export const migrateCollection = async <
     " Postgres table name:",
     postgresTableName,
   );
-  const totalMongoCount = await mongooseCollection.countDocuments();
+  const totalMongoCount =
+    postgresTableName === TableName.AuditLog
+      ? await mongooseCollection.estimatedDocumentCount() // this is because audit log is too big
+      : await mongooseCollection.countDocuments();
+
   console.log("Total documents", totalMongoCount);
   console.log("Total batches", Math.ceil(totalMongoCount / 1000));
   let batch = 1;
@@ -2330,33 +2335,141 @@ const main = async () => {
       },
     });
 
-    // console.log(
-    //   "Migrating Mongo Secret approval request secrets -> Pg Secret Approval Request secrets table",
-    // );
-    // await migrateCollection({
-    //   db,
-    //   mongooseCollection: SecretApprovalRequest,
-    //   postgresTableName: TableName.SarSecret,
-    //   returnKeys: ["id"],
-    //   preProcessing: async (doc) => {
-    //     const id = uuidV4();
-    //     const requestId = await sarKv.get(doc._id.toString());
-    //
-    //     return Promise.all(
-    //       doc.commits.map(async (commit) => {
-    //         if (commit.op === CommitType.CREATE) {
-    //           return {
-    //             id,
-    //             requestId,
-    //             secretBlindIndex: commit.newVersion.secretBlindIndex,
-    //             createdAt: new Date((doc as any).createdAt),
-    //             updatedAt: new Date((doc as any).updatedAt),
-    //           };
-    //         }
-    //       }),
-    //     );
-    //   },
-    // });
+    console.log(
+      "Migrating Mongo Secret approval request secrets -> Pg Secret Approval Request secrets table",
+    );
+    await migrateCollection({
+      db,
+      mongooseCollection: SecretApprovalRequest,
+      postgresTableName: TableName.SecretApprovalRequestSecret,
+      returnKeys: ["id"],
+      preProcessing: async (doc) => {
+        const requestId = await sarKv.get(doc._id.toString()).catch(() => null);
+        if (!requestId) return;
+
+        return Promise.all(
+          doc.commits.map(async (commit) => {
+            const id = uuidV4();
+
+            if (commit.op === CommitType.CREATE) {
+              if (!commit.newVersion.secretBlindIndex) return;
+
+              return {
+                id,
+                op: CommitType.CREATE,
+                requestId,
+                secretBlindIndex: commit.newVersion.secretBlindIndex,
+                keyEncoding: commit.newVersion.keyEncoding as string,
+                algorithm: commit.newVersion.algorithm as string,
+                version: commit.newVersion.version,
+                secretKeyIV: commit.newVersion.secretKeyIV,
+                secretKeyTag: commit.newVersion.secretKeyTag,
+                secretKeyCiphertext: commit.newVersion.secretKeyCiphertext,
+                secretValueIV: commit.newVersion.secretValueIV,
+                secretValueTag: commit.newVersion.secretValueTag,
+                secretValueCiphertext: commit.newVersion.secretValueCiphertext,
+                secretCommentIV: commit.newVersion.secretCommentIV,
+                secretCommentTag: commit.newVersion.secretCommentTag,
+                secretCommentCiphertext:
+                  commit.newVersion.secretCommentCiphertext,
+                createdAt: new Date((doc as any).createdAt),
+                updatedAt: new Date((doc as any).updatedAt),
+              };
+            }
+            if (commit.op === CommitType.UPDATE) {
+              const id = uuidV4();
+
+              const secretId = await secKv
+                .get(commit.secret.toString())
+                .catch(() => null);
+              if (!secretId) return;
+
+              const secret = await Secret.findById(commit.secret);
+              if (!secret) return;
+
+              if (
+                !commit.newVersion.secretBlindIndex ||
+                !secret?.secretBlindIndex
+              )
+                return;
+
+              return {
+                id,
+                op: CommitType.UPDATE,
+                requestId,
+                secretId,
+                secretBlindIndex:
+                  commit.newVersion.secretBlindIndex || secret.secretBlindIndex,
+                keyEncoding:
+                  (commit.newVersion.keyEncoding as string) ||
+                  secret.keyEncoding,
+                algorithm:
+                  (commit.newVersion.algorithm as string) || secret.algorithm,
+                version: commit.newVersion.version || secret.version,
+                secretKeyIV:
+                  commit.newVersion.secretKeyIV || secret.secretKeyIV,
+                secretKeyTag:
+                  commit.newVersion.secretKeyTag || secret.secretKeyTag,
+                secretKeyCiphertext:
+                  commit.newVersion.secretKeyCiphertext ||
+                  secret.secretKeyCiphertext,
+                secretValueIV:
+                  commit.newVersion.secretValueIV || secret.secretValueIV,
+                secretValueTag:
+                  commit.newVersion.secretValueTag || secret.secretValueTag,
+                secretValueCiphertext:
+                  commit.newVersion.secretValueCiphertext ||
+                  secret.secretValueCiphertext,
+                secretCommentIV:
+                  commit.newVersion.secretCommentIV || secret.secretCommentIV,
+                secretCommentTag:
+                  commit.newVersion.secretCommentTag || secret.secretCommentTag,
+                secretCommentCiphertext:
+                  commit.newVersion.secretCommentCiphertext ||
+                  secret.secretCommentCiphertext,
+                createdAt: new Date((doc as any).createdAt),
+                updatedAt: new Date((doc as any).updatedAt),
+              };
+            }
+            if (commit.op === CommitType.DELETE) {
+              const id = uuidV4();
+
+              const secretId = await secKv
+                .get(commit.secret.toString())
+                .catch(() => null);
+              if (!secretId) return;
+
+              const secret = await Secret.findById(commit.secret);
+              if (!secret) return;
+
+              if (!secret?.secretBlindIndex) return;
+
+              return {
+                id,
+                op: CommitType.DELETE,
+                requestId,
+                secretId,
+                secretBlindIndex: secret.secretBlindIndex,
+                keyEncoding: secret.keyEncoding,
+                algorithm: secret.algorithm,
+                version: secret.version,
+                secretKeyIV: secret.secretKeyIV,
+                secretKeyTag: secret.secretKeyTag,
+                secretKeyCiphertext: secret.secretKeyCiphertext,
+                secretValueIV: secret.secretValueIV,
+                secretValueTag: secret.secretValueTag,
+                secretValueCiphertext: secret.secretValueCiphertext,
+                secretCommentIV: secret.secretCommentIV,
+                secretCommentTag: secret.secretCommentTag,
+                secretCommentCiphertext: secret.secretCommentCiphertext,
+                createdAt: new Date((doc as any).createdAt),
+                updatedAt: new Date((doc as any).updatedAt),
+              };
+            }
+          }),
+        );
+      },
+    });
 
     console.log("MIGRATION SCRIPT COMPLETED SUCCESSFULLY");
     process.exit(1);

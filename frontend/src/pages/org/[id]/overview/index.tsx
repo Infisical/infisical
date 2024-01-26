@@ -542,19 +542,22 @@ const OrganizationPage = withPermission(
           // not using hooks because need at this point only
           const orgUsers = await fetchOrgUsers(currentOrg);
           const decryptKey = await fetchUserWsKey(newWorkspaceId);
-          await addWsUser.mutateAsync({
-            workspaceId: newWorkspaceId,
-            decryptKey,
-            userPrivateKey: PRIVATE_KEY,
-            members: orgUsers
-              .filter(
-                ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
-              )
-              .map(({ user: orgUser, id: orgMembershipId }) => ({
-                userPublicKey: orgUser.publicKey,
-                orgMembershipId
-              }))
-          });
+          const members = orgUsers
+            .filter(
+              ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
+            )
+            .map(({ user: orgUser, id: orgMembershipId }) => ({
+              userPublicKey: orgUser.publicKey,
+              orgMembershipId
+            }));
+          if (members.length) {
+            await addWsUser.mutateAsync({
+              workspaceId: newWorkspaceId,
+              decryptKey,
+              userPrivateKey: PRIVATE_KEY,
+              members
+            });
+          }
         }
         createNotification({ text: "Workspace created", type: "success" });
         handlePopUpClose("addNewWs");
