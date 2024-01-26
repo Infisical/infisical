@@ -11,8 +11,8 @@ export const registerIdentityAccessTokenRouter = async (server: FastifyZodProvid
       response: {
         200: z.object({
           accessToken: z.string(),
-          expiresIn: z.number(),
-          accessTokenMaxTTL: z.number(),
+          expiresIn: z.coerce.number(),
+          accessTokenMaxTTL: z.coerce.number(),
           tokenType: z.literal("Bearer")
         })
       }
