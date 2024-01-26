@@ -16,7 +16,7 @@ export const registerSnapshotRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           secretSnapshot: z.object({
             id: z.string().uuid(),
-            projectId: z.string().uuid(),
+            projectId: z.string(),
             environment: z.object({
               id: z.string().uuid(),
               slug: z.string(),
