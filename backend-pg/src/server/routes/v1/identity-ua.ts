@@ -242,8 +242,6 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      console.log("HELLOoooo====+", typeof(identityUniversalAuth.accessTokenNumUsesLimit), identityUniversalAuth)
-
       return { identityUniversalAuth };
     }
   });

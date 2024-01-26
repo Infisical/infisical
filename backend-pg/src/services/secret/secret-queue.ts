@@ -136,8 +136,6 @@ export const secretQueueFactory = ({
         });
       }
 
-      console.log("Secret reminder thingies:)!");
-      console.log(queueService);
       // If the secret already has a reminder, we should remove the existing one first.
       if (oldSecret.secretReminderRepeatDays) {
         await removeSecretReminder({
