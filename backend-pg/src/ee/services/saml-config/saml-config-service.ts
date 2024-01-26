@@ -12,7 +12,10 @@ import { getConfig } from "@app/lib/config/env";
 import {
   decryptSymmetric,
   encryptSymmetric,
-  infisicalSymmetricDecrypt
+  generateAsymmetricKeyPair,
+  generateSymmetricKey,
+  infisicalSymmetricDecrypt,
+  infisicalSymmetricEncypt
 } from "@app/lib/crypto/encryption";
 import { BadRequestError } from "@app/lib/errors";
 import { AuthTokenType } from "@app/services/auth/auth-type";
@@ -39,7 +42,7 @@ type TSamlConfigServiceFactoryDep = {
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById"
   >;
-  orgBotDAL: Pick<TOrgBotDALFactory, "findOne">;
+  orgBotDAL: Pick<TOrgBotDALFactory, "findOne" | "create" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
@@ -77,9 +80,47 @@ export const samlConfigServiceFactory = ({
           "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
       });
 
-    const orgBot = await orgBotDAL.findOne({ orgId });
-    if (!orgBot)
-      throw new BadRequestError({ message: "Org bot not found", name: "OrgBotNotFound" });
+    const orgBot = await orgBotDAL.transaction(async (tx) => {
+      const doc = await orgBotDAL.findOne({ orgId }, tx);
+      if (doc) return doc;
+
+      const { privateKey, publicKey } = generateAsymmetricKeyPair();
+      const key = generateSymmetricKey();
+      const {
+        ciphertext: encryptedPrivateKey,
+        iv: privateKeyIV,
+        tag: privateKeyTag,
+        encoding: privateKeyKeyEncoding,
+        algorithm: privateKeyAlgorithm
+      } = infisicalSymmetricEncypt(privateKey);
+      const {
+        ciphertext: encryptedSymmetricKey,
+        iv: symmetricKeyIV,
+        tag: symmetricKeyTag,
+        encoding: symmetricKeyKeyEncoding,
+        algorithm: symmetricKeyAlgorithm
+      } = infisicalSymmetricEncypt(key);
+
+      return orgBotDAL.create(
+        {
+          name: "Infisical org bot",
+          publicKey,
+          privateKeyIV,
+          encryptedPrivateKey,
+          symmetricKeyIV,
+          symmetricKeyTag,
+          encryptedSymmetricKey,
+          symmetricKeyAlgorithm,
+          orgId,
+          privateKeyTag,
+          privateKeyAlgorithm,
+          privateKeyKeyEncoding,
+          symmetricKeyKeyEncoding
+        },
+        tx
+      );
+    });
+
     const key = infisicalSymmetricDecrypt({
       ciphertext: orgBot.encryptedSymmetricKey,
       iv: orgBot.symmetricKeyIV,
@@ -346,7 +387,7 @@ export const samlConfigServiceFactory = ({
             }
           : {})
       },
-      appCfg.JWT_AUTH_SECRET,
+      appCfg.AUTH_SECRET,
       {
         expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
       }
