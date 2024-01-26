@@ -8,7 +8,7 @@ import { z } from "zod";
 import { TImmutableDBKeys } from "./models";
 
 export const ApiKeysSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string(),
   name: z.string(),
   lastUsed: z.date().nullable().optional(),
   expiresAt: z.date().nullable().optional(),

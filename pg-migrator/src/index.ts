@@ -536,15 +536,13 @@ const main = async () => {
       postgresTableName: TableName.ApiKey,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
-        const id = uuidV4();
-
         const userId = await userKv.get(doc.user.toString()).catch(() => null);
         if (!userId) return;
 
         // expired tokens can be removed
         if (new Date(doc.expiresAt) < new Date()) return;
         return {
-          id,
+          id: doc._id.toString(),
           userId,
           name: doc.name,
           lastUsed: doc.lastUsed,

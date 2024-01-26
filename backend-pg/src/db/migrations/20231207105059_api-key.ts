@@ -7,7 +7,7 @@ export async function up(knex: Knex): Promise<void> {
   const isTablePresent = await knex.schema.hasTable(TableName.ApiKey);
   if (!isTablePresent) {
     await knex.schema.createTable(TableName.ApiKey, (t) => {
-      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.string("id", 36).primary().defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
       t.datetime("lastUsed");
       t.datetime("expiresAt");
