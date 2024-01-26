@@ -65,7 +65,6 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
       const res = await (tx || db)(tableName).where(filter).first("*");
       return res;
     } catch (error) {
-      console.log("I HAVE REACHEd HEREEE===>", tableName)
       throw new DatabaseError({ error, name: "Find one" });
     }
   },
@@ -85,7 +84,6 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
       const res = await query;
       return res;
     } catch (error) {
-      console.log("I HAVE REACHEd HEREEE===>", tableName)
       throw new DatabaseError({ error, name: "Find one" });
     }
   },
