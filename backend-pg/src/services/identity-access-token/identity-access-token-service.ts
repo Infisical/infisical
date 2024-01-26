@@ -23,7 +23,7 @@ export type TIdentityAccessTokenServiceFactory = ReturnType<
 export const identityAccessTokenServiceFactory = ({
   identityAccessTokenDAL
 }: TIdentityAccessTokenServiceFactoryDep) => {
-  const validateAccessTokenExp = async (identityAccessToken: TIdentityAccessTokens) => {
+  const validateAccessTokenExp = (identityAccessToken: TIdentityAccessTokens) => {
     const {
       accessTokenTTL,
       accessTokenNumUses,
