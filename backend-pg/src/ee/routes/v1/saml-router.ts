@@ -34,32 +34,37 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       {
         passReqToCallback: true,
         getSamlOptions: async (req, done) => {
-          const { ssoIdentifier } = req.params;
-          if (!ssoIdentifier) throw new BadRequestError({ message: "Missing sso identitier" });
+          try {
+            const { ssoIdentifier } = req.params;
+            if (!ssoIdentifier) throw new BadRequestError({ message: "Missing sso identitier" });
 
-          const ssoConfig = await server.services.saml.getSaml({
-            type: "ssoId",
-            id: ssoIdentifier
-          });
-          if (!ssoConfig) throw new BadRequestError({ message: "SSO config not found" });
+            const ssoConfig = await server.services.saml.getSaml({
+              type: "ssoId",
+              id: ssoIdentifier
+            });
+            if (!ssoConfig) throw new BadRequestError({ message: "SSO config not found" });
 
-          const samlConfig: TSAMLConfig = {
-            callbackUrl: `${appCfg.SITE_URL}/api/v1/sso/saml2/${ssoIdentifier}`,
-            entryPoint: ssoConfig.entryPoint,
-            issuer: ssoConfig.issuer,
-            cert: ssoConfig.cert,
-            audience: appCfg.SITE_URL || ""
-          };
-          if (ssoConfig.authProvider === SamlProviders.JUMPCLOUD_SAML) {
-            samlConfig.wantAuthnResponseSigned = false;
-          }
-          if (ssoConfig.authProvider === SamlProviders.AZURE_SAML) {
-            if (req.body.RelayState && JSON.parse(req.body.RelayState).spIntiaited) {
-              samlConfig.audience = `spn:${ssoConfig.issuer}`;
+            const samlConfig: TSAMLConfig = {
+              callbackUrl: `${appCfg.SITE_URL}/api/v1/sso/saml2/${ssoIdentifier}`,
+              entryPoint: ssoConfig.entryPoint,
+              issuer: ssoConfig.issuer,
+              cert: ssoConfig.cert,
+              audience: appCfg.SITE_URL || ""
+            };
+            if (ssoConfig.authProvider === SamlProviders.JUMPCLOUD_SAML) {
+              samlConfig.wantAuthnResponseSigned = false;
             }
+            if (ssoConfig.authProvider === SamlProviders.AZURE_SAML) {
+              if (req.body.RelayState && JSON.parse(req.body.RelayState).spIntiaited) {
+                samlConfig.audience = `spn:${ssoConfig.issuer}`;
+              }
+            }
+            (req as unknown as FastifyRequest).ssoConfig = ssoConfig;
+            done(null, samlConfig);
+          } catch (error) {
+            logger.error(error);
+            done(error as Error);
           }
-          (req as unknown as FastifyRequest).ssoConfig = ssoConfig;
-          done(null, samlConfig);
         }
       },
       async (req, profile, cb) => {
