@@ -101,8 +101,8 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                 <Th className="min-table-row min-w-[11rem] border-r border-mineshaft-600">Type</Th>
                 {isModified ? (
                   <>
-                    <Th className="border-r border-mineshaft-600">Before</Th>
-                    <Th>After</Th>
+                    <Th className="border-r border-mineshaft-600">Before rollback</Th>
+                    <Th>After rollback</Th>
                   </>
                 ) : (
                   <Th>Value</Th>
