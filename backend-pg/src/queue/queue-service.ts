@@ -84,7 +84,7 @@ export const queueServiceFactory = (redisUrl: string) => {
 
     queueContainer[name] = new Queue<TQueueJobTypes[T]["payload"], void, TQueueJobTypes[T]["name"]>(
       name as string,
-      { connection, prefix: '{myprefix}'}
+      { connection }
     );
     workerContainer[name] = new Worker<
       TQueueJobTypes[T]["payload"],
