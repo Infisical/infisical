@@ -74,6 +74,46 @@ type Props = {
   onClickRollbackMode: () => void;
 };
 
+function downloadSecret(
+  secrets: DecryptedSecret[],
+  importedSecrets: (Omit<TImportedSecrets, "secrets"> & { secrets: DecryptedSecret[] })[],
+  environment: string
+) {
+  return async () => {
+    const secPriority: Record<string, boolean> = {};
+    const downloadedSecrets: Array<{ key: string; value: string; comment?: string }> = [];
+    // load up secrets in dashboard
+    secrets?.forEach(({ key, value, comment }) => {
+      secPriority[key] = true;
+      downloadedSecrets.push({ key, value, comment });
+    });
+
+    if (importedSecrets) {
+      // now load imported secrets with secPriority
+      for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
+        importedSecrets[i].secrets.forEach(({ key, value, comment }) => {
+          if (secPriority?.[key]) return;
+          downloadedSecrets.unshift({ key, value, comment });
+          secPriority[key] = true;
+        });
+      }
+    }
+
+    const file = downloadedSecrets
+      .sort((a, b) => a.key.toLowerCase().localeCompare(b.key.toLowerCase()))
+      .reduce(
+        (prev, { key, value, comment }, index) =>
+          prev +
+          (comment
+            ? `${index === 0 ? "#" : "\n#"} ${comment}\n${key}=${value}\n`
+            : `${key}=${value}\n`),
+        ""
+      );
+    const blob = new Blob([file], { type: "text/plain;charset=utf-8" });
+    FileSaver.saveAs(blob, `${environment}.env`);
+  };
+}
+
 export const ActionBar = ({
   secrets = [],
   importedSecrets = [],
@@ -131,35 +171,16 @@ export const ActionBar = ({
     }
   };
 
-  const handleSecretDownload = async () => {
-    const secPriority: Record<string, boolean> = {};
-    const downloadedSecrets: Array<{ key: string; value: string; comment?: string }> = [];
-    // load up secrets in dashboard
-    secrets?.forEach(({ key, value, comment }) => {
-      secPriority[key] = true;
-      downloadedSecrets.push({ key, value, comment });
-    });
-    // now load imported secrets with secPriority
-    for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
-      importedSecrets[i].secrets.forEach(({ key, value, comment }) => {
-        if (secPriority?.[key]) return;
-        downloadedSecrets.unshift({ key, value, comment });
-        secPriority[key] = true;
-      });
-    }
+  const handleSecretDownload = downloadSecret(secrets, importedSecrets, environment);
 
-    const file = downloadedSecrets
-      .sort((a, b) => a.key.toLowerCase().localeCompare(b.key.toLowerCase()))
-      .reduce(
-        (prev, { key, value, comment }, index) =>
-          prev +
-          (comment
-            ? `${index === 0 ? "#" : "\n#"} ${comment}\n${key}=${value}\n`
-            : `${key}=${value}\n`),
-        ""
-      );
-    const blob = new Blob([file], { type: "text/plain;charset=utf-8" });
-    FileSaver.saveAs(blob, `${environment}.env`);
+  const handleSelectedDownload = async () => {
+    const filteredSecret = secrets.filter(({ _id }) => Boolean(selectedSecrets?.[_id]));
+    const filteredImportedSecrets = importedSecrets.map((data) => ({
+      ...data,
+      secrets: data.secrets.filter(({ _id }) => Boolean(selectedSecrets?.[_id]))
+    }));
+
+    await downloadSecret(filteredSecret, filteredImportedSecrets, environment)();
   };
 
   const handleSecretBulkDelete = async () => {
@@ -188,7 +209,7 @@ export const ActionBar = ({
 
   return (
     <>
-      <div className="flex items-center space-x-2 mt-4">
+      <div className="mt-4 flex items-center space-x-2">
         <div className="w-2/5">
           <Input
             className="bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
@@ -203,10 +224,10 @@ export const ActionBar = ({
             <DropdownMenuTrigger asChild>
               <IconButton
                 variant="outline_bg"
-                ariaLabel="Download"
+                ariaLabel="Filter"
                 className={twMerge(
                   "transition-all",
-                  Object.keys(filter.tags).length && "text-primary border-primary/50"
+                  Object.keys(filter.tags).length && "border-primary/50 text-primary"
                 )}
               >
                 <FontAwesomeIcon icon={faFilter} />
@@ -245,7 +266,7 @@ export const ActionBar = ({
                     >
                       <div className="flex items-center">
                         <div
-                          className="w-2 h-2 rounded-full mr-2"
+                          className="mr-2 h-2 w-2 rounded-full"
                           style={{ background: tagColor || "#bec2c8" }}
                         />
                         {name}
@@ -304,7 +325,7 @@ export const ActionBar = ({
                 variant="outline_bg"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => openPopUp(PopUpNames.CreateSecretForm)}
-                className="rounded-r-none h-10"
+                className="h-10 rounded-r-none"
                 isDisabled={!isAllowed}
               >
                 Add Secret
@@ -326,7 +347,7 @@ export const ActionBar = ({
               </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <div className="p-1.5 flex flex-col space-y-1">
+              <div className="flex flex-col space-y-1 p-1.5">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
                   a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
@@ -374,19 +395,31 @@ export const ActionBar = ({
       </div>
       <div
         className={twMerge(
-          "overflow-hidden transition-all h-0 flex-shrink-0",
+          "h-0 flex-shrink-0 overflow-hidden transition-all",
           isMultiSelectActive && "h-16"
         )}
       >
-        <div className="text-bunker-300 flex items-center bg-mineshaft-800 mt-3.5 py-2 px-4 rounded-md border border-mineshaft-600">
+        <div className="mt-3.5 flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 py-2 px-4 text-bunker-300">
           <Tooltip content="Clear">
             <IconButton variant="plain" ariaLabel="clear-selection" onClick={resetSelectedSecret}>
               <FontAwesomeIcon icon={faMinusSquare} size="lg" />
             </IconButton>
           </Tooltip>
-          <div className="text-sm ml-4 px-2 flex-grow">
+          <div className="ml-4 flex-grow px-2 text-sm">
             {Object.keys(selectedSecrets).length} Selected
           </div>
+
+          <Button
+            variant="outline_bg"
+            colorSchema="primary"
+            leftIcon={<FontAwesomeIcon aria-hidden icon={faDownload} />}
+            className="ml-4"
+            onClick={handleSelectedDownload}
+            size="xs"
+          >
+            Download
+          </Button>
+
           <ProjectPermissionCan
             I={ProjectPermissionActions.Edit}
             a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
