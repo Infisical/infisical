@@ -8,17 +8,17 @@ import jsrp from "jsrp";
 import nacl from "tweetnacl";
 import { encodeBase64 } from "tweetnacl-util";
 
+import InputField from "@app/components/basic/InputField";
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { breachedPasswordCheck, PasswordErrors,primaryPasswordCheck } from "@app/components/utilities/checks/password/checkPassword";
+import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
+import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
+import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
+import SecurityClient from "@app/components/utilities/SecurityClient";
+import { Button, Input } from "@app/components/v2";
 import { completeAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import ProjectService from "@app/services/ProjectService";
-
-import InputField from "../basic/InputField";
-import checkPassword from "../utilities/checks/password/checkPassword";
-import Aes256Gcm from "../utilities/cryptography/aes-256-gcm";
-import { deriveArgonKey } from "../utilities/cryptography/crypto";
-import { saveTokenToLocalStorage } from "../utilities/saveTokenToLocalStorage";
-import SecurityClient from "../utilities/SecurityClient";
-import { Button, Input } from "../v2";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -36,17 +36,6 @@ interface UserInfoStepProps {
   setAttributionSource: (value: string) => void;
   providerAuthToken?: string;
 }
-
-type Errors = {
-  tooShort?: string;
-  tooLong?: string;
-  noLetterChar?: string;
-  noNumOrSpecialChar?: string;
-  repeatedChar?: string;
-  escapeChar?: string;
-  lowEntropy?: string;
-  breached?: string;
-};
 
 /**
  * This is the step of the sign up flow where people provife their name/surname and password
@@ -74,25 +63,27 @@ export default function UserInfoStep({
   setAttributionSource,
   providerAuthToken
 }: UserInfoStepProps): JSX.Element {
-  const [nameError, setNameError] = useState(false);
-  const [organizationNameError, setOrganizationNameError] = useState(false);
-
-  const [errors, setErrors] = useState<Errors>({});
-
-  const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [nameError, setNameError] = useState<boolean>(false);
+  const [organizationNameError, setOrganizationNameError] = useState<boolean>(false);
+  const [primaryPasswordErrors, setPrimaryPasswordErrors] = useState<Omit<PasswordErrors, "breached">>({});
+  const { createNotification } = useNotificationContext();
 
   // Verifies if the information that the users entered (name, workspace)
   // is there, and if the password matches the criteria.
-  const signupErrorCheck = async () => {
+  const signupErrorCheck = async (): Promise<void> => {
     setIsLoading(true);
     let errorCheck = false;
+
+    // validate user/organization info
     if (!name) {
       setNameError(true);
       errorCheck = true;
     } else {
       setNameError(false);
     }
+
     if (!organizationName) {
       setOrganizationNameError(true);
       errorCheck = true;
@@ -100,117 +91,142 @@ export default function UserInfoStep({
       setOrganizationNameError(false);
     }
 
-    errorCheck = await checkPassword({
+    // early return if invalid user info is entered
+    // TODO: expand this for additional checks (eg. max 100 chars)
+    if(errorCheck) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Remove this??? (redundant due to submit button disable if any primaryPasswordErrors?)
+    // Primary password check 
+    const primaryPasswordError = await primaryPasswordCheck({
       password,
-      setErrors
+      setPrimaryPasswordErrors
     });
 
-    if (!errorCheck) {
-      // Generate a random pair of a public and a private key
-      const pair = nacl.box.keyPair();
-      const secretKeyUint8Array = pair.secretKey;
-      const publicKeyUint8Array = pair.publicKey;
-      const privateKey = encodeBase64(secretKeyUint8Array);
-      const publicKey = encodeBase64(publicKeyUint8Array);
-      localStorage.setItem("PRIVATE_KEY", privateKey);
-
-      client.init(
-        {
-          username: email,
-          password
-        },
-        async () => {
-          client.createVerifier(async (err: any, result: { salt: string; verifier: string }) => {
-            try {
-              // TODO: moduralize into KeyService
-              const derivedKey = await deriveArgonKey({
-                password,
-                salt: result.salt,
-                mem: 65536,
-                time: 3,
-                parallelism: 1,
-                hashLen: 32
-              });
-
-              if (!derivedKey) throw new Error("Failed to derive key from password");
-
-              const key = crypto.randomBytes(32);
-
-              // create encrypted private key by encrypting the private
-              // key with the symmetric key [key]
-              const {
-                ciphertext: encryptedPrivateKey,
-                iv: encryptedPrivateKeyIV,
-                tag: encryptedPrivateKeyTag
-              } = Aes256Gcm.encrypt({
-                text: privateKey,
-                secret: key
-              });
-
-              // create the protected key by encrypting the symmetric key
-              // [key] with the derived key
-              const {
-                ciphertext: protectedKey,
-                iv: protectedKeyIV,
-                tag: protectedKeyTag
-              } = Aes256Gcm.encrypt({
-                text: key.toString("hex"),
-                secret: Buffer.from(derivedKey.hash)
-              });
-
-              const response = await completeAccountSignup({
-                email,
-                firstName: name.split(" ")[0],
-                lastName: name.split(" ").slice(1).join(" "),
-                protectedKey,
-                protectedKeyIV,
-                protectedKeyTag,
-                publicKey,
-                encryptedPrivateKey,
-                encryptedPrivateKeyIV,
-                encryptedPrivateKeyTag,
-                providerAuthToken,
-                salt: result.salt,
-                verifier: result.verifier,
-                organizationName,
-                attributionSource
-              });
-
-              // unset signup JWT token and set JWT token
-              SecurityClient.setSignupToken("");
-              SecurityClient.setToken(response.token);
-              SecurityClient.setProviderAuthToken("");
-
-              saveTokenToLocalStorage({
-                publicKey,
-                encryptedPrivateKey,
-                iv: encryptedPrivateKeyIV,
-                tag: encryptedPrivateKeyTag,
-                privateKey
-              });
-
-              const userOrgs = await fetchOrganizations();
-
-              const orgId = userOrgs[0]?._id;
-              const project = await ProjectService.initProject({
-                organizationId: orgId,
-                projectName: "Example Project"
-              });
-
-              localStorage.setItem("orgData.id", orgId);
-              localStorage.setItem("projectData.id", project._id);
-
-              incrementStep();
-            } catch (error) {
-              setIsLoading(false);
-              console.error(error);
-            }
-          });
-        }
-      );
-    } else {
+    if (primaryPasswordError) {
+      setPassword("");
       setIsLoading(false);
+      return;
     }
+
+    // Secondary password check (currently the breached password API check)
+    const { isBreached, errorMessage } = await breachedPasswordCheck({ password });
+
+    if (isBreached) {
+      setPassword("");
+      createNotification({
+        text: errorMessage || "New password has previously appeared in a data breach and should never be used. Please choose a stronger password.",
+        type: "error"
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // No errors - proceed with account creation
+    // Generate a random pair of a public and a private key
+    const pair = nacl.box.keyPair();
+    const secretKeyUint8Array = pair.secretKey;
+    const publicKeyUint8Array = pair.publicKey;
+    const privateKey = encodeBase64(secretKeyUint8Array);
+    const publicKey = encodeBase64(publicKeyUint8Array);
+    localStorage.setItem("PRIVATE_KEY", privateKey);
+
+    client.init(
+      {
+        username: email,
+        password
+      },
+      async () => {
+        client.createVerifier(async (err: any, result: { salt: string; verifier: string }) => {
+          try {
+            // TODO: moduralize into KeyService
+            const derivedKey = await deriveArgonKey({
+              password,
+              salt: result.salt,
+              mem: 65536,
+              time: 3,
+              parallelism: 1,
+              hashLen: 32
+            });
+
+            if (!derivedKey) throw new Error("Failed to derive key from password");
+
+            const key = crypto.randomBytes(32);
+
+            // create encrypted private key by encrypting the private
+            // key with the symmetric key [key]
+            const {
+              ciphertext: encryptedPrivateKey,
+              iv: encryptedPrivateKeyIV,
+              tag: encryptedPrivateKeyTag
+            } = Aes256Gcm.encrypt({
+              text: privateKey,
+              secret: key
+            });
+
+            // create the protected key by encrypting the symmetric key
+            // [key] with the derived key
+            const {
+              ciphertext: protectedKey,
+              iv: protectedKeyIV,
+              tag: protectedKeyTag
+            } = Aes256Gcm.encrypt({
+              text: key.toString("hex"),
+              secret: Buffer.from(derivedKey.hash)
+            });
+
+            const response = await completeAccountSignup({
+              email,
+              firstName: name.split(" ")[0],
+              lastName: name.split(" ").slice(1).join(" "),
+              protectedKey,
+              protectedKeyIV,
+              protectedKeyTag,
+              publicKey,
+              encryptedPrivateKey,
+              encryptedPrivateKeyIV,
+              encryptedPrivateKeyTag,
+              providerAuthToken,
+              salt: result.salt,
+              verifier: result.verifier,
+              organizationName,
+              attributionSource
+            });
+
+            // unset signup JWT token and set JWT token
+            SecurityClient.setSignupToken("");
+            SecurityClient.setToken(response.token);
+            SecurityClient.setProviderAuthToken("");
+
+            saveTokenToLocalStorage({
+              publicKey,
+              encryptedPrivateKey,
+              iv: encryptedPrivateKeyIV,
+              tag: encryptedPrivateKeyTag,
+              privateKey
+            });
+
+            const userOrgs = await fetchOrganizations();
+
+            const orgId = userOrgs[0]?._id;
+            const project = await ProjectService.initProject({
+              organizationId: orgId,
+              projectName: "Example Project"
+            });
+
+            localStorage.setItem("orgData.id", orgId);
+            localStorage.setItem("projectData.id", project._id);
+
+            incrementStep();
+          } catch (error) {
+            setIsLoading(false);
+            console.error(error);
+          }
+        });
+      }
+    );
   };
 
   return (
@@ -270,25 +286,26 @@ export default function UserInfoStep({
             label={t("section.password.password")}
             onChangeHandler={async (pass: string) => {
               setPassword(pass);
-              await checkPassword({
+              await primaryPasswordCheck({
                 password: pass,
-                setErrors
+                setPrimaryPasswordErrors
               });
             }}
             type="password"
             value={password}
             isRequired
-            error={Object.keys(errors).length > 0}
+            error={Object.keys(primaryPasswordErrors).length > 0}
             autoComplete="new-password"
             id="new-password"
           />
-          {Object.keys(errors).length > 0 && (
+          {Object.keys(primaryPasswordErrors).length > 0 && (
             <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
               <div className="mb-2 text-sm text-gray-400">
                 {t("section.password.validate-base")}
               </div>
-              {Object.keys(errors).map((key) => {
-                if (errors[key as keyof Errors]) {
+
+              {Object.keys(primaryPasswordErrors).map((key) => {
+                if (primaryPasswordErrors[key as keyof Omit<PasswordErrors, "breached">]) {
                   return (
                     <div className="items-top ml-1 flex flex-row justify-start" key={key}>
                       <div>
@@ -297,11 +314,10 @@ export default function UserInfoStep({
                           className="text-md ml-0.5 mr-2.5 text-red"
                         />
                       </div>
-                      <p className="text-sm text-gray-400">{errors[key as keyof Errors]}</p>
+                      <p className="text-sm text-gray-400">{primaryPasswordErrors[key as keyof Omit<PasswordErrors, "breached">]}</p>
                     </div>
                   );
                 }
-
                 return null;
               })}
             </div>
@@ -311,13 +327,14 @@ export default function UserInfoStep({
           <div className="text-l w-full py-1 text-lg">
             <Button
               type="submit"
+              isLoading={isLoading}
+              isDisabled={Object.keys(primaryPasswordErrors).length > 0 || isLoading}
               onClick={signupErrorCheck}
               size="sm"
               isFullWidth
               className="h-14"
               colorSchema="primary"
               variant="outline_bg"
-              isLoading={isLoading}
             >
               {" "}
               {String(t("signup.signup"))}{" "}

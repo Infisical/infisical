@@ -1,7 +1,7 @@
 import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
 import { escapeCharRegex, letterCharRegex, lowEntropyRegexes,numAndSpecialCharRegex, repeatedCharRegex } from "./passwordRegexes";
 
-type Errors = {
+export type PasswordErrors = {
   tooShort?: string;
   tooLong?: string;
   noLetterChar?: string;
@@ -14,7 +14,7 @@ type Errors = {
 
 interface CheckPasswordParams {
   password: string;
-  setErrors: (value: Errors) => void;
+  setPrimaryPasswordErrors: (value: Omit<PasswordErrors, "breached">) => void;
 }
 
 /**
@@ -26,19 +26,18 @@ interface CheckPasswordParams {
  * - Does not contain 3 repeat, consecutive characters
  * - Does not contain any escape characters/sequences
  * - Does not contain PII and/or low entropy data (eg. email address, URL, phone number, DoB, SSN, driver's license, passport)
- * - Is not in a database of breached passwords
  *
  * The function returns whether or not the password [password]
  * passes the minimum requirements above. It sets errors on
- * an erorr object via [setErrors].
+ * an error object via [setPrimaryPasswordErrors].
  *
  * @param {Object} obj
  * @param {String} obj.password - the password to check
- * @param {Function} obj.setErrors - set state function to set error object
+ * @param {Function} obj.setPrimaryPasswordErrors - set state function to set error object
  */
 
-const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Promise<boolean> => {
-  const errors: Errors = {};
+export const primaryPasswordCheck = async ({ password, setPrimaryPasswordErrors }: CheckPasswordParams): Promise<boolean> => {
+  const errors: Omit<PasswordErrors, "breached"> = {};
 
   const tests = [
     {
@@ -79,21 +78,43 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
       errorText: "Password contains personal info.",
     },
   ];
-
-  const isBreached = await checkIsPasswordBreached(password);
-
-  if (isBreached) {
-    errors.breached = "Password was found in a data breach.";
-  }
-
+  
   tests.forEach((test) => {
     if (test.validator && !test.validator(password)) {
-      errors[test.name as keyof Errors] = test.errorText;
+      errors[test.name as keyof Omit<PasswordErrors, "breached">] = test.errorText;
     }
   });
 
-  setErrors(errors);
+  setPrimaryPasswordErrors(errors);
   return Object.keys(errors).length > 0;
 };
 
-export default checkPassword;
+interface BreachedPasswordCheckResult {
+  isBreached: boolean;
+  errorMessage?: string;
+}
+
+/**
+ * Validate that the password [password]:
+ * - Is not in a database of breached passwords (call to haveIBeenPwnd password API)
+ *
+ * The function returns whether or not the password [password]
+ * passes the minimum requirements above. It sets errors on
+ * an error object via [setSecondaryPasswordErrors].
+ *
+ * @param {Object} obj
+ * @param {String} obj.password - the password to check
+ * @param {Function} obj.setBreachedPasswordError - set state function to set error object
+ */
+
+export const breachedPasswordCheck = async ({ password }: { password: string }): Promise<BreachedPasswordCheckResult> => {
+  const isBreached = await checkIsPasswordBreached(password);
+ 
+  if (isBreached) {
+    // TODO: add translations (kept PasswordError.breached)
+    const errorMessage = "New password has previously appeared in a data breach and should never be used. Please choose a stronger password.";
+    return { isBreached: true, errorMessage };
+  }
+
+  return { isBreached: false };
+};
