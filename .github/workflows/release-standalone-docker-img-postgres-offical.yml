@@ -1,4 +1,4 @@
-name: Release standalone postgres version
+name: Release standalone docker image
 on:
   push:
     tags:
@@ -30,28 +30,28 @@ jobs:
       - name: Save commit hashes for tag
         id: commit
         uses: pr-mpt/actions-commit-hash@v2
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
       - name: 🐋 Login to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
+      - name: 📦 Build backend and export to Docker
+        uses: depot/build-push-action@v1
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64
-          file: Dockerfile.standalone-infisical
+          project: 64mmf0n610
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           push: true
+          context: .
           tags: |
-            akhilmhdh/destruction:latest
-            akhilmhdh/destruction:${{ steps.commit.outputs.short }}
-            akhilmhdh/destruction:${{ steps.extract_version.outputs.version }}
+            # infisical/infisical:latest-postgres
+            infisical/infisical:${{ steps.commit.outputs.short }}
+            infisical/infisical:${{ steps.extract_version.outputs.version }}
+          platforms: linux/amd64,linux/arm64
+          file: Dockerfile.standalone-infisical
+          build-args: |
+            POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+            INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
