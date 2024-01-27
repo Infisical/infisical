@@ -258,6 +258,10 @@ const main = async () => {
   try {
     dotenv.config();
 
+    process.env.MONGO_DB_URL = "mongodb://root:example@localhost:27017/test?authSource=admin"
+
+    process.env.POSTGRES_DB_URL = "postgres://infisical:infisical@localhost/infisical?sslmode=disable"
+
     process.env.START_FRESH = "true";
     const prompt = promptSync({ sigint: true });
 
@@ -2296,9 +2300,6 @@ const main = async () => {
         const folderId = await folderKv
           .get(doc.folderId || "root")
           .catch(async () => {
-            console.log(
-              `${TableName.SecretApprovalRequest}: secret location unknown, moving secret to root of env_slug/project`,
-            );
             return await folderKv.get("root");
           });
 
@@ -2382,7 +2383,7 @@ const main = async () => {
                 id,
                 op: CommitType.CREATE,
                 requestId,
-                secretBlindIndex: commit.newVersion.secretBlindIndex,
+                secretBlindIndex: commit?.newVersion?.secretBlindIndex as string,
                 keyEncoding: commit.newVersion.keyEncoding as string,
                 algorithm: commit.newVersion.algorithm as string,
                 version: commit.newVersion.version,
