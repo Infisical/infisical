@@ -1,6 +1,7 @@
 export type TServerConfig = {
   initialized: boolean;
   allowSignUp: boolean;
+  isMigrationModeOn?: boolean;
 };
 
 export type TCreateAdminUserDTO = {

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getHttpsEnabled } from "../../config";
+import { getHttpsEnabled, getIsMigrationMode } from "../../config";
 import { getServerConfig, updateServerConfig as setServerConfig } from "../../config/serverConfig";
 import { initializeDefaultOrg, issueAuthTokens } from "../../helpers";
 import { validateRequest } from "../../helpers/validation";
@@ -8,9 +8,10 @@ import { TelemetryService } from "../../services";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import * as reqValidator from "../../validation/admin";
 
-export const getServerConfigInfo = (_req: Request, res: Response) => {
+export const getServerConfigInfo = async (_req: Request, res: Response) => {
   const config = getServerConfig();
-  return res.send({ config });
+  const isMigrationModeOn = await getIsMigrationMode();
+  return res.send({ config: { ...config, isMigrationModeOn } });
 };
 
 export const updateServerConfig = async (req: Request, res: Response) => {
