@@ -3,6 +3,7 @@ on:
   push:
     tags:
       - "infisical/v*.*.*"
+      - "!infisical/v*.*.*-postgres"
 
 jobs:
   backend-image:
