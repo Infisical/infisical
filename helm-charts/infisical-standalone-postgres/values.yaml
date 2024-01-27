@@ -39,7 +39,7 @@ infisical:
     repository: akhilmhdh/destruction
     ## @param backend.image.tag Backend image tag
     ##
-    tag: "v0.0.23-postgres"
+    tag: "latest"
     ## @param backend.image.pullPolicy Backend image pullPolicy
     ##
     pullPolicy: IfNotPresent
@@ -48,15 +48,13 @@ infisical:
   affinity: {}
   ## @param backend.kubeSecretRef Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))
   ##
-  kubeSecretRef: "infisical-secrets"
+  kubeSecretRef: ""
   ## Backend service
   ##
   service:
     ## @param backend.service.annotations Backend service annotations
     ##
-    annotations:
-      service.beta.kubernetes.io/do-loadbalancer-protocol: "https"
-      service.beta.kubernetes.io/do-loadbalancer-certificate-id: "6339ce9e-83c6-401b-b560-a1888e00953c"
+    annotations: {}
     ## @param backend.service.type Backend service type
     ##
     type: ClusterIP
