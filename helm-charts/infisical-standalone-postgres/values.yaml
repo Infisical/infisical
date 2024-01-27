@@ -1,0 +1,98 @@
+## @section Common parameters
+##
+
+## @param nameOverride Override release name
+##
+nameOverride: ""
+## @param fullnameOverride Override release fullname
+##
+fullnameOverride: ""
+
+## @section Infisical backend parameters
+## Documentation : https://infisical.com/docs/self-hosting/deployments/kubernetes
+##
+
+infisical:
+  ## @param backend.enabled Enable backend
+  ##
+  enabled: true
+  ## @param backend.name Backend name
+  ##
+  name: infisical
+  ## @param backend.fullnameOverride Backend fullnameOverride
+  ##
+  fullnameOverride: ""
+  ## @param backend.podAnnotations Backend pod annotations
+  ##
+  podAnnotations: {}
+  ## @param backend.deploymentAnnotations Backend deployment annotations
+  ##
+  deploymentAnnotations: {}
+  ## @param backend.replicaCount Backend replica count
+  ##
+  replicaCount: 2
+  ## Backend image parameters
+  ##
+  image:
+    ## @param backend.image.repository Backend image repository
+    ##
+    repository: akhilmhdh/destruction
+    ## @param backend.image.tag Backend image tag
+    ##
+    tag: "v0.0.23-postgres"
+    ## @param backend.image.pullPolicy Backend image pullPolicy
+    ##
+    pullPolicy: IfNotPresent
+  ## @param backend.affinity Backend pod affinity
+  ##
+  affinity: {}
+  ## @param backend.kubeSecretRef Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))
+  ##
+  kubeSecretRef: "infisical-secrets"
+  ## Backend service
+  ##
+  service:
+    ## @param backend.service.annotations Backend service annotations
+    ##
+    annotations:
+      service.beta.kubernetes.io/do-loadbalancer-protocol: "https"
+      service.beta.kubernetes.io/do-loadbalancer-certificate-id: "6339ce9e-83c6-401b-b560-a1888e00953c"
+    ## @param backend.service.type Backend service type
+    ##
+    type: ClusterIP
+    ## @param backend.service.nodePort Backend service nodePort (used if above type is `NodePort`)
+    ##
+    nodePort: ""
+
+## @section Ingress parameters
+##
+
+ingress:
+  ## @param ingress.enabled Enable ingress
+  ##
+  enabled: true
+  ## @param ingress.ingressClassName Ingress class name
+  ##
+  ingressClassName: nginx
+  ## @param ingress.nginx.enabled Ingress controller
+  ##
+  nginx:
+    enabled: true
+  ## @param ingress.annotations Ingress annotations
+  ##
+  annotations:
+    {}
+    # kubernetes.io/ingress.class: "nginx"
+    # cert-manager.io/issuer: letsencrypt-nginx
+  ## @param ingress.hostName Ingress hostname (your custom domain name, e.g. `infisical.example.org`)
+  ## Replace with your own domain
+  ##
+  hostName: ""
+  ## @param ingress.tls Ingress TLS hosts (matching above hostName)
+  ## Replace with your own domain
+  ##
+  tls:
+    []
+    # - secretName: letsencrypt-prod
+    #   hosts:
+    #     - some.domain.com
