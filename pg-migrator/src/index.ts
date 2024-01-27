@@ -311,8 +311,12 @@ const main = async () => {
       postgresTableName: TableName.Users,
       returnKeys: ["id", "email"],
       preProcessing: async (doc) => {
-        const id = uuidV4();
+        if (["64058e0ea5c55c6a8203fed7", "64155f5d75c91bf4e176eb85", "6434ff80b82e04f17008aa13"].includes(doc._id.toString())) {
+          console.log("Skipping duplicate user")
+          return 
+        }
 
+        const id = uuidV4();
         await userKv.put(doc.id.toString(), id);
 
         return {
