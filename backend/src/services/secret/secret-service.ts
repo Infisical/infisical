@@ -239,6 +239,7 @@ export const secretServiceFactory = ({
     userId,
     blindIndexCfg
   }: TFnSecretBlindIndexCheck) => {
+    console.log(`inputSecrets=[${JSON.stringify(inputSecrets, null, 4)}] folderId=[${folderId}] isNew=[${isNew}] userId=[${userId}] blindIndexCfg=[${JSON.stringify(blindIndexCfg, null, 4)}] `)
     const blindIndex2KeyName: Record<string, string> = {}; // used at audit log point
     const keyName2BlindIndex = await Promise.all(
       inputSecrets.map(({ secretName }) =>
@@ -252,6 +253,9 @@ export const secretServiceFactory = ({
         return prev;
       }, {})
     );
+
+    console.log("keyName2BlindIndex:", JSON.stringify(keyName2BlindIndex, null, 4))
+    
     if (inputSecrets.some(({ type }) => type === SecretType.Personal) && !userId) {
       throw new BadRequestError({ message: "Missing user id for personal secret" });
     }
@@ -265,10 +269,13 @@ export const secretServiceFactory = ({
       userId
     );
 
+    console.log("fnSecretBlindIndexCheck:", JSON.stringify(secrets, null, 4))
+
+
     if (isNew) {
       if (secrets.length) throw new BadRequestError({ message: "Secret already exist" });
     } else if (secrets.length !== inputSecrets.length)
-      throw new BadRequestError({ message: "Secret not found" });
+      throw new BadRequestError({ message: `Secret not found: blind index ${JSON.stringify(keyName2BlindIndex)}` });
 
     return { blindIndex2KeyName, keyName2BlindIndex, secrets };
   };
