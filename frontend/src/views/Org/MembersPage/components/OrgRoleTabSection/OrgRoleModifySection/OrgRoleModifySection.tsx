@@ -8,15 +8,16 @@ import {
   faServer,
   faSignIn,
   faUserCog,
-  faUsers} from "@fortawesome/free-solid-svg-icons";
+  faUsers
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import { useCreateRole, useUpdateRole } from "@app/hooks/api";
-import { TRole } from "@app/hooks/api/roles/types";
+import { useCreateOrgRole, useUpdateOrgRole } from "@app/hooks/api";
+import { TOrgRole } from "@app/hooks/api/roles/types";
 
 import {
   formRolePermission2API,
@@ -28,7 +29,7 @@ import { SimpleLevelPermissionOption } from "./SimpleLevelPermissionOptions";
 import { WorkspacePermission } from "./WorkspacePermission";
 
 type Props = {
-  role?: TRole<undefined>;
+  role?: TOrgRole;
   onGoBack: VoidFunction;
 };
 
@@ -89,7 +90,7 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
 
   const { createNotification } = useNotificationContext();
   const { currentOrg } = useOrganization();
-  const orgId = currentOrg?._id || "";
+  const orgId = currentOrg?.id || "";
   const {
     handleSubmit,
     register,
@@ -101,16 +102,16 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
     resolver: zodResolver(formSchema)
   });
 
-  const { mutateAsync: createRole } = useCreateRole();
-  const { mutateAsync: updateRole } = useUpdateRole();
+  const { mutateAsync: createRole } = useCreateOrgRole();
+  const { mutateAsync: updateRole } = useUpdateOrgRole();
 
   const handleRoleUpdate = async (el: TFormSchema) => {
-    if (!role?._id) return;
+    if (!role?.id) return;
 
     try {
       await updateRole({
         orgId,
-        id: role?._id,
+        id: role?.id,
         ...el,
         permissions: formRolePermission2API(el.permissions)
       });
@@ -145,7 +146,7 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
   return (
     <div>
       <form onSubmit={handleSubmit(handleFormSubmit)}>
-        <div className="flex justify-between mb-2 items-center">
+        <div className="mb-2 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-mineshaft-100">
             {isNewRole ? "New" : "Edit"} Role
           </h1>
@@ -187,7 +188,7 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
           >
             <Input {...register("description")} isReadOnly={isNonEditable} />
           </FormControl>
-          <div className="flex justify-between items-center pt-6 border-t border-t-mineshaft-800">
+          <div className="flex items-center justify-between border-t border-t-mineshaft-800 pt-6">
             <div>
               <h2 className="text-xl font-medium">Add Permission</h2>
             </div>
@@ -213,7 +214,7 @@ export const OrgRoleModifySection = ({ role, onGoBack }: Props) => {
             </div>
           ))}
         </div>
-        <div className="flex items-center space-x-4 mt-12">
+        <div className="mt-12 flex items-center space-x-4">
           <Button
             type="submit"
             isDisabled={isSubmitting || isNonEditable || !isDirty}

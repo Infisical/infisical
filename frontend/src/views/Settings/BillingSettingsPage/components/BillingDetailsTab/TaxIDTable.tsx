@@ -72,13 +72,13 @@ const taxIDTypeLabelMap: { [key: string]: string } = {
 
 export const TaxIDTable = () => {
   const { currentOrg } = useOrganization();
-  const { data, isLoading } = useGetOrgTaxIds(currentOrg?._id ?? "");
+  const { data, isLoading } = useGetOrgTaxIds(currentOrg?.id ?? "");
   const deleteOrgTaxId = useDeleteOrgTaxId();
 
   const handleDeleteTaxIdBtnClick = async (taxId: string) => {
-    if (!currentOrg?._id) return;
+    if (!currentOrg?.id) return;
     await deleteOrgTaxId.mutateAsync({
-      organizationId: currentOrg._id,
+      organizationId: currentOrg.id,
       taxId
     });
   };
@@ -97,8 +97,8 @@ export const TaxIDTable = () => {
           {!isLoading &&
             data &&
             data?.length > 0 &&
-            data.map(({ _id, type, value }) => (
-              <Tr key={`tax-id-${_id}`} className="h-10">
+            data.map(({ id, type, value }) => (
+              <Tr key={`tax-id-${id}`} className="h-10">
                 <Td>{taxIDTypeLabelMap[type]}</Td>
                 <Td>{value}</Td>
                 <Td>
@@ -109,7 +109,7 @@ export const TaxIDTable = () => {
                     {(isAllowed) => (
                       <IconButton
                         onClick={async () => {
-                          await handleDeleteTaxIdBtnClick(_id);
+                          await handleDeleteTaxIdBtnClick(id);
                         }}
                         size="lg"
                         colorSchema="danger"

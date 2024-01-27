@@ -40,7 +40,7 @@ export default function CloudflarePagesIntegrationPage() {
             setAccountId("");
             setIsLoading(false);
 
-            router.push(`/integrations/cloudflare-pages/create?integrationAuthId=${integrationAuth._id}`);
+            router.push(`/integrations/cloudflare-pages/create?integrationAuthId=${integrationAuth.id}`);
         } catch (err) {
             console.error(err);
         }

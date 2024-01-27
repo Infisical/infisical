@@ -1,28 +1,27 @@
 export type Workspace = {
   __v: number;
-  _id: string;
+  id: string;
   name: string;
-  organization: string;
+  orgId: string;
   autoCapitalization: boolean;
   environments: WorkspaceEnv[];
 };
 
 export type WorkspaceEnv = {
+  id: string;
   name: string;
   slug: string;
-  isReadDenied: boolean;
-  isWriteDenied: boolean;
 };
 
-export type WorkspaceTag = { _id: string; name: string; slug: string };
+export type WorkspaceTag = { id: string; name: string; slug: string };
 
 export type NameWorkspaceSecretsDTO = {
   workspaceId: string;
   secretsToUpdate: {
     secretName: string;
-    _id: string;
+    secretId: string;
   }[];
-}
+};
 
 // mutation dto
 export type CreateWorkspaceDTO = {
@@ -36,25 +35,25 @@ export type ToggleAutoCapitalizationDTO = { workspaceID: string; state: boolean 
 export type DeleteWorkspaceDTO = { workspaceID: string };
 
 export type CreateEnvironmentDTO = {
-  workspaceID: string;
-  environmentSlug: string;
-  environmentName: string;
+  workspaceId: string;
+  name: string;
+  slug: string;
 };
 
 export type ReorderEnvironmentsDTO = {
-  workspaceID: string;
+  workspaceId: string;
   environmentSlug: string;
   environmentName: string;
   otherEnvironmentSlug: string;
   otherEnvironmentName: string;
-
 };
 
 export type UpdateEnvironmentDTO = {
-  workspaceID: string;
-  oldEnvironmentSlug: string;
-  environmentSlug: string;
-  environmentName: string;
+  workspaceId: string;
+  id: string;
+  name?: string;
+  slug?: string;
+  position?: number;
 };
 
-export type DeleteEnvironmentDTO = { workspaceID: string; environmentSlug: string };
+export type DeleteEnvironmentDTO = { workspaceId: string; id: string };

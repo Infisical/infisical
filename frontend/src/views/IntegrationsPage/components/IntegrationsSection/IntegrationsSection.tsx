@@ -81,13 +81,13 @@ export const IntegrationsSection = ({
           {integrations?.map((integration) => (
             <div
               className="max-w-8xl flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 pb-2"
-              key={`integration-${integration?._id.toString()}`}
+              key={`integration-${integration?.id.toString()}`}
             >
               <div className="flex">
                 <div>
                   <FormControl label="Environment">
                     <Select
-                      value={integration.environment}
+                      value={integration.environment.slug}
                       isDisabled={integration.isActive}
                       className="min-w-[8rem] border border-mineshaft-700"
                     >
@@ -162,7 +162,8 @@ export const IntegrationsSection = ({
                     </div>
                   </div>
                 )}
-                {((integration.integration === "checkly") || (integration.integration === "github")) && (
+                {(integration.integration === "checkly" ||
+                  integration.integration === "github") && (
                   <>
                     {integration.targetService && (
                       <div className="ml-2">

@@ -1,18 +1,35 @@
-export type TGetRolesDTO = {
-  orgId: string;
+export enum ProjectMembershipRole {
+  Admin = "admin",
+  Member = "member",
+  Custom = "custom",
+  Viewer = "viewer",
+  NoAccess = "no-access"
+}
+
+export type TGetProjectRolesDTO = {
   workspaceId?: string;
 };
 
-export type TRole<T extends string | undefined> = {
-  _id: string;
-  organization: string;
-  workspace: T;
-  name: string;
-  description: string;
+export type TProjectRole = {
   slug: string;
-  permissions: T extends string ? TProjectPermission[] : TPermission[];
+  name: string;
+  projectId: string;
+  id: string;
   createdAt: string;
   updatedAt: string;
+  description?: string;
+  permissions: TProjectPermission[];
+};
+
+export type TOrgRole = {
+  slug: string;
+  name: string;
+  orgId: string;
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  description?: string;
+  permissions: TPermission[];
 };
 
 export type TPermission = {
@@ -24,28 +41,7 @@ export type TPermission = {
 export type TProjectPermission = {
   conditions?: Record<string, any>;
   action: string;
-  subject: string;
-};
-
-export type TCreateRoleDTO<T extends string | undefined> = {
-  orgId: string;
-  workspaceId?: T;
-  name: string;
-  description?: string;
-  slug: string;
-  permissions: T extends string ? TProjectPermission[] : TPermission[];
-};
-
-export type TUpdateRoleDTO<T extends string | undefined> = {
-  orgId: string;
-  id: string;
-  workspaceId?: T;
-} & Partial<Omit<TCreateRoleDTO<T>, "orgId" | "workspaceId">>;
-
-export type TDeleteRoleDTO = {
-  orgId: string;
-  id: string;
-  workspaceId?: string;
+  subject: [string];
 };
 
 export type TGetUserOrgPermissionsDTO = {
@@ -54,4 +50,40 @@ export type TGetUserOrgPermissionsDTO = {
 
 export type TGetUserProjectPermissionDTO = {
   workspaceId: string;
+};
+
+export type TCreateOrgRoleDTO = {
+  orgId: string;
+  name: string;
+  description?: string;
+  slug: string;
+  permissions: TPermission[];
+};
+
+export type TUpdateOrgRoleDTO = {
+  orgId: string;
+  id: string;
+} & Partial<Omit<TCreateOrgRoleDTO, "orgId">>;
+
+export type TDeleteOrgRoleDTO = {
+  orgId: string;
+  id: string;
+};
+
+export type TCreateProjectRoleDTO = {
+  projectId: string;
+  name: string;
+  description?: string;
+  slug: string;
+  permissions: TProjectPermission[];
+};
+
+export type TUpdateProjectRoleDTO = {
+  projectId: string;
+  id: string;
+} & Partial<Omit<TCreateProjectRoleDTO, "orgId">>;
+
+export type TDeleteProjectRoleDTO = {
+  projectId: string;
+  id: string;
 };

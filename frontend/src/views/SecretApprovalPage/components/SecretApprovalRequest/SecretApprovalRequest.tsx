@@ -34,7 +34,7 @@ import {
 
 export const SecretApprovalRequest = () => {
   const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?._id || "";
+  const workspaceId = currentWorkspace?.id || "";
   const [selectedApproval, setSelectedApproval] = useState<TSecretApprovalRequest | null>(null);
 
   // filters
@@ -60,10 +60,10 @@ export const SecretApprovalRequest = () => {
   const { user: presentUser } = useUser();
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
-    (prev, curr) => ({ ...prev, [curr._id]: curr }),
+    (prev, curr) => ({ ...prev, [curr.id]: curr }),
     {}
   );
-  const myMembershipId = members?.find(({ user }) => user._id === presentUser?._id)?._id;
+  const myMembershipId = members?.find(({ user }) => user.id === presentUser?.id)?.id;
   const isSecretApprovalScreen = Boolean(selectedApproval);
 
   const handleGoBackSecretRequestDetail = () => {
@@ -87,9 +87,9 @@ export const SecretApprovalRequest = () => {
           <SecretApprovalRequestChanges
             workspaceId={workspaceId}
             members={membersGroupById}
-            approvalRequestId={selectedApproval?._id || ""}
+            approvalRequestId={selectedApproval?.id || ""}
             onGoBack={handleGoBackSecretRequestDetail}
-            committer={membersGroupById?.[selectedApproval?.committer || ""]}
+            committer={membersGroupById?.[selectedApproval?.committerId || ""]}
           />
         </motion.div>
       ) : (
@@ -169,13 +169,11 @@ export const SecretApprovalRequest = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Select an author</DropdownMenuLabel>
-                  {members?.map(({ user, _id }) => (
+                  {members?.map(({ user, id }) => (
                     <DropdownMenuItem
-                      onClick={() =>
-                        setCommitterFilter((state) => (state === _id ? undefined : _id))
-                      }
-                      key={`request-filter-member-${_id}`}
-                      icon={committerFilter === _id && <FontAwesomeIcon icon={faCheckCircle} />}
+                      onClick={() => setCommitterFilter((state) => (state === id ? undefined : id))}
+                      key={`request-filter-member-${id}`}
+                      icon={committerFilter === id && <FontAwesomeIcon icon={faCheckCircle} />}
                       iconPos="right"
                     >
                       {user.email}
@@ -195,9 +193,9 @@ export const SecretApprovalRequest = () => {
               <Fragment key={`secret-approval-request-${i + 1}`}>
                 {group?.map((secretApproval) => {
                   const {
-                    _id: reqId,
+                    id: reqId,
                     commits,
-                    committer,
+                    committerId,
                     createdAt,
                     policy,
                     reviewers,
@@ -227,9 +225,9 @@ export const SecretApprovalRequest = () => {
                       </div>
                       <span className="text-xs text-gray-500">
                         Opened {formatDistance(new Date(createdAt), new Date())} ago by{" "}
-                        {membersGroupById?.[committer]?.user?.firstName}{" "}
-                        {membersGroupById?.[committer]?.user?.lastName} (
-                        {membersGroupById?.[committer]?.user?.email}){" "}
+                        {membersGroupById?.[committerId]?.user?.firstName}{" "}
+                        {membersGroupById?.[committerId]?.user?.lastName} (
+                        {membersGroupById?.[committerId]?.user?.email}){" "}
                         {isApprover && !isReviewed && status === "open" && "- Review required"}
                       </span>
                     </div>

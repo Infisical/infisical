@@ -1,5 +1,5 @@
 export type Organization = {
-  _id: string;
+  id: string;
   name: string;
   createAt: string;
   updatedAt: string;
@@ -13,7 +13,7 @@ export type RenameOrgDTO = {
 export type BillingDetails = {
   name: string;
   email: string;
-}
+};
 
 export type PlanBillingInfo = {
   amount: number;
@@ -22,35 +22,35 @@ export type PlanBillingInfo = {
   interval: "month" | "year";
   intervalCount: number;
   quantity: number;
-}
+};
 
 export type Invoice = {
-  _id: string;
+  id: string;
   created: number;
   invoice_pdf: string;
   number: string;
   paid: boolean;
   total: number;
-}
+};
 
 export type PmtMethod = {
-  _id: string;
+  id: string;
   brand: string;
-  exp_month: number;  
+  exp_month: number;
   exp_year: number;
   funding: string;
   last4: string;
-}
+};
 
 export type TaxID = {
-  _id: string;
+  id: string;
   country: string;
   type: string;
   value: string;
-}
+};
 
 export type License = {
-  _id: string;
+  id: string;
   customerId: string;
   prefix: string;
   licenseKey: string;
@@ -58,22 +58,22 @@ export type License = {
   expiresAt: string;
   createdAt: string;
   updatedAt: string;
-}
+};
 
 export type OrgPlanTableHead = {
   name: string;
-}
+};
 
 export type OrgPlanTableRow = {
   name: string;
   allowed: number | boolean | null;
   used: string;
-}
+};
 
 export type OrgPlanTable = {
   head: OrgPlanTableHead[];
   rows: OrgPlanTableRow[];
-}
+};
 
 export type ProductsTableHead = {
   name: string;
@@ -82,7 +82,7 @@ export type ProductsTableHead = {
   productId: string;
   slug: string;
   tier: number;
-}
+};
 
 export type ProductsTableRow = {
   name: string;
@@ -90,9 +90,9 @@ export type ProductsTableRow = {
   team: number | boolean | null;
   pro: number | boolean | null;
   enterprise: number | boolean | null;
-}
+};
 
 export type ProductsTable = {
   head: ProductsTableHead[];
   rows: ProductsTableRow[];
-}
+};

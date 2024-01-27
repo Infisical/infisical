@@ -1,5 +1,5 @@
 export type TBot = {
-  _id: string;
+  id: string;
   name: string;
   workspace: string;
   isActive: boolean;

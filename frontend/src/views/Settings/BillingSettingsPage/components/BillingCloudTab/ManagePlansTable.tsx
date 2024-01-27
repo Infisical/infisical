@@ -24,7 +24,7 @@ export const ManagePlansTable = ({ billingCycle }: Props) => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const { data: tableData, isLoading: isTableDataLoading } = useGetOrgPlansTable({
-    organizationId: currentOrg?._id ?? "",
+    organizationId: currentOrg?.id ?? "",
     billingCycle
   });
   const createCustomerPortalSession = useCreateCustomerPortalSession();
@@ -110,11 +110,11 @@ export const ManagePlansTable = ({ billingCycle }: Props) => {
                   <Td>
                     <Button
                       onClick={async () => {
-                        if (!currentOrg?._id) return;
+                        if (!currentOrg?.id) return;
 
                         if (tier !== 3) {
                           const { url } = await createCustomerPortalSession.mutateAsync(
-                            currentOrg._id
+                            currentOrg.id
                           );
                           window.location.href = url;
                           return;

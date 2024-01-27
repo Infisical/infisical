@@ -1,7 +1,7 @@
 export type IntegrationAuth = {
-  _id: string;
+  id: string;
   integration: string;
-  workspace: string;
+  projectId: string;
   __v: number;
   createdAt: string;
   updatedAt: string;
@@ -55,14 +55,14 @@ export type BitBucketWorkspace = {
   uuid: string;
   name: string;
   slug: string;
-}
+};
 
 export type NorthflankSecretGroup = {
   name: string;
   groupId: string;
-}
+};
 
 export type TeamCityBuildConfig = {
   name: string;
   buildConfigId: string;
-}
+};

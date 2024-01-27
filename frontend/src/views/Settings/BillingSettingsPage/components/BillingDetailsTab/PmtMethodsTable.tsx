@@ -19,13 +19,13 @@ import { useDeleteOrgPmtMethod, useGetOrgPmtMethods } from "@app/hooks/api";
 
 export const PmtMethodsTable = () => {
   const { currentOrg } = useOrganization();
-  const { data, isLoading } = useGetOrgPmtMethods(currentOrg?._id ?? "");
+  const { data, isLoading } = useGetOrgPmtMethods(currentOrg?.id ?? "");
   const deleteOrgPmtMethod = useDeleteOrgPmtMethod();
 
   const handleDeletePmtMethodBtnClick = async (pmtMethodId: string) => {
-    if (!currentOrg?._id) return;
+    if (!currentOrg?.id) return;
     await deleteOrgPmtMethod.mutateAsync({
-      organizationId: currentOrg._id,
+      organizationId: currentOrg.id,
       pmtMethodId
     });
   };
@@ -46,8 +46,8 @@ export const PmtMethodsTable = () => {
           {!isLoading &&
             data &&
             data?.length > 0 &&
-            data.map(({ _id, brand, exp_month, exp_year, funding, last4 }) => (
-              <Tr key={`pmt-method-${_id}`} className="h-10">
+            data.map(({ id, brand, exp_month, exp_year, funding, last4 }) => (
+              <Tr key={`pmt-method-${id}`} className="h-10">
                 <Td>{brand.charAt(0).toUpperCase() + brand.slice(1)}</Td>
                 <Td>{funding.charAt(0).toUpperCase() + funding.slice(1)}</Td>
                 <Td>{last4}</Td>
@@ -60,7 +60,7 @@ export const PmtMethodsTable = () => {
                     {(isAllowed) => (
                       <IconButton
                         onClick={async () => {
-                          await handleDeletePmtMethodBtnClick(_id);
+                          await handleDeletePmtMethodBtnClick(id);
                         }}
                         size="lg"
                         isDisabled={!isAllowed}

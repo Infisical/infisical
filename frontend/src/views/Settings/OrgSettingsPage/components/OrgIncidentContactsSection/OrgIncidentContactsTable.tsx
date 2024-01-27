@@ -25,7 +25,7 @@ import { useDeleteIncidentContact, useGetOrgIncidentContact } from "@app/hooks/a
 export const OrgIncidentContactsTable = () => {
   const { createNotification } = useNotificationContext();
   const { currentOrg } = useOrganization();
-  const { data: contacts, isLoading } = useGetOrgIncidentContact(currentOrg?._id ?? "");
+  const { data: contacts, isLoading } = useGetOrgIncidentContact(currentOrg?.id ?? "");
   const [searchContact, setSearchContact] = useState("");
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "removeContact",
@@ -35,12 +35,12 @@ export const OrgIncidentContactsTable = () => {
 
   const onRemoveIncidentContact = async () => {
     try {
-      const incidentContactEmail = (popUp?.removeContact?.data as { email: string })?.email;
+      const incidentContactId = (popUp?.removeContact?.data as { id: string })?.id;
 
-      if (!currentOrg?._id) return;
+      if (!currentOrg?.id) return;
       await mutateAsync({
-        orgId: currentOrg._id,
-        email: incidentContactEmail
+        orgId: currentOrg.id,
+        incidentContactId
       });
 
       createNotification({
@@ -80,7 +80,7 @@ export const OrgIncidentContactsTable = () => {
           </THead>
           <TBody>
             {isLoading && <TableSkeleton columns={2} innerKey="incident-contact" />}
-            {filteredContacts?.map(({ email }) => (
+            {filteredContacts?.map(({ email, id }) => (
               <Tr key={email}>
                 <Td className="w-full">{email}</Td>
                 <Td className="mr-4">
@@ -92,7 +92,7 @@ export const OrgIncidentContactsTable = () => {
                       <IconButton
                         ariaLabel="delete"
                         colorSchema="danger"
-                        onClick={() => handlePopUpOpen("removeContact", { email })}
+                        onClick={() => handlePopUpOpen("removeContact", { email, id })}
                         isDisabled={!isAllowed}
                       >
                         <FontAwesomeIcon icon={faTrash} />

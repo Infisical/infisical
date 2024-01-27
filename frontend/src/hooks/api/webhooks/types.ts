@@ -1,7 +1,12 @@
 export type TWebhook = {
-  _id: string;
-  workspace: string;
-  environment: string;
+  id: string;
+  projectId: string;
+  environment: {
+    slug: string;
+    name: string;
+    id: string;
+  };
+  envId: string;
   secretPath: string;
   url: string;
   lastStatus: "success" | "failed";

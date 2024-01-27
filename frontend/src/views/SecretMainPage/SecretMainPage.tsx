@@ -63,7 +63,7 @@ export const SecretMainPage = () => {
 
   // env slug
   const environment = router.query.env as string;
-  const workspaceId = currentWorkspace?._id || "";
+  const workspaceId = currentWorkspace?.id || "";
   const secretPath = (router.query.secretPath as string) || "/";
   const canReadSecret = permission.can(
     ProjectPermissionActions.Read,
@@ -88,9 +88,9 @@ export const SecretMainPage = () => {
   });
   // fetch folders
   const { data: folders, isLoading: isFoldersLoading } = useGetProjectFolders({
-    workspaceId,
+    projectId: workspaceId,
     environment,
-    directory: secretPath
+    path: secretPath
   });
   // fetch secret imports
   const {
@@ -98,9 +98,9 @@ export const SecretMainPage = () => {
     isLoading: isSecretImportsLoading,
     isFetching: isSecretImportsFetching
   } = useGetSecretImports({
-    workspaceId,
+    projectId: workspaceId,
     environment,
-    directory: secretPath,
+    path: secretPath,
     options: {
       enabled: canReadSecret
     }
@@ -108,15 +108,15 @@ export const SecretMainPage = () => {
 
   // fetch imported secrets to show user the overriden ones
   const { data: importedSecrets } = useGetImportedSecrets({
-    workspaceId,
+    projectId: workspaceId,
     environment,
     decryptFileKey: decryptFileKey!,
-    directory: secretPath,
+    path: secretPath,
     options: {
       enabled: canReadSecret
     }
   });
-  // fetch tags
+  // fech tags
   const { data: tags } = useGetWsTags(canReadSecret ? workspaceId : "");
 
   const { data: boardPolicy } = useGetSecretApprovalPolicyOfABoard({
@@ -146,7 +146,7 @@ export const SecretMainPage = () => {
     isPaused: !canDoReadRollback
   });
 
-  const isNotEmtpy = Boolean(secrets?.length || folders?.length || secretImports?.imports?.length);
+  const isNotEmtpy = Boolean(secrets?.length || folders?.length || secretImports?.length);
 
   const handleSortToggle = () =>
     setSortDir((state) => (state === SortDir.ASC ? SortDir.DESC : SortDir.ASC));
@@ -205,7 +205,7 @@ export const SecretMainPage = () => {
 
   return (
     <StoreProvider>
-      <div className="container flex flex-col mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+      <div className="container mx-auto flex h-full flex-col px-6 text-mineshaft-50 dark:[color-scheme:dark]">
         <div className="relative right-6 -top-2 mb-2 ml-6">
           <NavHeader
             pageName={t("dashboard.title")}
@@ -238,13 +238,13 @@ export const SecretMainPage = () => {
               isSnapshotCountLoading={isSnapshotCountLoading}
               onClickRollbackMode={() => handlePopUpToggle("snapshots", true)}
             />
-            <div className="mt-3 overflow-y-auto overflow-x-hidden thin-scrollbar bg-mineshaft-800 text-left text-bunker-300 rounded-md text-sm">
+            <div className="thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300">
               <div className="flex flex-col" id="dashboard">
                 {isNotEmtpy && (
-                  <div className="flex font-medium border-b border-mineshaft-600">
-                    <div style={{ width: "2.8rem" }} className="px-4 py-3 flex-shrink-0" />
+                  <div className="flex border-b border-mineshaft-600 font-medium">
+                    <div style={{ width: "2.8rem" }} className="flex-shrink-0 px-4 py-3" />
                     <div
-                      className="w-80 flex-shrink-0 border-r flex items-center border-mineshaft-600 px-4 py-2"
+                      className="flex w-80 flex-shrink-0 items-center border-r border-mineshaft-600 px-4 py-2"
                       role="button"
                       tabIndex={0}
                       onClick={handleSortToggle}

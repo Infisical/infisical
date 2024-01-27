@@ -12,17 +12,18 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { EmptyState, IconButton, SecretInput, TableContainer } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 type Props = {
-  onDelete: (environment: string, secretPath: string) => void;
+  onDelete: () => void;
   environment: string;
   secretPath?: string;
-  importedEnv: string;
-  importedSecPath: string;
+  importEnvName: string;
+  importEnvPath: string;
   importedSecrets: { key: string; value: string; overriden: { env: string; secretPath: string } }[];
   searchTerm: string;
+  id: string;
 };
 
 // to show the environment and folder icon
@@ -31,7 +32,7 @@ export const EnvFolderIcon = ({ env, secretPath }: { env: string; secretPath: st
     <div style={{ minWidth: "96px" }}>{env || "-"}</div>
     {secretPath && (
       <div className="inline-flex items-center space-x-2 border-l border-mineshaft-600 pl-2">
-        <FontAwesomeIcon icon={faFolder} className="text-green-700 text-md" />
+        <FontAwesomeIcon icon={faFolder} className="text-md text-green-700" />
         <span>{secretPath}</span>
       </div>
     )}
@@ -39,9 +40,10 @@ export const EnvFolderIcon = ({ env, secretPath }: { env: string; secretPath: st
 );
 
 export const SecretImportItem = ({
-  importedEnv,
-  importedSecPath,
   onDelete,
+  id,
+  importEnvName,
+  importEnvPath,
   importedSecrets = [],
   searchTerm = "",
   secretPath,
@@ -49,10 +51,8 @@ export const SecretImportItem = ({
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle();
   const { attributes, listeners, transform, transition, setNodeRef, isDragging } = useSortable({
-    id: `${importedEnv}-${importedSecPath}`
+    id
   });
-  const { currentWorkspace } = useWorkspace();
-  const rowEnv = currentWorkspace?.environments?.find(({ slug }) => slug === importedEnv);
 
   useEffect(() => {
     const filteredSecrets = importedSecrets.filter((secret) =>
@@ -80,7 +80,7 @@ export const SecretImportItem = ({
   return (
     <>
       <div
-        className="flex group border-b border-mineshaft-600 hover:bg-mineshaft-700 cursor-pointer"
+        className="group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
         role="button"
         ref={setNodeRef}
         tabIndex={0}
@@ -88,13 +88,13 @@ export const SecretImportItem = ({
         onClick={() => setIsExpanded.toggle()}
         onKeyDown={() => setIsExpanded.toggle()}
       >
-        <div className="w-12 px-4 py-2 flex items-center text-green-700">
+        <div className="flex w-12 items-center px-4 py-2 text-green-700">
           <FontAwesomeIcon icon={faFileImport} />
         </div>
-        <div className="flex-grow px-4 py-2 flex items-center">
-          <EnvFolderIcon env={rowEnv?.name || ""} secretPath={importedSecPath} />
+        <div className="flex flex-grow items-center px-4 py-2">
+          <EnvFolderIcon env={importEnvName || ""} secretPath={importEnvPath} />
         </div>
-        <div className="px-4 py-2 flex items-center space-x-4 border-l border-mineshaft-600">
+        <div className="flex items-center space-x-4 border-l border-mineshaft-600 px-4 py-2">
           <ProjectPermissionCan
             I={ProjectPermissionActions.Edit}
             a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}
@@ -107,7 +107,7 @@ export const SecretImportItem = ({
                 colorSchema="primary"
                 variant="plain"
                 ariaLabel="expand"
-                className="group-hover:opacity-100 opacity-0 p-0"
+                className="p-0 opacity-0 group-hover:opacity-100"
                 {...attributes}
                 {...listeners}
                 isDisabled={!isAllowed}
@@ -128,10 +128,10 @@ export const SecretImportItem = ({
                 variant="plain"
                 colorSchema="danger"
                 ariaLabel="delete"
-                className="group-hover:opacity-100 opacity-0 p-0"
+                className="p-0 opacity-0 group-hover:opacity-100"
                 onClick={(evt) => {
                   evt.stopPropagation();
-                  onDelete(importedEnv, importedSecPath);
+                  onDelete();
                 }}
                 isDisabled={!isAllowed}
               >
@@ -167,7 +167,7 @@ export const SecretImportItem = ({
                   {importedSecrets
                     .filter((secret) => secret.key.toUpperCase().includes(searchTerm.toUpperCase()))
                     .map(({ key, value, overriden }, index) => (
-                      <tr key={`${importedEnv}-${importedSecPath}-${key}-${index + 1}`}>
+                      <tr key={`${id}-${key}-${index + 1}`}>
                         <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
                           {key}
                         </td>

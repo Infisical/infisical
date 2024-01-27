@@ -2,7 +2,7 @@ ARG POSTHOG_HOST=https://app.posthog.com
 ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 
-FROM  node:16-alpine AS base
+FROM  node:20-alpine AS base
 
 FROM base AS frontend-dependencies
 
@@ -68,11 +68,12 @@ RUN addgroup --system --gid 1001 nodejs \
 
 WORKDIR /app
 
-COPY backend/package*.json ./
+COPY backend-pg/package*.json ./
 RUN npm ci --only-production
 
-COPY /backend .
+COPY /backend-pg .
 COPY --chown=non-root-user:nodejs standalone-entrypoint.sh standalone-entrypoint.sh
+RUN npm i -D tsconfig-paths
 RUN npm run build
 
 # Production stage
@@ -80,7 +81,7 @@ FROM base AS backend-runner
 
 WORKDIR /app
 
-COPY backend/package*.json ./
+COPY backend-pg/package*.json ./
 RUN npm ci --only-production
 
 COPY --from=backend-build /app .
@@ -102,16 +103,19 @@ ENV NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID \
 
 WORKDIR / 
 
-COPY --from=backend-runner /app /backend
+COPY --from=backend-runner /app /backend-pg
+COPY --from=backend-runner /app/dist/services/smtp/templates /backend-pg/dist/templates
 
-COPY --from=frontend-runner /app ./backend/frontend-build
+COPY --from=frontend-runner /app ./backend-pg/frontend-build
+
 
 ENV PORT 8080
+ENV HOST=0.0.0.0
 ENV HTTPS_ENABLED false 
 ENV NODE_ENV production
 ENV STANDALONE_BUILD true 
-
-WORKDIR /backend
+ENV STANDALONE_MODE true
+WORKDIR /backend-pg
 
 ENV TELEMETRY_ENABLED true
 
@@ -119,10 +123,8 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \
   CMD node healthcheck.js
 
 EXPOSE 8080
+EXPOSE 443
 
 USER non-root-user
 
 CMD ["./standalone-entrypoint.sh"]
-
-
-

@@ -38,13 +38,13 @@ export const EnvironmentSection = () => {
     "upgradePlan"
   ] as const);
 
-  const onEnvDeleteSubmit = async (environmentSlug: string) => {
+  const onEnvDeleteSubmit = async (id: string) => {
     try {
-      if (!currentWorkspace?._id) return;
+      if (!currentWorkspace?.id) return;
 
       await deleteWsEnvironment.mutateAsync({
-        workspaceID: currentWorkspace._id,
-        environmentSlug
+        workspaceId: currentWorkspace.id,
+        id
       });
 
       createNotification({
@@ -63,8 +63,8 @@ export const EnvironmentSection = () => {
   };
 
   return (
-    <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
-      <div className="flex justify-between mb-8">
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-8 flex justify-between">
         <p className="text-xl font-semibold text-mineshaft-100">Environments</p>
         <div>
           <ProjectPermissionCan
@@ -90,7 +90,7 @@ export const EnvironmentSection = () => {
           </ProjectPermissionCan>
         </div>
       </div>
-      <p className="text-gray-400 mb-8">
+      <p className="mb-8 text-gray-400">
         Choose which environments will show up in your dashboard like development, staging,
         production
       </p>
@@ -116,9 +116,7 @@ export const EnvironmentSection = () => {
         }?`}
         onChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
         deleteKey={(popUp?.deleteEnv?.data as { slug: string })?.slug || ""}
-        onDeleteApproved={() =>
-          onEnvDeleteSubmit((popUp?.deleteEnv?.data as { slug: string })?.slug)
-        }
+        onDeleteApproved={() => onEnvDeleteSubmit((popUp?.deleteEnv?.data as { id: string })?.id)}
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}

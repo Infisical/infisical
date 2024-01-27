@@ -47,7 +47,7 @@ export default function SignUp() {
     const tryAuth = async () => {
       try {
         const userOrgs = await fetchOrganizations();
-        router.push(`/org/${userOrgs[0]._id}/overview`);
+        router.push(`/org/${userOrgs[0].id}/overview`);
       } catch (error) {
         console.log("Error - Not logged in yet");
       }
@@ -90,7 +90,7 @@ export default function SignUp() {
 
       if (!serverDetails?.emailConfigured && step === 5) {
         const userOrgs = await fetchOrganizations();
-        router.push(`/org/${userOrgs[0]._id}/overview`);
+        router.push(`/org/${userOrgs[0].id}/overview`);
       }
     })();
   }, [step]);
@@ -153,7 +153,7 @@ export default function SignUp() {
   };
 
   return (
-    <div className="flex min-h-screen max-h-screen overflow-y-auto flex-col justify-center bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28 ">
+    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28 ">
       <Head>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />

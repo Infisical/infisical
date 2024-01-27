@@ -15,7 +15,7 @@ const serviceTokenKeys = {
 
 const fetchWorkspaceServiceTokens = async (workspaceID: string) => {
   const { data } = await apiRequest.get<{ serviceTokenData: ServiceToken[] }>(
-    `/api/v2/workspace/${workspaceID}/service-token-data`
+    `/api/v1/workspace/${workspaceID}/service-token-data`
   );
 
   return data.serviceTokenData;
@@ -29,10 +29,11 @@ export const useGetUserWsServiceTokens = ({ workspaceID }: UseGetWorkspaceServic
     queryFn: () => fetchWorkspaceServiceTokens(workspaceID),
     enabled: Boolean(workspaceID)
   });
-}
+};
 
 // mutation
-export const useCreateServiceToken = () => { // TODO: deprecate
+export const useCreateServiceToken = () => {
+  // TODO: deprecate
   const queryClient = useQueryClient();
 
   return useMutation<CreateServiceTokenRes, {}, CreateServiceTokenDTO>({
@@ -41,8 +42,8 @@ export const useCreateServiceToken = () => { // TODO: deprecate
       data.serviceToken += `.${body.randomBytes}`;
       return data;
     },
-    onSuccess: ({ serviceTokenData: { workspace } }) => {
-      queryClient.invalidateQueries(serviceTokenKeys.getAllWorkspaceServiceToken(workspace));
+    onSuccess: ({ serviceTokenData: { projectId } }) => {
+      queryClient.invalidateQueries(serviceTokenKeys.getAllWorkspaceServiceToken(projectId));
     }
   });
 };
@@ -55,8 +56,8 @@ export const useDeleteServiceToken = () => {
       const { data } = await apiRequest.delete(`/api/v2/service-token/${serviceTokenId}`);
       return data;
     },
-    onSuccess: ({ serviceTokenData: { workspace } }) => {
-      queryClient.invalidateQueries(serviceTokenKeys.getAllWorkspaceServiceToken(workspace));
+    onSuccess: ({ serviceTokenData: { projectId } }) => {
+      queryClient.invalidateQueries(serviceTokenKeys.getAllWorkspaceServiceToken(projectId));
     }
   });
 };

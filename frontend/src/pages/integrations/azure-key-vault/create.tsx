@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
-import {
-  useCreateIntegration
-} from "@app/hooks/api";
+import { useCreateIntegration } from "@app/hooks/api";
 
 import {
   Button,
@@ -53,11 +51,11 @@ export default function AzureKeyVaultCreateIntegrationPage() {
         return;
       }
 
-      if (!integrationAuth?._id) return;
+      if (!integrationAuth?.id) return;
 
       setIsLoading(true);
       await mutateAsync({
-        integrationAuthId: integrationAuth?._id,
+        integrationAuthId: integrationAuth?.id,
         isActive: true,
         app: vaultBaseUrl,
         sourceEnvironment: selectedSourceEnvironment,

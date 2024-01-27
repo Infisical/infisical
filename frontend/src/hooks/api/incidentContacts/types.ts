@@ -1,5 +1,5 @@
 export type IncidentContact = {
-  _id: string;
+  id: string;
   email: string;
   organization: string;
   __v: number;
@@ -9,7 +9,7 @@ export type IncidentContact = {
 
 export type DeleteIncidentContactDTO = {
   orgId: string;
-  email: string;
+  incidentContactId: string;
 };
 
 export type AddIncidentContactDTO = {

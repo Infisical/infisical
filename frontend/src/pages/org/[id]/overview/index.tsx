@@ -68,7 +68,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 const features = [
   {
-    _id: 0,
+    id: 0,
     name: "Kubernetes Operator",
     link: "https://infisical.com/docs/documentation/getting-started/kubernetes",
     description:
@@ -475,11 +475,8 @@ const OrganizationPage = withPermission(
     const router = useRouter();
 
     const { workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
-    const orgWorkspaces =
-      workspaces?.filter(
-        (workspace) => workspace.organization === localStorage.getItem("orgData.id")
-      ) || [];
     const currentOrg = String(router.query.id);
+    const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === currentOrg) || [];
     const { createNotification } = useNotificationContext();
     const addWsUser = useAddUserToWs();
 
@@ -519,7 +516,7 @@ const OrganizationPage = withPermission(
       try {
         const {
           data: {
-            workspace: { _id: newWorkspaceId }
+            workspace: { id: newWorkspaceId }
           }
         } = await createWs.mutateAsync({
           organizationId: currentOrg,
@@ -537,7 +534,7 @@ const OrganizationPage = withPermission(
         await uploadWsKey.mutateAsync({
           encryptedKey: ciphertext,
           nonce,
-          userId: user?._id,
+          userId: user?.id,
           workspaceId: newWorkspaceId
         });
 
@@ -545,19 +542,22 @@ const OrganizationPage = withPermission(
           // not using hooks because need at this point only
           const orgUsers = await fetchOrgUsers(currentOrg);
           const decryptKey = await fetchUserWsKey(newWorkspaceId);
-          await addWsUser.mutateAsync({
-            workspaceId: newWorkspaceId,
-            decryptKey,
-            userPrivateKey: PRIVATE_KEY,
-            members: orgUsers
-              .filter(
-                ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
-              )
-              .map(({ user: orgUser, _id: orgMembershipId }) => ({
-                userPublicKey: orgUser.publicKey,
-                orgMembershipId
-              }))
-          });
+          const members = orgUsers
+            .filter(
+              ({ status, user: orgUser }) => status === "accepted" && user.email !== orgUser.email
+            )
+            .map(({ user: orgUser, id: orgMembershipId }) => ({
+              userPublicKey: orgUser.publicKey,
+              orgMembershipId
+            }));
+          if (members.length) {
+            await addWsUser.mutateAsync({
+              workspaceId: newWorkspaceId,
+              decryptKey,
+              userPrivateKey: PRIVATE_KEY,
+              members
+            });
+          }
         }
         createNotification({ text: "Workspace created", type: "success" });
         handlePopUpClose("addNewWs");
@@ -615,21 +615,29 @@ const OrganizationPage = withPermission(
           </div>
         )}
         <div className="mb-4 flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl">
-          <div className={`${
+          <div
+            className={`${
               !updateClosed ? "block" : "hidden"
-            } mb-4 w-full border rounded-md p-2 text-base border-primary-600 bg-primary/10 text-white flex flex-row items-center`}>
-              <FontAwesomeIcon icon={faWarning} className="text-primary text-4xl p-6"/>
-              <div className="text-sm">
-                <span className="text-lg font-semibold">Scheduled maintenance on January 27th</span>  <br />
-                We&apos;ve planned a database upgrade and need to pause certain functionality for approximately 3 hours on Saturday, January 27th, 10am EST. During these hours, read operations will continue to function normally but no resources will be editable. No action is required on your end — your applications can continue to fetch secrets.<br />
-              </div>
-              <button
-                type="button"
-                onClick={() => closeUpdate()}
-                className="text-mineshaft-100 duration-200 hover:text-red-400 h-full flex items-start"
-              >
-                <FontAwesomeIcon icon={faXmark} />
-              </button>
+            } mb-4 flex w-full flex-row items-center rounded-md border border-primary-600 bg-primary/10 p-2 text-base text-white`}
+          >
+            <FontAwesomeIcon icon={faWarning} className="p-6 text-4xl text-primary" />
+            <div className="text-sm">
+              <span className="text-lg font-semibold">Scheduled maintenance on January 27th</span>{" "}
+              <br />
+              We&apos;ve planned a database upgrade and need to pause certain functionality for
+              approximately 3 hours on Saturday, January 27th, 10am EST. During these hours, read
+              operations will continue to function normally but no resources will be editable. No
+              action is required on your end — your applications can continue to fetch secrets.
+              <br />
+            </div>
+            <button
+              type="button"
+              onClick={() => closeUpdate()}
+              aria-label="close"
+              className="flex h-full items-start text-mineshaft-100 duration-200 hover:text-red-400"
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
           </div>
           <p className="mr-4 font-semibold text-white">Projects</p>
           <div className="mt-6 flex w-full flex-row">
@@ -682,7 +690,7 @@ const OrganizationPage = withPermission(
               .filter((ws) => ws?.name?.toLowerCase().includes(searchFilter.toLowerCase()))
               .map((workspace) => (
                 <div
-                  key={workspace._id}
+                  key={workspace.id}
                   className="min-w-72 flex h-40 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
                 >
                   <div className="mt-0 text-lg text-mineshaft-100">{workspace.name}</div>
@@ -692,8 +700,8 @@ const OrganizationPage = withPermission(
                   <button
                     type="button"
                     onClick={() => {
-                      router.push(`/project/${workspace._id}/secrets/overview`);
-                      localStorage.setItem("projectData.id", workspace._id);
+                      router.push(`/project/${workspace.id}/secrets/overview`);
+                      localStorage.setItem("projectData.id", workspace.id);
                     }}
                   >
                     <div className="group ml-auto w-max cursor-pointer rounded-full border border-mineshaft-600 bg-mineshaft-900 py-2 px-4 text-sm text-mineshaft-300 hover:border-primary-500/80 hover:bg-primary-800/20 hover:text-mineshaft-200">
@@ -782,7 +790,7 @@ const OrganizationPage = withPermission(
                     icon={faPlus}
                     time="1 min"
                     userAction="first_time_secrets_pushed"
-                    link={`/project/${orgWorkspaces[0]?._id}/secrets/overview`}
+                    link={`/project/${orgWorkspaces[0]?.id}/secrets/overview`}
                   />
                   <LearningItemSquare
                     text="Invite your teammates"

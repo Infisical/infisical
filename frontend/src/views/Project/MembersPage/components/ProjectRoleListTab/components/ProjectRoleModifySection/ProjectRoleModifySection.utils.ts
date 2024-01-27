@@ -28,12 +28,15 @@ const PERMISSION_ACTIONS = ["read", "create", "edit", "delete"] as const;
 export const formSchema = z.object({
   name: z.string().trim(),
   description: z.string().trim().optional(),
-  slug: z.string().trim(),
+  slug: z
+    .string()
+    .trim()
+    .refine((val) => val !== "custom", { message: "Cannot use custom as its a keyword" }),
   permissions: z
     .object({
       secrets: z.record(multiEnvPermissionSchema).optional(),
       member: generalPermissionSchema,
-      "identity": generalPermissionSchema,
+      identity: generalPermissionSchema,
       role: generalPermissionSchema,
       integrations: generalPermissionSchema,
       webhooks: generalPermissionSchema,
@@ -90,7 +93,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
   const formVal: Record<string, any> = {};
 
   permissions.forEach((permission) => {
-    const { subject, action } = permission;
+    const {
+      subject: [subject],
+      action
+    } = permission;
     if (!formVal?.[subject]) formVal[subject] = {};
 
     if (subject === "secrets") {
@@ -115,7 +121,7 @@ const multiEnvForm2Api = (
   const isFullAccess = PERMISSION_ACTIONS.every((action) => formVal?.all?.[action]);
   // if any of them is set in all push it without any  condition
   PERMISSION_ACTIONS.forEach((action) => {
-    if (formVal?.all?.[action]) permissions.push({ action, subject });
+    if (formVal?.all?.[action]) permissions.push({ action, subject: [subject] });
   });
 
   if (!isFullAccess) {
@@ -136,7 +142,7 @@ const multiEnvForm2Api = (
             if (formVal[slug]?.secretPath)
               conditions.secretPath = { $glob: formVal?.[slug]?.secretPath };
 
-            permissions.push({ action, subject, conditions });
+            permissions.push({ action, subject: [subject], conditions });
           }
         });
       });
@@ -153,7 +159,7 @@ export const formRolePermission2API = (formVal: TFormSchema["permissions"]) => {
     } else {
       Object.entries(actions).forEach(([action, isAllowed]) => {
         if (isAllowed) {
-          permissions.push({ subject: rule, action });
+          permissions.push({ subject: [rule], action });
         }
       });
     }

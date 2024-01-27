@@ -161,7 +161,7 @@ export default function SignupInvite() {
 
               const userOrgs = await fetchOrganizations();
 
-              const orgId = userOrgs[0]._id;
+              const orgId = userOrgs[0].id;
               localStorage.setItem("orgData.id", orgId);
 
               setStep(3);

@@ -20,7 +20,7 @@ export const SubscriptionProvider = ({ children }: Props): JSX.Element => {
   const { currentOrg } = useOrganization();
 
   const { data, isLoading } = useGetOrgSubscription({
-    orgID: currentOrg?._id || ""
+    orgID: currentOrg?.id || ""
   });
 
   // memorize the workspace details for the context

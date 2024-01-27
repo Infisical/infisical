@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
-import { faMagnifyingGlass, faPlus, faUsers,faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faPlus, faUsers, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -40,17 +40,20 @@ import {
   useOrganization,
   useSubscription,
   useUser,
-  useWorkspace} from "@app/context";
+  useWorkspace
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   useAddUserToWs,
   useDeleteUserFromWorkspace,
   useGetOrgUsers,
-  useGetRoles,
+  useGetProjectRoles,
   useGetUserWsKey,
   useGetWorkspaceUsers,
   useUpdateUserWorkspaceRole,
-  useUploadWsKey} from "@app/hooks/api";
+  useUploadWsKey
+} from "@app/hooks/api";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const addMemberFormSchema = z.object({
   orgMembershipId: z.string().trim()
@@ -67,19 +70,16 @@ export const MemberListTab = () => {
   const { currentWorkspace } = useWorkspace();
   const { user } = useUser();
 
-  const userId = user?._id || "";
-  const orgId = currentOrg?._id || "";
-  const workspaceId = currentWorkspace?._id || "";
+  const userId = user?.id || "";
+  const orgId = currentOrg?.id || "";
+  const workspaceId = currentWorkspace?.id || "";
 
-  const { data: roles, isLoading: isRolesLoading } = useGetRoles({
-    orgId,
-    workspaceId
-  });
+  const { data: roles, isLoading: isRolesLoading } = useGetProjectRoles(workspaceId);
 
   const { data: wsKey } = useGetUserWsKey(workspaceId);
   const { data: members, isLoading: isMembersLoading } = useGetWorkspaceUsers(workspaceId);
   const { data: orgUsers } = useGetOrgUsers(orgId);
-  
+
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -101,7 +101,7 @@ export const MemberListTab = () => {
   const { mutateAsync: updateUserWorkspaceRole } = useUpdateUserWorkspaceRole();
 
   const onAddMember = async ({ orgMembershipId }: TAddMemberForm) => {
-    if (!currentOrg?._id) return;
+    if (!currentOrg?.id) return;
     // TODO(akhilmhdh): Move to memory storage
     const userPrivateKey = localStorage.getItem("PRIVATE_KEY");
     if (!userPrivateKey || !wsKey) {
@@ -110,7 +110,7 @@ export const MemberListTab = () => {
       });
       return;
     }
-    const orgUser = (orgUsers || []).find(({ _id }) => _id === orgMembershipId);
+    const orgUser = (orgUsers || []).find(({ id }) => id === orgMembershipId);
     if (!orgUser) return;
 
     try {
@@ -121,13 +121,13 @@ export const MemberListTab = () => {
         members: [{ orgMembershipId, userPublicKey: orgUser.user.publicKey }]
       });
       createNotification({
-        text: "Successfully invited user to the organization.",
+        text: "Successfully added user to the project",
         type: "success"
       });
     } catch (error) {
       console.error(error);
       createNotification({
-        text: "Failed to invite user to org",
+        text: "Failed to add user to project",
         type: "error"
       });
     }
@@ -137,18 +137,18 @@ export const MemberListTab = () => {
 
   const handleRemoveUser = async () => {
     const membershipId = (popUp?.removeMember?.data as { id: string })?.id;
-    if (!currentOrg?._id) return;
+    if (!currentOrg?.id) return;
 
     try {
-      await removeUserFromWorkspace(membershipId);
+      await removeUserFromWorkspace({ workspaceId, membershipId });
       createNotification({
-        text: "Successfully removed user from workspace",
+        text: "Successfully removed user from project",
         type: "success"
       });
     } catch (error) {
       console.error(error);
       createNotification({
-        text: "Failed to remove user from the organization",
+        text: "Failed to remove user from the project",
         type: "error"
       });
     }
@@ -156,31 +156,33 @@ export const MemberListTab = () => {
   };
 
   const isIamOwner = useMemo(
-    () => members?.find(({ user: u }) => userId === u?._id)?.role === "owner",
+    () => members?.find(({ user: u }) => userId === u?.id)?.role === "owner",
     [userId, members]
   );
 
   const findRoleFromId = useCallback(
     (roleId: string) => {
-      return (roles || []).find(({ _id: id }) => id === roleId);
+      return (roles || []).find(({ id }) => id === roleId);
     },
     [roles]
   );
 
   const onRoleChange = async (membershipId: string, role: string) => {
-    if (!currentOrg?._id) return;
+    if (!currentOrg?.id) return;
 
     try {
-      const isCustomRole = !["admin", "member", "viewer"].includes(role);
-          
+      const isCustomRole = !Object.values(ProjectMembershipRole).includes(
+        role as ProjectMembershipRole
+      );
+
       if (isCustomRole && subscription && !subscription?.rbac) {
         handlePopUpOpen("upgradePlan", {
           description: "You can assign custom roles to members if you upgrade your Infisical plan."
         });
         return;
       }
-          
-      await updateUserWorkspaceRole({ membershipId, role });
+
+      await updateUserWorkspaceRole({ membershipId, role, workspaceId });
       createNotification({
         text: "Successfully updated user role",
         type: "success"
@@ -215,7 +217,7 @@ export const MemberListTab = () => {
       ({ status, user: u }) => status === "accepted" && !wsUserEmails.has(u.email)
     );
   }, [orgUsers, members]);
-  
+
   const onGrantAccess = async (grantedUserId: string, publicKey: string) => {
     try {
       const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
@@ -239,7 +241,7 @@ export const MemberListTab = () => {
         userId: grantedUserId,
         nonce,
         encryptedKey: ciphertext,
-        workspaceId: currentWorkspace?._id || ""
+        workspaceId: currentWorkspace?.id || ""
       });
     } catch (err) {
       console.error(err);
@@ -254,25 +256,20 @@ export const MemberListTab = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-xl font-semibold text-mineshaft-100">
-            Members
-        </p>
-        <ProjectPermissionCan
-            I={ProjectPermissionActions.Create} 
-            a={ProjectPermissionSub.Member}
-        >
-            {(isAllowed) => (
-                <Button
-                colorSchema="primary"
-                type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("addMember")}
-                isDisabled={!isAllowed}
-                >
-                    Add Member
-                </Button>
-            )}
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-xl font-semibold text-mineshaft-100">Members</p>
+        <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Member}>
+          {(isAllowed) => (
+            <Button
+              colorSchema="primary"
+              type="submit"
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() => handlePopUpOpen("addMember")}
+              isDisabled={!isAllowed}
+            >
+              Add Member
+            </Button>
+          )}
         </ProjectPermissionCan>
       </div>
       <Input
@@ -296,7 +293,7 @@ export const MemberListTab = () => {
               {isLoading && <TableSkeleton columns={4} innerKey="project-members" />}
               {!isLoading &&
                 filterdUsers?.map(
-                  ({ user: u, inviteEmail, _id: membershipId, status, customRole, role }) => {
+                  ({ user: u, inviteEmail, id: membershipId, status, roleId, role }) => {
                     const name = u ? `${u.firstName} ${u.lastName}` : "-";
                     const email = u?.email || inviteEmail;
 
@@ -312,10 +309,8 @@ export const MemberListTab = () => {
                             {(isAllowed) => (
                               <>
                                 <Select
-                                  value={
-                                    role === "custom" ? findRoleFromId(customRole)?.slug : role
-                                  }
-                                  isDisabled={userId === u?._id || !isAllowed}
+                                  value={role === "custom" ? findRoleFromId(roleId)?.slug : role}
+                                  isDisabled={userId === u?.id || !isAllowed}
                                   className="w-40 bg-mineshaft-600"
                                   dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
                                   onValueChange={(selectedRole) =>
@@ -337,7 +332,7 @@ export const MemberListTab = () => {
                                     <Button
                                       colorSchema="secondary"
                                       isDisabled={!isAllowed}
-                                      onClick={() => onGrantAccess(u?._id, u?.publicKey)}
+                                      onClick={() => onGrantAccess(u?.id, u?.publicKey)}
                                     >
                                       Grant Access
                                     </Button>
@@ -348,7 +343,7 @@ export const MemberListTab = () => {
                           </ProjectPermissionCan>
                         </Td>
                         <Td>
-                          {userId !== u?._id && (
+                          {userId !== u?.id && (
                             <ProjectPermissionCan
                               I={ProjectPermissionActions.Delete}
                               a={ProjectPermissionSub.Member}
@@ -360,7 +355,7 @@ export const MemberListTab = () => {
                                   variant="plain"
                                   ariaLabel="update"
                                   className="ml-4"
-                                  isDisabled={userId === u?._id || !isAllowed}
+                                  isDisabled={userId === u?.id || !isAllowed}
                                   onClick={() =>
                                     handlePopUpOpen("removeMember", { id: membershipId })
                                   }
@@ -405,7 +400,7 @@ export const MemberListTab = () => {
                       value={field.value}
                       onValueChange={field.onChange}
                     >
-                      {filteredOrgUsers.map(({ _id: orgUserId, user: u }) => (
+                      {filteredOrgUsers.map(({ id: orgUserId, user: u }) => (
                         <SelectItem value={orgUserId} key={`org-membership-join-${orgUserId}`}>
                           {u?.email}
                         </SelectItem>
@@ -436,7 +431,7 @@ export const MemberListTab = () => {
           ) : (
             <div className="flex flex-col space-y-4">
               <div>All the users in your organization are already invited.</div>
-              <Link href={`/org/${currentWorkspace?.organization}/members`}>
+              <Link href={`/org/${currentWorkspace?.orgId}/members`}>
                 <Button variant="outline_bg">Add users to organization</Button>
               </Link>
             </div>

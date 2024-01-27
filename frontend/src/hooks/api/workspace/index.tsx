@@ -18,8 +18,8 @@ export {
   useGetWorkspaceUsers,
   useNameWorkspaceSecrets,
   useRenameWorkspace,
-  useReorderWsEnvironment,
   useToggleAutoCapitalization,
   useUpdateIdentityWorkspaceRole,
   useUpdateUserWorkspaceRole,
-  useUpdateWsEnvironment} from "./queries";
+  useUpdateWsEnvironment
+} from "./queries";

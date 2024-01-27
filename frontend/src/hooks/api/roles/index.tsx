@@ -1,2 +1,14 @@
-export { useCreateRole, useDeleteRole, useUpdateRole } from "./mutation";
-export { useGetRoles, useGetUserOrgPermissions,useGetUserProjectPermissions } from "./queries";
+export {
+  useCreateOrgRole,
+  useCreateProjectRole,
+  useDeleteOrgRole,
+  useDeleteProjectRole,
+  useUpdateOrgRole,
+  useUpdateProjectRole
+} from "./mutation";
+export {
+  useGetOrgRoles,
+  useGetProjectRoles,
+  useGetUserOrgPermissions,
+  useGetUserProjectPermissions
+} from "./queries";

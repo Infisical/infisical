@@ -74,14 +74,14 @@ export const SecretOverviewPage = () => {
 
   const { currentWorkspace, isLoading: isWorkspaceLoading } = useWorkspace();
   const { currentOrg } = useOrganization();
-  const workspaceId = currentWorkspace?._id as string;
+  const workspaceId = currentWorkspace?.id as string;
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
   const [searchFilter, setSearchFilter] = useState("");
   const secretPath = (router.query?.secretPath as string) || "/";
 
   useEffect(() => {
     if (!isWorkspaceLoading && !workspaceId && router.isReady) {
-      router.push(`/org/${currentOrg?._id}/overview`);
+      router.push(`/org/${currentOrg?.id}/overview`);
     }
   }, [isWorkspaceLoading, workspaceId, router.isReady]);
 
@@ -99,9 +99,9 @@ export const SecretOverviewPage = () => {
     decryptFileKey: latestFileKey!
   });
   const { folders, folderNames, isFolderPresentInEnv } = useGetFoldersByEnv({
-    workspaceId,
-    environments: userAvailableEnvs.map(({ slug }) => slug),
-    directory: secretPath
+    projectId: workspaceId,
+    path: secretPath,
+    environments: userAvailableEnvs.map(({ slug }) => slug)
   });
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
@@ -119,10 +119,10 @@ export const SecretOverviewPage = () => {
         const folderName = pathSegment.at(-1);
         if (folderName && parentPath) {
           await createFolder({
-            workspaceId,
+            projectId: workspaceId,
+            path: parentPath,
             environment: env,
-            directory: parentPath,
-            folderName
+            name: folderName
           });
         }
       }
@@ -211,15 +211,16 @@ export const SecretOverviewPage = () => {
 
   const handleExploreEnvClick = async (slug: string) => {
     if (secretPath !== "/") {
-      const path = secretPath.split("/");
-      const directory = path.slice(0, -1).join("/");
-      const folderName = path.at(-1);
-      if (folderName && directory) {
+      const pathSegment = secretPath.split("/").filter(Boolean);
+      const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
+      const folderName = pathSegment.at(-1);
+      console.log(folderName, parentPath);
+      if (folderName && parentPath) {
         await createFolder({
-          workspaceId,
+          projectId: workspaceId,
           environment: slug,
-          directory,
-          folderName
+          path: parentPath,
+          name: folderName
         });
       }
     }
@@ -270,15 +271,16 @@ export const SecretOverviewPage = () => {
         <p className="text-md text-bunker-300">
           Inject your secrets using
           <a
-            className="ml-1 text-mineshaft-300 underline underline-offset-4 decoration-primary-800 hover:decoration-primary-600 hover:text-mineshaft-100 duration-200"
+            className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
             href="https://infisical.com/docs/cli/overview"
             target="_blank"
             rel="noopener noreferrer"
           >
             Infisical CLI
-          </a>,
+          </a>
+          ,
           <a
-            className="ml-1 text-mineshaft-300 underline underline-offset-4 decoration-primary-800 hover:decoration-primary-600 hover:text-mineshaft-100 duration-200"
+            className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
             href="https://infisical.com/docs/documentation/getting-started/api"
             target="_blank"
             rel="noopener noreferrer"
@@ -287,22 +289,23 @@ export const SecretOverviewPage = () => {
           </a>
           ,
           <a
-            className="ml-1 text-mineshaft-300 underline underline-offset-4 decoration-primary-800 hover:decoration-primary-600 hover:text-mineshaft-100 duration-200"
+            className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
             href="https://infisical.com/docs/sdks/overview"
             target="_blank"
             rel="noopener noreferrer"
           >
             Infisical SDKs
           </a>
-          , and 
+          , and
           <a
-            className="ml-1 text-mineshaft-300 underline underline-offset-4 decoration-primary-800 hover:decoration-primary-600 hover:text-mineshaft-100 duration-200"
+            className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
             href="https://infisical.com/docs/documentation/getting-started/introduction"
             target="_blank"
             rel="noopener noreferrer"
           >
             more
-          </a>.
+          </a>
+          .
         </p>
       </div>
       <div className="mt-8 flex items-center justify-between">
@@ -399,32 +402,34 @@ export const SecretOverviewPage = () => {
                   </Td>
                 </Tr>
               )}
-              {!isTableLoading && filteredFolderNames.map((folderName, index) => (
-                <SecretOverviewFolderRow
-                  folderName={folderName}
-                  isFolderPresentInEnv={isFolderPresentInEnv}
-                  environments={userAvailableEnvs}
-                  key={`overview-${folderName}-${index + 1}`}
-                  onClick={handleFolderClick}
-                />
-              ))}
-              {!isTableLoading && (userAvailableEnvs?.length > 0 ? (
-                filteredSecretNames.map((key, index) => (
-                  <SecretOverviewTableRow
-                    secretPath={secretPath}
-                    onSecretCreate={handleSecretCreate}
-                    onSecretDelete={handleSecretDelete}
-                    onSecretUpdate={handleSecretUpdate}
-                    key={`overview-${key}-${index + 1}`}
+              {!isTableLoading &&
+                filteredFolderNames.map((folderName, index) => (
+                  <SecretOverviewFolderRow
+                    folderName={folderName}
+                    isFolderPresentInEnv={isFolderPresentInEnv}
                     environments={userAvailableEnvs}
-                    secretKey={key}
-                    getSecretByKey={getSecretByKey}
-                    expandableColWidth={expandableTableWidth}
+                    key={`overview-${folderName}-${index + 1}`}
+                    onClick={handleFolderClick}
                   />
-                ))
-              ) : (
-                <PermissionDeniedBanner />
-              ))}
+                ))}
+              {!isTableLoading &&
+                (userAvailableEnvs?.length > 0 ? (
+                  filteredSecretNames.map((key, index) => (
+                    <SecretOverviewTableRow
+                      secretPath={secretPath}
+                      onSecretCreate={handleSecretCreate}
+                      onSecretDelete={handleSecretDelete}
+                      onSecretUpdate={handleSecretUpdate}
+                      key={`overview-${key}-${index + 1}`}
+                      environments={userAvailableEnvs}
+                      secretKey={key}
+                      getSecretByKey={getSecretByKey}
+                      expandableColWidth={expandableTableWidth}
+                    />
+                  ))
+                ) : (
+                  <PermissionDeniedBanner />
+                ))}
             </TBody>
             <TFoot>
               <Tr className="sticky bottom-0 z-10 border-0 bg-mineshaft-800">
