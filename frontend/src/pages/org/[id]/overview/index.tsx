@@ -24,8 +24,6 @@ import {
   faPlug,
   faPlus,
   faUserPlus,
-  faWarning,
-  faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -58,7 +56,6 @@ import {
   fetchOrgUsers,
   useAddUserToWs,
   useCreateWorkspace,
-  useGetUserAction,
   useRegisterUserAction,
   useUploadWsKey
 } from "@app/hooks/api";
@@ -479,13 +476,6 @@ const OrganizationPage = withPermission(
     const orgWorkspaces = workspaces?.filter((workspace) => workspace.orgId === currentOrg) || [];
     const { createNotification } = useNotificationContext();
     const addWsUser = useAddUserToWs();
-
-    const { data: updateClosed } = useGetUserAction("jan_2024_db_update_closed");
-
-    const registerUserAction = useRegisterUserAction();
-    const closeUpdate = async () => {
-      await registerUserAction.mutateAsync("jan_2024_db_update_closed");
-    };
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "addNewWs",
