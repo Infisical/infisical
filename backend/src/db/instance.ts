@@ -1,5 +1,4 @@
-
-import knex from "knex"
+import knex from "knex";
 
 export type TDbClient = ReturnType<typeof initDbConnection>;
 export const initDbConnection = (dbConnectionUri: string) => {

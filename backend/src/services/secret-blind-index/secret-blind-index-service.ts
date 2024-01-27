@@ -14,7 +14,7 @@ import {
 type TSecretBlindIndexServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
-  secretDAL:Pick<TSecretDALFactory,'bulkUpdate'>;
+  secretDAL: Pick<TSecretDALFactory, "bulkUpdate">;
 };
 
 export type TSecretBlindIndexServiceFactory = ReturnType<typeof secretBlindIndexServiceFactory>;
@@ -58,18 +58,28 @@ export const secretBlindIndexServiceFactory = ({
     if (membership?.role !== ProjectMembershipRole.Admin) {
       throw new UnauthorizedError({ message: "User must be admin" });
     }
+
     const blindIndexCfg = await secretBlindIndexDAL.findOne({ projectId });
     if (!blindIndexCfg)
       throw new BadRequestError({ message: "Blind index not found", name: "CreateSecret" });
 
-    const operations = await Promise.all(secretsToUpdate.map(async ({secretName,secretId:id})=>{
-      const secretBlindIndex = await generateSecretBlindIndexBySalt(secretName,blindIndexCfg);
-      return { filter:{id},data:{secretBlindIndex} }
-    }))
+    const secrets = await secretBlindIndexDAL.findSecretsByProjectId(
+      projectId,
+      secretsToUpdate.map(({ secretId }) => secretId)
+    );
+    if (secrets.length !== secretsToUpdate.length)
+      throw new BadRequestError({ message: "Secret not found" });
 
-    await secretBlindIndexDAL.transaction(async(tx)=>{
-      await secretDAL.bulkUpdate(operations,tx)
-    })
+    const operations = await Promise.all(
+      secretsToUpdate.map(async ({ secretName, secretId: id }) => {
+        const secretBlindIndex = await generateSecretBlindIndexBySalt(secretName, blindIndexCfg);
+        return { filter: { id }, data: { secretBlindIndex } };
+      })
+    );
+
+    await secretBlindIndexDAL.transaction(async (tx) => {
+      await secretDAL.bulkUpdate(operations, tx);
+    });
   };
 
   return {
