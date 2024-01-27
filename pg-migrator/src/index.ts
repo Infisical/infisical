@@ -2412,11 +2412,9 @@ const main = async () => {
               const secret = await Secret.findById(commit.secret);
               if (!secret) return;
 
-              if (
-                !commit.newVersion.secretBlindIndex ||
-                !secret?.secretBlindIndex
-              )
-                return;
+              if (!secret?.secretBlindIndex) return;
+
+              const secretVersion = await secVerKv.get(commit.secretVersion._id.toString())
 
               return {
                 id,
@@ -2452,6 +2450,7 @@ const main = async () => {
                 secretCommentCiphertext:
                   commit.newVersion.secretCommentCiphertext ||
                   secret.secretCommentCiphertext,
+                  secretVersion,
                 createdAt: new Date((doc as any).createdAt),
                 updatedAt: new Date((doc as any).updatedAt),
               };
@@ -2468,6 +2467,9 @@ const main = async () => {
               if (!secret) return;
 
               if (!secret?.secretBlindIndex) return;
+
+              const secretVersion = await secVerKv.get(commit.secretVersion._id.toString())
+
               return {
                 id,
                 op: CommitType.DELETE,
@@ -2486,6 +2488,7 @@ const main = async () => {
                 secretCommentIV: secret.secretCommentIV,
                 secretCommentTag: secret.secretCommentTag,
                 secretCommentCiphertext: secret.secretCommentCiphertext,
+                secretVersion,
                 createdAt: new Date((doc as any).createdAt),
                 updatedAt: new Date((doc as any).updatedAt),
               };
