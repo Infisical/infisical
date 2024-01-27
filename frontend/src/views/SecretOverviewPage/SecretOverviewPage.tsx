@@ -237,7 +237,14 @@ export const SecretOverviewPage = () => {
   if (isWorkspaceLoading) {
     return (
       <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
-        <img src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
+        <img
+          src="/images/loading/loading.gif"
+          height={70}
+          width={120}
+          alt="loading animation"
+          decoding="async"
+          loading="lazy"
+        />
       </div>
     );
   }

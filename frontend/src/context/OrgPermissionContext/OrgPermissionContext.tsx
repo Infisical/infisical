@@ -27,6 +27,8 @@ export const OrgPermissionProvider = ({ children }: Props): JSX.Element => {
           src="/images/loading/loading.gif"
           height={70}
           width={120}
+          decoding="async"
+          loading="lazy"
           alt="infisical loading indicator"
         />
       </div>

@@ -47,7 +47,7 @@ services:
   backend:
     container_name: infisical-dev-api
     build:
-      context: ./backend-pg
+      context: ./backend
       dockerfile: Dockerfile.dev
     depends_on:
       - db
@@ -57,7 +57,7 @@ services:
       - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
     volumes:
-      - ./backend-pg/src:/app/src
+      - ./backend/src:/app/src
 
   frontend:
     container_name: infisical-dev-frontend
@@ -74,7 +74,7 @@ services:
     environment:
       - NEXT_PUBLIC_ENV=development
       - INFISICAL_TELEMETRY_ENABLED=false
-    
+
   pgadmin:
     image: dpage/pgadmin4
     restart: always
@@ -122,7 +122,6 @@ services:
       - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongo:27017/
     ports:
       - 8081:8081
-
 
 volumes:
   postgres-data:

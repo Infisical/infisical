@@ -1,2 +1,2 @@
-node_modules
-built
+vitest-environment-infisical.ts
+vitest.config.ts
