@@ -27,11 +27,18 @@ export const ContentLoader = ({ text, frequency = 2000, className }: Props) => {
   return (
     <div
       className={twMerge(
-        "container mx-auto flex relative flex-col h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark] space-y-8",
+        "container relative mx-auto flex h-screen w-full flex-col items-center justify-center space-y-8 px-8 text-mineshaft-50 dark:[color-scheme:dark]",
         className
       )}
     >
-      <img src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
+      <img
+        src="/images/loading/loading.gif"
+        height={70}
+        width={120}
+        alt="loading animation"
+        decoding="async"
+        loading="lazy"
+      />
       {text && isTextArray && (
         <AnimatePresence exitBeforeEnter>
           <motion.div
@@ -45,7 +52,7 @@ export const ContentLoader = ({ text, frequency = 2000, className }: Props) => {
           </motion.div>
         </AnimatePresence>
       )}
-      {text && !isTextArray && <div className="text-primary text-xs">{text}</div>}
+      {text && !isTextArray && <div className="text-xs text-primary">{text}</div>}
     </div>
   );
 };

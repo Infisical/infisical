@@ -1,5 +1,5 @@
 # Build stage
-FROM node:16-alpine AS build
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:16-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -30,4 +30,4 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \
 
 EXPOSE 4000
 
-CMD ["node", "build/index.js"]
+CMD ["npm", "start"]

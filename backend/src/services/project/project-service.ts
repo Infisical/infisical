@@ -123,7 +123,6 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.Project
     );
 
-    // TODO(backend-pg): licence server
     const deletedProject = await projectDAL.deleteById(projectId);
     return deletedProject;
   };

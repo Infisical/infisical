@@ -738,7 +738,7 @@ const main = async () => {
       client: "pg",
       connection: postgres_url,
       migrations: {
-        directory: path.join(__dirname, "../../backend-pg/src/db/migrations"),
+        directory: path.join(__dirname, "../../backend/src/db/migrations"),
         extension: "ts",
         tableName: "infisical_migrations",
       },
