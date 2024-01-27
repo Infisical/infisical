@@ -74,6 +74,11 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		groupByTags, err := cmd.Flags().GetBool("group-by-tags")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, WorkspaceId: projectId, SecretsPath: secretsPath}, "")
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
@@ -88,12 +93,12 @@ var exportCmd = &cobra.Command{
 		var output string
 		if shouldExpandSecrets {
 			substitutions := util.ExpandSecrets(secrets, infisicalToken, "")
-			output, err = formatEnvs(substitutions, format)
+			output, err = formatEnvs(substitutions, format, groupByTags)
 			if err != nil {
 				util.HandleError(err)
 			}
 		} else {
-			output, err = formatEnvs(secrets, format)
+			output, err = formatEnvs(secrets, format, groupByTags)
 			if err != nil {
 				util.HandleError(err)
 			}
@@ -111,6 +116,7 @@ func init() {
 	exportCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	exportCmd.Flags().StringP("format", "f", "dotenv", "Set the format of the output file (dotenv, json, csv)")
 	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
+	exportCmd.Flags().Bool("group-by-tags", false, "Exported secrets are grouped by tags support dotenv format only. Default to false")
 	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	exportCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	exportCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets from")
@@ -118,10 +124,10 @@ func init() {
 }
 
 // Format according to the format flag
-func formatEnvs(envs []models.SingleEnvironmentVariable, format string) (string, error) {
+func formatEnvs(envs []models.SingleEnvironmentVariable, format string, groupByTags bool) (string, error) {
 	switch strings.ToLower(format) {
 	case FormatDotenv:
-		return formatAsDotEnv(envs), nil
+		return formatAsDotEnv(envs, groupByTags), nil
 	case FormatDotEnvExport:
 		return formatAsDotEnvExport(envs), nil
 	case FormatJson:
@@ -148,11 +154,50 @@ func formatAsCSV(envs []models.SingleEnvironmentVariable) string {
 }
 
 // Format environment variables as a dotenv file
-func formatAsDotEnv(envs []models.SingleEnvironmentVariable) string {
+func formatAsDotEnv(envs []models.SingleEnvironmentVariable, groupByTags bool) string {
 	var dotenv string
-	for _, env := range envs {
-		dotenv += fmt.Sprintf("%s='%s'\n", env.Key, env.Value)
+ 
+	if !groupByTags {
+		for _, env := range envs {
+			dotenv += fmt.Sprintf("%s='%s'\n", env.Key, env.Value)
+		}
+		return dotenv
 	}
+
+	tags := make(map[string][]models.SingleEnvironmentVariable)
+	var noTags = []models.SingleEnvironmentVariable{}
+
+
+	// populate the tags map and noTags slice
+	for _, env := range envs {
+		if len(env.Tags) == 0 {
+			noTags = append(noTags, env)
+			continue
+		}
+
+		var tagsString string
+
+		for _, tag := range env.Tags {
+			tagsString += tag.Name + ", "
+		}
+		tagsString = strings.TrimSuffix(tagsString, ", ")
+		
+		if _, ok := tags[tagsString];!ok {
+			tags[tagsString] = []models.SingleEnvironmentVariable{}
+		}
+
+		tags[tagsString] = append(tags[tagsString], env)
+		
+	}
+
+	for tag, envs := range tags {
+		dotenv += fmt.Sprintf("# %s\n", tag)
+		dotenv += formatAsDotEnv(envs, false)
+		dotenv += "\n"
+	}
+
+	dotenv += formatAsDotEnv(noTags, false)
+
 	return dotenv
 }
 
