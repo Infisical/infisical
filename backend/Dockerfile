@@ -28,6 +28,8 @@ RUN apk add --no-cache bash curl && curl -1sLf \
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \  
   CMD node healthcheck.js
 
+ENV HOST=0.0.0.0
+
 EXPOSE 4000
 
 CMD ["npm", "start"]
