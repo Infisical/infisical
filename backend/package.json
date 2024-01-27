@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch --clear-screen=false ./src/main.ts  | pino-pretty --colorize --colorizeObjects --singleLine",
     "dev:docker": "nodemon",
-    "build": "rimraf dist && tsup",
+    "build": "rimraf dist && tsup && cp -R ./src/lib/validator/disposable_emails.txt ./dist && cp -R ./src/services/smtp/templates ./dist",
     "start": "node dist/main.mjs",
     "type:check": "tsc --noEmit",
     "lint:fix": "eslint --fix --ext js,ts ./src",
