@@ -47,6 +47,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
       t.uuid("folderId").notNullable();
       t.foreign("folderId").references("id").inTable(TableName.SecretFolder).onDelete("CASCADE");
+      t.index("secretBlindIndex");
       t.timestamps(true, true, true);
     });
   }
