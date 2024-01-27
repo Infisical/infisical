@@ -1539,6 +1539,11 @@ const main = async () => {
       postgresTableName: TableName.IdentityUniversalAuth,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
+        // dangling identity
+        if (!await identityKv.get(doc.identity.toString()).catch(() => null)){
+          return 
+        }
+
         const id = uuidV4();
         const identityId = await identityKv.get(doc.identity.toString());
         await identityUaKv.put(doc._id.toString(), id);
@@ -1570,6 +1575,11 @@ const main = async () => {
       postgresTableName: TableName.IdentityUaClientSecret,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
+        // dangling identity
+        if (!await identityKv.get(doc.identity.toString()).catch(() => null)){
+          return 
+        }
+
         const identityUAId = await identityUaKv.get(
           doc.identityUniversalAuth.toString(),
         );
@@ -1598,8 +1608,12 @@ const main = async () => {
       postgresTableName: TableName.IdentityAccessToken,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
-        const id = uuidV4();
-        await identityAccessTokenKv.put(doc._id.toString(), id);
+        // dangling identity
+        if (!await identityKv.get(doc.identity.toString()).catch(() => null)){
+          return 
+        }
+
+        await identityAccessTokenKv.put(doc._id.toString(), doc._id.toString());
         const identityUAClientSecretId = doc?.identityUniversalAuthClientSecret
           ? await identityUaClientSecKv.get(
               doc.identityUniversalAuthClientSecret.toString(),
@@ -1607,7 +1621,7 @@ const main = async () => {
           : null;
         const identityId = await identityKv.get(doc.identity.toString());
         return {
-          id,
+          id: doc._id.toString(),
           accessTokenNumUsesLimit: doc.accessTokenNumUsesLimit,
           accessTokenMaxTTL: doc.accessTokenMaxTTL,
           accessTokenTTL: doc.accessTokenTTL,
@@ -1629,6 +1643,11 @@ const main = async () => {
       postgresTableName: TableName.IdentityOrgMembership,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
+        // dangling identity
+        if (!await identityKv.get(doc.identity.toString()).catch(() => null)){
+          return 
+        }
+
         const id = uuidV4();
 
         const orgId = doc?.organization
@@ -1659,6 +1678,11 @@ const main = async () => {
       postgresTableName: TableName.IdentityProjectMembership,
       returnKeys: ["id"],
       preProcessing: async (doc) => {
+        // dangling identity
+        if (!await identityKv.get(doc.identity.toString()).catch(() => null)){
+          return 
+        }
+
         const id = uuidV4();
 
         const projectKvRes = await projectKv
@@ -2443,7 +2467,6 @@ const main = async () => {
               if (!secret) return;
 
               if (!secret?.secretBlindIndex) return;
-
               return {
                 id,
                 op: CommitType.DELETE,
