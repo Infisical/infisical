@@ -33,15 +33,7 @@ export const ServerConfigProvider = ({ children }: Props): JSX.Element => {
     }
   }, [isLoading, data]);
 
-  if (isLoading || (!data?.initialized && router.pathname !== "/admin/signup")) {
-    return (
-      <div className="bg-bunker-800">
-        <ContentLoader text="Loading configurations" />
-      </div>
-    );
-  }
-
-  if (data?.isMigrationModeOn) {
+  if (!isLoading && data?.isMigrationModeOn) {
     return (
       <div className="relative mx-auto flex h-screen w-full flex-col items-center justify-center space-y-8 bg-bunker-800 px-8 text-mineshaft-50 dark:[color-scheme:dark]">
         <Head>
@@ -53,7 +45,8 @@ export const ServerConfigProvider = ({ children }: Props): JSX.Element => {
           Scheduled Maintenance
         </p>
         <div className="mt-2 text-center text-lg text-bunker-300">
-          Infisical is currently in a scheduled maintenance mode. <br /> We appreciate your patience and invite you to check back in a few minutes. <br /> Your applications will keep fetching secrets as usual, without any interruption. <br /> With any questions, please <a
+          Infisical is undergoing planned maintenance. <br /> No action is required on your end — your applications will continue to fetch secrets. 
+          <br /> If you have questions, please <a
             className="text-bunker-300 underline underline-offset-4 decoration-primary-800 hover:decoration-primary-600 hover:text-mineshaft-100 duration-200"
             href="https://infisical.com/slack"
             target="_blank"
@@ -62,6 +55,14 @@ export const ServerConfigProvider = ({ children }: Props): JSX.Element => {
             join our Slack community
           </a>.
         </div>
+      </div>
+    );
+  }
+
+  if (isLoading || (!data?.initialized && router.pathname !== "/admin/signup")) {
+    return (
+      <div className="bg-bunker-800">
+        <ContentLoader text="Loading configurations" />
       </div>
     );
   }
