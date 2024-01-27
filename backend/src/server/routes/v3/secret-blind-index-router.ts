@@ -59,7 +59,7 @@ export const registerSecretBlindIndexRouter = async (server: FastifyZodProvider)
   });
 
   server.route({
-    url: "/:projectId/secrets/name",
+    url: "/:projectId/secrets/names",
     method: "POST",
     schema: {
       params: z.object({
