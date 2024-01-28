@@ -11,7 +11,7 @@ export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
 
   return {
     timeWindow: 60 * 1000,
-    max: 650,
+    max: 600,
     redis,
     allowList: (req) => req.url === "/healthcheck" || req.url === "/api/status",
     keyGenerator: (req) => req.realIp
@@ -20,12 +20,12 @@ export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
 
 export const authRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: 650,
+  max: 600,
   keyGenerator: (req) => req.realIp
 };
 
 export const passwordRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
-  max: 650,
+  max: 600,
   keyGenerator: (req) => req.realIp
 };
