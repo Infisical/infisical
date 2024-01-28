@@ -12,6 +12,7 @@ import {
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CommitType } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { BadRequestError } from "@app/lib/errors";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -39,7 +40,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         workspaceId: z.string().trim().optional(),
         environment: z.string().trim().optional(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         include_imports: z
           .enum(["true", "false"])
           .default("false")
@@ -129,7 +130,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         workspaceId: z.string().trim().optional(),
         environment: z.string().trim().optional(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         version: z.coerce.number().optional(),
         type: z.nativeEnum(SecretType).default(SecretType.Shared),
         include_imports: z
@@ -216,7 +217,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         secretValue: z
           .string()
           .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
@@ -256,7 +257,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.CREATE_SECRET,
           metadata: {
-     environment: req.body.environment,
+            environment: req.body.environment,
             secretPath: req.body.secretPath,
             secretId: secret.id,
             secretKey: req.params.secretName,
@@ -295,7 +296,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretValue: z
           .string()
           .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         skipMultilineEncoding: z.boolean().optional(),
         type: z.nativeEnum(SecretType).default(SecretType.Shared)
       }),
@@ -365,7 +366,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         type: z.nativeEnum(SecretType).default(SecretType.Shared)
       }),
       response: {
@@ -430,7 +431,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         include_imports: z
           .enum(["true", "false"])
           .default("false")
@@ -518,7 +519,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         type: z.nativeEnum(SecretType).default(SecretType.Shared),
         version: z.coerce.number().optional(),
         include_imports: z
@@ -590,7 +591,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
         type: z.nativeEnum(SecretType).default(SecretType.Shared),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         secretKeyCiphertext: z.string().trim(),
         secretKeyIV: z.string().trim(),
         secretKeyTag: z.string().trim(),
@@ -758,7 +759,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         environment: z.string().trim(),
         secretId: z.string().trim().optional(),
         type: z.nativeEnum(SecretType).default(SecretType.Shared),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         secretValueCiphertext: z.string().trim(),
         secretValueIV: z.string().trim(),
         secretValueTag: z.string().trim(),
@@ -935,7 +936,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }),
       body: z.object({
         type: z.nativeEnum(SecretType).default(SecretType.Shared),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         secretId: z.string().trim().optional(),
         workspaceId: z.string().trim(),
         environment: z.string().trim()
@@ -1050,7 +1051,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         secrets: z
           .object({
             secretName: z.string().trim(),
@@ -1176,7 +1177,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         secrets: z
           .object({
             secretName: z.string().trim(),
@@ -1301,7 +1302,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         secrets: z
           .object({
             secretName: z.string().trim(),

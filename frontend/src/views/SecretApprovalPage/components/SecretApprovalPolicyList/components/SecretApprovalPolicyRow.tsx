@@ -36,7 +36,7 @@ export const SecretApprovalPolicyRow = ({
 }: Props) => {
   const [selectedApprovers, setSelectedApprovers] = useState<string[]>([]);
   const { mutate: updateSecretApprovalPolicy, isLoading } = useUpdateSecretApprovalPolicy();
-  const permission = useProjectPermission();
+  const { permission } = useProjectPermission();
 
   return (
     <Tr>

@@ -48,7 +48,7 @@ export const SecretMainPage = () => {
   const { t } = useTranslation();
   const { currentWorkspace } = useWorkspace();
   const router = useRouter();
-  const permission = useProjectPermission();
+  const { permission } = useProjectPermission();
 
   const [isVisible, setIsVisible] = useState(false);
   const [sortDir, setSortDir] = useState<SortDir>(SortDir.ASC);

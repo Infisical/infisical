@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useContext } from "react";
 
 import { useGetUserProjectPermissions } from "@app/hooks/api";
+import { TProjectMembership } from "@app/hooks/api/users/types";
 
 import { useWorkspace } from "../WorkspaceContext";
 import { TProjectPermission } from "./types";
@@ -9,7 +10,10 @@ type Props = {
   children: ReactNode;
 };
 
-const ProjectPermissionContext = createContext<null | TProjectPermission>(null);
+const ProjectPermissionContext = createContext<null | {
+  permission: TProjectPermission;
+  membership: TProjectMembership;
+}>(null);
 
 export const ProjectPermissionProvider = ({ children }: Props): JSX.Element => {
   const { currentWorkspace, isLoading: isWsLoading } = useWorkspace();

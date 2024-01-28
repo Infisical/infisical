@@ -25,7 +25,7 @@ export const ProjectPermissionCan: FunctionComponent<Props> = ({
   allowedLabel,
   ...props
 }) => {
-  const permission = useProjectPermission();
+  const { permission } = useProjectPermission();
   return (
     <Can {...props} passThrough={passThrough} ability={props?.ability || permission}>
       {(isAllowed, ability) => {

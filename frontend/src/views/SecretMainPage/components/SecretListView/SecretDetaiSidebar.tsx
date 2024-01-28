@@ -81,7 +81,7 @@ export const SecretDetailSidebar = ({
     resolver: zodResolver(formSchema),
     values: secret
   });
-  const permission = useProjectPermission();
+  const { permission } = useProjectPermission();
   const cannotEditSecret = permission.cannot(
     ProjectPermissionActions.Edit,
     subject(ProjectPermissionSub.Secrets, { environment, secretPath })

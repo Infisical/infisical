@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { WebhooksSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -33,7 +34,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
         environment: z.string().trim(),
         webhookUrl: z.string().url().trim(),
         webhookSecretKey: z.string().trim().optional(),
-        secretPath: z.string().trim().default("/")
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({
@@ -182,7 +183,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim().optional(),
-        secretPath: z.string().trim().optional()
+        secretPath: z.string().trim().optional().transform((val)=> val?removeTrailingSlash(val):val)
       }),
       response: {
         200: z.object({

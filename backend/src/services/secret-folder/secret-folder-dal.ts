@@ -8,7 +8,7 @@ import {
   TSecretFoldersUpdate
 } from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
+import { groupBy, removeTrailingSlash } from "@app/lib/fn";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export const validateFolderName = (folderName: string) => {
@@ -238,10 +238,15 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const folder = await sqlFindFolderByPathQuery(tx || db, projectId, environment, path)
+      const folder = await sqlFindFolderByPathQuery(
+        tx || db,
+        projectId,
+        environment,
+        removeTrailingSlash(path)
+      )
         .orderBy("depth", "desc")
         .first();
-      if (folder && folder.path !== path) {
+      if (folder && folder.path !== removeTrailingSlash(path)) {
         return;
       }
       if (!folder) return;
@@ -262,7 +267,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const folder = await sqlFindFolderByPathQuery(tx || db, projectId, environment, path)
+      const folder = await sqlFindFolderByPathQuery(
+        tx || db,
+        projectId,
+        environment,
+        removeTrailingSlash(path)
+      )
         .orderBy("depth", "desc")
         .first();
       if (!folder) return;
@@ -278,8 +288,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const folders = await sqlFindMultipleFolderByEnvPathQuery(tx || db, query);
-      return query.map(({ envId, secretPath }) =>
+      const formatedQuery = query.map(({ secretPath, envId }) => ({
+        envId,
+        secretPath: removeTrailingSlash(secretPath)
+      }));
+      const folders = await sqlFindMultipleFolderByEnvPathQuery(tx || db, formatedQuery);
+      return formatedQuery.map(({ envId, secretPath }) =>
         folders.find(
           ({ path: targetPath, envId: targetEnvId }) =>
             targetPath === secretPath && targetEnvId === envId

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SecretRotationOutputsSchema, SecretRotationsSchema, SecretsSchema } from "@app/db/schemas";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -11,7 +12,7 @@ export const registerSecretRotationRouter = async (server: FastifyZodProvider) =
     schema: {
       body: z.object({
         workspaceId: z.string().trim(),
-        secretPath: z.string().trim(),
+        secretPath: z.string().trim().transform(removeTrailingSlash),
         environment: z.string().trim(),
         interval: z.number().min(1),
         provider: z.string().trim(),

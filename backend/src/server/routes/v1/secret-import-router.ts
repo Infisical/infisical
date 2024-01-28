@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { SecretImportsSchema, SecretsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -13,10 +14,10 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        path: z.string().trim().default("/"),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         import: z.object({
           environment: z.string().trim(),
-          path: z.string().trim()
+          path: z.string().trim().transform(removeTrailingSlash)
         })
       }),
       response: {
@@ -74,10 +75,14 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        path: z.string().trim().default("/"),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         import: z.object({
           environment: z.string().trim().optional(),
-          path: z.string().trim().optional(),
+          path: z
+            .string()
+            .trim()
+            .optional()
+            .transform((val) => (val ? removeTrailingSlash(val) : val)),
           position: z.number().optional()
         })
       }),
@@ -137,7 +142,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        path: z.string().trim().default("/")
+        path: z.string().trim().default("/").transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({
@@ -191,7 +196,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        path: z.string().trim().default("/")
+        path: z.string().trim().default("/").transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({
@@ -243,7 +248,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        path: z.string().trim().default("/")
+        path: z.string().trim().default("/").transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({
