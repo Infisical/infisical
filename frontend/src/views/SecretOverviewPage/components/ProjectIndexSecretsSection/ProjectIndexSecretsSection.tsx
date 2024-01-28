@@ -81,13 +81,12 @@ export const ProjectIndexSecretsSection = ({ decryptFileKey }: Props) => {
           </div>
         </div>
       )}
-      <p className="mb-2 text-lg font-semibold">Enable Blind Indices</p>
+      <p className="mb-2 text-lg font-semibold">Action Required</p>
       <p className="mb-4 leading-7 text-gray-400">
         Your project was created before the introduction of blind indexing. To continue accessing
         secrets by name through the SDK, public API and web dashboard, please enable blind indexing.{" "}
         <b>
-          This is a one time process.{" "}
-          {membership.role !== ProjectMembershipRole.Admin && "Admin only operation"}
+          {membership.role !== ProjectMembershipRole.Admin && "This is an admin only operation."}
         </b>
       </p>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
