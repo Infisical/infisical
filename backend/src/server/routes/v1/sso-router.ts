@@ -29,7 +29,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           passReqToCallback: true,
           clientID: appCfg.CLIENT_ID_GOOGLE_LOGIN as string,
           clientSecret: appCfg.CLIENT_SECRET_GOOGLE_LOGIN as string,
-          callbackURL: "/api/v1/sso/google",
+          callbackURL: `${appCfg.SITE_URL}/api/v1/sso/google`,
           scope: ["profile", " email"]
         },
         async (req, _accessToken, _refreshToken, profile, cb) => {
@@ -71,7 +71,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           passReqToCallback: true,
           clientID: appCfg.CLIENT_ID_GITHUB_LOGIN as string,
           clientSecret: appCfg.CLIENT_SECRET_GITHUB_LOGIN as string,
-          callbackURL: "/api/v1/sso/github",
+          callbackURL: `${appCfg.SITE_URL}/api/v1/sso/github`,
           scope: ["user:email"]
         },
         async (req, accessToken, _refreshToken, profile, cb) => {
@@ -110,7 +110,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
           passReqToCallback: true,
           clientID: appCfg.CLIENT_ID_GITLAB_LOGIN,
           clientSecret: appCfg.CLIENT_SECRET_GITLAB_LOGIN,
-          callbackURL: "/api/v1/sso/gitlab",
+          callbackURL: `${appCfg.SITE_URL}/api/v1/sso/gitlab`,
           baseURL: appCfg.CLIENT_GITLAB_LOGIN_URL
         },
         async (req: any, _accessToken: string, _refreshToken: string, profile: any, cb: any) => {
