@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { AuditLogsSchema, SecretSnapshotsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -15,7 +16,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       querystring: z.object({
         environment: z.string().trim(),
-        path: z.string().trim().default("/"),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         offset: z.coerce.number().default(0),
         limit: z.coerce.number().default(20)
       }),
@@ -46,7 +47,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       querystring: z.object({
         environment: z.string().trim(),
-        path: z.string().trim().default("/")
+        path: z.string().trim().default("/").transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({

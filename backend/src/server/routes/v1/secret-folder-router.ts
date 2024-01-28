@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { SecretFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -14,9 +15,9 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
         name: z.string().trim(),
-        path: z.string().trim().default("/"),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         // backward compatiability with cli
-        directory: z.string().trim().default("/")
+        directory: z.string().trim().default("/").transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({
@@ -68,9 +69,9 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
         name: z.string().trim(),
-        path: z.string().trim().default("/"),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         // backward compatiability with cli
-        directory: z.string().trim().default("/")
+        directory: z.string().trim().default("/").transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({
@@ -122,9 +123,9 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       body: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        path: z.string().trim().default("/"),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         // keep this here as cli need directory
-        directory: z.string().trim().default("/")
+        directory: z.string().trim().default("/").transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({
@@ -172,9 +173,9 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       querystring: z.object({
         workspaceId: z.string().trim(),
         environment: z.string().trim(),
-        path: z.string().trim().default("/"),
+        path: z.string().trim().default("/").transform(removeTrailingSlash),
         // backward compatiability with cli
-        directory: z.string().trim().default("/")
+        directory: z.string().trim().default("/").transform(removeTrailingSlash)
       }),
       response: {
         200: z.object({

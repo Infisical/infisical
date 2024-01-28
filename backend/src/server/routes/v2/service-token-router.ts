@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { ServiceTokensSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -42,7 +43,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
         scopes: z
           .object({
             environment: z.string().trim(),
-            secretPath: z.string().trim()
+            secretPath: z.string().trim().transform(removeTrailingSlash)
           })
           .array()
           .min(1),

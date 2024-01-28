@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { IntegrationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { shake } from "@app/lib/fn";
+import { removeTrailingSlash, shake } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -16,7 +16,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         app: z.string().trim().optional(),
         isActive: z.boolean(),
         appId: z.string().trim().optional(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         sourceEnvironment: z.string().trim(),
         targetEnvironment: z.string().trim().optional(),
         targetEnvironmentId: z.string().trim().optional(),
@@ -89,7 +89,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         app: z.string().trim(),
         appId: z.string().trim(),
         isActive: z.boolean(),
-        secretPath: z.string().trim().default("/"),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         targetEnvironment: z.string().trim(),
         owner: z.string().trim(),
         environment: z.string().trim()
