@@ -226,7 +226,24 @@ export const samlConfigServiceFactory = ({
       ssoConfig = await samlConfigDAL.findOne({ orgId: dto.orgId });
       if (!ssoConfig) return;
     } else if (dto.type === "ssoId") {
-      ssoConfig = await samlConfigDAL.findById(dto.id);
+      // TODO:
+      // We made this change because saml config ids were not moved over during the migration
+      // This will patch this issue.
+      // Remove in the future
+      const UUIDToMongoId: Record<string, string> = {
+        "64c81ff7905fadcfead01e9a": "0978bcbe-8f94-4d95-8600-009787262613",
+        "652d4777c74d008c85c8bed5": "42044bf5-119e-443e-a51b-0308ac7e45ea",
+        "6527df39771217236f8721f6": "6311ec4b-d692-4422-b52a-337f719ae6b0",
+        "650374a561d12cd3d835aeb8": "6453516c-930d-4ff0-ad3b-496ba6eb80ca",
+        "655d67d10a0f4d307c8b1536": "73b9f1b1-f946-4f18-9a2d-310f157f7df5",
+        "64f23239a5d4ed17f1e544c4": "9256337f-e3da-43d7-8266-39c9276e8426",
+        "65348e49db355e6e4782571f": "b8a227c7-843e-410e-8982-b4976a599b69",
+        "657a219fc8a80c2eff97eb38": "fcab1573-ae7f-4fcf-9645-646207acf035"
+    };
+
+    const id = UUIDToMongoId[dto.id] ?? dto.id
+
+      ssoConfig = await samlConfigDAL.findById(id);
     }
     if (!ssoConfig) throw new BadRequestError({ message: "Failed to find organization SSO data" });
 
