@@ -52,6 +52,15 @@ export type OrgUser = {
   roleId: string;
 };
 
+export type TProjectMembership = {
+  id: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+  projectId: string;
+  roleId: string;
+};
+
 export type TWorkspaceUser = OrgUser;
 
 export type AddUserToWsDTO = {

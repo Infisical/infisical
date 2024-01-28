@@ -22,7 +22,7 @@ export const EnvironmentSection = () => {
   const { createNotification } = useNotificationContext();
   const { subscription } = useSubscription();
   const { currentWorkspace } = useWorkspace();
-  const permision = useProjectPermission();
+  const { permission } = useProjectPermission();
 
   const deleteWsEnvironment = useDeleteWsEnvironment();
 
@@ -94,7 +94,7 @@ export const EnvironmentSection = () => {
         Choose which environments will show up in your dashboard like development, staging,
         production
       </p>
-      {permision.can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments) ? (
+      {permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments) ? (
         <EnvironmentTable handlePopUpOpen={handlePopUpOpen} />
       ) : (
         <PermissionDeniedBanner />

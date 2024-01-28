@@ -44,7 +44,7 @@ export const SecretApprovalPolicyList = ({ workspaceId }: Props) => {
     "deletePolicy",
     "upgradePlan"
   ] as const);
-  const permission = useProjectPermission();
+  const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
   const { createNotification } = useNotificationContext();
 

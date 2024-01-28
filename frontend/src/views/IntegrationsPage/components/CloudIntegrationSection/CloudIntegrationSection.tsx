@@ -30,7 +30,7 @@ export const CloudIntegrationSection = ({
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteConfirmation"
   ] as const);
-  const permission = useProjectPermission();
+  const { permission } = useProjectPermission();
   const { createNotification } = useNotificationContext();
 
   const isEmpty = !isLoading && !cloudIntegrations?.length;
@@ -43,7 +43,7 @@ export const CloudIntegrationSection = ({
         <h1 className="text-3xl font-semibold">{t("integrations.cloud-integrations")}</h1>
         <p className="text-base text-gray-400">{t("integrations.click-to-start")}</p>
       </div>
-      <div className="mx-6 grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
+      <div className="mx-6 grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-4">
         {isLoading &&
           Array.from({ length: 12 }).map((_, index) => (
             <Skeleton className="h-32" key={`cloud-integration-skeleton-${index + 1}`} />

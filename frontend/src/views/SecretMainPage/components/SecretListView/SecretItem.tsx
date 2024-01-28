@@ -85,7 +85,7 @@ export const SecretItem = memo(
     secretPath
   }: Props) => {
     const { currentWorkspace } = useWorkspace();
-    const permission = useProjectPermission();
+    const { permission } = useProjectPermission();
     const isReadOnly =
       permission.can(
         ProjectPermissionActions.Read,
