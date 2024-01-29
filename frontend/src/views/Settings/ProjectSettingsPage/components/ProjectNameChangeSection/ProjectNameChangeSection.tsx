@@ -67,7 +67,7 @@ export const ProjectNameChangeSection = () => {
   };
 
   const copyProjectIdToClipboard = () => {
-    navigator.clipboard.writeText(currentWorkspace?._id || "");
+    navigator.clipboard.writeText(currentWorkspace?.id || "");
     setIsProjectIdCopied.on();
 
     createNotification({
