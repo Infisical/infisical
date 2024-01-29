@@ -25,7 +25,12 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
         200: ServiceTokensSchema.merge(
           z.object({
             workspace: z.string(),
-            user: sanitizedServiceTokenUserSchema,
+            user: sanitizedServiceTokenUserSchema.merge(
+              z.object({
+                _id: z.string(),
+                __v: z.number().default(0)
+              })
+            ),
             _id: z.string(),
             __v: z.number().default(0)
           })
