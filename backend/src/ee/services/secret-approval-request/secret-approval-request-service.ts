@@ -269,7 +269,14 @@ export const secretApprovalRequestServiceFactory = ({
       const { secsGroupedByBlindIndex: conflictGroupByBlindIndex } =
         await secretService.fnSecretBlindIndexCheckV2({
           folderId,
-          inputSecrets: secretCreationCommits.map(({ secretBlindIndex }) => ({ secretBlindIndex }))
+          inputSecrets: secretCreationCommits.map(({ secretBlindIndex }) => {
+            if (!secretBlindIndex) {
+              throw new BadRequestError({
+                message: "Missing secret blind index"
+              });
+            }
+            return { secretBlindIndex };
+          })
         });
       secretCreationCommits
         .filter(({ secretBlindIndex }) => conflictGroupByBlindIndex[secretBlindIndex || ""])
@@ -291,7 +298,14 @@ export const secretApprovalRequestServiceFactory = ({
               ({ secretBlindIndex, secret }) =>
                 secret && secret.secretBlindIndex !== secretBlindIndex
             )
-            .map(({ secretBlindIndex }) => ({ secretBlindIndex }))
+            .map(({ secretBlindIndex }) => {
+              if (!secretBlindIndex) {
+                throw new BadRequestError({
+                  message: "Missing secret blind index"
+                });
+              }
+              return { secretBlindIndex };
+            })
         });
       secretUpdationCommits
         .filter(
@@ -381,10 +395,14 @@ export const secretApprovalRequestServiceFactory = ({
             folderId,
             tx,
             actorId: "",
-            inputSecrets: secretDeletionCommits.map(({ secretBlindIndex }) => ({
-              secretBlindIndex,
-              type: SecretType.Shared
-            }))
+            inputSecrets: secretDeletionCommits.map(({ secretBlindIndex }) => {
+              if (!secretBlindIndex) {
+                throw new BadRequestError({
+                  message: "Missing secret blind index"
+                });
+              }
+              return { secretBlindIndex, type: SecretType.Shared };
+            })
           })
         : [];
       const updatedSecretApproval = await secretApprovalRequestDAL.updateById(
@@ -638,7 +656,13 @@ export const secretApprovalRequestServiceFactory = ({
         ),
         tx
       );
-      const commitsGroupByBlindIndex = groupBy(approvalCommits, (i) => i.secretBlindIndex);
+
+      const commitsGroupByBlindIndex = groupBy(approvalCommits, (i) => {
+        if (!i.secretBlindIndex) {
+          throw new BadRequestError({ message: "Missing secret blind index" });
+        }
+        return i.secretBlindIndex;
+      });
       if (tagIds.length) {
         await secretApprovalRequestSecretDAL.insertApprovalSecretTags(
           Object.keys(commitTagIds).flatMap((blindIndex) =>

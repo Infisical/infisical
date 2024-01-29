@@ -96,9 +96,9 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
         encryptedPrivateKey: data.user.encryptedPrivateKey,
         iv: data.user.iv,
         tag: data.user.tag,
-        protectedKey: data.user.protectedKey,
-        protectedKeyIV: data.user.protectedKeyIV,
-        protectedKeyTag: data.user.protectedKeyTag
+        protectedKey: data.user.protectedKey || null,
+        protectedKeyIV: data.user.protectedKeyIV || null,
+        protectedKeyTag: data.user.protectedKeyTag || null
       } as const;
     }
   });
