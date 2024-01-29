@@ -123,7 +123,7 @@ export const serviceTokenServiceFactory = ({
     if (!serviceToken) throw new BadRequestError({ message: "Token not found" });
 
     const serviceTokenUser = await userDAL.findById(serviceToken.createdBy);
-    if (!serviceTokenUser) throw new BadRequestError({ message: "Server token user not found" });
+    if (!serviceTokenUser) throw new BadRequestError({ message: "Service token user not found" });
 
     return { serviceToken, user: serviceTokenUser };
   };
