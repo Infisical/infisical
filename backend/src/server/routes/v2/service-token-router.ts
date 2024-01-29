@@ -6,6 +6,8 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+import { sanitizedServiceTokenUserSchema } from "../sanitizedSchemas";
+
 export const sanitizedServiceTokenSchema = ServiceTokensSchema.omit({
   secretHash: true,
   encryptedKey: true,
@@ -20,15 +22,21 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.SERVICE_TOKEN]),
     schema: {
       response: {
-        200: ServiceTokensSchema.merge(z.object({ workspace: z.string() }))
+        200: ServiceTokensSchema.merge(
+          z.object({
+            workspace: z.string(),
+            user: sanitizedServiceTokenUserSchema
+          })
+        )
       }
     },
     handler: async (req) => {
-      const serviceTokenData = await server.services.serviceToken.getServiceToken({
+      const { serviceToken, user } = await server.services.serviceToken.getServiceToken({
         actorId: req.permission.id,
         actor: req.permission.type
       });
-      return { ...serviceTokenData, workspace: serviceTokenData.projectId };
+
+      return { ...serviceToken, workspace: serviceToken.projectId, user };
     }
   });
 
