@@ -10,9 +10,10 @@ export type TCloudIntegration = {
 };
 
 export type TIntegration = {
-  _id: string;
-  workspace: string;
-  environment: string;
+  id: string;
+  projectId: string;
+  envId: string;
+  environment: { slug: string; name: string; id: string };
   isActive: boolean;
   url: any;
   app: string;
@@ -32,9 +33,9 @@ export type TIntegration = {
   __v: number;
   metadata?: {
     secretSuffix?: string;
-    scope: string; 
+    scope: string;
     org: string;
     project: string;
     environment: string;
-  }
+  };
 };

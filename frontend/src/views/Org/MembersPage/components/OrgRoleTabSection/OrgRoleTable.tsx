@@ -20,30 +20,26 @@ import {
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useDeleteRole, useGetRoles } from "@app/hooks/api";
-import { TRole } from "@app/hooks/api/roles/types";
+import { useDeleteOrgRole, useGetOrgRoles } from "@app/hooks/api";
+import { TOrgRole } from "@app/hooks/api/roles/types";
 
 type Props = {
-  onSelectRole: (role?: TRole<undefined>) => void;
+  onSelectRole: (role?: TOrgRole) => void;
 };
 
-export const OrgRoleTable = ({ 
-  onSelectRole 
-}: Props) => {
+export const OrgRoleTable = ({ onSelectRole }: Props) => {
   const [searchRoles, setSearchRoles] = useState("");
   const { currentOrg } = useOrganization();
-  const orgId = currentOrg?._id || "";
+  const orgId = currentOrg?.id || "";
   const { createNotification } = useNotificationContext();
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp(["deleteRole"] as const);
 
-  const { data: roles, isLoading: isRolesLoading } = useGetRoles({
-    orgId
-  });
+  const { data: roles, isLoading: isRolesLoading } = useGetOrgRoles(orgId);
 
-  const { mutateAsync: deleteRole } = useDeleteRole();
+  const { mutateAsync: deleteRole } = useDeleteOrgRole();
 
   const handleRoleDelete = async () => {
-    const { _id: id } = popUp?.deleteRole?.data as TRole<undefined>;
+    const { id } = popUp?.deleteRole?.data as TOrgRole;
     try {
       await deleteRole({
         orgId,
@@ -92,8 +88,8 @@ export const OrgRoleTable = ({
             </THead>
             <TBody>
               {isRolesLoading && <TableSkeleton columns={4} innerKey="org-roles" />}
-              {(roles as TRole<undefined>[])?.map((role) => {
-                const { _id: id, name, slug } = role;
+              {roles?.map((role) => {
+                const { id, name, slug } = role;
                 const isNonMutatable = ["owner", "admin", "member", "no-access"].includes(slug);
 
                 return (
@@ -150,9 +146,9 @@ export const OrgRoleTable = ({
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}
         title={`Are you sure want to delete ${
-          (popUp?.deleteRole?.data as TRole<undefined>)?.name || " "
+          (popUp?.deleteRole?.data as TOrgRole)?.name || " "
         } role?`}
-        deleteKey={(popUp?.deleteRole?.data as TRole<undefined>)?.slug || ""}
+        deleteKey={(popUp?.deleteRole?.data as TOrgRole)?.slug || ""}
         onClose={() => handlePopUpClose("deleteRole")}
         onDeleteApproved={handleRoleDelete}
       />

@@ -61,7 +61,7 @@ export const SignUpPage = () => {
         router.push("/login");
       }
     }
-  }, []);
+  }, [config?.initialized]);
 
   const { mutateAsync: createAdminUser } = useCreateAdminUser();
 
@@ -117,7 +117,7 @@ export const SignUpPage = () => {
     return <ContentLoader text="Redirecting to admin page..." />;
 
   return (
-    <div className="flex justify-center items-center">
+    <div className="flex items-center justify-center">
       <AnimatePresence exitBeforeEnter>
         {step === SignupSteps.DetailsForm && (
           <motion.div
@@ -128,7 +128,7 @@ export const SignUpPage = () => {
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: 30 }}
           >
-            <div className="text-center flex flex-col items-center space-y-4">
+            <div className="flex flex-col items-center space-y-4 text-center">
               <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
               <div className="text-4xl">Welcome to Infisical</div>
               <div>Create your first Admin Account</div>

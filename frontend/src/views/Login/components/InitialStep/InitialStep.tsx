@@ -95,6 +95,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
         }
       }
     } catch (err) {
+      console.error(err);
       setLoginError(true);
       createNotification({
         text: "Login unsuccessful. Double-check your credentials and try again.",
@@ -236,7 +237,7 @@ export const InitialStep = ({ setStep, email, setEmail, password, setPassword }:
       ) : (
         <div />
       )}
-      <div className="flex flex-row text-sm text-bunker-400 mt-2">
+      <div className="mt-2 flex flex-row text-sm text-bunker-400">
         <Link href="/verify-email">
           <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
             Forgot password? Recover your account

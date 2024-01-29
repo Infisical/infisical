@@ -31,10 +31,10 @@ export const OrgNameChangeSection = (): JSX.Element => {
 
   const onFormSubmit = async ({ name }: FormData) => {
     try {
-      if (!currentOrg?._id) return;
+      if (!currentOrg?.id) return;
       if (name === "") return;
 
-      await mutateAsync({ orgId: currentOrg?._id, newOrgName: name });
+      await mutateAsync({ orgId: currentOrg?.id, newOrgName: name });
       createNotification({
         text: "Successfully renamed organization",
         type: "success"
@@ -51,9 +51,9 @@ export const OrgNameChangeSection = (): JSX.Element => {
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit)}
-      className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
+      className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
     >
-      <p className="text-xl font-semibold text-mineshaft-100 mb-4">Name</p>
+      <p className="mb-4 text-xl font-semibold text-mineshaft-100">Name</p>
       <div className="mb-2 max-w-md">
         <Controller
           defaultValue=""

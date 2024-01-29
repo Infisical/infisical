@@ -1,10 +1,10 @@
 import { createContext, ReactNode, useContext, useMemo } from "react";
 
 import { useGetUser } from "@app/hooks/api";
-import { User } from "@app/hooks/api/types";
+import { User, UserEnc } from "@app/hooks/api/types";
 
 type TUserContext = {
-  user: User;
+  user: User & UserEnc;
   isLoading: boolean;
 };
 

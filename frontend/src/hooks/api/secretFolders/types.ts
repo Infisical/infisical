@@ -4,35 +4,35 @@ export type TSecretFolder = {
 };
 
 export type TGetProjectFoldersDTO = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
-  directory?: string;
+  path?: string;
 };
 
 export type TGetFoldersByEnvDTO = {
   environments: string[];
-  workspaceId: string;
-  directory?: string;
+  projectId: string;
+  path?: string;
 };
 
 export type TCreateFolderDTO = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
-  folderName: string;
-  directory?: string;
+  name: string;
+  path?: string;
 };
 
 export type TUpdateFolderDTO = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
   name: string;
-  folderName: string;
-  directory?: string;
+  folderId: string;
+  path?: string;
 };
 
 export type TDeleteFolderDTO = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
-  folderName: string;
-  directory?: string;
+  folderId: string;
+  path?: string;
 };

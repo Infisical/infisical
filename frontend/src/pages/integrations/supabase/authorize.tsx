@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 
-import {
-  useSaveIntegrationAccessToken
-} from "@app/hooks/api";
+import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
 
@@ -33,7 +31,7 @@ export default function SupabaseCreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/supabase/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/supabase/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       console.error(err);
     }

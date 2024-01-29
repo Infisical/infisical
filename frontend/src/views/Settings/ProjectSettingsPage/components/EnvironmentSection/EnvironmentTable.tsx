@@ -16,7 +16,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { useReorderWsEnvironment } from "@app/hooks/api";
+import { useUpdateWsEnvironment } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -24,10 +24,12 @@ type Props = {
     popUpName: keyof UsePopUpState<["updateEnv", "deleteEnv", "upgradePlan"]>,
     {
       name,
-      slug
+      slug,
+      id
     }: {
       name: string;
       slug: string;
+      id: string;
     }
   ) => void;
 };
@@ -35,32 +37,16 @@ type Props = {
 export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
   const { currentWorkspace, isLoading } = useWorkspace();
   const { createNotification } = useNotificationContext();
-  const reorderWsEnvironment = useReorderWsEnvironment();
+  const updateEnvironment = useUpdateWsEnvironment();
 
-  const handleReorderEnv = async (shouldMoveUp: boolean, name: string, slug: string) => {
+  const handleReorderEnv = async (id: string, position: number) => {
     try {
-      if (!currentWorkspace?._id) return;
+      if (!currentWorkspace?.id) return;
 
-      const indexOfEnv = currentWorkspace.environments.findIndex(
-        (env) => env.name === name && env.slug === slug
-      );
-
-      // check that this reordering is possible
-      if (
-        (indexOfEnv === 0 && shouldMoveUp) ||
-        (indexOfEnv === currentWorkspace.environments.length - 1 && !shouldMoveUp)
-      ) {
-        return;
-      }
-
-      const indexToSwap = shouldMoveUp ? indexOfEnv - 1 : indexOfEnv + 1;
-
-      await reorderWsEnvironment.mutateAsync({
-        workspaceID: currentWorkspace._id,
-        environmentSlug: slug,
-        environmentName: name,
-        otherEnvironmentSlug: currentWorkspace.environments[indexToSwap].slug,
-        otherEnvironmentName: currentWorkspace.environments[indexToSwap].name
+      await updateEnvironment.mutateAsync({
+        workspaceId: currentWorkspace.id,
+        id,
+        position
       });
 
       createNotification({
@@ -90,8 +76,8 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
           {isLoading && <TableSkeleton columns={3} innerKey="project-envs" />}
           {!isLoading &&
             currentWorkspace &&
-            currentWorkspace.environments.map(({ name, slug }, pos) => (
-              <Tr key={name}>
+            currentWorkspace.environments.map(({ name, slug, id }, pos) => (
+              <Tr key={id}>
                 <Td>{name}</Td>
                 <Td>{slug}</Td>
                 <Td className="flex items-center justify-end">
@@ -102,9 +88,12 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                     {(isAllowed) => (
                       <IconButton
                         className="mr-3 py-2"
-                        onClick={() => {
-                          handleReorderEnv(false, name, slug);
-                        }}
+                        onClick={() =>
+                          handleReorderEnv(
+                            id,
+                            Math.min(currentWorkspace.environments.length, pos + 2)
+                          )
+                        }
                         colorSchema="primary"
                         variant="plain"
                         ariaLabel="update"
@@ -121,9 +110,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                     {(isAllowed) => (
                       <IconButton
                         className="mr-3 py-2"
-                        onClick={() => {
-                          handleReorderEnv(true, name, slug);
-                        }}
+                        onClick={() => handleReorderEnv(id, Math.max(1, pos))}
                         colorSchema="primary"
                         variant="plain"
                         ariaLabel="update"
@@ -142,7 +129,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                       <IconButton
                         className="mr-3 py-2"
                         onClick={() => {
-                          handlePopUpOpen("updateEnv", { name, slug });
+                          handlePopUpOpen("updateEnv", { name, slug, id });
                         }}
                         isDisabled={!isAllowed}
                         colorSchema="primary"
@@ -160,7 +147,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                     {(isAllowed) => (
                       <IconButton
                         onClick={() => {
-                          handlePopUpOpen("deleteEnv", { name, slug });
+                          handlePopUpOpen("deleteEnv", { name, slug, id });
                         }}
                         size="lg"
                         colorSchema="danger"

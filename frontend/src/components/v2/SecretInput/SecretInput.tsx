@@ -1,23 +1,17 @@
 /* eslint-disable react/no-danger */
 import { forwardRef, TextareaHTMLAttributes } from "react";
-import sanitizeHtml, { DisallowedTagsModes } from "sanitize-html";
 import { twMerge } from "tailwind-merge";
 
 import { useToggle } from "@app/hooks";
 
-const REGEX = /\${([^}]+)}/g;
+const REGEX = /(\${([^}]+)})/g;
 const replaceContentWithDot = (str: string) => {
   let finalStr = "";
   for (let i = 0; i < str.length; i += 1) {
     const char = str.at(i);
-    finalStr += char === "\n" ? "\n" : "&#8226;";
+    finalStr += char === "\n" ? "\n" : "*";
   }
   return finalStr;
-};
-
-const sanitizeConf = {
-  allowedTags: ["span"],
-  disallowedTagsMode: "escape" as DisallowedTagsModes
 };
 
 const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
@@ -25,19 +19,28 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean) => {
   if (!content) return "EMPTY";
   if (!isVisible) return replaceContentWithDot(content);
 
-  const sanitizedContent = sanitizeHtml(
-    content.replaceAll("<", "&lt;").replaceAll(">", "&gt;"),
-    sanitizeConf
-  );
-  const newContent = sanitizedContent.replace(
-    REGEX,
-    (_a, b) =>
-      `<span class="ph-no-capture text-yellow">&#36;&#123;<span class="ph-no-capture text-yello-200/80">${b}</span>&#125;</span>`
-  );
+  let skipNext = false;
+  const formatedContent = content.split(REGEX).flatMap((el, i) => {
+    const isInterpolationSyntax = el.startsWith("${") && el.endsWith("}");
+    if (isInterpolationSyntax) {
+      skipNext = true;
+      return (
+        <span className="ph-no-capture text-yellow" key={`secret-value-${i + 1}`}>
+          &#36;&#123;<span className="ph-no-capture text-yello-200/80">{el.slice(2, -1)}</span>
+          &#125;
+        </span>
+      );
+    }
+    if (skipNext) {
+      skipNext = false;
+      return [];
+    }
+    return el;
+  });
 
   // akhilmhdh: Dont remove this br. I am still clueless how this works but weirdly enough
   // when break is added a line break works properly
-  return `${newContent}<br/>`;
+  return formatedContent.concat(<br />);
 };
 
 type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
@@ -59,18 +62,15 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     return (
       <div
-        className={twMerge("overflow-auto w-full no-scrollbar rounded-md", containerClassName)}
+        className={twMerge("w-full overflow-auto rounded-md no-scrollbar", containerClassName)}
         style={{ maxHeight: `${21 * 7}px` }}
       >
         <div className="relative overflow-hidden">
           <pre aria-hidden className="m-0 ">
             <code className={`inline-block w-full  ${commonClassName}`}>
-              <span
-                style={{ whiteSpace: "break-spaces" }}
-                dangerouslySetInnerHTML={{
-                  __html: syntaxHighlight(value, isVisible || isSecretFocused) ?? ""
-                }}
-              />
+              <span style={{ whiteSpace: "break-spaces" }}>
+                {syntaxHighlight(value, isVisible || isSecretFocused)}
+              </span>
             </code>
           </pre>
           <textarea

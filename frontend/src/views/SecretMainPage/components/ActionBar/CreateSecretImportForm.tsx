@@ -66,11 +66,11 @@ export const CreateSecretImportForm = ({
     try {
       await createSecretImport({
         environment,
-        workspaceId,
-        directory: secretPath,
-        secretImport: {
+        projectId: workspaceId,
+        path: secretPath,
+        import: {
           environment: importedEnv,
-          secretPath: importedSecPath
+          path: importedSecPath
         }
       });
       onClose();

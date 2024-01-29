@@ -15,12 +15,12 @@ import { UserWsKeyPair } from "../keys/types";
 import { decryptSecrets } from "../secrets/queries";
 import { DecryptedSecret } from "../secrets/types";
 import {
+  CommitType,
   TGetSecretApprovalRequestCount,
   TGetSecretApprovalRequestDetails,
   TGetSecretApprovalRequestList,
   TSecretApprovalRequest,
   TSecretApprovalRequestCount,
-  TSecretApprovalSecChange,
   TSecretApprovalSecChangeData
 } from "./types";
 
@@ -78,7 +78,7 @@ export const decryptSecretApprovalSecret = (
     key
   });
   return {
-    _id: encSecret._id,
+    id: encSecret.id,
     version: encSecret.version,
     secretKey,
     secretValue,
@@ -173,7 +173,7 @@ export const useGetSecretApprovalRequestDetails = ({
     UseQueryOptions<
       TSecretApprovalRequest,
       unknown,
-      TSecretApprovalRequest<TSecretApprovalSecChange, DecryptedSecret>,
+      TSecretApprovalRequest<DecryptedSecret>,
       ReturnType<typeof secretApprovalRequestKeys.detail>
     >,
     "queryKey" | "queryFn"
@@ -184,11 +184,12 @@ export const useGetSecretApprovalRequestDetails = ({
     queryFn: () => fetchSecretApprovalRequestDetails({ id }),
     select: (data) => ({
       ...data,
-      commits: data.commits.map(({ secretVersion, op, newVersion, secret }) => ({
+      commits: data.commits.map(({ secretVersion, op, secret, ...newVersion }) => ({
         op,
         secret,
         secretVersion: secretVersion ? decryptSecrets([secretVersion], decryptKey)[0] : undefined,
-        newVersion: newVersion ? decryptSecretApprovalSecret(newVersion, decryptKey) : undefined
+        newVersion:
+          op !== CommitType.DELETE ? decryptSecretApprovalSecret(newVersion, decryptKey) : undefined
       }))
     }),
     enabled: Boolean(id && decryptKey) && (options?.enabled ?? true)

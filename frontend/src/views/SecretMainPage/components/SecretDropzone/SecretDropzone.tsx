@@ -236,11 +236,13 @@ export const SecretDropzone = ({
               src="/images/loading/loading.gif"
               height={70}
               width={120}
+              decoding="async"
+              loading="lazy"
               alt="loading animation"
             />
           </div>
         ) : (
-          <div className="justify-cente flex flex-col items-center space-y-2">
+          <div className="flex flex-col items-center justify-center space-y-2">
             <div>
               <FontAwesomeIcon icon={faUpload} size={isSmaller ? "2x" : "5x"} />
             </div>

@@ -83,7 +83,7 @@ export const SecretScanningLogsTable = () => {
                   </Td>
                   <Td>{risk.isResolved ? "Resolved" : "Needs Attention"}</Td>
                   <Td>
-                    <RiskStatusSelection riskId={risk._id} currentSelection={risk.status} />
+                    <RiskStatusSelection riskId={risk.id} currentSelection={risk.status} />
                   </Td>
                 </Tr>
               );

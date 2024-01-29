@@ -93,6 +93,7 @@ export const SecretApprovalRequestChanges = ({
     id: approvalRequestId,
     decryptKey: decryptFileKey!
   });
+  console.log(secretApprovalRequestDetails);
 
   const {
     mutateAsync: updateSecretApprovalRequestStatus,
@@ -107,7 +108,7 @@ export const SecretApprovalRequestChanges = ({
   const myMembership = Object.values(members).find(
     ({ user: membershipUser }) => membershipUser.email === user.email
   );
-  const myMembershipId = myMembership?._id || "";
+  const myMembershipId = myMembership?.id || "";
   const canApprove = secretApprovalRequestDetails?.policy?.approvers?.includes(myMembershipId);
   const reviewedMembers = secretApprovalRequestDetails?.reviewers?.reduce<
     Record<string, ApprovalStatus>
@@ -226,7 +227,7 @@ export const SecretApprovalRequestChanges = ({
                 secretVersion={secretVersion}
                 presentSecretVersionNumber={secret?.version || 0}
                 newVersion={newVersion}
-                key={`${op}-${index + 1}-${secretVersion?._id}`}
+                key={`${op}-${index + 1}-${secretVersion?.id}`}
               />
             )
           )}
@@ -234,7 +235,7 @@ export const SecretApprovalRequestChanges = ({
         <div className="mt-8 flex items-center space-x-6 rounded-lg bg-mineshaft-800 px-5 py-6">
           <SecretApprovalRequestAction
             canApprove={canApprove}
-            approvalRequestId={secretApprovalRequestDetails._id}
+            approvalRequestId={secretApprovalRequestDetails.id}
             hasMerged={hasMerged}
             approvals={secretApprovalRequestDetails.policy.approvals || 0}
             status={secretApprovalRequestDetails.status}

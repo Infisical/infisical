@@ -5,4 +5,4 @@ scripts/initialize-standalone-build.sh
 
 cd ../
 
-exec node build/index.js
+exec node dist/main.mjs

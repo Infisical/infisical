@@ -19,6 +19,12 @@ export type User = {
   lastName?: string;
   authProvider?: AuthMethod;
   authMethods: AuthMethod[];
+  isMfaEnabled: boolean;
+  seenIps: string[];
+  id: string;
+};
+
+export type UserEnc = {
   encryptionVersion?: number;
   protectedKey?: string;
   protectedKeyIV?: string;
@@ -27,19 +33,15 @@ export type User = {
   encryptedPrivateKey?: string;
   iv?: string;
   tag?: string;
-  isMfaEnabled: boolean;
-  seenIps: string[];
-  _id: string;
-  __v: number;
 };
 
 export type OrgUser = {
-  _id: string;
+  id: string;
   user: {
     email: string;
     firstName: string;
     lastName: string;
-    _id: string;
+    id: string;
     publicKey: string;
   };
   inviteEmail: string;
@@ -47,7 +49,16 @@ export type OrgUser = {
   role: "owner" | "admin" | "member" | "no-access" | "custom";
   status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];
-  customRole: string;
+  roleId: string;
+};
+
+export type TProjectMembership = {
+  id: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+  projectId: string;
+  roleId: string;
 };
 
 export type TWorkspaceUser = OrgUser;
@@ -88,7 +99,7 @@ export type RenameUserDTO = {
 };
 
 export type APIKeyData = {
-  _id: string;
+  id: string;
   name: string;
   user: string;
   lastUsed: string;
@@ -97,7 +108,7 @@ export type APIKeyData = {
 };
 
 export type TokenVersion = {
-  _id: string;
+  id: string;
   user: string;
   userAgent: string;
   ip: string;

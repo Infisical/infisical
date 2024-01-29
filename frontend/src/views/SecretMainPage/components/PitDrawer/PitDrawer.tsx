@@ -41,26 +41,26 @@ export const PitDrawer = ({
         <div className="flex flex-col space-y-2">
           {secretSnaphots?.pages?.map((group, i) => (
             <Fragment key={`snapshot-item-${i + 1}`}>
-              {group.map(({ _id, createdAt }, index) => (
+              {group.map(({ id, createdAt }, index) => (
                 <Button
-                  key={_id}
+                  key={id}
                   className="py-3 px-4 text-sm"
                   isFullWidth
                   colorSchema={
-                    (i === 0 && index === 0 && snapshotId === null) || snapshotId === _id
+                    (i === 0 && index === 0 && snapshotId === null) || snapshotId === id
                       ? "primary"
                       : "secondary"
                   }
                   variant={
-                    (i === 0 && index === 0 && snapshotId === null) || snapshotId === _id
+                    (i === 0 && index === 0 && snapshotId === null) || snapshotId === id
                       ? "selected"
                       : "star"
                   }
-                  onClick={() => onSelectSnapshot(_id)}
+                  onClick={() => onSelectSnapshot(id)}
                 >
                   <div className="flex w-full justify-between">
                     <div>{timeSince(new Date(createdAt))}</div>
-                    <div>{getButtonLabel(i === 0 && index === 0, snapshotId === _id)}</div>
+                    <div>{getButtonLabel(i === 0 && index === 0, snapshotId === id)}</div>
                   </div>
                 </Button>
               ))}

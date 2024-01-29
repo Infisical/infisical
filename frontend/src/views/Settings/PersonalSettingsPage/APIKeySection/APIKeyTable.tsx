@@ -55,9 +55,9 @@ export const APIKeyTable = () => {
           {!isLoading &&
             data &&
             data.length > 0 &&
-            data.map(({ _id, name, createdAt, expiresAt, lastUsed }) => {
+            data.map(({ id, name, createdAt, expiresAt, lastUsed }) => {
               return (
-                <Tr className="h-10" key={`api-key-${_id}`}>
+                <Tr className="h-10" key={`api-key-${id}`}>
                   <Td>{name}</Td>
                   <Td>{format(new Date(lastUsed), "yyyy-MM-dd")}</Td>
                   <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
@@ -65,7 +65,7 @@ export const APIKeyTable = () => {
                   <Td>
                     <IconButton
                       onClick={async () => {
-                        await handleDeleteAPIKeyDataClick(_id);
+                        await handleDeleteAPIKeyDataClick(id);
                       }}
                       size="lg"
                       colorSchema="danger"

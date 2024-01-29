@@ -10,7 +10,8 @@ import {
   useDeleteUserFromWorkspace,
   useGetUserWsKey,
   useUpdateUserWorkspaceRole,
-  useUploadWsKey} from "@app/hooks/api";
+  useUploadWsKey
+} from "@app/hooks/api";
 
 import { decryptAssymmetric, encryptAssymmetric } from "../../utilities/cryptography/crypto";
 import guidGenerator from "../../utilities/randomId";
@@ -41,7 +42,7 @@ type EnvironmentProps = {
 const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoading }: Props) => {
   const { currentWorkspace } = useWorkspace();
   const { subscription } = useSubscription();
-  const { data: wsKey } = useGetUserWsKey(currentWorkspace?._id ?? "");
+  const { data: wsKey } = useGetUserWsKey(currentWorkspace?.id ?? "");
 
   const { mutateAsync: deleteUserFromWorkspaceMutateAsync } = useDeleteUserFromWorkspace();
   const { mutateAsync: uploadWsKeyMutateAsync } = useUploadWsKey();
@@ -59,12 +60,13 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
   // Delete the row in the table (e.g. a user)
   // #TODO: Add a pop-up that warns you that the user is going to be deleted.
   const handleDelete = async (membershipId: string) => {
-    await deleteUserFromWorkspaceMutateAsync(membershipId);
+    await deleteUserFromWorkspaceMutateAsync({ membershipId, workspaceId });
   };
 
   const handleRoleUpdate = async (index: number, e: string) => {
     await updateUserWorkspaceRoleMutateAsync({
-      membershipId: userData[index].membershipId, 
+      workspaceId,
+      membershipId: userData[index].membershipId,
       role: e.toLowerCase()
     });
     createNotification({
@@ -191,11 +193,15 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
         <UpgradePlanModal
           isOpen={isUpgradeModalOpen}
           onClose={closeUpgradeModal}
-          text={subscription.slug === null ? "You can use RBAC under an Enterprise license" : "You can use RBAC if you switch to Infisical's Team Plan."}
+          text={
+            subscription.slug === null
+              ? "You can use RBAC under an Enterprise license"
+              : "You can use RBAC if you switch to Infisical's Team Plan."
+          }
         />
       )}
       <table className="my-0.5 w-full">
-        <thead className="text-xs font-light text-gray-400 bg-mineshaft-800">
+        <thead className="bg-mineshaft-800 text-xs font-light text-gray-400">
           <tr>
             <th className="py-3.5 pl-4 text-left">NAME</th>
             <th className="py-3.5 pl-4 text-left">EMAIL</th>
@@ -213,12 +219,13 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
           </tr>
         </thead>
         <tbody>
-          {!isUserListLoading && userData?.filter(
-            (user) =>
-              user.firstName?.toLowerCase().includes(filter) ||
-              user.lastName?.toLowerCase().includes(filter) ||
-              user.email?.toLowerCase().includes(filter)
-          ).length > 0 &&
+          {!isUserListLoading &&
+            userData?.filter(
+              (user) =>
+                user.firstName?.toLowerCase().includes(filter) ||
+                user.lastName?.toLowerCase().includes(filter) ||
+                user.email?.toLowerCase().includes(filter)
+            ).length > 0 &&
             userData
               ?.filter(
                 (user) =>
@@ -373,10 +380,18 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
                   </td>
                 </tr>
               ))}
-              {isUserListLoading && <>
-                <tr key={guidGenerator()} className="bg-mineshaft-800 text-sm animate-pulse h-14 w-full"/>
-                <tr key={guidGenerator()} className="bg-mineshaft-800 text-sm animate-pulse h-14 w-full"/>
-              </>}
+          {isUserListLoading && (
+            <>
+              <tr
+                key={guidGenerator()}
+                className="h-14 w-full animate-pulse bg-mineshaft-800 text-sm"
+              />
+              <tr
+                key={guidGenerator()}
+                className="h-14 w-full animate-pulse bg-mineshaft-800 text-sm"
+              />
+            </>
+          )}
         </tbody>
       </table>
     </div>

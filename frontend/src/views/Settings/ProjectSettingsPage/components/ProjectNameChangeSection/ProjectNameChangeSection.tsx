@@ -32,10 +32,10 @@ export const ProjectNameChangeSection = () => {
 
   const onFormSubmit = async ({ name }: FormData) => {
     try {
-      if (!currentWorkspace?._id) return;
+      if (!currentWorkspace?.id) return;
 
       await mutateAsync({
-        workspaceID: currentWorkspace._id,
+        workspaceID: currentWorkspace.id,
         newWorkspaceName: name
       });
 
@@ -55,9 +55,9 @@ export const ProjectNameChangeSection = () => {
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit)}
-      className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600"
+      className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
     >
-      <h2 className="text-xl font-semibold flex-1 text-mineshaft-100 mb-8">Project Name</h2>
+      <h2 className="mb-8 flex-1 text-xl font-semibold text-mineshaft-100">Project Name</h2>
       <div className="max-w-md">
         <Controller
           defaultValue=""

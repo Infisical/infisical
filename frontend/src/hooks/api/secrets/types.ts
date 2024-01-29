@@ -2,7 +2,7 @@ import type { UserWsKeyPair } from "../keys/types";
 import type { WsTag } from "../tags/types";
 
 export type EncryptedSecret = {
-  _id: string;
+  id: string;
   version: number;
   workspace: string;
   type: "shared" | "personal";
@@ -26,7 +26,7 @@ export type EncryptedSecret = {
 };
 
 export type DecryptedSecret = {
-  _id: string;
+  id: string;
   version: number;
   key: string;
   value: string;
@@ -45,13 +45,13 @@ export type DecryptedSecret = {
 };
 
 export type EncryptedSecretVersion = {
-  _id: string;
-  secret: string;
+  id: string;
+  secretId: string;
   version: number;
   workspace: string;
   type: string;
-  environment: string;
   isDeleted: boolean;
+  envId: string;
   secretKeyCiphertext: string;
   secretKeyIV: string;
   secretKeyTag: string;

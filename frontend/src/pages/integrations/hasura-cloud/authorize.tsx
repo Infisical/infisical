@@ -42,7 +42,7 @@ export default function HasuraCloudAuthorizeIntegrationPage() {
       });
 
       setIsLoading(false);
-      router.push(`/integrations/hasura-cloud/create?integrationAuthId=${integrationAuth._id}`);
+      router.push(`/integrations/hasura-cloud/create?integrationAuthId=${integrationAuth.id}`);
     } catch (err) {
       setIsLoading(false);
       console.error(err);

@@ -49,7 +49,7 @@ type Props = {
   onDeleteSecret: () => void;
   onSaveSecret: (
     orgSec: DecryptedSecret,
-    modSec: Omit<DecryptedSecret, "tags"> & { tags: { _id: string }[] },
+    modSec: Omit<DecryptedSecret, "tags"> & { tags: { id: string }[] },
     cb?: () => void
   ) => Promise<void>;
   tags: WsTag[];
@@ -81,7 +81,7 @@ export const SecretDetailSidebar = ({
     resolver: zodResolver(formSchema),
     values: secret
   });
-  const permission = useProjectPermission();
+  const { permission } = useProjectPermission();
   const cannotEditSecret = permission.cannot(
     ProjectPermissionActions.Edit,
     subject(ProjectPermissionSub.Secrets, { environment, secretPath })
@@ -98,7 +98,7 @@ export const SecretDetailSidebar = ({
   });
   const selectedTags = watch("tags", []);
   const selectedTagsGroupById = selectedTags.reduce<Record<string, boolean>>(
-    (prev, curr) => ({ ...prev, [curr._id]: true }),
+    (prev, curr) => ({ ...prev, [curr.id]: true }),
     {}
   );
 
@@ -109,7 +109,7 @@ export const SecretDetailSidebar = ({
   const { data: secretVersion } = useGetSecretVersion({
     limit: 10,
     offset: 0,
-    secretId: secret?._id,
+    secretId: secret?.id,
     decryptFileKey
   });
 
@@ -133,8 +133,8 @@ export const SecretDetailSidebar = ({
   };
 
   const handleTagSelect = (tag: WsTag) => {
-    if (selectedTagsGroupById?.[tag._id]) {
-      const tagPos = selectedTags.findIndex(({ _id }) => _id === tag._id);
+    if (selectedTagsGroupById?.[tag.id]) {
+      const tagPos = selectedTags.findIndex(({ id }) => id === tag.id);
       if (tagPos !== -1) {
         remove(tagPos);
       }
@@ -165,7 +165,7 @@ export const SecretDetailSidebar = ({
     >
       <DrawerContent title="Secret">
         <form onSubmit={handleSubmit(handleFormSubmit)} className="h-full">
-          <div className="flex flex-col h-full">
+          <div className="flex h-full flex-col">
             <FormControl label="Key">
               <Input isDisabled {...register("key")} />
             </FormControl>
@@ -226,22 +226,22 @@ export const SecretDetailSidebar = ({
               />
             )}
             <FormControl label="Tags" className="">
-              <div className="overflow-hidden grid gap-2 grid-flow-col auto-cols-min pt-2">
-                {fields.map(({ tagColor, id: formId, name, _id }) => (
+              <div className="grid auto-cols-min grid-flow-col gap-2 overflow-hidden pt-2">
+                {fields.map(({ tagColor, id: formId, name, id }) => (
                   <Tag
-                    className="flex items-center space-x-2 w-min"
+                    className="flex w-min items-center space-x-2"
                     key={formId}
                     onClose={() => {
                       if (cannotEditSecret) {
                         createNotification({ type: "error", text: "Access denied" });
                         return;
                       }
-                      const tag = tags?.find(({ _id: id }) => id === _id);
+                      const tag = tags?.find(({ id: tagId }) => id === tagId);
                       if (tag) handleTagSelect(tag);
                     }}
                   >
                     <div
-                      className="w-3 h-3 rounded-full"
+                      className="h-3 w-3 rounded-full"
                       style={{ backgroundColor: tagColor || "#bec2c8" }}
                     />
                     <div className="text-sm">{name}</div>
@@ -269,7 +269,7 @@ export const SecretDetailSidebar = ({
                   <DropdownMenuContent align="end" className="z-[100]">
                     <DropdownMenuLabel>Apply tags to this secrets</DropdownMenuLabel>
                     {tags.map((tag) => {
-                      const { _id: tagId, name, tagColor } = tag;
+                      const { id: tagId, name, color } = tag;
 
                       const isSelected = selectedTagsGroupById?.[tagId];
                       return (
@@ -281,8 +281,8 @@ export const SecretDetailSidebar = ({
                         >
                           <div className="flex items-center">
                             <div
-                              className="w-2 h-2 rounded-full mr-2"
-                              style={{ background: tagColor || "#bec2c8" }}
+                              className="mr-2 h-2 w-2 rounded-full"
+                              style={{ background: color || "#bec2c8" }}
                             />
                             {name}
                           </div>
@@ -294,7 +294,7 @@ export const SecretDetailSidebar = ({
                       a={ProjectPermissionSub.Tags}
                     >
                       {(isAllowed) => (
-                        <DropdownMenuItem>
+                        <DropdownMenuItem asChild>
                           <Button
                             size="xs"
                             className="w-full"
@@ -352,7 +352,7 @@ export const SecretDetailSidebar = ({
                 )}
               />
             </div>
-            <div className="dark mb-4 text-sm text-bunker-300 flex-grow">
+            <div className="dark mb-4 flex-grow text-sm text-bunker-300">
               <div className="mb-2">Version History</div>
               <div className="flex h-48 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-bunker-800 p-2 dark:[color-scheme:dark]">
                 {secretVersion?.map(({ createdAt, value, id }, i) => (
@@ -372,7 +372,7 @@ export const SecretDetailSidebar = ({
               </div>
             </div>
             <div className="flex flex-col space-y-4">
-              <div className="flex space-x-4 items-center">
+              <div className="flex items-center space-x-4">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Edit}
                   a={subject(ProjectPermissionSub.Secrets, { environment, secretPath })}

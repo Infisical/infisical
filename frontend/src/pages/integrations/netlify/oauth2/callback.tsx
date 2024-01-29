@@ -2,9 +2,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
-import {
-  useAuthorizeIntegration
-} from "@app/hooks/api";
+import { useAuthorizeIntegration } from "@app/hooks/api";
 
 export default function NetlifyOAuth2CallbackPage() {
   const router = useRouter();
@@ -25,7 +23,7 @@ export default function NetlifyOAuth2CallbackPage() {
           integration: "netlify"
         });
 
-        router.push(`/integrations/netlify/create?integrationAuthId=${integrationAuth._id}`);
+        router.push(`/integrations/netlify/create?integrationAuthId=${integrationAuth.id}`);
       } catch (err) {
         console.error(err);
       }

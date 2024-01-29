@@ -4,9 +4,9 @@ export type ServiceTokenScope = {
 };
 
 export type ServiceToken = {
-  _id: string;
+  id: string;
   name: string;
-  workspace: string;
+  projectId: string;
   scopes: ServiceTokenScope[];
   user: string;
   expiresAt: string;

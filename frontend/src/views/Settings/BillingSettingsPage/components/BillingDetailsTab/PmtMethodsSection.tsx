@@ -13,9 +13,9 @@ export const PmtMethodsSection = () => {
   const { mutateAsync, isLoading } = useAddOrgPmtMethod();
 
   const handleAddPmtMethodBtnClick = async () => {
-    if (!currentOrg?._id) return;
+    if (!currentOrg?.id) return;
     const url = await mutateAsync({
-      organizationId: currentOrg._id,
+      organizationId: currentOrg.id,
       success_url: window.location.href,
       cancel_url: window.location.href
     });
@@ -24,9 +24,9 @@ export const PmtMethodsSection = () => {
   };
 
   return (
-    <div className="p-4 bg-mineshaft-900 mb-6 rounded-lg border border-mineshaft-600">
-      <div className="flex items-center mb-8">
-        <h2 className="text-xl font-semibold flex-1 text-white">Payment methods</h2>
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-8 flex items-center">
+        <h2 className="flex-1 text-xl font-semibold text-white">Payment methods</h2>
         <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Billing}>
           {(isAllowed) => (
             <Button

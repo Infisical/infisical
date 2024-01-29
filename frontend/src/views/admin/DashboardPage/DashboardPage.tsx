@@ -22,8 +22,8 @@ export const AdminDashboardPage = () => {
   useEffect(() => {
     if (isNotAllowed && !isUserLoading) {
       if (orgs?.length) {
-        localStorage.setItem("orgData.id", orgs?.[0]?._id);
-        router.push(`/org/${orgs?.[0]?._id}/overview`);
+        localStorage.setItem("orgData.id", orgs?.[0]?.id);
+        router.push(`/org/${orgs?.[0]?.id}/overview`);
       }
     }
   }, [isNotAllowed, isUserLoading]);
@@ -42,7 +42,7 @@ export const AdminDashboardPage = () => {
         <div>
           <Tabs defaultValue={TabSections.Settings}>
             <TabList>
-              <div className="flex flex-row border-b border-mineshaft-600 w-full">
+              <div className="flex w-full flex-row border-b border-mineshaft-600">
                 <Tab value={TabSections.Settings}>General</Tab>
               </div>
             </TabList>

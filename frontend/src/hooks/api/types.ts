@@ -12,18 +12,17 @@ export type {
 } from "./secretApprovalRequest/types";
 export { ApprovalStatus, CommitType } from "./secretApprovalRequest/types";
 export type { TSecretFolder } from "./secretFolders/types";
-export type { TImportedSecrets, TSecretImports } from "./secretImports/types";
+export type { TImportedSecrets, TSecretImport } from "./secretImports/types";
 export type {
   TGetSecretRotationProviders,
-  TProviderTemplate,
-  TSecretRotationProvider,
-  TSecretRotationProviderList
+  TSecretRotationProviderList,
+  TSecretRotationProviderTemplate
 } from "./secretRotation/types";
 export * from "./secrets/types";
 export type { CreateServiceTokenDTO, ServiceToken } from "./serviceTokens/types";
 export type { SubscriptionPlan } from "./subscriptions/types";
 export type { WsTag } from "./tags/types";
-export type { AddUserToWsDTO, OrgUser, TWorkspaceUser, User } from "./users/types";
+export type { AddUserToWsDTO, OrgUser, TWorkspaceUser, User, UserEnc } from "./users/types";
 export type { TWebhook } from "./webhooks/types";
 export type {
   CreateEnvironmentDTO,

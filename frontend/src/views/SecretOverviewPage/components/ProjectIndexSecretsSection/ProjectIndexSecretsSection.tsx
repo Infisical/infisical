@@ -4,9 +4,15 @@ import {
   decryptSymmetric
 } from "@app/components/utilities/cryptography/crypto";
 import { Button, Spinner } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProjectPermission,
+  useWorkspace
+} from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useGetWorkspaceIndexStatus, useNameWorkspaceSecrets } from "@app/hooks/api";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UserWsKeyPair } from "@app/hooks/api/types";
 import { fetchWorkspaceSecrets } from "@app/hooks/api/workspace/queries";
 
@@ -18,17 +24,18 @@ type Props = {
 
 export const ProjectIndexSecretsSection = ({ decryptFileKey }: Props) => {
   const { currentWorkspace } = useWorkspace();
+  const { membership } = useProjectPermission();
   const { data: isBlindIndexed, isLoading: isBlindIndexedLoading } = useGetWorkspaceIndexStatus(
-    currentWorkspace?._id ?? ""
+    currentWorkspace?.id ?? ""
   );
   const [isIndexing, setIsIndexing] = useToggle();
   const nameWorkspaceSecrets = useNameWorkspaceSecrets();
 
   const onEnableBlindIndices = async () => {
-    if (!currentWorkspace?._id) return;
+    if (!currentWorkspace?.id) return;
     setIsIndexing.on();
     try {
-      const encryptedSecrets = await fetchWorkspaceSecrets(currentWorkspace._id);
+      const encryptedSecrets = await fetchWorkspaceSecrets(currentWorkspace.id);
 
       const key = decryptAssymmetric({
         ciphertext: decryptFileKey.encryptedKey,
@@ -47,11 +54,11 @@ export const ProjectIndexSecretsSection = ({ decryptFileKey }: Props) => {
 
         return {
           secretName,
-          _id: encryptedSecret._id
+          secretId: encryptedSecret.id
         };
       });
       await nameWorkspaceSecrets.mutateAsync({
-        workspaceId: currentWorkspace._id,
+        workspaceId: currentWorkspace.id,
         secretsToUpdate
       });
     } catch (err) {
@@ -74,17 +81,19 @@ export const ProjectIndexSecretsSection = ({ decryptFileKey }: Props) => {
           </div>
         </div>
       )}
-      <p className="mb-2 text-lg font-semibold">Enable Blind Indices</p>
+      <p className="mb-2 text-lg font-semibold">Action Required</p>
       <p className="mb-4 leading-7 text-gray-400">
         Your project was created before the introduction of blind indexing. To continue accessing
         secrets by name through the SDK, public API and web dashboard, please enable blind indexing.{" "}
-        <b>This is a one time process.</b>
+        <b>
+          {membership.role !== ProjectMembershipRole.Admin && "This is an admin only operation."}
+        </b>
       </p>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
         {(isAllowed) => (
           <Button
             onClick={onEnableBlindIndices}
-            isDisabled={!isAllowed}
+            isDisabled={!isAllowed || membership.role !== ProjectMembershipRole.Admin}
             color="mineshaft"
             type="submit"
             isLoading={isIndexing}

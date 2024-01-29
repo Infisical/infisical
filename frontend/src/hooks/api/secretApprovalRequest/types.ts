@@ -16,7 +16,7 @@ export enum CommitType {
 }
 
 export type TSecretApprovalSecChangeData = {
-  _id: string;
+  id: string;
   secretKeyCiphertext: string;
   secretKeyIV: string;
   secretKeyTag: string;
@@ -34,7 +34,7 @@ export type TSecretApprovalSecChangeData = {
 };
 
 export type TSecretApprovalSecChange = {
-  _id: string;
+  id: string;
   version: number;
   secretKey: string;
   secretValue: string;
@@ -42,14 +42,11 @@ export type TSecretApprovalSecChange = {
   tags?: string[];
 };
 
-export type TSecretApprovalRequest<
-  T extends unknown = TSecretApprovalSecChangeData,
-  J extends unknown = EncryptedSecret
-> = {
-  _id: string;
+export type TSecretApprovalRequest<J extends unknown = EncryptedSecret> = {
+  id: string;
   slug: string;
   createdAt: string;
-  committer: string;
+  committerId: string;
   reviewers: {
     member: string;
     status: ApprovalStatus;
@@ -63,14 +60,13 @@ export type TSecretApprovalRequest<
   policy: TSecretApprovalPolicy;
   statusChangeBy: string;
   conflicts: Array<{ secretId: string; op: CommitType.UPDATE }>;
-  commits: {
+  commits: ({
     // if there is no secret means it was creation
     secret?: { version: number };
     secretVersion: J;
     // if there is no new version its for Delete
-    newVersion?: T;
     op: CommitType;
-  }[];
+  } & TSecretApprovalSecChangeData)[];
 };
 
 export type TSecretApprovalRequestCount = {

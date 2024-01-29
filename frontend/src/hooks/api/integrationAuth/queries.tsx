@@ -3,16 +3,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { workspaceKeys } from "../workspace/queries";
-import { 
-  App, 
-  BitBucketWorkspace, 
-  ChecklyGroup, 
-  Environment, 
-  IntegrationAuth, 
+import {
+  App,
+  BitBucketWorkspace,
+  ChecklyGroup,
+  Environment,
+  IntegrationAuth,
   NorthflankSecretGroup,
   Org,
   Project,
-  Service, 
+  Service,
   Team,
   TeamCityBuildConfig
 } from "./types";
@@ -37,10 +37,9 @@ const integrationAuthKeys = {
   }: {
     integrationAuthId: string;
     accountId: string;
-  }) => 
-  [{ integrationAuthId, accountId }, "integrationAuthChecklyGroups"] as const,
-  getIntegrationAuthQoveryOrgs: (integrationAuthId: string) => 
-  [{ integrationAuthId }, "integrationAuthQoveryOrgs"] as const,
+  }) => [{ integrationAuthId, accountId }, "integrationAuthChecklyGroups"] as const,
+  getIntegrationAuthQoveryOrgs: (integrationAuthId: string) =>
+    [{ integrationAuthId }, "integrationAuthQoveryOrgs"] as const,
   getIntegrationAuthQoveryProjects: ({
     integrationAuthId,
     orgId
@@ -93,7 +92,7 @@ const integrationAuthKeys = {
   }: {
     integrationAuthId: string;
     appId: string;
-  }) => [{ integrationAuthId, appId }, "integrationAuthTeamCityBranchConfigs"] as const, 
+  }) => [{ integrationAuthId, appId }, "integrationAuthTeamCityBranchConfigs"] as const
 };
 
 const fetchIntegrationAuthById = async (integrationAuthId: string) => {
@@ -112,12 +111,12 @@ const fetchIntegrationAuthApps = async ({
   teamId?: string;
   workspaceSlug?: string;
 }) => {
-  const params: Record<string, string> = {}
+  const params: Record<string, string> = {};
   if (teamId) {
-    params.teamId = teamId
+    params.teamId = teamId;
   }
   if (workspaceSlug) {
-    params.workspaceSlug = workspaceSlug
+    params.workspaceSlug = workspaceSlug;
   }
 
   const searchParams = new URLSearchParams(params);
@@ -193,7 +192,7 @@ const fetchIntegrationAuthQoveryProjects = async ({
   orgId: string;
 }) => {
   if (orgId === "none") return [];
-  
+
   const {
     data: { projects }
   } = await apiRequest.get<{ projects: Project[] }>(
@@ -241,7 +240,7 @@ const fetchIntegrationAuthQoveryScopes = async ({
   scope: "job" | "application" | "container";
 }) => {
   if (environmentId === "none") return [];
-  
+
   if (scope === "application") {
     const {
       data: { apps }
@@ -255,8 +254,8 @@ const fetchIntegrationAuthQoveryScopes = async ({
     );
 
     return apps;
-  } 
-  
+  }
+
   if (scope === "container") {
     const {
       data: { containers }
@@ -335,7 +334,9 @@ const fetchIntegrationAuthRailwayServices = async ({
 };
 
 const fetchIntegrationAuthBitBucketWorkspaces = async (integrationAuthId: string) => {
-  const { data: { workspaces } } = await apiRequest.get<{ workspaces: BitBucketWorkspace[] }>(
+  const {
+    data: { workspaces }
+  } = await apiRequest.get<{ workspaces: BitBucketWorkspace[] }>(
     `/api/v1/integration-auth/${integrationAuthId}/bitbucket/workspaces`
   );
   return workspaces;
@@ -396,7 +397,7 @@ export const useGetIntegrationAuthById = (integrationAuthId: string) => {
 export const useGetIntegrationAuthApps = ({
   integrationAuthId,
   teamId,
-  workspaceSlug,
+  workspaceSlug
 }: {
   integrationAuthId: string;
   teamId?: string;
@@ -455,10 +456,11 @@ export const useGetIntegrationAuthChecklyGroups = ({
       integrationAuthId,
       accountId
     }),
-    queryFn: () => fetchIntegrationAuthChecklyGroups({
-      integrationAuthId,
-      accountId
-    }),
+    queryFn: () =>
+      fetchIntegrationAuthChecklyGroups({
+        integrationAuthId,
+        accountId
+      }),
     enabled: true
   });
 };
@@ -466,8 +468,7 @@ export const useGetIntegrationAuthChecklyGroups = ({
 export const useGetIntegrationAuthQoveryOrgs = (integrationAuthId: string) => {
   return useQuery({
     queryKey: integrationAuthKeys.getIntegrationAuthQoveryOrgs(integrationAuthId),
-    queryFn: () =>
-      fetchIntegrationAuthQoveryOrgs(integrationAuthId),
+    queryFn: () => fetchIntegrationAuthQoveryOrgs(integrationAuthId),
     enabled: true
   });
 };
@@ -622,10 +623,11 @@ export const useGetIntegrationAuthTeamCityBuildConfigs = ({
       integrationAuthId,
       appId
     }),
-    queryFn: () => fetchIntegrationAuthTeamCityBuildConfigs({
-      integrationAuthId,
-      appId
-    }),
+    queryFn: () =>
+      fetchIntegrationAuthTeamCityBuildConfigs({
+        integrationAuthId,
+        appId
+      }),
     enabled: true
   });
 };
@@ -645,7 +647,9 @@ export const useAuthorizeIntegration = () => {
       integration: string;
       url?: string;
     }) => {
-      const { data: { integrationAuth } } = await apiRequest.post("/api/v1/integration-auth/oauth-token", {
+      const {
+        data: { integrationAuth }
+      } = await apiRequest.post("/api/v1/integration-auth/oauth-token", {
         workspaceId,
         code,
         integration,
@@ -681,7 +685,9 @@ export const useSaveIntegrationAccessToken = () => {
       url?: string;
       namespace?: string;
     }) => {
-      const { data: { integrationAuth } } = await apiRequest.post("/api/v1/integration-auth/access-token", {
+      const {
+        data: { integrationAuth }
+      } = await apiRequest.post("/api/v1/integration-auth/access-token", {
         workspaceId,
         integration,
         refreshToken,
@@ -703,10 +709,13 @@ export const useDeleteIntegrationAuths = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, { integration: string; workspaceId: string }>({
-    mutationFn: ({ integration, workspaceId }) => apiRequest.delete(`/api/v1/integration-auth?${new URLSearchParams({
-      integration,
-      workspaceId
-    })}`),
+    mutationFn: ({ integration, workspaceId }) =>
+      apiRequest.delete(
+        `/api/v1/integration-auth?${new URLSearchParams({
+          integration,
+          projectId: workspaceId
+        })}`
+      ),
     onSuccess: (_, { workspaceId }) => {
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceAuthorization(workspaceId));
       queryClient.invalidateQueries(workspaceKeys.getWorkspaceIntegrations(workspaceId));
@@ -714,7 +723,8 @@ export const useDeleteIntegrationAuths = () => {
   });
 };
 
-export const useDeleteIntegrationAuth = () => { // not used
+export const useDeleteIntegrationAuth = () => {
+  // not used
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, { id: string; workspaceId: string }>({
@@ -725,4 +735,3 @@ export const useDeleteIntegrationAuth = () => { // not used
     }
   });
 };
-

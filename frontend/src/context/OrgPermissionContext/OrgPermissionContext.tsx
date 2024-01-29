@@ -17,16 +17,18 @@ const OrgPermissionContext = createContext<null | {
 
 export const OrgPermissionProvider = ({ children }: Props): JSX.Element => {
   const { currentOrg } = useOrganization();
-  const orgId = currentOrg?._id || "";
+  const orgId = currentOrg?.id || "";
   const { data: permission, isLoading } = useGetUserOrgPermissions({ orgId });
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
+      <div className="flex h-screen w-screen items-center justify-center bg-bunker-800">
         <img
           src="/images/loading/loading.gif"
           height={70}
           width={120}
+          decoding="async"
+          loading="lazy"
           alt="infisical loading indicator"
         />
       </div>
@@ -35,7 +37,7 @@ export const OrgPermissionProvider = ({ children }: Props): JSX.Element => {
 
   if (!permission) {
     return (
-      <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
+      <div className="flex h-screen w-screen items-center justify-center bg-bunker-800">
         Failed to load user permissions
       </div>
     );
