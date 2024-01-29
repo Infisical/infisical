@@ -38,7 +38,12 @@ export const sanitizedServiceTokenUserSchema = UsersSchema.pick({
   firstName: true,
   lastName: true,
   mfaMethods: true
-});
+}).merge(
+  z.object({
+    __v: z.number().default(0),
+    _id: z.string()
+  })
+);
 
 export const secretRawSchema = z.object({
   id: z.string(),
