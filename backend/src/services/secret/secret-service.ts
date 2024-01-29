@@ -116,18 +116,22 @@ export const secretServiceFactory = ({
       inputSecrets.map(({ tags, ...el }) => ({ ...el, folderId })),
       tx
     );
-    const newSecretGroupByBlindIndex = groupBy(newSecrets, (item) => item.secretBlindIndex);
+    const newSecretGroupByBlindIndex = groupBy(
+      newSecrets,
+      (item) => item.secretBlindIndex as string
+    );
     const newSecretTags = inputSecrets.flatMap(({ tags: secretTags = [], secretBlindIndex }) =>
       secretTags.map((tag) => ({
         [`${TableName.SecretTag}Id` as const]: tag,
-        [`${TableName.Secret}Id` as const]: newSecretGroupByBlindIndex[secretBlindIndex][0].id
+        [`${TableName.Secret}Id` as const]:
+          newSecretGroupByBlindIndex[secretBlindIndex as string][0].id
       }))
     );
     const secretVersions = await secretVersionDAL.insertMany(
       inputSecrets.map(({ tags, ...el }) => ({
         ...el,
         folderId,
-        secretId: newSecretGroupByBlindIndex[el.secretBlindIndex][0].id
+        secretId: newSecretGroupByBlindIndex[el.secretBlindIndex as string][0].id
       })),
       tx
     );
@@ -269,7 +273,9 @@ export const secretServiceFactory = ({
     if (isNew) {
       if (secrets.length) throw new BadRequestError({ message: "Secret already exist" });
     } else if (secrets.length !== inputSecrets.length)
-      throw new BadRequestError({ message: `Secret not found: blind index ${JSON.stringify(keyName2BlindIndex)}` });
+      throw new BadRequestError({
+        message: `Secret not found: blind index ${JSON.stringify(keyName2BlindIndex)}`
+      });
 
     return { blindIndex2KeyName, keyName2BlindIndex, secrets };
   };
@@ -292,7 +298,7 @@ export const secretServiceFactory = ({
       })),
       userId
     );
-    const secsGroupedByBlindIndex = groupBy(secrets, (i) => i.secretBlindIndex);
+    const secsGroupedByBlindIndex = groupBy(secrets, (i) => i.secretBlindIndex as string);
 
     return { secsGroupedByBlindIndex, secrets };
   };
