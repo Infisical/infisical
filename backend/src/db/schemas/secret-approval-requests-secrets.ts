@@ -10,7 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const SecretApprovalRequestsSecretsSchema = z.object({
   id: z.string().uuid(),
   version: z.number().default(1).nullable().optional(),
-  secretBlindIndex: z.string(),
+  secretBlindIndex: z.string().nullable().optional(),
   secretKeyCiphertext: z.string(),
   secretKeyIV: z.string(),
   secretKeyTag: z.string(),
