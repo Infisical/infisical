@@ -92,7 +92,10 @@ import { serviceTokenDALFactory } from "@app/services/service-token/service-toke
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
-import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
+import {
+  getServerCfg,
+  superAdminServiceFactory
+} from "@app/services/super-admin/super-admin-service";
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
@@ -420,6 +423,7 @@ export const registerRoutes = async (
   const serviceTokenService = serviceTokenServiceFactory({
     projectEnvDAL,
     serviceTokenDAL,
+    userDAL,
     permissionService
   });
 
@@ -516,14 +520,14 @@ export const registerRoutes = async (
     },
     handler: () => {
       const cfg = getConfig();
-      const serverCfg = getServerCfg() 
+      const serverCfg = getServerCfg();
       return {
         date: new Date(),
         message: "Ok" as const,
         emailConfigured: cfg.isSmtpConfigured,
         inviteOnlySignup: Boolean(serverCfg.allowSignUp),
         redisConfigured: cfg.isRedisConfigured,
-        secretScanningConfigured: cfg.isSecretScanningConfigured,
+        secretScanningConfigured: cfg.isSecretScanningConfigured
       };
     }
   });
