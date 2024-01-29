@@ -9,5 +9,6 @@ export default defineConfig({
   },
   external: ["../../../frontend/node_modules/next/dist/server/next-server.js"],
   outDir: "dist",
-  entry: ["./src"]
+  entry: ["./src"],
+  sourceMap: "inline"
 });
