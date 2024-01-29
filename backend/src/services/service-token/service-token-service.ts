@@ -13,6 +13,7 @@ import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { ActorType } from "../auth/auth-type";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
+import { TUserDALFactory } from "../user/user-dal";
 import { TServiceTokenDALFactory } from "./service-token-dal";
 import {
   TCreateServiceTokenDTO,
@@ -23,6 +24,7 @@ import {
 
 type TServiceTokenServiceFactoryDep = {
   serviceTokenDAL: TServiceTokenDALFactory;
+  userDAL: TUserDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findBySlugs">;
 };
@@ -31,6 +33,7 @@ export type TServiceTokenServiceFactory = ReturnType<typeof serviceTokenServiceF
 
 export const serviceTokenServiceFactory = ({
   serviceTokenDAL,
+  userDAL,
   permissionService,
   projectEnvDAL
 }: TServiceTokenServiceFactoryDep) => {
@@ -51,14 +54,14 @@ export const serviceTokenServiceFactory = ({
       ProjectPermissionActions.Create,
       ProjectPermissionSub.ServiceTokens
     );
-    
+
     scopes.forEach(({ environment, secretPath }) => {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionActions.Create,
         subject(ProjectPermissionSub.Secrets, { environment, secretPath })
       );
-    })
-    
+    });
+
     const appCfg = getConfig();
 
     // validates env
@@ -119,7 +122,10 @@ export const serviceTokenServiceFactory = ({
     const serviceToken = await serviceTokenDAL.findById(actorId);
     if (!serviceToken) throw new BadRequestError({ message: "Token not found" });
 
-    return serviceToken;
+    const serviceTokenUser = await userDAL.findById(serviceToken.createdBy);
+    if (!serviceTokenUser) throw new BadRequestError({ message: "Server token user not found" });
+
+    return { serviceToken, user: serviceTokenUser };
   };
 
   const getProjectServiceTokens = async ({
