@@ -109,7 +109,7 @@ export const secretDALFactory = (db: TDbClient) => {
       const data = sqlNestRelationships({
         data: secs,
         key: "id",
-        parentMapper: (el) => SecretsSchema.parse(el),
+        parentMapper: (el) => ({ _id: el.id, ...SecretsSchema.parse(el) }),
         childrenMapper: [
           {
             key: "tagId",

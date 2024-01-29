@@ -25,7 +25,9 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
         200: ServiceTokensSchema.merge(
           z.object({
             workspace: z.string(),
-            user: sanitizedServiceTokenUserSchema
+            user: sanitizedServiceTokenUserSchema,
+            _id: z.string(),
+            __v: z.number().default(0)
           })
         )
       }
@@ -44,7 +46,8 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
 
       const formattedServiceToken = {
         ...serviceToken,
-        _id: serviceToken.id
+        _id: serviceToken.id,
+        __v: 0
       } as const;
 
       // We return the user here because older versions of the deprecated Python SDK depend on it to properly parse the API response.

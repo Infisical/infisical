@@ -442,6 +442,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           secrets: SecretsSchema.omit({ secretBlindIndex: true })
             .merge(
               z.object({
+                _id: z.string(),
                 workspace: z.string(),
                 environment: z.string(),
                 tags: SecretTagsSchema.pick({
@@ -458,7 +459,15 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               secretPath: z.string(),
               environment: z.string(),
               folderId: z.string().optional(),
-              secrets: SecretsSchema.omit({ secretBlindIndex: true }).array()
+              secrets: SecretsSchema.omit({ secretBlindIndex: true })
+                .merge(
+                  z.object({
+                    _id: z.string(),
+                    workspace: z.string(),
+                    environment: z.string()
+                  })
+                )
+                .array()
             })
             .array()
             .optional()
@@ -619,6 +628,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           z.object({
             secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
               z.object({
+                _id: z.string(),
                 workspace: z.string(),
                 environment: z.string()
               })
@@ -794,6 +804,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           z.object({
             secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
               z.object({
+                _id: z.string(),
                 workspace: z.string(),
                 environment: z.string()
               })
@@ -963,6 +974,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           z.object({
             secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
               z.object({
+                _id: z.string(),
                 workspace: z.string(),
                 environment: z.string()
               })

@@ -37,7 +37,12 @@ export const fnSecretsFromImports = async ({
     environmentInfo: importEnv,
     folderId: importedFolders?.[i]?.id,
     secrets: importedFolders?.[i]?.id
-      ? importedSecsGroupByFolderId[importedFolders?.[i]?.id as string]
+      ? importedSecsGroupByFolderId[importedFolders?.[i]?.id as string].map((item) => ({
+          ...item,
+          environment: importEnv.slug,
+          workspace: "", // This field should not be used, it's only here to keep the older Python SDK versions backwards compatible with the new Postgres backend.
+          _id: item.id // The old Python SDK depends on the _id field being returned. We return this to keep the older Python SDK versions backwards compatible with the new Postgres backend.
+        }))
       : []
   }));
 };

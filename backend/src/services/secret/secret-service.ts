@@ -145,7 +145,7 @@ export const secretServiceFactory = ({
       await secretVersionTagDAL.insertMany(newSecretVersionTags, tx);
     }
 
-    return newSecrets;
+    return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
   };
 
   const fnSecretBulkUpdate = async ({
@@ -194,7 +194,7 @@ export const secretServiceFactory = ({
       }
     }
 
-    return newSecrets;
+    return newSecrets.map((secret) => ({ ...secret, _id: secret.id }));
   };
 
   const fnSecretBulkDelete = async ({
@@ -539,7 +539,7 @@ export const secretServiceFactory = ({
     await secretQueueService.syncSecrets({ secretPath: path, projectId, environment });
 
     // TODO(akhilmhdh-pg): licence check, posthog service and snapshot
-    return { ...deletedSecret[0], workspace: projectId, environment };
+    return { ...deletedSecret[0], _id: deletedSecret[0].id, workspace: projectId, environment };
   };
 
   const getSecrets = async ({
