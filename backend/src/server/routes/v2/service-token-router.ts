@@ -36,8 +36,19 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
         actor: req.permission.type
       });
 
+      const formattedUser = {
+        ...user,
+        _id: user.id,
+        __v: 0
+      } as const;
+
+      const formattedServiceToken = {
+        ...serviceToken,
+        _id: serviceToken.id
+      } as const;
+
       // We return the user here because older versions of the deprecated Python SDK depend on it to properly parse the API response.
-      return { ...serviceToken, workspace: serviceToken.projectId, user };
+      return { ...formattedServiceToken, workspace: serviceToken.projectId, user: formattedUser };
     }
   });
 
