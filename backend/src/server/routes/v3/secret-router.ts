@@ -442,6 +442,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           secrets: SecretsSchema.omit({ secretBlindIndex: true })
             .merge(
               z.object({
+                workspace: z.string(),
+                environment: z.string(),
                 tags: SecretTagsSchema.pick({
                   id: true,
                   slug: true,
@@ -529,7 +531,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          secret: SecretsSchema.omit({ secretBlindIndex: true })
+          secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
+            z.object({
+              workspace: z.string(),
+              environment: z.string()
+            })
+          )
         })
       }
     },
@@ -610,7 +617,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.union([
           z.object({
-            secret: SecretsSchema.omit({ secretBlindIndex: true })
+            secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
+              z.object({
+                workspace: z.string(),
+                environment: z.string()
+              })
+            )
           }),
           z
             .object({ approval: SecretApprovalRequestsSchema })
@@ -780,7 +792,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.union([
           z.object({
-            secret: SecretsSchema.omit({ secretBlindIndex: true })
+            secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
+              z.object({
+                workspace: z.string(),
+                environment: z.string()
+              })
+            )
           }),
           z
             .object({ approval: SecretApprovalRequestsSchema })
@@ -944,7 +961,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.union([
           z.object({
-            secret: SecretsSchema.omit({ secretBlindIndex: true })
+            secret: SecretsSchema.omit({ secretBlindIndex: true }).merge(
+              z.object({
+                workspace: z.string(),
+                environment: z.string()
+              })
+            )
           }),
           z
             .object({ approval: SecretApprovalRequestsSchema })

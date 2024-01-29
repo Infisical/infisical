@@ -86,7 +86,13 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
         secure: appCfg.HTTPS_ENABLED
       });
 
-      return { token: token.access, ...user };
+      return {
+        ...user,
+        token: token.access,
+        protectedKey: user.protectedKey || null,
+        protectedKeyIV: user.protectedKeyIV || null,
+        protectedKeyTag: user.protectedKeyTag || null
+      };
     }
   });
 };
