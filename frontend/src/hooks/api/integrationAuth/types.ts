@@ -7,6 +7,7 @@ export type IntegrationAuth = {
   updatedAt: string;
   algorithm: string;
   keyEncoding: string;
+  teamId?: string;
 };
 
 export type App = {

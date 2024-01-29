@@ -52,7 +52,8 @@ export default function VercelCreateIntegrationPage() {
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
   const { data: integrationAuthApps, isLoading: isIntegrationAuthAppsLoading } =
     useGetIntegrationAuthApps({
-      integrationAuthId: (integrationAuthId as string) ?? ""
+      integrationAuthId: (integrationAuthId as string) ?? "",
+      teamId: integrationAuth?.teamId as string
     });
 
   const { data: branches } = useGetIntegrationAuthVercelBranches({
