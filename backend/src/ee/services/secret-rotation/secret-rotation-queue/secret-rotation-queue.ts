@@ -34,6 +34,7 @@ import {
   TSecretRotationDbFn,
   TSecretRotationEncData
 } from "./secret-rotation-queue-types";
+import { BadRequestError } from "@app/lib/errors";
 
 export type TSecretRotationQueueFactory = ReturnType<typeof secretRotationQueueFactory>;
 
@@ -259,10 +260,14 @@ export const secretRotationQueueFactory = ({
           tx
         );
         await secretVersionDAL.insertMany(
-          updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => ({
-            ...el,
-            secretId: id
-          })),
+          updatedSecrets.map(({ id, updatedAt, createdAt, ...el }) => {
+            if (!el.secretBlindIndex) throw new BadRequestError({ message: "Missing blind index" });
+            return {
+              ...el,
+              secretId: id,
+              secretBlindIndex: el.secretBlindIndex as string
+            };
+          }),
           tx
         );
       });

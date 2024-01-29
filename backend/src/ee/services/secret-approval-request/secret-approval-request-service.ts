@@ -499,7 +499,10 @@ export const secretApprovalRequestServiceFactory = ({
           blindIndexCfg
         });
 
-      const secsGroupedByBlindIndex = groupBy(secretsToBeUpdated, (el) => el.secretBlindIndex);
+      const secsGroupedByBlindIndex = groupBy(
+        secretsToBeUpdated,
+        (el) => el.secretBlindIndex as string
+      );
       const updatedSecretIds = updatedSecrets.map(
         (el) => secsGroupedByBlindIndex[keyName2BlindIndex[el.secretName]][0].id
       );
@@ -540,7 +543,11 @@ export const secretApprovalRequestServiceFactory = ({
         isNew: false,
         blindIndexCfg
       });
-      const secretsGroupedByBlindIndex = groupBy(secrets, (i) => i.secretBlindIndex);
+      const secretsGroupedByBlindIndex = groupBy(secrets, (i) => {
+        if (!i.secretBlindIndex)
+          throw new BadRequestError({ message: "Missing secret blind index" });
+        return i.secretBlindIndex;
+      });
       const deletedSecretIds = deletedSecrets.map(
         (el) => secretsGroupedByBlindIndex[keyName2BlindIndex[el.secretName]][0].id
       );
@@ -551,9 +558,12 @@ export const secretApprovalRequestServiceFactory = ({
       commits.push(
         ...deletedSecrets.map((el) => {
           const secretId = secretsGroupedByBlindIndex[keyName2BlindIndex[el.secretName]][0].id;
+          if (!latestSecretVersions[secretId].secretBlindIndex)
+            throw new BadRequestError({ message: "Failed to find secret blind index" });
           return {
             op: CommitType.Delete as const,
             ...latestSecretVersions[secretId],
+            secretBlindIndex: latestSecretVersions[secretId].secretBlindIndex as string,
             secret: secretId,
             secretVersion: latestSecretVersions[secretId].id
           };
